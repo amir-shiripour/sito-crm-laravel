@@ -1,0 +1,22 @@
+/* ایمپورت کردن فونت وزیرمتن (Vazirmatn) از Google Fonts
+  ما از وزن‌های مختلف آن برای انعطاف‌پذیری در طراحی استفاده می‌کنیم.
+*/
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
+
+/* اعمال کردن جهت‌دهی راست‌به‌چپ (RTL) به کل سند HTML
+  این کار باعث می‌شود تمام المان‌ها به صورت پیش‌فرض راست‌چین شوند.
+*/
+html {
+    direction: rtl;
+}
+
+/* ایمپورت کردن لایه‌های پایه Tailwind CSS
+  اینها استایل‌های پیش‌فرض Tailwind هستند.
+*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[x-cloak] {
+    display: none;
+}
