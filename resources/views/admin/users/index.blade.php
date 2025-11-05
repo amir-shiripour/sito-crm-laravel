@@ -15,6 +15,7 @@
                             {{ session('success') }}
                         </div>
                     @endif
+                        <a href="{{ route('admin.users.create') }}" class="px-3 py-2 bg-gray-900 text-white rounded">کاربر جدید</a>
 
                     <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
                         <table class="w-full text-sm text-right text-gray-500 dark:text-gray-400">
@@ -28,6 +29,9 @@
                                     </th>
                                     <th scope="col" class="px-6 py-3">
                                         نقش
+                                    </th>
+                                    <th scope="col" class="px-6 py-3">
+                                        نقششش
                                     </th>
                                     <th scope="col" class="px-6 py-3">
                                         <span class="sr-only">ویرایش</span>
@@ -45,6 +49,11 @@
                                     </td>
                                     <td class="px-6 py-4">
                                         {{ $user->roles->first()?->name ?? '---' }}
+                                    </td>
+                                    <td>
+                                        @foreach($user->getRoleNames() as $r)
+                                            <span class="inline-block text-xs bg-gray-100 border rounded px-2 py-1 ml-1">{{ $r }}</span>
+                                        @endforeach
                                     </td>
                                     <td class="px-6 py-4 text-left">
                                         <a href="{{ route('admin.users.edit', $user->id) }}" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">ویرایش</a>

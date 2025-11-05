@@ -105,7 +105,7 @@ class InstallController extends Controller
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
             ]);
-            $role = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
+            $role = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
             $user->assignRole($role);
         } catch (\Exception $e) {
             return back()->withInput()->withErrors(['email' => 'خطا در ایجاد کاربر ادمین: ' . $e->getMessage()]);

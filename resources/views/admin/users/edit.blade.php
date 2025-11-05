@@ -1,84 +1,98 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('ویرایش کاربر: ') }} {{ $user->name }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg">
-                <div class="p-6 lg:p-8 bg-white dark:bg-gray-800">
+@section('content')
+    @php
+        /** @var \App\Models\User $user */
+        $isEdit = $user && $user->exists;
+        $action = $isEdit ? route('admin.users.update', $user) : route('admin.users.store');
+        $method = $isEdit ? 'PUT' : 'POST';
+        $currentRole = old('role', optional($user->roles->first())->name);
+    @endphp
 
-                    <form action="{{ route('admin.users.update', $user->id) }}" method="POST">
+    <div class="max-w-3xl mx-auto p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-xl font-bold">
+                {{ $isEdit ? 'ویرایش کاربر' : 'ایجاد کاربر جدید' }}
+            </h1>
+
+            <div class="space-x-2 space-x-reverse">
+                <a href="{{ route('admin.users.index') }}" class="px-3 py-2 border rounded text-gray-700">
+                    بازگشت
+                </a>
+
+                @if($isEdit)
+                    <form method="POST" action="{{ route('admin.users.destroy', $user) }}" class="inline" onsubmit="return confirm('حذف این کاربر؟')">
                         @csrf
-                        @method('PUT')
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Name -->
-                            <div>
-                                <x-label for="name" value="{{ __('نام') }}" />
-                                <x-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name', $user->name)" required autofocus autocomplete="name" />
-                                <x-input-error for="name" class="mt-2" />
-                            </div>
-
-                            <!-- Email -->
-                            <div>
-                                <x-label for="email" value="{{ __('ایمیل') }}" />
-                                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $user->email)" required autocomplete="username" />
-                                <x-input-error for="email" class="mt-2" />
-                            </div>
-
-                            <!-- Mobile -->
-                            <div>
-                                <x-label for="mobile" value="{{ __('شماره موبایل') }}" />
-                                <x-input id="mobile" class="block mt-1 w-full" type="text" name="mobile" :value="old('mobile', $user->mobile)" />
-                                <x-input-error for="mobile" class="mt-2" />
-                            </div>
-
-                            <!-- Role -->
-                            <div>
-                                <x-label for="role" value="{{ __('نقش') }}" />
-                                <select name="role" id="role" class="border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm block mt-1 w-full">
-                                    @foreach($roles as $role)
-                                        <option value="{{ $role->name }}" @selected($user->hasRole($role->name))>
-                                            {{ $role->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <x-input-error for="role" class="mt-2" />
-                            </div>
-
-                            <!-- Password -->
-                            <div class="col-span-1 md:col-span-2">
-                                <hr class="my-4 dark:border-gray-700">
-                                <p class="text-sm text-gray-600 dark:text-gray-400">در صورت تمایل به تغییر رمز عبور، فیلدهای زیر را پر کنید.</p>
-                            </div>
-
-                            <div>
-                                <x-label for="password" value="{{ __('رمز عبور جدید') }}" />
-                                <x-input id="password" class="block mt-1 w-full" type="password" name="password" autocomplete="new-password" />
-                                <x-input-error for="password" class="mt-2" />
-                            </div>
-
-                            <!-- Confirm Password -->
-                            <div>
-                                <x-label for="password_confirmation" value="{{ __('تکرار رمز عبور جدید') }}" />
-                                <x-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" autocomplete="new-password" />
-                                <x-input-error for="password_confirmation" class="mt-2" />
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-end mt-6">
-                            <x-button class="ms-4">
-                                {{ __('ذخیره تغییرات') }}
-                            </x-button>
-                        </div>
+                        @method('DELETE')
+                        <button class="px-3 py-2 bg-red-600 text-white rounded">حذف</button>
                     </form>
-
-                </div>
+                @endif
             </div>
         </div>
-    </div>
-</x-app-layout>
 
+        {{-- پیام موفقیت --}}
+        @if (session('success'))
+            <div class="mb-4 p-3 bg-green-100 text-green-800 rounded">{{ session('success') }}</div>
+        @endif
+
+        {{-- خطاها --}}
+        @if ($errors->any())
+            <div class="mb-4 p-3 bg-red-100 text-red-800 rounded">
+                <ul class="list-disc mr-5">
+                    @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <form method="POST" action="{{ $action }}" class="space-y-5">
+            @csrf
+            @if($isEdit) @method('PUT') @endif
+
+            <div>
+                <label class="block text-sm font-medium mb-1">نام</label>
+                <input name="name" value="{{ old('name', $user->name) }}" class="w-full border rounded p-2" required>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">ایمیل</label>
+                <input type="email" name="email" value="{{ old('email', $user->email) }}" class="w-full border rounded p-2" required>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">شماره موبایل</label>
+                <input name="mobile" value="{{ old('mobile', $user->mobile) }}" class="w-full border rounded p-2" placeholder="مثلاً 0912xxxxxxx">
+                <p class="text-gray-500 text-xs mt-1">اختیاری (در صورت نیاز می‌تواند یکتا باشد).</p>
+            </div>
+
+            <div class="{{ $isEdit ? '' : '' }}">
+                <label class="block text-sm font-medium mb-1">
+                    رمز عبور {{ $isEdit ? '(برای تغییر پر کنید)' : '' }}
+                </label>
+                <input type="password" name="password" class="w-full border rounded p-2" {{ $isEdit ? '' : 'required' }}>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">تأیید رمز عبور</label>
+                <input type="password" name="password_confirmation" class="w-full border rounded p-2" {{ $isEdit ? '' : 'required' }}>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">نقش</label>
+                <select name="role" class="w-full border rounded p-2" required>
+                    <option value="" disabled {{ $currentRole ? '' : 'selected' }}>انتخاب نقش...</option>
+                    @foreach($roles as $name => $label)
+                        <option value="{{ $name }}" {{ $currentRole === $name ? 'selected' : '' }}>
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="pt-2">
+                <button class="px-4 py-2 bg-gray-900 text-white rounded">
+                    {{ $isEdit ? 'ذخیره تغییرات' : 'ایجاد کاربر' }}
+                </button>
+            </div>
+        </form>
+    </div>
+@endsection

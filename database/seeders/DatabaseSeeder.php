@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
 
         // سپس تم‌ها و نیازمندی‌های ماژولی آن‌ها ثبت شوند
         $this->call(ThemeSeeder::class);
+        $this->call(RolePermissionSeeder::class);
     }
 }
 
