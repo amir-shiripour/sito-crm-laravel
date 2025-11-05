@@ -21,3 +21,18 @@ export default {
 
     plugins: [forms, typography],
 };
+
+module.exports = {
+    darkMode: 'class',
+    content: [
+        './resources/views/**/*.blade.php',
+        './resources/js/**/*.js',
+    ],
+    theme: {
+        extend: {},
+    },
+    plugins: [
+        require('tailwindcss-rtl'), // npm i -D tailwindcss-rtl
+    ],
+}
+

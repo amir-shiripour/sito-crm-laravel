@@ -1,46 +1,46 @@
-@extends('layouts.app')
+@extends('layouts.admin')
+@php($title = 'مدیریت نقش‌ها')
 
 @section('content')
-    <div class="max-w-5xl mx-auto p-6">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-bold">نقش‌ها</h1>
-            <a href="{{ route('admin.roles.create') }}" class="px-3 py-2 bg-gray-900 text-white rounded">نقش جدید</a>
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <h1 class="font-semibold text-gray-900 dark:text-gray-100">نقش‌ها</h1>
+            @role('super-admin')
+            <a href="{{ route('admin.roles.create') }}"
+               class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700">
+                + نقش جدید
+            </a>
+            @endrole
         </div>
 
-        @if (session('success'))
-            <div class="mt-4 p-3 bg-green-100 text-green-800 rounded">{{ session('success') }}</div>
-        @endif
-
-        @error('role')
-        <div class="mt-4 p-3 bg-red-100 text-red-800 rounded">{{ $message }}</div>
-        @enderror
-
-        <div class="mt-6 overflow-x-auto">
-            <table class="min-w-full border">
-                <thead class="bg-gray-50">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-600 dark:text-gray-300">
                 <tr>
-                    <th class="p-2 text-right border">نام</th>
-                    <th class="p-2 text-right border">تعداد کاربران</th>
-                    <th class="p-2 text-right border">عملیات</th>
+                    <th class="p-3 text-right">نام</th>
+                    <th class="p-3 text-right">تعداد کاربران</th>
+                    <th class="p-3 text-right">عملیات</th>
                 </tr>
                 </thead>
                 <tbody>
                 @forelse($roles as $role)
-                    <tr class="border-b">
-                        <td class="p-2 border">{{ $role->name }}</td>
-                        <td class="p-2 border">{{ $roleUserCounts[$role->name] ?? 0 }}</td>
-                        <td class="p-2 border">
-                            <a href="{{ route('admin.roles.edit',$role) }}" class="text-blue-600">ویرایش</a>
-                            @if($role->name !== 'super-admin')
-                                <form method="POST" action="{{ route('admin.roles.destroy',$role) }}" class="inline">
+                    <tr class="border-t border-gray-100 dark:border-gray-700/50">
+                        <td class="p-3 text-gray-900 dark:text-gray-100">{{ $role->name }}</td>
+                        <td class="p-3 text-gray-700 dark:text-gray-200">{{ $roleUserCounts[$role->name] ?? 0 }}</td>
+                        <td class="p-3">
+                            <a href="{{ route('admin.roles.edit', $role) }}"
+                               class="text-indigo-600 dark:text-indigo-300 hover:underline">ویرایش</a>
+                            @if(!in_array($role->name, ['super-admin','Super Admin']))
+                                <form method="POST" action="{{ route('admin.roles.destroy',$role) }}"
+                                      class="inline" onsubmit="return confirm('حذف این نقش؟')">
                                     @csrf @method('DELETE')
-                                    <button class="text-red-600 ml-2" onclick="return confirm('حذف این نقش؟')">حذف</button>
+                                    <button class="text-red-600 ml-2 hover:underline">حذف</button>
                                 </form>
                             @endif
                         </td>
                     </tr>
                 @empty
-                    <tr><td class="p-3" colspan="3">نقشی وجود ندارد.</td></tr>
+                    <tr><td class="p-6 text-center text-gray-500 dark:text-gray-400" colspan="3">نقشی تعریف نشده.</td></tr>
                 @endforelse
                 </tbody>
             </table>

@@ -1,40 +1,37 @@
-@extends('layouts.app')
+@extends('layouts.admin')
+@php($title = 'ایجاد نقش')
 
 @section('content')
-    <div class="max-w-3xl mx-auto p-6">
-        <h1 class="text-xl font-bold mb-6">ایجاد نقش جدید</h1>
-
-        @if ($errors->any())
-            <div class="mb-4 p-3 bg-red-100 text-red-800 rounded">
-                <ul class="list-disc mr-5">
-                    @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
-                </ul>
-            </div>
-        @endif
-
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
         <form method="POST" action="{{ route('admin.roles.store') }}" class="space-y-5">
             @csrf
 
             <div>
-                <label class="block text-sm font-medium mb-1">نام نقش</label>
-                <input name="name" value="{{ old('name') }}" class="w-full border rounded p-2" required>
+                <label class="block text-sm font-medium mb-1 text-gray-800 dark:text-gray-200">نام نقش</label>
+                <input name="name" value="{{ old('name') }}"
+                       class="w-full border rounded-lg p-2.5 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                       required>
             </div>
 
             <div>
-                <label class="block text-sm font-medium mb-2">مجوزها</label>
+                <label class="block text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">مجوزها</label>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                     @foreach($permissions as $perm)
-                        <label class="flex items-center space-x-2 space-x-reverse p-2 border rounded">
-                            <input type="checkbox" name="permissions[]" value="{{ $perm }}" @checked(collect(old('permissions',[]))->contains($perm))>
-                            <span class="text-sm">{{ $perm }}</span>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg text-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200">
+                            <input type="checkbox" name="permissions[]" value="{{ $perm }}"
+                                @checked(collect(old('permissions',[]))->contains($perm))>
+                            <span>{{ $perm }}</span>
                         </label>
                     @endforeach
                 </div>
             </div>
 
             <div class="pt-2">
-                <button class="px-4 py-2 bg-gray-900 text-white rounded">ایجاد</button>
-                <a href="{{ route('admin.roles.index') }}" class="ml-2 text-gray-600">بازگشت</a>
+                <button class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">ایجاد</button>
+                <a href="{{ route('admin.roles.index') }}"
+                   class="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200">
+                    بازگشت
+                </a>
             </div>
         </form>
     </div>

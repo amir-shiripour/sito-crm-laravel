@@ -1,0 +1,74 @@
+{{-- admin/partials/sidebar.blade.php --}}
+<div class="h-full flex flex-col">
+    <div class="h-16 px-5 flex items-center border-b border-gray-200/70 dark:border-gray-700/60">
+        <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2">
+            <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white grid place-content-center font-bold">C</div>
+            <div class="text-sm font-bold text-gray-900 dark:text-gray-100">CRM Admin</div>
+        </a>
+    </div>
+
+
+    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+        <div>
+            <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-gray-500/80 dark:text-gray-400/70">اصلی</p>
+            <ul class="space-y-1">
+                <li>
+                    <a href="{{ route('admin.dashboard') }}"
+                       class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+{{ request()->routeIs('admin.dashboard') ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700' }}">
+                        {{-- Home icon --}}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-5 h-5 opacity-80"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5V21a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 21v-10.5z"/></svg>
+                        <span>داشبورد</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+
+        <div>
+            <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-gray-500/80 dark:text-gray-400/70">مدیریت</p>
+            <ul class="space-y-1">
+                @can('menu.see.users')
+                    <li>
+                        <a href="{{ route('admin.users.index') }}"
+                           class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+{{ request()->routeIs('admin.users.*') ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700' }}">
+                            {{-- Users icon --}}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-5 h-5 opacity-80"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0v.75H4.5v-.75z"/></svg>
+                            <span>کاربران</span>
+                        </a>
+                    </li>
+                @endcan
+
+
+                @can('menu.see.roles')
+                    <li>
+                        <a href="{{ route('admin.roles.index') }}"
+                           class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+{{ request()->routeIs('admin.roles.*') ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700' }}">
+                            {{-- Roles icon --}}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-5 h-5 opacity-80"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 9h9M7.5 12h6M7.5 15h4.5"/></svg>
+                            <span>نقش‌ها</span>
+                        </a>
+                    </li>
+                @endcan
+
+
+                <li>
+                    <a href="{{ route('admin.modules.index') }}"
+                       class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+{{ request()->routeIs('admin.modules.*') ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700' }}">
+                        {{-- Modules icon --}}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-5 h-5 opacity-80"><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 3.75h3a2 2 0 012 2v.5h1.25a2.5 2.5 0 110 5H13.5v1.25h1.25a2.5 2.5 0 110 5H13.5v.5a2 2 0 01-2 2h-3a2 2 0 01-2-2v-11a2 2 0 012-2z"/></svg>
+                        <span>ماژول‌ها</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+
+    <div class="px-4 py-3 text-[11px] text-gray-500 dark:text-gray-400 border-t border-gray-200/70 dark:border-gray-700/60">
+        نسخه {{ app()->version() }}
+    </div>
+</div>

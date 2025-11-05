@@ -31,6 +31,7 @@ class UserController extends Controller
         $user  = new User();
         $roles = Role::orderBy('name')->pluck('name', 'name'); // ['admin' => 'admin', ...]
         return view('admin.users.edit', compact('user', 'roles'));
+//        return view('admin.users.create', ['roles' => $roles]);
     }
 
     /**
@@ -66,6 +67,7 @@ class UserController extends Controller
     {
         $roles = Role::orderBy('name')->pluck('name', 'name');
         return view('admin.users.edit', compact('user', 'roles'));
+//        return view('admin.users.edit', ['user' => $user, 'roles' => $roles]);
     }
 
     /**
