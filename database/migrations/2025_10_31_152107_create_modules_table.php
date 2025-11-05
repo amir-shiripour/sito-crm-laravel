@@ -8,28 +8,26 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     *
-     * @return void
      */
-    public function up()
+    public function up(): void
     {
         Schema::create('modules', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // نام قابل نمایش ماژول (مثال: مدیریت مشتریان)
-            $table->string('slug')->unique(); // نام کلیدی منحصربه‌فرد (مثال: customers)
-            $table->text('description')->nullable(); // توضیحات ماژول
+            $table->string('name'); // نام قابل نمایش e.g., "مدیریت کاربران"
+            $table->string('slug')->unique(); // اسلاگ ماشینی e.g., "UserManagement"
+            $table->text('description')->nullable(); // توضیحات
             $table->string('version')->default('1.0.0'); // نسخه ماژول
-            $table->boolean('active')->default(false); // وضعیت فعال/غیرفعال بودن
+            $table->boolean('active')->default(false); // وضعیت فعال/غیرفعال
+            $table->boolean('is_core')->default(false); // آیا ماژول هسته است و قابل غیرفعال شدن نیست؟
+            $table->json('config')->nullable(); // تنظیمات خاص ماژول
             $table->timestamps();
         });
     }
 
     /**
      * Reverse the migrations.
-     *
-     * @return void
      */
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('modules');
     }

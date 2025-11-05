@@ -2,43 +2,35 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ModuleController;
+use App\Http\Controllers\Admin\UserController;
 
 /*
 |--------------------------------------------------------------------------
 | Admin Routes
 |--------------------------------------------------------------------------
 |
-| تمام مسیرهای مربوط به پنل مدیریت در این فایل قرار می‌گیرند.
-| این مسیرها به صورت خودکار دارای پیشوند /admin و میدل‌ورهای web و auth هستند.
+| تمام این روت‌ها به صورت خودکار پیشوند /admin را دریافت می‌کنند
+| و پیشوند نام admin. را (از RouteServiceProvider) دریافت می‌کنند.
 |
 */
 
-//Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+// داشبورد اصلی ادمین
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-// روت‌های مدیریت کاربران (جدید)
-// آدرس: /admin/users
-Route::get('/users', [UserController::class, 'index'])->name('users.index');
+// --- مدیریت کاربران (بخش هسته) ---
+// اصلاح شد: .as('admin.') از اینجا حذف شد تا از تداخل (admin.admin) جلوگیری شود
+Route::prefix('users')->name('users.')->group(function () {
+    Route::get('/', [UserController::class, 'index'])->name('index');
+    Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
+    Route::put('/{user}', [UserController::class, 'update'])->name('update');
+});
 
-// آدرس: /admin/users/{user}/edit
-Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+// --- مدیریت ماژول‌ها (بخش هسته) ---
+// اصلاح شد: .as('admin.') از اینجا حذف شد
+Route::prefix('modules')->name('modules.')->group(function () {
+    Route::get('/', [ModuleController::class, 'index'])->name('index');
+    // اصلاح شد: روت toggle باید POST باشد تا از خطای 404/CSRF جلوگیری شود
+    Route::post('/toggle', [ModuleController::class, 'toggle'])->name('toggle');
+});
 
-// آدرس: /admin/users/{user} (Method: PUT)
-Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-
-// مثال: مدیریت کاربران (با استفاده از نقش)
-// Route::middleware(['role:Super Admin'])->prefix('users')->name('users.')->group(function () {
-//     Route::get('/', [UserController::class, 'index'])->name('index');
-//     // ...
-// });
-
-// مسیرهای ماژول‌ها می‌توانند در اینجا اینکلود شوند
-// include base_path('modules/Customer/Routes/admin.php');
-
-// --- مدیریت ماژول‌ها (Module Management) - (جدید) ---
-// (آدرس نهایی: /admin/modules)
-Route::get('modules', [ModuleController::class, 'index'])->name('modules.index');
-// (آدرس نهایی: /admin/modules/{module}/toggle)
-Route::post('modules/{module}/toggle', [ModuleController::class, 'toggle'])->name('modules.toggle');

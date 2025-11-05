@@ -6,50 +6,82 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Module;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ModuleController extends Controller
 {
     /**
-     * نمایش لیست تمام ماژول‌ها.
+     * Display a listing of the modules.
      */
     public function index()
     {
-        // تمام ماژول‌ها را از دیتابیس می‌گیریم و بر اساس نام مرتب می‌کنیم
-        $modules = Module::orderBy('name')->get();
+        // ماژول‌های دیتابیس (فقط آن‌هایی که هسته‌ای نیستند)
+        // ماژول‌های هسته‌ای (مثل مدیریت کاربران) نباید در این لیست نمایش داده شوند
+        // چون نباید غیرفعال شوند.
+        $dbModules = Module::where('is_core', false)->get();
 
-        // ویو را به همراه لیست ماژول‌ها برمی‌گردانیم
-        return view('admin.modules.index', compact('modules'));
+        // وضعیت ماژول‌های فیزیکی از پکیج nwidart
+        $packageModules = \Nwidart\Modules\Facades\Module::all();
+        $packageModulesStatus = [];
+        foreach ($packageModules as $module) {
+            $packageModulesStatus[$module->getName()] = $module->isEnabled();
+        }
+
+        return view('admin.modules.index', compact('dbModules', 'packageModulesStatus'));
     }
 
     /**
-     * وضعیت یک ماژول (فعال/غیرفعال) را تغییر می‌دهد.
+     * Toggle the status of a module.
      */
-    public function toggle(Request $request, Module $module)
+    public function toggle(Request $request)
     {
-        // اطمینان حاصل می‌کنیم که ماژول 'core' هرگز غیرفعال نمی‌شود
-        if ($module->slug === 'core') {
-            return redirect()->route('admin.modules.index')
-                ->with('error', 'ماژول هسته (Core) قابل غیرفعال‌سازی نیست.');
+        $request->validate([
+            'slug' => 'required|string',
+            'action' => 'required|in:enable,disable',
+        ]);
+
+        $slug = $request->slug;
+        $action = $request->action;
+
+        // یافتن ماژول در دیتابیس
+        $dbModule = Module::where('slug', $slug)->where('is_core', false)->first();
+
+        if (!$dbModule) {
+            return back()->with('error', 'ماژول مورد نظر یافت نشد یا هسته‌ای است.');
         }
 
-        // وضعیت ماژول را برعکس می‌کنیم (اگر true بود false می‌شود و برعکس)
-        $module->active = !$module->active;
-        $module->save();
+        // یافتن ماژول فیزیکی
+        $module = \Nwidart\Modules\Facades\Module::find($slug);
+        if (!$module) {
+            return back()->with('error', "ماژول فیزیکی '{$slug}' یافت نشد.");
+        }
 
-        // پاک کردن کش‌های مربوط به ماژول‌ها و تم‌ها
-        // این کار مهم است تا تغییرات در سراسر برنامه اعمال شوند
-        Cache::forget('active_theme'); // کش تم فعال (چون ممکن است نیازمندی‌هایش تغییر کند)
-        Cache::forget('active_modules'); // کش ماژول‌های فعال (اگر چنین کشی دارید)
+        try {
+            // 1. اجرای دستور Artisan
+            $command = $action === 'enable' ? 'module:enable' : 'module:disable';
+            Artisan::call($command, ['module' => $slug]);
 
-        // (اختیاری) اجرای دستورات مربوط به ماژول
-        // اگر ماژول‌ها ServiceProvider یا Migrations دارند،
-        // در اینجا باید منطق مربوط به فعال‌سازی آن‌ها را اجرا کنید
-        // (مثلاً: Artisan::call('module:migrate', ['module' => $module->slug]))
+            // دریافت خروجی (برای بررسی خطا)
+            $output = Artisan::output();
 
-        // کاربر را به صفحه مدیریت ماژول‌ها برمی‌گردانیم
-        return redirect()->route('admin.modules.index')
-            ->with('success', "وضعیت ماژول '{$module->name}' با موفقیت تغییر کرد.");
+            // اصلاح شد: از count() روی رشته استفاده نمی‌کنیم
+            if (str_contains(strtolower($output), 'error')) {
+                Log::error("خطا در $command $slug: " . $output);
+                return back()->with('error', "خطا در اجرای دستور: " . $output);
+            }
+
+            // 2. آپدیت دیتابیس ما
+            $dbModule->update(['active' => ($action === 'enable')]);
+
+            // 3. پاک کردن کش‌ها
+            Artisan::call('optimize:clear');
+
+            return back()->with('success', "ماژول '{$dbModule->name}' با موفقیت " . ($action === 'enable' ? 'فعال' : 'غیرفعال') . " شد.");
+
+        } catch (\Exception $e) {
+            Log::error("خطا در toggle ماژول $slug: " . $e->getMessage());
+            return back()->with('error', 'خطای سیستمی: ' . $e->getMessage());
+        }
     }
 }
 

@@ -1,90 +1,75 @@
 <x-app-layout>
-    {{-- هدر صفحه --}}
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('ویرایش کاربر') }}: {{ $user->name }}
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{ __('ویرایش کاربر: ') }} {{ $user->name }}
         </h2>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg">
+                <div class="p-6 lg:p-8 bg-white dark:bg-gray-800">
 
-                {{-- کانتینر فرم --}}
-                <div class="p-6 lg:p-8 bg-white border-b border-gray-200">
-
-                    <h1 class="mt-2 text-2xl font-medium text-gray-900">
-                        اطلاعات کاربر را به‌روزرسانی کنید
-                    </h1>
-
-                    <p class="mt-6 text-gray-500 leading-relaxed">
-                        در این بخش می‌توانید اطلاعات کاربر و نقش دسترسی او را در سیستم CRM تغییر دهید.
-                    </p>
-
-                    <!-- نمایش خطاهای اعتبارسنجی (Validation Errors) -->
-                    @if ($errors->any())
-                        <div class="mb-4 mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                            <strong class="font-bold">خطا!</strong>
-                            <span class="block sm:inline">لطفاً موارد زیر را بررسی کنید:</span>
-                            <ul class="mt-3 list-disc list-inside text-sm">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    {{-- فرم ویرایش --}}
-                    {{-- ما از متد POST استفاده می‌کنیم اما با @method('PUT') به لاراول می‌گوییم که این یک درخواست PUT است --}}
-                    <form method="POST" action="{{ route('admin.users.update', $user->id) }}" class="mt-10">
+                    <form action="{{ route('admin.users.update', $user->id) }}" method="POST">
                         @csrf
                         @method('PUT')
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                            {{-- فیلد نام --}}
+                            <!-- Name -->
                             <div>
                                 <x-label for="name" value="{{ __('نام') }}" />
                                 <x-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name', $user->name)" required autofocus autocomplete="name" />
+                                <x-input-error for="name" class="mt-2" />
                             </div>
 
-                            {{-- فیلد ایمیل --}}
+                            <!-- Email -->
                             <div>
                                 <x-label for="email" value="{{ __('ایمیل') }}" />
                                 <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $user->email)" required autocomplete="username" />
+                                <x-input-error for="email" class="mt-2" />
                             </div>
 
-                            {{-- فیلد شماره موبایل --}}
+                            <!-- Mobile -->
                             <div>
-                                <x-label for="mobile" value="{{ __('شماره موبایل (اختیاری)') }}" />
-                                <x-input id="mobile" class="block mt-1 w-full" type="text" name="mobile" :value="old('mobile', $user->mobile)" autocomplete="tel" />
+                                <x-label for="mobile" value="{{ __('شماره موبایل') }}" />
+                                <x-input id="mobile" class="block mt-1 w-full" type="text" name="mobile" :value="old('mobile', $user->mobile)" />
+                                <x-input-error for="mobile" class="mt-2" />
                             </div>
 
-                            {{-- فیلد نقش (Role) --}}
+                            <!-- Role -->
                             <div>
-                                <x-label for="role" value="{{ __('نقش کاربر') }}" />
-                                <select name="role" id="role" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
-                                    <option value="">-- انتخاب نقش --</option>
-                                    @foreach ($roles as $role)
-                                        {{--
-                                          چک می‌کنیم که آیا کاربر این نقش را دارد یا نه.
-                                          $user->roles->first()->id ?? null:
-                                          نقش فعلی کاربر را می‌گیرد (اگر نقشی داشته باشد).
-                                        --}}
-                                        <option value="{{ $role->name }}" {{ (old('role', $user->roles->first()->name ?? null) == $role->name) ? 'selected' : '' }}>
+                                <x-label for="role" value="{{ __('نقش') }}" />
+                                <select name="role" id="role" class="border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm block mt-1 w-full">
+                                    @foreach($roles as $role)
+                                        <option value="{{ $role->name }}" @selected($user->hasRole($role->name))>
                                             {{ $role->name }}
                                         </option>
                                     @endforeach
                                 </select>
+                                <x-input-error for="role" class="mt-2" />
+                            </div>
+
+                            <!-- Password -->
+                            <div class="col-span-1 md:col-span-2">
+                                <hr class="my-4 dark:border-gray-700">
+                                <p class="text-sm text-gray-600 dark:text-gray-400">در صورت تمایل به تغییر رمز عبور، فیلدهای زیر را پر کنید.</p>
+                            </div>
+
+                            <div>
+                                <x-label for="password" value="{{ __('رمز عبور جدید') }}" />
+                                <x-input id="password" class="block mt-1 w-full" type="password" name="password" autocomplete="new-password" />
+                                <x-input-error for="password" class="mt-2" />
+                            </div>
+
+                            <!-- Confirm Password -->
+                            <div>
+                                <x-label for="password_confirmation" value="{{ __('تکرار رمز عبور جدید') }}" />
+                                <x-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" autocomplete="new-password" />
+                                <x-input-error for="password_confirmation" class="mt-2" />
                             </div>
                         </div>
 
-                        {{-- دکمه ذخیره --}}
-                        <div class="flex items-center justify-end mt-8">
-                            <a href="{{ route('admin.users.index') }}" class="ml-4 inline-flex items-center px-4 py-2 bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-gray-800 uppercase tracking-widest hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
-                                {{ __('لغو') }}
-                            </a>
-
+                        <div class="flex items-center justify-end mt-6">
                             <x-button class="ms-4">
                                 {{ __('ذخیره تغییرات') }}
                             </x-button>

@@ -1,108 +1,96 @@
 <x-app-layout>
-    {{-- هدر صفحه که در لی‌آوت اصلی (app.blade.php) نمایش داده می‌شود --}}
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('مدیریت ماژول‌ها (فیچرها)') }}
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{ __('مدیریت ماژول‌ها') }}
         </h2>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
-                <div class="p-6 lg:p-8 bg-white border-b border-gray-200">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg">
+                <div class="p-6 lg:p-8 bg-white dark:bg-gray-800 dark:bg-gradient-to-bl dark:from-gray-700/50 dark:via-transparent border-b border-gray-200 dark:border-gray-700">
 
-                    <h1 class=" text-2xl font-medium text-gray-900 mb-6">
-                        لیست ماژول‌های سیستم
-                    </h1>
-
-                    <p class="mb-6 text-gray-600">
-                        از این بخش می‌توانید فیچرهای مختلف سیستم را فعال یا غیرفعال کنید. ماژول‌های فعال، قابلیت‌های خود را به سیستم اضافه می‌کنند.
-                    </p>
-
-                    <!-- نمایش پیام‌های موفقیت یا خطا -->
                     @if (session('success'))
-                        <div class="mb-4 p-4 bg-green-100 text-green-700 border border-green-300 rounded-lg">
+                        <div class="mb-4 p-4 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-gray-700 dark:text-green-300" role="alert">
                             {{ session('success') }}
                         </div>
                     @endif
                     @if (session('error'))
-                        <div class="mb-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded-lg">
+                        <div class="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-gray-700 dark:text-red-300" role="alert">
                             {{ session('error') }}
                         </div>
                     @endif
 
-                    <!-- جدول نمایش ماژول‌ها -->
-                    <div class="overflow-x-auto rounded-lg border border-gray-200">
-                        <table class="min-w-full divide-y-2 divide-gray-200 bg-white text-sm">
-                            <thead class="bg-gray-50 text-right">
+                    <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+                        <table class="w-full text-sm text-right text-gray-500 dark:text-gray-400">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
-                                <th class="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
+                                <th scope="col" class="py-3 px-6">
                                     نام ماژول
                                 </th>
-                                <th class="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
+                                <th scope="col" class="py-3 px-6">
                                     توضیحات
                                 </th>
-                                <th class="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
-                                    وضعیت
+                                <th scope="col" class="py-3 px-6">
+                                    وضعیت دیتابیس
                                 </th>
-                                <th class="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
+                                <th scope="col" class="py-3 px-6">
+                                    وضعیت بارگذاری
+                                </th>
+                                <th scope="col" class="py-3 px-6">
                                     عملیات
                                 </th>
                             </tr>
                             </thead>
-
-                            <tbody class="divide-y divide-gray-200 text-right">
-                            @foreach ($modules as $module)
-                                <tr>
-                                    <td class="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
+                            <tbody>
+                            {{-- $dbModules توسط کنترلر ارسال شده و فقط شامل ماژول‌های غیراصلی است --}}
+                            @forelse ($dbModules as $module)
+                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                    <th scope="row" class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                         {{ $module->name }}
-                                        @if($module->slug === 'core')
-                                            <span class="text-xs text-red-600">(هسته)</span>
-                                        @endif
-                                    </td>
-                                    <td class="whitespace-nowrap px-4 py-3 text-gray-700">
+                                    </th>
+                                    <td class="py-4 px-6">
                                         {{ $module->description }}
                                     </td>
-                                    <td class="whitespace-nowrap px-4 py-3 text-gray-700">
+                                    <td class="py-4 px-6">
                                         @if ($module->active)
-                                            <span class="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-green-700">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 me-1">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    فعال
-                                                </span>
+                                            <span class="bg-green-100 text-green-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-green-200 dark:text-green-900">فعال</span>
                                         @else
-                                            <span class="inline-flex items-center justify-center rounded-full bg-red-100 px-2.5 py-0.5 text-red-700">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 me-1">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                                                    </svg>
-                                                    غیرفعال
-                                                </span>
+                                            <span class="bg-red-100 text-red-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-red-200 dark:text-red-900">غیرفعال</span>
                                         @endif
                                     </td>
-                                    <td class="whitespace-nowrap px-4 py-3">
-                                        {{-- ماژول هسته (Core) قابل تغییر نیست --}}
-                                        @if ($module->slug !== 'core')
-                                            <form action="{{ route('admin.modules.toggle', $module) }}" method="POST">
-                                                @csrf
-                                                @if ($module->active)
-                                                    <button type"submit" class="inline-block rounded bg-red-600 px-4 py-2 text-xs font-medium text-white hover:bg-red-700 transition">
-                                                    غیرفعال کردن
-                                                    </button>
-                                                @else
-                                                    <button type"submit" class="inline-block rounded bg-green-600 px-4 py-2 text-xs font-medium text-white hover:bg-green-700 transition">
-                                                    فعال کردن
-                                                    </button>
-                                                @endif
-                                            </form>
+                                    <td class="py-4 px-6">
+                                        {{-- وضعیت واقعی از پکیج nwidart خوانده می‌شود --}}
+                                        @php
+                                            $isLoaded = $packageModulesStatus[$module->slug]['active'] ?? false;
+                                        @endphp
+                                        @if ($isLoaded)
+                                            <span class="bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-blue-200 dark:text-blue-900">بارگذاری شده</span>
                                         @else
-                                            <span class="text-xs text-gray-500 italic">
-                                                    غیرقابل تغییر
-                                                </span>
+                                            <span class="bg-gray-100 text-gray-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-gray-600 dark:text-gray-300">بارگذاری نشده</span>
                                         @endif
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        {{-- اصلاح شد: اکشن فرم به POST تغییر کرد --}}
+                                        <form action="{{ route('admin.modules.toggle') }}" method="POST">
+                                            @csrf
+                                            <input type="hidden" name="slug" value="{{ $module->slug }}">
+                                            @if ($isLoaded)
+                                                <button type="submit" class="font-medium text-red-600 dark:text-red-500 hover:underline">غیرفعال سازی</button>
+                                            @else
+                                                <button type="submit" class="font-medium text-green-600 dark:text-green-500 hover:underline">فعال سازی</button>
+                                            @endif
+                                        </form>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                    <td colspan="5" class="py-4 px-6 text-center">
+                                        {{-- اصلاح شد: پیام واضح‌تر شده است --}}
+                                        هیچ ماژول *اختیاری* (قابل فعال‌سازی) یافت نشد. ماژول‌های هسته در این لیست نمایش داده نمی‌شوند.
+                                    </td>
+                                </tr>
+                            @endforelse
                             </tbody>
                         </table>
                     </div>
