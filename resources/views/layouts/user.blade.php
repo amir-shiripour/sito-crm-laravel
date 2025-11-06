@@ -1,14 +1,16 @@
-{{-- layouts/admin.blade.php --}}
+{{-- layouts/user.blade.php --}}
 @extends('layouts.panel')
 
-@section('panel.title', $title ?? 'پنل مدیریت')
+@php($pageTitle = $title ?? 'حساب کاربری')
+
+@section('panel.title', $pageTitle)
 
 @section('panel.sidebar')
-    @include('admin.partials.sidebar')
+    @include('user.partials.sidebar')
 @endsection
 
 @section('panel.topbar')
-    @include('admin.partials.topbar', ['title' => $title ?? 'پنل مدیریت'])
+    @include('user.partials.topbar', ['title' => $pageTitle])
 @endsection
 
 @section('panel.flash')
@@ -24,5 +26,5 @@
 @endsection
 
 @section('panel.footer')
-    <span>© {{ date('Y') }} {{ config('app.name', 'CRM') }} Admin</span>
+    <span>© {{ date('Y') }} {{ config('app.name', 'CRM') }}</span>
 @endsection

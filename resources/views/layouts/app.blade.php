@@ -54,6 +54,7 @@
 @stack('modals')
 
 @livewireScripts
+@stack('panel.scripts')
 </body>
 </html>
 

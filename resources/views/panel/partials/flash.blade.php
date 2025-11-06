@@ -1,4 +1,4 @@
-{{-- admin/partials/flash.blade.php --}}
+{{-- panel/partials/flash.blade.php --}}
 @if ($errors->any())
     <div class="mb-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-700">
         <ul class="list-disc mr-5 text-sm">
