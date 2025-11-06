@@ -14,7 +14,7 @@
 @endsection
 
 @section('panel.flash')
-    @include('panel.partials.flash')
+    @include('panel.flash')
 @endsection
 
 @section('panel.content')
