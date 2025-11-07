@@ -14,6 +14,32 @@
                 <x-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
             </div>
 
+            {{-- چرا: فیلدها بر اساس نقش انتخابی تغییر می‌کنند --}}
+            <select name="role" id="role" x-data x-on:change="$dispatch('role-changed', $event.target.value)">
+                @foreach($availableRoles as $r)
+                    <option value="{{ $r }}">{{ $r }}</option>
+                @endforeach
+            </select>
+            <div x-data="{role: '{{ $availableRoles[0] ?? '' }}'}"
+                 x-on:role-changed.window="role = $event.detail">
+                @foreach($customFieldsByRole as $roleName => $fields)
+                    <div x-show="role === '{{ $roleName }}'">
+                        @foreach($fields as $field)
+                            <label for="{{ $field->field_name }}">{{ $field->label }}</label>
+                            @if($field->field_type === 'text')
+                                <input type="text" name="custom[{{ $field->field_name }}]" id="{{ $field->field_name }}">
+                            @elseif($field->field_type === 'number')
+                                <input type="number" name="custom[{{ $field->field_name }}]" id="{{ $field->field_name }}">
+                            @elseif($field->field_type === 'date')
+                                <input type="date" name="custom[{{ $field->field_name }}]" id="{{ $field->field_name }}">
+                            @elseif($field->field_type === 'email')
+                                <input type="email" name="custom[{{ $field->field_name }}]" id="{{ $field->field_name }}">
+                            @endif
+                        @endforeach
+                    </div>
+                @endforeach
+            </div>
+
             <div class="mt-4">
                 <x-label for="email" value="{{ __('Email') }}" />
                 <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />

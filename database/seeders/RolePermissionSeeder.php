@@ -17,7 +17,7 @@ class RolePermissionSeeder extends Seeder
 
         $guard = 'web';
 
-        // --- تعریف مجوزهای کلی مدیریت کاربران و نقش‌ها
+        // پایه: کاربران/نقش‌ها + منوها
         $permissions = [
             // Users
             'users.view',
@@ -25,44 +25,52 @@ class RolePermissionSeeder extends Seeder
             'users.update',
             'users.delete',
             'users.assign-roles',
+
             // Roles
             'roles.view',
             'roles.create',
             'roles.update',
             'roles.delete',
             'roles.assign-permissions',
-            // نمونه‌هایی برای کنترل نمایش بخش‌ها (بعداً استفاده می‌کنی)
+
+            // Menus
             'menu.see.users',
             'menu.see.roles',
-            // برای بخش‌های دامنه‌ای (در آینده)
-            // 'leads.view', 'leads.create', 'leads.update', 'leads.delete',
+
+            // Custom Fields (جدید)
+            'menu.see.custom-fields',            // نمایش آیتم منو
+            'custom-fields.view',
+            'custom-fields.create',
+            'custom-fields.update',
+            'custom-fields.delete',
         ];
 
-        foreach ($permissions as $p) {
-            Permission::firstOrCreate(['name' => $p, 'guard_name' => $guard]);
+        foreach ($permissions as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
         }
 
-        // --- نقش‌ها
-        $super = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => $guard]);
-        $admin = Role::firstOrCreate(['name' => 'admin',       'guard_name' => $guard]);
-        $sales = Role::firstOrCreate(['name' => 'sales',       'guard_name' => $guard]);
-        $support = Role::firstOrCreate(['name' => 'support',   'guard_name' => $guard]);
+        // نقش‌ها
+        $super   = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => $guard]);
+        $admin   = Role::firstOrCreate(['name' => 'admin',       'guard_name' => $guard]);
+        $sales   = Role::firstOrCreate(['name' => 'sales',       'guard_name' => $guard]);
+        $support = Role::firstOrCreate(['name' => 'support',     'guard_name' => $guard]);
 
-        // سوپر ادمین همه چیز دارد
+        // سوپرادمین: همه‌چیز
         $super->syncPermissions(Permission::pluck('name')->toArray());
 
-        // ادمین بخشی از مجوزها را دارد
+        // ادمین: مثل قبل، بدون دسترسی به مدیریت فیلدها (فقط سوپر)
         $admin->syncPermissions([
             'users.view','users.create','users.update',
             'roles.view',
             'menu.see.users','menu.see.roles',
+            // عمداً: بدون menu.see.custom-fields و بدون custom-fields.*
         ]);
 
-        // نقش‌های دیگر محدودتر:
+        // سایر نقش‌ها
         $sales->syncPermissions(['menu.see.users']);
         $support->syncPermissions([]);
 
-        // اگر ایمیل سوپرادمین را از env بدهی، نقش می‌گیرد
+        // انتساب نقش سوپرادمین به کاربر env
         if ($email = env('SUPER_ADMIN_EMAIL')) {
             if ($user = User::where('email', $email)->first()) {
                 $user->syncRoles(['super-admin']);

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ModuleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\CustomFieldController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,4 +50,25 @@ Route::prefix('roles')->name('roles.')->middleware(['role:super-admin'])->group(
     Route::get('/{role}/edit', [RoleController::class, 'edit'])->name('edit');  // فرم ویرایش
     Route::put('/{role}', [RoleController::class, 'update'])->name('update');   // بروزرسانی نقش
     Route::delete('/{role}', [RoleController::class, 'destroy'])->name('destroy'); // حذف نقش
+});
+
+Route::middleware(['auth','role:super-admin|admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('users/create', [UserController::class, 'create'])->name('users.create');
+    Route::post('users', [UserController::class, 'store'])->name('users.store');
+});
+
+Route::middleware(['role:super-admin'])->prefix('custom-fields')->name('custom-fields.')->group(function () {
+    // لیست فیلدهای سفارشی
+    Route::get('/', [CustomFieldController::class, 'index'])->name('index');
+
+    // فرم ایجاد فیلد سفارشی
+    Route::get('/create', [CustomFieldController::class, 'create'])->name('create');
+    Route::post('/', [CustomFieldController::class, 'store'])->name('store');
+
+    // فرم ویرایش فیلد سفارشی
+    Route::get('/{field}/edit', [CustomFieldController::class, 'edit'])->name('edit');
+    Route::put('/{field}', [CustomFieldController::class, 'update'])->name('update');
+
+    // حذف فیلد سفارشی
+    Route::delete('/{field}', [CustomFieldController::class, 'destroy'])->name('destroy');
 });
