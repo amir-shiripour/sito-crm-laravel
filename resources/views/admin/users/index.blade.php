@@ -37,14 +37,16 @@
                         <td class="p-3 text-gray-700 dark:text-gray-200">{{ $user->email }}</td>
                         <td class="p-3 text-gray-700 dark:text-gray-200">{{ $user->mobile }}</td>
                         <td class="p-3">
-                            @forelse($user->getRoleNames() as $r)
-                                <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-200 ml-1">{{ $r }}</span>
+                            @forelse($user->roles as $r)
+                                <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-200 ml-1">
+                                    {{ $r->display_name ?? $r->name }}
+                                </span>
                             @empty
                                 <span class="text-xs text-gray-500">-</span>
                             @endforelse
                         </td>
                         <td class="p-3">
-                            <a href="{{ route('admin.users.edit',$user) }}"
+                            <a href="{{ route('admin.users.edit', $user) }}"
                                class="text-indigo-600 dark:text-indigo-300 hover:underline">ویرایش</a>
                         </td>
                     </tr>

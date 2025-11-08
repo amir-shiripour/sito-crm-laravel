@@ -33,7 +33,7 @@
                 @forelse($fields as $f)
                     <tr class="border-t border-gray-100 dark:border-gray-700/50">
                         <td class="p-3 text-gray-700 dark:text-gray-200">{{ $f->id }}</td>
-                        <td class="p-3 text-gray-900 dark:text-gray-100">{{ $f->role_name }}</td>
+                        <td class="p-3 text-gray-900 dark:text-gray-100">{{ $f->role->display_name ?? $f->role_name }}</td>
                         <td class="p-3 text-gray-700 dark:text-gray-200">{{ $f->label }}</td>
                         <td class="p-3 text-gray-700 dark:text-gray-200 font-mono">{{ $f->field_name }}</td>
                         <td class="p-3 text-gray-700 dark:text-gray-200">{{ $f->field_type }}</td>

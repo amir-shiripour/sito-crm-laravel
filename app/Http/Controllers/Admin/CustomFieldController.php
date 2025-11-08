@@ -12,9 +12,7 @@ class CustomFieldController extends Controller
     public function index()
     {
         // لیست تخت + صفحه‌بندی (links() کار می‌کند)
-        $fields = CustomUserField::orderBy('role_name')
-            ->orderBy('id')
-            ->paginate(20);
+        $fields = CustomUserField::with('role')->orderBy('role_name')->paginate(20);
 
         return view('admin.custom_fields.index', compact('fields'));
     }
@@ -22,7 +20,7 @@ class CustomFieldController extends Controller
     public function create()
     {
         // نقش‌ها را از Spatie یا هر منبعی که دارید بارگذاری کنید
-        $roles = \Spatie\Permission\Models\Role::orderBy('name')->pluck('name')->all();
+        $roles = \Spatie\Permission\Models\Role::orderBy('name')->pluck('display_name', 'name')->all();
         return view('admin.custom_fields.create', compact('roles'));
     }
 
@@ -52,7 +50,7 @@ class CustomFieldController extends Controller
 
     public function edit(CustomUserField $field)
     {
-        $roles = \Spatie\Permission\Models\Role::orderBy('name')->pluck('name')->all();
+        $roles = \Spatie\Permission\Models\Role::orderBy('name')->pluck('display_name', 'name')->all();
         return view('admin.custom_fields.edit', compact('field','roles'));
     }
 

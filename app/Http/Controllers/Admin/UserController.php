@@ -27,7 +27,7 @@ class UserController extends Controller
     public function create()
     {
         $user  = new User();
-        $roles = Role::orderBy('name')->pluck('name', 'name');
+        $roles = Role::orderBy('name')->pluck('display_name', 'name');
         $selectedRole = ''; // جلوگیری از null
         $customFieldsByRole = CustomUserField::orderBy('role_name')->get()->groupBy('role_name');
 
@@ -70,7 +70,7 @@ class UserController extends Controller
     {
         $user->loadMissing(['roles','customValues']);
 
-        $roles = Role::orderBy('name')->pluck('name', 'name');
+        $roles = Role::orderBy('name')->pluck('display_name', 'name');
         $selectedRole = optional($user->roles->first())->name ?? '';
         $customFieldsByRole = CustomUserField::orderBy('role_name')->get()->groupBy('role_name');
 

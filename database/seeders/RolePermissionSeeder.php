@@ -45,24 +45,44 @@ class RolePermissionSeeder extends Seeder
             'custom-fields.delete',
         ];
 
+        // ایجاد مجوزها
         foreach ($permissions as $name) {
             Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
         }
 
         // نقش‌ها
-        $super   = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => $guard]);
-        $admin   = Role::firstOrCreate(['name' => 'admin',       'guard_name' => $guard]);
-        $sales   = Role::firstOrCreate(['name' => 'sales',       'guard_name' => $guard]);
-        $support = Role::firstOrCreate(['name' => 'support',     'guard_name' => $guard]);
+        $super   = Role::firstOrCreate([
+            'name'         => 'super-admin',
+            'guard_name'   => $guard,
+            'display_name' => 'مدیر ارشد'  // نام فارسی نقش
+        ]);
+
+        $admin   = Role::firstOrCreate([
+            'name'         => 'admin',
+            'guard_name'   => $guard,
+            'display_name' => 'مدیر'       // نام فارسی نقش
+        ]);
+
+        $sales   = Role::firstOrCreate([
+            'name'         => 'sales',
+            'guard_name'   => $guard,
+            'display_name' => 'فروش'       // نام فارسی نقش
+        ]);
+
+        $support = Role::firstOrCreate([
+            'name'         => 'support',
+            'guard_name'   => $guard,
+            'display_name' => 'پشتیبانی'  // نام فارسی نقش
+        ]);
 
         // سوپرادمین: همه‌چیز
         $super->syncPermissions(Permission::pluck('name')->toArray());
 
         // ادمین: مثل قبل، بدون دسترسی به مدیریت فیلدها (فقط سوپر)
         $admin->syncPermissions([
-            'users.view','users.create','users.update',
+            'users.view', 'users.create', 'users.update',
             'roles.view',
-            'menu.see.users','menu.see.roles',
+            'menu.see.users', 'menu.see.roles',
             // عمداً: بدون menu.see.custom-fields و بدون custom-fields.*
         ]);
 

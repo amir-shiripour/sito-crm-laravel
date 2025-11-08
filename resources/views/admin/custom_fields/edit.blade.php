@@ -17,8 +17,8 @@
             <div>
                 <label class="block text-sm font-medium mb-1 text-gray-800 dark:text-gray-200">نقش</label>
                 <select name="role_name" class="w-full border rounded-lg p-2.5 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100" required>
-                    @foreach(\Spatie\Permission\Models\Role::orderBy('name')->pluck('name') as $role)
-                        <option value="{{ $role }}" @selected(old('role_name',$field->role_name)===$role)>{{ $role }}</option>
+                    @foreach($roles as $k => $v)
+                        <option value="{{ $k }}" @selected(old('role_name',$field->role_name)===$k)>{{ $v }}</option>
                     @endforeach
                 </select>
             </div>

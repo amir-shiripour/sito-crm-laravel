@@ -87,8 +87,16 @@
                         required
                         x-on:change="role = $event.target.value">
                     <option value="" disabled {{ $selectedRole ? '' : 'selected' }}>انتخاب نقش...</option>
-                    @foreach($roles as $name => $label)
-                        <option value="{{ $name }}" {{ $selectedRole === $name ? 'selected' : '' }}>{{ $label }}</option>
+
+                    {{-- نمایش نام فارسی نقش؛ مقدار = آیدی لاتین --}}
+                    @foreach($roles as $k => $v)
+                        @php
+                            $optionValue = is_object($v) ? ($v->name ?? $k) : $k;                           // name (slug)
+                            $optionLabel = is_object($v) ? ($v->display_name ?? $v->name ?? $k) : $v;       // display_name
+                        @endphp
+                        <option value="{{ $optionValue }}" {{ $selectedRole === $optionValue ? 'selected' : '' }}>
+                            {{ $optionLabel }}
+                        </option>
                     @endforeach
                 </select>
 
