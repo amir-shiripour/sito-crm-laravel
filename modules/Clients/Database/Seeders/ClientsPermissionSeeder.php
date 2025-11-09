@@ -21,6 +21,8 @@ class ClientsPermissionSeeder extends Seeder
         foreach ($perms as $p) {
             Permission::firstOrCreate(['name' => $p]);
         }
+        $super = Role::firstOrCreate(['name' => 'super-admin']);
+        $super->givePermissionTo($perms);
 
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $admin->givePermissionTo($perms);

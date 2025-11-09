@@ -78,21 +78,38 @@
                     </a>
                 </li>
 
-                    @can('menu.see.custom-fields')
-                        <li>
-                            <a href="{{ route('admin.custom-fields.index') }}"
-                               class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+                {{-- Clients menu item --}}
+                @can('clients.manage')
+                    <li>
+                        <a href="{{ Route::has('admin.clients.index') ? route('admin.clients.index') : (Route::has('clients.index') ? route('clients.index') : '#') }}"
+                           class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+{{ (request()->routeIs('admin.clients.*') || request()->routeIs('clients.*')) ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700' }}">
+                            {{-- Clients icon (users group) --}}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="1.5" class="w-5 h-5 opacity-80">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M17.25 9.75a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM3 20.25a7.5 7.5 0 0114.25 0v.75H3v-.75z"/>
+                            </svg>
+                            <span>مشتریان</span>
+                        </a>
+                    </li>
+                @endcan
+
+                @can('menu.see.custom-fields')
+                    <li>
+                        <a href="{{ route('admin.custom-fields.index') }}"
+                           class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
 {{ request()->routeIs('admin.custom-fields.*') ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700' }}">
-                                {{-- Custom Fields icon --}}
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                     stroke="currentColor" stroke-width="1.5" class="w-5 h-5 opacity-80">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                          d="M8 12h4m4 0h4m-8-4h8m-8 8h8m-4-4H4a1 1 0 00-1 1v12a1 1 0 001 1h16a1 1 0 001-1V9a1 1 0 00-1-1h-8"></path>
-                                </svg>
-                                <span>مدیریت فیلدها</span>
-                            </a>
-                        </li>
-                    @endcan
+                            {{-- Custom Fields icon --}}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="1.5" class="w-5 h-5 opacity-80">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M8 12h4m4 0h4m-8-4h8m-8 8h8m-4-4H4a1 1 0 00-1 1v12a1 1 0 001 1h16a1 1 0 001-1V9a1 1 0 00-1-1h-8"></path>
+                            </svg>
+                            <span>مدیریت فیلدها</span>
+                        </a>
+                    </li>
+                @endcan
             </ul>
         </div>
     </nav>

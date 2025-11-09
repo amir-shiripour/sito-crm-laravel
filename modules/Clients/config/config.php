@@ -1,6 +1,7 @@
 <?php
 
 return [
-    'items_per_page' => 20,
+//    'default_status' => 'active',
     'notify_admin_on_create' => true,
+    'items_per_page' => 20,
 ];

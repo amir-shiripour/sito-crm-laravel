@@ -39,7 +39,19 @@ Route::prefix('users')->name('users.')->group(function () {
 // --- مدیریت ماژول‌ها (هسته) => /admin/modules  و name: admin.modules.* ---
 Route::prefix('modules')->name('modules.')->group(function () {
     Route::get('/', [ModuleController::class, 'index'])->name('index');
+
+    // Toggle قدیمی — برای سازگاری نگه داشته شده
     Route::post('/toggle', [ModuleController::class, 'toggle'])->name('toggle');
+
+    // عملیات جدید ماژول‌ها — دسترسی فقط برای نقش‌های مجاز یا permission خاص
+    // از middleware role یا permission استفاده کنید (این پروژه از spatie استفاده می‌کند)
+    Route::middleware(['auth', 'role:super-admin|admin', 'permission:modules.manage'])->group(function () {
+        Route::post('/install', [ModuleController::class, 'install'])->name('install');
+        Route::post('/enable', [ModuleController::class, 'enableModule'])->name('enable');
+        Route::post('/disable', [ModuleController::class, 'disableModule'])->name('disable');
+        Route::post('/reset', [ModuleController::class, 'resetModule'])->name('reset');
+        Route::post('/uninstall', [ModuleController::class, 'uninstallModule'])->name('uninstall');
+    });
 });
 
 // --- مدیریت نقش‌ها => /admin/roles  و name: admin.roles.* ---

@@ -31,6 +31,10 @@ class PermissionCatalog
                 'title'    => 'منوها',
                 'matchers' => ['menu.'],
             ],
+            'clients' => [
+                'title'    => 'مشتریان',
+                'matchers' => ['clients'],
+            ],
             'other' => [
                 'title'    => 'سایر',
                 'matchers' => [''], // fallback
@@ -68,6 +72,14 @@ class PermissionCatalog
             'custom-fields.create'     => 'ایجاد فیلد',
             'custom-fields.update'     => 'ویرایش فیلد',
             'custom-fields.delete'     => 'حذف فیلد',
+
+
+            // Clients
+            'clients.manage'     => 'مدیریت مشتریان',
+            'clients.view'   => 'مشاهده مشتریان',
+            'clients.create'       => 'ایجاد مشتریان',
+            'clients.edit'     => 'ویرایش مشتریان',
+            'clients.delete'     => 'حذف مشتریان',
         ];
 
         // اگر ترجمه صریح نداریم، یک تبدیل خوانا بساز:
