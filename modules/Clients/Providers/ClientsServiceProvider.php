@@ -14,20 +14,17 @@ class ClientsServiceProvider extends ServiceProvider
     }
 
     public function boot(Router $router)
-
     {
-        // load views (namespace: clients::)
         $this->loadViewsFrom(__DIR__ . '/../Resources/views', 'clients');
-
-        // load migrations
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
 
-        // register routes - admin & user routes inside module
-        // nWidart لود سرویس پروایدر را فقط زمانی انجام می‌دهد که ماژول enabled باشد.
-        $this->loadRoutesFrom(__DIR__ . '/../Routes/admin.php');
-        $this->loadRoutesFrom(__DIR__ . '/../Routes/web.php');
+        if (file_exists(__DIR__ . '/../Routes/web.php')) {
+            $this->loadRoutesFrom(__DIR__ . '/../Routes/web.php');
+        }
+        if (file_exists(__DIR__ . '/../Routes/admin.php')) {
+            $this->loadRoutesFrom(__DIR__ . '/../Routes/admin.php');
+        }
 
-        // register module specific middleware alias (if you want to use alias in route groups)
         $router->aliasMiddleware('clients.installed.enabled', \Modules\Clients\Middleware\EnsureClientsModuleEnabled::class);
     }
 }

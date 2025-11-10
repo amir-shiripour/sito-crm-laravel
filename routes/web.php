@@ -2,6 +2,7 @@
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\User\DashboardController as UserDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,4 +56,7 @@ Route::middleware([
 });
 
 
-
+Route::middleware(['web','auth'])->prefix('user')->name('user.')->group(function () {
+    Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('dashboard');
+    // سایر روت‌های مربوط به Jetstream / profile اینجا هستند
+});

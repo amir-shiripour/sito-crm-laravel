@@ -1,10 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\Clients\App\Http\Controllers\ClientController;
 use Modules\Clients\Middleware\EnsureClientsModuleEnabled;
 use Modules\Clients\App\Http\Controllers\User\ClientController as UserClientController;
-use Modules\Clients\App\Http\Controllers\User\DashboardController as UserDashboardController;
+use Modules\Clients\App\Http\Controllers\User\DashboardController as UserClientDashboardController;
+
 
 /*Route::group([
     'prefix' => 'clients',
@@ -20,10 +20,11 @@ use Modules\Clients\App\Http\Controllers\User\DashboardController as UserDashboa
 });*/
 
 
+
 Route::middleware(['web','auth',EnsureClientsModuleEnabled::class])->prefix('user')->name('user.')->group(function () {
 
-    // داشبورد کاربری مرتبط با ماژول (مثال)
-    Route::get('/clients/dashboard', [UserDashboardController::class, 'index'])->name('clients.dashboard');
+    // صفحه داشبورد اختصاصی ماژول (اگر نیاز باشه)
+    Route::get('/clients/dashboard', [UserClientDashboardController::class, 'index'])->name('clients.dashboard');
 
     Route::prefix('clients')->name('clients.')->group(function () {
         Route::get('/', [UserClientController::class, 'index'])->name('index')->middleware('permission:clients.view');
@@ -35,6 +36,5 @@ Route::middleware(['web','auth',EnsureClientsModuleEnabled::class])->prefix('use
         Route::delete('/{client}', [UserClientController::class, 'destroy'])->name('destroy')->middleware('permission:clients.delete');
     });
 
-    // پروفایل کاربر/مشتری (در صورت وجود رابطه)
     Route::get('/clients/profile', [UserClientController::class, 'profile'])->name('clients.profile')->middleware('permission:clients.view');
 });

@@ -5,7 +5,9 @@
     "keywords": [],
     "priority": 0,
     "providers": [
-        "Modules\\Clients\\App\\Providers\\ClientsServiceProvider"
+        "Modules\\Clients\\App\\Providers\\RouteServiceProvider",
+        "Modules\\Clients\\App\\Providers\\ClientsServiceProvider",
+        "Modules\\Clients\\Providers\\ClientsServiceProvider"
     ],
     "files": []
 }

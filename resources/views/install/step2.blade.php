@@ -3,7 +3,16 @@
 @section('content')
     <h2 class="text-xl font-semibold mb-4">مرحله ۲: ایجاد کاربر ادمین کل</h2>
     <p class="text-gray-600 mb-6">اتصال به دیتابیس موفق بود. اکنون کاربر ادمین اصلی را بسازید.</p>
-
+    @if ($errors->any())
+        <div style="background-color: #f8d7da; color: #721c24; padding: 1rem; border-radius: 0.25rem; margin-bottom: 1rem;">
+            <strong>خطا رخ داده است:</strong>
+            <ul style="margin-top: 0.5rem; list-style-position: inside;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
     <form action="{{ route('install.processStep2') }}" method="POST" class="space-y-4">
         @csrf
         <div>
