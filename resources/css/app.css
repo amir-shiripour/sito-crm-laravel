@@ -2,6 +2,15 @@
   ما از وزن‌های مختلف آن برای انعطاف‌پذیری در طراحی استفاده می‌کنیم.
 */
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source "./resources/views";
+@source "./resources/js";
+@source "./storage/framework/views";
+@source "./Modules/**/Resources/views";
+@source "./Modules/**/Resources/js";
 
 /* اعمال کردن جهت‌دهی راست‌به‌چپ (RTL) به کل سند HTML
   این کار باعث می‌شود تمام المان‌ها به صورت پیش‌فرض راست‌چین شوند.
@@ -13,9 +22,13 @@ html {
 /* ایمپورت کردن لایه‌های پایه Tailwind CSS
   اینها استایل‌های پیش‌فرض Tailwind هستند.
 */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+    /* نمونه‌ها (اختیاری) */
+    --font-sans: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+    /* --color-brand-500: oklch(0.7 0.12 260); */
+}
+
+.btn { @apply px-3 py-2 rounded-lg font-medium; }
 
 [x-cloak] {
     display: none;

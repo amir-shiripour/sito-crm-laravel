@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Services\ModuleMenuService;
+use App\Services\Modules\ModuleMenuService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
