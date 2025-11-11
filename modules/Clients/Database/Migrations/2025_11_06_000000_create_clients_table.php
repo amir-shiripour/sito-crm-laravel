@@ -4,20 +4,19 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreateClientsTable extends Migration
 {
     public function up()
     {
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('email')->unique()->nullable();
+            $table->string('name', 255);
+            $table->string('email')->nullable()->unique();
             $table->string('phone')->nullable();
             $table->text('notes')->nullable();
-            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();  // کاربر ایجادکننده
             $table->timestamps();
-
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
+            $table->softDeletes();  // اگر بخواهی حذف نرم (اختیاری)
         });
     }
 
@@ -25,4 +24,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('clients');
     }
-};
+}

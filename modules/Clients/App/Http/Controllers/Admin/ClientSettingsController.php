@@ -4,55 +4,37 @@ namespace Modules\Clients\App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Modules\Clients\Entities\Client; // مدل ماژول
+use Modules\Clients\Entities\Client;
 use Illuminate\Support\Facades\Storage;
-
+use Modules\Clients\Entities\ClientSetting;
 class ClientSettingsController extends Controller
 {
-    // نمایش فرم تنظیمات ماژول (مثل labelها)
-    public function edit()
+    public function editLabel()
     {
-        // تنظیمات می‌تواند از DB خوانده شود (clients_settings) یا از config ماژول
-        // اگر از جدول use: Modules\Clients\Models\ClientSetting (یا یک مدل ساده)
-        $settings = config('clients.settings', [
-            'label' => 'Client',
-            'plural_label' => 'Clients'
-        ]);
+        $labelSingular = ClientSetting::getValue('label_singular', config('clients.labels.singular'));
+        $labelPlural   = ClientSetting::getValue('label_plural',   config('clients.labels.plural'));
 
-        // اگر از جدول تنظیمات استفاده می‌کنید، بارگزاری کنید:
-        if (\Schema::hasTable('clients_settings')) {
-            $rows = \DB::table('clients_settings')->pluck('value', 'key')->toArray();
-            $settings = array_merge($settings, $rows);
-        }
-
-        return view('admin.clients.settings', compact('settings'));
+        return view('clients::admin.settings.label', compact('labelSingular', 'labelPlural'));
     }
 
-    // ذخیره تنظیمات
-    public function update(Request $request)
+    public function updateLabel(Request $request)
     {
         $data = $request->validate([
-            'label' => 'required|string|max:50',
-            'plural_label' => 'required|string|max:50',
-            // سایر فیلدهای تنظیمات...
+            'label_singular' => 'required|string|max:50',
+            'label_plural'   => 'required|string|max:50',
         ]);
 
-        // ذخیره در جدول clients_settings (convenience)
-        if (! \Schema::hasTable('clients_settings')) {
-            // اگر جدول نیست هدایت کنید یا ایجاد کنید (در محیط production از migration استفاده کنید)
-            return back()->with('error', 'جدول settings برای ماژول clients موجود نیست.');
-        }
+        ClientSetting::setValue('label_singular', $data['label_singular']);
+        ClientSetting::setValue('label_plural',   $data['label_plural']);
 
-        foreach ($data as $key => $value) {
-            \DB::table('clients_settings')->updateOrInsert(
-                ['key' => $key],
-                ['value' => $value]
-            );
-        }
+        // اعمال فوری روی کانفیگ ران‌تایم (همین ریکوئست)
+        config([
+            'clients.labels.singular' => $data['label_singular'],
+            'clients.labels.plural'   => $data['label_plural'],
+        ]);
 
-        // پاکسازی کش و بازخوانی config در صورت نیاز
-        cache()->forget('clients.settings');
-
-        return back()->with('success', 'تنظیمات ذخیره شد.');
+        return redirect()->route('admin.clients.settings.label.edit')
+            ->with('success', 'برچسب‌ها با موفقیت ذخیره شد.');
     }
+
 }

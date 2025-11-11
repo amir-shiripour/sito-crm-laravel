@@ -5,6 +5,9 @@ namespace Modules\Clients\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Routing\Router;
 use Nwidart\Modules\Facades\Module;
+use Illuminate\Support\Facades\Schema;
+use Modules\Clients\Entities\ClientSetting;
+
 
 class ClientsServiceProvider extends ServiceProvider
 {
@@ -26,5 +29,18 @@ class ClientsServiceProvider extends ServiceProvider
         }
 
         $router->aliasMiddleware('clients.installed.enabled', \Modules\Clients\Middleware\EnsureClientsModuleEnabled::class);
+
+        if (Schema::hasTable('client_settings')) {
+            config([
+                'clients.labels.singular' => ClientSetting::getValue(
+                    'label_singular',
+                    config('clients.labels.singular') // مقدار پیش‌فرض از فایل config
+                ),
+                'clients.labels.plural' => ClientSetting::getValue(
+                    'label_plural',
+                    config('clients.labels.plural')
+                ),
+            ]);
+        }
     }
 }

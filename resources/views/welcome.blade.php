@@ -13,7 +13,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        body { font-family: 'Vazirmatn', sans-serif; }
+        body { font-family: 'IRANYekanX', sans-serif; }
     </style>
 </head>
 <body class="antialiased font-sans">

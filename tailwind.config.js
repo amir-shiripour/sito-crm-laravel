@@ -21,7 +21,7 @@ export default {
     ],
     theme: {
         extend: {
-            fontFamily: { sans: ['Vazirmatn', ...defaultTheme.fontFamily.sans] },
+            fontFamily: { sans: ['IRANYekanX', ...defaultTheme.fontFamily.sans] },
         },
     },
     plugins: [forms, typography, tailwindcssRtl],

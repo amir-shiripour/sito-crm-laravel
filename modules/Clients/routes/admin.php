@@ -10,15 +10,17 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class, 'role:super
     ->prefix('admin/clients')
     ->name('admin.clients.')
     ->group(function () {
-        // تنظیمات ماژول
+        Route::get('/settings/label', [ClientSettingsController::class, 'editLabel'])->name('settings.label.edit');
+        Route::put('/settings/label', [ClientSettingsController::class, 'updateLabel'])->name('settings.label.update');
+
+        // مسیرهای فعلی شما ...
         Route::get('/settings', [ClientSettingsController::class, 'edit'])->name('settings.edit');
         Route::put('/settings', [ClientSettingsController::class, 'update'])->name('settings.update');
 
-        // مدیریت clients در پنل ادمین
-        Route::get('/', [ClientAdminController::class, 'index'])->name('index');
-        Route::get('/create', [ClientAdminController::class, 'create'])->name('create')->middleware('permission:clients.create');
-        Route::post('/', [ClientAdminController::class, 'store'])->name('store')->middleware('permission:clients.create');
-        Route::get('/{client}/edit', [ClientAdminController::class, 'edit'])->name('edit')->middleware('permission:clients.edit');
-        Route::put('/{client}', [ClientAdminController::class, 'update'])->name('update')->middleware('permission:clients.edit');
-        Route::delete('/{client}', [ClientAdminController::class, 'destroy'])->name('destroy')->middleware('permission:clients.delete');
+        Route::get('/', [\Modules\Clients\App\Http\Controllers\Admin\ClientAdminController::class, 'index'])->name('index');
+        Route::get('/create', [\Modules\Clients\App\Http\Controllers\Admin\ClientAdminController::class, 'create'])->name('create')->middleware('permission:clients.create');
+        Route::post('/', [\Modules\Clients\App\Http\Controllers\Admin\ClientAdminController::class, 'store'])->name('store')->middleware('permission:clients.create');
+        Route::get('/{client}/edit', [\Modules\Clients\App\Http\Controllers\Admin\ClientAdminController::class, 'edit'])->name('edit')->middleware('permission:clients.edit');
+        Route::put('/{client}', [\Modules\Clients\App\Http\Controllers\Admin\ClientAdminController::class, 'update'])->name('update')->middleware('permission:clients.edit');
+        Route::delete('/{client}', [\Modules\Clients\App\Http\Controllers\Admin\ClientAdminController::class, 'destroy'])->name('destroy')->middleware('permission:clients.delete');
     });

@@ -22,6 +22,9 @@
     </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+        body { font-size: 14px;}
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
 

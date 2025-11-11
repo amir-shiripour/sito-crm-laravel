@@ -4,6 +4,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
 @import "tailwindcss";
 
+@font-face{
+    font-family: "IRANYekanX";
+    src: url("/resources/fonts/iranYekanX/IRANYekanXVFaNumVF.woff2") format("woff2-variations");
+    font-weight: 100 900;               /* رنج وزن برای variable font */
+    font-style: normal;
+    font-display: swap;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @source "./resources/views";
@@ -24,10 +32,13 @@ html {
 */
 @theme {
     /* نمونه‌ها (اختیاری) */
-    --font-sans: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+    --font-sans: "IRANYekanX", ui-sans-serif, system-ui, sans-serif;
     /* --color-brand-500: oklch(0.7 0.12 260); */
 }
 
+html { font-family: var(--font-sans); font-variation-settings:"wght" 400; font-optical-sizing:auto; }
+
+.digits-fa { font-feature-settings: "locl" 1; }
 .btn { @apply px-3 py-2 rounded-lg font-medium; }
 
 [x-cloak] {

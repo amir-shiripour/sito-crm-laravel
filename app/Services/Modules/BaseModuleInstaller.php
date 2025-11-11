@@ -62,17 +62,26 @@ class BaseModuleInstaller implements ModuleInstallerInterface
 
     /**
      * Default reset: create backup of module tables, then truncate known tables and reseed.
-     * Concrete modules should override truncateModuleTables() to list their tables.
      */
     public function reset(): void
     {
         try {
+            // 1) بکاپ از داده‌های ماژول
             $this->backupModuleData();
 
-            $this->truncateModuleTables();
+            // 2) بدون نیاز به truncate دستی، از migrate-refresh برای بازسازی جداول استفاده می‌کنیم
+            Artisan::call('module:migrate-refresh', [
+                'module' => $this->moduleName,
+                '--force' => true,
+            ]);
 
-            // reseed
-            Artisan::call('module:seed', ['module' => $this->moduleName]);
+            // 3) اجرای seeders ماژول (برای داده‌های پیش‌فرض)
+            Artisan::call('module:seed', [
+                'module' => $this->moduleName,
+                '--force' => true,
+            ]);
+
+            // 4) بهینه‌سازی کش
             Artisan::call('optimize:clear');
 
             Log::info("BaseModuleInstaller: reset {$this->moduleName}");
@@ -113,14 +122,6 @@ class BaseModuleInstaller implements ModuleInstallerInterface
     }
 
     /**
-     * Default: no-op. Modules should override to truncate their tables.
-     */
-    protected function truncateModuleTables(): void
-    {
-        // default does nothing — concrete modules implement this
-    }
-
-    /**
      * Backup module-related tables data to storage (JSON) before destructive operations.
      * This is a safe default backup (not SQL dump).
      */
@@ -133,7 +134,7 @@ class BaseModuleInstaller implements ModuleInstallerInterface
             }
 
             // If module exposes a file with list of tables (convention modules/<Name>/install-tables.php), use it
-            $tablesFile = base_path("modules/{$this->moduleName}/install-tables.php");
+            $tablesFile = base_path("Modules/{$this->moduleName}/install-tables.php");
             $tables = [];
             if (File::exists($tablesFile)) {
                 $tables = include $tablesFile;
@@ -160,7 +161,7 @@ class BaseModuleInstaller implements ModuleInstallerInterface
 
     protected function removeModuleFiles(): void
     {
-        $modulePath = base_path("modules/{$this->moduleName}");
+        $modulePath  = base_path("Modules/{$this->moduleName}");
         if (File::exists($modulePath)) {
             File::deleteDirectory($modulePath);
         }

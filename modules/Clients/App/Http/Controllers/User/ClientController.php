@@ -5,6 +5,8 @@ namespace Modules\Clients\App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Modules\Clients\Entities\Client;
+use Modules\Clients\App\Http\Requests\StoreClientRequest;
+use Modules\Clients\App\Http\Requests\UpdateClientRequest;
 
 class ClientController extends Controller
 {
@@ -20,16 +22,18 @@ class ClientController extends Controller
     public function index()
     {
         // محدود کردن نمایش بر اساس role یا owner اگر لازم است
-        $clients = Client::latest()->paginate(12);
-        return view('user.clients.index', compact('clients'));
+        $clients = Client::where('created_by', auth()->id())
+            ->latest()
+            ->paginate(12);
+        return view('clients::user.clients.index', compact('clients'));
     }
 
     public function create()
     {
-        return view('user.clients.create');
+        return view('clients::user.clients.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreClientRequest $request)
     {
         $data = $request->validate([
             'name'=>'required|string|max:255',
@@ -44,15 +48,15 @@ class ClientController extends Controller
 
     public function show(Client $client)
     {
-        return view('user.clients.show', compact('client'));
+        return view('clients::user.clients.show', compact('client'));
     }
 
     public function edit(Client $client)
     {
-        return view('user.clients.edit', compact('client'));
+        return view('clients::user.clients.edit', compact('client'));
     }
 
-    public function update(Request $request, Client $client)
+    public function update(UpdateClientRequest $request, Client $client)
     {
         $data = $request->validate([
             'name'=>'required|string|max:255',
@@ -63,6 +67,7 @@ class ClientController extends Controller
         $client->update($data);
         return redirect()->route('user.clients.index')->with('success','Client updated.');
     }
+
 
     public function destroy(Client $client)
     {
@@ -77,6 +82,6 @@ class ClientController extends Controller
         $user = auth()->user();
         // فرض: user->client relation exists
         $client = $user->client ?? null;
-        return view('user.clients.profile', compact('client'));
+        return view('clients::user.clients.profile', compact('client'));
     }
 }
