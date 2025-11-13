@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Routing\Router;
 use Nwidart\Modules\Facades\Module;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
 use Modules\Clients\Entities\ClientSetting;
 
 
@@ -42,5 +43,9 @@ class ClientsServiceProvider extends ServiceProvider
                 ),
             ]);
         }
+
+        Livewire::component('clients.form-builder', \Modules\Clients\App\Livewire\Settings\ClientFormBuilder::class);
+        Livewire::component('clients.username-settings', \Modules\Clients\App\Livewire\Settings\ClientUsernameSettings::class);
+        Livewire::component('clients.form', \Modules\Clients\App\Livewire\ClientForm::class);
     }
 }

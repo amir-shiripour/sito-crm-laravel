@@ -71,7 +71,8 @@ class ClientController extends Controller
 
     public function destroy(Client $client)
     {
-        $client->delete();
+//        $client->delete();
+        $client->forceDelete();
         return back()->with('success','Client deleted.');
     }
 

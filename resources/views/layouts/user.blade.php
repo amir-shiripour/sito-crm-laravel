@@ -22,12 +22,58 @@
     </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
     <style>
         body { font-size: 14px;}
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
-
+<div
+    x-data="{
+        items: [],
+        notify(e) {
+            const id = Date.now() + Math.random();
+            const detail = e.detail || {};
+            this.items.push({
+                id,
+                type: detail.type || 'info',
+                text: detail.text || detail.message || '',
+            });
+            // auto hide
+            setTimeout(() => this.remove(id), 4000);
+        },
+        remove(id) {
+            this.items = this.items.filter(i => i.id !== id);
+        }
+    }"
+    x-on:notify.window="notify($event)"
+    class="fixed right-3 top-3 z-50 w-80 max-w-[90vw] space-y-2"
+>
+    <template x-for="item in items" :key="item.id">
+        <div
+            x-show="true"
+            x-transition
+            class="rounded-2xl px-4 py-3 text-sm shadow-lg border backdrop-blur bg-white/90 dark:bg-gray-900/90"
+            :class="{
+                'border-emerald-200 text-emerald-800 dark:border-emerald-500/60 dark:text-emerald-200': item.type === 'success',
+                'border-red-200 text-red-800 dark:border-red-500/60 dark:text-red-200': item.type === 'error',
+                'border-blue-200 text-blue-800 dark:border-blue-500/60 dark:text-blue-200': item.type === 'info',
+                'border-amber-200 text-amber-800 dark:border-amber-500/60 dark:text-amber-200': item.type === 'warning',
+            }"
+        >
+            <div class="flex items-start justify-between gap-3">
+                <p class="leading-relaxed" x-text="item.text"></p>
+                <button
+                    type="button"
+                    class="text-xs opacity-60 hover:opacity-100"
+                    @click="remove(item.id)"
+                >
+                    ✕
+                </button>
+            </div>
+        </div>
+    </template>
+</div>
 <div x-data="dashboardLayout()" x-init="init()" class="min-h-dvh flex">
 
     {{-- Sidebar --}}
@@ -77,6 +123,7 @@
     </aside>--}}
 
 </div>
+
 
 {{-- Alpine helpers (در صورت نبود Alpine در app.js) --}}
 <script>
@@ -140,6 +187,33 @@
             },
         }
     }
+</script>
+@livewireScripts
+@livewireScriptConfig
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.store('toast', {
+            items: [],
+            push(message) {
+                const id = Date.now() + Math.random();
+                this.items.push({ id, ...message });
+                setTimeout(() => this.close(id), message.timeout ?? 3000);
+            },
+            close(id) {
+                this.items = this.items.filter(i => i.id !== id);
+            }
+        });
+
+        // شنیدن ایونت‌های Livewire (v3) و تبدیل به toast
+        window.addEventListener('notify', (e) => {
+            const detail = e?.detail || {};
+            Alpine.store('toast').push({
+                type: detail.type || 'info',
+                text: detail.text || '',
+                timeout: detail.timeout || 3000
+            });
+        });
+    });
 </script>
 
 </body>

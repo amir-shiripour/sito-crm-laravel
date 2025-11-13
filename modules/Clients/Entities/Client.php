@@ -11,12 +11,10 @@ class Client extends Model
     protected $table = 'clients';
 
     protected $fillable = [
-        'name',
-        'email',
-        'phone',
-        'notes',
-        'created_by',
+        'username', 'full_name', 'email', 'phone', 'notes', 'meta', 'created_by',
     ];
+    protected $casts = ['meta' => 'array'];
+
 
     // ریلیشن‌ها
     public function creator()
