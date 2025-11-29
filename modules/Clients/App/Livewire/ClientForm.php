@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Modules\Clients\Entities\ClientStatus;
 
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientForm as ClientFormSchema;
@@ -27,15 +28,18 @@ class ClientForm extends Component
 
     public ?string $email = null;
     public ?string $phone = null;
+    public ?string $national_code = null;
     public ?string $notes = null;
 
     public array $meta = [];
+    public $status_id = null;
 
     // اسکیمای فرم پویا (از ClientFormSchema)
     public array $schema = ['fields' => []];
 
     // 1) استیت ایجاد سریع
     public array $quick = [];
+    public array $availableStatuses = [];
 
     public function mount(?Client $client = null, ?string $formKey = null)
     {
@@ -49,17 +53,55 @@ class ClientForm extends Component
 
         $this->schema = $form?->schema ?? ['fields' => []];
 
+        $currentStatusId = $client?->status_id;
+
+        // وضعیت‌های فعال
+        $statuses = ClientStatus::active()->get();
+
+        $currentStatusId  = $client?->status_id;
+        $currentStatusKey = optional($client?->status)->key;
+
+        // اعمال وابستگی allowed_from
+        $this->availableStatuses = $statuses->filter(
+            function (ClientStatus $st) use ($currentStatusId, $currentStatusKey) {
+                $allowed = $st->allowed_from ?? null;
+
+                if (empty($allowed)) {
+                    return true; // از هر وضعیتی می‌شود به این رسید
+                }
+
+                if (!$currentStatusId) {
+                    return false; // هنوز وضعیت فعلی نداریم ولی این وضعیت وابسته است
+                }
+
+                return in_array($currentStatusKey, $allowed, true);
+            }
+        )->values()->all();
+
         if ($client) {
-            $this->username  = $client->username;
-            $this->full_name = (string) $client->full_name;
-            $this->email     = $client->email;
-            $this->phone     = $client->phone;
-            $this->notes     = $client->notes;
-            $this->meta      = $client->meta ?? [];
+            $this->username      = $client->username;
+            $this->full_name     = (string) $client->full_name;
+            $this->email         = $client->email;
+            $this->phone         = $client->phone;
+            $this->national_code = $client->national_code;
+            $this->notes         = $client->notes;
+            $this->meta          = $client->meta ?? [];
+            $this->status_id     = $client->status_id;
+        } else {
+            $this->username      = null;
+            $this->full_name     = '';
+            $this->email         = null;
+            $this->phone         = null;
+            $this->national_code = null;
+            $this->notes         = null;
+            $this->meta          = [];
+            $this->status_id     = null;
         }
+
     }
 
     public bool $asQuickWidget = false;
+    public bool $isQuickMode  = false;
 
     public function render()
     {
@@ -78,69 +120,157 @@ class ClientForm extends Component
     // 2) ذخیره سریع فقط فیلدهای quick_create
     public function saveQuick()
     {
-        $this->full_name = $this->full_name ?: ($this->quick['full_name'] ?? 'کاربر جدید');
-        $this->username  = $this->generateUsernameFromSettings();
+        try {
+            // 1) پر کردن فیلدهای سیستمی از quick (اگر در فرم سریع وجود داشته باشند)
+            $this->full_name     = $this->full_name ?: ($this->quick['full_name'] ?? 'کاربر جدید');
+            $this->phone         = $this->quick['phone']         ?? $this->phone;
+            $this->email         = $this->quick['email']         ?? $this->email;
+            $this->national_code = $this->quick['national_code'] ?? $this->national_code;
+            $this->notes         = $this->quick['notes']         ?? $this->notes;
+            $this->status_id     = $this->quick['status_id']     ?? $this->status_id;
 
-        $quickFields = collect($this->schema['fields'] ?? [])
-            ->where('quick_create', true)->values();
+            // 2) فیلدهایی که در مودال "ایجاد سریع" فعال‌اند
+            $quickFields = collect($this->schema['fields'] ?? [])
+                ->where('quick_create', true)
+                ->values();
 
-        $rules = [
-//            'username'  => ['required','string','max:191', Rule::unique('clients','username')->ignore($this->client?->id)],
-            'full_name' => ['required','string','max:255'],
-            'email'     => ['nullable','email'],
-            'phone'     => ['nullable','string'],
-            'notes'     => ['nullable','string'],
-        ];
-        foreach ($quickFields as $f) {
-            $key = "quick.{$f['id']}";
-            if (!empty($f['validate']))     $rules[$key] = $f['validate'];
-            elseif (!empty($f['required'])) $rules[$key] = 'required';
+            // قواعد ولیدیشن برای حالت ایجاد سریع
+            $rules = [
+                'full_name'     => ['required','string','max:255'],
+                'email'         => ['nullable','email'],
+                'phone'         => ['nullable','string'],
+                'national_code' => ['nullable','string','max:20'],
+                'notes'         => ['nullable','string'],
+                'quick.status_id' => ['nullable', 'exists:client_statuses,id'],
+            ];
+
+            // قواعد برای فیلدهای داینامیک (غیر سیستمی) در مودال سریع
+            foreach ($quickFields as $f) {
+                $fid = $f['id'] ?? null;
+                if (!$fid) {
+                    continue;
+                }
+
+                // فیلدهای سیستمی → اینجا ولیدیت نمی‌شوند (قبلاً بالا rule دارند)
+                if (array_key_exists($fid, ClientFormSchema::SYSTEM_FIELDS)) {
+                    continue;
+                }
+
+                // فیلد نوع status → rule آن بالا تعریف شده
+                if (($f['type'] ?? null) === 'status') {
+                    continue;
+                }
+
+                $key = "quick.$fid";
+
+                if (!empty($f['validate'])) {
+                    $rules[$key] = $f['validate'];
+                } elseif (!empty($f['required'])) {
+                    $rules[$key] = 'required';
+                }
+            }
+
+            // 3) ولیدیشن روی quick.* + full_name/email/...
+            $this->validate($rules);
+
+            // 4) map از quick به meta برای فیلدهای غیر سیستمی
+            foreach ($quickFields as $f) {
+                $fid = $f['id'] ?? null;
+                if (!$fid) {
+                    continue;
+                }
+
+                if (array_key_exists($fid, ClientFormSchema::SYSTEM_FIELDS)) {
+                    continue;
+                }
+
+                if (($f['type'] ?? null) === 'status') {
+                    continue;
+                }
+
+                $this->meta[$fid] = $this->quick[$fid] ?? null;
+            }
+
+            // 5) مقدار نهایی status_id از quick (اگر بود)
+            $this->status_id = $this->quick['status_id'] ?? $this->status_id;
+
+            // 6) حالت quick را فعال کن و از مسیر اصلی ذخیره استفاده کن
+            $this->isQuickMode = true;
+
+            return $this->save();
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('[Clients] saveQuick failed', ['msg' => $e->getMessage()]);
+            $this->dispatch('notify', type: 'error', text: 'خطا در ایجاد سریع.');
+            throw $e;
+        } finally {
+            // بعد از پایان، چه موفق چه خطا، فلگ را ریست کن
+            $this->isQuickMode = false;
         }
-        $this->validate($rules); // Rule::unique + ignore(id) طبق داک. :contentReference[oaicite:1]{index=1}
-
-        // map به meta از quick
-        foreach ($quickFields as $f) {
-            $fid = $f['id'];
-            $this->meta[$fid] = $this->quick[$fid] ?? null;
-        }
-
-        // در meta هم نگه‌دار (اختیاری)
-//        $this->meta['username'] = $this->username;
-
-        $this->dispatch('notify', type: 'success', text: 'ایجاد سریع با موفقیت انجام شد.');
-
-        return $this->save();
     }
+
+
 
     // 3) ذخیره کامل (ایجاد/ویرایش) — نسخه نهایی
     public function save()
     {
         $rules = [
-//            'username'  => ['required','string','max:191', Rule::unique('clients','username')->ignore($this->client?->id)],
-            'full_name' => ['required','string','max:255'],
-            'email'     => ['nullable','email'],
-            'phone'     => ['nullable','string'],
-            'notes'     => ['nullable','string'],
+            //            'username'  => ['required','string','max:191', Rule::unique('clients','username')->ignore($this->client?->id)],
+            'full_name'     => ['required','string','max:255'],
+            'email'         => ['nullable','email'],
+            'phone'         => ['nullable','string'],
+            'national_code' => ['nullable','string','max:20'],
+            'notes'         => ['nullable','string'],
+            'status_id'     => ['nullable', 'exists:client_statuses,id'],
         ];
+
         foreach ($this->schema['fields'] as $f) {
-            $key = "meta.{$f['id']}";
-            if (!empty($f['validate']))     $rules[$key] = $f['validate'];
-            elseif (!empty($f['required'])) $rules[$key] = 'required';
+            $fid = $f['id'] ?? null;
+            if (!$fid) {
+                continue;
+            }
+
+            // اگر این آیدی جزو فیلدهای سیستمی است، اینجا ولیدیتش نکن
+            if (array_key_exists($fid, ClientFormSchema::SYSTEM_FIELDS)) {
+                continue;
+            }
+
+            // اگر نوعش status باشد، باز هم اینجا کاری نکن
+            if (($f['type'] ?? null) === 'status') {
+                continue;
+            }
+
+            $key = "meta.$fid";
+
+            if (!empty($f['validate'])) {
+                $rules[$key] = $f['validate'];
+            } elseif (!empty($f['required'])) {
+
+                // 🚩 اینجا جادوی quick-mode:
+                // اگر در حالت ایجاد سریع هستیم و این فیلد quick_create=false است،
+                // پس در quick نباید مجبور به پر کردنش باشیم.
+                if ($this->isQuickMode && empty($f['quick_create'])) {
+                    continue;
+                }
+
+                $rules[$key] = 'required';
+            }
         }
+
         $this->validate($rules);
 
         foreach (($this->meta ?? []) as $k => $v) {
             if ($v instanceof TemporaryUploadedFile) {
-                $this->meta[$k] = $v->store('clients/uploads', 'public'); // Livewire uploads v3. :contentReference[oaicite:3]{index=3}
+                $this->meta[$k] = $v->store('clients/uploads', 'public');
             }
         }
 
         // اطمینان از داشتن username (و نگه‌داشت در meta)
         if ($this->client && $this->client->exists) {
-            // مسیر ویرایش
             $this->username = $this->client->username ?: $this->generateUsernameFromSettings();
         } else {
-            // مسیر ایجاد
             $this->username = $this->generateUsernameFromSettings();
         }
 //        $this->meta['username'] = $this->username;
@@ -148,49 +278,52 @@ class ClientForm extends Component
         $strategy = ClientSetting::getValue('username_strategy')
             ?: config('clients.username.strategy', 'email_local');
 
-        if (in_array($strategy, ['email', 'mobile'], true)) {
+        // اگر استراتژی strict است و username خالی دراومده → ارور
+        if (in_array($strategy, ['email','mobile','national_code'], true) && empty($this->username)) {
+            $this->addError('username', 'امکان ساخت یوزرنیم بر اساس استراتژی انتخاب‌شده وجود ندارد (ایمیل/موبایل/کدملی ناقص است).');
+            $this->dispatch('notify', type: 'error', text: 'ایمیل/موبایل/کدملی برای ساخت یوزرنیم کافی نیست.');
+            return;
+        }
+
+        if (in_array($strategy, ['email','mobile','national_code'], true)) {
             $existsQuery = Client::query()->where('username', $this->username);
 
             if ($this->client && $this->client->exists) {
-                // در حالت ویرایش رکورد فعلی را نادیده بگیر
                 $existsQuery->where('id', '!=', $this->client->id);
             }
 
             if ($existsQuery->exists()) {
-                // Livewire ولیدیشن error برای نمایش کنار فرم
                 $this->addError('username', 'این یوزرنیم قبلاً استفاده شده است.');
-
-                // نوتیفیکیشن Alpine (toast) که قبلاً پیاده کرده‌ای
-                $this->dispatch('notify', type: 'error', text: 'یوزرنیم انتخاب‌شده (بر اساس ایمیل/موبایل) قبلاً استفاده شده است.');
-
-                // تراکنش را شروع نکردیم هنوز، پس همین‌جا برگرد
+                $this->dispatch('notify', type: 'error', text: 'یوزرنیم انتخاب‌شده (بر اساس ایمیل/موبایل/کدملی) قبلاً استفاده شده است.');
                 return;
             }
         }
 
         $payload = [
-            'username'   => $this->username,   // ← مهم
-            'full_name'  => $this->full_name,  // ← مهم
-            'email'      => $this->email,
-            'phone'      => $this->phone,
-            'notes'      => $this->notes,
-            'meta'       => $this->meta ?? [],
-            'created_by' => Auth::id(),
+            'username'      => $this->username,
+            'full_name'     => $this->full_name,
+            'email'         => $this->email,
+            'phone'         => $this->phone,
+            'national_code' => $this->national_code,
+            'notes'         => $this->notes,
+            'status_id'     => $this->status_id,
+            'meta'          => $this->meta ?? [],
+            'created_by'    => Auth::id(),
         ];
 
         DB::beginTransaction();
         try {
             if ($this->client && $this->client->exists) {
                 $this->client->fill($payload);
-                $ok = $this->client->save(); // update → bool (رفتار Eloquent). :contentReference[oaicite:4]{index=4}
+                $ok = $this->client->save();
                 Log::info('[Clients] update result', ['ok' => $ok, 'id' => $this->client->id]);
                 $client = $this->client;
             } else {
-                $client = Client::create($payload); // create → model
+                $client = Client::create($payload);
                 Log::info('[Clients] create result', ['id' => $client?->id]);
             }
 
-            // سنک نقش‌محور...
+            // سنک نقش‌محور
             foreach ($this->schema['fields'] as $f) {
                 if (($f['type'] ?? null) === 'select-user-by-role' && !empty($f['role'])) {
                     $val = data_get($this->meta, $f['id']);
@@ -226,13 +359,17 @@ class ClientForm extends Component
         $minLen = 3;
 
         $existsInClients = fn (string $u) =>
-        \DB::table('clients')->where('username', $u)->exists();
+        DB::table('clients')->where('username', $u)->exists();
 
         $candidate = null;
 
         switch ($strategy) {
             case 'email': // کل ایمیل
                 $candidate = (string) $this->email;
+                break;
+
+            case 'national_code': // کدملی
+                $candidate = (string) $this->national_code;
                 break;
 
             case 'mobile': // فقط ارقام موبایل
@@ -255,7 +392,7 @@ class ClientForm extends Component
                 break;
 
             case 'prefix_increment':
-                $last = \DB::table('clients')
+                $last = DB::table('clients')
                     ->where('username','like', "{$prefix}-%")
                     ->selectRaw("MAX(CAST(SUBSTRING_INDEX(username, '-', -1) AS UNSIGNED)) as mx")
                     ->value('mx');
@@ -272,10 +409,10 @@ class ClientForm extends Component
         }
 
         // ⚠️ اینجاست که رفتار ویژه را اعمال می‌کنیم:
-        if (in_array($strategy, ['email', 'mobile'], true)) {
+        if (in_array($strategy, ['email', 'mobile', 'national_code'], true)) {
             // برای این دو حالت، فقط همون candidate رو برمی‌گردونیم
             // (چک یکتا در متد save انجام می‌شود و اگر تکراری بود، خطا می‌دهیم)
-            \Log::info('[Clients] username candidate (strict) ', [
+            Log::info('[Clients] username candidate (strict) ', [
                 'strategy'  => $strategy,
                 'candidate' => $candidate,
             ]);
@@ -287,7 +424,7 @@ class ClientForm extends Component
             $candidate = $this->incrementUsernameBase($candidate, $existsInClients);
         }
 
-        \Log::info('[Clients] username candidate (auto-unique)', [
+        Log::info('[Clients] username candidate (auto-unique)', [
             'strategy'  => $strategy,
             'candidate' => $candidate,
         ]);

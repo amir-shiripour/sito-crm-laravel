@@ -4,28 +4,98 @@ namespace Modules\Clients\Entities;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
-
+use Illuminate\Support\Str;
 class ClientForm extends Model
 {
     protected $table = 'client_forms';
 
-    protected $fillable = [
-        'name',
-        'key',
-        'is_default',
-        'schema',
+    protected $fillable = ['name','key','is_active','schema'];
+    protected $casts = ['schema' => 'array', 'is_active' => 'bool'];
+    public const SYSTEM_FIELDS = [
+        'username'      => ['label' => 'نام کاربری',        'column' => 'username'],
+        'full_name'     => ['label' => 'نام و نام خانوادگی', 'column' => 'full_name'],
+        'email'         => ['label' => 'ایمیل',          'column' => 'email'],
+        'phone'         => ['label' => 'شماره تماس',     'column' => 'phone'],
+        'national_code' => ['label' => 'کد ملی',         'column' => 'national_code'],
+        'status_id' => ['label' => 'وضعیت',         'column' => 'status_id'],
     ];
+    public static function default(): ?self
+    {
+        return static::where('is_active', true)->first();
+    }
 
-    // JSON → array (برای کار راحت با فیلدها)
-    protected $casts = [
-        'schema' => 'array',
-        'is_default' => 'boolean',
-    ]; // مستند رسمی cast آرایه. :contentReference[oaicite:0]{index=0}
+    public static function systemFieldDefaults(): array
+    {
+        return [
+            'full_name' => [
+                'id'           => 'full_name',
+                'type'         => 'text',
+                'label'        => 'نام و نام خانوادگی',
+                'placeholder'  => 'مثلاً: علی محمدی',
+                'group'        => 'اطلاعات هویتی',
+                'width'        => '1/2',
+                'required'     => true,
+                'quick_create' => true,
+                'is_system'    => true,
+            ],
+            'phone' => [
+                'id'           => 'phone',
+                'type'         => 'text',
+                'label'        => 'شماره تماس',
+                'placeholder'  => '0912...',
+                'group'        => 'اطلاعات هویتی',
+                'width'        => '1/2',
+                'required'     => true,
+                'quick_create' => true,
+                'is_system'    => true,
+            ],
+            'email' => [
+                'id'           => 'email',
+                'type'         => 'email',
+                'label'        => 'ایمیل',
+                'placeholder'  => 'example@domain.com',
+                'group'        => 'اطلاعات هویتی',
+                'width'        => '1/2',
+                'required'     => false,
+                'quick_create' => true,
+                'is_system'    => true,
+            ],
+            'national_code' => [
+                'id'           => 'national_code',
+                'type'         => 'text',
+                'label'        => 'کد ملی',
+                'placeholder'  => 'مثلاً: 0012345678',
+                'group'        => 'اطلاعات هویتی',
+                'width'        => '1/2',
+                'required'     => false,
+                'quick_create' => false,
+                'is_system'    => true,
+            ],
+            'status_id'     => [
+                'id'           => 'status_id',
+                'type'         => 'status',
+                'label'        => 'وضعیت پرونده',
+                'required'     => false,
+                'quick_create' => true,
+                'width'        => 'full',
+                'group'        => 'وضعیت',
+                'is_system'    => true,
+            ],
+            'notes' => [
+                'id'           => 'notes',
+                'type'         => 'textarea',
+                'label'        => 'یادداشت مدیریتی',
+                'placeholder'  => 'توضیحات اضافی در مورد این کاربر...',
+                'group'        => 'یادداشت‌ها',
+                'width'        => 'full',
+                'required'     => false,
+                'quick_create' => true,
+                'is_system'    => true,
+            ],
+        ];
+    }
 
-    /* ------------------------------------------
-     | Boot: تضمین «یک فرم پیش‌فرض»
-     * وقتی رکوردی با is_default=true ذخیره شود، بقیه false می‌شوند.
-     ------------------------------------------ */
+
     protected static function booted(): void
     {
         static::saving(function (self $form) {
@@ -47,53 +117,53 @@ class ClientForm extends Model
         });
 
         static::saved(function (self $form) {
-            if ($form->is_default) {
+            if ($form->is_active) {
                 // همهٔ رکوردهای دیگر را از پیش‌فرض خارج کن
                 static::query()
                     ->where('id', '!=', $form->id)
-                    ->update(['is_default' => false]); // الگوی آپدیت گروهی. :contentReference[oaicite:1]{index=1}
+                    ->update(['is_active' => false]); // الگوی آپدیت گروهی. :contentReference[oaicite:1]{index=1}
             }
         });
     } // درباره boot/booted. :contentReference[oaicite:2]{index=2}
 
-    /* ------------------------------------------
-     | اسکوپ‌ها و میانبرها
-     ------------------------------------------ */
-
-    // فرم پیش‌فرض (اولین true)
-    public static function default(): ?self
-    {
-        return static::query()->where('is_default', true)->first();
-    }
-
-    // اسکوپ: فقط فرم‌های پیش‌فرض
     public function scopeOnlyDefault(Builder $q): Builder
     {
-        return $q->where('is_default', true);
+        return $q->where('is_active', true);
     } // نمونهٔ الگوی اسکوپ. :contentReference[oaicite:3]{index=3}
 
-    // فرم فعال با اولویت: تنظیمات DB → پیش‌فرض → آخرین
-    public static function active(?string $keyFromSettings = null): ?self
+    public static function active(?string $preferredKey = null): ?self
     {
-        if ($keyFromSettings) {
-            $byKey = static::query()->where('key', $keyFromSettings)->first();
-            if ($byKey) return $byKey;
+        if ($preferredKey) {
+            $f = static::where('key', $preferredKey)->where('is_active', true)->first();
+            if ($f) return $f;
         }
-        return static::default() ?: static::query()->latest('id')->first();
+
+        return static::where('is_active', true)->first() ?: static::first();
     }
 
-    /* ------------------------------------------
-     | هلپرهای اسکیمای فرم
-     ------------------------------------------ */
+    public static function generateUniqueKey(string $base, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($base) ?: 'form';
+        $key  = $base;
+        $i    = 1;
 
-    // لیست فیلدهای Quick Create
+        while (static::where('key', $key)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists()
+        ) {
+            $key = $base.'-'.$i;
+            $i++;
+        }
+
+        return $key;
+    }
+
     public function quickFields(): array
     {
         $fields = $this->schema['fields'] ?? [];
         return array_values(array_filter($fields, fn ($f) => !empty($f['quick_create'])));
     }
 
-    // گرفتن فیلد با id
     public function field(string $id): ?array
     {
         foreach (($this->schema['fields'] ?? []) as $f) {

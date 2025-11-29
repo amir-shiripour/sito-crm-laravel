@@ -46,6 +46,7 @@ class ClientsServiceProvider extends ServiceProvider
 
         Livewire::component('clients.form-builder', \Modules\Clients\App\Livewire\Settings\ClientFormBuilder::class);
         Livewire::component('clients.username-settings', \Modules\Clients\App\Livewire\Settings\ClientUsernameSettings::class);
+        Livewire::component('clients.statuses-builder', \Modules\Clients\App\Livewire\Settings\ClientStatusesManager::class);
         Livewire::component('clients.form', \Modules\Clients\App\Livewire\ClientForm::class);
     }
 }

@@ -6,6 +6,7 @@ use Modules\Clients\App\Http\Controllers\User\ClientController as UserClientCont
 use Modules\Clients\App\Http\Controllers\User\DashboardController as UserClientDashboardController;
 use Modules\Clients\App\Livewire\Settings\ClientFormBuilder;
 use Modules\Clients\App\Livewire\Settings\ClientUsernameSettings;
+use Modules\Clients\App\Livewire\Settings\ClientStatusesManager;
 
 Route::middleware(['web','auth',EnsureClientsModuleEnabled::class])->prefix('user')->name('user.')->group(function () {
 
@@ -30,4 +31,5 @@ Route::middleware(['web','auth',EnsureClientsModuleEnabled::class,'permission:cl
     ->group(function () {
         Route::get('/forms', ClientFormBuilder::class)->name('forms');
         Route::get('/username', ClientUsernameSettings::class)->name('username');
+        Route::get('/statuses', ClientStatusesManager::class)->name('statuses');
     });

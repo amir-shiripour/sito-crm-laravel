@@ -9,6 +9,7 @@ use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\File;
+use Modules\Clients\Entities\ClientForm;
 use Spatie\Permission\PermissionRegistrar;
 
 class Installer extends BaseModuleInstaller

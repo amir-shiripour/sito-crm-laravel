@@ -40,7 +40,7 @@ html { font-family: var(--font-sans); font-variation-settings:"wght" 400; font-o
 
 .digits-fa { font-feature-settings: "locl" 1; }
 .btn { @apply px-3 py-2 rounded-lg font-medium; }
-
+:focus-visible{outline: none !important}
 [x-cloak] {
     display: none;
 }

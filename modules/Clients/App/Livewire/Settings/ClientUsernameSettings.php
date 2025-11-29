@@ -24,6 +24,7 @@ class ClientUsernameSettings extends Component
         $map = [
             'email_local'        => 'email_local',
             'mobile'             => 'mobile',
+            'national_code'             => 'national_code',
             'name_rand'          => 'name_increment',     // نام قدیمی شما
             'prefix_incremental' => 'prefix_increment',   // نام قدیمی شما
             // اگر گزینه "email" تمام ایمیل هم خواستی، به UI اضافه‌اش کن و map کن به 'email'

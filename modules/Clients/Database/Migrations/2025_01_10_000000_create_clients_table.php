@@ -20,7 +20,13 @@ return new class extends Migration {
             $table->string('email')->nullable();
 
             $table->string('phone')->nullable();
+            $table->string('national_code', 20)->nullable();
             $table->text('notes')->nullable();
+
+            $table->foreignId('status_id')               // وضعیت فعلی کلاینت
+            ->nullable()
+                ->constrained('client_statuses')
+                ->nullOnDelete();
 
             // داده‌های سفارشی فرم‌ساز
             $table->json('meta')->nullable();
@@ -39,6 +45,8 @@ return new class extends Migration {
             $table->index('full_name');
             $table->index('username');
             $table->index('phone');
+            $table->index('national_code');
+            $table->index('status_id');
             // اگر بعداً روی email جستجو داری:
             // $table->index('email');
         });

@@ -34,6 +34,7 @@
                         <select wire:model="strategy" class="{{ $inputClass }} appearance-none cursor-pointer">
                             <option value="email_local">استفاده از بخش محلی ایمیل (email_local)</option>
                             <option value="mobile">استفاده از شماره موبایل (mobile)</option>
+                            <option value="national_code">استفاده از کدملی (national_code)</option>
                             <option value="name_rand">ترکیب نام + عدد تصادفی (name_rand)</option>
                             <option value="prefix_incremental">پیشوند ثابت + شمارنده افزایشی (prefix_incremental)</option>
                         </select>
@@ -48,6 +49,8 @@
                             مثال: اگر ایمیل <code>user@example.com</code> باشد، نام کاربری <code>user</code> خواهد بود.
                         @elseif($strategy === 'mobile')
                             نام کاربری دقیقا برابر با شماره موبایل وارد شده خواهد بود.
+                        @elseif($strategy === 'national_code')
+                            نام کاربری دقیقا برابر با کدملی وارد شده خواهد بود.
                         @elseif($strategy === 'name_rand')
                             مثال: برای "علی رضایی"، نام کاربری چیزی شبیه <code>ali_rezaei_482</code> خواهد بود.
                         @elseif($strategy === 'prefix_incremental')

@@ -12,5 +12,9 @@ class ClientsDatabaseSeeder extends Seeder
     public function run(): void
     {
         // $this->call([]);
+        $this->call([
+            ClientsPermissionSeeder::class,
+            ClientsModuleSeeder::class,
+        ]);
     }
 }
