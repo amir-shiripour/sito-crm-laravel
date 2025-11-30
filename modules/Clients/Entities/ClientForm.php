@@ -5,25 +5,40 @@ namespace Modules\Clients\Entities;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+
 class ClientForm extends Model
 {
     protected $table = 'client_forms';
 
     protected $fillable = ['name','key','is_active','schema'];
-    protected $casts = ['schema' => 'array', 'is_active' => 'bool'];
+
+    protected $casts = [
+        'schema'    => 'array',
+        'is_active' => 'bool',
+    ];
+
+    /**
+     * فیلدهای سیستمی رزرو‌شده
+     * (از این کلیدها نمی‌تونیم برای فیلد سفارشی استفاده کنیم)
+     */
     public const SYSTEM_FIELDS = [
         'username'      => ['label' => 'نام کاربری',        'column' => 'username'],
         'full_name'     => ['label' => 'نام و نام خانوادگی', 'column' => 'full_name'],
-        'email'         => ['label' => 'ایمیل',          'column' => 'email'],
-        'phone'         => ['label' => 'شماره تماس',     'column' => 'phone'],
-        'national_code' => ['label' => 'کد ملی',         'column' => 'national_code'],
-        'status_id' => ['label' => 'وضعیت',         'column' => 'status_id'],
+        'email'         => ['label' => 'ایمیل',              'column' => 'email'],
+        'phone'         => ['label' => 'شماره تماس',         'column' => 'phone'],
+        'national_code' => ['label' => 'کد ملی',             'column' => 'national_code'],
+        'status_id'     => ['label' => 'وضعیت',              'column' => 'status_id'],
+        'notes'         => ['label' => 'یادداشت مدیریتی',    'column' => 'notes'],
     ];
+
     public static function default(): ?self
     {
         return static::where('is_active', true)->first();
     }
 
+    /**
+     * تعریف کامل فیلدهای سیستمی برای فرم‌ساز
+     */
     public static function systemFieldDefaults(): array
     {
         return [
@@ -71,15 +86,16 @@ class ClientForm extends Model
                 'quick_create' => false,
                 'is_system'    => true,
             ],
-            'status_id'     => [
+            'status_id' => [
                 'id'           => 'status_id',
-                'type'         => 'status',
+                'type'         => 'status',   // مهم برای رندر فیلد وضعیت
                 'label'        => 'وضعیت پرونده',
-                'required'     => false,
+                'required'     => true,
                 'quick_create' => true,
                 'width'        => 'full',
                 'group'        => 'وضعیت',
                 'is_system'    => true,
+                // اینجا می‌تونی در آینده چیزهایی مثل 'status_keys' هم ست کنی
             ],
             'notes' => [
                 'id'           => 'notes',
@@ -95,47 +111,125 @@ class ClientForm extends Model
         ];
     }
 
+    /**
+     * شناسه‌های رزرو‌شده‌ی فیلدهای سیستمی
+     */
+    public static function reservedFieldIds(): array
+    {
+        return array_keys(static::SYSTEM_FIELDS);
+    }
+
+    public static function isSystemFieldId(string $id): bool
+    {
+        return in_array($id, static::reservedFieldIds(), true);
+    }
+
+    /**
+     * نرمال‌سازی اسکیمای فرم قبل از ذخیره
+     *  - اطمینان از داشتن id
+     *  - تثبیت فیلدهای سیستمی طبق systemFieldDefaults
+     */
+    public static function normalizeSchema(array $schema): array
+    {
+        $fields = $schema['fields'] ?? [];
+        $systemDefaults = static::systemFieldDefaults();
+
+        $normalized = [];
+
+        foreach ($fields as $f) {
+            if (!is_array($f)) {
+                continue;
+            }
+
+            // id اجباری
+            if (empty($f['id'])) {
+                $base = ($f['type'] ?? 'fld') . '_' . substr((string) str()->uuid(), 0, 8);
+                $f['id'] = $base;
+            }
+
+            $fid = $f['id'];
+
+            // اگر فیلد سیستمی است → روی تعریف سیستمی قفل کن
+            if (isset($systemDefaults[$fid])) {
+                $canon = $systemDefaults[$fid];
+
+                // همیشه اینها از تعریف سیستمی بیاد
+                $f['id']        = $canon['id'];
+                $f['type']      = $canon['type'];
+                $f['is_system'] = true;
+
+                // اگر label خالی یا null بود، از پیش‌فرض استفاده کن
+                if (!isset($f['label']) || $f['label'] === '') {
+                    $f['label'] = $canon['label'];
+                }
+
+                // اگر group / width / placeholder / quick_create / required تعریف نشده بود،
+                // مقدار پیش‌فرض سیستمی رو ست کن؛ اگر کاربر عوض کرده باشه، همون بمونه.
+                foreach (['group','width','placeholder','quick_create','required'] as $k) {
+                    if (!array_key_exists($k, $f) && array_key_exists($k, $canon)) {
+                        $f[$k] = $canon[$k];
+                    }
+                }
+            }
+
+            $normalized[] = $f;
+        }
+
+        $schema['fields'] = array_values($normalized);
+        return $schema;
+    }
 
     protected static function booted(): void
     {
         static::saving(function (self $form) {
-            // اطمینان از key تمیز (slug سبک) — اگر لازم نیست، حذف کن
-            $form->key = str($form->key ?: $form->name)->slug('_');
+            // key یکتا و تمیز
+            $form->key = static::generateUniqueKey(
+                $form->key ?: $form->name,
+                $form->id
+            );
 
             // حداقل اسکیمای سالم
             $schema = $form->schema ?? [];
-            if (!is_array($schema)) $schema = [];
-            $schema['fields'] = array_values(array_map(function ($f) {
-                // آیدی خودکار اگر خالی بود
-                if (empty($f['id'])) {
-                    $base = ($f['type'] ?? 'fld') . '_' . substr((string) str()->uuid(), 0, 8);
-                    $f['id'] = $base;
-                }
-                return $f;
-            }, ($schema['fields'] ?? [])));
+            if (!is_array($schema)) {
+                $schema = [];
+            }
+
+            // اگر fields نبود، خالیش کن
+            if (empty($schema['fields']) || !is_array($schema['fields'])) {
+                $schema['fields'] = [];
+            }
+
+            // نرمال‌سازی روی فیلدها (id + قفل‌کردن فیلدهای سیستمی)
+            $schema = static::normalizeSchema($schema);
+
             $form->schema = $schema;
         });
 
         static::saved(function (self $form) {
             if ($form->is_active) {
-                // همهٔ رکوردهای دیگر را از پیش‌فرض خارج کن
+                // بقیه فرم‌ها از حالت active خارج بشن
                 static::query()
                     ->where('id', '!=', $form->id)
-                    ->update(['is_active' => false]); // الگوی آپدیت گروهی. :contentReference[oaicite:1]{index=1}
+                    ->update(['is_active' => false]);
             }
         });
-    } // درباره boot/booted. :contentReference[oaicite:2]{index=2}
+    }
 
     public function scopeOnlyDefault(Builder $q): Builder
     {
         return $q->where('is_active', true);
-    } // نمونهٔ الگوی اسکوپ. :contentReference[oaicite:3]{index=3}
+    }
 
     public static function active(?string $preferredKey = null): ?self
     {
         if ($preferredKey) {
-            $f = static::where('key', $preferredKey)->where('is_active', true)->first();
-            if ($f) return $f;
+            $f = static::where('key', $preferredKey)
+                ->where('is_active', true)
+                ->first();
+
+            if ($f) {
+                return $f;
+            }
         }
 
         return static::where('is_active', true)->first() ?: static::first();
@@ -143,7 +237,7 @@ class ClientForm extends Model
 
     public static function generateUniqueKey(string $base, ?int $ignoreId = null): string
     {
-        $base = Str::slug($base) ?: 'form';
+        $base = Str::slug($base, '_') ?: 'form';
         $key  = $base;
         $i    = 1;
 
@@ -151,7 +245,7 @@ class ClientForm extends Model
             ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
             ->exists()
         ) {
-            $key = $base.'-'.$i;
+            $key = $base.'_'.$i;
             $i++;
         }
 
@@ -161,13 +255,18 @@ class ClientForm extends Model
     public function quickFields(): array
     {
         $fields = $this->schema['fields'] ?? [];
-        return array_values(array_filter($fields, fn ($f) => !empty($f['quick_create'])));
+
+        return array_values(array_filter($fields, function ($f) {
+            return !empty($f['quick_create']);
+        }));
     }
 
     public function field(string $id): ?array
     {
         foreach (($this->schema['fields'] ?? []) as $f) {
-            if (($f['id'] ?? null) === $id) return $f;
+            if (($f['id'] ?? null) === $id) {
+                return $f;
+            }
         }
         return null;
     }
