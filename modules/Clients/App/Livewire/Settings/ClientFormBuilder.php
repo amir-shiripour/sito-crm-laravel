@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Modules\Clients\Entities\ClientForm;
 use Modules\Clients\Entities\ClientSetting;
+use Modules\Clients\Entities\ClientStatus;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +29,9 @@ class ClientFormBuilder extends Component
     // لیست نقش‌ها برای select-user-by-role
     public array $roles = [];
 
+    // لیست وضعیت‌ها برای "الزامی بر اساس وضعیت"
+    public array $statuses = [];
+
     public function mount(): void
     {
         $this->forms = ClientForm::orderBy('name')->get();
@@ -35,8 +39,14 @@ class ClientFormBuilder extends Component
         // نقش‌ها (اسپاتی)
         $this->roles = Role::orderBy('name')->get(['id', 'name'])->toArray();
 
+        // وضعیت‌ها برای required_status_keys
+        $this->statuses = ClientStatus::active()
+            ->orderBy('sort_order')
+            ->get(['id', 'key', 'label'])
+            ->toArray();
+
         // انتخاب فرم فعال اولیه
-        $preferredKey = ClientSetting::getValue('default_form_key'); // اگر قبلاً ذخیره کرده بودی
+        $preferredKey = ClientSetting::getValue('default_form_key');
         if ($preferredKey && $form = ClientForm::where('key', $preferredKey)->first()) {
             $this->loadForm($form->id);
         } elseif ($default = ClientForm::active()) {
@@ -63,6 +73,25 @@ class ClientFormBuilder extends Component
         $this->key          = $form->key;
         $this->is_active    = (bool) $form->is_active;
         $this->schema       = $form->schema ?? ['fields' => []];
+
+        $this->normalizeSchemaState();
+    }
+
+    // نرمال‌سازی state سمت Livewire (فقط برای UI)
+    private function normalizeSchemaState(): void
+    {
+        if (!isset($this->schema['fields']) || !is_array($this->schema['fields'])) {
+            $this->schema['fields'] = [];
+            return;
+        }
+
+        foreach ($this->schema['fields'] as &$f) {
+            // مطمئن شو required_status_keys همیشه آرایه است
+            if (!isset($f['required_status_keys']) || !is_array($f['required_status_keys'])) {
+                $f['required_status_keys'] = [];
+            }
+        }
+        unset($f);
     }
 
     // حذف فرم
@@ -83,21 +112,21 @@ class ClientFormBuilder extends Component
     // افزودن فیلد
     public function addField(string $type): void
     {
-        $id = $type.'_'.substr(str()->uuid()->toString(), 0, 8); // آیدی یکتا
+        $id = $type.'_'.substr(str()->uuid()->toString(), 0, 8);
 
         $this->schema['fields'][] = [
-            'type'        => $type,
-            'id'          => $id,
-            'label'       => 'بی‌نام',
-            'quick_create'=> false,
-            'placeholder' => '',
-            'width'       => 'full',   // full|1/2|1/3
-            'group'       => '',       // نام گروه سفارشی
+            'type'                => $type,
+            'id'                  => $id,
+            'label'               => 'بی‌نام',
+            'quick_create'        => false,
+            'placeholder'         => '',
+            'width'               => 'full',
+            'group'               => '',
+            'required_status_keys'=> [], // مهم: از اول آرایه باشد
         ];
 
         $lastIndex = count($this->schema['fields']) - 1;
 
-        // تنظیمات خاص بر اساس type
         if ($type === 'select') {
             $this->schema['fields'][$lastIndex]['options_json'] = '';
         }
@@ -121,7 +150,7 @@ class ClientFormBuilder extends Component
             return;
         }
         unset($this->schema['fields'][$index]);
-        $this->schema['fields'] = array_values($this->schema['fields']); // reindex
+        $this->schema['fields'] = array_values($this->schema['fields']);
     }
 
     public function addSystemField(string $id): void
@@ -132,39 +161,42 @@ class ClientFormBuilder extends Component
             return;
         }
 
-        // اگر قبلاً داخل فرم هست، دوباره اضافه نکن
         foreach ($this->schema['fields'] as $f) {
             if (($f['id'] ?? null) === $id) {
                 return;
             }
         }
 
-        $this->schema['fields'][] = $defaults[$id];
+        $field = $defaults[$id];
+
+        // اگر در تعریف پیش‌فرض چیزی نیامده، مطمئن شو آرایه است
+        if (!isset($field['required_status_keys']) || !is_array($field['required_status_keys'])) {
+            $field['required_status_keys'] = [];
+        }
+
+        $this->schema['fields'][] = $field;
     }
 
 
     public function saveForm(): void
     {
-        // اگر key خالی بود، خودکار بر اساس name ساخته شود
         if (blank($this->key) && !blank($this->name)) {
             $this->key = ClientForm::generateUniqueKey($this->name, $this->activeFormId);
         }
 
-        $data = $this->validate([
+        $this->validate([
             'name'       => 'required|string|max:100',
             'key'        => 'required|alpha_dash|max:100|unique:client_forms,key,'.($this->activeFormId ?? 'NULL').',id',
             'schema'     => 'required|array',
             'is_active'  => 'boolean',
         ]);
 
-        // جلوگیری از استفاده از id فیلدهای سیستمی به‌عنوان meta
-        $fields = $this->schema['fields'] ?? [];
+        $fields     = $this->schema['fields'] ?? [];
         $normalized = [];
 
         foreach ($fields as $idx => $f) {
             $fid = trim($f['id'] ?? '');
 
-            // اگر آیدی خالی بود، یک آیدی تصادفی تولید کن (برای فیلدهای سفارشی)
             if ($fid === '') {
                 $fid = 'f_'.substr((string) Str::uuid(), 0, 8);
             }
@@ -174,25 +206,25 @@ class ClientFormBuilder extends Component
             $isReserved = array_key_exists($fid, ClientForm::SYSTEM_FIELDS);
             $isSystem   = !empty($f['is_system']);
 
-            // اگر آیدی رزرو شده است ولی این فیلد سیستمی علامت نخورده، یعنی کاربر
-            // می‌خواهد فیلد سفارشی با آیدی سیستمی بسازد ⇒ خطا
             if ($isReserved && !$isSystem) {
                 throw ValidationException::withMessages([
                     'schema' => "آیدی «{$fid}» برای فیلد سیستمی رزرو شده و نمی‌تواند برای فیلد سفارشی استفاده شود.",
                 ]);
             }
 
-            // اگر واقعاً فیلد سیستمی است، نوع را طبق تعریف سیستم قفل کن و فلگ را ست کن
             if ($isReserved) {
-                $sys = ClientForm::SYSTEM_FIELDS[$fid];
-                $f['type']      = $sys['column'];     // نوع از سیستم
-                $f['is_system'] = true;             // قفل به عنوان سیستمی
-                // بقیه چیزها مثل label, placeholder, width, group, required, quick_create
-                // همان تنظیمات فرم ساز می‌مانند
+                $f['is_system'] = true;
             } else {
-                // فیلد سفارشی
                 $f['is_system'] = false;
             }
+
+            // نرمال‌سازی required_status_keys → همیشه آرایه از keyهای غیرخالی
+            $keys = $f['required_status_keys'] ?? [];
+            if (!is_array($keys)) {
+                $keys = $keys ? [$keys] : [];
+            }
+            $keys = array_values(array_filter($keys, fn($k) => is_string($k) && $k !== ''));
+            $f['required_status_keys'] = $keys;
 
             $normalized[] = $f;
         }
@@ -204,14 +236,12 @@ class ClientFormBuilder extends Component
             [
                 'name'       => $this->name,
                 'key'        => $this->key,
-                'is_active' => $this->is_active, // اینجا به عنوان active ذخیره می‌کنیم
+                'is_active'  => $this->is_active,
                 'schema'     => $this->schema,
             ]
         );
 
         $this->activeFormId = $form->id;
-
-        // رفرش لیست
         $this->forms = ClientForm::orderBy('name')->get();
 
         $this->dispatch('notify', type: 'success', text: 'فرم ذخیره شد.');
@@ -220,8 +250,9 @@ class ClientFormBuilder extends Component
     public function render()
     {
         return view('clients::user.settings.forms-builder', [
-            'forms' => $this->forms,
-            'roles' => $this->roles,
+            'forms'    => $this->forms,
+            'roles'    => $this->roles,
+            'statuses' => $this->statuses,
         ]);
     }
 }

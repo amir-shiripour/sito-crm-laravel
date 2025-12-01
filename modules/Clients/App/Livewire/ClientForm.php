@@ -9,9 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Str;
 use Modules\Clients\Entities\ClientStatus;
-
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientForm as ClientFormSchema;
 use Modules\Clients\Entities\ClientSetting;
@@ -37,9 +35,12 @@ class ClientForm extends Component
     // اسکیمای فرم پویا (از ClientFormSchema)
     public array $schema = ['fields' => []];
 
-    // 1) استیت ایجاد سریع
+    // استیت ایجاد سریع
     public array $quick = [];
     public array $availableStatuses = [];
+
+    public bool $asQuickWidget = false;
+    public bool $isQuickMode   = false;
 
     public function mount(?Client $client = null, ?string $formKey = null)
     {
@@ -52,8 +53,6 @@ class ClientForm extends Component
             : ClientFormSchema::active($keyFromSettings);
 
         $this->schema = $form?->schema ?? ['fields' => []];
-
-        $currentStatusId = $client?->status_id;
 
         // وضعیت‌های فعال
         $statuses = ClientStatus::active()->get();
@@ -97,11 +96,7 @@ class ClientForm extends Component
             $this->meta          = [];
             $this->status_id     = null;
         }
-
     }
-
-    public bool $asQuickWidget = false;
-    public bool $isQuickMode  = false;
 
     public function render()
     {
@@ -118,59 +113,101 @@ class ClientForm extends Component
     }
 
     /**
-     * ساخت قوانین ولیدیشن برای تمام فیلدهای سیستمی
-     * بر اساس اسکیمای فرم‌ساز (required / quick_create)
-     **/
-    private function buildSystemValidationRules(bool $forQuick = false): array
+     * پیدا کردن key وضعیت از روی id
+     */
+    private function resolveStatusKey($statusId): ?string
     {
-        $rules = [];
+        if (!$statusId) {
+            return null;
+        }
 
-        // تعریف رول‌های پایه برای هر فیلد سیستمی
+        // ابتدا در availableStatuses بگرد
+        $candidate = collect($this->availableStatuses)->first(function ($st) use ($statusId) {
+            if (is_array($st)) {
+                return (int) ($st['id'] ?? 0) === (int) $statusId;
+            }
+            return (int) $st->id === (int) $statusId;
+        });
+
+        if ($candidate) {
+            return is_array($candidate) ? ($candidate['key'] ?? null) : $candidate->key;
+        }
+
+        // اگر نبود، مستقیم از دیتابیس بخوان
+        $obj = ClientStatus::find($statusId);
+        return $obj?->key;
+    }
+
+    /**
+     * ساخت قوانین ولیدیشن برای فیلدهای سیستمی
+     * با توجه به فرم‌ساز + وضعیت هدف (status_key)
+     *
+     * - اگر فیلد required=true باشد → همیشه required است.
+     * - اگر required_status_keys شامل status_key باشد → برای آن وضعیت required می‌شود.
+     * - در حالت quick، فقط فیلدهای quick_create=true بررسی می‌شوند
+     *   مگر اینکه required_status_keys باعث الزام شوند.
+     */
+    private function buildSystemValidationRules(bool $forQuick = false, ?string $targetStatusKey = null): array
+    {
+        $rules        = [];
+        $schemaFields = collect($this->schema['fields'] ?? []);
+        $defaultFields = ClientFormSchema::systemFieldDefaults();
+
+        // رول‌های پایه برای هر فیلد سیستمی
         $baseRules = [
             'full_name'     => ['string','max:255'],
             'phone'         => ['string'],
             'email'         => ['email'],
             'national_code' => ['string','max:20'],
             'notes'         => ['string'],
-            // status_id جداگانه کنترل می‌شود
+            // status_id جدا
         ];
 
-        $schemaFields  = collect($this->schema['fields'] ?? []);
-        $defaultFields = \Modules\Clients\Entities\ClientForm::systemFieldDefaults();
-
-        foreach (\Modules\Clients\Entities\ClientForm::SYSTEM_FIELDS as $sid => $info) {
-            // status_id را فعلاً اینجا اسکیپ می‌کنیم؛ پایین‌تر جداگانه هندل می‌شود
+        foreach (ClientFormSchema::SYSTEM_FIELDS as $sid => $info) {
             if ($sid === 'status_id') {
-                continue;
+                continue; // پایین‌تر
             }
 
-            // تعریف فیلد از اسکیمای فرم
             $def = $schemaFields->firstWhere('id', $sid) ?? ($defaultFields[$sid] ?? null);
-            $required   = !empty($def['required']);
-            $quickField = !empty($def['quick_create']);
-
-            // اگر در حالت quick هستیم و این فیلد quick_create=false است، ولیدیتش نکن
-            if ($forQuick && !$quickField) {
+            if (!$def) {
                 continue;
             }
 
-            $key       = $forQuick ? "quick.$sid" : $sid;
-            $base      = $baseRules[$sid] ?? [];
-            $prefix    = $required ? ['required'] : ['nullable'];
+            $requiredBase   = !empty($def['required']);
+            $quickField     = !empty($def['quick_create']);
+            $requiredStatus = in_array(
+                $targetStatusKey,
+                $def['required_status_keys'] ?? [],
+                true
+            );
+
+            // در مودال quick اگر نه quick_create و نه required_by_status، ولیدیت نکن
+            if ($forQuick && !$quickField && !$requiredStatus) {
+                continue;
+            }
+
+            $key    = $forQuick ? "quick.$sid" : $sid;
+            $prefix = ($requiredBase || $requiredStatus) ? ['required'] : ['nullable'];
+            $base   = $baseRules[$sid] ?? [];
 
             $rules[$key] = array_merge($prefix, $base);
         }
 
-        // ---- وضعیت (status_id) را جدا می‌سازیم تا با type=status در فرم‌ساز هماهنگ باشد ----
+        // ---- status_id ----
         $statusField = $schemaFields->firstWhere('id', 'status_id') ?? ($defaultFields['status_id'] ?? null);
-
         if ($statusField) {
-            $required   = !empty($statusField['required']);
-            $quickField = !empty($statusField['quick_create']);
+            $requiredBase   = !empty($statusField['required']);
+            $quickField     = !empty($statusField['quick_create']);
+            // معمولاً status_id خودش required_status_keys ندارد، ولی اگر خواستی، ساپورت می‌شود
+            $requiredStatus = in_array(
+                $targetStatusKey,
+                $statusField['required_status_keys'] ?? [],
+                true
+            );
 
-            if (!$forQuick || ($forQuick && $quickField)) {
+            if (!$forQuick || ($forQuick && ($quickField || $requiredStatus))) {
                 $key    = $forQuick ? 'quick.status_id' : 'status_id';
-                $prefix = $required ? ['required'] : ['nullable'];
+                $prefix = ($requiredBase || $requiredStatus) ? ['required'] : ['nullable'];
 
                 $rules[$key] = array_merge($prefix, ['exists:client_statuses,id']);
             }
@@ -179,50 +216,59 @@ class ClientForm extends Component
         return $rules;
     }
 
-
     // 2) ذخیره سریع فقط فیلدهای quick_create
     public function saveQuick()
     {
         try {
-            // 1) فیلدهایی که در مودال "ایجاد سریع" فعال‌اند
+            // وضعیت هدف در این ذخیره (اولویت با quick.status_id)
+            $targetStatusId  = $this->quick['status_id'] ?? $this->status_id ?? $this->client?->status_id;
+            $targetStatusKey = $this->resolveStatusKey($targetStatusId);
+
+            // فیلدهایی که در مودال "ایجاد سریع" فعال‌اند
             $quickFields = collect($this->schema['fields'] ?? [])
                 ->where('quick_create', true)
                 ->values();
 
-            // 2) قواعد ولیدیشن فیلدهای سیستمی با توجه به فرم‌ساز
-            // این متد باید بر اساس SYSTEM_FIELDS و اسکیمای فرم، rule ها رو برای quick.* بسازه
-            $rules = $this->buildSystemValidationRules(true); // forQuick = true → quick.*
+            // قواعد ولیدیشن فیلدهای سیستمی با توجه به فرم‌ساز + وضعیت هدف
+            $rules = $this->buildSystemValidationRules(true, $targetStatusKey); // forQuick = true → quick.*
 
-            // 3) قواعد برای فیلدهای داینامیک غیر سیستمی در مودال سریع
+            // قواعد برای فیلدهای داینامیک غیر سیستمی در مودال سریع
             foreach ($quickFields as $f) {
                 $fid = $f['id'] ?? null;
                 if (!$fid) {
                     continue;
                 }
 
-                // فیلدهای سیستمی را اینجا چک نکن؛ buildSystemValidationRules قبلاً مسئولش است
+                // فیلدهای سیستمی را اینجا چک نکن
                 if (array_key_exists($fid, ClientFormSchema::SYSTEM_FIELDS)) {
                     continue;
                 }
 
-                // فیلد نوع status → rule آن در buildSystemValidationRules اضافه شده
+                // status هم سیستمی است
                 if (($f['type'] ?? null) === 'status') {
                     continue;
                 }
 
                 $key = "quick.$fid";
 
+                $statusKeys       = (array)($f['required_status_keys'] ?? []);
+                $requiredByStatus = $targetStatusKey && in_array($targetStatusKey, $statusKeys, true);
+
                 if (!empty($f['validate'])) {
-                    $rules[$key] = $f['validate'];
-                } elseif (!empty($f['required'])) {
+                    $ruleStr = $f['validate'];
+                    if ($requiredByStatus && !str_contains($ruleStr, 'required')) {
+                        $ruleStr = 'required|' . $ruleStr;
+                    }
+                    $rules[$key] = $ruleStr;
+                } elseif (!empty($f['required']) || $requiredByStatus) {
                     $rules[$key] = 'required';
                 }
             }
 
-            // 4) ولیدیشن روی quick.* (هم سیستمی هم غیرسیستمی)
+            // ولیدیشن روی quick.*
             $this->validate($rules);
 
-            // 5) بعد از ولیدیشن، مقادیر سیستمی را از quick به پراپرتی‌های اصلی منتقل کن
+            // بعد از ولیدیشن، مقادیر سیستمی را از quick به پراپرتی‌های اصلی منتقل کن
             $this->full_name     = $this->quick['full_name']     ?? $this->full_name ?? 'کاربر جدید';
             $this->phone         = $this->quick['phone']         ?? $this->phone;
             $this->email         = $this->quick['email']         ?? $this->email;
@@ -230,19 +276,17 @@ class ClientForm extends Component
             $this->notes         = $this->quick['notes']         ?? $this->notes;
             $this->status_id     = $this->quick['status_id']     ?? $this->status_id;
 
-            // 6) map از quick به meta برای فیلدهای غیر سیستمی
+            // map از quick به meta برای فیلدهای غیر سیستمی
             foreach ($quickFields as $f) {
                 $fid = $f['id'] ?? null;
                 if (!$fid) {
                     continue;
                 }
 
-                // فیلدهای سیستمی را در meta نگه نمی‌داریم
                 if (array_key_exists($fid, ClientFormSchema::SYSTEM_FIELDS)) {
                     continue;
                 }
 
-                // نوع status هم سیستمی است (status_id) → توی meta نباشد
                 if (($f['type'] ?? null) === 'status') {
                     continue;
                 }
@@ -250,35 +294,31 @@ class ClientForm extends Component
                 $this->meta[$fid] = $this->quick[$fid] ?? null;
             }
 
-            // 7) حالت quick را فعال کن تا در save() روی فیلدهای غیر-quick_create سخت‌گیری نکند
+            // حالت quick را فعال کن
             $this->isQuickMode = true;
 
             return $this->save();
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // ولیدیشن‌های Livewire خودش پیام‌ها را هندل می‌کند
             throw $e;
         } catch (\Throwable $e) {
             Log::error('[Clients] saveQuick failed', ['msg' => $e->getMessage()]);
             $this->dispatch('notify', type: 'error', text: 'خطا در ایجاد سریع.');
             throw $e;
         } finally {
-            // بعد از پایان، چه موفق چه خطا، فلگ را ریست کن
             $this->isQuickMode = false;
         }
     }
 
-
-
-
-    // 3) ذخیره کامل (ایجاد/ویرایش) — نسخه نهایی
-    // 3) ذخیره کامل (ایجاد/ویرایش) — نسخه نهایی
+    // 3) ذخیره کامل (ایجاد/ویرایش)
     public function save()
     {
-        // 1) قواعد ولیدیشن برای فیلدهای سیستمی بر اساس فرم‌ساز
-        // این متد باید برای full_name, email, phone, national_code, notes, status_id
-        // با توجه به اسکیمای فرم rule بسازد (بدون prefix quick.)
-        $rules = $this->buildSystemValidationRules(false); // forQuick = false → مستقیم روی پراپرتی‌ها
+        // وضعیت هدف در این ذخیره (در فرم کامل)
+        $targetStatusId  = $this->status_id ?? $this->client?->status_id;
+        $targetStatusKey = $this->resolveStatusKey($targetStatusId);
+
+        // 1) قواعد ولیدیشن فیلدهای سیستمی بر اساس فرم‌ساز + وضعیت
+        $rules = $this->buildSystemValidationRules(false, $targetStatusKey);
 
         // 2) قواعد فیلدهای داینامیک (custom) در meta
         foreach ($this->schema['fields'] as $f) {
@@ -287,29 +327,31 @@ class ClientForm extends Component
                 continue;
             }
 
-            // اگر این آیدی جزو فیلدهای سیستمی است، ولیدیشنش قبلاً در buildSystemValidationRules لحاظ شده
+            // سیستمی‌ها (full_name, phone, ...) قبلاً در buildSystemValidationRules آمده‌اند
             if (array_key_exists($fid, ClientFormSchema::SYSTEM_FIELDS)) {
                 continue;
             }
 
-            // اگر نوعش status باشد، باز هم rule در سیستم‌فیلدها آمده
             if (($f['type'] ?? null) === 'status') {
                 continue;
             }
 
             $key = "meta.$fid";
 
-            if (!empty($f['validate'])) {
-                $rules[$key] = $f['validate'];
-            } elseif (!empty($f['required'])) {
+            $statusKeys       = (array)($f['required_status_keys'] ?? []);
+            $requiredByStatus = $targetStatusKey && in_array($targetStatusKey, $statusKeys, true);
 
-                // 🚩 جادوی quick-mode:
-                // اگر در حالت ایجاد سریع هستیم و این فیلد quick_create=false است،
-                // در مودال quick نباید مجبور به پر کردنش باشیم.
-                if ($this->isQuickMode && empty($f['quick_create'])) {
+            if (!empty($f['validate'])) {
+                $ruleStr = $f['validate'];
+                if (($requiredByStatus || !empty($f['required'])) && !str_contains($ruleStr, 'required')) {
+                    $ruleStr = 'required|' . $ruleStr;
+                }
+                $rules[$key] = $ruleStr;
+            } elseif (!empty($f['required']) || $requiredByStatus) {
+                // در حالت quick اگر این فیلد quick_create=false است و requiredByStatus=false → اسکیپ
+                if ($this->isQuickMode && empty($f['quick_create']) && !$requiredByStatus) {
                     continue;
                 }
-
                 $rules[$key] = 'required';
             }
         }
@@ -324,7 +366,7 @@ class ClientForm extends Component
             }
         }
 
-        // 5) اطمینان از داشتن username (و نگه‌داشت در meta)
+        // 5) اطمینان از داشتن username
         if ($this->client && $this->client->exists) {
             $this->username = $this->client->username ?: $this->generateUsernameFromSettings();
         } else {
@@ -334,7 +376,6 @@ class ClientForm extends Component
         $strategy = ClientSetting::getValue('username_strategy')
             ?: config('clients.username.strategy', 'email_local');
 
-        // اگر استراتژی strict است و username خالی دراومده → ارور
         if (in_array($strategy, ['email','mobile','national_code'], true) && empty($this->username)) {
             $this->addError('username', 'امکان ساخت یوزرنیم بر اساس استراتژی انتخاب‌شده وجود ندارد (ایمیل/موبایل/کدملی ناقص است).');
             $this->dispatch('notify', type: 'error', text: 'ایمیل/موبایل/کدملی برای ساخت یوزرنیم کافی نیست.');
@@ -401,16 +442,14 @@ class ClientForm extends Component
         }
 
         $this->dispatch('notify', type: 'success', text: $this->client ? 'به‌روزرسانی شد.' : 'ایجاد شد.');
-        // اگر از مودال ایجاد سریع آمده‌ایم → به Alpine بگو مودال را ببند
+
         if ($this->isQuickMode) {
             $this->dispatch('client-quick-saved');
-            // در حالت quick معمولاً redirect نمی‌خوای؛ اگه دوست داری روی همون صفحه بمونه:
-            return; // اینجا redirect نکن
+            return;
         }
+
         return redirect()->route('user.clients.index');
     }
-
-
 
     // === ژنراتور یوزرنیم یکتا بر اساس تنظیمات ===
     private function generateUsernameFromSettings(): string
@@ -427,19 +466,18 @@ class ClientForm extends Component
         $candidate = null;
 
         switch ($strategy) {
-            case 'email': // کل ایمیل
+            case 'email':
                 $candidate = (string) $this->email;
                 break;
 
-            case 'national_code': // کدملی
+            case 'national_code':
                 $candidate = (string) $this->national_code;
                 break;
 
-            case 'mobile': // فقط ارقام موبایل
+            case 'mobile':
                 $digits = preg_replace('/\D+/', '', (string) $this->phone);
                 $candidate = $digits ?: null;
                 if (!$candidate || strlen($candidate) < 8) {
-                    // اگر موبایل درست نبود، یک base حداقلی برای پیام خطا یا fallback
                     $candidate = null;
                 }
                 break;
@@ -471,10 +509,7 @@ class ClientForm extends Component
                 break;
         }
 
-        // ⚠️ اینجاست که رفتار ویژه را اعمال می‌کنیم:
         if (in_array($strategy, ['email', 'mobile', 'national_code'], true)) {
-            // برای این دو حالت، فقط همون candidate رو برمی‌گردونیم
-            // (چک یکتا در متد save انجام می‌شود و اگر تکراری بود، خطا می‌دهیم)
             Log::info('[Clients] username candidate (strict) ', [
                 'strategy'  => $strategy,
                 'candidate' => $candidate,
@@ -482,7 +517,6 @@ class ClientForm extends Component
             return (string) $candidate;
         }
 
-        // برای بقیه‌ی استراتژی‌ها، مثل قبل auto-increment کن
         if ($existsInClients($candidate)) {
             $candidate = $this->incrementUsernameBase($candidate, $existsInClients);
         }
@@ -495,7 +529,6 @@ class ClientForm extends Component
         return (string) $candidate;
     }
 
-
     private function incrementUsernameBase(string $base, \Closure $exists): string
     {
         $base = trim($base) ?: 'user';
@@ -506,14 +539,9 @@ class ClientForm extends Component
         return $base.$i;
     }
 
-
-
     private function incrementUsername(string $base): string
     {
         $base = trim($base) ?: 'user';
-
-        // همه‌ی usernameهای مشابه در clients (و دلخواه users):
-        $pattern = '^'.preg_quote($base).'(?:([0-9]+))?$';
 
         $existsInClients = fn($u) => DB::table('clients')->where('username',$u)->exists();
         $u = $base;

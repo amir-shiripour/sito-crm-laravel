@@ -215,17 +215,16 @@
                         <div class="absolute right-0 top-0 bottom-0 w-1 bg-emerald-500/70 group-hover:bg-emerald-500 transition-colors"></div>
 
                         {{-- هدر --}}
-                        <div
-                            class="flex items-center justify-between bg-emerald-50/70 dark:bg-emerald-900/20 px-5 py-3 border-b border-emerald-100/70 dark:border-emerald-800/60">
+                        <div class="flex items-center justify-between bg-emerald-50/70 dark:bg-emerald-900/20 px-5 py-3 border-b border-emerald-100/70 dark:border-emerald-800/60">
                             <div class="flex items-center gap-3">
-                    <span
-                        class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-600 text-white">
-                        فیلد سیستمی
-                    </span>
+                                <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-600 text-white">
+                                    فیلد سیستمی
+                                </span>
                                 <span
                                     class="inline-flex items-center px-2 py-1 rounded text-xs font-mono font-semibold bg-gray-900/80 text-emerald-300">
-                        {{ $fid }}
-                    </span>
+                                    {{ $fid }}
+                                </span>
                                 <input type="text"
                                        wire:model="schema.fields.{{ $i }}.label"
                                        class="bg-transparent border-0 p-0 text-sm font-bold text-gray-900 focus:ring-0 dark:text-white placeholder-gray-300"
@@ -299,6 +298,30 @@
                                     </label>
                                 </div>
                             </div>
+
+                            {{-- الزامی بر اساس وضعیت پرونده --}}
+                            @if(!empty($statuses))
+                                <div class="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+                                    <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                                        الزامی بر اساس وضعیت پرونده
+                                    </p>
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($statuses as $st)
+                                            <label
+                                                class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-50 text-[11px] text-gray-700 border border-gray-200 cursor-pointer hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                                <input type="checkbox"
+                                                       class="{{ $checkboxClass }} w-3.5 h-3.5"
+                                                       wire:model="schema.fields.{{ $i }}.required_status_keys"
+                                                       value="{{ $st['key'] }}">
+                                                <span>{{ $st['label'] }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                                        اگر وضعیت پرونده روی هر یک از این موارد قرار بگیرد، پر کردن این فیلد به‌طور خودکار الزامی می‌شود.
+                                    </p>
+                                </div>
+                            @endif
 
                         </div>
                     </div>
@@ -482,6 +505,31 @@
                                     </div>
                                 </div>
                             @endif
+
+                            {{-- الزامی بر اساس وضعیت پرونده --}}
+                            @if(!empty($statuses))
+                                <div class="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+                                    <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                                        الزامی بر اساس وضعیت پرونده
+                                    </p>
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($statuses as $st)
+                                            <label
+                                                class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-50 text-[11px] text-gray-700 border border-gray-200 cursor-pointer hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                                <input type="checkbox"
+                                                       class="{{ $checkboxClass }} w-3.5 h-3.5"
+                                                       wire:model="schema.fields.{{ $i }}.required_status_keys"
+                                                       value="{{ $st['key'] }}">
+                                                <span>{{ $st['label'] }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                                        مثال: برای فیلد «علت لغو» می‌توانید وضعیت «لغو شده» را تیک بزنید تا فقط در آن حالت، پر کردن فیلد اجباری شود.
+                                    </p>
+                                </div>
+                            @endif
+
                         </div>
                     </div>
                 @endforeach

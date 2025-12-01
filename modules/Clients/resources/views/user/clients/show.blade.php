@@ -1,8 +1,30 @@
 @extends('layouts.user')
-@php($title = 'نمایش '.config('clients.labels.singular'))
+@extends('layouts.user')
+
+@php
+    // عنوان صفحه
+    $title = 'نمایش ' . config('clients.labels.singular');
+
+    // وضعیت فعلی کلاینت (ممکنه null باشه)
+    /** @var \Modules\Clients\Entities\Client $client */
+    $statusObj   = optional($client->status);
+    $statusLabel = $statusObj->label ?? 'بدون وضعیت';
+    $statusKey   = $statusObj->key   ?? null;
+
+    // کلاس‌های ظاهری بج برای وضعیت
+    $statusBadgeClasses = match ($statusKey) {
+        'new'        => 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800',
+        'active'     => 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800',
+        'pending'    => 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800',
+        'cancelled'  => 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800',
+        'blacklist'  => 'bg-gray-800 text-gray-100 border-gray-900 dark:bg-black dark:text-gray-100 dark:border-gray-900',
+        default      => 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
+    };
+@endphp
 
 @section('content')
-    <div class="mx-auto max-w-4xl space-y-6">
+    <div class="mx-auto max-w-full space-y-6">
+{{--        <div class="mx-auto max-w-4xl space-y-6">--}}
 
         {{-- کارت اصلی --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -20,15 +42,27 @@
                             <h1 class="text-xl font-bold text-gray-900 dark:text-white">
                                 {{ $client->full_name }}
                             </h1>
-                            <div class="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400 font-mono">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                                <span>{{ $client->username }}</span>
+
+                            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+                                {{-- یوزرنیم --}}
+                                <div class="flex items-center gap-1 text-gray-500 dark:text-gray-400 font-mono">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    <span>{{ $client->username }}</span>
+                                </div>
+
+                                {{-- بج وضعیت --}}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium {{ $statusBadgeClasses }}">
+                        <span class="w-1.5 h-1.5 rounded-full bg-current/40"></span>
+                        {{ $statusLabel }}
+                    </span>
                             </div>
                         </div>
                     </div>
 
+                    {{-- دکمه‌ها همون قبلی --}}
                     <div class="flex items-center gap-2">
                         <a href="{{ route('user.clients.index') }}"
                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600">
@@ -49,6 +83,9 @@
                     </div>
                 </div>
             </div>
+
+
+
 
             <div class="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
 

@@ -52,6 +52,7 @@ class ClientForm extends Model
                 'required'     => true,
                 'quick_create' => true,
                 'is_system'    => true,
+                'required_status_keys' => [], // الزامی براساس وضعیت (درصورت نیاز)
             ],
             'phone' => [
                 'id'           => 'phone',
@@ -63,6 +64,7 @@ class ClientForm extends Model
                 'required'     => true,
                 'quick_create' => true,
                 'is_system'    => true,
+                'required_status_keys' => [],
             ],
             'email' => [
                 'id'           => 'email',
@@ -74,6 +76,7 @@ class ClientForm extends Model
                 'required'     => false,
                 'quick_create' => true,
                 'is_system'    => true,
+                'required_status_keys' => [],
             ],
             'national_code' => [
                 'id'           => 'national_code',
@@ -85,6 +88,7 @@ class ClientForm extends Model
                 'required'     => false,
                 'quick_create' => false,
                 'is_system'    => true,
+                'required_status_keys' => [],
             ],
             'status_id' => [
                 'id'           => 'status_id',
@@ -95,7 +99,7 @@ class ClientForm extends Model
                 'width'        => 'full',
                 'group'        => 'وضعیت',
                 'is_system'    => true,
-                // اینجا می‌تونی در آینده چیزهایی مثل 'status_keys' هم ست کنی
+                'required_status_keys' => [], // معمولاً خالی می‌مونه
             ],
             'notes' => [
                 'id'           => 'notes',
@@ -107,6 +111,7 @@ class ClientForm extends Model
                 'required'     => false,
                 'quick_create' => true,
                 'is_system'    => true,
+                'required_status_keys' => [],
             ],
         ];
     }
@@ -128,10 +133,11 @@ class ClientForm extends Model
      * نرمال‌سازی اسکیمای فرم قبل از ذخیره
      *  - اطمینان از داشتن id
      *  - تثبیت فیلدهای سیستمی طبق systemFieldDefaults
+     *  - نرمال‌سازی required_status_keys به آرایه
      */
     public static function normalizeSchema(array $schema): array
     {
-        $fields = $schema['fields'] ?? [];
+        $fields         = $schema['fields'] ?? [];
         $systemDefaults = static::systemFieldDefaults();
 
         $normalized = [];
@@ -143,33 +149,47 @@ class ClientForm extends Model
 
             // id اجباری
             if (empty($f['id'])) {
-                $base = ($f['type'] ?? 'fld') . '_' . substr((string) str()->uuid(), 0, 8);
+                $base  = ($f['type'] ?? 'fld') . '_' . substr((string) str()->uuid(), 0, 8);
                 $f['id'] = $base;
             }
 
             $fid = $f['id'];
 
-            // اگر فیلد سیستمی است → روی تعریف سیستمی قفل کن
+            // اگر فیلد سیستمی است → روی تعریف سیستمی قفل کن (ولی overrideهای کاربر رو نگه می‌داریم)
             if (isset($systemDefaults[$fid])) {
                 $canon = $systemDefaults[$fid];
 
-                // همیشه اینها از تعریف سیستمی بیاد
                 $f['id']        = $canon['id'];
                 $f['type']      = $canon['type'];
                 $f['is_system'] = true;
 
-                // اگر label خالی یا null بود، از پیش‌فرض استفاده کن
                 if (!isset($f['label']) || $f['label'] === '') {
                     $f['label'] = $canon['label'];
                 }
 
-                // اگر group / width / placeholder / quick_create / required تعریف نشده بود،
-                // مقدار پیش‌فرض سیستمی رو ست کن؛ اگر کاربر عوض کرده باشه، همون بمونه.
                 foreach (['group','width','placeholder','quick_create','required'] as $k) {
                     if (!array_key_exists($k, $f) && array_key_exists($k, $canon)) {
                         $f[$k] = $canon[$k];
                     }
                 }
+
+                // required_status_keys برای فیلدهای سیستمی هم ساپورت می‌کنیم
+                if (!array_key_exists('required_status_keys', $f) && array_key_exists('required_status_keys', $canon)) {
+                    $f['required_status_keys'] = $canon['required_status_keys'];
+                }
+            }
+
+            // نرمال‌سازی required_status_keys برای همهٔ فیلدها (سیستمی + سفارشی)
+            if (!empty($f['required_status_keys'])) {
+                // اگر string بود (مثلاً "canceled,blacklist") → به آرایه تبدیل کن
+                if (is_string($f['required_status_keys'])) {
+                    $parts = array_map('trim', explode(',', $f['required_status_keys']));
+                    $f['required_status_keys'] = array_values(array_filter($parts));
+                } elseif (is_array($f['required_status_keys'])) {
+                    $f['required_status_keys'] = array_values(array_filter(array_map('trim', $f['required_status_keys'])));
+                }
+            } else {
+                $f['required_status_keys'] = [];
             }
 
             $normalized[] = $f;
@@ -194,12 +214,11 @@ class ClientForm extends Model
                 $schema = [];
             }
 
-            // اگر fields نبود، خالیش کن
             if (empty($schema['fields']) || !is_array($schema['fields'])) {
                 $schema['fields'] = [];
             }
 
-            // نرمال‌سازی روی فیلدها (id + قفل‌کردن فیلدهای سیستمی)
+            // نرمال‌سازی روی فیلدها
             $schema = static::normalizeSchema($schema);
 
             $form->schema = $schema;
@@ -207,7 +226,6 @@ class ClientForm extends Model
 
         static::saved(function (self $form) {
             if ($form->is_active) {
-                // بقیه فرم‌ها از حالت active خارج بشن
                 static::query()
                     ->where('id', '!=', $form->id)
                     ->update(['is_active' => false]);
