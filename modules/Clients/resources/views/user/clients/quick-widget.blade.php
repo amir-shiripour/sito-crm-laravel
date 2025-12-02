@@ -17,7 +17,7 @@
         <span>ایجاد سریع {{ $labelSingular }}</span>
     </button>
 
-    {{-- مودال --}}
+    {{-- مودال ایجاد سریع --}}
     <div x-data="{ open: false }"
          x-on:client-quick-open.window="open = true"
          x-on:client-quick-saved.window="open = false"
@@ -95,12 +95,10 @@
                             @if($quickFields->isEmpty()) disabled @endif
                             class="inline-flex w-full justify-center rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed transition-colors items-center gap-2">
 
-                        {{-- متن دکمه، فقط وقتی در حال لود نیست --}}
                         <span wire:loading.remove wire:target="saveQuick">
                             ذخیره سریع
                         </span>
 
-                        {{-- آیکن لودینگ، فقط وقتی saveQuick در حال اجراست --}}
                         <span wire:loading wire:target="saveQuick" class="flex items-center gap-1">
                            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -117,9 +115,89 @@
                         انصراف
                     </button>
                 </div>
-
-
             </div>
         </div>
+    </div>
+
+    {{-- 🔹 مودال نمایش اطلاعات ورود بعد از ایجاد سریع --}}
+    <div
+        x-data="{
+            open: false,
+            username: '',
+            password: '',
+        }"
+        x-on:client-password-created.window="
+            open = true;
+            username = $event.detail.username;
+            password = $event.detail.password;
+        "
+    >
+        <template x-if="open">
+            <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-gray-200 dark:border-gray-700">
+                    <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            اطلاعات ورود کاربر
+                        </h3>
+                        <button @click="open = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div class="px-5 py-4 space-y-3 text-sm">
+                        <p class="text-gray-600 dark:text-gray-300">
+                            این اطلاعات فقط یک‌بار نمایش داده می‌شود. لطفاً برای ارسال به کاربر کپی کنید.
+                        </p>
+
+                        <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-xl px-3 py-2">
+                            <span class="text-xs text-gray-500 dark:text-gray-400">نام کاربری</span>
+                            <span class="font-mono text-xs text-gray-900 dark:text-gray-100" x-text="username"></span>
+                        </div>
+
+                        <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-xl px-3 py-2">
+                            <span class="text-xs text-gray-500 dark:text-gray-400">رمز عبور</span>
+                            <span class="font-mono text-xs text-rose-600 dark:text-rose-400" x-text="password"></span>
+                        </div>
+
+                        <button
+                            type="button"
+                            @click="
+                                const text = 'user: ' + username + ' | pass: ' + password;
+                                if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                                    navigator.clipboard.writeText(text);
+                                } else {
+                                    const el = document.createElement('textarea');
+                                    el.value = text;
+                                    document.body.appendChild(el);
+                                    el.select();
+                                    document.execCommand('copy');
+                                    document.body.removeChild(el);
+                                }
+                            "
+                            class="w-full mt-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-medium hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600"
+                        >
+                            کپی نام کاربری و رمز
+                        </button>
+                    </div>
+
+                    <div class="px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-between gap-2">
+                        <button
+                            type="button"
+                            @click="open = false"
+                            class="px-4 py-2 rounded-xl text-xs font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600"
+                        >
+                            متوجه شدم
+                        </button>
+                        <button
+                            type="button"
+                            @click="window.location='{{ route('user.clients.index') }}'"
+                            class="px-4 py-2 rounded-xl text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+                        >
+                            رفتن به لیست مشتریان
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
     </div>
 </div>

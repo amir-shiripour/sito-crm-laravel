@@ -1,19 +1,26 @@
 <?php
 namespace Modules\Clients\Entities;
 
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Client extends Model
+class Client extends Authenticatable
 {
-    use SoftDeletes;
+    use SoftDeletes,HasFactory, Notifiable;
 
     protected $table = 'clients';
 
     protected $fillable = [
-        'username', 'full_name', 'email', 'phone', 'national_code', 'notes', 'status_id', 'meta', 'created_by',
+        'username', 'full_name', 'email', 'phone', 'national_code', 'notes', 'status_id', 'meta', 'created_by', 'password',
     ];
     protected $casts = ['meta' => 'array'];
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
 
     // ریلیشن‌ها

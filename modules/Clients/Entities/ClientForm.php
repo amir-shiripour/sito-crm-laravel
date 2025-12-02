@@ -29,6 +29,7 @@ class ClientForm extends Model
         'national_code' => ['label' => 'کد ملی',             'column' => 'national_code'],
         'status_id'     => ['label' => 'وضعیت',              'column' => 'status_id'],
         'notes'         => ['label' => 'یادداشت مدیریتی',    'column' => 'notes'],
+        'password'      => ['label' => 'رمز عبور',           'column' => 'password'],
     ];
 
     public static function default(): ?self
@@ -100,6 +101,18 @@ class ClientForm extends Model
                 'group'        => 'وضعیت',
                 'is_system'    => true,
                 'required_status_keys' => [], // معمولاً خالی می‌مونه
+            ],
+            'password' => [
+                'id'           => 'password',
+                'type'         => 'password',
+                'label'        => 'رمز عبور ورود به پنل',
+                'placeholder'  => 'حداقل ۸ کاراکتر امن',
+                'group'        => 'اطلاعات ورود',
+                'width'        => '1/2',
+                'required'     => true,      // ← الزامی (در فرم‌ساز هم قابل تغییر است)
+                'quick_create' => false,     // در ایجاد سریع نمی‌خواهیم
+                'is_system'    => true,
+                'required_status_keys' => [], // اگر بعداً خواستی شرطی براساس وضعیت بزاری
             ],
             'notes' => [
                 'id'           => 'notes',

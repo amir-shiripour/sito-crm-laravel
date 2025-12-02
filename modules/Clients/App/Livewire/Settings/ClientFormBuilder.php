@@ -24,7 +24,7 @@ class ClientFormBuilder extends Component
     public bool $is_active = true;
 
     public array $schema = ['fields' => []];
-    public array $systemFieldIds = ['full_name','phone','email','national_code','notes','status_id'];
+    public array $systemFieldIds = ['full_name','phone','email','national_code','notes','status_id','password'];
 
     // لیست نقش‌ها برای select-user-by-role
     public array $roles = [];
@@ -213,7 +213,12 @@ class ClientFormBuilder extends Component
             }
 
             if ($isReserved) {
-                $f['is_system'] = true;
+                $sys = ClientForm::systemFieldDefaults()[$fid] ?? null;
+                if ($sys) {
+                    // نوع واقعی از systemFieldDefaults
+                    $f['type']      = $sys['type'];
+                    $f['is_system'] = true;
+                }
             } else {
                 $f['is_system'] = false;
             }

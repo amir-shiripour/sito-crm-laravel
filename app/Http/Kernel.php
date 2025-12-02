@@ -78,5 +78,9 @@ class Kernel extends HttpKernel
         'prevent.if.installed' => \App\Http\Middleware\RedirectIfInstalled::class,
         'redirect.if.not.installed' => \App\Http\Middleware\RedirectIfNotInstalled::class,
     ];
+
+    protected $routeMiddleware = [
+        'auth.client' => \Modules\Clients\App\Http\Middleware\AuthenticateClient::class,
+    ];
 }
 

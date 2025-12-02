@@ -8,12 +8,12 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 use Modules\Clients\Entities\ClientStatus;
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientForm as ClientFormSchema;
 use Modules\Clients\Entities\ClientSetting;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 #[Layout('layouts.user')]
 class ClientForm extends Component
@@ -29,6 +29,11 @@ class ClientForm extends Component
     public ?string $national_code = null;
     public ?string $notes = null;
 
+    // 🔹 فیلدهای مربوط به ورود کلاینت
+    public ?string $password = null;
+    public ?string $password_confirmation = null; // برای auto-generate فقط
+    public bool $auto_generate_password = false;
+
     public array $meta = [];
     public $status_id = null;
 
@@ -41,6 +46,18 @@ class ClientForm extends Component
 
     public bool $asQuickWidget = false;
     public bool $isQuickMode   = false;
+
+    /**
+     * دکمه "ایجاد خودکار پسورد" در UI
+     * - روی فرم کامل و کوئیک استفاده می‌شود
+     */
+    public function generatePassword(): void
+    {
+        $plain = Str::random(12);
+        $this->password = $plain;
+        $this->password_confirmation = $plain;
+        $this->auto_generate_password = true;
+    }
 
     public function mount(?Client $client = null, ?string $formKey = null)
     {
@@ -86,6 +103,11 @@ class ClientForm extends Component
             $this->notes         = $client->notes;
             $this->meta          = $client->meta ?? [];
             $this->status_id     = $client->status_id;
+
+            // برای ویرایش، پسورد را خالی می‌گذاریم (اگر پر شود یعنی تغییر پسورد)
+            $this->password = null;
+            $this->password_confirmation = null;
+            $this->auto_generate_password = false;
         } else {
             $this->username      = null;
             $this->full_name     = '';
@@ -95,6 +117,9 @@ class ClientForm extends Component
             $this->notes         = null;
             $this->meta          = [];
             $this->status_id     = null;
+            $this->password      = null;
+            $this->password_confirmation = null;
+            $this->auto_generate_password = false;
         }
     }
 
@@ -140,17 +165,11 @@ class ClientForm extends Component
 
     /**
      * ساخت قوانین ولیدیشن برای فیلدهای سیستمی
-     * با توجه به فرم‌ساز + وضعیت هدف (status_key)
-     *
-     * - اگر فیلد required=true باشد → همیشه required است.
-     * - اگر required_status_keys شامل status_key باشد → برای آن وضعیت required می‌شود.
-     * - در حالت quick، فقط فیلدهای quick_create=true بررسی می‌شوند
-     *   مگر اینکه required_status_keys باعث الزام شوند.
      */
     private function buildSystemValidationRules(bool $forQuick = false, ?string $targetStatusKey = null): array
     {
-        $rules        = [];
-        $schemaFields = collect($this->schema['fields'] ?? []);
+        $rules         = [];
+        $schemaFields  = collect($this->schema['fields'] ?? []);
         $defaultFields = ClientFormSchema::systemFieldDefaults();
 
         // رول‌های پایه برای هر فیلد سیستمی
@@ -160,12 +179,13 @@ class ClientForm extends Component
             'email'         => ['email'],
             'national_code' => ['string','max:20'],
             'notes'         => ['string'],
-            // status_id جدا
+            // status_id و password جدا
         ];
 
         foreach (ClientFormSchema::SYSTEM_FIELDS as $sid => $info) {
-            if ($sid === 'status_id') {
-                continue; // پایین‌تر
+            // status_id و password را جداگانه هندل می‌کنیم
+            if (in_array($sid, ['status_id', 'password'], true)) {
+                continue;
             }
 
             $def = $schemaFields->firstWhere('id', $sid) ?? ($defaultFields[$sid] ?? null);
@@ -198,7 +218,6 @@ class ClientForm extends Component
         if ($statusField) {
             $requiredBase   = !empty($statusField['required']);
             $quickField     = !empty($statusField['quick_create']);
-            // معمولاً status_id خودش required_status_keys ندارد، ولی اگر خواستی، ساپورت می‌شود
             $requiredStatus = in_array(
                 $targetStatusKey,
                 $statusField['required_status_keys'] ?? [],
@@ -265,7 +284,16 @@ class ClientForm extends Component
                 }
             }
 
-            // ولیدیشن روی quick.*
+            // 🔹 در ایجاد سریع: پسورد optional است؛ اگر وارد شد باید قوی باشد
+            $rules['password'] = [
+                'nullable',
+                'string',
+                'min:8',
+                // حداقل یک حرف و یک عدد (برای فارسی هم ok)
+                'regex:/^(?=.*[A-Za-zآ-ی])(?=.*\d).+$/u',
+            ];
+
+            // ولیدیشن روی quick.* + password
             $this->validate($rules);
 
             // بعد از ولیدیشن، مقادیر سیستمی را از quick به پراپرتی‌های اصلی منتقل کن
@@ -313,21 +341,36 @@ class ClientForm extends Component
     // 3) ذخیره کامل (ایجاد/ویرایش)
     public function save()
     {
-        // وضعیت هدف در این ذخیره (در فرم کامل)
         $targetStatusId  = $this->status_id ?? $this->client?->status_id;
         $targetStatusKey = $this->resolveStatusKey($targetStatusId);
 
-        // 1) قواعد ولیدیشن فیلدهای سیستمی بر اساس فرم‌ساز + وضعیت
         $rules = $this->buildSystemValidationRules(false, $targetStatusKey);
 
-        // 2) قواعد فیلدهای داینامیک (custom) در meta
+        $schemaFields   = collect($this->schema['fields'] ?? []);
+        $passwordField  = $schemaFields->firstWhere('id', 'password');
+        $requiredBase   = !empty($passwordField['required'] ?? false);
+
+        $isCreating     = !($this->client && $this->client->exists);
+
+        $mustBeRequired = $isCreating && $requiredBase && !$this->auto_generate_password;
+
+        $passwordRulePrefix = $mustBeRequired ? ['required'] : ['nullable'];
+
+        $rules['password'] = array_merge(
+            $passwordRulePrefix,
+            [
+                'string',
+                'min:8',
+                'regex:/^(?=.*[A-Za-zآ-ی])(?=.*\d).+$/u',
+            ]
+        );
+
         foreach ($this->schema['fields'] as $f) {
             $fid = $f['id'] ?? null;
             if (!$fid) {
                 continue;
             }
 
-            // سیستمی‌ها (full_name, phone, ...) قبلاً در buildSystemValidationRules آمده‌اند
             if (array_key_exists($fid, ClientFormSchema::SYSTEM_FIELDS)) {
                 continue;
             }
@@ -348,7 +391,6 @@ class ClientForm extends Component
                 }
                 $rules[$key] = $ruleStr;
             } elseif (!empty($f['required']) || $requiredByStatus) {
-                // در حالت quick اگر این فیلد quick_create=false است و requiredByStatus=false → اسکیپ
                 if ($this->isQuickMode && empty($f['quick_create']) && !$requiredByStatus) {
                     continue;
                 }
@@ -356,17 +398,14 @@ class ClientForm extends Component
             }
         }
 
-        // 3) ولیدیشن نهایی
         $this->validate($rules);
 
-        // 4) آپلود فایل‌ها در meta
         foreach (($this->meta ?? []) as $k => $v) {
             if ($v instanceof TemporaryUploadedFile) {
                 $this->meta[$k] = $v->store('clients/uploads', 'public');
             }
         }
 
-        // 5) اطمینان از داشتن username
         if ($this->client && $this->client->exists) {
             $this->username = $this->client->username ?: $this->generateUsernameFromSettings();
         } else {
@@ -396,6 +435,22 @@ class ClientForm extends Component
             }
         }
 
+        $plainPassword = null;
+
+        if ($this->client && $this->client->exists) {
+            if (!empty($this->password)) {
+                $plainPassword = $this->password;
+            }
+        } else {
+            if (!empty($this->password)) {
+                $plainPassword = $this->password;
+            } elseif ($this->auto_generate_password) {
+                $plainPassword = Str::random(12);
+                $this->password = $plainPassword;
+                $this->password_confirmation = $plainPassword;
+            }
+        }
+
         $payload = [
             'username'      => $this->username,
             'full_name'     => $this->full_name,
@@ -408,8 +463,14 @@ class ClientForm extends Component
             'created_by'    => Auth::id(),
         ];
 
+        if (!empty($plainPassword)) {
+            $payload['password'] = bcrypt($plainPassword);
+        }
+
         DB::beginTransaction();
         try {
+            $isNew = false;
+
             if ($this->client && $this->client->exists) {
                 $this->client->fill($payload);
                 $ok = $this->client->save();
@@ -417,10 +478,11 @@ class ClientForm extends Component
                 $client = $this->client;
             } else {
                 $client = Client::create($payload);
+                $this->client = $client;
+                $isNew = true;
                 Log::info('[Clients] create result', ['id' => $client?->id]);
             }
 
-            // سنک نقش‌محور
             foreach ($this->schema['fields'] as $f) {
                 if (($f['type'] ?? null) === 'select-user-by-role' && !empty($f['role'])) {
                     $val = data_get($this->meta, $f['id']);
@@ -441,13 +503,28 @@ class ClientForm extends Component
             throw $e;
         }
 
-        $this->dispatch('notify', type: 'success', text: $this->client ? 'به‌روزرسانی شد.' : 'ایجاد شد.');
+        $this->dispatch('notify', type: 'success', text: $isNew ? 'ایجاد شد.' : 'به‌روزرسانی شد.');
 
+        if (!empty($plainPassword)) {
+            $this->dispatch(
+                'client-password-created',
+                username: $this->username,
+                password: $plainPassword
+            );
+        }
+
+        // ✅ در حالت ایجاد سریع: فقط مودال quick بسته شود، بدون ریدایرکت
         if ($this->isQuickMode) {
             $this->dispatch('client-quick-saved');
             return;
         }
 
+        // ✅ در ایجاد معمولی + پسورد: در همین صفحه بمان تا مودال پسورد نمایش داده شود
+        if (!empty($plainPassword)) {
+            return;
+        }
+
+        // در بقیه حالت‌ها: ریدایرکت به لیست
         return redirect()->route('user.clients.index');
     }
 

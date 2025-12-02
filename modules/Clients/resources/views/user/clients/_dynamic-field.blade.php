@@ -10,6 +10,7 @@
         'email'         => 'email',
         'national_code' => 'national_code',
         'notes'         => 'notes',
+        'password'      => 'password',
         // status_id را عمداً اینجا نمی‌گذاریم؛ خودش جدا کنترل می‌شود
     ];
 
@@ -51,6 +52,51 @@
         placeholder="{{ $placeholder }}"
         class="{{ $baseInputClass }}"
     />
+
+    {{-- password --}}
+@elseif ($type === 'password')
+    <div class="flex gap-2 items-center" x-data="{ show: false }">
+        <div class="relative flex-1">
+            <input
+                x-bind:type="show ? 'text' : 'password'"
+                wire:model.defer="{{ $model }}"
+                placeholder="{{ $placeholder ?: 'رمز عبور امن وارد کنید...' }}"
+                class="{{ $baseInputClass }} pr-10 font-mono"
+            />
+            {{-- آیکون چشم --}}
+            <button
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                @click="show = !show"
+                x-tooltip.raw="نمایش / مخفی کردن رمز"
+            >
+                <svg x-show="!show" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
+                             -1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+                <svg x-show="show" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+                             .51-1.626 1.48-3.059 2.75-4.155M9.88 9.88a3 3 0 014.24 4.24
+                             M6.1 6.1L4 4m0 0l16 16m-2.1-2.1L20 20"/>
+                </svg>
+            </button>
+        </div>
+
+        <button
+            type="button"
+            wire:click="generatePassword"
+            class="inline-flex items-center px-3 py-2 rounded-xl text-xs font-medium border border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-300 dark:border-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-800/70 transition-colors"
+        >
+            ساخت خودکار
+        </button>
+    </div>
+    <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+        حداقل ۸ کاراکتر و شامل حروف و اعداد باشد. در صورت کلیک روی «ساخت خودکار»، رمز امن تولید و در همین فیلد پر می‌شود.
+    </p>
 
     {{-- checkbox --}}
 @elseif ($type === 'checkbox')
@@ -126,25 +172,20 @@
         // لیست وضعیت‌های مجاز برای این فرم / وضعیت فعلی
         $statusList = collect($availableStatuses ?? []);
 
-        // اگر در فرم‌ساز برای این فیلد status_keys تعریف شده باشد، روی آن‌ها فیلتر کن
         if (!empty($field['status_keys'] ?? [])) {
             $statusList = $statusList->whereIn('key', (array) $field['status_keys']);
         }
 
-        // وضعیت فعلی کلاینت
         $currentStatusId = $status_id ?? optional($client ?? null)->status_id;
         $currentStatus   = null;
 
         if ($currentStatusId) {
-            // سعی می‌کنیم وضعیت فعلی را از لیست موجود پیدا کنیم
             $currentStatus = $statusList->firstWhere('id', $currentStatusId);
 
-            // اگر در لیست نبود، و مدل کلاینت + رابطه‌اش وجود دارد، از آن استفاده می‌کنیم
             if (!$currentStatus && isset($client) && $client && $client->relationLoaded('status') ? $client->status : $client->status ?? null) {
                 $currentStatus = $client->status;
             }
 
-            // اگر هنوز هم نبود، یک placeholder ساده می‌سازیم
             if (!$currentStatus) {
                 $currentStatus = (object)[
                     'id'    => $currentStatusId,
@@ -152,7 +193,6 @@
                 ];
             }
 
-            // اگر وضعیت فعلی داخل کالکشن نیست، آن را به ابتدای لیست اضافه می‌کنیم
             if ($statusList->where('id', $currentStatus->id)->isEmpty()) {
                 $statusList->prepend($currentStatus);
             }

@@ -176,7 +176,7 @@
             </div>
 
             @php
-                $systemFieldIds = ['full_name','phone','email','national_code','notes', 'status_id'];
+                $systemFieldIds = ['full_name','phone','email','national_code','notes','status_id','password'];
 
                 $systemFields = [];
                 $customFields = [];

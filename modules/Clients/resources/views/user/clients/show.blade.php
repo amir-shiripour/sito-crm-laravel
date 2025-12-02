@@ -1,5 +1,4 @@
 @extends('layouts.user')
-@extends('layouts.user')
 
 @php
     // عنوان صفحه
@@ -24,8 +23,6 @@
 
 @section('content')
     <div class="mx-auto max-w-full space-y-6">
-{{--        <div class="mx-auto max-w-4xl space-y-6">--}}
-
         {{-- کارت اصلی --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
 
@@ -55,15 +52,15 @@
 
                                 {{-- بج وضعیت --}}
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium {{ $statusBadgeClasses }}">
-                        <span class="w-1.5 h-1.5 rounded-full bg-current/40"></span>
-                        {{ $statusLabel }}
-                    </span>
+                                    <span class="w-1.5 h-1.5 rounded-full bg-current/40"></span>
+                                    {{ $statusLabel }}
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    {{-- دکمه‌ها همون قبلی --}}
-                    <div class="flex items-center gap-2">
+                    {{-- دکمه‌ها --}}
+                    <div class="flex flex-wrap items-center gap-2">
                         <a href="{{ route('user.clients.index') }}"
                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -71,6 +68,7 @@
                             </svg>
                             <span>بازگشت</span>
                         </a>
+
                         @can('clients.edit')
                             <a href="{{ route('user.clients.edit', $client) }}"
                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
@@ -80,12 +78,22 @@
                                 <span>ویرایش</span>
                             </a>
                         @endcan
+
+                        {{-- 🔹 دکمه ورود مستقیم به پروفایل مشتری در تب جدید --}}
+                        @can('clients.edit')
+                                <a href="{{ route('user.clients.portal-login', $client) }}"
+                                   target="_blank"
+                                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-500/30 transition-all">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    <span>ورود به پنل {{config('clients.labels.singular')}}</span>
+                                </a>
+                        @endcan
                     </div>
                 </div>
             </div>
-
-
-
 
             <div class="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -103,7 +111,10 @@
                                 <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">ایمیل</div>
                                 <div class="font-medium text-gray-900 dark:text-gray-200 dir-ltr break-all flex items-center gap-2">
                                     @if($client->email)
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
                                         {{ $client->email }}
                                     @else
                                         <span class="text-gray-400 italic">—</span>
@@ -116,7 +127,10 @@
                                 <div class="font-medium text-gray-900 dark:text-gray-200 dir-ltr text-right flex items-center justify-end gap-2">
                                     @if($client->phone)
                                         {{ $client->phone }}
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
                                     @else
                                         <span class="text-gray-400 italic">—</span>
                                     @endif
@@ -186,7 +200,7 @@
                 <div class="flex gap-4">
                     <span>شناسه سیستمی: <span class="font-mono">{{ $client->id }}</span></span>
                     @if($client->created_at)
-{{--                        <span>تاریخ ثبت: <span class="dir-ltr">{{ $client->created_at->toJalali()->format('Y/m/d H:i') }}</span></span>--}}
+                        {{-- <span>تاریخ ثبت: <span class="dir-ltr">{{ $client->created_at->toJalali()->format('Y/m/d H:i') }}</span></span> --}}
                     @endif
                 </div>
                 @if(optional($client->creator)->name)
