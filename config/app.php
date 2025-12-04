@@ -172,6 +172,7 @@ return [
         App\Providers\JetstreamServiceProvider::class,
         App\Providers\ThemeServiceProvider::class,
         Spatie\Permission\PermissionServiceProvider::class,
+        App\Providers\WidgetServiceProvider::class,
     ])->toArray(),
 
     /*

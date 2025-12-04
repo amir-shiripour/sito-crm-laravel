@@ -144,4 +144,38 @@ class ClientController extends Controller
 
         return view('clients::user.clients.profile', compact('client'));
     }
+
+    /**
+     * ایجاد سریع کلاینت (برای ویجت / پاپ‌آپ quick create)
+     *
+     * اگر درخواست به‌صورت AJAX/JSON باشد، پاسخ JSON برمی‌گرداند،
+     * در غیر این صورت مانند store رفتار می‌کند و redirect می‌دهد.
+     */
+    public function quickStore(Request $request)
+    {
+        $data = $request->validate([
+            'full_name' => 'required|string|max:255',
+            'email'     => 'nullable|email|unique:clients,email',
+            'phone'     => 'nullable|string',
+            'notes'     => 'nullable|string',
+        ]);
+
+        $data['created_by'] = auth()->id();
+
+        $client = Client::create($data);
+
+        // اگر ویجت/فرانت انتظار JSON دارد (مثلاً با fetch/axios ارسال شده)
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'مشتری با موفقیت ایجاد شد.',
+                'client'  => $client->only(['id', 'full_name', 'email', 'phone']),
+            ], 201);
+        }
+
+        // fallback برای ارسال معمولی فرم
+        return redirect()
+            ->route('user.clients.index')
+            ->with('success', 'Client created.');
+    }
+
 }

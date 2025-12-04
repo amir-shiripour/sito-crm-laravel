@@ -5,20 +5,20 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreRoleRequest;
 use App\Http\Requests\Admin\UpdateRoleRequest;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use App\Support\PermissionCatalog;
+use App\Support\WidgetRegistry;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
+use App\Models\WidgetSetting;
 
 class RoleController extends Controller
 {
     public function index()
     {
-        // مرتب‌سازی بر اساس display_name اگر ستون وجود دارد، وگرنه بر اساس name
         $roles = Role::query()
             ->when(
                 Schema::hasColumn('roles', 'display_name'),
@@ -27,7 +27,6 @@ class RoleController extends Controller
             )
             ->get();
 
-        // شمارش کاربران هر نقش (ایمن و قابل‌حمل)
         $roleUserCounts = [];
         foreach ($roles as $role) {
             $roleUserCounts[$role->name] = DB::table('model_has_roles')
@@ -39,18 +38,18 @@ class RoleController extends Controller
 
     public function create()
     {
-        $permissions = Permission::orderBy('name')->pluck('name')->toArray();
+        $permissions   = Permission::orderBy('name')->pluck('name')->toArray();
         $permissions_g = Permission::orderBy('name')->get();
         $permissionGroups = PermissionCatalog::groupAndTranslate($permissions_g);
-        return view('admin.roles.create', compact('permissions','permissionGroups'));
+
+        // 🔹 همه ویجت‌های ثبت‌شده از Registry
+        $widgets = WidgetRegistry::all();
+
+        return view('admin.roles.create', compact('permissions','permissionGroups','widgets'));
     }
 
-    /**
-     * ساخت اسلاگ یکتا از روی نام فارسی/ورودی کاربر
-     */
     private function makeUniqueSlug(string $base, ?int $ignoreId = null): string
     {
-        // تبدیل به لاتین
         $slug = Str::slug($base);
         if ($slug === '') {
             $slug = Str::slug(Str::ascii($base));
@@ -78,19 +77,28 @@ class RoleController extends Controller
     {
         $data = $request->validated();
 
-        // اگر کاربر آیدی لاتین (name) را خالی گذاشته بود، از display_name بساز
         $slug = $data['name'] ?? null;
         if (!$slug) {
             $slug = $this->makeUniqueSlug($data['display_name'] ?? '');
         }
 
         $role = Role::create([
-            'name'         => $slug,                     // آیدی لاتین
-            'display_name' => $data['display_name'] ?? null, // نام فارسی
+            'name'         => $slug,
+            'display_name' => $data['display_name'] ?? null,
             'guard_name'   => 'web',
         ]);
 
         $role->syncPermissions($data['permissions'] ?? []);
+
+        // 🔹 ذخیره تنظیمات ویجت‌ها
+        $widgetsInput = $request->input('widgets', []);
+        foreach (array_keys($widgetsInput) as $widgetKey) {
+            WidgetSetting::create([
+                'role_id'    => $role->id,
+                'widget_key' => $widgetKey,
+                'is_active'  => true,
+            ]);
+        }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
@@ -100,31 +108,49 @@ class RoleController extends Controller
     public function edit(Role $role)
     {
         if ($role->name === 'super-admin') {
-            // نقش سیستمیک را قابل ویرایش کامل نکنیم (به‌خصوص حذف)
-            // (همان رفتار قبلی، فقط یادآوری)
+            // همون تذکر قبلی
         }
 
-        $permissions = Permission::orderBy('name')->pluck('name')->toArray();
+        $permissions   = Permission::orderBy('name')->pluck('name')->toArray();
         $permissions_g = Permission::orderBy('name')->get();
         $permissionGroups = PermissionCatalog::groupAndTranslate($permissions_g);
         $selected = $role->permissions()->pluck('name')->toArray();
 
-        return view('admin.roles.edit', compact('role','permissions','permissionGroups','selected'));
+        // 🔹 همه ویجت‌های موجود
+        $widgets = WidgetRegistry::all();
+
+        // 🔹 ویجت‌های فعال برای این نقش
+        $roleWidgets = WidgetSetting::where('role_id', $role->id)
+            ->where('is_active', true)
+            ->pluck('widget_key')
+            ->toArray();
+
+        return view('admin.roles.edit', compact(
+            'role',
+            'permissions',
+            'permissionGroups',
+            'selected',
+            'widgets',
+            'roleWidgets'
+        ));
     }
 
     public function update(UpdateRoleRequest $request, Role $role)
     {
         $data = $request->validated();
 
-        // اگر name ارائه نشده، از display_name اسلاگ جدید بساز (با درنظرگرفتن یکتا و نادیده‌گرفتن نقش فعلی)
         $incomingSlug = $data['name'] ?? null;
         if (!$incomingSlug) {
-            $incomingSlug = $this->makeUniqueSlug($data['display_name'] ?? $role->display_name ?? $role->name, $role->id);
+            $incomingSlug = $this->makeUniqueSlug(
+                $data['display_name'] ?? $role->display_name ?? $role->name,
+                $role->id
+            );
         }
 
-        // محدودیت super-admin: تغییر نام لاتین آن ممنوع
         if ($role->name === 'super-admin' && $incomingSlug !== 'super-admin') {
-            return back()->withErrors(['name' => 'نقش super-admin قابل تغییر نام نیست.'])->withInput();
+            return back()
+                ->withErrors(['name' => 'نقش super-admin قابل تغییر نام نیست.'])
+                ->withInput();
         }
 
         $role->update([
@@ -134,6 +160,19 @@ class RoleController extends Controller
 
         if (array_key_exists('permissions', $data)) {
             $role->syncPermissions($data['permissions'] ?? []);
+        }
+
+        // 🔹 بروزرسانی ویجت‌ها
+        $widgetsInput = $request->input('widgets', []);
+
+        WidgetSetting::where('role_id', $role->id)->delete();
+
+        foreach (array_keys($widgetsInput) as $widgetKey) {
+            WidgetSetting::create([
+                'role_id'    => $role->id,
+                'widget_key' => $widgetKey,
+                'is_active'  => true,
+            ]);
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

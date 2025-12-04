@@ -32,3 +32,10 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
             ->name('calls.destroy')
             ->middleware('permission:client-calls.delete');
     });
+Route::prefix('user')->name('user.')->middleware('auth')->group(function () {
+    // تماس سریع
+    Route::post('client-calls/quick-store', [ClientCallController::class, 'quickStore'])->name('client-calls.quick-store');
+
+    // جستجو مشتری‌ها
+    Route::get('clients/search', [ClientCallController::class, 'searchClients'])->name('clients.search');
+});

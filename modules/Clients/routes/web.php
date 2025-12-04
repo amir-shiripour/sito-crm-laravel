@@ -60,7 +60,12 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
         Route::get('/clients/profile', [UserClientController::class, 'profile'])
             ->name('clients.profile')
             ->middleware('permission:clients.view');
+
     });
+
+Route::post('user/clients/quick-store', [UserClientController::class, 'quickStore'])
+    ->name('user.clients.quick-store')
+    ->middleware('auth');
 
 Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class, 'permission:clients.manage'])
     ->prefix('user/settings/clients')
