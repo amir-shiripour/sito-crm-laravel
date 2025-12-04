@@ -22,6 +22,7 @@ class ClientCallsServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/migrations'));
+        Blade::component('clientcalls::components.client-call-manager', 'client-call-manager');
     }
 
     /**

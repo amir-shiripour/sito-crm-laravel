@@ -22,6 +22,7 @@
             // حالت محافظه‌کارانه: اگر فقط clients.view (بدون .own/.assigned/.all) دارد
             $visibilityLabel = 'شما فقط ' . $labelPlural . 'ی را می‌بینید که خودتان ایجاد کرده‌اید.';
         }
+        $clientCallsModule = \App\Models\Module::where('slug', 'clientcalls')->first();
 @endphp
 
 @section('content')
@@ -70,7 +71,11 @@
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">#</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">اطلاعات کاربری</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تماس</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تماس‌ها</th>
+                        @if($clientCallsModule && $clientCallsModule->installed && $clientCallsModule->active)
+                            @can('client-calls.create')
+                                <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تماس‌ها</th>
+                            @endcan
+                        @endif
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ایجاد کننده</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-left pl-6">عملیات</th>
                     </tr>
@@ -116,9 +121,14 @@
                             </td>
 
                             {{-- Calls (popup) --}}
-                            <td class="px-4 py-3 align-top text-xs text-gray-600 dark:text-gray-300">
-                                <x-client-call-manager :client="$client" />
-                            </td>
+                            @if($clientCallsModule && $clientCallsModule->installed && $clientCallsModule->active)
+                                @can('client-calls.create')
+                                    <td class="px-4 py-3 align-top text-xs text-gray-600 dark:text-gray-300">
+                                        <x-client-call-manager :client="$client"/>
+                                    </td>
+                                @endcan
+                            @endif
+
 
 
                             {{-- Creator --}}
