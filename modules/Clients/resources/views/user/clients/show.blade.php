@@ -91,6 +91,15 @@
                                     <span>ورود به پنل {{config('clients.labels.singular')}}</span>
                                 </a>
                         @endcan
+
+                        {{-- در view پروفایل کلاینت، یک دکمه کنار هدر --}}
+                        @can('client-calls.view')
+                            <a href="{{ route('user.clients.calls.index', $client) }}"
+                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-sky-50 text-sky-700 text-xs font-medium border border-sky-100 dark:bg-sky-900/20 dark:text-sky-200 dark:border-sky-800">
+                                📞 تاریخچه تماس‌ها
+                            </a>
+                        @endcan
+
                     </div>
                 </div>
             </div>

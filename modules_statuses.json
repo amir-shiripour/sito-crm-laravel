@@ -1,4 +1,5 @@
 {
     "UserManagement": true,
-    "Clients": true
+    "Clients": true,
+    "ClientCalls": true
 }

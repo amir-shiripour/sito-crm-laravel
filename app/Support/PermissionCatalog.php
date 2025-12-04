@@ -33,7 +33,11 @@ class PermissionCatalog
             ],
             'clients' => [
                 'title'    => 'مشتریان',
-                'matchers' => ['clients'],
+                'matchers' => ['clients.'],
+            ],
+            'client_calls' => [
+                'title'    => 'تماس‌های مشتریان',
+                'matchers' => ['client-calls.'],
             ],
             'other' => [
                 'title'    => 'سایر',
@@ -73,13 +77,25 @@ class PermissionCatalog
             'custom-fields.update'     => 'ویرایش فیلد',
             'custom-fields.delete'     => 'حذف فیلد',
 
-
             // Clients
-            'clients.manage'     => 'مدیریت مشتریان',
-            'clients.view'   => 'مشاهده مشتریان',
-            'clients.create'       => 'ایجاد مشتریان',
-            'clients.edit'     => 'ویرایش مشتریان',
-            'clients.delete'     => 'حذف مشتریان',
+            'clients.manage'      => 'مدیریت مشتریان',
+            'clients.view'        => 'مشاهده مشتریان',
+            'clients.view.all'    => 'مشاهده همه مشتریان',
+            'clients.view.assigned' => 'مشاهده مشتریان مرتبط',
+            'clients.view.own'    => 'مشاهده مشتریان ایجاد شده توسط خود',
+            'clients.create'      => 'ایجاد مشتریان',
+            'clients.edit'        => 'ویرایش مشتریان',
+            'clients.delete'      => 'حذف مشتریان',
+
+            // Client Calls
+            'client-calls.manage'       => 'مدیریت تماس‌های مشتریان',
+            'client-calls.view'         => 'مشاهده تماس‌های مشتریان',
+            'client-calls.view.all'     => 'مشاهده همه تماس‌های مشتریان',
+            'client-calls.view.assigned'=> 'مشاهده تماس‌های مشتریان مرتبط',
+            'client-calls.view.own'     => 'مشاهده تماس‌های ثبت‌شده توسط خود',
+            'client-calls.create'       => 'ثبت تماس جدید',
+            'client-calls.edit'         => 'ویرایش تماس‌ها',
+            'client-calls.delete'       => 'حذف تماس‌ها',
         ];
 
         // اگر ترجمه صریح نداریم، یک تبدیل خوانا بساز:

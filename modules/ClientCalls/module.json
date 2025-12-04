@@ -1,0 +1,11 @@
+{
+    "name": "ClientCalls",
+    "alias": "clientcalls",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\ClientCalls\\App\\Providers\\ClientCallsServiceProvider"
+    ],
+    "files": []
+}

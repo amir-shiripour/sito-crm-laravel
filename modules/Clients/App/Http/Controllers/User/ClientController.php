@@ -12,19 +12,35 @@ class ClientController extends Controller
 {
     public function __construct()
     {
-        // می‌توانید middlewareهای permission را همینجا قرار دهید یا در routes استفاده کنید
+        // دسترسی‌ها بر اساس پرمیژن
         $this->middleware('permission:clients.view')->only(['index','show','profile']);
         $this->middleware('permission:clients.create')->only(['create','store']);
         $this->middleware('permission:clients.edit')->only(['edit','update']);
         $this->middleware('permission:clients.delete')->only(['destroy']);
     }
 
+    /**
+     * لیست کلاینت‌ها، فیلتر شده بر اساس قوانین visibility
+     */
     public function index()
     {
-        // محدود کردن نمایش بر اساس role یا owner اگر لازم است
-        $clients = Client::where('created_by', auth()->id())
+        $user = auth()->user();
+        /*$clients = Client::query()
+            ->with(['creator', 'status'])
+            ->visibleForUser($user)
+            ->latest()
+            ->paginate(12);*/
+
+        $clients = Client::visibleForUser($user)
+            ->with([
+                'creator',
+                'status',
+                'calls.user',
+            ])
+            ->visibleForUser($user)
             ->latest()
             ->paginate(12);
+
         return view('clients::user.clients.index', compact('clients'));
     }
 
@@ -33,56 +49,99 @@ class ClientController extends Controller
         return view('clients::user.clients.create');
     }
 
+    /**
+     * این متد عملاً فعلاً استفاده نمی‌شود (ما از Livewire فرم پویا داریم)
+     * ولی برای سازگاری نگهش می‌داریم.
+     */
     public function store(StoreClientRequest $request)
     {
         $data = $request->validate([
-            'name'=>'required|string|max:255',
-            'email'=>'nullable|email|unique:clients,email',
-            'phone'=>'nullable|string',
-            'notes'=>'nullable|string'
+            'full_name' => 'required|string|max:255',
+            'email'     => 'nullable|email|unique:clients,email',
+            'phone'     => 'nullable|string',
+            'notes'     => 'nullable|string',
         ]);
+
         $data['created_by'] = auth()->id();
+
         Client::create($data);
-        return redirect()->route('user.clients.index')->with('success', 'Client created.');
+
+        return redirect()
+            ->route('user.clients.index')
+            ->with('success', 'Client created.');
+    }
+
+    /**
+     * هلپر داخلی برای چک کردن این‌که آیا یوزر اجازه دیدن این کلاینت را دارد یا نه
+     */
+    protected function ensureVisible(Client $client): void
+    {
+        $user = auth()->user();
+
+        if (! $client->isVisibleFor($user)) {
+            abort(403, 'شما به این پرونده دسترسی ندارید.');
+        }
     }
 
     public function show(Client $client)
     {
+        $this->ensureVisible($client);
+
         return view('clients::user.clients.show', compact('client'));
     }
 
     public function edit(Client $client)
     {
+        $this->ensureVisible($client);
+
         return view('clients::user.clients.edit', compact('client'));
     }
 
     public function update(UpdateClientRequest $request, Client $client)
     {
-        $data = $request->validate([
-            'name'=>'required|string|max:255',
-            'email'=>"nullable|email|unique:clients,email,{$client->id}",
-            'phone'=>'nullable|string',
-            'notes'=>'nullable|string'
-        ]);
-        $client->update($data);
-        return redirect()->route('user.clients.index')->with('success','Client updated.');
-    }
+        $this->ensureVisible($client);
 
+        $data = $request->validate([
+            'full_name' => 'required|string|max:255',
+            'email'     => "nullable|email|unique:clients,email,{$client->id}",
+            'phone'     => 'nullable|string',
+            'notes'     => 'nullable|string',
+        ]);
+
+        $client->update($data);
+
+        return redirect()
+            ->route('user.clients.index')
+            ->with('success','Client updated.');
+    }
 
     public function destroy(Client $client)
     {
-//        $client->delete();
+        $this->ensureVisible($client);
+
+        // بسته به منطق پروژه: soft delete یا force delete
+        // $client->delete();
         $client->forceDelete();
+
         return back()->with('success','Client deleted.');
     }
 
-    // پروفایل کاربری client
+    /**
+     * پروفایل کاربری client از دید پنل user (ادمین‌ها)
+     * این متد را اگر واقعاً استفاده نمی‌کنی، بعداً می‌تونیم تمیزترش کنیم
+     */
     public function profile()
     {
-        // اگر کاربر خودش یک client هست، client مربوطه را بارگذاری کنید
         $user = auth()->user();
-        // فرض: user->client relation exists
+
+        // اگر رابطه‌ای مثل user->client داری، همین را نگه می‌داریم
         $client = $user->client ?? null;
+
+        // می‌توانی اینجا هم از isVisibleFor استفاده کنی اگر لازم شد
+        if ($client && ! $client->isVisibleFor($user)) {
+            abort(403, 'شما به این پرونده دسترسی ندارید.');
+        }
+
         return view('clients::user.clients.profile', compact('client'));
     }
 }
