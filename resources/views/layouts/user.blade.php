@@ -26,6 +26,8 @@
     <style>
         body { font-size: 14px;}
     </style>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
 <div
@@ -47,7 +49,7 @@
         }
     }"
     x-on:notify.window="notify($event)"
-    class="fixed right-3 top-3 z-50 w-80 max-w-[90vw] space-y-2"
+    class="fixed right-3 top-3 z-50 w-80 max-w-[90vw] space-y-2" style="z-index: 999"
 >
     <template x-for="item in items" :key="item.id">
         <div

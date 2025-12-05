@@ -47,6 +47,12 @@ class ClientForm extends Component
     public bool $asQuickWidget = false;
     public bool $isQuickMode   = false;
 
+    // 🔸 حالت اختصاصی ویجت داشبورد
+    public bool $forWidget = false;
+
+    // 🔸 ریفرنس به فرم فعال (برای استفاده از quickFields و ... در ویو)
+    public ?ClientFormSchema $formDefinition = null;
+
     /**
      * دکمه "ایجاد خودکار پسورد" در UI
      * - روی فرم کامل و کوئیک استفاده می‌شود
@@ -59,9 +65,13 @@ class ClientForm extends Component
         $this->auto_generate_password = true;
     }
 
-    public function mount(?Client $client = null, ?string $formKey = null)
+    public function mount(?Client $client = null, ?string $formKey = null, bool $forWidget = false)
     {
-        $this->client = $client;
+        $this->forWidget = $forWidget;
+
+        // اگر برای ایجاد جدید فراخوانی شده، client تهی است
+        $this->client = $client ?? new Client();
+        $isEdit       = $client && $client->exists;
 
         // انتخاب فرم فعال: تنظیمات → default → آخرین
         $keyFromSettings = ClientSetting::getValue('default_form_key');
@@ -69,13 +79,14 @@ class ClientForm extends Component
             ? ClientFormSchema::where('key', $formKey)->first()
             : ClientFormSchema::active($keyFromSettings);
 
-        $this->schema = $form?->schema ?? ['fields' => []];
+        $this->formDefinition = $form;
+        $this->schema         = $form?->schema ?? ['fields' => []];
 
         // وضعیت‌های فعال
         $statuses = ClientStatus::active()->get();
 
-        $currentStatusId  = $client?->status_id;
-        $currentStatusKey = optional($client?->status)->key;
+        $currentStatusId  = $isEdit ? $client->status_id : null;
+        $currentStatusKey = $isEdit ? optional($client->status)->key : null;
 
         // اعمال وابستگی allowed_from
         $this->availableStatuses = $statuses->filter(
@@ -94,7 +105,7 @@ class ClientForm extends Component
             }
         )->values()->all();
 
-        if ($client) {
+        if ($isEdit) {
             $this->username      = $client->username;
             $this->full_name     = (string) $client->full_name;
             $this->email         = $client->email;
@@ -125,9 +136,26 @@ class ClientForm extends Component
 
     public function render()
     {
-        return $this->asQuickWidget
-            ? view('clients::user.clients.quick-widget')
-            : view('clients::user.clients.dynamic-form');
+        // 🔸 سه حالت:
+        // ۱) فرم کامل (dynamic-form)
+        // ۲) quick-widget قدیمی (مودال در صفحه‌ی کلاینت‌ها)
+        // ۳) quick-widget اختصاصی ویجت داشبورد (فرم inline داخل کارت ویجت)
+        if ($this->asQuickWidget) {
+            // حالت اختصاصی ویجت → ویوی مخصوص ویجت
+            if ($this->forWidget) {
+                $quickFields = $this->formDefinition?->quickFields() ?? [];
+
+                return view('clients::widgets.client-quick-form', [
+                    'quickFields' => $quickFields,
+                ]);
+            }
+
+            // حالت قبلی (مثلاً مودال در لیست مشتریان)
+            return view('clients::user.clients.quick-widget');
+        }
+
+        // فرم کامل
+        return view('clients::user.clients.dynamic-form');
     }
 
     // Helper برای select-user-by-role
