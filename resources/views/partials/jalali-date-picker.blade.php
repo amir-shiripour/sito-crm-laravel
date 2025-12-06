@@ -7,9 +7,8 @@
             background: #ffffff;
             color: #111827; /* gray-900 */
             border: 1px solid #e5e7eb; /* gray-200 */
-            box-shadow:
-                0 10px 15px -3px rgba(15, 23, 42, 0.15),
-                0 4px 6px -4px rgba(15, 23, 42, 0.12);
+            box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.15),
+            0 4px 6px -4px rgba(15, 23, 42, 0.12);
         }
 
         jdp-container .jdp-day,
@@ -103,11 +102,10 @@
 
         .dark jdp-container {
             background: #020617; /* slate-950 */
-            color: #e5e7eb;     /* gray-200 */
+            color: #e5e7eb; /* gray-200 */
             border-color: #1f2937; /* gray-800 */
-            box-shadow:
-                0 20px 40px rgba(0, 0, 0, 0.7),
-                0 0 0 1px rgba(15, 23, 42, 0.9);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7),
+            0 0 0 1px rgba(15, 23, 42, 0.9);
         }
 
         .dark jdp-container .jdp-day,
@@ -209,6 +207,11 @@
             if (window.jalaliDatepicker) {
 
                 // 📅 تمام فیلدهای تاریخ معمولی
+                jalaliDatepicker.startWatch({
+                    selector: '[data-jdp]',
+                    // time:true,
+                });
+
                 jalaliDatepicker.startWatch({
                     selector: '[data-jdp-only-date]'
                 });

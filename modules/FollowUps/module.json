@@ -1,0 +1,10 @@
+{
+    "name": "FollowUps",
+    "alias": "followups",
+    "description": "ماژول پیگیری‌ها (Follow-ups) به عنوان زیرنوعی از Task که بر اساس ماژول Tasks کار می‌کند.",
+    "keywords": ["followups", "tasks", "crm"],
+    "priority": 0,
+    "providers": [
+        "Modules\\FollowUps\\Providers\\FollowUpsServiceProvider"
+    ]
+}

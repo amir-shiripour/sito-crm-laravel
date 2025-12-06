@@ -1,0 +1,10 @@
+{
+    "name": "Reminders",
+    "alias": "reminders",
+    "description": "ماژول یادآوری‌ها (Reminders) برای ثبت و مدیریت آلارم‌های زمان‌دار مرتبط با Task یا سایر موجودیت‌ها.",
+    "keywords": ["reminders", "notifications", "crm"],
+    "priority": 0,
+    "providers": [
+        "Modules\\Reminders\\Providers\\RemindersServiceProvider"
+    ]
+}

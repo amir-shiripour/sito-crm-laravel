@@ -1,0 +1,17 @@
+{
+  "name": "modules/workflows",
+  "description": "Workflow (گردش کار) module for Laravel CRM",
+  "type": "laravel-module",
+  "autoload": {
+    "psr-4": {
+      "Modules\\\\Workflows\\\\": ""
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Modules\\\\Workflows\\\\Providers\\\\WorkflowsServiceProvider"
+      ]
+    }
+  }
+}

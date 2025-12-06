@@ -1,5 +1,9 @@
 {
     "UserManagement": true,
     "Clients": true,
-    "ClientCalls": true
+    "ClientCalls": true,
+    "Tasks": true,
+    "FollowUps": true,
+    "Reminders": true,
+    "Workflows": true
 }

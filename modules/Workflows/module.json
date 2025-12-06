@@ -1,0 +1,10 @@
+{
+  "name": "Workflows",
+  "alias": "workflows",
+  "description": "Workflow (گردش کار) module integrating Tasks, Follow-ups and Reminders.",
+  "keywords": ["workflow","crm","tasks","followups","reminders"],
+  "priority": 0,
+  "providers": [
+    "Modules\\Workflows\\Providers\\WorkflowsServiceProvider"
+  ]
+}

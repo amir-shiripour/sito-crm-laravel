@@ -1,0 +1,10 @@
+{
+    "name": "Tasks",
+    "alias": "tasks",
+    "description": "Core Tasks module: مدیریت وظایف (Tasks) و پیگیری‌ها (Follow-ups) به عنوان نوعی از Task در جدول مشترک tasks.",
+    "keywords": ["tasks", "follow-ups", "crm"],
+    "priority": 0,
+    "providers": [
+        "Modules\\Tasks\\Providers\\TasksServiceProvider"
+    ]
+}
