@@ -143,13 +143,6 @@ class Task extends Model
         return $query->where('task_type', self::TYPE_FOLLOW_UP);
     }
 
-    /**
-     * در صورت نصب بودن ماژول Reminders، برای هر وظیفه (به جز سیستمی)
-     * یک یادآور ساده IN_APP در زمان سررسید وظیفه برای مسئول ثبت می‌شود.
-     *
-     * برای وظایف سیستمی، Reminderها باید در ماژول Workflow ساخته شوند.
-     */
-    // داخل تابع autoCreateReminderIfPossible()
     public function autoCreateReminderIfPossible(): void
     {
         // برای وظایف سیستمی، خودِ ماژول گردش‌کار Reminderهای لازم را می‌سازد

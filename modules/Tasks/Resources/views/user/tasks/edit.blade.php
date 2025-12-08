@@ -10,10 +10,21 @@
                 selectedValues: [],
                 search: '',
                 open: false,
+                formContext: null,
 
                 init() {
                     const oldValues = Array.isArray(config.oldValues) ? config.oldValues : [];
                     this.selectedValues = oldValues.map(String);
+
+                    // اتصال به context فرم اصلی (برای فیلتر پویا کاربران/مشتریان)
+                    if (window.taskFormContext) {
+                        this.formContext = window.taskFormContext;
+                    }
+
+                    // اولین بار، event تغییر را برای sync کردن context بفرست
+                    if (this.name) {
+                        this.$dispatch(this.name + '-changed', this.selectedValues);
+                    }
                 },
 
                 isSelected(value) {
@@ -23,26 +34,78 @@
 
                 toggle(value) {
                     value = String(value);
+
                     if (value === '__all__') {
                         this.selectedValues = this.isSelected('__all__') ? [] : ['__all__'];
-                        return;
-                    }
-                    this.selectedValues = this.selectedValues.filter(v => v !== '__all__');
-                    if (this.isSelected(value)) {
-                        this.selectedValues = this.selectedValues.filter(v => v !== value);
                     } else {
-                        this.selectedValues.push(value);
+                        this.selectedValues = this.selectedValues.filter(v => v !== '__all__');
+
+                        if (this.isSelected(value)) {
+                            this.selectedValues = this.selectedValues.filter(v => v !== value);
+                        } else {
+                            this.selectedValues.push(value);
+                        }
+                    }
+
+                    if (this.name) {
+                        this.$dispatch(this.name + '-changed', this.selectedValues);
                     }
                 },
 
                 clearValue(value) {
                     value = String(value);
                     this.selectedValues = this.selectedValues.filter(v => v !== value);
+
+                    if (this.name) {
+                        this.$dispatch(this.name + '-changed', this.selectedValues);
+                    }
                 },
 
                 filteredOptions() {
-                    const term = this.search.toLowerCase();
-                    return this.options.filter(o => (o.label || '').toLowerCase().includes(term));
+                    const term = (this.search || '').toLowerCase();
+                    let baseOpts = this.options || [];
+
+                    const ctx = this.formContext || window.taskFormContext || {};
+
+                    // فیلتر کاربران مرتبط بر اساس نقش‌ها (related_user_role_ids → related_user_ids)
+                    if (this.name === 'related_user_ids' && ctx.users && ctx.selectedRelatedUserRoleIds) {
+                        const selectedRoles = (ctx.selectedRelatedUserRoleIds || [])
+                            .filter(v => v !== '__all__')
+                            .map(String);
+
+                        if (selectedRoles.length > 0) {
+                            const allUsers = ctx.users || [];
+                            baseOpts = baseOpts.filter(opt => {
+                                const user = allUsers.find(u => String(u.id) === String(opt.value));
+                                if (!user) return false;
+                                const roleIds = (user.role_ids || []).map(String);
+                                return selectedRoles.some(rid => roleIds.includes(rid));
+                            });
+                        }
+                    }
+
+                    // فیلتر مشتریان مرتبط بر اساس وضعیت‌ها (related_client_status_ids → related_client_ids)
+                    if (this.name === 'related_client_ids' && ctx.clients && ctx.selectedRelatedClientStatusIds) {
+                        const selectedStatuses = (ctx.selectedRelatedClientStatusIds || [])
+                            .filter(v => v !== '__all__')
+                            .map(String);
+
+                        if (selectedStatuses.length > 0) {
+                            const allClients = ctx.clients || [];
+                            baseOpts = baseOpts.filter(opt => {
+                                const client = allClients.find(c => String(c.id) === String(opt.value));
+                                if (!client) return false;
+
+                                const clientStatusId = client.status_id != null ? String(client.status_id) : null;
+                                if (!clientStatusId) return false;
+
+                                return selectedStatuses.includes(clientStatusId);
+                            });
+                        }
+                    }
+
+                    // فیلتر متنی
+                    return baseOpts.filter(o => (o.label || '').toLowerCase().includes(term));
                 },
             };
         }
@@ -82,45 +145,119 @@
             $clients        = $clients ?? collect();
             $clientStatuses = $clientStatuses ?? collect();
 
-            $userOptions = $users->map(fn($u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email ?? '',
-            ])->values()->all();
+            // کاربران + نقش‌ها برای فیلتر پویا
+            $userOptions = $users->map(function ($u) {
+                return [
+                    'id'       => $u->id,
+                    'name'     => $u->name,
+                    'email'    => $u->email ?? '',
+                    'role_ids' => $u->roles ? $u->roles->pluck('id')->map(fn($id) => (string) $id)->values()->all() : [],
+                ];
+            })->values()->all();
 
-            $clientOptions = $clients->map(fn($c) => [
-                'id' => $c->id,
-                'name' => $c->full_name,
-                'phone' => $c->phone ?? '',
-            ])->values()->all();
+            // مشتری‌ها + status_id برای فیلتر پویا
+            $clientOptions = $clients->map(function ($c) {
+                return [
+                    'id'        => $c->id,
+                    'name'      => $c->full_name,
+                    'phone'     => $c->phone ?? '',
+                    'status_id' => $c->status_id,
+                ];
+            })->values()->all();
 
+            // گزینه‌های نقش‌ها
             $roleOptions = $roles->map(fn($r) => [
                 'value' => (string) $r->id,
                 'label' => $r->name,
             ])->values()->all();
 
+            // کاربران برای select مرتبط (با label کامل + role_ids)
+            $relatedUserSelectOptions = $users->map(function ($u) {
+                return [
+                    'value'    => (string) $u->id,
+                    'label'    => $u->name . ($u->email ? ' (' . $u->email . ')' : ''),
+                    'role_ids' => $u->roles->pluck('id')->map(fn($id) => (string) $id)->all(),
+                ];
+            })->values()->all();
+
+            // وضعیت‌های مشتری
             $clientStatusOptions = $clientStatuses->map(fn($st) => [
                 'value' => (string) $st->id,
                 'label' => $st->label ?? $st->key,
             ])->values()->all();
 
+            // کاربران برای multi-select مسئول
+            $userSelectOptions = collect($userOptions)->map(function ($u) {
+                return [
+                    'value' => (string) $u['id'],
+                    'label' => $u['name'] . (!empty($u['email']) ? ' (' . $u['email'] . ')' : ''),
+                ];
+            })->all();
+
+            // مشتری‌ها برای multi-select
+            $clientSelectOptions = collect($clientOptions)->map(function ($c) {
+                return [
+                    'value' => (string) $c['id'],
+                    'label' => $c['name'] . ($c['phone'] ? ' (' . $c['phone'] . ')' : ''),
+                ];
+            })->all();
+
+            // مقداردهی اولیه برای fieldهای آرایه‌ای (با fallback به single fieldهای قدیمی)
+            $initialAssigneeUserIds = old(
+                'assignee_user_ids',
+                $task->assignee_user_ids
+                    ?? ($task->assignee_id ? [$task->assignee_id] : [])
+            );
+
+            $initialRelatedUserRoleIds = old(
+                'related_user_role_ids',
+                $task->related_user_role_ids ?? []
+            );
+
+            $initialRelatedUserIds = old(
+                'related_user_ids',
+                $task->related_user_ids
+                    ?? ($task->related_user_id ? [$task->related_user_id] : [])
+            );
+
+            $initialRelatedClientStatusIds = old(
+                'related_client_status_ids',
+                $task->related_client_status_ids ?? []
+            );
+
+            $initialRelatedClientIds = old(
+                'related_client_ids',
+                $task->related_client_ids
+                    ?? ($task->related_client_id ? [$task->related_client_id] : [])
+            );
+
             $alpineMainData = [
-                'taskType'          => old('task_type', $task->task_type ?? Task::TYPE_GENERAL),
-                'assigneeMode'      => old('assignee_mode', $task->assignee_mode ?? 'single_user'),
-                'relatedTarget'     => old('related_target', $task->related_target ?? 'none'),
-                'canAssign'         => (bool) $canAssign,
-                'users'             => $userOptions,
-                'clients'           => $clientOptions,
-                'assigneeSearch'    => '',
-                'relatedUserSearch' => '',
+                'taskType'      => old('task_type', $task->task_type ?? Task::TYPE_GENERAL),
+                'assigneeMode'  => old('assignee_mode', $task->assignee_mode ?? 'single_user'),
+                'relatedTarget' => old('related_target', $task->related_target ?? 'none'),
+                'canAssign'     => (bool) $canAssign,
+
+                'users'   => $userOptions,
+                'clients' => $clientOptions,
+
+                'assigneeSearch'      => '',
+                'relatedUserSearch'   => '',
                 'relatedClientSearch' => '',
+
+                'selectedRelatedUserRoleIds'     => collect($initialRelatedUserRoleIds)->map(fn($id) => (string) $id)->values()->all(),
+                'selectedRelatedClientStatusIds' => collect($initialRelatedClientStatusIds)->map(fn($id) => (string) $id)->values()->all(),
             ];
         @endphp
 
         <form method="POST"
               action="{{ route('user.tasks.update', $task) }}"
               class="space-y-8"
-              x-data='@json($alpineMainData)'>
+              x-data='@json($alpineMainData)'
+              data-task-form-root
+              x-init="window.taskFormContext = $data"
+              @related_user_role_ids-changed="selectedRelatedUserRoleIds = $event.detail || []"
+              @related_client_status_ids-changed="selectedRelatedClientStatusIds = $event.detail || []"
+        >
             @csrf
             @method('PUT')
 
@@ -248,30 +385,30 @@
                         </select>
                     </div>
 
-                    {{-- حالت کاربر تکی --}}
-                    <div x-show="assigneeMode === 'single_user'" x-cloak>
-                        <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">جستجوی کاربر</label>
-                        <div class="relative">
-                            <input type="text" x-model="assigneeSearch" placeholder="نام یا ایمیل کاربر..."
-                                   class="w-full rounded-xl border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white mb-2">
+                    {{-- حالت انتخاب چند کاربر مشخص --}}
+                    <div x-show="assigneeMode === 'single_user'" x-cloak class="space-y-2">
+                        <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
+                            کاربران مسئول (امکان انتخاب چند نفر)
+                        </label>
 
-                            <select name="assignee_id" size="5"
-                                    class="w-full rounded-xl border-gray-300 bg-white p-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                                <template
-                                    x-for="u in users.filter(user =>
-                                        user.name.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
-                                        user.email.toLowerCase().includes(assigneeSearch.toLowerCase())
-                                    )"
-                                    :key="u.id"
-                                >
-                                    <option :value="u.id"
-                                            x-text="u.name + (u.email ? ' (' + u.email + ')' : '')"
-                                            class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                                    </option>
-                                </template>
-                            </select>
+                        <div
+                            x-data="setupMultiSelect({
+                                name: 'assignee_user_ids',
+                                options: {{ Js::from($userSelectOptions) }},
+                                oldValues: {{ Js::from((array) $initialAssigneeUserIds) }},
+                                allLabel: null
+                            })"
+                        >
+                            @include('tasks::partials.multi-select-template')
                         </div>
-                        @error('assignee_id') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+
+                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                            در صورت انتخاب چند کاربر، منطق ساخت وظیفه برای هر کاربر را در بک‌اند پیاده‌سازی کنید.
+                        </p>
+
+                        @error('assignee_user_ids')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     {{-- حالت نقش‌ها --}}
@@ -318,7 +455,7 @@
                                     x-data="setupMultiSelect({
                                         name: 'related_user_role_ids',
                                         options: {{ Js::from($roleOptions) }},
-                                        oldValues: {{ Js::from((array) old('related_user_role_ids', $task->related_user_role_ids ?? [])) }},
+                                        oldValues: {{ Js::from((array) $initialRelatedUserRoleIds) }},
                                         allLabel: 'همه نقش‌ها'
                                     })"
                                 >
@@ -326,24 +463,23 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">جستجوی کاربر خاص</label>
-                                <input type="text" x-model="relatedUserSearch" placeholder="جستجو..."
-                                       class="w-full rounded-xl border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white mb-2">
-                                <select name="related_user_id" size="3"
-                                        class="w-full rounded-xl border-gray-300 bg-white p-2 text-sm focus:border-pink-500 focus:ring-pink-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                                    <template
-                                        x-for="u in users.filter(user =>
-                                            user.name.toLowerCase().includes(relatedUserSearch.toLowerCase()) ||
-                                            user.email.toLowerCase().includes(relatedUserSearch.toLowerCase())
-                                        )"
-                                        :key="u.id"
-                                    >
-                                        <option :value="u.id"
-                                                x-text="u.name"
-                                                class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                                        </option>
-                                    </template>
-                                </select>
+                                <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
+                                    کاربران مرتبط (امکان انتخاب چند کاربر)
+                                </label>
+                                <div
+                                    x-data="setupMultiSelect({
+                                        name: 'related_user_ids',
+                                        options: {{ Js::from($relatedUserSelectOptions) }},
+                                        oldValues: {{ Js::from((array) $initialRelatedUserIds) }},
+                                        allLabel: null
+                                    })"
+                                >
+                                    @include('tasks::partials.multi-select-template')
+                                </div>
+
+                                @error('related_user_ids')
+                                <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
 
@@ -355,7 +491,7 @@
                                     x-data="setupMultiSelect({
                                         name: 'related_client_status_ids',
                                         options: {{ Js::from($clientStatusOptions) }},
-                                        oldValues: {{ Js::from((array) old('related_client_status_ids', $task->related_client_status_ids ?? [])) }},
+                                        oldValues: {{ Js::from((array) $initialRelatedClientStatusIds) }},
                                         allLabel: 'همه وضعیت‌ها'
                                     })"
                                 >
@@ -363,24 +499,27 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">جستجوی مشتری خاص</label>
-                                <input type="text" x-model="relatedClientSearch" placeholder="نام یا شماره تماس..."
-                                       class="w-full rounded-xl border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white mb-2">
-                                <select name="related_client_id" size="3"
-                                        class="w-full rounded-xl border-gray-300 bg-white p-2 text-sm focus:border-pink-500 focus:ring-pink-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                                    <template
-                                        x-for="c in clients.filter(client =>
-                                            client.name.toLowerCase().includes(relatedClientSearch.toLowerCase()) ||
-                                            client.phone.toLowerCase().includes(relatedClientSearch.toLowerCase())
-                                        )"
-                                        :key="c.id"
-                                    >
-                                        <option :value="c.id"
-                                                x-text="c.name"
-                                                class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                                        </option>
-                                    </template>
-                                </select>
+                                <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
+                                    مشتریان مرتبط (امکان انتخاب چند مشتری)
+                                </label>
+                                <div
+                                    x-data="setupMultiSelect({
+                                        name: 'related_client_ids',
+                                        options: {{ Js::from($clientSelectOptions) }},
+                                        oldValues: {{ Js::from((array) $initialRelatedClientIds) }},
+                                        allLabel: null
+                                    })"
+                                >
+                                    @include('tasks::partials.multi-select-template')
+                                </div>
+
+                                <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                    لیست مشتریان، بر اساس وضعیت‌های انتخاب شده در سمت چپ فیلتر می‌شود.
+                                </p>
+
+                                @error('related_client_ids')
+                                <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
                     </div>

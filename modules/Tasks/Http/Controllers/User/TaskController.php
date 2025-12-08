@@ -12,55 +12,144 @@ use Morilog\Jalali\CalendarUtils;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Modules\Clients\Entities\Client;
+use Modules\Clients\Entities\ClientStatus;
+use Morilog\Jalali\Jalalian;
 
 
 class TaskController extends Controller
 {
-    protected function validateRequest(Request $request): array
+    protected function normalizeRequest(Request $request): void
     {
-        // کلیدهای مجاز را از خود مدل Task می‌گیریم تا با برچسب‌های فارسی هم‌خوان باشد
-        $statusKeys   = array_keys(Task::statusOptions());
-        $priorityKeys = array_keys(Task::priorityOptions());
-        $typeKeys     = array_keys(Task::typeOptions());
+        // 1) تبدیل تاریخ شمسی (due_at_view) به فیلد due_at میلادی
+        if (!$request->filled('due_at') && $request->filled('due_at_view')) {
+            $jalali = $request->input('due_at_view');
 
-        return $request->validate([
-            'title'        => ['required', 'string', 'max:255'],
-            'description'  => ['nullable', 'string'],
+            try {
+                if (class_exists(Jalalian::class)) {
+                    // فرض فرمت 1403/09/18
+                    $carbon = Jalalian::fromFormat('Y/m/d', $jalali)->toCarbon()->startOfDay();
+                } else {
+                    // اگر پکیج جلالی نداری، موقتاً همین رو استفاده کن
+                    $carbon = Carbon::parse($jalali);
+                }
 
-            'task_type'    => ['nullable', 'string', Rule::in($typeKeys)],
+                $request->merge([
+                    'due_at' => $carbon->toDateString(),
+                ]);
+            } catch (\Throwable $e) {
+                // اگر تبدیل موفق نشد، تاریخ رو خالی می‌ذاریم
+                $request->merge([
+                    'due_at' => null,
+                ]);
+            }
+        }
 
-            // مسئول
-            'assignee_id'       => ['nullable', 'integer', 'exists:users,id'],
-            'assignee_mode'     => ['nullable', 'string', 'in:single_user,by_roles'],
-            'assignee_role_ids' => ['nullable', 'array'],
-            'assignee_role_ids.*' => ['integer', 'exists:roles,id'],
+        // 2) استخراج assignee_id از multi-select جدید (assignee_user_ids[])
+        $assigneeIds = $request->input('assignee_user_ids', []);
 
-            // وضعیت / اولویت
-            'status'    => ['nullable', 'string', Rule::in($statusKeys)],
-            'priority'  => ['nullable', 'string', Rule::in($priorityKeys)],
+        if (!is_array($assigneeIds)) {
+            $assigneeIds = array_filter([$assigneeIds]);
+        }
 
-            // تاریخ سررسید (میلادی؛ با Jalali Datepicker مقداردهی می‌شود)
-            'due_at'    => ['nullable', 'date'],
-            'due_at_view'  => ['nullable', 'string'], // 👈 اضافه شد
+        $assigneeId = collect($assigneeIds)->filter()->first();
 
-            // فیلدهای خام related_type/related_id اگر از جایی دیگر فرم خام بیاد
-            'related_type' => ['nullable', 'string', 'max:100'],
-            'related_id'   => ['nullable', 'integer'],
+        // بک‌کامپتیبل: اگر کسی هنوز assignee_id کلاسیک رو فرستاده بود
+        if (!$assigneeId && $request->filled('assignee_id')) {
+            $assigneeId = $request->input('assignee_id');
+        }
 
-            // موجودیت مرتبط سطح بالا
-            'related_target' => ['nullable', 'string', 'in:none,user,client'],
+        $request->merge([
+            'assignee_id' => $assigneeId,
+        ]);
 
-            // موجودیت مرتبط: کاربران
-            'related_user_role_ids'   => ['nullable', 'array'],
-            'related_user_role_ids.*' => ['integer', 'exists:roles,id'],
-            'related_user_id'         => ['nullable', 'integer', 'exists:users,id'],
+        // 3) استخراج related_type / related_id بر اساس related_target + multi-select ها
+        $relatedType = null;
+        $relatedId   = null;
 
-            // موجودیت مرتبط: مشتریان
-            'related_client_status_ids'   => ['nullable', 'array'],
-            'related_client_status_ids.*' => ['integer', 'exists:client_statuses,id'],
-            'related_client_id'           => ['nullable', 'integer', 'exists:clients,id'],
+        $target = $request->input('related_target');
+
+        if ($target === 'user') {
+            $userIds = $request->input('related_user_ids', $request->input('related_user_id'));
+
+            if (!is_array($userIds)) {
+                $userIds = array_filter([$userIds]);
+            }
+
+            $relatedId = collect($userIds)->filter()->first();
+            if ($relatedId) {
+                $relatedType = User::class;
+            }
+        } elseif ($target === 'client') {
+            $clientIds = $request->input('related_client_ids', $request->input('related_client_id'));
+
+            if (!is_array($clientIds)) {
+                $clientIds = array_filter([$clientIds]);
+            }
+
+            $relatedId = collect($clientIds)->filter()->first();
+            if ($relatedId) {
+                $relatedType = Client::class;
+            }
+        }
+
+        // اگر "هیچکدام" بود یا چیزی انتخاب نشد، ارتباط رو null می‌کنیم
+        if ($target === 'none' || !$target) {
+            $relatedType = null;
+            $relatedId   = null;
+        }
+
+        $request->merge([
+            'related_type' => $relatedType,
+            'related_id'   => $relatedId,
         ]);
     }
+
+    protected function validateRequest(Request $request, ?Task $task = null): array
+    {
+        $types      = array_keys(Task::typeOptions());
+        $statuses   = array_keys(Task::statusOptions());
+        $priorities = array_keys(Task::priorityOptions());
+
+        return $request->validate([
+            'title'       => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'task_type'   => ['required', Rule::in($types)],
+            'status'      => ['required', Rule::in($statuses)],
+            'priority'    => ['required', Rule::in($priorities)],
+            'due_at'      => ['nullable', 'date'],
+
+            // 🔹 حالت انتخاب مسئول
+            'assignee_mode' => ['nullable', 'in:single_user,by_roles'],
+
+            // 🔹 مسئول‌ها (چند کاربر)
+            'assignee_user_ids'   => ['nullable', 'array'],
+            'assignee_user_ids.*' => ['integer', 'exists:users,id'],
+
+            // 🔹 مسئول‌ها بر اساس نقش
+            'assignee_role_ids'   => ['nullable', 'array'],
+            'assignee_role_ids.*' => ['integer', 'exists:roles,id'],
+
+            // 🔹 موجودیت مرتبط
+            'related_target' => ['nullable', 'in:none,user,client'],
+
+            // 🔹 نقش‌های کاربران مرتبط (برای فیلتر پویا)
+            'related_user_role_ids'   => ['nullable', 'array'],
+            'related_user_role_ids.*' => ['integer', 'exists:roles,id'],
+
+            // 🔹 خود کاربران مرتبط (multi-select جدید)
+            'related_user_ids'   => ['nullable', 'array'],
+            'related_user_ids.*' => ['integer', 'exists:users,id'],
+
+            // 🔹 وضعیت‌های مشتری (برای فیلتر پویا)
+            'related_client_status_ids'   => ['nullable', 'array'],
+            'related_client_status_ids.*' => ['integer', 'exists:client_statuses,id'],
+
+            // 🔹 خود مشتریان مرتبط (multi-select جدید)
+            'related_client_ids'   => ['nullable', 'array'],
+            'related_client_ids.*' => ['integer', 'exists:clients,id'],
+        ]);
+    }
+
     /**
      * تبدیل تاریخ شمسی (مثلاً 1403/09/15 یا 1403-09-15) به Carbon میلادی.
      */
@@ -270,8 +359,8 @@ class TaskController extends Controller
         $roles      = \Spatie\Permission\Models\Role::select('id', 'name')->get();
 
         // ماژول کلاینت
-        $clients        = \Modules\Clients\Entities\Client::select('id', 'full_name', 'phone')->get();
-        $clientStatuses = \Modules\Clients\Entities\ClientStatus::all();
+        $clients        = \Modules\Clients\Entities\Client::select('id', 'full_name', 'phone', 'status_id')->get();
+        $clientStatuses = \Modules\Clients\Entities\ClientStatus::active()->get();
 
         return view('tasks::user.tasks.create', compact(
             'statuses',
@@ -393,35 +482,86 @@ class TaskController extends Controller
         return view('tasks::user.tasks.edit', compact('task', 'statuses', 'priorities', 'types'));
     }
 
-    public function update(Request $request, Task $task)
+    public function update(Request $request, Task $task): RedirectResponse
     {
-        $this->authorizeEdit($task);
+        $this->authorize('update', $task);
 
-        $data = $this->validateRequest($request);
-        $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null)
-            ?? (!empty($data['due_at']) ? Carbon::parse($data['due_at']) : $task->due_at);
-        $task->fill([
-            'title'        => $data['title'],
-            'description'  => $data['description'] ?? null,
-            'task_type'    => $data['task_type'] ?? $task->task_type,
-            'assignee_id'  => $data['assignee_id'] ?? $task->assignee_id,
-            'status'       => $data['status'] ?? $task->status,
-            'priority'     => $data['priority'] ?? $task->priority,
-            'due_at'       => $dueAt,
-            // در ویرایش ساده، related_type / related_id را دست نمی‌زنیم تا
-            // لاجیک پیچیده مرتبط را بعداً جداگانه پیاده کنیم
-        ]);
+        $data = $this->validateRequest($request, $task);
 
-        if (in_array($task->status, [Task::STATUS_DONE, Task::STATUS_CANCELED], true) && ! $task->completed_at) {
-            $task->completed_at = now();
+        $user       = auth()->user();
+        $creatorId  = $task->creator_id ?? ($user ? $user->id : null);
+        $assigneeId = $task->assignee_id ?? $creatorId;
+
+        // 🔹 تعیین مسئول بر اساس حالت و دسترسی
+        $canAssign = $user && (
+                $user->can('tasks.assign')
+                || $user->can('tasks.manage')
+                || $user->hasRole('super-admin')
+            );
+
+        $assigneeMode = $data['assignee_mode'] ?? 'single_user';
+        $assigneeUserIds = collect($data['assignee_user_ids'] ?? [])
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($assigneeMode === 'single_user') {
+            // اگر دسترسی دارد و حداقل یک کاربر انتخاب شده
+            if ($canAssign && $assigneeUserIds->isNotEmpty()) {
+                $assigneeId = (int) $assigneeUserIds->first();
+            }
+            // اگر دسترسی ندارد، همان قبلی باقی می‌ماند (یا خودش)
+        } else {
+            // حالت by_roles → فعلاً همان مسئول قبلی/پیش‌فرض را نگه می‌داریم
+            // اگر خواستی می‌تونی اینجا بعداً منطق خاص برای نقش‌ها اضافه کنی
         }
 
-        $task->save();
+        // 🔹 تعیین موجودیت مرتبط اصلی (برای همین Task)
+        $relatedType = null;
+        $relatedId   = null;
+        $relatedTarget = $data['related_target'] ?? 'none';
+
+        if ($relatedTarget === 'user') {
+            $relatedUserIds = collect($data['related_user_ids'] ?? [])
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($relatedUserIds->isNotEmpty()) {
+                $relatedType = \App\Models\User::class;
+                $relatedId   = (int) $relatedUserIds->first();
+            }
+        } elseif ($relatedTarget === 'client') {
+            $relatedClientIds = collect($data['related_client_ids'] ?? [])
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($relatedClientIds->isNotEmpty()) {
+                $relatedType = Client::class;
+                $relatedId   = (int) $relatedClientIds->first();
+            }
+        }
+
+        // 🔹 خود Task را آپدیت می‌کنیم
+        $task->update([
+            'title'       => $data['title'],
+            'description' => $data['description'] ?? null,
+            'task_type'   => $data['task_type'],
+            'status'      => $data['status'],
+            'priority'    => $data['priority'],
+            'due_at'      => $data['due_at'] ?? null,
+            'assignee_id' => $assigneeId,
+            'creator_id'  => $creatorId,
+            'related_type' => $relatedType,
+            'related_id'   => $relatedId,
+        ]);
 
         return redirect()
             ->route('user.tasks.show', $task)
-            ->with('status', 'وظیفه با موفقیت به‌روزرسانی شد.');
+            ->with('success', 'وظیفه با موفقیت به‌روزرسانی شد.');
     }
+
 
     public function destroy(Task $task)
     {
