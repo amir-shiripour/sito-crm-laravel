@@ -20,6 +20,7 @@
         default      => 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
     };
     $clientCallsModule = \App\Models\Module::where('slug', 'clientcalls')->first();
+    $followUpsModule   = \App\Models\Module::where('slug', 'followups')->first();
     $statusMap = [
         'planned' => [
             'label' => 'برنامه‌ریزی شده',
@@ -130,6 +131,39 @@
                                 </a>
                             @endcan
                         @endif
+
+                        @if($followUpsModule && $followUpsModule->installed && $followUpsModule->active)
+                            @can('followups.create')
+                                {{-- ایجاد پیگیری برای این کلاینت (می‌رود به فرم عمومی پیگیری‌ها، اگر بخواهی) --}}
+                                <a href="{{ route('user.followups.create', [
+                    'related_type' => \Modules\Tasks\Entities\Task::RELATED_TYPE_CLIENT,
+                    'related_id'   => $client->id,
+               ]) }}"
+                                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 hover:shadow-lg hover:shadow-amber-500/30 transition-all">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    <span>ایجاد پیگیری</span>
+                                </a>
+                            @endcan
+
+                            @can('followups.view')
+                                {{-- تاریخچه کامل پیگیری‌های مرتبط با این کلاینت --}}
+                                <a href="{{ route('user.followups.index', [
+                    'related_type' => \Modules\Tasks\Entities\Task::RELATED_TYPE_CLIENT,
+                    'related_id'   => $client->id,
+               ]) }}"
+                                   class="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 hover:shadow-lg hover:shadow-amber-500/30 transition-all dark:bg-amber-700 dark:text-amber-100">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    <span>تاریخچه پیگیری‌ها</span>
+                                </a>
+                            @endcan
+                        @endif
+
 
                     </div>
                 </div>

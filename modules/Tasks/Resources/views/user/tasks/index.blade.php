@@ -21,7 +21,7 @@
             </a>
         </div>
 
-        {{-- فیلترها (در صورت نیاز می‌تونی با فرم GET تکمیلش کنی) --}}
+        {{-- فیلترها --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
             <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
@@ -99,26 +99,28 @@
                                 {{ optional($task->assignee)->name ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-xs">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full
-                                                 text-[11px] font-medium
-                                                 {{ $task->status === \Modules\Tasks\Entities\Task::STATUS_DONE ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100' }}">
-                                        {{ $statuses[$task->status] ?? $task->status }}
-                                    </span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full
+                                             text-[11px] font-medium
+                                             {{ $task->status === \Modules\Tasks\Entities\Task::STATUS_DONE ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100' }}">
+                                    {{ $statuses[$task->status] ?? $task->status }}
+                                </span>
                             </td>
                             <td class="px-4 py-3 text-xs">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                        @if($task->priority === \Modules\Tasks\Entities\Task::PRIORITY_HIGH)
-                                            bg-red-50 text-red-700
-                                        @elseif($task->priority === \Modules\Tasks\Entities\Task::PRIORITY_MEDIUM)
-                                            bg-amber-50 text-amber-700
-                                        @else
-                                            bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100
-                                        @endif">
-                                        {{ $priorities[$task->priority] ?? $task->priority }}
-                                    </span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                    @if($task->priority === \Modules\Tasks\Entities\Task::PRIORITY_HIGH)
+                                        bg-red-50 text-red-700
+                                    @elseif($task->priority === \Modules\Tasks\Entities\Task::PRIORITY_MEDIUM)
+                                        bg-amber-50 text-amber-700
+                                    @elseif($task->priority === \Modules\Tasks\Entities\Task::PRIORITY_CRITICAL)
+                                        bg-red-100 text-red-800
+                                    @else
+                                        bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100
+                                    @endif">
+                                    {{ $priorities[$task->priority] ?? $task->priority }}
+                                </span>
                             </td>
                             <td class="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
-                                {{ $task->due_at_view ?? ($task->due_at?->format('Y-m-d') ?? '—') }}
+                                {{ $task->due_at ? $task->due_at->format('Y-m-d') : '—' }}
                             </td>
                             <td class="px-4 py-3 text-left text-xs">
                                 <div class="inline-flex items-center gap-1.5">

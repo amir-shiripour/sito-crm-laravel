@@ -42,12 +42,15 @@ class Task extends Model
         'completed_at',
         'related_type',
         'related_id',
+        'meta', // 👈 اضافه شود
     ];
 
     protected $casts = [
         'due_at'       => 'datetime',
         'completed_at' => 'datetime',
+        'meta'         => 'array', // 👈
     ];
+
 
     /**
      * لیست انواع وظیفه برای استفاده در فرم‌ها (برچسب‌ها فارسی)

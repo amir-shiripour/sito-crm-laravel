@@ -23,6 +23,7 @@
             $visibilityLabel = 'شما فقط ' . $labelPlural . 'ی را می‌بینید که خودتان ایجاد کرده‌اید.';
         }
         $clientCallsModule = \App\Models\Module::where('slug', 'clientcalls')->first();
+        $followUpsModule   = \App\Models\Module::where('slug', 'followups')->first();
 @endphp
 
 @section('content')
@@ -74,6 +75,11 @@
                         @if($clientCallsModule && $clientCallsModule->installed && $clientCallsModule->active)
                             @can('client-calls.create')
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تماس‌ها</th>
+                            @endcan
+                        @endif
+                        @if($followUpsModule && $followUpsModule->installed && $followUpsModule->active)
+                            @can('followups.create')
+                                <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">پیگیری‌ها</th>
                             @endcan
                         @endif
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ایجاد کننده</th>
@@ -129,7 +135,14 @@
                                 @endcan
                             @endif
 
-
+                            {{-- FollowUps (popup) --}}
+                            @if($followUpsModule && $followUpsModule->installed && $followUpsModule->active)
+                                @can('followups.create')
+                                    <td class="px-4 py-3 align-top text-xs text-gray-600 dark:text-gray-300">
+                                        <x-followups::client-followup-manager :client="$client" />
+                                    </td>
+                                @endcan
+                            @endif
 
                             {{-- Creator --}}
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">

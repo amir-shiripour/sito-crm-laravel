@@ -21,6 +21,10 @@ return new class extends Migration
             $table->timestamp('completed_at')->nullable();
             $table->string('related_type', 100)->nullable();
             $table->unsignedBigInteger('related_id')->nullable();
+
+            // 🔹 برای اطلاعات پویا فرم (نقش‌ها، وضعیت‌ها، شناسه‌های انتخاب شده و ...)
+            $table->json('meta')->nullable();
+
             $table->timestamps();
 
             $table->foreign('assignee_id')->references('id')->on('users')->nullOnDelete();

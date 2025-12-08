@@ -13,7 +13,8 @@
                 </p>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{{ route('user.tasks.edit', $task) }}"
+                <a href="{{ route('user.tasks.edit', $task) }}
+"
                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700">
                     ویرایش
                 </a>
@@ -24,7 +25,6 @@
             </div>
         </div>
 
-        {{-- کارت اصلی --}}
         <div class="space-y-6">
             {{-- اطلاعات اصلی --}}
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
@@ -41,7 +41,7 @@
                     </div>
                     <div class="flex flex-col items-end gap-2 text-xs">
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100">
-                            نوع: {{ \Modules\Tasks\Entities\Task::typeOptions()[$task->task_type] ?? $task->task_type }}
+                            نوع: {{ $types[$task->task_type] ?? $task->task_type }}
                         </span>
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full
                             @if($task->status === \Modules\Tasks\Entities\Task::STATUS_DONE)
@@ -49,17 +49,17 @@
                             @else
                                 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100
                             @endif">
-                            وضعیت: {{ \Modules\Tasks\Entities\Task::statusOptions()[$task->status] ?? $task->status }}
+                            وضعیت: {{ $statuses[$task->status] ?? $task->status }}
                         </span>
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full
-                            @if($task->priority === \Modules\Tasks\Entities\Task::PRIORITY_HIGH)
+                            @if($task->priority === \Modules\Tasks\Entities\Task::PRIORITY_HIGH || $task->priority === \Modules\Tasks\Entities\Task::PRIORITY_CRITICAL)
                                 bg-red-50 text-red-700
                             @elseif($task->priority === \Modules\Tasks\Entities\Task::PRIORITY_MEDIUM)
                                 bg-amber-50 text-amber-700
                             @else
                                 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100
                             @endif">
-                            اولویت: {{ \Modules\Tasks\Entities\Task::priorityOptions()[$task->priority] ?? $task->priority }}
+                            اولویت: {{ $priorities[$task->priority] ?? $task->priority }}
                         </span>
                     </div>
                 </div>
@@ -74,7 +74,7 @@
                     <div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">تاریخ سررسید</div>
                         <div class="font-medium text-gray-900 dark:text-gray-100">
-                            {{ $task->due_at_view ?? ($task->due_at ? $task->due_at->format('Y-m-d') : '—') }}
+                            {{ $task->due_at ? $task->due_at->format('Y-m-d') : '—' }}
                         </div>
                     </div>
                     <div>
@@ -93,11 +93,16 @@
                     مسئولیت
                 </h3>
 
+                @php
+                    $assigneeMode    = $meta['assignee_mode'] ?? 'single_user';
+                    $assigneeRoleIds = collect($meta['assignee_role_ids'] ?? [])->map(fn($id) => (int) $id)->all();
+                @endphp
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                     <div class="space-y-2">
                         <div class="text-xs text-gray-500 dark:text-gray-400">روش تعیین مسئول</div>
                         <div class="font-medium text-gray-900 dark:text-gray-100">
-                            @if($task->assignee_mode === 'by_roles')
+                            @if($assigneeMode === 'by_roles')
                                 بر اساس نقش‌ها
                             @else
                                 کاربر مشخص
@@ -112,12 +117,9 @@
 
                     <div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">نقش‌های مجاز برای انجام این وظیفه</div>
-                        @php
-                            $assigneeRoleIds = (array) ($task->assignee_role_ids ?? []);
-                        @endphp
-                        @if(!empty($assigneeRoleIds) && $roles = ($roles ?? null))
+                        @if(!empty($assigneeRoleIds))
                             <div class="flex flex-wrap gap-1.5">
-                                @foreach($roles->whereIn('id', $assigneeRoleIds) as $role)
+                                @foreach($allRoles->whereIn('id', $assigneeRoleIds) as $role)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs dark:bg-emerald-900/20 dark:text-emerald-300">
                                         {{ $role->name }}
                                     </span>
@@ -137,7 +139,10 @@
                     موجودیت مرتبط
                 </h3>
 
-                @if($task->related_target === 'user')
+                @if($relatedTarget === 'user' && $relatedUser)
+                    @php
+                        $relatedUserRoleIds = collect($meta['related_user_role_ids'] ?? [])->map(fn($id) => (int) $id)->all();
+                    @endphp
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                         <div>
                             <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">نوع موجودیت</div>
@@ -145,17 +150,14 @@
 
                             <div class="mt-3 text-xs text-gray-500 dark:text-gray-400 mb-1">کاربر مرتبط</div>
                             <div class="font-medium text-gray-900 dark:text-gray-100">
-                                {{ optional($task->relatedUser)->name ?? '—' }}
+                                {{ $relatedUser->name }} @if($relatedUser->email) <span class="text-xs text-gray-400">({{ $relatedUser->email }})</span> @endif
                             </div>
                         </div>
                         <div>
                             <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">نقش‌های مرتبط</div>
-                            @php
-                                $relatedUserRoleIds = (array) ($task->related_user_role_ids ?? []);
-                            @endphp
-                            @if(!empty($relatedUserRoleIds) && $roles = ($roles ?? null))
+                            @if(!empty($relatedUserRoleIds))
                                 <div class="flex flex-wrap gap-1.5">
-                                    @foreach($roles->whereIn('id', $relatedUserRoleIds) as $role)
+                                    @foreach($allRoles->whereIn('id', $relatedUserRoleIds) as $role)
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs dark:bg-indigo-900/20 dark:text-indigo-300">
                                             {{ $role->name }}
                                         </span>
@@ -166,7 +168,10 @@
                             @endif
                         </div>
                     </div>
-                @elseif($task->related_target === 'client')
+                @elseif($relatedTarget === 'client' && $relatedClient)
+                    @php
+                        $relatedClientStatusIds = collect($meta['related_client_status_ids'] ?? [])->map(fn($id) => (int) $id)->all();
+                    @endphp
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                         <div>
                             <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">نوع موجودیت</div>
@@ -174,15 +179,12 @@
 
                             <div class="mt-3 text-xs text-gray-500 dark:text-gray-400 mb-1">مشتری مرتبط</div>
                             <div class="font-medium text-gray-900 dark:text-gray-100">
-                                {{ optional($task->relatedClient)->full_name ?? '—' }}
+                                {{ $relatedClient->full_name }} @if($relatedClient->phone) <span class="text-xs text-gray-400">({{ $relatedClient->phone }})</span> @endif
                             </div>
                         </div>
                         <div>
                             <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">وضعیت‌های مشتری مرتبط</div>
-                            @php
-                                $relatedClientStatusIds = (array) ($task->related_client_status_ids ?? []);
-                            @endphp
-                            @if(!empty($relatedClientStatusIds) && $clientStatuses = ($clientStatuses ?? null))
+                            @if(!empty($relatedClientStatusIds))
                                 <div class="flex flex-wrap gap-1.5">
                                     @foreach($clientStatuses->whereIn('id', $relatedClientStatusIds) as $st)
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 text-xs dark:bg-pink-900/20 dark:text-pink-300">

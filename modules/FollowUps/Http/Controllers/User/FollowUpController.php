@@ -8,13 +8,15 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Modules\FollowUps\Entities\FollowUp;
 use Modules\Tasks\Entities\Task;
+use Carbon\Carbon;
+use Morilog\Jalali\CalendarUtils;
 
 class FollowUpController extends Controller
 {
     protected function validateRequest(Request $request): array
     {
-        $statusKeys   = array_keys(config('tasks.statuses', []));
-        $priorityKeys = array_keys(config('tasks.priorities', []));
+        $statusKeys   = array_keys(Task::statusOptions());
+        $priorityKeys = array_keys(Task::priorityOptions());
 
         return $request->validate([
             'title'        => ['required', 'string', 'max:255'],
@@ -23,9 +25,40 @@ class FollowUpController extends Controller
             'status'       => ['nullable', 'string', Rule::in($statusKeys)],
             'priority'     => ['nullable', 'string', Rule::in($priorityKeys)],
             'due_at'       => ['nullable', 'date'],
+            'due_at_view'  => ['nullable', 'string'], // تاریخ شمسی از فرم‌های کلاینت
             'related_type' => ['nullable', 'string', 'max:100'],
             'related_id'   => ['nullable', 'integer'],
         ]);
+    }
+
+    /**
+     * تبدیل تاریخ شمسی (مثلاً 1403/09/15) به Carbon میلادی.
+     */
+    private function convertJalaliDate(?string $jalali): ?Carbon
+    {
+        if (empty($jalali)) {
+            return null;
+        }
+
+        try {
+            $parts = preg_split('/[^\d]+/', trim($jalali));
+            if (count($parts) < 3) {
+                return null;
+            }
+
+            [$jy, $jm, $jd] = array_map('intval', array_slice($parts, 0, 3));
+            [$gy, $gm, $gd] = CalendarUtils::toGregorian($jy, $jm, $jd);
+
+            return Carbon::createFromDate($gy, $gm, $gd)->startOfDay();
+        } catch (\Throwable $e) {
+            if (function_exists('logger')) {
+                logger()->warning('Failed to convert FollowUp Jalali due_at_view', [
+                    'value' => $jalali,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            return null;
+        }
     }
 
     protected function authorizeView(FollowUp $followUp): void
@@ -83,6 +116,11 @@ class FollowUpController extends Controller
             $query->where('related_type', $relatedType);
         }
 
+        if ($relatedId = $request->get('related_id')) {
+            $query->where('related_id', $relatedId);
+        }
+
+
         $perPage   = config('tasks.default_items_per_page', 15);
         $followups = $query->paginate($perPage)->withQueryString();
 
@@ -113,15 +151,19 @@ class FollowUpController extends Controller
 
         $data = $this->validateRequest($request);
 
+        // تاریخ سررسید: اولویت با due_at_view (شمسی)، بعد due_at میلادی
+        $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null)
+            ?? (! empty($data['due_at']) ? Carbon::parse($data['due_at']) : null);
+
         $followUp = FollowUp::create([
             'title'        => $data['title'],
             'description'  => $data['description'] ?? null,
             'task_type'    => Task::TYPE_FOLLOW_UP,
-            'assignee_id'  => $data['assignee_id'] ?? null,
+            'assignee_id'  => $data['assignee_id'] ?? $user->id,
             'creator_id'   => $user->id,
             'status'       => $data['status'] ?? Task::STATUS_TODO,
             'priority'     => $data['priority'] ?? Task::PRIORITY_MEDIUM,
-            'due_at'       => $data['due_at'] ?? null,
+            'due_at'       => $dueAt,
             'related_type' => $data['related_type'] ?? null,
             'related_id'   => $data['related_id'] ?? null,
         ]);
@@ -130,6 +172,7 @@ class FollowUpController extends Controller
             ->route('user.followups.show', $followUp)
             ->with('status', 'پیگیری با موفقیت ایجاد شد.');
     }
+
 
     public function show(FollowUp $followUp)
     {
