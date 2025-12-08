@@ -9,6 +9,10 @@ use Illuminate\Validation\Rule;
 use Modules\Tasks\Entities\Task;
 use Carbon\Carbon;
 use Morilog\Jalali\CalendarUtils;
+use App\Models\User;
+use Spatie\Permission\Models\Role;
+use Modules\Clients\Entities\Client;
+
 
 class TaskController extends Controller
 {
@@ -89,6 +93,98 @@ class TaskController extends Controller
             return null;
         }
     }
+
+    /**
+     * تعیین لیست کاربران مسئول بر اساس:
+     * - نوع وظیفه (عمومی / پیگیری)
+     * - دسترسی کاربر فعلی
+     * - حالت انتخاب مسئول (تک‌کاربر / بر اساس نقش‌ها)
+     */
+    private function resolveAssigneeIds(array $data, Request $request, string $taskType, \App\Models\User $currentUser): array
+    {
+        $canAssign = $currentUser->can('tasks.assign')
+            || $currentUser->can('tasks.manage')
+            || $currentUser->hasRole('super-admin');
+
+        // پیگیری + نداشتن دسترسی → همیشه خود کاربر فعلی
+        if ($taskType === Task::TYPE_FOLLOW_UP && ! $canAssign) {
+            return [$currentUser->id];
+        }
+
+        $assigneeMode    = $request->input('assignee_mode', 'single_user');
+        $assigneeRoleIds = (array) $request->input('assignee_role_ids', []);
+        $assigneeIds     = [];
+
+        // حالت بر اساس نقش‌ها
+        if ($assigneeMode === 'by_roles') {
+            // اگر "همه نقش‌ها" انتخاب شده باشد (value="__all__")
+            if (in_array('__all__', $assigneeRoleIds, true)) {
+                $assigneeRoleIds = Role::pluck('id')->all();
+            }
+
+            if (! empty($assigneeRoleIds)) {
+                $assigneeIds = User::query()
+                    ->whereHas('roles', function ($q) use ($assigneeRoleIds) {
+                        $q->whereIn('id', $assigneeRoleIds);
+                    })
+                    ->pluck('id')
+                    ->unique()
+                    ->values()
+                    ->all();
+            }
+        }
+
+        // اگر بر اساس نقش‌ها چیزی درنیومد، از assignee_id استفاده کن
+        if (empty($assigneeIds) && ! empty($data['assignee_id'])) {
+            $assigneeIds = [(int) $data['assignee_id']];
+        }
+
+        // اگر هنوز خالی بود، حداقل خود کاربر فعلی را مسئول کن
+        if (empty($assigneeIds)) {
+            $assigneeIds = [$currentUser->id];
+        }
+
+        return $assigneeIds;
+    }
+
+    /**
+     * تعیین لیست id مشتریان هدف بر اساس:
+     * - انتخاب مستقیم یک مشتری
+     * - یا انتخاب چند وضعیت مشتری
+     */
+    private function resolveClientIds(Request $request): array
+    {
+        $relatedTarget = $request->input('related_target', 'none');
+
+        if ($relatedTarget !== 'client') {
+            return [];
+        }
+
+        $clientId         = $request->input('related_client_id');
+        $statusIds        = (array) $request->input('related_client_status_ids', []);
+        $selectedClientIds = [];
+
+        // ۱) اگر یک مشتری مشخص انتخاب شده باشد
+        if (! empty($clientId)) {
+            return [(int) $clientId];
+        }
+
+        // ۲) اگر وضعیت‌ها انتخاب شده باشند
+        if (! empty($statusIds)) {
+            // اگر گزینه "همه وضعیت‌ها" انتخاب شده باشد
+            if (in_array('__all__', $statusIds, true)) {
+                $selectedClientIds = Client::pluck('id')->all();
+            } else {
+                $selectedClientIds = Client::query()
+                    ->whereIn('status_id', $statusIds)
+                    ->pluck('id')
+                    ->all();
+            }
+        }
+
+        return $selectedClientIds;
+    }
+
 
     protected function authorizeView(Task $task): void
     {
@@ -198,135 +294,84 @@ class TaskController extends Controller
 
         $data = $this->validateRequest($request);
 
+        // نوع وظیفه (عمومی / پیگیری / سیستمی)
         $taskType = $data['task_type'] ?? Task::TYPE_GENERAL;
 
-        // آیا این کاربر اجازه تعیین مسئول دارد؟
-        $canAssign = $user
-            && (
-                $user->can('tasks.assign')
-                || $user->can('tasks.manage')
-                || $user->hasRole('super-admin')
-            );
+        // تاریخ سررسید از فیلد شمسی (due_at_view) → میلادی
+        $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null)
+            ?? (! empty($data['due_at']) ? Carbon::parse($data['due_at']) : null);
 
-        /*
-         |--------------------------------------------------------------------------
-         | تعیین مسئول (assignee_id)
-         |--------------------------------------------------------------------------
-         | - در Follow-up و نداشتن پرمیشن: مسئول = خود کاربر فعلی
-         | - در سایر حالت‌ها:
-         |    * حالت single_user → از select کاربر
-         |    * حالت by_roles   → اولین کاربر دارای یکی از نقش‌های انتخاب‌شده
-         */
-        $assigneeId = null;
+        // ۱) لیست کاربران مسئول (بر اساس نقش‌ها یا تک‌کاربر)
+        $assigneeIds = $this->resolveAssigneeIds($data, $request, $taskType, $user);
 
-        if ($taskType === Task::TYPE_FOLLOW_UP && ! $canAssign) {
-            // پیگیری و بدون دسترسی تعیین مسئول → خود کاربر
-            $assigneeId = $user->id;
-        } else {
-            $assigneeMode = $data['assignee_mode'] ?? $request->input('assignee_mode', 'single_user');
+        // ۲) لیست مشتریان هدف (بر اساس وضعیت یا یک مشتری مشخص)
+        $clientIds = $this->resolveClientIds($request);
 
-            if ($assigneeMode === 'by_roles') {
-                $roleIds = array_filter((array) ($request->input('assignee_role_ids', []) ?? []));
-                if (! empty($roleIds)) {
-                    $assigneeUser = \App\Models\User::query()
-                        ->whereHas('roles', function ($q) use ($roleIds) {
-                            $q->whereIn('id', $roleIds);
-                        })
-                        ->orderBy('id')
-                        ->first();
-
-                    if ($assigneeUser) {
-                        $assigneeId = $assigneeUser->id;
-                    }
-                }
-            } else {
-                // single_user
-                $assigneeId = $data['assignee_id'] ?? null;
-            }
-        }
-
-        /*
-         |--------------------------------------------------------------------------
-         | تعیین موجودیت مرتبط (related_type / related_id)
-         |--------------------------------------------------------------------------
-         | - related_target = none / user / client
-         | - برای user:
-         |      * اگر related_user_id پر بود → همان
-         |      * در غیر این صورت، اگر role انتخاب شده بود → اولین کاربر دارای آن نقش‌ها
-         | - برای client:
-         |      * اگر related_client_id پر بود → همان
-         |      * related_client_status_ids فعلاً فقط جهت پردازش‌های بعدی است (مثلاً ساخت گروهی)
-         */
+        // ۳) موجودیت مرتبط دیگر (مثلاً User) – فعلاً فقط یک‌تایی
         $relatedType = null;
         $relatedId   = null;
 
-        $relatedTarget = $data['related_target'] ?? $request->input('related_target', 'none');
+        $relatedTarget = $request->input('related_target', 'none');
 
-        if ($relatedTarget === 'user') {
-            $relatedType = 'USER';
-
-            $relatedUserId = $data['related_user_id'] ?? null;
-
-            if (! $relatedUserId) {
-                $roleIds = array_filter((array) ($request->input('related_user_role_ids', []) ?? []));
-                if (! empty($roleIds)) {
-                    $relatedUser = \App\Models\User::query()
-                        ->whereHas('roles', function ($q) use ($roleIds) {
-                            $q->whereIn('id', $roleIds);
-                        })
-                        ->orderBy('id')
-                        ->first();
-
-                    if ($relatedUser) {
-                        $relatedUserId = $relatedUser->id;
-                    }
-                }
-            }
-
-            $relatedId = $relatedUserId;
-        } elseif ($relatedTarget === 'client') {
-            $relatedType = 'CLIENT';
-
-            $relatedClientId = $data['related_client_id'] ?? null;
-
-            // related_client_status_ids در حال حاضر جایی ذخیره نمی‌شود
-            // و برای منطق‌های گروهی/آتی قابل استفاده است.
-
-            $relatedId = $relatedClientId;
-        } else {
-            // none → خالی می‌ماند
+        if ($relatedTarget === 'user' && $request->filled('related_user_id')) {
+            $relatedType = Task::RELATED_TYPE_USER;
+            $relatedId   = (int) $request->input('related_user_id');
         }
 
-        /*
-         |--------------------------------------------------------------------------
-         | ساخت رکورد Task
-         |--------------------------------------------------------------------------
-         */
-        $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null)
-            ?? (!empty($data['due_at']) ? Carbon::parse($data['due_at']) : null);
-        $task = Task::create([
-            'title'        => $data['title'],
-            'description'  => $data['description'] ?? null,
-            'task_type'    => $taskType,
-            'assignee_id'  => $assigneeId,
-            'creator_id'   => $user->id,
-            'status'       => $data['status'] ?? Task::STATUS_TODO,
-            'priority'     => $data['priority'] ?? Task::PRIORITY_MEDIUM,
-            'due_at'       => $dueAt,   // تاریخ میلادی از jalali datepicker
-            'related_type' => $relatedType,
-            'related_id'   => $relatedId,
-        ]);
+        // ۴) ساخت وظایف
+        $createdTasks = [];
 
-        // ❗️نیازی به صدا زدن دستی autoCreateReminderIfPossible نداریم؛
-        // در booted مدل Task روی created این کار انجام می‌شود (در صورت نصب Reminders).
+        // اگر مشتری‌ها مشخص شده‌اند → برای هر مشتری و هر مسئول یک وظیفه بساز
+        if (! empty($clientIds)) {
+            foreach ($clientIds as $cid) {
+                foreach ($assigneeIds as $aid) {
+                    $createdTasks[] = Task::create([
+                        'title'        => $data['title'],
+                        'description'  => $data['description'] ?? null,
+                        'task_type'    => $taskType,
+                        'assignee_id'  => $aid,
+                        'creator_id'   => $user->id,
+                        'status'       => $data['status'] ?? Task::STATUS_TODO,
+                        'priority'     => $data['priority'] ?? Task::PRIORITY_MEDIUM,
+                        'due_at'       => $dueAt,
+                        'related_type' => Task::RELATED_TYPE_CLIENT,
+                        'related_id'   => $cid,
+                    ]);
+                }
+            }
+        } else {
+            // در غیر اینصورت، فقط بر اساس مسئول‌ها (بدون مشتری یا با related_type دیگر)
+            foreach ($assigneeIds as $aid) {
+                $createdTasks[] = Task::create([
+                    'title'        => $data['title'],
+                    'description'  => $data['description'] ?? null,
+                    'task_type'    => $taskType,
+                    'assignee_id'  => $aid,
+                    'creator_id'   => $user->id,
+                    'status'       => $data['status'] ?? Task::STATUS_TODO,
+                    'priority'     => $data['priority'] ?? Task::PRIORITY_MEDIUM,
+                    'due_at'       => $dueAt,
+                    'related_type' => $relatedType,
+                    'related_id'   => $relatedId,
+                ]);
+            }
+        }
 
-        // در صورت وظیفه سیستمی (SYSTEM)، منطق کامل در ماژول Workflow پیاده می‌شود
-        // و اینجا فقط رکورد خام ساخته می‌شود.
+        // hook created در مدل Task خودش Reminder می‌سازد (برای هر Task)
+        // یک وظیفه‌ی مرجع برای redirect
+        $primaryTask = $createdTasks[0] ?? null;
+
+        if (! $primaryTask) {
+            return redirect()
+                ->route('user.tasks.index')
+                ->with('status', 'هیچ وظیفه‌ای ساخته نشد.');
+        }
 
         return redirect()
-            ->route('user.tasks.show', $task)
-            ->with('status', 'وظیفه با موفقیت ایجاد شد.');
+            ->route('user.tasks.show', $primaryTask)
+            ->with('status', 'وظایف با موفقیت ایجاد شدند.');
     }
+
 
     public function show(Task $task)
     {

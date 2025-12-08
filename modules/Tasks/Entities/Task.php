@@ -25,6 +25,9 @@ class Task extends Model
     public const PRIORITY_HIGH     = 'HIGH';
     public const PRIORITY_CRITICAL = 'CRITICAL';
 
+    public const RELATED_TYPE_USER   = 'USER';
+    public const RELATED_TYPE_CLIENT = 'CLIENT';
+
     protected $table = 'tasks';
 
     protected $fillable = [
