@@ -87,8 +87,16 @@ class ClientController extends Controller
     {
         $this->ensureVisible($client);
 
+        $client->load([
+            'creator',
+            'status',
+            'calls.user',
+            'followUps.assignee',
+        ]);
+
         return view('clients::user.clients.show', compact('client'));
     }
+
 
     public function edit(Client $client)
     {

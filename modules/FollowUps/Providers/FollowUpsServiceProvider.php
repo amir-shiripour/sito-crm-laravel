@@ -2,6 +2,7 @@
 
 namespace Modules\FollowUps\Providers;
 
+use App\Support\WidgetRegistry;
 use Illuminate\Support\ServiceProvider;
 
 class FollowUpsServiceProvider extends ServiceProvider
@@ -13,6 +14,15 @@ class FollowUpsServiceProvider extends ServiceProvider
     {
         $this->registerConfig();
         $this->registerViews();
+        $widgetsFile = __DIR__ . '/../config/widgets.php';
+
+        if (file_exists($widgetsFile)) {
+            $widgets = require $widgetsFile;
+
+            foreach ($widgets as $key => $definition) {
+                WidgetRegistry::register($key, $definition);
+            }
+        }
     }
 
     public function register(): void

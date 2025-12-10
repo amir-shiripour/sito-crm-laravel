@@ -8,6 +8,7 @@ use Modules\Clients\Entities\Client;
 use Modules\ClientCalls\Entities\ClientCall;
 use Morilog\Jalali\Jalalian;
 use Illuminate\Support\Facades\Auth;
+use Modules\Tasks\Entities\Task;
 
 class ClientCallController extends Controller
 {
@@ -60,7 +61,7 @@ class ClientCallController extends Controller
             abort(403);
         }
 
-        // 1) ولیدیشن ورودی‌ها (همه فیلدها اجباری)
+        // 1) ولیدیشن ورودی‌ها
         $validated = $request->validate([
             'call_date_jalali' => ['required', 'string'],        // 1403/09/12
             'call_time'        => ['required', 'date_format:H:i'],
@@ -69,12 +70,12 @@ class ClientCallController extends Controller
             'status'           => ['required', 'in:planned,done,failed,cancelled'],
         ]);
 
-        // 2) تبدیل تاریخ جلالی → میلادی (Carbon)
-        // ورودی مثلاً: 1403/09/12
-        $jalali = Jalalian::fromFormat('Y/m/d', $validated['call_date_jalali']);
+        // 2) تبدیل تاریخ جلالی → میلادی
+        $jalali        = Jalalian::fromFormat('Y/m/d', $validated['call_date_jalali']);
         $gregorianDate = $jalali->toCarbon()->toDateString();   // 2025-12-03
 
-        $data = [
+        // 3) ساخت تماس
+        $call = ClientCall::create([
             'client_id' => $client->id,
             'user_id'   => $user->id,
             'call_date' => $gregorianDate,
@@ -82,13 +83,36 @@ class ClientCallController extends Controller
             'reason'    => $validated['reason'],
             'result'    => $validated['result'],
             'status'    => $validated['status'],
-        ];
+        ]);
 
-        ClientCall::create($data);
+        // 4) آماده کردن لینک ایجاد پیگیری (در صورت امکان)
+        $followupUrl = null;
 
+        if (
+            $call->status === 'done'
+            && class_exists(\Modules\FollowUps\Entities\FollowUp::class)
+            && class_exists(Task::class)
+            && $user->can('followups.create')
+        ) {
+            $followupUrl = route('user.followups.create', [
+                'related_type' => Task::RELATED_TYPE_CLIENT,
+                'related_id'   => $client->id,
+            ]);
+        }
+
+        // 5) اگر درخواست AJAX بود → JSON (برای ویجت / مودال)
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message'      => 'تماس با موفقیت ثبت شد.',
+                'followup_url' => $followupUrl,
+            ]);
+        }
+
+        // 6) حالت معمولی (فرم‌های کلاسیک)
         return redirect()
             ->route('user.clients.calls.index', $client)
-            ->with('success', 'تماس با موفقیت ثبت شد.');
+            ->with('success', 'تماس با موفقیت ثبت شد.')
+            ->with('followup_url', $followupUrl);
     }
 
     public function edit(Client $client, ClientCall $call)
@@ -119,7 +143,6 @@ class ClientCallController extends Controller
             abort(403);
         }
 
-        // 1) ولیدیشن
         $validated = $request->validate([
             'call_date_jalali' => ['required', 'string'],
             'call_time'        => ['required', 'date_format:H:i'],
@@ -128,23 +151,30 @@ class ClientCallController extends Controller
             'status'           => ['required', 'in:planned,done,failed,cancelled'],
         ]);
 
-        // 2) تبدیل تاریخ جلالی → میلادی
-        $jalali = Jalalian::fromFormat('Y/m/d', $validated['call_date_jalali']);
+        $jalali        = Jalalian::fromFormat('Y/m/d', $validated['call_date_jalali']);
         $gregorianDate = $jalali->toCarbon()->toDateString();
 
-        $data = [
+        $call->update([
             'call_date' => $gregorianDate,
             'call_time' => $validated['call_time'],
             'reason'    => $validated['reason'],
             'result'    => $validated['result'],
             'status'    => $validated['status'],
-        ];
+        ]);
 
-        $call->update($data);
-
-        return redirect()
+        $redirect = redirect()
             ->route('user.clients.calls.index', $client)
             ->with('success', 'تماس با موفقیت به‌روزرسانی شد.');
+
+        if (($call->status === 'done' || $call->status === 'failed') && $user->can('followups.create')) {
+            $redirect->with('call_followup_suggestion', [
+                'client_id'   => $client->id,
+                'client_name' => $client->full_name ?: $client->username,
+                'status'      => $call->status,
+            ]);
+        }
+
+        return $redirect;
     }
 
     public function destroy(Client $client, ClientCall $call)
@@ -168,20 +198,17 @@ class ClientCallController extends Controller
     public function quickStore(Request $request)
     {
         $request->validate([
-            'client_id'        => 'required|exists:clients,id', // یا جدول/مدل درست ماژول کلاینت
+            'client_id'        => 'required|exists:clients,id',
             'call_date_jalali' => 'required|date_format:Y/m/d',
             'call_time'        => 'required|date_format:H:i',
-            'status'           => 'required|string',
+            'status'           => 'required|string|in:planned,done,failed,canceled',
             'reason'           => 'required|string',
             'result'           => 'required|string',
         ]);
 
-        // تبدیل تاریخ شمسی به میلادی
         $callDate = Jalalian::fromFormat('Y/m/d', $request->call_date_jalali)
             ->toCarbon()
             ->startOfDay();
-
-        $callClass = ClientCall::class ?? null;
 
         $call = new ClientCall();
         $call->client_id = $request->client_id;
@@ -193,14 +220,22 @@ class ClientCallController extends Controller
         $call->user_id   = $request->user()->id;
         $call->save();
 
-        // اگر درخواست AJAX بود → JSON
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => 'تماس با موفقیت ثبت شد.',
+        // 🔗 اگر تماس انجام شد و کاربر اجازه ثبت پیگیری دارد، لینک ایجاد پیگیری را بساز
+        $followupUrl = null;
+        if (($call->status === 'done' || $call->status === 'failed') && $request->user()?->can('followups.create')) {
+            $followupUrl = route('user.followups.create', [
+                'related_type' => Task::RELATED_TYPE_CLIENT,
+                'related_id'   => $call->client_id,
             ]);
         }
 
-        // fallback (اگر کسی فرم را عادی ارسال کرد)
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message'      => 'تماس با موفقیت ثبت شد.',
+                'followup_url' => $followupUrl,
+            ]);
+        }
+
         return back()->with('success', 'تماس با موفقیت ثبت شد.');
     }
 

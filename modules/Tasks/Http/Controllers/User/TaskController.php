@@ -637,8 +637,6 @@ class TaskController extends Controller
             ->with('status', 'وظیفه با موفقیت به‌روزرسانی شد.');
     }
 
-
-
     public function destroy(Task $task)
     {
         $this->authorizeEdit($task);

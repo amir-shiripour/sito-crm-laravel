@@ -34,4 +34,7 @@ Route::prefix('user')
         Route::delete('followups/{followUp}', [FollowUpController::class, 'destroy'])
             ->name('followups.destroy')
             ->middleware('can:followups.delete');
+
+        Route::post('followups/quick-store', [FollowUpController::class, 'quickStore'])
+            ->name('followups.quick-store');
     });

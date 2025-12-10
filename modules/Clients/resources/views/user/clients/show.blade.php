@@ -236,7 +236,7 @@
                         @can('client-calls.view')
                             @if($client->calls->count())
                                 <div @click="open = ! open" x-data="{ open: true }" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
-                                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-0 flex items-center gap-2">
+                                    <h3 class="text-sm font-semibold cursor-pointer text-gray-900 dark:text-white mb-0 flex items-center gap-2">
                                         <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                                         تاریخچه سریع تماس‌ها
                                     </h3>
@@ -281,6 +281,104 @@
                                 </div>
                             @endif
 
+                        @endcan
+                    @endif
+                    @if($followUpsModule && $followUpsModule->installed && $followUpsModule->active)
+                        @can('followups.view')
+                            @php
+                                $followUpsQuick      = $client->followUps->take(3);
+                                $taskStatusOptions   = \Modules\Tasks\Entities\Task::statusOptions();
+                                $taskPriorityOptions = \Modules\Tasks\Entities\Task::priorityOptions();
+                            @endphp
+
+                            @if($followUpsQuick->count())
+                                <div x-data="{ openFU: true }"
+                                     class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
+                                    <div class="flex items-center justify-between cursor-pointer mb-0" @click="openFU = !openFU">
+                                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-0 flex items-center gap-2">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                            تاریخچه سریع پیگیری‌ها
+                                        </h3>
+
+                                        <div class="flex items-center gap-2 text-xs">
+                        <span class="text-gray-500 dark:text-gray-400">
+                            {{ $followUpsQuick->count() }} مورد اخیر
+                        </span>
+                                            @can('followups.view')
+                                                <a href="{{ route('user.followups.index', [
+                                    'related_type' => \Modules\Tasks\Entities\Task::RELATED_TYPE_CLIENT,
+                                    'related_id'   => $client->id,
+                                ]) }}"
+                                                   class="inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-100">
+                                                    <span>مشاهده همه</span>
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
+                                                              d="M13 5h6m0 0v6m0-6L10 14" />
+                                                    </svg>
+                                                </a>
+                                            @endcan
+                                        </div>
+                                    </div>
+
+                                    <div x-show="openFU" x-collapse class="space-y-3 mt-4">
+                                        @foreach($followUpsQuick as $fu)
+                                            @php
+                                                $statusLabel   = $taskStatusOptions[$fu->status] ?? $fu->status;
+                                                $priorityLabel = $taskPriorityOptions[$fu->priority] ?? $fu->priority;
+                                                $dueText       = $fu->due_at
+                                                    ? \Morilog\Jalali\Jalalian::fromCarbon($fu->due_at)->format('Y/m/d')
+                                                    : '—';
+                                            @endphp
+
+                                            <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50">
+                                                <div class="flex items-start justify-between gap-3 mb-2">
+                                                    <div class="flex flex-wrap items-center gap-1.5">
+                                                        {{-- وضعیت --}}
+                                                        <span class="inline-flex items-center px-3 py-1 rounded-full border text-xs
+                                        {{ $fu->status === \Modules\Tasks\Entities\Task::STATUS_DONE
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700'
+                                            : 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700'
+                                        }}">
+                                        {{ $statusLabel }}
+                                    </span>
+
+                                                        {{-- اولویت --}}
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full border text-[11px]
+                                        @if($fu->priority === \Modules\Tasks\Entities\Task::PRIORITY_HIGH || $fu->priority === \Modules\Tasks\Entities\Task::PRIORITY_CRITICAL)
+                                            bg-red-50 text-red-700 border-red-100 dark:bg-red-900/40 dark:text-red-200 dark:border-red-700
+                                        @elseif($fu->priority === \Modules\Tasks\Entities\Task::PRIORITY_MEDIUM)
+                                            bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700
+                                        @else
+                                            bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:border-gray-600
+                                        @endif">
+                                        {{ $priorityLabel }}
+                                    </span>
+                                                    </div>
+
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400 text-left dir-ltr">
+                                                        <div>{{ $dueText }}</div>
+                                                        @if($fu->assignee)
+                                                            <div class="mt-1 text-[10px] text-gray-500 dark:text-gray-400 dir-rtl text-right">
+                                                                مسئول: <span class="font-medium text-gray-700 dark:text-gray-200">{{ $fu->assignee->name }}</span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+
+                                                <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" title="{{ $fu->title }}">
+                                                    {{ $fu->title }}
+                                                </div>
+
+                                                @if($fu->description)
+                                                    <div class="mt-1 text-sm text-gray-600 dark:text-gray-300 line-clamp-2" title="{{ $fu->description }}">
+                                                        {{ $fu->description }}
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
                         @endcan
                     @endif
                 </div>

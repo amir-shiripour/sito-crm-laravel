@@ -3,6 +3,7 @@
 
 @php
     use Morilog\Jalali\Jalalian;
+    use Modules\Tasks\Entities\Task;
 
     $title = 'تماس‌های ' . ($client->full_name ?: $client->username);
 
@@ -13,6 +14,7 @@
         'failed'    => 'ناموفق',
         'canceled'  => 'لغو شده',
     ];
+    $followUpSuggestion = session('call_followup_suggestion');
 @endphp
 
 {{-- اسکریپت و استایل جلالی دیت‌پیکر (اگه تعریف شده) --}}
@@ -54,6 +56,41 @@
                 @endcan
             </div>
         </div>
+
+        {{-- 🔔 پیشنهاد ثبت پیگیری بعد از تماس موفق --}}
+        @if($followUpSuggestion && ($followUpSuggestion['status'] ?? null) === 'done' && auth()->user()?->can('followups.create'))
+            <div class="bg-amber-50 border border-amber-100 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-100 rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-start gap-3">
+                    <div class="mt-0.5">
+                        <svg class="w-5 h-5 text-amber-500 dark:text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                  d="M13 16h-1v-4h-1m1-4h.01M4.93 4.93a10.5 10.5 0 0114.84 0 10.5 10.5 0 010 14.84A10.5 10.5 0 014.93 4.93z" />
+                        </svg>
+                    </div>
+                    <div class="text-sm">
+                        <p class="font-semibold mb-0.5">
+                            تماس با موفقیت ثبت شد. مایلید برای این {{ config('clients.labels.singular', 'مشتری') }} یک پیگیری ثبت کنید؟
+                        </p>
+                        <p class="text-[11px] text-amber-800/80 dark:text-amber-100/80">
+                            با ثبت پیگیری، انجام اقدامات بعد از تماس (مثلاً ارسال پیش‌فاکتور، پیگیری پرداخت و ...) را فراموش نمی‌کنید.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('user.followups.create', [
+                        'related_type' => Task::RELATED_TYPE_CLIENT,
+                        'related_id'   => $client->id,
+                    ]) }}"
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 hover:shadow-md hover:shadow-amber-500/30 transition-all">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>ثبت پیگیری برای این مشتری</span>
+                    </a>
+                </div>
+            </div>
+        @endif
 
         {{-- ایجاد سریع تماس --}}
         @can('client-calls.create')

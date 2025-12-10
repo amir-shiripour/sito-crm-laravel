@@ -10,6 +10,9 @@ use Modules\FollowUps\Entities\FollowUp;
 use Modules\Tasks\Entities\Task;
 use Carbon\Carbon;
 use Morilog\Jalali\CalendarUtils;
+use App\Models\User;
+use Modules\Clients\Entities\Client;
+
 
 class FollowUpController extends Controller
 {
@@ -25,12 +28,23 @@ class FollowUpController extends Controller
             'status'       => ['nullable', 'string', Rule::in($statusKeys)],
             'priority'     => ['nullable', 'string', Rule::in($priorityKeys)],
             'due_at'       => ['nullable', 'date'],
-            'due_at_view'  => ['nullable', 'string'], // تاریخ شمسی از فرم‌های کلاینت
+            'due_at_view'  => ['nullable', 'string'], // تاریخ شمسی
             'related_type' => ['nullable', 'string', 'max:100'],
             'related_id'   => ['nullable', 'integer'],
         ]);
     }
 
+    private function normalizeJalaliDigits(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+        $latin   = ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'];
+
+        return str_replace($persian, $latin, $value);
+    }
     /**
      * تبدیل تاریخ شمسی (مثلاً 1403/09/15) به Carbon میلادی.
      */
@@ -41,7 +55,10 @@ class FollowUpController extends Controller
         }
 
         try {
-            $parts = preg_split('/[^\d]+/', trim($jalali));
+            // 👈 اول ارقام را انگلیسی کن
+            $jalali = $this->normalizeJalaliDigits(trim($jalali));
+
+            $parts = preg_split('/[^\d]+/', $jalali);
             if (count($parts) < 3) {
                 return null;
             }
@@ -94,7 +111,7 @@ class FollowUpController extends Controller
         $user = Auth::user();
 
         $query = FollowUp::query()
-            ->with(['assignee', 'creator'])
+            ->with(['assignee', 'creator', 'client'])
             ->orderByDesc('due_at')
             ->orderByDesc('created_at');
 
@@ -108,26 +125,40 @@ class FollowUpController extends Controller
             abort(403);
         }
 
+        // فیلتر وضعیت
         if ($status = $request->get('status')) {
             $query->where('status', $status);
         }
 
-        if ($relatedType = $request->get('related_type')) {
-            $query->where('related_type', $relatedType);
+        // فیلتر اولویت
+        if ($priority = $request->get('priority')) {
+            $query->where('priority', $priority);
         }
 
-        if ($relatedId = $request->get('related_id')) {
-            $query->where('related_id', $relatedId);
+        // فیلتر جستجو در عنوان/توضیحات
+        if ($q = $request->get('q')) {
+            $query->where(function ($qBuilder) use ($q) {
+                $qBuilder->where('title', 'like', "%{$q}%")
+                    ->orWhere('description', 'like', "%{$q}%");
+            });
         }
-
 
         $perPage   = config('tasks.default_items_per_page', 15);
         $followups = $query->paginate($perPage)->withQueryString();
 
-        return view('followups::user.followups.index', compact('followups'));
+        $statuses   = Task::statusOptions();
+        $priorities = Task::priorityOptions();
+        $types      = Task::typeOptions();
+
+        return view('followups::user.followups.index', compact(
+            'followups',
+            'statuses',
+            'priorities',
+            'types'
+        ));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = Auth::user();
 
@@ -135,10 +166,37 @@ class FollowUpController extends Controller
             abort(403);
         }
 
-        $statuses   = array_keys(config('tasks.statuses', []));
-        $priorities = array_keys(config('tasks.priorities', []));
+        $statuses   = Task::statusOptions();
+        $priorities = Task::priorityOptions();
 
-        return view('followups::user.followups.create', compact('statuses', 'priorities'));
+        // لیست کاربران برای انتخاب مسئول
+        $users = \App\Models\User::select('id', 'name', 'email')->get();
+
+        // لیست مشتری‌ها برای انتخاب موجودیت مرتبط
+        $clients = \Modules\Clients\Entities\Client::select('id', 'full_name', 'phone')->get();
+
+        // مجوز انتخاب مسئول
+        $canAssign = $user->can('followups.manage') || $user->hasRole('super-admin');
+
+        // اگر از صفحه مشتری آمده باشیم
+        $relatedType = $request->get('related_type');
+        $relatedId   = $request->get('related_id');
+
+        $relatedClient = null;
+        if ($relatedType === Task::RELATED_TYPE_CLIENT && $relatedId) {
+            $relatedClient = \Modules\Clients\Entities\Client::find($relatedId);
+        }
+
+        return view('followups::user.followups.create', compact(
+            'statuses',
+            'priorities',
+            'users',
+            'clients',
+            'canAssign',
+            'relatedType',
+            'relatedId',
+            'relatedClient'
+        ));
     }
 
     public function store(Request $request)
@@ -149,17 +207,42 @@ class FollowUpController extends Controller
             abort(403);
         }
 
-        $data = $this->validateRequest($request);
+        $statusKeys   = array_keys(Task::statusOptions());
+        $priorityKeys = array_keys(Task::priorityOptions());
 
-        // تاریخ سررسید: اولویت با due_at_view (شمسی)، بعد due_at میلادی
+        $data = $request->validate([
+            'title'        => ['required', 'string', 'max:255'],
+            'description'  => ['nullable', 'string'],
+            'assignee_id'  => ['nullable', 'integer', 'exists:users,id'],
+            'status'       => ['nullable', 'string', Rule::in($statusKeys)],
+            'priority'     => ['nullable', 'string', Rule::in($priorityKeys)],
+            'due_at'       => ['nullable', 'date'],
+            'due_at_view'  => ['nullable', 'string'],
+            'related_type' => ['nullable', 'string', 'max:100'],
+            'related_id'   => ['nullable', 'integer'],
+        ]);
+
+        // تبدیل تاریخ شمسی به میلادی
         $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null)
             ?? (! empty($data['due_at']) ? Carbon::parse($data['due_at']) : null);
+
+        // منطق تعیین مسئول
+        $canAssign = $user->can('tasks.assign')
+            || $user->can('tasks.manage')
+            || $user->hasRole('super-admin')
+            || $user->can('followups.manage');
+
+        $assigneeId = $data['assignee_id'] ?? null;
+
+        if (! $canAssign || empty($assigneeId)) {
+            $assigneeId = $user->id;
+        }
 
         $followUp = FollowUp::create([
             'title'        => $data['title'],
             'description'  => $data['description'] ?? null,
             'task_type'    => Task::TYPE_FOLLOW_UP,
-            'assignee_id'  => $data['assignee_id'] ?? $user->id,
+            'assignee_id'  => $assigneeId,
             'creator_id'   => $user->id,
             'status'       => $data['status'] ?? Task::STATUS_TODO,
             'priority'     => $data['priority'] ?? Task::PRIORITY_MEDIUM,
@@ -168,29 +251,125 @@ class FollowUpController extends Controller
             'related_id'   => $data['related_id'] ?? null,
         ]);
 
+        // هوک created در مدل Task (پدر FollowUp) خودش Reminder می‌سازد
         return redirect()
             ->route('user.followups.show', $followUp)
             ->with('status', 'پیگیری با موفقیت ایجاد شد.');
     }
 
-
     public function show(FollowUp $followUp)
     {
         $this->authorizeView($followUp);
 
-        $followUp->load(['assignee', 'creator']);
+        $followUp->load(['assignee', 'creator', 'client']);
 
-        return view('followups::user.followups.show', compact('followUp'));
+        $statuses   = Task::statusOptions();
+        $priorities = Task::priorityOptions();
+        $types      = Task::typeOptions();
+
+        return view('followups::user.followups.show', compact(
+            'followUp',
+            'statuses',
+            'priorities',
+            'types'
+        ));
+    }
+
+    public function quickStore(Request $request)
+    {
+        $user = Auth::user();
+
+        if (! $user->can('followups.create')) {
+            abort(403);
+        }
+
+        $statusKeys   = array_keys(Task::statusOptions());
+        $priorityKeys = array_keys(Task::priorityOptions());
+
+        $data = $request->validate([
+            'title'        => ['required', 'string', 'max:255'],
+            'description'  => ['nullable', 'string'],
+            'assignee_id'  => ['nullable', 'integer', 'exists:users,id'],
+            'status'       => ['nullable', 'string', Rule::in($statusKeys)],
+            'priority'     => ['nullable', 'string', Rule::in($priorityKeys)],
+            'due_at_view'  => ['nullable', 'string'], // تاریخ شمسی
+            'client_id'    => ['required', 'integer', 'exists:clients,id'],
+        ]);
+
+        // تبدیل تاریخ شمسی
+        $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null);
+
+        // منطق تعیین مسئول مثل store
+        $canAssign = $user->can('tasks.assign')
+            || $user->can('tasks.manage')
+            || $user->hasRole('super-admin')
+            || $user->can('followups.manage');
+
+        $assigneeId = $data['assignee_id'] ?? null;
+
+        if (! $canAssign || empty($assigneeId)) {
+            $assigneeId = $user->id;
+        }
+
+        $followUp = FollowUp::create([
+            'title'        => $data['title'],
+            'description'  => $data['description'] ?? null,
+            'task_type'    => Task::TYPE_FOLLOW_UP,
+            'assignee_id'  => $assigneeId,
+            'creator_id'   => $user->id,
+            'status'       => $data['status'] ?? Task::STATUS_TODO,
+            'priority'     => $data['priority'] ?? Task::PRIORITY_MEDIUM,
+            'due_at'       => $dueAt,
+            'related_type' => Task::RELATED_TYPE_CLIENT,
+            'related_id'   => $data['client_id'],
+        ]);
+
+        // مدل Task خودش Reminder می‌سازد (autoCreateReminderIfPossible)
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message'   => 'پیگیری با موفقیت ثبت شد.',
+                'followup_id' => $followUp->id,
+            ], 201);
+        }
+
+        return back()->with('status', 'پیگیری با موفقیت ثبت شد.');
     }
 
     public function edit(FollowUp $followUp)
     {
         $this->authorizeEdit($followUp);
 
-        $statuses   = array_keys(config('tasks.statuses', []));
-        $priorities = array_keys(config('tasks.priorities', []));
+        $user = Auth::user();
 
-        return view('followups::user.followups.edit', compact('followUp', 'statuses', 'priorities'));
+        // همان optionها مثل Task
+        $statuses   = Task::statusOptions();
+        $priorities = Task::priorityOptions();
+
+        // لیست کاربران برای انتخاب مسئول
+        $users = \App\Models\User::select('id', 'name', 'email')->get();
+
+        // لیست مشتری‌ها برای موجودیت مرتبط
+        $clients = \Modules\Clients\Entities\Client::select('id', 'full_name', 'phone')->get();
+
+        // مجوز انتخاب/تغییر مسئول
+        $canAssign = $user->can('followups.manage') || $user->hasRole('super-admin');
+
+        // اگر این پیگیری به یک Client وصل باشد
+        $relatedClient = null;
+        if ($followUp->related_type === Task::RELATED_TYPE_CLIENT && $followUp->related_id) {
+            $relatedClient = \Modules\Clients\Entities\Client::find($followUp->related_id);
+        }
+
+        return view('followups::user.followups.edit', compact(
+            'followUp',
+            'statuses',
+            'priorities',
+            'users',
+            'clients',
+            'canAssign',
+            'relatedClient'
+        ));
     }
 
     public function update(Request $request, FollowUp $followUp)
@@ -199,17 +378,35 @@ class FollowUpController extends Controller
 
         $data = $this->validateRequest($request);
 
+        $user = Auth::user();
+
+        // مجوز انتخاب/تغییر مسئول
+        $canAssign = $user->can('followups.manage') || $user->hasRole('super-admin');
+
+        // اگر مجوز مدیریت دارد و چیزی انتخاب شده، از همان استفاده کن
+        // اگر نه، همان مسئول قبلی یا خود کاربر فعلی
+        $assigneeId = $canAssign && !empty($data['assignee_id'])
+            ? (int) $data['assignee_id']
+            : ($followUp->assignee_id ?: $user->id);
+
+        // تبدیل تاریخ شمسی (due_at_view) به میلادی
+        $dueAt = $this->convertJalaliDate($request->input('due_at_view'))
+            ?? (!empty($data['due_at']) ? Carbon::parse($data['due_at']) : $followUp->due_at);
+
         $followUp->fill([
-            'title'        => $data['title'],
-            'description'  => $data['description'] ?? null,
-            'assignee_id'  => $data['assignee_id'] ?? $followUp->assignee_id,
-            'status'       => $data['status'] ?? $followUp->status,
-            'priority'     => $data['priority'] ?? $followUp->priority,
-            'due_at'       => $data['due_at'] ?? $followUp->due_at,
-            'related_type' => $data['related_type'] ?? $followUp->related_type,
-            'related_id'   => $data['related_id'] ?? $followUp->related_id,
+            'title'       => $data['title'],
+            'description' => $data['description'] ?? null,
+            'assignee_id' => $assigneeId,
+            'status'      => $data['status'] ?? $followUp->status,
+            'priority'    => $data['priority'] ?? $followUp->priority,
+            'due_at'      => $dueAt,
         ]);
 
+        // موجودیت مرتبط: همیشه CLIENT (طبق خواسته‌ات)
+        $followUp->related_type = Task::RELATED_TYPE_CLIENT;
+        $followUp->related_id   = $data['related_id'] ?? $followUp->related_id;
+
+        // اگر پیگیری به وضعیت Done/Cancelled رفت و completed_at نداشت، ست کن
         if (in_array($followUp->status, [Task::STATUS_DONE, Task::STATUS_CANCELED], true) && ! $followUp->completed_at) {
             $followUp->completed_at = now();
         }

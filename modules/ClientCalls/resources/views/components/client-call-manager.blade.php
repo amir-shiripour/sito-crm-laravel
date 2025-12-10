@@ -1,4 +1,4 @@
-{{-- resources/views/components/client-call-manager.blade.php --}}
+{{-- modules/ClientCalls/resources/views/components/client-call-manager.blade.php --}}
 
 @props(['client'])
 
@@ -44,7 +44,7 @@
 {{-- اسکریپت/استایل JalaliDatePicker (یکبار در کل صفحه) --}}
 @includeIf('partials.jalali-date-picker')
 
-<div x-data="{ openCallsModal: false }">
+<div x-data="clientCallManager()">
     {{-- دکمه باز کردن مودال --}}
     <button type="button"
             @click="openCallsModal = true"
@@ -107,7 +107,7 @@
                                transition-colors">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M6 18L18 6M6 6l12 12" />
+                              d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
@@ -122,8 +122,10 @@
                     </h3>
 
                     @can('client-calls.create')
-                        <form method="POST" action="{{ route('user.clients.calls.store', $client) }}"
-                              class="space-y-3 text-[11px]">
+                        <form method="POST"
+                              action="{{ route('user.clients.calls.store', $client) }}"
+                              class="space-y-3 text-[11px]"
+                              @submit.prevent="handleSubmit($event)">
                             @csrf
 
                             <div class="grid grid-cols-1 gap-3">
@@ -171,7 +173,8 @@
                                                    focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
                                                    dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
                                         @foreach($statusMap as $key => $info)
-                                            <option value="{{ $key }}" @selected(old('status', 'done') === $key)>{{ $info['label'] }}</option>
+                                            <option
+                                                value="{{ $key }}" @selected(old('status', 'done') === $key)>{{ $info['label'] }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -211,15 +214,28 @@
                                 <button type="button"
                                         @click="openCallsModal = false"
                                         class="px-3 py-1.5 rounded-xl border border-gray-300 text-[11px] text-gray-700 bg-white hover:bg-gray-50
-                                               dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800
-                                               transition-colors">
+                                           dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800
+                                           transition-colors">
                                     بستن
                                 </button>
                                 <button type="submit"
+                                        :disabled="submitting"
                                         class="px-4 py-1.5 rounded-xl bg-indigo-600 text-white text-[11px] font-medium
-                                               hover:bg-indigo-700 shadow-md shadow-indigo-500/20
-                                               transition-colors">
-                                    ثبت تماس
+                       hover:bg-indigo-700 shadow-md shadow-indigo-500/20
+                       transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                                    <span x-show="!submitting">ثبت تماس</span>
+                                    <span x-show="submitting" class="flex items-center gap-1">
+                                        <svg class="w-3 h-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                             viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                    stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor"
+                                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2
+                                                     5.291A7.962 7.962 0 014 12H0c0
+                                                     3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>در حال ثبت...</span>
+                                    </span>
                                 </button>
                             </div>
                         </form>
@@ -244,7 +260,7 @@
                                 <span>مشاهده در صفحه کامل</span>
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
-                                          d="M13 5h6m0 0v6m0-6L10 14" />
+                                          d="M13 5h6m0 0v6m0-6L10 14"/>
                                 </svg>
                             </a>
                         @endcan
@@ -253,13 +269,14 @@
                     <div class="rounded-xl border border-gray-100 bg-gray-50/60 max-h-72 overflow-auto
                                 dark:border-gray-800 dark:bg-gray-900/40">
                         @if($recentCalls->isEmpty())
-                            <div class="flex flex-col items-center justify-center py-8 text-[11px] text-gray-500 dark:text-gray-400">
+                            <div
+                                class="flex flex-col items-center justify-center py-8 text-[11px] text-gray-500 dark:text-gray-400">
                                 <svg class="w-10 h-10 text-gray-300 dark:text-gray-600 mb-2" fill="none"
                                      viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                          d="M18 8a6 6 0 10-12 0v4a6 6 0 0012 0V8z" />
+                                          d="M18 8a6 6 0 10-12 0v4a6 6 0 0012 0V8z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                          d="M13.73 21a2 2 0 01-3.46 0" />
+                                          d="M13.73 21a2 2 0 01-3.46 0"/>
                                 </svg>
                                 <p>هنوز تماسی برای این مشتری ثبت نشده است.</p>
                             </div>
@@ -283,7 +300,8 @@
                                     <li class="px-3 py-2.5 text-[11px] flex items-start justify-between gap-2">
                                         <div class="flex-1 space-y-1">
                                             <div class="flex items-center justify-between gap-2">
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full border {{ $statusInfo['class'] }}">
+                                                <span
+                                                    class="inline-flex items-center px-2 py-0.5 rounded-full border {{ $statusInfo['class'] }}">
                                                     {{ $statusInfo['label'] }}
                                                 </span>
                                                 <div class="text-[10px] text-gray-500 dark:text-gray-400 text-left">
@@ -297,12 +315,14 @@
                                             </div>
 
                                             @if($call->reason)
-                                                <div class="text-gray-700 dark:text-gray-200 truncate" title="{{ $call->reason }}">
+                                                <div class="text-gray-700 dark:text-gray-200 truncate"
+                                                     title="{{ $call->reason }}">
                                                     علت: {{ $call->reason }}
                                                 </div>
                                             @endif
                                             @if($call->result)
-                                                <div class="text-gray-500 dark:text-gray-300 line-clamp-2" title="{{ $call->result }}">
+                                                <div class="text-gray-500 dark:text-gray-300 line-clamp-2"
+                                                     title="{{ $call->result }}">
                                                     نتیجه: {{ $call->result }}
                                                 </div>
                                             @endif
@@ -315,6 +335,138 @@
                 </div>
 
             </div>
+
+            {{-- پیشنهاد ثبت پیگیری بعد از ثبت موفق تماس --}}
+            <div
+                x-show="showFollowupPrompt"
+                x-transition.opacity
+                x-cloak
+                class="absolute inset-x-5 bottom-4">
+                <div
+                    class="rounded-2xl border border-amber-100 bg-amber-50/95 shadow-xl
+               dark:border-amber-800 dark:bg-amber-900/95 text-xs text-amber-900 dark:text-amber-50">
+                    <div class="flex items-start gap-3 p-3">
+                        <div class="mt-0.5">
+                            <svg class="w-5 h-5 text-amber-500 dark:text-amber-300" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
+                                      d="M13 16h-1v-4h-1m1-4h.01M4.93 4.93a10.5 10.5 0 0114.84 0 10.5 10.5 0 010 14.84A10.5 10.5 0 014.93 4.93z" />
+                            </svg>
+                        </div>
+                        <div class="flex-1 space-y-1">
+                            <p class="font-semibold">
+                                تماس برای
+                                <span x-text="clientLabel" class="font-bold"></span>
+                                با موفقیت ثبت شد.
+                            </p>
+                            <p class="text-[11px] text-amber-800/80 dark:text-amber-100/80">
+                                اگر لازم است بعداً اقدامی انجام شود (مثلاً ارسال پیش‌فاکتور، پیگیری پرداخت و ...)،
+                                می‌توانید همین حالا یک <span class="font-semibold">پیگیری</span> برای این مشتری ثبت کنید.
+                            </p>
+                            <div class="flex items-center justify-end gap-2 pt-1">
+                                <button type="button"
+                                        @click="dismissFollowupPrompt()"
+                                        class="px-2.5 py-1 rounded-xl border border-amber-200 text-[11px] text-amber-800 bg-amber-50 hover:bg-amber-100
+                                   dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-100 dark:hover:bg-amber-800/80 transition-colors">
+                                    بعداً انجام می‌دم
+                                </button>
+                                <button type="button"
+                                        @click="openFollowup()"
+                                        class="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-semibold
+                                   hover:bg-amber-600 shadow-md shadow-amber-500/30 transition-all">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    <span>ثبت پیگیری برای این مشتری</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
+<script>
+    function clientCallManager() {
+        return {
+            openCallsModal: false,
+            submitting: false,
+
+            showFollowupPrompt: false,
+            followupUrl: null,
+            clientLabel: @json($client->full_name ?: $client->username),
+
+            notify(type, text) {
+                window.dispatchEvent(new CustomEvent('notify', {
+                    detail: { type, text }
+                }));
+            },
+
+            openFollowup() {
+                if (this.followupUrl) {
+                    window.open(this.followupUrl, '_blank');
+                }
+                this.showFollowupPrompt = false;
+            },
+
+            dismissFollowupPrompt() {
+                this.showFollowupPrompt = false;
+            },
+
+            async handleSubmit(event) {
+                this.submitting = true;
+                this.showFollowupPrompt = false;
+
+                const form = event.target;
+                const formData = new FormData(form);
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {})
+                        },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('خطا در ثبت تماس');
+                    }
+
+                    const data = await response.json();
+
+                    this.notify('success', data.message || 'تماس با موفقیت ثبت شد');
+
+                    if (data.followup_url) {
+                        this.followupUrl = data.followup_url;
+                        this.showFollowupPrompt = true;
+                    }
+
+                    // ریست فرم به حالت اولیه
+                    form.reset();
+
+                    if (form.call_date_jalali) {
+                        form.call_date_jalali.value = @json($defaultJalaliToday);
+                    }
+
+                    if (form.status) {
+                        form.status.value = 'done';
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    this.notify('error', 'خطا در ثبت تماس. دوباره تلاش کنید.');
+                } finally {
+                    this.submitting = false;
+                }
+            }
+        };
+    }
+</script>

@@ -108,4 +108,13 @@ class Client extends Authenticatable
             ->orderByDesc('call_time');
     }
 
+    public function followUps()
+    {
+        return $this->hasMany(\Modules\FollowUps\Entities\FollowUp::class, 'related_id')
+            ->where('related_type', \Modules\Tasks\Entities\Task::RELATED_TYPE_CLIENT)
+            ->orderByDesc('due_at')
+            ->orderByDesc('created_at');
+    }
+
+
 }

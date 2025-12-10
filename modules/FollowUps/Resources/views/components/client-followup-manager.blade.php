@@ -1,6 +1,46 @@
-{{-- resources/views/components/client-followup-manager.blade.php --}}
+{{-- modules/FollowUps/Resources/views/components/client-followup-manager.blade.php --}}
 
 @props(['client'])
+<script>
+    function singleSelect(config) {
+        return {
+            open: false,
+            search: '',
+            options: config.options || [],
+            selectedValue: config.initialValue ? String(config.initialValue) : '',
+            placeholder: config.placeholder || 'انتخاب کنید',
+
+            init() {
+                if (this.selectedValue && this.$refs.hidden) {
+                    this.$refs.hidden.value = this.selectedValue;
+                }
+            },
+
+            get selectedOption() {
+                return this.options.find(o => String(o.value) === String(this.selectedValue)) || null;
+            },
+
+            get selectedLabel() {
+                return this.selectedOption ? this.selectedOption.label : this.placeholder;
+            },
+
+            select(value) {
+                this.selectedValue = String(value);
+                if (this.$refs.hidden) {
+                    this.$refs.hidden.value = this.selectedValue;
+                }
+                this.search = '';
+                this.open = false;
+            },
+
+            filteredOptions() {
+                const term = (this.search || '').toLowerCase();
+                if (!term) return this.options;
+                return this.options.filter(o => (o.label || '').toLowerCase().includes(term));
+            }
+        }
+    }
+</script>
 
 @php
     /** @var \Modules\Clients\Entities\Client $client */
@@ -8,6 +48,10 @@
     use Modules\FollowUps\Entities\FollowUp;
     use Modules\Tasks\Entities\Task;
     use Morilog\Jalali\Jalalian;
+    use Illuminate\Support\Js;
+    use App\Models\User;
+
+    $currentUser = auth()->user();
 
     // همه پیگیری‌های مرتبط با این کلاینت
     $followUpsQuery = FollowUp::query()
@@ -26,6 +70,28 @@
 
     $statusOptions   = Task::statusOptions();
     $priorityOptions = Task::priorityOptions();
+
+    // آیا کاربر حق انتخاب مسئول دارد؟
+    $canAssignFollowup = $currentUser && (
+        $currentUser->can('followups.manage')
+        || $currentUser->hasRole('super-admin')
+        || $currentUser->can('tasks.assign')
+        || $currentUser->can('tasks.manage')
+    );
+
+    // لیست کاربران فقط اگر نیاز است
+    $users = $canAssignFollowup
+        ? User::select('id', 'name', 'email')->orderBy('name')->get()
+        : collect($currentUser ? [$currentUser] : []);
+
+    $userSelectOptions = $users->map(function ($u) {
+        return [
+            'value' => (string) $u->id,
+            'label' => $u->name . ($u->email ? ' (' . $u->email . ')' : ''),
+        ];
+    })->values()->all();
+
+    $initialAssigneeId = old('assignee_id', optional($currentUser)->id)
 @endphp
 
 @includeIf('partials.jalali-date-picker')
@@ -108,7 +174,83 @@
                             <input type="hidden" name="related_type" value="{{ Task::RELATED_TYPE_CLIENT }}">
                             <input type="hidden" name="related_id" value="{{ $client->id }}">
 
-                            {{-- مسئول: دیفالت کاربر فعلی (در کنترلر اگر خالی بود هم می‌توان هندل کرد) --}}
+                            {{-- مسئول --}}
+                            @if($currentUser)
+                                @if($canAssignFollowup)
+                                    <div>
+                                        <label class="block mb-1 text-gray-600 dark:text-gray-300">
+                                            مسئول پیگیری
+                                        </label>
+
+                                        <div
+                                            x-data="singleSelect({
+                        options: {{ Js::from($userSelectOptions) }},
+                        initialValue: '{{ $initialAssigneeId }}',
+                        placeholder: 'انتخاب مسئول...'
+                    })"
+                                            class="relative"
+                                        >
+                                            <input type="hidden" name="assignee_id" x-ref="hidden">
+
+                                            <button type="button"
+                                                    @click="open = !open"
+                                                    class="w-full flex items-center justify-between rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-800">
+                                                <span x-text="selectedLabel"></span>
+                                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                          d="M19 9l-7 7-7-7"/>
+                                                </svg>
+                                            </button>
+
+                                            <div x-show="open"
+                                                 x-cloak
+                                                 @click.outside="open = false"
+                                                 class="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg dark:bg-gray-900 dark:border-gray-700">
+                                                <div class="p-2 border-b border-gray-100 dark:border-gray-800">
+                                                    <input type="text"
+                                                           x-model="search"
+                                                           placeholder="جستجو..."
+                                                           class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[11px] text-gray-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
+                                                </div>
+                                                <ul class="max-h-56 overflow-auto text-xs">
+                                                    <template x-for="opt in filteredOptions()" :key="opt.value">
+                                                        <li>
+                                                            <button type="button"
+                                                                    @click="select(opt.value)"
+                                                                    class="w-full text-right px-3 py-1.5 hover:bg-gray-50 text-gray-700 dark:text-gray-100 dark:hover:bg-gray-800">
+                                                                <span x-text="opt.label"></span>
+                                                            </button>
+                                                        </li>
+                                                    </template>
+                                                    <template x-if="filteredOptions().length === 0">
+                                                        <li class="px-3 py-2 text-[11px] text-gray-400 dark:text-gray-500">
+                                                            موردی یافت نشد.
+                                                        </li>
+                                                    </template>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <p class="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+                                            در صورت عدم تغییر، مسئول پیش‌فرض: {{ $currentUser->name }}
+                                        </p>
+                                    </div>
+                                @else
+                                    <input type="hidden" name="assignee_id" value="{{ $currentUser->id }}">
+                                    <div
+                                        class="flex items-center gap-2 p-2.5 mt-1 rounded-xl bg-blue-50 text-blue-800 border border-blue-100 text-[11px]
+                                        dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800/30">
+                                        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <p>
+                                            شما مجوز انتخاب مسئول را ندارید. این پیگیری به‌صورت خودکار به نام
+                                            <span class="font-semibold">{{ $currentUser->name }}</span> ثبت می‌شود.
+                                        </p>
+                                    </div>
+                                @endif
+                            @endif
 
                             <div>
                                 <label class="block mb-1 text-gray-600 dark:text-gray-300">
@@ -132,8 +274,8 @@
                                                focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20
                                                dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
                                     @foreach($statusOptions as $value => $label)
-                                        <option value="{{ $value }}" @selected($value === \Modules\Tasks\Entities\Task::STATUS_TODO)">
-                                        {{ $label }}
+                                        <option value="{{ $value }}" @selected($value === \Modules\Tasks\Entities\Task::STATUS_TODO)>
+                                            {{ $label }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -148,8 +290,8 @@
                                                focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20
                                                dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
                                     @foreach($priorityOptions as $value => $label)
-                                        <option value="{{ $value }}" @selected($value === \Modules\Tasks\Entities\Task::PRIORITY_MEDIUM)">
-                                        {{ $label }}
+                                        <option value="{{ $value }}" @selected($value === \Modules\Tasks\Entities\Task::PRIORITY_MEDIUM)>
+                                            {{ $label }}
                                         </option>
                                     @endforeach
                                 </select>
