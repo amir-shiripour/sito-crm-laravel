@@ -1,7 +1,10 @@
 @extends('layouts.user')
 
 @section('content')
-    <div class="max-w-6xl mx-auto px-4 py-8">
+    @php
+        use Morilog\Jalali\Jalalian;
+    @endphp
+    <div class="w-full mx-auto px-4 py-8">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -120,8 +123,15 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
-                                {{ $task->due_at ? $task->due_at->format('Y-m-d') : '—' }}
+                                @if($task->due_at)
+                                    <span class="dir-ltr">
+                                        {{ Jalalian::fromCarbon($task->due_at)->format('Y/m/d H:i') }}
+                                    </span>
+                                @else
+                                    —
+                                @endif
                             </td>
+
                             <td class="px-4 py-3 text-left text-xs">
                                 <div class="inline-flex items-center gap-1.5">
                                     <a href="{{ route('user.tasks.show', $task) }}"

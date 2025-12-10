@@ -39,6 +39,7 @@ class TaskController extends Controller
 
             // تاریخ شمسی از فرم create/edit (مثلاً 1403/09/15)
             'due_at_view' => ['nullable', 'string'],
+            'due_time'    => ['nullable', 'string'],
 
             // 🔹 حالت انتخاب مسئول
             'assignee_mode' => ['nullable', 'in:single_user,by_roles'],
@@ -77,35 +78,56 @@ class TaskController extends Controller
     /**
      * تبدیل تاریخ شمسی (مثلاً 1403/09/15 یا 1403-09-15) به Carbon میلادی.
      */
-    private function convertJalaliDate(?string $jalali): ?Carbon
+    /**
+     * تبدیل تاریخ شمسی (مثلاً 1403/09/15 یا 1403-09-15) + ساعت اختیاری (HH:MM) به Carbon میلادی.
+     */
+    private function convertJalaliDate(?string $jalali, ?string $time = null): ?Carbon
     {
         if (empty($jalali)) {
             return null;
         }
 
         try {
-            // هر چیزی غیر عدد جداکننده فرض می‌شود (/, -, space, ...)
             $parts = preg_split('/[^\d]+/', trim($jalali));
             if (count($parts) < 3) {
                 return null;
             }
 
             [$jy, $jm, $jd] = array_map('intval', array_slice($parts, 0, 3));
-
             [$gy, $gm, $gd] = CalendarUtils::toGregorian($jy, $jm, $jd);
 
-            // فقط تاریخ (بدون زمان)
-            return Carbon::createFromDate($gy, $gm, $gd)->startOfDay();
+            // 🔹 ساعت/دقیقه پیش‌فرض: 00:00
+            $hour = 0;
+            $minute = 0;
+
+            if (!empty($time)) {
+                $timeParts = preg_split('/[^\d]+/', trim($time));
+                if (count($timeParts) >= 2) {
+                    $h = (int) $timeParts[0];
+                    $m = (int) $timeParts[1];
+
+                    if ($h >= 0 && $h <= 23) {
+                        $hour = $h;
+                    }
+                    if ($m >= 0 && $m <= 59) {
+                        $minute = $m;
+                    }
+                }
+            }
+
+            return Carbon::create($gy, $gm, $gd, $hour, $minute, 0);
         } catch (\Throwable $e) {
             if (function_exists('logger')) {
                 logger()->warning('Failed to convert Jalali due_at_view', [
                     'value' => $jalali,
+                    'time'  => $time,
                     'error' => $e->getMessage(),
                 ]);
             }
             return null;
         }
     }
+
 
 
     /**
@@ -374,8 +396,12 @@ class TaskController extends Controller
 
         // ۲) تبدیل تاریخ سررسید:
         //    اولویت با due_at_view (شمسی) است، اگر نبود از due_at (میلادی) استفاده می‌کنیم.
-        $dueAt = $this->convertJalaliDate($request->input('due_at_view'))
+        $dueAt = $this->convertJalaliDate(
+            $request->input('due_at_view'),
+            $request->input('due_time')
+        )
             ?? (! empty($data['due_at']) ? Carbon::parse($data['due_at']) : null);
+
 
         // ۳) لیست کاربران مسئول (بر اساس حالت و دسترسی)
         $assigneeIds = $this->resolveAssigneeIds($data, $request, $taskType, $user);
@@ -563,10 +589,14 @@ class TaskController extends Controller
         // ۳) تبدیل تاریخ سررسید:
         //    اولویت با due_at_view (شمسی) است، اگر نبود از due_at (میلادی) استفاده می‌کنیم،
         //    در غیر این صورت مقدار فعلی Task حفظ می‌شود.
-        $dueAt = $this->convertJalaliDate($request->input('due_at_view'))
+        $dueAt = $this->convertJalaliDate(
+            $request->input('due_at_view'),
+            $request->input('due_time')
+        )
             ?? (! empty($data['due_at'])
                 ? Carbon::parse($data['due_at'])
                 : $task->due_at);
+
 
         // ۴) تعیین creator (تغییرش معمولاً منطقی نیست؛ اگر خالی بود، فعلی را می‌گذاریم کاربر جاری)
         $creatorId = $task->creator_id ?: ($user ? $user->id : null);

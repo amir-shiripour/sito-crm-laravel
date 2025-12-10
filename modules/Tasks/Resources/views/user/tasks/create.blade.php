@@ -118,7 +118,7 @@
         }
     </script>
 
-    <div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="w-full mx-auto px-4 py-8">
         {{-- هدر --}}
         <div class="flex items-center justify-between mb-8">
             <div>
@@ -272,23 +272,37 @@
                         @error('task_type') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- تاریخ سررسید --}}
+                    {{-- تاریخ و ساعت سررسید --}}
                     <div>
-                        <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">تاریخ
-                            سررسید</label>
-                        <div class="relative">
-                            <input id="due_at_view" name="due_at_view" type="text" data-jdp autocomplete="off"
-                                   placeholder="انتخاب تاریخ..."
-                                   class="w-full rounded-xl border-gray-300 bg-white px-4 py-2.5 text-sm transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
+                        <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
+                            تاریخ و ساعت سررسید
+                        </label>
+                        <div class="flex gap-2">
+                            {{-- تاریخ شمسی --}}
+                            <div class="relative flex-1">
+                                <input id="due_at_view" name="due_at_view" type="text" data-jdp autocomplete="off"
+                                       placeholder="انتخاب تاریخ..."
+                                       value="{{ old('due_at_view') }}"
+                                       class="w-full rounded-xl border-gray-300 bg-white px-4 py-2.5 text-sm transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg class="w-5 h-5" ...>...</svg>
+                                </div>
+                            </div>
+
+                            {{-- ساعت (اختیاری) --}}
+                            <div class="w-28">
+                                <input type="text"
+                                       data-jdp-only-time
+                                       placeholder="00:00"
+                                       name="due_time"
+                                       value="{{ old('due_time') }}"
+                                       class="w-full rounded-xl border-gray-300 bg-white px-3 py-2.5 text-sm text-center transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
                             </div>
                         </div>
                         @error('due_at') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        @error('due_time') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
+
 
                     {{-- وضعیت --}}
                     <div>

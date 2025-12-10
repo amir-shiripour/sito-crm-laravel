@@ -4,6 +4,7 @@
     @php
         use Modules\Tasks\Entities\Task;
         use Morilog\Jalali\Jalalian;
+        use Modules\Reminders\Entities\Reminder;
 
         $statuses   = $statuses   ?? Task::statusOptions();
         $priorities = $priorities ?? Task::priorityOptions();
@@ -12,9 +13,17 @@
         $statusLabel   = $statuses[$followUp->status]   ?? $followUp->status;
         $priorityLabel = $priorities[$followUp->priority] ?? $followUp->priority;
         $typeLabel     = $types[$followUp->task_type]   ?? $followUp->task_type;
+
+        $taskReminders = class_exists(Reminder::class)
+            ? Reminder::where('related_type', 'TASK')
+                ->where('related_id', $followUp->id)
+                ->orderBy('remind_at')
+                ->get()
+            : collect();
+
     @endphp
 
-    <div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="w-full mx-auto px-4 py-8">
         {{-- هدر --}}
         <div class="flex items-center justify-between mb-6">
             <div>
@@ -39,7 +48,7 @@
             </div>
         </div>
 
-        <div class="space-y-6">
+        <div class="space-y-6 mb-6">
             {{-- کارت اصلی --}}
             <div class="bg:white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
                 <div class="flex items-start justify-between gap-4">
@@ -102,7 +111,9 @@
                         <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">تاریخ سررسید</div>
                         <div class="font-medium text-gray-900 dark:text-gray-100">
                             @if($followUp->due_at)
-                                {{ Jalalian::fromCarbon($followUp->due_at)->format('Y/m/d') }}
+                                <span class="dir-ltr">
+                                    {{ Jalalian::fromCarbon($followUp->due_at)->format('Y/m/d H:i') }}
+                                </span>
                             @else
                                 —
                             @endif
@@ -176,5 +187,101 @@
                 @endif
             </div>
         </div>
+        {{-- یادآوری‌های مرتبط با این وظیفه --}}
+
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <span class="w-1 h-4 bg-emerald-500 rounded-full"></span>
+                یادآوری‌ها
+            </h3>
+
+            @if($taskReminders->isEmpty())
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    برای این وظیفه هنوز یادآوری‌ای ثبت نشده است.
+                </p>
+            @else
+                <div class="space-y-2 text-xs">
+                    @foreach($taskReminders as $reminder)
+                        @php
+                            $dateJal = $reminder->remind_at
+                                ? Jalalian::fromCarbon($reminder->remind_at)->format('Y/m/d H:i')
+                                : '—';
+
+                            $statusLabel = Reminder::statusOptions()[$reminder->status] ?? $reminder->status;
+                        @endphp
+
+                        <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800">
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between gap-2">
+                                        <span class="text-[11px] font-medium text-gray-900 dark:text-gray-100">
+                                            {{ $reminder->message ?? 'یادآوری' }}
+                                        </span>
+                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 dir-ltr">
+                                            {{ $dateJal }}
+                                        </span>
+                                </div>
+                                <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                    وضعیت: {{ $statusLabel }}
+                                </div>
+                            </div>
+
+                            @can('reminders.edit')
+                                <form method="POST"
+                                      action="{{ route('user.reminders.update-status', $reminder) }}"
+                                      class="shrink-0">
+                                    @csrf
+                                    @method('PATCH')
+                                    <input type="hidden" name="status" value="{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}">
+
+                                    <button type="submit"
+                                            class="inline-flex items-center px-2 py-1 rounded-lg bg-emerald-600 text-white text-[11px] hover:bg-emerald-700">
+                                        انجام شد
+                                    </button>
+                                </form>
+                            @endcan
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
+            @can('reminders.create')
+                {{-- فرم ساخت سریع یادآوری جدید برای همین وظیفه --}}
+                <form method="POST" action="{{ route('user.reminders.store') }}" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    @csrf
+                    <input type="hidden" name="related_type" value="TASK">
+                    <input type="hidden" name="related_id" value="{{ $followUp->id }}">
+
+                    <div>
+                        <label class="block mb-1 text-gray-600 dark:text-gray-300">تاریخ یادآوری</label>
+                        <input type="text" name="remind_date_jalali" data-jdp-only-date
+                               value="{{ Jalalian::fromCarbon(now())->format('Y/m/d') }}"
+                               class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900
+                                          dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100">
+                    </div>
+
+                    <div>
+                        <label class="block mb-1 text-gray-600 dark:text-gray-300">ساعت</label>
+                        <input type="text" name="remind_time" data-jdp-only-time
+                               class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 dir-ltr
+                                          dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100">
+                    </div>
+
+                    <div>
+                        <label class="block mb-1 text-gray-600 dark:text-gray-300">متن یادآوری</label>
+                        <div class="flex gap-2">
+                            <input type="text" name="message"
+                                   value="یادآوری انجام وظیفه: {{ $followUp->title }}"
+                                   class="flex-1 rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900
+                                              dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100">
+                            <button type="submit"
+                                    class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-medium hover:bg-emerald-700">
+                                ثبت
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            @endcan
+        </div>
     </div>
 @endsection
+@includeIf('partials.jalali-date-picker')

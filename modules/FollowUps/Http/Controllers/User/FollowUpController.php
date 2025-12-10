@@ -28,7 +28,8 @@ class FollowUpController extends Controller
             'status'       => ['nullable', 'string', Rule::in($statusKeys)],
             'priority'     => ['nullable', 'string', Rule::in($priorityKeys)],
             'due_at'       => ['nullable', 'date'],
-            'due_at_view'  => ['nullable', 'string'], // تاریخ شمسی
+            'due_at_view'  => ['nullable', 'string'],
+            'due_time'    => ['nullable', 'string'],
             'related_type' => ['nullable', 'string', 'max:100'],
             'related_id'   => ['nullable', 'integer'],
         ]);
@@ -46,16 +47,16 @@ class FollowUpController extends Controller
         return str_replace($persian, $latin, $value);
     }
     /**
-     * تبدیل تاریخ شمسی (مثلاً 1403/09/15) به Carbon میلادی.
+     * تبدیل تاریخ شمسی (مثلاً 1403/09/15) + ساعت اختیاری (HH:MM) به Carbon میلادی.
      */
-    private function convertJalaliDate(?string $jalali): ?Carbon
+    private function convertJalaliDate(?string $jalali, ?string $time = null): ?Carbon
     {
         if (empty($jalali)) {
             return null;
         }
 
         try {
-            // 👈 اول ارقام را انگلیسی کن
+            // 👈 ارقام را انگلیسی کن
             $jalali = $this->normalizeJalaliDigits(trim($jalali));
 
             $parts = preg_split('/[^\d]+/', $jalali);
@@ -66,16 +67,45 @@ class FollowUpController extends Controller
             [$jy, $jm, $jd] = array_map('intval', array_slice($parts, 0, 3));
             [$gy, $gm, $gd] = CalendarUtils::toGregorian($jy, $jm, $jd);
 
-            return Carbon::createFromDate($gy, $gm, $gd)->startOfDay();
+            [$hour, $minute] = $this->parseTimeString($time);
+
+            return Carbon::create($gy, $gm, $gd, $hour, $minute, 0);
         } catch (\Throwable $e) {
             if (function_exists('logger')) {
                 logger()->warning('Failed to convert FollowUp Jalali due_at_view', [
                     'value' => $jalali,
+                    'time'  => $time,
                     'error' => $e->getMessage(),
                 ]);
             }
             return null;
         }
+    }
+
+    private function parseTimeString(?string $time): array
+    {
+        $hour = 0;
+        $minute = 0;
+
+        if ($time !== null) {
+            $time = $this->normalizeJalaliDigits(trim($time));
+            if ($time !== '') {
+                $parts = preg_split('/[^\d]+/', $time);
+                if (count($parts) >= 2) {
+                    $h = (int) $parts[0];
+                    $m = (int) $parts[1];
+
+                    if ($h >= 0 && $h <= 23) {
+                        $hour = $h;
+                    }
+                    if ($m >= 0 && $m <= 59) {
+                        $minute = $m;
+                    }
+                }
+            }
+        }
+
+        return [$hour, $minute];
     }
 
     protected function authorizeView(FollowUp $followUp): void
@@ -218,13 +248,15 @@ class FollowUpController extends Controller
             'priority'     => ['nullable', 'string', Rule::in($priorityKeys)],
             'due_at'       => ['nullable', 'date'],
             'due_at_view'  => ['nullable', 'string'],
+            'due_time'     => ['nullable', 'string'],
             'related_type' => ['nullable', 'string', 'max:100'],
             'related_id'   => ['nullable', 'integer'],
         ]);
 
         // تبدیل تاریخ شمسی به میلادی
-        $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null)
+        $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null, $request->input('due_time'))
             ?? (! empty($data['due_at']) ? Carbon::parse($data['due_at']) : null);
+
 
         // منطق تعیین مسئول
         $canAssign = $user->can('tasks.assign')
@@ -292,12 +324,13 @@ class FollowUpController extends Controller
             'assignee_id'  => ['nullable', 'integer', 'exists:users,id'],
             'status'       => ['nullable', 'string', Rule::in($statusKeys)],
             'priority'     => ['nullable', 'string', Rule::in($priorityKeys)],
-            'due_at_view'  => ['nullable', 'string'], // تاریخ شمسی
+            'due_at_view'  => ['nullable', 'string'],
+            'due_time'     => ['nullable', 'string'],
             'client_id'    => ['required', 'integer', 'exists:clients,id'],
         ]);
 
         // تبدیل تاریخ شمسی
-        $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null);
+        $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null, $request->input('due_time'));
 
         // منطق تعیین مسئول مثل store
         $canAssign = $user->can('tasks.assign')
@@ -390,8 +423,12 @@ class FollowUpController extends Controller
             : ($followUp->assignee_id ?: $user->id);
 
         // تبدیل تاریخ شمسی (due_at_view) به میلادی
-        $dueAt = $this->convertJalaliDate($request->input('due_at_view'))
+        $dueAt = $this->convertJalaliDate(
+            $request->input('due_at_view'),
+            $request->input('due_time')
+        )
             ?? (!empty($data['due_at']) ? Carbon::parse($data['due_at']) : $followUp->due_at);
+
 
         $followUp->fill([
             'title'       => $data['title'],

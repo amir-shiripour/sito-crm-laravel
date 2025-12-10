@@ -131,7 +131,7 @@
                                 dark:bg-amber-900/40 dark:text-amber-300">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
-                                  d="M9 12l2 2 4-4M7 7h10a2 2 0 012 2v7a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2z" />
+                                  d="M9 12l2 2 4-4M7 7h10a2 2 0 012 2v7a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2z"/>
                         </svg>
                     </div>
                     <div>
@@ -152,7 +152,7 @@
                                transition-colors">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M6 18L18 6M6 6l12 12" />
+                              d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
@@ -196,8 +196,10 @@
                                                     @click="open = !open"
                                                     class="w-full flex items-center justify-between rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-800">
                                                 <span x-text="selectedLabel"></span>
-                                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          stroke-width="1.5"
                                                           d="M19 9l-7 7-7-7"/>
                                                 </svg>
                                             </button>
@@ -240,7 +242,8 @@
                                     <div
                                         class="flex items-center gap-2 p-2.5 mt-1 rounded-xl bg-blue-50 text-blue-800 border border-blue-100 text-[11px]
                                         dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800/30">
-                                        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                                             stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
@@ -274,7 +277,8 @@
                                                focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20
                                                dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
                                     @foreach($statusOptions as $value => $label)
-                                        <option value="{{ $value }}" @selected($value === \Modules\Tasks\Entities\Task::STATUS_TODO)>
+                                        <option
+                                            value="{{ $value }}" @selected($value === \Modules\Tasks\Entities\Task::STATUS_TODO)>
                                             {{ $label }}
                                         </option>
                                     @endforeach
@@ -290,7 +294,8 @@
                                                focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20
                                                dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
                                     @foreach($priorityOptions as $value => $label)
-                                        <option value="{{ $value }}" @selected($value === \Modules\Tasks\Entities\Task::PRIORITY_MEDIUM)>
+                                        <option
+                                            value="{{ $value }}" @selected($value === \Modules\Tasks\Entities\Task::PRIORITY_MEDIUM)>
                                             {{ $label }}
                                         </option>
                                     @endforeach
@@ -299,16 +304,28 @@
 
                             <div>
                                 <label class="block mb-1 text-gray-600 dark:text-gray-300">
-                                    تاریخ سررسید
+                                    تاریخ و ساعت سررسید
                                 </label>
-                                <input type="text"
-                                       name="due_at_view"
-                                       data-jdp-only-date
-                                       value="{{ $defaultJalaliToday }}"
-                                       class="w-full h-9 rounded-xl border-gray-200 bg-gray-50 px-3 text-xs text-gray-900
-                                              placeholder-gray-400
+                                <div class="flex gap-2">
+                                    <input type="text"
+                                           name="due_at_view"
+                                           data-jdp-only-date
+                                           value="{{ $defaultJalaliToday }}"
+                                           class="w-full h-9 rounded-xl border-gray-200 bg-gray-50 px-3 text-xs text-gray-900
                                               focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20
-                                              dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
+                                              dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900"
+                                    >
+
+                                    <input type="text"
+                                       data-jdp-only-time
+                                       placeholder="00:00"
+                                       name="due_time"
+                                       value="{{ old('due_time') }}"
+                                       class="w-24 h-9 rounded-xl border-gray-200 bg-gray-50 px-2 text-xs text-center text-gray-900
+                                          focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20
+                                          dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900"
+                                    >
+                                </div>
                             </div>
 
                             <div>
@@ -363,7 +380,7 @@
                                 <span>مشاهده در صفحه کامل</span>
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
-                                          d="M13 5h6m0 0v6m0-6L10 14" />
+                                          d="M13 5h6m0 0v6m0-6L10 14"/>
                                 </svg>
                             </a>
                         @endcan
@@ -372,13 +389,14 @@
                     <div class="rounded-xl border border-gray-100 bg-gray-50/60 max-h-72 overflow-auto
                                 dark:border-gray-800 dark:bg-gray-900/40">
                         @if($recentFollowUps->isEmpty())
-                            <div class="flex flex-col items-center justify-center py-8 text-[11px] text-gray-500 dark:text-gray-400">
+                            <div
+                                class="flex flex-col items-center justify-center py-8 text-[11px] text-gray-500 dark:text-gray-400">
                                 <svg class="w-10 h-10 text-gray-300 dark:text-gray-600 mb-2" fill="none"
                                      viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                          d="M12 8v4l3 3" />
+                                          d="M12 8v4l3 3"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                          d="M12 3a9 9 0 100 18 9 9 0 000-18z" />
+                                          d="M12 3a9 9 0 100 18 9 9 0 000-18z"/>
                                 </svg>
                                 <p>هنوز پیگیری‌ای برای این مشتری ثبت نشده است.</p>
                             </div>
@@ -402,16 +420,19 @@
                                                     }}">
                                                     {{ $statusLabel }}
                                                 </span>
-                                                <div class="text-[10px] text-gray-500 dark:text-gray-400 text-left dir-ltr">
+                                                <div
+                                                    class="text-[10px] text-gray-500 dark:text-gray-400 text-left dir-ltr">
                                                     {{ $dateText }}
                                                 </div>
                                             </div>
 
-                                            <div class="text-gray-700 dark:text-gray-200 truncate" title="{{ $item->title }}">
+                                            <div class="text-gray-700 dark:text-gray-200 truncate"
+                                                 title="{{ $item->title }}">
                                                 {{ $item->title }}
                                             </div>
                                             @if($item->description)
-                                                <div class="text-gray-500 dark:text-gray-300 line-clamp-2" title="{{ $item->description }}">
+                                                <div class="text-gray-500 dark:text-gray-300 line-clamp-2"
+                                                     title="{{ $item->description }}">
                                                     {{ $item->description }}
                                                 </div>
                                             @endif

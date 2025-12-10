@@ -2,6 +2,7 @@
 
 namespace Modules\Reminders\Providers;
 
+use App\Support\WidgetRegistry;
 use Illuminate\Support\ServiceProvider;
 
 class RemindersServiceProvider extends ServiceProvider
@@ -14,6 +15,16 @@ class RemindersServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        $widgetsFile = __DIR__ . '/../config/widgets.php';
+
+        if (file_exists($widgetsFile)) {
+            $widgets = require $widgetsFile;
+
+            foreach ($widgets as $key => $definition) {
+                WidgetRegistry::register($key, $definition);
+            }
+        }
     }
 
     public function register(): void

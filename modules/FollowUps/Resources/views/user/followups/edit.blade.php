@@ -85,9 +85,15 @@
             'due_at_view',
             $followUp->due_at ? Jalalian::fromCarbon($followUp->due_at)->format('Y/m/d') : ''
         );
+
+        $initialDueTime = old(
+            'due_time',
+            $followUp->due_at ? $followUp->due_at->format('H:i') : ''
+        );
+
     @endphp
 
-    <div class="max-w-3xl mx-auto px-4 py-8">
+    <div class="w-full mx-auto px-4 py-8">
         {{-- هدر --}}
         <div class="flex items-center justify-between mb-6">
             <div>
@@ -170,21 +176,32 @@
                             </select>
                         </div>
 
-                        {{-- موعد انجام (شمسی) --}}
+                        {{-- موعد انجام (شمسی) + ساعت --}}
                         <div>
                             <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
-                                تاریخ سررسید
+                                تاریخ و ساعت سررسید
                             </label>
-                            <input type="text"
-                                   name="due_at_view"
-                                   data-jdp-only-date
-                                   value="{{ $initialDueAtView }}"
-                                   placeholder="انتخاب تاریخ..."
-                                   class="w-full rounded-xl border-gray-300 bg:white px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                            @error('due_at')
-                            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                            @enderror
+                            <div class="flex gap-2">
+                                {{-- تاریخ --}}
+                                <input type="text"
+                                       name="due_at_view"
+                                       data-jdp-only-date
+                                       value="{{ $initialDueAtView }}"
+                                       placeholder="انتخاب تاریخ..."
+                                       class="w-full rounded-xl border-gray-300 bg:white px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+
+                                {{-- ساعت --}}
+                                <input type="text"
+                                       data-jdp-only-time
+                                       name="due_time"
+                                       placeholder="00:00"
+                                       value="{{ $initialDueTime }}"
+                                       class="w-28 rounded-xl border-gray-300 bg:white px-3 py-2.5 text-sm text-center focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                            </div>
+                            @error('due_at') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                            @error('due_time') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                         </div>
+
                     </div>
                 </div>
             </div>

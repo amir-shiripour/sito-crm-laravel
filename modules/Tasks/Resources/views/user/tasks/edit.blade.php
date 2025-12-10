@@ -134,6 +134,12 @@
             }
         }
 
+        // 🔹 ساعت سررسید برای نمایش
+        $dueTimeView = old('due_time');
+        if (! $dueTimeView && $task->due_at) {
+            $dueTimeView = $task->due_at->format('H:i');
+        }
+
         // کاربران با نقش‌ها (برای فیلتر پویا)
         $userOptions = $users->map(function ($u) {
             return [
@@ -263,7 +269,7 @@
         ];
     @endphp
 
-    <div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="w-full mx-auto px-4 py-8">
         {{-- هدر --}}
         <div class="flex items-center justify-between mb-8">
             <div>
@@ -323,7 +329,7 @@
                             @foreach($types as $value => $label)
                                 @if($value !== Task::TYPE_SYSTEM)
                                     <option value="{{ $value }}"
-                                        @selected(old('task_type', $task->task_type) === $value)
+                                            @selected(old('task_type', $task->task_type) === $value)
                                     >
                                         {{ $label }}
                                     </option>
@@ -333,28 +339,39 @@
                         @error('task_type') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- تاریخ سررسید --}}
+                    {{-- تاریخ و ساعت سررسید --}}
                     <div>
                         <label class="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
-                            تاریخ سررسید
+                            تاریخ و ساعت سررسید
                         </label>
-                        <div class="relative">
-                            <input id="due_at_view"
-                                   name="due_at_view"
-                                   type="text"
-                                   data-jdp
-                                   autocomplete="off"
-                                   placeholder="انتخاب تاریخ..."
-                                   value="{{ old('due_at_view', $dueAtView) }}"
-                                   class="w-full rounded-xl border-gray-300 bg-white px-4 py-2.5 text-sm transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
+                        <div class="flex gap-2">
+                            {{-- تاریخ شمسی --}}
+                            <div class="relative flex-1">
+                                <input id="due_at_view"
+                                       name="due_at_view"
+                                       type="text"
+                                       data-jdp
+                                       autocomplete="off"
+                                       placeholder="انتخاب تاریخ..."
+                                       value="{{ old('due_at_view', $dueAtView) }}"
+                                       class="w-full rounded-xl border-gray-300 bg-white px-4 py-2.5 text-sm transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg class="w-5 h-5" ...>...</svg>
+                                </div>
+                            </div>
+
+                            {{-- ساعت (اختیاری) --}}
+                            <div class="w-28">
+                                <input type="text"
+                                       data-jdp-only-time
+                                       placeholder="00:00"
+                                       name="due_time"
+                                       value="{{ old('due_time', $dueTimeView) }}"
+                                       class="w-full rounded-xl border-gray-300 bg-white px-3 py-2.5 text-sm text-center transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
                             </div>
                         </div>
                         @error('due_at_view') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        @error('due_time') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- وضعیت --}}
@@ -366,7 +383,7 @@
                                 class="w-full rounded-xl border-gray-300 bg-white px-4 py-2.5 text-sm transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
                             @foreach($statuses as $value => $label)
                                 <option value="{{ $value }}"
-                                    @selected(old('status', $task->status) === $value)
+                                        @selected(old('status', $task->status) === $value)
                                 >
                                     {{ $label }}
                                 </option>
@@ -384,7 +401,7 @@
                                 class="w-full rounded-xl border-gray-300 bg-white px-4 py-2.5 text-sm transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
                             @foreach($priorities as $value => $label)
                                 <option value="{{ $value }}"
-                                    @selected(old('priority', $task->priority) === $value)
+                                        @selected(old('priority', $task->priority) === $value)
                                 >
                                     {{ $label }}
                                 </option>
@@ -423,7 +440,8 @@
                                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                         <p class="text-sm">
-                            در پیگیری‌ها، در صورت نداشتن مجوز تعیین مسئول، شما به‌عنوان مسئول این وظیفه در نظر گرفته می‌شوید.
+                            در پیگیری‌ها، در صورت نداشتن مجوز تعیین مسئول، شما به‌عنوان مسئول این وظیفه در نظر گرفته
+                            می‌شوید.
                         </p>
                     </div>
                 @endif
@@ -458,7 +476,8 @@
                         </div>
 
                         <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                            در صورت انتخاب چند کاربر، برای هر کاربر یک وظیفه جداگانه ساخته شده است. در حالت ویرایش، شما این وظیفه را برای همین کاربر ویرایش می‌کنید.
+                            در صورت انتخاب چند کاربر، برای هر کاربر یک وظیفه جداگانه ساخته شده است. در حالت ویرایش، شما
+                            این وظیفه را برای همین کاربر ویرایش می‌کنید.
                         </p>
 
                         @error('assignee_user_ids')
@@ -472,7 +491,7 @@
                             نقش‌های مجاز
                         </label>
                         <div
-                            x-data="setupMultiSelect({
+                                x-data="setupMultiSelect({
                                 name: 'assignee_role_ids',
                                 options: {{ Js::from($roleOptions) }},
                                 oldValues: {{ Js::from($defaultAssigneeRoleIds) }},
@@ -513,7 +532,7 @@
                                     نقش‌های مرتبط
                                 </label>
                                 <div
-                                    x-data="setupMultiSelect({
+                                        x-data="setupMultiSelect({
                                         name: 'related_user_role_ids',
                                         options: {{ Js::from($roleOptions) }},
                                         oldValues: {{ Js::from($defaultRelatedUserRoleIds) }},
@@ -528,7 +547,7 @@
                                     کاربران مرتبط (امکان انتخاب چند کاربر)
                                 </label>
                                 <div
-                                    x-data="setupMultiSelect({
+                                        x-data="setupMultiSelect({
                                         name: 'related_user_ids',
                                         options: {{ Js::from($userSelectOptions) }},
                                         oldValues: {{ Js::from($defaultRelatedUserIds) }},
@@ -550,7 +569,7 @@
                                     وضعیت‌های مشتری
                                 </label>
                                 <div
-                                    x-data="setupMultiSelect({
+                                        x-data="setupMultiSelect({
                                         name: 'related_client_status_ids',
                                         options: {{ Js::from($clientStatusOptions) }},
                                         oldValues: {{ Js::from($defaultRelatedClientStatusIds) }},
@@ -565,7 +584,7 @@
                                     مشتریان مرتبط (امکان انتخاب چند مشتری)
                                 </label>
                                 <div
-                                    x-data="setupMultiSelect({
+                                        x-data="setupMultiSelect({
                                         name: 'related_client_ids',
                                         options: {{ Js::from($clientSelectOptions) }},
                                         oldValues: {{ Js::from($defaultRelatedClientIds) }},

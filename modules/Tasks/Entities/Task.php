@@ -5,6 +5,9 @@ namespace Modules\Tasks\Entities;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Modules\Reminders\Entities\Reminder;
+
 
 class Task extends Model
 {
@@ -115,12 +118,17 @@ class Task extends Model
      */
     protected static function booted(): void
     {
-        // بعد از ایجاد هر وظیفه، در صورت فعال بودن ماژول یادآوری‌ها،
-        // یک Reminder برای مسئول ثبت می‌کنیم (به جز وظایف سیستمی که گردش‌کار خودش مدیریت می‌کند).
+        // بعد از ایجاد وظیفه
         static::created(function (Task $task) {
             $task->autoCreateReminderIfPossible();
         });
+
+        // بعد از بروزرسانی وظیفه
+        static::updated(function (Task $task) {
+            $task->syncRemindersOnUpdate();
+        });
     }
+
 
     /**
      * مسئول (assignee) وظیفه
@@ -188,6 +196,62 @@ class Task extends Model
                 'task_id' => $this->id,
                 'error'   => $e->getMessage(),
             ]);
+        }
+    }
+
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class, 'related_id')
+            ->where('related_type', 'TASK');
+    }
+
+    public function syncRemindersOnUpdate(): void
+    {
+        $reminderClass = Reminder::class;
+
+        if (! class_exists($reminderClass)) {
+            return;
+        }
+
+        // اگر هیچ یادآوری‌ای برای این Task ثبت نشده، بیخیال
+        if (! $this->reminders()->exists()) {
+            return;
+        }
+
+        $dirty = $this->getDirty();
+
+        // اگر due_at یا assignee_id عوض شد → روی یادآوری‌ها اعمال کن
+        $updateAll = [];
+
+        if (array_key_exists('due_at', $dirty) && $this->due_at) {
+            $updateAll['remind_at'] = $this->due_at;
+        }
+
+        if (array_key_exists('assignee_id', $dirty) && $this->assignee_id) {
+            $updateAll['user_id'] = $this->assignee_id;
+        }
+
+        if (! empty($updateAll)) {
+            $this->reminders()->update($updateAll);
+        }
+
+        // اگر وضعیت وظیفه DONE یا CANCELED شد → فقط روی OPENها اعمال کن
+        if (array_key_exists('status', $dirty)) {
+            if ($this->status === self::STATUS_DONE) {
+                $this->reminders()
+                    ->where('status', Reminder::STATUS_OPEN)
+                    ->update([
+                        'status'  => Reminder::STATUS_DONE,
+                        'is_sent' => true,
+                        'sent_at' => now(),
+                    ]);
+            } elseif ($this->status === self::STATUS_CANCELED) {
+                $this->reminders()
+                    ->where('status', Reminder::STATUS_OPEN)
+                    ->update([
+                        'status' => Reminder::STATUS_CANCELED,
+                    ]);
+            }
         }
     }
 

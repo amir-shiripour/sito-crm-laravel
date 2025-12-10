@@ -10,7 +10,7 @@
         $types      = $types      ?? Task::typeOptions();
     @endphp
 
-    <div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="w-full mx-auto px-4 py-8">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -41,6 +41,7 @@
                            placeholder="عنوان، توضیحات..."
                            class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
                 </div>
+
                 <div>
                     <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">وضعیت</label>
                     <select name="status"
@@ -51,6 +52,18 @@
                         @endforeach
                     </select>
                 </div>
+
+                <div>
+                    <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">نوع</label>
+                    <select name="task_type"
+                            class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                        <option value="">همه</option>
+                        @foreach($types as $value => $label)
+                            <option value="{{ $value }}" @selected(request('task_type') == $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <div>
                     <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">اولویت</label>
                     <select name="priority"
@@ -61,7 +74,8 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="flex items-end gap-2">
+
+                <div class="flex items-end gap-2 md:col-span-4">
                     <button type="submit"
                             class="flex-1 px-4 py-2 rounded-xl text-sm font-medium bg-amber-500 text-white hover:bg-amber-600">
                         اعمال فیلتر
@@ -82,6 +96,7 @@
                     <tr>
                         <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">عنوان</th>
                         <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">مشتری</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">نوع</th>
                         <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">مسئول</th>
                         <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">وضعیت</th>
                         <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">اولویت</th>
@@ -122,6 +137,11 @@
                                 @endif
                             </td>
 
+                            {{-- نوع --}}
+                            <td class="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
+                                {{ $types[$fu->task_type] ?? $fu->task_type }}
+                            </td>
+
                             {{-- مسئول --}}
                             <td class="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
                                 {{ optional($fu->assignee)->name ?? '—' }}
@@ -153,7 +173,9 @@
                             {{-- سررسید --}}
                             <td class="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
                                 @if($fu->due_at)
-                                    {{ Jalalian::fromCarbon($fu->due_at)->format('Y/m/d') }}
+                                    <span class="dir-ltr">
+                                        {{ Jalalian::fromCarbon($fu->due_at)->format('Y/m/d H:i') }}
+                                    </span>
                                 @else
                                     —
                                 @endif

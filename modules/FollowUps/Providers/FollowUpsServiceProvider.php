@@ -14,6 +14,7 @@ class FollowUpsServiceProvider extends ServiceProvider
     {
         $this->registerConfig();
         $this->registerViews();
+
         $widgetsFile = __DIR__ . '/../config/widgets.php';
 
         if (file_exists($widgetsFile)) {

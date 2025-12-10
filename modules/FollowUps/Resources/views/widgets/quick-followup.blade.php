@@ -191,8 +191,21 @@
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="{{ $labelClass }}">تاریخ سررسید</label>
-                    <input type="text" name="due_at_view" data-jdp-only-date value="{{ $todayJalali }}" class="{{ $inputClass }} text-center">
+                    <label class="{{ $labelClass }}">تاریخ و ساعت سررسید</label>
+                    <div class="flex gap-2">
+                        <input type="text"
+                               name="due_at_view"
+                               data-jdp-only-date
+                               value="{{ $todayJalali }}"
+                               class="{{ $inputClass }} text-center flex-1">
+
+                        <input type="text"
+                               data-jdp-only-time
+                               placeholder="00:00"
+                               name="due_time"
+                               value="{{ old('due_time') }}"
+                               class="w-24 rounded-xl border-gray-200 bg-gray-50 px-2 py-2.5 text-xs font-medium text-gray-900 text-center focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900">
+                    </div>
                 </div>
                 <div>
                     <label class="{{ $labelClass }}">اولویت</label>
