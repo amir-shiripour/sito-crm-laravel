@@ -1,0 +1,10 @@
+{
+  "name": "Sms",
+  "alias": "sms",
+  "description": "SMS gateway module for sending and logging SMS (manual, system, scheduled, OTP)",
+  "priority": 120,
+  "providers": [
+    "Modules\\Sms\\Providers\\SmsServiceProvider"
+  ],
+  "files": []
+}

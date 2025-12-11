@@ -1,0 +1,10 @@
+{
+    "name": "modules/sms",
+    "description": "SMS module for Sito CRM",
+    "type": "laravel-module",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Sms\\": ""
+        }
+    }
+}
