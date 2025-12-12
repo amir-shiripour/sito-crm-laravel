@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'پنل '.config('clients.labels.plural', 'مشتریان') }} | {{ config('app.name') }}</title>
 
     <!-- Fonts -->
@@ -12,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css','resources/js/app.js'])
-
+    @livewireStyles
     <style>
         body { font-family: 'Vazirmatn', sans-serif; }
     </style>
@@ -93,5 +94,7 @@
         </div>
     </footer>
 </div>
+@livewireScripts
+@livewireScriptConfig
 </body>
 </html>

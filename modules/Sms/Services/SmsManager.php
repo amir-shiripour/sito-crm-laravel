@@ -9,6 +9,7 @@ use Modules\Sms\Entities\SmsGatewaySetting;
 use Modules\Sms\Entities\SmsMessage;
 use Modules\Sms\Services\Contracts\SmsSender;
 use Modules\Sms\Services\Drivers\DriverInterface;
+use Illuminate\Support\Str;
 
 class SmsManager implements SmsSender
 {
@@ -202,21 +203,18 @@ class SmsManager implements SmsSender
         return $sms;
     }
 
-    /**
-     * ارسال OTP
-     */
+
     public function sendOtp(string $to, string $context = 'login', array $options = []): SmsMessage
     {
         $driverName = $options['driver'] ?? $this->getActiveDriverName();
         $driver     = $this->driver($driverName);
 
-        $otpLength = (int) (config('sms.otp.length', 5));
-        $ttl       = (int) (config('sms.otp.ttl', 5));
+        // این دو تا را از تنظیمات کلاینت هم می‌تونیم override کنیم
+        $otpLength = (int) ($options['otp_length'] ?? config('sms.otp.length', 5));
+        $ttl       = (int) ($options['otp_ttl'] ?? config('sms.otp.ttl', 5));
 
-        // کد OTP ساده
         $code = (string) random_int(10 ** ($otpLength - 1), (10 ** $otpLength) - 1);
 
-        // متای OTP را در مدل ذخیره می‌کنیم
         $options['type'] = SmsMessage::TYPE_OTP;
         $options['meta'] = array_merge($options['meta'] ?? [], [
             'context'    => $context,
@@ -225,11 +223,45 @@ class SmsManager implements SmsSender
             'expires_at' => now()->addMinutes($ttl)->toIso8601String(),
         ]);
 
+        // اگر OTP برای کلاینت است و پترن تعریف شده، با پترن بفرست
+        $otpPatternId = null;
+        if ($context === 'login_client') {
+            // اگر کاربر لاگین نبود (پرتال)، از آخرین setting عمومی استفاده می‌کنیم
+            $setting = \Modules\Sms\Entities\SmsGatewaySetting::query()
+                ->when(Auth::user(), fn($q) => $q->where('user_id', Auth::id()))
+                ->when(!Auth::user(), fn($q) => $q->whereNull('user_id'))
+                ->whereNotNull('driver')
+                ->orderByDesc('id')
+                ->first();
+
+            // اگر در پروژه شما user_id همیشه null نیست، این fallback بهتره:
+            if (! $setting) {
+                $setting = \Modules\Sms\Entities\SmsGatewaySetting::query()
+                    ->whereNotNull('driver')
+                    ->orderByDesc('id')
+                    ->first();
+            }
+
+            $otpPatternId = data_get($setting, 'config.client_otp_pattern');
+        }
+
+        // پیام را ذخیره می‌کنیم (code داخل message بماند)
         $sms = $this->createMessageModel($driverName, $to, $code, $options);
 
-        // فعلاً مستقیم ارسال کن
-        $driver->sendOtp($sms);
+        if (!empty($otpPatternId)) {
+            // برای لیمو: ReplaceToken باید آرایه باشد. {0} = code
+            $sms->template_key = (string) $otpPatternId;
+            $sms->params = [$code];
+            $sms->save();
 
+            $driver->sendPattern($sms, [$code]);
+            return $sms;
+        }
+
+        // fallback: ارسال متنی (اگر پترن ست نبود)
+        $driver->sendOtp($sms);
         return $sms;
     }
+
+
 }

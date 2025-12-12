@@ -9,6 +9,7 @@ use Modules\Clients\App\Livewire\Settings\ClientUsernameSettings;
 use Modules\Clients\App\Livewire\Settings\ClientStatusesManager;
 use Modules\Clients\App\Http\Controllers\Portal\ClientAuthController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientDashboardController;
+use Modules\Clients\App\Livewire\Settings\ClientAuthSettings;
 
 Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
     ->prefix('user')
@@ -74,6 +75,7 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class, 'permission
         Route::get('/forms', ClientFormBuilder::class)->name('forms');
         Route::get('/username', ClientUsernameSettings::class)->name('username');
         Route::get('/statuses', ClientStatusesManager::class)->name('statuses');
+        Route::get('/auth', ClientAuthSettings::class)->name('auth');
     });
 
 Route::prefix('clients')
@@ -88,6 +90,13 @@ Route::prefix('clients')
 
             Route::post('login', [ClientAuthController::class, 'login'])
                 ->name('login.submit');
+
+            Route::post('login/otp/send', [ClientAuthController::class, 'sendOtp'])
+                ->name('otp.send');
+
+            Route::post('login/otp/verify', [ClientAuthController::class, 'verifyOtp'])
+                ->name('otp.verify');
+
         });
 
         // کلاینت‌های لاگین کرده

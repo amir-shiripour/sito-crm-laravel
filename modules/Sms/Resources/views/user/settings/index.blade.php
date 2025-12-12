@@ -18,10 +18,11 @@
         @endif
 
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
-            <form method="POST" action="{{ route('user.sms.settings.update') }}" class="space-y-4">
+            <form method="POST" action="{{ route('user.sms.settings.update') }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
+                {{-- درایور و شماره ارسال‌کننده --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">
@@ -47,6 +48,7 @@
                     </div>
                 </div>
 
+                {{-- API Key و Base URL --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">
@@ -65,6 +67,43 @@
                                class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
                     </div>
                 </div>
+
+                {{-- پترن OTP مخصوص ورود کلاینت‌ها --}}
+                @if($clientsModuleInstalled)
+                    <div class="pt-4 border-t border-dashed border-gray-200 dark:border-gray-700 space-y-3">
+                        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            پترن OTP برای ورود مشتریان
+                        </h2>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">
+                                    کد / شناسه پترن OTP (OtpId در لیمو)
+                                </label>
+                                <input type="text" name="client_otp_pattern"
+                                       value="{{ old('client_otp_pattern', $clientOtpPattern) }}"
+                                       placeholder="مثلاً 12"
+                                       class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                                <p class="mt-1 text-[11px] text-gray-400">
+                                    این شناسه برای ارسال کد ورود یکبارمصرف (OTP) به مشتریان در صفحه لاگین پرتال استفاده خواهد شد.
+                                    ما در زمان پیاده‌سازی لاگین، برای این پترن مقدار <code>{0}</code> را با کد OTP جایگزین می‌کنیم.
+                                </p>
+                            </div>
+
+                            <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                                <div class="font-semibold mb-1">
+                                    مثال تعریف پترن در لیمو:
+                                </div>
+                                <p class="text-[11px] leading-relaxed">
+                                    متن پترن در لیمو:
+                                    «کد ورود شما <code>{0}</code> می‌باشد.»<br>
+                                    هنگام ورود مشتری، ما یک کد مثل <code>48291</code> تولید می‌کنیم
+                                    و با همین پترن برای او ارسال می‌کنیم.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 <div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
                     <button type="submit"

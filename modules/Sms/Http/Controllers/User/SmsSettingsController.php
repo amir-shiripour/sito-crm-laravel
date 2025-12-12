@@ -27,9 +27,17 @@ class SmsSettingsController extends Controller
             }
         }
 
+        // آیا ماژول کلاینت نصب است؟
+        $clientsModuleInstalled = class_exists(\Modules\Clients\Entities\Client::class);
+
+        // پترن OTP مخصوص ورود کلاینت‌ها
+        $clientOtpPattern = data_get($setting, 'config.client_otp_pattern');
+
         return view('sms::user.settings.index', [
-            'setting' => $setting,
-            'balance' => $balance,
+            'setting'             => $setting,
+            'balance'             => $balance,
+            'clientsModuleInstalled' => $clientsModuleInstalled,
+            'clientOtpPattern'    => $clientOtpPattern,
         ]);
     }
 
@@ -38,17 +46,20 @@ class SmsSettingsController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'driver'        => ['required', 'string', 'max:100'],
-            'sender'        => ['nullable', 'string', 'max:191'],
-            'api_key'       => ['nullable', 'string', 'max:191'],
-            'base_url'      => ['nullable', 'string', 'max:191'],
-            'config'        => ['array'],
+            'driver'             => ['required', 'string', 'max:100'],
+            'sender'             => ['nullable', 'string', 'max:191'],
+            'api_key'            => ['nullable', 'string', 'max:191'],
+            'base_url'           => ['nullable', 'string', 'max:191'],
+            // پترن OTP برای ورود مشتریان (OtpId لیمو)
+            'client_otp_pattern' => ['nullable', 'string', 'max:191'],
+            'config'             => ['array'],
         ]);
 
         $config = [
-            'api_key'  => $data['api_key'] ?? null,
-            'base_url' => $data['base_url'] ?? null,
-        ] + ($data['config'] ?? []);
+                'api_key'            => $data['api_key'] ?? null,
+                'base_url'           => $data['base_url'] ?? null,
+                'client_otp_pattern' => $data['client_otp_pattern'] ?? null,
+            ] + ($data['config'] ?? []);
 
         $setting = SmsGatewaySetting::updateOrCreate(
             ['user_id' => $user->id],

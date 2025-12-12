@@ -29,7 +29,7 @@
         $menuItems = $menuService->getAllForUser(auth()->user());
     @endphp
     @foreach($menuItems as $item)
-        @if($item['group']!=='clients' && $item['group']!=='clients-settings')
+        @if($item['group']!=='clients' && $item['group']!=='clients-settings' && $item['group']!=='sms-settings')
             <a href="{{ $item['route'] ? route($item['route']) : '#' }}" class="mt-1 flex items-center gap-3 rounded-lg px-3 py-2 {{ request()->routeIs($item['route'] . '*') ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700' }} {{ request()->routeIs($item['route'] . '*') ? 'active' : '' }} ">
                 @php
                     echo $item['icon'];
@@ -79,11 +79,17 @@
                     <span x-show="!sidebarCollapsed" x-transition class="truncate">{{ $item['title'] }}</span>
                 </a>
                 @endif
+                    @if($item['group']==='sms-settings')
+
+                        <a href="{{ $item['route'] ? route($item['route']) : '#' }}" class="mt-1 flex items-center gap-3 rounded-lg px-3 py-2 {{ request()->routeIs($item['route'] . '*') ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700' }} {{ request()->routeIs($item['route'] . '*') ? 'active' : '' }} ">
+                            @php
+                                echo $item['icon'];
+                            @endphp
+                            <span x-show="!sidebarCollapsed" x-transition class="truncate">{{ $item['title'] }}</span>
+                        </a>
+                    @endif
 
             @endforeach
         </div>
     </div>
-
-
-
 </nav>
