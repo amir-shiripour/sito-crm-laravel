@@ -6,5 +6,6 @@
     "FollowUps": true,
     "Reminders": true,
     "Workflows": true,
-    "Sms": true
+    "Sms": true,
+    "Booking": true
 }

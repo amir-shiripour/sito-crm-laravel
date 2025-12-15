@@ -1,0 +1,15 @@
+{
+  "name": "Booking",
+  "alias": "booking",
+  "description": "Appointments/Booking module: services, providers, availability, online & operator booking, payments, reports, integrations (Task/Reminder/Workflow).",
+  "keywords": [
+    "booking",
+    "appointments",
+    "crm"
+  ],
+  "priority": 130,
+  "providers": [
+    "Modules\\Booking\\Providers\\BookingServiceProvider"
+  ],
+  "files": []
+}

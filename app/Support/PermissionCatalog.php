@@ -17,15 +17,15 @@ class PermissionCatalog
         return [
             'users' => [
                 'title'    => 'کاربران',
-                'matchers' => ['users.','menu.see.users'],
+                'matchers' => ['users.', 'menu.see.users'],
             ],
             'roles' => [
                 'title'    => 'نقش‌ها و دسترسی‌ها',
-                'matchers' => ['roles.','menu.see.roles','roles.assign-permissions'],
+                'matchers' => ['roles.', 'menu.see.roles', 'roles.assign-permissions'],
             ],
             'custom_fields' => [
                 'title'    => 'فیلدهای سفارشی',
-                'matchers' => ['custom-fields.','menu.see.custom-fields'],
+                'matchers' => ['custom-fields.', 'menu.see.custom-fields'],
             ],
             'menus' => [
                 'title'    => 'منوها',
@@ -39,6 +39,41 @@ class PermissionCatalog
                 'title'    => 'تماس‌های مشتریان',
                 'matchers' => ['client-calls.'],
             ],
+
+            // Booking module (based on Modules/Booking/Installer.php)
+            'booking' => [
+                'title'    => 'نوبت‌دهی (Booking)',
+                'matchers' => ['booking.view', 'booking.manage'],
+            ],
+            'booking_settings' => [
+                'title'    => 'نوبت‌دهی: تنظیمات',
+                'matchers' => ['booking.settings.'],
+            ],
+            'booking_categories' => [
+                'title'    => 'نوبت‌دهی: دسته‌بندی‌ها',
+                'matchers' => ['booking.categories.'],
+            ],
+            'booking_forms' => [
+                'title'    => 'نوبت‌دهی: فرم‌ها',
+                'matchers' => ['booking.forms.'],
+            ],
+            'booking_services' => [
+                'title'    => 'نوبت‌دهی: سرویس‌ها',
+                'matchers' => ['booking.services.'],
+            ],
+            'booking_availability' => [
+                'title'    => 'نوبت‌دهی: ظرفیت/دسترس‌پذیری',
+                'matchers' => ['booking.availability.'],
+            ],
+            'booking_appointments' => [
+                'title'    => 'نوبت‌دهی: نوبت‌ها',
+                'matchers' => ['booking.appointments.'],
+            ],
+            'booking_reports' => [
+                'title'    => 'نوبت‌دهی: گزارش‌ها',
+                'matchers' => ['booking.reports.'],
+            ],
+
             'other' => [
                 'title'    => 'سایر',
                 'matchers' => [''], // fallback
@@ -78,33 +113,68 @@ class PermissionCatalog
             'custom-fields.delete'     => 'حذف فیلد',
 
             // Clients
-            'clients.manage'      => 'مدیریت مشتریان',
-            'clients.view'        => 'مشاهده مشتریان',
-            'clients.view.all'    => 'مشاهده همه مشتریان',
-            'clients.view.assigned' => 'مشاهده مشتریان مرتبط',
-            'clients.view.own'    => 'مشاهده مشتریان ایجاد شده توسط خود',
-            'clients.create'      => 'ایجاد مشتریان',
-            'clients.edit'        => 'ویرایش مشتریان',
-            'clients.delete'      => 'حذف مشتریان',
+            'clients.manage'         => 'مدیریت مشتریان',
+            'clients.view'           => 'مشاهده مشتریان',
+            'clients.view.all'       => 'مشاهده همه مشتریان',
+            'clients.view.assigned'  => 'مشاهده مشتریان مرتبط',
+            'clients.view.own'       => 'مشاهده مشتریان ایجاد شده توسط خود',
+            'clients.create'         => 'ایجاد مشتری',
+            'clients.edit'           => 'ویرایش مشتری',
+            'clients.delete'         => 'حذف مشتری',
 
             // Client Calls
-            'client-calls.manage'       => 'مدیریت تماس‌های مشتریان',
-            'client-calls.view'         => 'مشاهده تماس‌های مشتریان',
-            'client-calls.view.all'     => 'مشاهده همه تماس‌های مشتریان',
-            'client-calls.view.assigned'=> 'مشاهده تماس‌های مشتریان مرتبط',
-            'client-calls.view.own'     => 'مشاهده تماس‌های ثبت‌شده توسط خود',
-            'client-calls.create'       => 'ثبت تماس جدید',
-            'client-calls.edit'         => 'ویرایش تماس‌ها',
-            'client-calls.delete'       => 'حذف تماس‌ها',
+            'client-calls.manage'        => 'مدیریت تماس‌های مشتریان',
+            'client-calls.view'          => 'مشاهده تماس‌های مشتریان',
+            'client-calls.view.all'      => 'مشاهده همه تماس‌های مشتریان',
+            'client-calls.view.assigned' => 'مشاهده تماس‌های مشتریان مرتبط',
+            'client-calls.view.own'      => 'مشاهده تماس‌های ثبت‌شده توسط خود',
+            'client-calls.create'        => 'ثبت تماس جدید',
+            'client-calls.edit'          => 'ویرایش تماس‌ها',
+            'client-calls.delete'        => 'حذف تماس‌ها',
+
+            // Booking (Modules/Booking/Installer.php)
+            'booking.view'                 => 'مشاهده ماژول نوبت‌دهی',
+            'booking.manage'               => 'مدیریت کامل نوبت‌دهی',
+
+            'booking.settings.manage'      => 'مدیریت تنظیمات نوبت‌دهی',
+
+            'booking.categories.view'      => 'مشاهده دسته‌بندی‌های نوبت‌دهی',
+            'booking.categories.create'    => 'ایجاد دسته‌بندی نوبت‌دهی',
+            'booking.categories.edit'      => 'ویرایش دسته‌بندی نوبت‌دهی',
+            'booking.categories.delete'    => 'حذف دسته‌بندی نوبت‌دهی',
+            'booking.categories.manage'    => 'مدیریت دسته‌بندی‌های نوبت‌دهی',
+
+            'booking.forms.view'           => 'مشاهده فرم‌های نوبت‌دهی',
+            'booking.forms.create'         => 'ایجاد فرم نوبت‌دهی',
+            'booking.forms.edit'           => 'ویرایش فرم نوبت‌دهی',
+            'booking.forms.delete'         => 'حذف فرم نوبت‌دهی',
+            'booking.forms.manage'         => 'مدیریت فرم‌های نوبت‌دهی',
+
+            'booking.services.view'        => 'مشاهده سرویس‌های نوبت‌دهی',
+            'booking.services.create'      => 'ایجاد سرویس نوبت‌دهی',
+            'booking.services.edit'        => 'ویرایش سرویس نوبت‌دهی',
+            'booking.services.delete'      => 'حذف سرویس نوبت‌دهی',
+            'booking.services.manage'      => 'مدیریت سرویس‌های نوبت‌دهی',
+
+            'booking.availability.manage'  => 'مدیریت ظرفیت/دسترس‌پذیری نوبت‌دهی',
+
+            'booking.appointments.view'     => 'مشاهده نوبت‌ها',
+            'booking.appointments.view.all' => 'مشاهده همه نوبت‌ها',
+            'booking.appointments.view.own' => 'مشاهده نوبت‌های ثبت‌شده توسط خود',
+            'booking.appointments.create'   => 'ایجاد/ثبت نوبت جدید',
+            'booking.appointments.edit'     => 'ویرایش نوبت',
+            'booking.appointments.cancel'   => 'لغو نوبت',
+            'booking.appointments.manage'   => 'مدیریت نوبت‌ها',
+
+            'booking.reports.view'          => 'مشاهده گزارش‌های نوبت‌دهی',
         ];
 
         // اگر ترجمه صریح نداریم، یک تبدیل خوانا بساز:
         if (!isset($map[$name])) {
-            // users.export => "users export"
-            $tmp = str_replace(['.', '-','_'], ' ', $name);
-            // حرف اول هر کلمه بزرگ نمی‌کنیم (فارسی)، فقط فاصله‌ها را نگه می‌داریم
+            $tmp = str_replace(['.', '-', '_'], ' ', $name);
             return trim($tmp);
         }
+
         return $map[$name];
     }
 
@@ -140,17 +210,20 @@ class PermissionCatalog
             $name  = $perm->name;
             $label = self::translate($name);
             $group = self::detectGroup($name);
+
             $out[$group]['items'][] = ['name' => $name, 'label' => $label];
         }
 
         // گروه‌هایی که خالی مانده‌اند را حذف کن
         foreach ($out as $k => $g) {
-            if (empty($g['items'])) unset($out[$k]);
+            if (empty($g['items'])) {
+                unset($out[$k]);
+            }
         }
 
         // مرتب‌سازی داخلی هر گروه بر اساس برچسب فارسی
         foreach ($out as &$g) {
-            usort($g['items'], fn($a,$b) => strcmp($a['label'], $b['label']));
+            usort($g['items'], fn($a, $b) => strcmp($a['label'], $b['label']));
         }
 
         return $out;
