@@ -53,7 +53,7 @@ class AvailabilityController extends Controller
 
             'slot_duration_minutes' => ['nullable', 'integer', 'min:5', 'max:720'],
             'capacity_per_slot' => ['nullable', 'integer', 'min:1', 'max:1000'],
-            'capacity_per_day' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'capacity_per_day' => ['nullable', 'integer', 'min:0', 'max:10000'],
         ]);
 
         // For GLOBAL scope, force scope_id null
@@ -89,7 +89,7 @@ class AvailabilityController extends Controller
             'override_breaks_json.*.end_local' => ['required_with:override_breaks_json', 'date_format:H:i'],
 
             'override_capacity_per_slot' => ['nullable', 'integer', 'min:1', 'max:1000'],
-            'override_capacity_per_day' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'override_capacity_per_day' => ['nullable', 'integer', 'min:0', 'max:10000'],
         ]);
 
         if ($data['scope_type'] === BookingAvailabilityException::SCOPE_GLOBAL) {

@@ -26,6 +26,15 @@
                 </a>
             </div>
         </div>
+        @if($errors->any())
+            <div class="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                <ul class="list-disc pr-5 space-y-1">
+                    @foreach($errors->all() as $e)
+                        <li>{{ $e }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
 
         {{-- Flash message --}}
         @if(session('success'))
@@ -113,7 +122,7 @@
                                 <input type="time"
                                        name="rules[{{ $d }}][work_start_local]"
                                        class="w-full border rounded p-2 text-sm"
-                                       value="{{ $start }}">
+                                       value="{{ $start ? substr($start,0,5) : '' }}">
                             </div>
 
                             {{-- پایان کار --}}
@@ -122,7 +131,7 @@
                                 <input type="time"
                                        name="rules[{{ $d }}][work_end_local]"
                                        class="w-full border rounded p-2 text-sm"
-                                       value="{{ $end }}">
+                                       value="{{ $end ? substr($end,0,5) : '' }}">
                             </div>
 
                             {{-- مدت اسلات --}}

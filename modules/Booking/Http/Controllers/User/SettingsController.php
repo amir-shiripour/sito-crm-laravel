@@ -66,6 +66,7 @@ class SettingsController extends Controller
             'form_management_scope' => ['required', Rule::in(['ALL', 'OWN'])],
             'service_category_selection_scope' => ['required', Rule::in(['ALL', 'OWN'])],
             'service_form_selection_scope' => ['required', Rule::in(['ALL', 'OWN'])],
+            'operator_appointment_flow' => ['required', Rule::in(['PROVIDER_FIRST', 'SERVICE_FIRST'])],
         ]);
 
         $data['global_online_booking_enabled'] = (bool) $data['global_online_booking_enabled'];

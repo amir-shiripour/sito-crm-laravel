@@ -25,7 +25,14 @@ class BookingServiceProvider extends Model
         'override_discount_from',
         'override_discount_to',
 
+        'override_category_id',
+        'override_appointment_form_id',
+
         'override_online_booking_mode',
+
+        'override_payment_mode',
+        'override_payment_amount_type',
+        'override_payment_amount_value',
 
         'override_status_mode',
         'override_status',
@@ -36,6 +43,9 @@ class BookingServiceProvider extends Model
         'customization_enabled' => 'boolean',
         'override_discount_from' => 'datetime',
         'override_discount_to' => 'datetime',
+        'override_category_id' => 'integer',
+        'override_appointment_form_id' => 'integer',
+        'override_payment_amount_value' => 'float',
     ];
 
     public function service(): BelongsTo

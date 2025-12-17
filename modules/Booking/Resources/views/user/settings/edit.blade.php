@@ -34,6 +34,19 @@
             </div>
 
             <div>
+                <label class="block text-sm mb-1">مرحله اول ثبت نوبت (اپراتور)</label>
+                <select name="operator_appointment_flow" class="w-full border rounded p-2">
+                    <option value="PROVIDER_FIRST" @selected(old('operator_appointment_flow', $settings->operator_appointment_flow)==='PROVIDER_FIRST')>
+                        اول ارائه‌دهنده
+                    </option>
+                    <option value="SERVICE_FIRST" @selected(old('operator_appointment_flow', $settings->operator_appointment_flow)==='SERVICE_FIRST')>
+                        اول سرویس
+                    </option>
+                </select>
+            </div>
+
+
+            <div>
                 <label class="block text-sm mb-1">مدت هر اسلات (دقیقه)</label>
                 <input type="number" name="default_slot_duration_minutes" class="w-full border rounded p-2" value="{{ old('default_slot_duration_minutes', $settings->default_slot_duration_minutes) }}" required>
             </div>

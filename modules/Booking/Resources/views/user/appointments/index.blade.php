@@ -31,10 +31,14 @@
                 @foreach($appointments as $a)
                     @php
                         /** @var \Modules\Booking\Entities\Appointment $a */
+                        $tz = config('booking.timezones.display_default', 'Asia/Tehran');
+
                         $startJalali = $a->start_at_utc
-                            ? \Morilog\Jalali\Jalalian::fromDateTime($a->start_at_utc)->format('Y/m/d H:i')
+                            ? \Morilog\Jalali\Jalalian::fromDateTime($a->start_at_utc->copy()->timezone($tz))
+                                ->format('Y/m/d H:i')
                             : '';
                     @endphp
+
                     <tr class="border-t">
                         <td class="p-3">{{ $a->id }}</td>
                         <td class="p-3">{{ optional($a->service)->name }}</td>

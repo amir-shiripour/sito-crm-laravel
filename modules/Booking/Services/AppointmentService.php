@@ -460,8 +460,8 @@ class AppointmentService
             throw new \RuntimeException('This day is closed.');
         }
 
-        $capSlot = (int) $policy['capacity_per_slot'];
-        $capDay  = $policy['capacity_per_day'] !== null ? (int) $policy['capacity_per_day'] : null;
+        $capSlot = (int) ($policy['capacity_per_slot'] ?? 0); // 0 => unlimited
+        $capDay  = $policy['capacity_per_day'] !== null ? (int) $policy['capacity_per_day'] : null; // null => unlimited
 
         $statuses = (array) config('booking.capacity_consuming_statuses', []);
 
@@ -484,11 +484,15 @@ class AppointmentService
 
         $slotHeld = $slotHeldQ->count();
 
-        if (($slotBooked + $slotHeld) >= $capSlot) {
-            throw new \RuntimeException('Slot capacity is full.');
+        // Slot capacity check (skip if unlimited)
+        if ($capSlot > 0) {
+            if (($slotBooked + $slotHeld) >= $capSlot) {
+                throw new \RuntimeException('Slot capacity is full.');
+            }
         }
 
-        if ($capDay !== null) {
+        // Day capacity check (skip if unlimited)
+        if ($capDay !== null && $capDay > 0) {
             $dayStartUtc = $day->copy()->timezone('UTC');
             $dayEndUtc   = $day->copy()->addDay()->timezone('UTC');
 

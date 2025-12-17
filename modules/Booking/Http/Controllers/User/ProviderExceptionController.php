@@ -36,7 +36,7 @@ class ProviderExceptionController extends Controller
             'override_breaks.*.end_local'   => ['required_with:override_breaks', 'date_format:H:i'],
 
             'override_capacity_per_slot' => ['nullable', 'integer', 'min:1', 'max:1000'],
-            'override_capacity_per_day'  => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'override_capacity_per_day'  => ['nullable', 'integer', 'min:0', 'max:10000'],
         ]);
 
         $payload = [

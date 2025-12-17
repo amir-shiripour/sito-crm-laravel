@@ -13,6 +13,8 @@ use Modules\Booking\Entities\BookingForm;
 use Modules\Booking\Entities\BookingService;
 use Modules\Booking\Entities\BookingSetting;
 use Spatie\Permission\Models\Role;
+use Modules\Booking\Entities\BookingServiceProvider;
+
 
 class ServiceController extends Controller
 {
@@ -28,27 +30,25 @@ class ServiceController extends Controller
         $query = BookingService::query()
             ->with(['category', 'appointmentForm']);
 
+        if ($authUser) {
+            $query->with(['serviceProviders' => function ($q) use ($authUser) {
+                $q->where('provider_user_id', $authUser->id);
+            }]);
+        }
+
         if (! $isAdmin) {
-            // فیلتر کردن بر اساس قواعد:
-            // - سرویس‌های عمومی (owner_user_id null یا متعلق به admin/super-admin)
-            // - + سرویس‌های خود کاربر (اگر Provider است و allow_role_service_creation = true)
             $query->where(function ($q) use ($authUser, $isProvider, $settings, $adminOwnerIds) {
-                // سرویس‌های عمومی
                 $q->whereNull('owner_user_id')
                     ->orWhereIn('owner_user_id', $adminOwnerIds);
 
-                // سرویس‌های خود ارائه‌دهنده (در صورت فعال بودن اجازهٔ ایجاد سرویس)
                 if ($isProvider && $settings->allow_role_service_creation && $authUser) {
                     $q->orWhere('owner_user_id', $authUser->id);
                 }
             });
         }
 
-        $services = $query
-            ->orderByDesc('id')
-            ->paginate(20);
+        $services = $query->orderByDesc('id')->paginate(20);
 
-        // محاسبه اینکه کدام سرویس‌ها برای این کاربر قابل ویرایش هستند
         $editableServiceIds = [];
         foreach ($services as $srv) {
             if ($this->canEditServiceForUser($authUser, $srv, $adminOwnerIds, $settings)) {
@@ -78,7 +78,10 @@ class ServiceController extends Controller
         $categories = BookingCategory::query()->orderBy('name')->get();
         $forms      = BookingForm::query()->orderBy('name')->get();
 
-        return view('booking::user.services.create', compact('categories', 'forms'));
+        $isAdminUser = $this->isAdminUser($authUser);
+        $isProvider  = $this->userIsProvider($authUser, $settings);
+
+        return view('booking::user.services.create', compact('categories', 'forms', 'settings', 'isAdminUser', 'isProvider'));
     }
 
     public function store(Request $request)
@@ -89,6 +92,8 @@ class ServiceController extends Controller
         if (! $this->canCreateService($authUser, $settings)) {
             abort(403);
         }
+
+        $isAdminUser = $this->isAdminUser($authUser);
 
         $data = $request->validate([
             'name'   => ['required', 'string', 'max:255'],
@@ -122,14 +127,31 @@ class ServiceController extends Controller
             'provider_can_customize'=> ['nullable', 'boolean'],
         ]);
 
-        $data['provider_can_customize'] = (bool)($data['provider_can_customize'] ?? false);
+        // Provider اجازه تغییر این گزینه را ندارد
+        if (! $isAdminUser) {
+            $data['provider_can_customize'] = false;
+        } else {
+            $data['provider_can_customize'] = (bool)($data['provider_can_customize'] ?? false);
+        }
+
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
 
-        // مالک سرویس همیشه کاربری است که سرویس را ایجاد می‌کند
         $data['owner_user_id'] = $authUser?->id;
 
-        BookingService::query()->create($data);
+        $service = BookingService::query()->create($data);
+
+        // اگر سازنده Provider است، سرویس خودش برای خودش فعال شود
+        if ($authUser && $this->userIsProvider($authUser, $settings)) {
+            BookingServiceProvider::query()->updateOrCreate(
+                ['service_id' => $service->id, 'provider_user_id' => $authUser->id],
+                [
+                    'is_active' => true,
+                    'customization_enabled' => true,
+                    'override_status_mode' => BookingServiceProvider::OVERRIDE_MODE_INHERIT,
+                ]
+            );
+        }
 
         return redirect()
             ->route('user.booking.services.index')
@@ -149,7 +171,34 @@ class ServiceController extends Controller
         $categories = BookingCategory::query()->orderBy('name')->get();
         $forms      = BookingForm::query()->orderBy('name')->get();
 
-        return view('booking::user.services.edit', compact('service', 'categories', 'forms'));
+        $isAdminUser = $this->isAdminUser($authUser);
+        $isProvider  = $this->userIsProvider($authUser, $settings);
+
+        $isPublicService = $this->serviceIsPublic($service, $adminOwnerIds);
+        $isOwnerService  = $authUser ? ((int)$service->owner_user_id === (int)$authUser->id) : false;
+
+        $editingPublicAsProvider = (!$isAdminUser && $isProvider && $isPublicService && !$isOwnerService);
+        $serviceProvider = null;
+
+        if ($editingPublicAsProvider && $authUser) {
+            $serviceProvider = BookingServiceProvider::query()
+                ->where('service_id', $service->id)
+                ->where('provider_user_id', $authUser->id)
+                ->first();
+        }
+
+        return view('booking::user.services.edit', compact(
+            'service',
+            'categories',
+            'forms',
+            'settings',
+            'isAdminUser',
+            'isProvider',
+            'isPublicService',
+            'isOwnerService',
+            'editingPublicAsProvider',
+            'serviceProvider',
+        ));
     }
 
     public function update(Request $request, BookingService $service)
@@ -162,7 +211,88 @@ class ServiceController extends Controller
             abort(403);
         }
 
-        $data = $request->validate([
+        $isAdminUser = $this->isAdminUser($authUser);
+        $isProvider  = $this->userIsProvider($authUser, $settings);
+
+        $isPublicService = $this->serviceIsPublic($service, $adminOwnerIds);
+        $isOwnerService  = $authUser ? ((int)$service->owner_user_id === (int)$authUser->id) : false;
+
+        // -------------------------------------------------
+        // حالت 1: Provider روی سرویس عمومی (override در pivot)
+        // -------------------------------------------------
+        if (! $isAdminUser && $isProvider && $isPublicService && ! $isOwnerService) {
+
+            $data = $request->validate([
+                // فقط فیلدهای مجاز برای Provider روی سرویس عمومی
+                'base_price'     => ['required', 'numeric', 'min:0'],
+                'discount_price' => ['nullable', 'numeric', 'min:0'],
+                'discount_from'  => ['nullable', 'string'],
+                'discount_to'    => ['nullable', 'string'],
+
+                'category_id'         => ['nullable', 'integer', 'exists:booking_categories,id'],
+                'appointment_form_id' => ['nullable', 'integer', 'exists:booking_forms,id'],
+
+                'online_booking_mode' => ['required', Rule::in([
+                    BookingService::ONLINE_MODE_INHERIT,
+                    BookingService::ONLINE_MODE_FORCE_ON,
+                    BookingService::ONLINE_MODE_FORCE_OFF,
+                ])],
+
+                'payment_mode'       => ['required', Rule::in([
+                    BookingService::PAYMENT_MODE_NONE,
+                    BookingService::PAYMENT_MODE_OPTIONAL,
+                    BookingService::PAYMENT_MODE_REQUIRED,
+                ])],
+                'payment_amount_type'  => ['nullable', Rule::in([
+                    BookingService::PAYMENT_AMOUNT_FULL,
+                    BookingService::PAYMENT_AMOUNT_DEPOSIT,
+                    BookingService::PAYMENT_AMOUNT_FIXED,
+                ])],
+                'payment_amount_value' => ['nullable', 'numeric', 'min:0'],
+            ]);
+
+            $data['discount_from'] = $data['discount_from'] ?: null;
+            $data['discount_to']   = $data['discount_to']   ?: null;
+
+            $sp = BookingServiceProvider::query()->firstOrNew([
+                'service_id'       => $service->id,
+                'provider_user_id' => $authUser->id,
+            ]);
+
+            if (! $sp->exists) {
+                $sp->is_active = true; // اینجا منطقیه فعال باشه چون اجازه ورود به edit داشته
+                $sp->customization_enabled = (bool) $service->provider_can_customize;
+                $sp->override_status_mode = BookingServiceProvider::OVERRIDE_MODE_INHERIT;
+            }
+
+            // Override ها
+            $sp->override_price_mode       = BookingServiceProvider::OVERRIDE_MODE_OVERRIDE;
+            $sp->override_base_price       = $data['base_price'];
+            $sp->override_discount_price   = $data['discount_price'] ?? null;
+            $sp->override_discount_from    = $data['discount_from'] ?? null;
+            $sp->override_discount_to      = $data['discount_to'] ?? null;
+
+            $sp->override_category_id          = $data['category_id'] ?? null;
+            $sp->override_appointment_form_id  = $data['appointment_form_id'] ?? null;
+
+            $sp->override_online_booking_mode  = $data['online_booking_mode'];
+
+            $sp->override_payment_mode         = $data['payment_mode'];
+            $sp->override_payment_amount_type  = $data['payment_amount_type'] ?? null;
+            $sp->override_payment_amount_value = $data['payment_amount_value'] ?? null;
+
+            $sp->save();
+
+            return redirect()
+                ->route('user.booking.services.edit', $service)
+                ->with('success', 'تنظیمات این سرویس برای شما ذخیره شد.');
+        }
+
+        // -------------------------------------------------
+        // حالت 2: Admin یا Provider روی سرویس خودش (edit روی BookingService)
+        // -------------------------------------------------
+
+        $rules = [
             'name'   => ['required', 'string', 'max:255'],
             'status' => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
 
@@ -191,18 +321,66 @@ class ServiceController extends Controller
             'payment_amount_value' => ['nullable', 'numeric', 'min:0'],
 
             'appointment_form_id'   => ['nullable', 'integer', 'exists:booking_forms,id'],
-            'provider_can_customize'=> ['nullable', 'boolean'],
-        ]);
+        ];
 
-        $data['provider_can_customize'] = (bool)($data['provider_can_customize'] ?? false);
+        // فقط admin می‌تواند provider_can_customize را تغییر دهد
+        if ($isAdminUser) {
+            $rules['provider_can_customize'] = ['nullable', 'boolean'];
+        }
+
+        $data = $request->validate($rules);
+
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
+
+        if ($isAdminUser) {
+            $data['provider_can_customize'] = (bool)($data['provider_can_customize'] ?? false);
+        }
 
         $service->fill($data)->save();
 
         return redirect()
             ->route('user.booking.services.edit', $service)
             ->with('success', 'سرویس با موفقیت بروزرسانی شد.');
+    }
+
+    public function toggleForMe(Request $request, BookingService $service)
+    {
+        $authUser = Auth::user();
+        $settings = BookingSetting::current();
+        $adminOwnerIds = $this->getAdminOwnerIds();
+
+        if (! $authUser) {
+            abort(403);
+        }
+
+        // فقط Providerها
+        if (! $this->userIsProvider($authUser, $settings)) {
+            abort(403);
+        }
+
+        // فقط سرویس‌های عمومی قابل فعال‌سازی برای Provider هستند
+        if (! $this->serviceIsPublic($service, $adminOwnerIds)) {
+            abort(403);
+        }
+
+        $sp = BookingServiceProvider::query()->firstOrNew([
+            'service_id'        => $service->id,
+            'provider_user_id'  => $authUser->id,
+        ]);
+
+        // پیشفرض‌ها اگر رکورد تازه ساخته می‌شود
+        if (! $sp->exists) {
+            $sp->customization_enabled = (bool) $service->provider_can_customize;
+            $sp->override_status_mode = BookingServiceProvider::OVERRIDE_MODE_INHERIT;
+        }
+
+        $sp->is_active = ! (bool) $sp->is_active;
+        $sp->save();
+
+        return redirect()
+            ->route('user.booking.services.index')
+            ->with('success', $sp->is_active ? 'سرویس برای شما فعال شد.' : 'سرویس برای شما غیرفعال شد.');
     }
 
     // --------------------------------------------------
@@ -352,10 +530,18 @@ class ServiceController extends Controller
             return true;
         }
 
-        // سرویس عمومی و قابل شخصی‌سازی توسط Provider
+        // سرویس عمومی و قابل شخصی‌سازی توسط Provider (به شرط فعال بودن برای همین Provider)
         if ($this->serviceIsPublic($service, $adminOwnerIds) && $service->provider_can_customize) {
-            return true;
+            $sp = BookingServiceProvider::query()
+                ->where('service_id', $service->id)
+                ->where('provider_user_id', $user->id)
+                ->first();
+
+            if ($sp && $sp->is_active) {
+                return true;
+            }
         }
+
 
         return false;
     }

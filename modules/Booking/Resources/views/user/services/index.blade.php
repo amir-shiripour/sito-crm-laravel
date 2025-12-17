@@ -7,9 +7,6 @@
 
             @php
                 $user = auth()->user();
-                // اجازه ایجاد سرویس:
-                //  - اگر پرمیشن create دارد
-                //  - یا (براساس تنظیمات) Provider است و allow_role_service_creation = 1
                 $canCreateService =
                     $user &&
                     (
@@ -45,6 +42,11 @@
                 <tbody>
                 @foreach($services as $srv)
                     @php
+                        $isPublic = is_null($srv->owner_user_id) || in_array((int)$srv->owner_user_id, $adminOwnerIds ?? [], true);
+
+                        // چون در Controller eager-load کردیم با فیلتر provider_user_id، اگر وجود داشته باشد همین یکی است
+                        $spRow = $srv->serviceProviders->first();
+                        $isActiveForMe = (bool)($spRow?->is_active ?? false);
                         $canEditService = in_array($srv->id, $editableServiceIds ?? []);
                     @endphp
                     <tr class="border-t">
@@ -55,6 +57,11 @@
                         <td class="p-3">{{ number_format($srv->base_price) }}</td>
                         <td class="p-3">{{ optional($srv->appointmentForm)->name ?: '-' }}</td>
                         <td class="p-3 space-x-2 space-x-reverse">
+                            @php
+                                $showToggleForMe = (($isProvider ?? false) && $isPublic);
+                            @endphp
+
+                            {{-- لینک‌های ویرایش/برنامه زمانی (اگر اجازه دارد) --}}
                             @if($canEditService)
                                 <a class="text-blue-600 hover:underline"
                                    href="{{ route('user.booking.services.edit', $srv) }}">
@@ -65,10 +72,25 @@
                                    class="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
                                     برنامه زمانی
                                 </a>
-                            @else
-                                <span class="text-xs text-gray-400">
-                                    فقط مشاهده
-                                </span>
+                            @endif
+
+                            {{-- Toggle همیشه برای Provider روی سرویس‌های عمومی نمایش داده شود --}}
+                            @if($showToggleForMe)
+                                <form method="POST" action="{{ route('user.booking.services.toggleForMe', $srv) }}" class="inline">
+                                    @csrf
+                                    <button class="text-xs px-3 py-1 rounded {{ $isActiveForMe ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }}">
+                                        {{ $isActiveForMe ? 'غیرفعال برای من' : 'فعال‌سازی برای من' }}
+                                    </button>
+                                </form>
+
+                                <span class="text-[11px] text-gray-500">
+            {{ $isActiveForMe ? 'فعال' : 'غیرفعال' }}
+        </span>
+                            @endif
+
+                            {{-- اگر هیچکدام نبود --}}
+                            @if(! $canEditService && ! $showToggleForMe)
+                                <span class="text-xs text-gray-400">فقط مشاهده</span>
                             @endif
                         </td>
                     </tr>

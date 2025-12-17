@@ -21,6 +21,8 @@ class BookingSetting extends Model
         'form_management_scope',
         'service_category_selection_scope',
         'service_form_selection_scope',
+
+        'operator_appointment_flow',
     ];
 
     protected $casts = [
@@ -48,6 +50,7 @@ class BookingSetting extends Model
             'form_management_scope' => 'ALL',
             'service_category_selection_scope' => 'ALL',
             'service_form_selection_scope' => 'ALL',
+            'operator_appointment_flow' => 'PROVIDER_FIRST',
         ]);
     }
 }
