@@ -24,6 +24,7 @@ class WorkflowAction extends Model
     public const TYPE_CREATE_FOLLOWUP   = 'CREATE_FOLLOW_UP';
     public const TYPE_CREATE_REMINDER   = 'CREATE_REMINDER';
     public const TYPE_SEND_NOTIFICATION = 'SEND_NOTIFICATION';
+    public const TYPE_SEND_SMS          = 'SEND_SMS';
 
     public function stage(): BelongsTo
     {
