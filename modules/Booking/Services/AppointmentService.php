@@ -161,6 +161,7 @@ class AppointmentService
             // - Reminders/Workflows/Tasks should be triggered only when CONFIRMED.
             if ($appointment->status === Appointment::STATUS_CONFIRMED) {
                 $this->onAppointmentConfirmed($appointment);
+                $this->triggerWorkflow('appointment_created', $appointment);
             }
 
             $this->audit->log(
@@ -261,6 +262,7 @@ class AppointmentService
             ]);
 
             $this->onAppointmentConfirmed($appointment);
+            $this->triggerWorkflow('appointment_created', $appointment);
 
             $this->audit->log(
                 action: 'APPOINTMENT_CREATED_OPERATOR',
