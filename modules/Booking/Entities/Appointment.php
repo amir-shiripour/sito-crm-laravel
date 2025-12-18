@@ -3,6 +3,8 @@
 namespace Modules\Booking\Entities;
 
 use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -41,10 +43,37 @@ class Appointment extends Model
     ];
 
     protected $casts = [
-        'start_at_utc' => 'datetime',
-        'end_at_utc' => 'datetime',
         'appointment_form_response_json' => 'array',
     ];
+
+    protected function startAtUtc(): Attribute
+    {
+        return Attribute::make(
+            get: fn($value) => $this->asUtcCarbon($value),
+            set: fn($value) => $this->asUtcCarbon($value),
+        );
+    }
+
+    protected function endAtUtc(): Attribute
+    {
+        return Attribute::make(
+            get: fn($value) => $this->asUtcCarbon($value),
+            set: fn($value) => $this->asUtcCarbon($value),
+        );
+    }
+
+    protected function asUtcCarbon(mixed $value): ?Carbon
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $dt = $value instanceof Carbon
+            ? $value
+            : Carbon::parse($value, 'UTC');
+
+        return $dt->copy()->setTimezone('UTC');
+    }
 
     public function service(): BelongsTo
     {
