@@ -25,6 +25,10 @@
                         غیرفعال
                     </span>
                 @endif
+
+                @can('workflows.manage')
+                    <a href="{{ route('user.workflows.edit', $workflow) }}" class="inline-flex items-center px-3 py-1 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">ویرایش</a>
+                @endcan
             </div>
         </div>
 

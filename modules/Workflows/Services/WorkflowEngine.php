@@ -5,6 +5,7 @@ namespace Modules\Workflows\Services;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Morilog\Jalali\Jalalian;
 use Modules\Workflows\Entities\Workflow;
 use Modules\Workflows\Entities\WorkflowStage;
 use Modules\Workflows\Entities\WorkflowAction;
@@ -176,6 +177,40 @@ class WorkflowEngine
                 ]);
                 $result = ['status' => 'logged'];
                 break;
+
+            case WorkflowAction::TYPE_SEND_SMS:
+                if ($this->isModuleEnabled($deps['sms'] ?? null)
+                    && class_exists('Modules\\Sms\\Services\\SmsManager')) {
+                    $context = $this->buildContextData($instance);
+                    $to = $this->resolveTargetPhone($config, $context);
+
+                    if ($to) {
+                        $Sms = app(\Modules\Sms\Services\SmsManager::class);
+                        $params = $this->resolveSmsParams($config['params'] ?? [], $context);
+
+                        $options = [
+                            'type' => \Modules\Sms\Entities\SmsMessage::TYPE_SYSTEM,
+                            'related_type' => $instance->related_type,
+                            'related_id' => $instance->related_id,
+                        ];
+
+                        if (!empty($config['offset_minutes'])) {
+                            $options['scheduled_at'] = $this->calcOffsetMinutes((int) $config['offset_minutes'], $instance->started_at ?? now());
+                        }
+
+                        if (!empty($config['pattern_key'])) {
+                            $sms = $Sms->sendPattern($to, $config['pattern_key'], $params, $options);
+                            $result = ['status' => 'pattern_sent', 'sms_id' => $sms->id, 'to' => $to];
+                        } else {
+                            $message = $this->renderSmsTemplate($config['message'] ?? '', $params, $context);
+                            $sms = $Sms->sendText($to, $message, $options);
+                            $result = ['status' => 'text_sent', 'sms_id' => $sms->id, 'to' => $to];
+                        }
+                    } else {
+                        $result = ['status' => 'skipped', 'reason' => 'missing_phone'];
+                    }
+                }
+                break;
         }
 
         return $result;
@@ -205,5 +240,80 @@ class WorkflowEngine
     {
         $base = $base ? \Illuminate\Support\Carbon::parse($base) : now();
         return $minutes ? $base->copy()->addMinutes($minutes) : $base;
+    }
+
+    protected function buildContextData(WorkflowInstance $instance): array
+    {
+        $data = [];
+
+        if ($instance->related_type === 'APPOINTMENT' && class_exists('Modules\\Booking\\Entities\\Appointment')) {
+            $appt = \Modules\Booking\Entities\Appointment::query()
+                ->with(['client', 'service', 'provider'])
+                ->find($instance->related_id);
+
+            if ($appt) {
+                $scheduleTz = config('booking.timezones.display_default', 'Asia/Tehran');
+                $dateJalali = $appt->start_at_utc
+                    ? Jalalian::fromDateTime($appt->start_at_utc->copy()->timezone($scheduleTz))
+                    : null;
+
+                $data['appointment'] = $appt;
+                $data['tokens'] = [
+                    'client_name' => $appt->client?->full_name,
+                    'client_phone' => $appt->client?->phone,
+                    'service_name' => $appt->service?->name,
+                    'provider_name' => $appt->provider?->name,
+                    'appointment_date_jalali' => $dateJalali?->format('Y/m/d'),
+                    'appointment_time_jalali' => $dateJalali?->format('H:i'),
+                    'appointment_datetime_jalali' => $dateJalali?->format('Y/m/d H:i'),
+                ];
+            }
+        }
+
+        return $data;
+    }
+
+    protected function resolveTargetPhone(array $config, array $context): ?string
+    {
+        $target = $config['target'] ?? 'APPOINTMENT_CLIENT';
+
+        if ($target === 'APPOINTMENT_CLIENT') {
+            return $context['tokens']['client_phone'] ?? null;
+        }
+
+        if ($target === 'CUSTOM_PHONE') {
+            return $config['phone'] ?? null;
+        }
+
+        return null;
+    }
+
+    protected function resolveSmsParams(array $paramKeys, array $context): array
+    {
+        $tokens = $context['tokens'] ?? [];
+        $params = [];
+
+        foreach ($paramKeys as $key) {
+            $params[] = $tokens[$key] ?? '';
+        }
+
+        return $params;
+    }
+
+    protected function renderSmsTemplate(string $template, array $params, array $context): string
+    {
+        $tokens = $context['tokens'] ?? [];
+
+        // Replace indexed placeholders {0}, {1}, ... first
+        foreach ($params as $idx => $value) {
+            $template = str_replace('{' . $idx . '}', (string) $value, $template);
+        }
+
+        // Replace named placeholders like {client_name}
+        foreach ($tokens as $key => $value) {
+            $template = str_replace('{' . $key . '}', (string) $value, $template);
+        }
+
+        return $template ?: implode(' ', $params);
     }
 }

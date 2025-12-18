@@ -9,5 +9,6 @@ return [
         'tasks'     => 'Tasks',
         'followups' => 'FollowUps',
         'reminders' => 'Reminders',
+        'sms'       => 'Sms',
     ],
 ];
