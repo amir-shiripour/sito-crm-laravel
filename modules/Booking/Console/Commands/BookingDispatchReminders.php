@@ -43,8 +43,10 @@ class BookingDispatchReminders extends Command
         }
 
         $smsAvailable = class_exists('Modules\\Sms\\Services\\SmsManager');
+        $workflowKeyReminder = config('booking.integrations.workflows.workflow_keys.appointment_reminder');
 
         $SmsManager = $smsAvailable ? app(\Modules\Sms\Services\SmsManager::class) : null;
+        $AppointmentService = app(\Modules\Booking\Services\AppointmentService::class);
 
         $sent = 0;
         foreach ($reminders as $rem) {
@@ -70,6 +72,8 @@ class BookingDispatchReminders extends Command
                         'related_type' => 'APPOINTMENT',
                         'related_id' => $appointment?->id,
                     ]);
+                } elseif ($rem->channel === 'WORKFLOW' && $workflowKeyReminder && $appointment) {
+                    $AppointmentService->triggerWorkflow('appointment_reminder', $appointment);
                 }
 
                 // Mark sent for all channels (IN_APP doesn't need external dispatch)
