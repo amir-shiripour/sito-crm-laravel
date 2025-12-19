@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Modules\Clients\Entities\ClientStatus;
 use Modules\Clients\Entities\ClientForm;
+use Illuminate\Support\Facades\Schema;
 
 class ClientsModuleSeeder extends Seeder
 {
@@ -17,6 +18,9 @@ class ClientsModuleSeeder extends Seeder
 
     protected function seedStatuses(): void
     {
+        if (!Schema::hasTable('client_statuses')) {
+            return;
+        }
         // اگر قبلاً وضعیت‌هایی داری، دوباره نساز
         if (ClientStatus::query()->exists()) {
             return;
@@ -83,6 +87,9 @@ class ClientsModuleSeeder extends Seeder
 
     protected function seedDefaultForm(): void
     {
+        if (!Schema::hasTable('client_forms')) {
+            return;
+        }
         // اگر از قبل فرم داری، دوباره نساز
         if (ClientForm::query()->exists()) {
             return;

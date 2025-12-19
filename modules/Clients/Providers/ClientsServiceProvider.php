@@ -14,7 +14,7 @@ class ClientsServiceProvider extends ServiceProvider
 {
     public function register()
     {
-        $this->mergeConfigFrom(__DIR__ . '/../Config/config.php', 'clients');
+        $this->mergeConfigFrom(__DIR__ . '/../config/config.php', 'clients');
     }
 
     public function boot(Router $router)

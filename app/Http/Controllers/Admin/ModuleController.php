@@ -133,7 +133,7 @@ class ModuleController extends Controller
             return back()->with('info', 'ماژول قبلاً نصب شده است.');
         }
 
-        $moduleName = Str::studly($dbModule->slug);
+        $moduleName = $dbModule->name;
         $installer = $this->resolveInstaller($moduleName);
 
         try {
@@ -164,7 +164,7 @@ class ModuleController extends Controller
         $slug = $request->slug;
 
         $dbModule = Module::where('slug', $slug)->firstOrFail();
-        $moduleName = Str::studly($dbModule->slug);
+        $moduleName = $dbModule->name;
 
         $installer = $this->resolveInstaller($moduleName);
 
@@ -199,7 +199,7 @@ class ModuleController extends Controller
         $slug = $request->slug;
 
         $dbModule = Module::where('slug', $slug)->firstOrFail();
-        $moduleName = Str::studly($dbModule->slug);
+        $moduleName = $dbModule->name;
 
         $installer = $this->resolveInstaller($moduleName);
 
@@ -227,7 +227,7 @@ class ModuleController extends Controller
         $slug = $request->slug;
 
         $dbModule = Module::where('slug', $slug)->firstOrFail();
-        $moduleName = Str::studly($dbModule->slug);
+        $moduleName = $dbModule->name;
 
         $installer = $this->resolveInstaller($moduleName);
 
@@ -254,7 +254,7 @@ class ModuleController extends Controller
         $slug = $request->slug;
 
         $dbModule = Module::where('slug', $slug)->firstOrFail();
-        $moduleName = Str::studly($dbModule->slug);
+        $moduleName = $dbModule->name;
 
         $installer = $this->resolveInstaller($moduleName);
 

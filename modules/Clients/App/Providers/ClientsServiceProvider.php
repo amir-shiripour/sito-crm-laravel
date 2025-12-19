@@ -22,7 +22,7 @@ class ClientsServiceProvider extends ServiceProvider
         $this->registerTranslations();
         $this->registerConfig();
         $this->registerViews();
-        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/migrations'));
+        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
 
         $widgetsFile = __DIR__ . '/../../config/widgets.php';
         if (file_exists($widgetsFile)) {
@@ -92,7 +92,7 @@ class ClientsServiceProvider extends ServiceProvider
     public function registerViews(): void
     {
         $viewPath = resource_path('views/modules/'.$this->moduleNameLower);
-        $sourcePath = module_path($this->moduleName, 'resources/views');
+        $sourcePath = module_path($this->moduleName, 'Resources/views');
 
         $this->publishes([$sourcePath => $viewPath], ['views', $this->moduleNameLower.'-module-views']);
 

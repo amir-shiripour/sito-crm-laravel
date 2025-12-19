@@ -20,7 +20,7 @@ class ModuleMenuService
         foreach ($modules as $module) {
             // مسیر فایل menu در ماژول
             $moduleName = Str::studly($module->slug);
-            $menuPath = base_path("modules/{$moduleName}/Resources/menu.php");
+            $menuPath = base_path("Modules/{$moduleName}/Resources/menu.php");
 
             if (file_exists($menuPath)) {
                 try {

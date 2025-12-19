@@ -43,6 +43,7 @@ class BookingDispatchReminders extends Command
         }
 
         $smsAvailable = class_exists('Modules\\Sms\\Services\\SmsManager');
+        $workflowKeyReminder = config('booking.integrations.workflows.workflow_keys.appointment_reminder');
 
         $SmsManager = $smsAvailable ? app(\Modules\Sms\Services\SmsManager::class) : null;
         $AppointmentService = app(\Modules\Booking\Services\AppointmentService::class);
