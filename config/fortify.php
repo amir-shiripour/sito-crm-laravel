@@ -10,8 +10,8 @@ return [
     'email' => 'email',
     'views' => true,
 
-    // مهم: مطمئن شوید که کاربر بعد از لاگین به داشبورد ادمین هدایت می‌شود
-    'home' => '/admin/dashboard',
+    // مهم: مسیر پیش‌فرض بعد از لاگین برای کاربران عادی (غیر super-admin)
+    'home' => '/user/dashboard',
 
     'prefix' => '',
     'middleware' => ['web'],

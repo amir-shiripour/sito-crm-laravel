@@ -62,6 +62,6 @@ class RouteServiceProvider extends ServiceProvider
         Route::prefix('admin')
             ->as('admin.')
             ->middleware(['web','auth']) // هر میدلوری که می‌خوای
-            ->group(module_path('Clients', 'Routes/admin.php'));
+            ->group(module_path('Clients', 'routes/admin.php'));
     }
 }

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class BaseModuleInstaller implements ModuleInstallerInterface
@@ -21,23 +21,59 @@ class BaseModuleInstaller implements ModuleInstallerInterface
     }
 
     /**
-     * Default install: enable package, run module migrations and seeders.
+     * Run an artisan command safely:
+     * - checks exit code
+     * - logs output
+     * - throws exception on failure
+     *
+     * NOTE: Do NOT blindly inject --force for all commands (some commands don't support it).
+     */
+    protected function runArtisan(string $command, array $params = [], bool $force = false): void
+    {
+        // Only add --force when explicitly requested AND the command likely supports it.
+        // (module:migrate, module:migrate-refresh, module:migrate-rollback, module:seed, migrate, db:seed, etc.)
+        if ($force) {
+            // Add --force only if not already present.
+            // We do not guarantee the command supports it; caller must set $force only for supported commands.
+            $params['--force'] = $params['--force'] ?? true;
+        }
+
+        $exitCode = Artisan::call($command, $params);
+        $output   = trim(Artisan::output() ?? '');
+
+        Log::info("[ModuleInstaller] {$command} ({$this->moduleName}) exitCode={$exitCode}" . ($output ? " | output: {$output}" : ''));
+
+        if ($exitCode !== 0) {
+            throw new \RuntimeException("Artisan command failed: {$command} ({$this->moduleName}). " . ($output ?: 'No output'));
+        }
+    }
+
+    /**
+     * Default install: run module migrations and seeders, then enable module.
      */
     public function install(): void
     {
         try {
             // 1) run module migrations first
-            Artisan::call('module:migrate', ['module' => $this->moduleName]);
+            $this->runArtisan('module:migrate', [
+                'module' => $this->moduleName,
+            ], true); // supports --force
 
             // 2) run module seeders (initial data & permissions)
-            Artisan::call('module:seed', ['module' => $this->moduleName]);
+            $this->runArtisan('module:seed', [
+                'module' => $this->moduleName,
+            ], true); // supports --force
 
             // 3) publish assets if needed (module:publish یا custom)
 
             // 4) finally enable the module so its ServiceProvider & routes are loaded
-            Artisan::call('module:enable', ['module' => $this->moduleName]);
+            // module:enable usually does NOT need --force (and may not support it)
+            $this->runArtisan('module:enable', [
+                'module' => $this->moduleName,
+            ], false);
 
-            Artisan::call('optimize:clear');
+            // 5) clear caches (optimize:clear does not support --force)
+            $this->runArtisan('optimize:clear', [], false);
 
             Log::info("BaseModuleInstaller: installed {$this->moduleName}");
         } catch (\Throwable $e) {
@@ -48,20 +84,20 @@ class BaseModuleInstaller implements ModuleInstallerInterface
 
     public function enable(): void
     {
-        Artisan::call('module:enable', ['module' => $this->moduleName]);
-        Artisan::call('optimize:clear');
+        $this->runArtisan('module:enable', ['module' => $this->moduleName], false);
+        $this->runArtisan('optimize:clear', [], false);
         Log::info("BaseModuleInstaller: enabled {$this->moduleName}");
     }
 
     public function disable(): void
     {
-        Artisan::call('module:disable', ['module' => $this->moduleName]);
-        Artisan::call('optimize:clear');
+        $this->runArtisan('module:disable', ['module' => $this->moduleName], false);
+        $this->runArtisan('optimize:clear', [], false);
         Log::info("BaseModuleInstaller: disabled {$this->moduleName}");
     }
 
     /**
-     * Default reset: create backup of module tables, then truncate known tables and reseed.
+     * Default reset: create backup of module tables, then migrate-refresh and reseed.
      */
     public function reset(): void
     {
@@ -69,20 +105,18 @@ class BaseModuleInstaller implements ModuleInstallerInterface
             // 1) بکاپ از داده‌های ماژول
             $this->backupModuleData();
 
-            // 2) بدون نیاز به truncate دستی، از migrate-refresh برای بازسازی جداول استفاده می‌کنیم
-            Artisan::call('module:migrate-refresh', [
+            // 2) migrate-refresh ماژول
+            $this->runArtisan('module:migrate-refresh', [
                 'module' => $this->moduleName,
-                '--force' => true,
-            ]);
+            ], true); // supports --force
 
-            // 3) اجرای seeders ماژول (برای داده‌های پیش‌فرض)
-            Artisan::call('module:seed', [
+            // 3) اجرای seeders ماژول
+            $this->runArtisan('module:seed', [
                 'module' => $this->moduleName,
-                '--force' => true,
-            ]);
+            ], true); // supports --force
 
             // 4) بهینه‌سازی کش
-            Artisan::call('optimize:clear');
+            $this->runArtisan('optimize:clear', [], false);
 
             Log::info("BaseModuleInstaller: reset {$this->moduleName}");
         } catch (\Throwable $e) {
@@ -92,7 +126,7 @@ class BaseModuleInstaller implements ModuleInstallerInterface
     }
 
     /**
-     * Default uninstall: rollback module migrations if possible, drop tables if module overrides, and remove folder.
+     * Default uninstall: backup, rollback migrations, remove folder.
      * Concrete modules should override uninstall() if they need custom behavior.
      */
     public function uninstall(): void
@@ -103,16 +137,17 @@ class BaseModuleInstaller implements ModuleInstallerInterface
 
             // try to rollback module migrations
             try {
-                Artisan::call('module:migrate-rollback', ['module' => $this->moduleName]);
+                $this->runArtisan('module:migrate-rollback', [
+                    'module' => $this->moduleName,
+                ], true); // supports --force
             } catch (\Throwable $e) {
-                // rollback can fail due to FK or partial migrations — log and continue to module-specific uninstall
                 Log::warning("module:migrate-rollback failed for {$this->moduleName}: " . $e->getMessage());
             }
 
             // allow module-specific uninstall to drop tables / remove assets
             $this->removeModuleFiles();
 
-            Artisan::call('optimize:clear');
+            $this->runArtisan('optimize:clear', [], false);
 
             Log::info("BaseModuleInstaller: uninstalled {$this->moduleName}");
         } catch (\Throwable $e) {
@@ -133,11 +168,18 @@ class BaseModuleInstaller implements ModuleInstallerInterface
                 File::makeDirectory($backupDir, 0755, true);
             }
 
-            // If module exposes a file with list of tables (convention modules/<Name>/install-tables.php), use it
-            $tablesFile = base_path("Modules/{$this->moduleName}/install-tables.php");
+            // Try both "Modules" and "modules" to be safe on case-sensitive servers
+            $tablesFilesCandidates = [
+                base_path("Modules/{$this->moduleName}/install-tables.php"),
+                base_path("modules/{$this->moduleName}/install-tables.php"),
+            ];
+
             $tables = [];
-            if (File::exists($tablesFile)) {
-                $tables = include $tablesFile;
+            foreach ($tablesFilesCandidates as $tablesFile) {
+                if (File::exists($tablesFile)) {
+                    $tables = include $tablesFile;
+                    break;
+                }
             }
 
             // By default try to backup a table named like moduleSlug (e.g., clients)
@@ -146,24 +188,38 @@ class BaseModuleInstaller implements ModuleInstallerInterface
             }
 
             foreach ($tables as $table) {
-                if (\Schema::hasTable($table)) {
+                if (Schema::hasTable($table)) {
                     $rows = DB::table($table)->get();
-                    File::put($backupDir . '/' . $table . '.json', json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                    File::put(
+                        $backupDir . '/' . $table . '.json',
+                        json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+                    );
+                } else {
+                    Log::warning("Backup skipped: table '{$table}' does not exist for module {$this->moduleName}");
                 }
             }
 
             Log::info("Backup created for module {$this->moduleName} at {$backupDir}");
         } catch (\Throwable $e) {
             Log::error("Backup failed for module {$this->moduleName}: " . $e->getMessage());
-            // do not block uninstall/reset if backup fails, but raise warning via logs
         }
     }
 
     protected function removeModuleFiles(): void
     {
-        $modulePath  = base_path("Modules/{$this->moduleName}");
-        if (File::exists($modulePath)) {
-            File::deleteDirectory($modulePath);
+        $candidates = [
+            base_path("Modules/{$this->moduleName}"),
+            base_path("modules/{$this->moduleName}"),
+        ];
+
+        foreach ($candidates as $modulePath) {
+            if (File::exists($modulePath)) {
+                File::deleteDirectory($modulePath);
+                Log::info("Module folder removed: {$modulePath}");
+                return;
+            }
         }
+
+        Log::warning("Module folder not found to remove for {$this->moduleName}");
     }
 }

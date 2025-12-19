@@ -18,7 +18,7 @@ class RouteServiceProvider extends ServiceProvider
      * @var string
      */
     // ما این را در 'config/fortify.php' تنظیم کردیم، اما اینجا هم آپدیت می‌کنیم
-    public const HOME = '/admin/dashboard';
+    public const HOME = '/user/dashboard';
 
     /**
      * Define your route model bindings, pattern filters, and other route configuration.

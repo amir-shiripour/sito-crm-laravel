@@ -22,6 +22,14 @@ class RedirectIfAuthenticated
                     return redirect()->route('client.dashboard');
                 }
 
+                $user = Auth::guard($guard)->user();
+
+                // 🔹 اگر سوپر ادمین است → بفرستش به داشبورد ادمین
+                if ($guard === 'web' && $user && method_exists($user, 'hasRole') && $user->hasRole('super-admin')) {
+                    return redirect('/admin/dashboard');
+                }
+
+                // سایر کاربران (و پیش‌فرض‌ها)
                 return redirect(RouteServiceProvider::HOME);
             }
         }
