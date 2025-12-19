@@ -76,9 +76,18 @@ return [
             'enabled' => true,
             // map internal keys to Workflows module workflow_keys
             'workflow_keys' => [
+                'appointment_created' => null,
                 'appointment_confirmed' => null,
+                'appointment_reminder' => null,
+                'appointment_status_changed' => null,
+                'appointment_canceled' => null,
+                'appointment_done' => null,
+                'appointment_rescheduled' => null,
                 'appointment_no_show' => null,
             ],
+
+            // Offsets (in minutes) relative to appointment start time to trigger workflow_reminder
+            'reminder_offsets_minutes' => [-1440, -120, -30],
         ],
     ],
 ];

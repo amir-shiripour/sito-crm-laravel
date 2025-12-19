@@ -13,6 +13,14 @@
                     تعریف و مشاهده جریان‌های کاری که روی وظایف (Tasks)، پیگیری‌ها (Follow-ups) و یادآوری‌ها (Reminders) سوار می‌شوند.
                 </p>
             </div>
+
+            @can('workflows.manage')
+                <a href="{{ route('user.workflows.create') }}"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl shadow hover:bg-indigo-700 transition">
+                    <span class="text-lg">＋</span>
+                    گردش کار جدید
+                </a>
+            @endcan
         </div>
 
         <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm">

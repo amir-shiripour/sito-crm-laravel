@@ -45,10 +45,13 @@ class BookingDispatchReminders extends Command
         $smsAvailable = class_exists('Modules\\Sms\\Services\\SmsManager');
 
         $SmsManager = $smsAvailable ? app(\Modules\Sms\Services\SmsManager::class) : null;
+        $AppointmentService = app(\Modules\Booking\Services\AppointmentService::class);
 
         $sent = 0;
         foreach ($reminders as $rem) {
             try {
+                $appointment = Appointment::query()->find($rem->related_id);
+
                 // For SMS reminders, we try to send if Sms module exists.
                 if ($rem->channel === $Reminder::CHANNEL_SMS) {
                     if (!$smsAvailable) {
@@ -57,7 +60,6 @@ class BookingDispatchReminders extends Command
                     }
 
                     // If related appointment exists, try to find phone number from client record.
-                    $appointment = Appointment::query()->find($rem->related_id);
                     $to = $appointment?->client?->phone;
 
                     if (!$to) {
@@ -70,6 +72,8 @@ class BookingDispatchReminders extends Command
                         'related_type' => 'APPOINTMENT',
                         'related_id' => $appointment?->id,
                     ]);
+                } elseif ($rem->channel === 'WORKFLOW' && $appointment) {
+                    $AppointmentService->triggerWorkflow('appointment_reminder', $appointment);
                 }
 
                 // Mark sent for all channels (IN_APP doesn't need external dispatch)

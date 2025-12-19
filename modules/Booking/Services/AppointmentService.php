@@ -161,6 +161,7 @@ class AppointmentService
             // - Reminders/Workflows/Tasks should be triggered only when CONFIRMED.
             if ($appointment->status === Appointment::STATUS_CONFIRMED) {
                 $this->onAppointmentConfirmed($appointment);
+                $this->triggerWorkflow('appointment_created', $appointment);
             }
 
             $this->audit->log(
@@ -261,6 +262,7 @@ class AppointmentService
             ]);
 
             $this->onAppointmentConfirmed($appointment);
+            $this->triggerWorkflow('appointment_created', $appointment);
 
             $this->audit->log(
                 action: 'APPOINTMENT_CREATED_OPERATOR',
@@ -288,6 +290,8 @@ class AppointmentService
             $appointment->status = $cancelStatus;
             $appointment->cancel_reason = $reason;
             $appointment->save();
+
+            $this->triggerStatusWorkflows($appointment, $before['status'] ?? null);
 
             $this->cancelFutureReminders($appointment);
 
@@ -321,6 +325,8 @@ class AppointmentService
 
             $appointment->status = Appointment::STATUS_NO_SHOW;
             $appointment->save();
+
+            $this->triggerStatusWorkflows($appointment, $before['status'] ?? null);
 
             if (config('booking.integrations.tasks.enabled', true) && config('booking.integrations.tasks.create_followup_on_no_show', true)) {
                 $this->createFollowUpTask($appointment, $authUserId, 'عدم حضور - پیگیری با مشتری');
@@ -389,6 +395,8 @@ class AppointmentService
 
             $this->cancelFutureReminders($appointment);
             $this->onAppointmentConfirmed($new);
+            $this->triggerStatusWorkflows($appointment, $before['status'] ?? null);
+            $this->triggerWorkflow('appointment_created', $new);
 
             $this->audit->log(
                 action: 'APPOINTMENT_RESCHEDULED',
@@ -577,6 +585,37 @@ class AppointmentService
             }
         }
 
+        // Workflow-based reminders (channel WORKFLOW) to trigger workflow events at specific offsets
+        $workflowKeyReminder = config('booking.integrations.workflows.workflow_keys.appointment_reminder');
+        $workflowOffsets = (array) config('booking.integrations.workflows.reminder_offsets_minutes', []);
+
+        if ($workflowKeyReminder && !empty($workflowOffsets) && class_exists('Modules\\Reminders\\Entities\\Reminder')) {
+            $Reminder = \Modules\Reminders\Entities\Reminder::class;
+
+            // cleanup existing workflow reminders for this appointment
+            $Reminder::query()
+                ->where('related_type', 'APPOINTMENT')
+                ->where('related_id', $appointment->id)
+                ->where('channel', 'WORKFLOW')
+                ->where('status', $Reminder::STATUS_OPEN)
+                ->delete();
+
+            foreach ($workflowOffsets as $offsetMinutes) {
+                $remindAt = $appointment->start_at_utc->copy()->addMinutes((int) $offsetMinutes);
+
+                $Reminder::query()->create([
+                    'user_id' => $appointment->provider_user_id,
+                    'related_type' => 'APPOINTMENT',
+                    'related_id' => $appointment->id,
+                    'remind_at' => $remindAt,
+                    'channel' => 'WORKFLOW',
+                    'message' => 'appointment_reminder',
+                    'status' => $Reminder::STATUS_OPEN,
+                    'is_sent' => false,
+                ]);
+            }
+        }
+
         // Client SMS reminders are scheduled via Sms module (because Reminders table requires user_id -> users).
         // This keeps client reminders production-ready without breaking existing Reminders schema.
         if (class_exists('Modules\\Sms\\Services\\SmsManager')) {
@@ -704,13 +743,13 @@ class AppointmentService
         ]);
     }
 
-    protected function triggerWorkflow(string $key, Appointment $appointment): void
+    public function triggerWorkflow(string $key, Appointment $appointment): void
     {
         if (!config('booking.integrations.workflows.enabled', true)) {
             return;
         }
 
-        $workflowKey = config("booking.integrations.workflows.workflow_keys.{$key}");
+        $workflowKey = config("booking.integrations.workflows.workflow_keys.{$key}") ?: $key;
         if (!$workflowKey) {
             return;
         }
@@ -728,6 +767,23 @@ class AppointmentService
                 'appointment_id' => $appointment->id,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    protected function triggerStatusWorkflows(Appointment $appointment, ?string $previousStatus = null): void
+    {
+        $this->triggerWorkflow('appointment_status_changed', $appointment);
+
+        $statusKeyMap = [
+            Appointment::STATUS_CANCELED_BY_ADMIN => 'appointment_canceled',
+            Appointment::STATUS_CANCELED_BY_CLIENT => 'appointment_canceled',
+            Appointment::STATUS_DONE => 'appointment_done',
+            Appointment::STATUS_RESCHEDULED => 'appointment_rescheduled',
+        ];
+
+        $statusKey = $statusKeyMap[$appointment->status] ?? null;
+        if ($statusKey) {
+            $this->triggerWorkflow($statusKey, $appointment);
         }
     }
 }
