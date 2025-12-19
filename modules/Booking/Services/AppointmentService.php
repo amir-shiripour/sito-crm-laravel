@@ -749,7 +749,7 @@ class AppointmentService
             return;
         }
 
-        $workflowKey = config("booking.integrations.workflows.workflow_keys.{$key}");
+        $workflowKey = config("booking.integrations.workflows.workflow_keys.{$key}") ?: $key;
         if (!$workflowKey) {
             return;
         }
