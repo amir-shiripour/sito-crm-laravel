@@ -20,7 +20,7 @@ class WorkflowController extends Controller
         if ($search = $request->get('q')) {
             $q->where(function ($qq) use ($search) {
                 $qq->where('name', 'like', "%{$search}%")
-                   ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -29,16 +29,37 @@ class WorkflowController extends Controller
         return view('workflows::user.workflows.index', compact('workflows'));
     }
 
+    protected function getTriggerOptions(): array
+    {
+        $triggerOptions = [];
+
+        $svc = \Modules\Booking\Services\AppointmentService::class;
+
+        if (class_exists($svc) && method_exists($svc, 'workflowTriggerOptions')) {
+            $triggerOptions['APPOINTMENT'] = $svc::workflowTriggerOptions();
+        }
+
+        return $triggerOptions;
+    }
+
+
     public function create()
     {
         Gate::authorize('workflows.manage');
 
-        return view('workflows::user.workflows.create');
+        $triggerOptions = $this->getTriggerOptions();
+
+        return view('workflows::user.workflows.create', compact('triggerOptions'));
     }
 
     public function store(Request $request)
     {
         Gate::authorize('workflows.manage');
+
+        // اگر از dropdown انتخاب شده باشد، key را از همان بگیر
+        if ($request->filled('key_preset') && $request->key_preset !== '__custom__') {
+            $request->merge(['key' => $request->key_preset]);
+        }
 
         $data = $request->validate([
             'name'        => ['required', 'string', 'max:255'],
@@ -72,13 +93,19 @@ class WorkflowController extends Controller
         Gate::authorize('workflows.manage');
 
         $workflow->load(['stages.actions']);
+        $triggerOptions = $this->getTriggerOptions();
 
-        return view('workflows::user.workflows.edit', compact('workflow'));
+        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions'));
     }
 
     public function update(Request $request, Workflow $workflow)
     {
         Gate::authorize('workflows.manage');
+
+        // اگر از dropdown انتخاب شده باشد، key را از همان بگیر
+        if ($request->filled('key_preset') && $request->key_preset !== '__custom__') {
+            $request->merge(['key' => $request->key_preset]);
+        }
 
         $data = $request->validate([
             'name'        => ['required', 'string', 'max:255'],
@@ -228,12 +255,12 @@ class WorkflowController extends Controller
     {
         $data = $request->validate([
             'action_type' => ['required', 'string', 'in:' . implode(',', [
-                WorkflowAction::TYPE_CREATE_TASK,
-                WorkflowAction::TYPE_CREATE_FOLLOWUP,
-                WorkflowAction::TYPE_CREATE_REMINDER,
-                WorkflowAction::TYPE_SEND_NOTIFICATION,
-                WorkflowAction::TYPE_SEND_SMS,
-            ])],
+                    WorkflowAction::TYPE_CREATE_TASK,
+                    WorkflowAction::TYPE_CREATE_FOLLOWUP,
+                    WorkflowAction::TYPE_CREATE_REMINDER,
+                    WorkflowAction::TYPE_SEND_NOTIFICATION,
+                    WorkflowAction::TYPE_SEND_SMS,
+                ])],
             'sort_order'  => ['nullable', 'integer', 'min:0'],
             'config'      => ['nullable', 'array'],
         ]);

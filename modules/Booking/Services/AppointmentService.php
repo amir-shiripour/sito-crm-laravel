@@ -24,6 +24,23 @@ class AppointmentService
         protected AuditLogger $audit,
     ) {
     }
+    /**
+     * لیست تریگرهای قابل انتخاب برای ماژول Workflows
+     * (همان event هایی که در همین سرویس triggerWorkflow(...) می‌شوند یا برای workflow-based reminders استفاده می‌شوند)
+     */
+    public static function workflowTriggerOptions(): array
+    {
+        return [
+            'appointment_created'        => 'بعد از ایجاد نوبت',
+            'appointment_confirmed'      => 'بعد از تایید نوبت',
+            'appointment_status_changed' => 'بعد از تغییر وضعیت نوبت',
+            'appointment_canceled'       => 'بعد از لغو نوبت',
+            'appointment_rescheduled'    => 'بعد از جابجایی/رزرو مجدد نوبت',
+            'appointment_done'           => 'بعد از انجام شدن نوبت',
+            'appointment_no_show'        => 'بعد از عدم حضور (No-Show)',
+            'appointment_reminder'       => 'یادآوری نوبت (Reminder)',
+        ];
+    }
 
     /**
      * Create a TTL slot hold (online booking).
