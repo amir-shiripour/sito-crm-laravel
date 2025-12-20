@@ -67,6 +67,7 @@ class BookingPermissionsSeeder extends Seeder
                 'booking.services.create',
                 'booking.services.edit',
                 'booking.appointments.view',
+                'booking.appointments.create',
                 'booking.categories.view',
                 'booking.categories.create',
                 'booking.categories.edit',

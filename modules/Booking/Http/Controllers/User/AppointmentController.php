@@ -14,6 +14,7 @@ use Modules\Booking\Services\AppointmentService;
 use App\Models\User;
 use Modules\Clients\Entities\Client;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class AppointmentController extends Controller
 {
@@ -38,7 +39,15 @@ class AppointmentController extends Controller
         // مرحله اول از تنظیمات
         $flow = $settings->operator_appointment_flow ?: 'PROVIDER_FIRST';
 
-        return view('booking::user.appointments.create', compact('settings', 'flow'));
+        $user = Auth::user();
+        $fixedProvider = null;
+
+        if ($this->userIsProvider($user, $settings) && ! $this->isAdminUser($user)) {
+            $flow = 'PROVIDER_FIRST';
+            $fixedProvider = $user;
+        }
+
+        return view('booking::user.appointments.create', compact('settings', 'flow', 'fixedProvider'));
     }
 
     public function store(Request $request)
@@ -59,6 +68,7 @@ class AppointmentController extends Controller
         ]);
 
         $settings = BookingSetting::current();
+        $authUser = $request->user();
 
         // provider باید جزو allowed_roles باشد
         $roleIds = (array) ($settings->allowed_roles ?? []);
@@ -71,6 +81,14 @@ class AppointmentController extends Controller
             if (!$isValidProvider) {
                 return back()
                     ->withErrors(['provider_user_id' => 'ارائه‌دهنده انتخاب‌شده مجاز نیست.'])
+                    ->withInput();
+            }
+        }
+
+        if ($this->userIsProvider($authUser, $settings) && ! $this->isAdminUser($authUser)) {
+            if ((int) $data['provider_user_id'] !== (int) $authUser->id) {
+                return back()
+                    ->withErrors(['provider_user_id' => 'ارائه‌دهنده انتخاب‌شده معتبر نیست.'])
                     ->withInput();
             }
         }
@@ -134,6 +152,13 @@ class AppointmentController extends Controller
         $settings = BookingSetting::current();
         $roleIds  = (array) ($settings->allowed_roles ?? []);
 
+        $authUser = $request->user();
+        if ($this->userIsProvider($authUser, $settings) && ! $this->isAdminUser($authUser)) {
+            return response()->json([
+                'data' => $authUser ? [['id' => $authUser->id, 'name' => $authUser->name]] : [],
+            ]);
+        }
+
         $q = trim((string)$request->query('q', ''));
         $serviceId = (int) $request->query('service_id', 0);
 
@@ -163,6 +188,35 @@ class AppointmentController extends Controller
         $providers = $providersQuery->orderBy('name')->limit(50)->get(['id','name']);
 
         return response()->json(['data' => $providers]);
+    }
+
+    protected function isAdminUser(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasAnyRole(['super-admin', 'admin'])) {
+            return true;
+        }
+
+        return $user->can('booking.manage') || $user->can('booking.appointments.manage');
+    }
+
+    protected function userIsProvider(?User $user, BookingSetting $settings): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $providerRoleIds = array_map('intval', (array) ($settings->allowed_roles ?? []));
+        if (empty($providerRoleIds)) {
+            return false;
+        }
+
+        $userRoleIds = $user->roles()->pluck('id')->map(fn ($v) => (int) $v)->all();
+
+        return count(array_intersect($providerRoleIds, $userRoleIds)) > 0;
     }
 
     public function wizardServices(Request $request)
