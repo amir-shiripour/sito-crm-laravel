@@ -185,9 +185,9 @@ class AppointmentController extends Controller
             ->all();
 
         $servicesQ = BookingService::query()
-            ->with('category')
-            ->whereIn('id', $serviceIds)
-            ->where('status', BookingService::STATUS_ACTIVE);
+            ->leftJoin('booking_categories as bc', 'booking_services.category_id', '=', 'bc.id')
+            ->whereIn('booking_services.id', $serviceIds)
+            ->where('booking_services.status', BookingService::STATUS_ACTIVE);
 
         if ($categoryId !== null && $categoryId !== '') {
             $servicesQ->where('category_id', (int)$categoryId);
@@ -197,9 +197,16 @@ class AppointmentController extends Controller
             $servicesQ->where('name', 'like', "%{$q}%");
         }
 
-        $services = $servicesQ->orderBy('name')->limit(100)->get([
-            'id','name','category_id','appointment_form_id'
-        ]);
+        $services = $servicesQ
+            ->orderBy('booking_services.name')
+            ->limit(100)
+            ->get([
+                'booking_services.id',
+                'booking_services.name',
+                'booking_services.category_id',
+                'booking_services.appointment_form_id',
+                'bc.name as category_name',
+            ]);
 
         return response()->json(['data' => $services]);
     }
@@ -230,7 +237,8 @@ class AppointmentController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         $servicesQ = BookingService::query()
-            ->where('status', BookingService::STATUS_ACTIVE)
+            ->leftJoin('booking_categories as bc', 'booking_services.category_id', '=', 'bc.id')
+            ->where('booking_services.status', BookingService::STATUS_ACTIVE)
             ->whereExists(function ($sub) {
                 $sub->from('booking_service_providers')
                     ->selectRaw('1')
@@ -243,9 +251,15 @@ class AppointmentController extends Controller
         }
 
         $services = $servicesQ
-            ->orderBy('name')
+            ->orderBy('booking_services.name')
             ->limit(100)
-            ->get(['id', 'name', 'category_id', 'appointment_form_id']);
+            ->get([
+                'booking_services.id',
+                'booking_services.name',
+                'booking_services.category_id',
+                'booking_services.appointment_form_id',
+                'bc.name as category_name',
+            ]);
 
         return response()->json(['data' => $services]);
     }
