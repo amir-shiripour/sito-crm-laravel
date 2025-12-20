@@ -75,7 +75,7 @@ class ServiceController extends Controller
             abort(403);
         }
 
-        $categories = BookingCategory::query()->orderBy('name')->get();
+        $categories = $this->categoriesForUser($authUser, $settings);
         $forms      = BookingForm::query()->orderBy('name')->get();
 
         $isAdminUser = $this->isAdminUser($authUser);
@@ -127,6 +127,8 @@ class ServiceController extends Controller
             'provider_can_customize'=> ['nullable', 'boolean'],
         ]);
 
+        $this->ensureCategorySelectionAllowed($authUser, $settings, $data['category_id'] ?? null);
+
         // Provider اجازه تغییر این گزینه را ندارد
         if (! $isAdminUser) {
             $data['provider_can_customize'] = false;
@@ -168,7 +170,7 @@ class ServiceController extends Controller
             abort(403);
         }
 
-        $categories = BookingCategory::query()->orderBy('name')->get();
+        $categories = $this->categoriesForUser($authUser, $settings);
         $forms      = BookingForm::query()->orderBy('name')->get();
 
         $isAdminUser = $this->isAdminUser($authUser);
@@ -281,6 +283,8 @@ class ServiceController extends Controller
             $sp->override_payment_amount_type  = $data['payment_amount_type'] ?? null;
             $sp->override_payment_amount_value = $data['payment_amount_value'] ?? null;
 
+            $this->ensureCategorySelectionAllowed($authUser, $settings, $sp->override_category_id);
+
             $sp->save();
 
             return redirect()
@@ -329,6 +333,8 @@ class ServiceController extends Controller
         }
 
         $data = $request->validate($rules);
+
+        $this->ensureCategorySelectionAllowed($authUser, $settings, $data['category_id'] ?? null);
 
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
@@ -544,5 +550,47 @@ class ServiceController extends Controller
 
 
         return false;
+    }
+
+    protected function categoriesForUser(?User $user, BookingSetting $settings)
+    {
+        $query = BookingCategory::query()->orderBy('name');
+
+        if ($settings->service_category_selection_scope === 'OWN'
+            && $user
+            && ! $user->can('booking.categories.manage')
+            && ! $user->hasRole('super-admin')) {
+            $query->where('creator_id', $user->id);
+        }
+
+        return $query->get();
+    }
+
+    protected function ensureCategorySelectionAllowed(?User $user, BookingSetting $settings, ?int $categoryId): void
+    {
+        if (! $categoryId) {
+            return;
+        }
+
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($settings->service_category_selection_scope !== 'OWN') {
+            return;
+        }
+
+        if ($user->can('booking.categories.manage') || $user->hasRole('super-admin')) {
+            return;
+        }
+
+        $ownsCategory = BookingCategory::query()
+            ->where('id', $categoryId)
+            ->where('creator_id', $user->id)
+            ->exists();
+
+        if (! $ownsCategory) {
+            abort(403);
+        }
     }
 }

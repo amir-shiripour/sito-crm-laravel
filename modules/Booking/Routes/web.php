@@ -10,6 +10,7 @@ use Modules\Booking\Http\Controllers\User\ServiceAvailabilityController as UserS
 use Modules\Booking\Http\Controllers\User\ProviderAvailabilityController;
 use Modules\Booking\Http\Controllers\User\ServiceExceptionController;
 use Modules\Booking\Http\Controllers\User\ProviderExceptionController;
+use Modules\Booking\Http\Controllers\User\CategoryController as UserCategoryController;
 
 
 // Public minimal pages (optional)
@@ -61,6 +62,30 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
 
         Route::post('services/{service}/availability', [UserServiceAvailabilityController::class, 'update'])
             ->name('services.availability.update');
+
+        Route::get('categories', [UserCategoryController::class, 'index'])
+            ->name('categories.index')
+            ->middleware('can:booking.categories.view');
+
+        Route::get('categories/create', [UserCategoryController::class, 'create'])
+            ->name('categories.create')
+            ->middleware('can:booking.categories.create');
+
+        Route::post('categories', [UserCategoryController::class, 'store'])
+            ->name('categories.store')
+            ->middleware('can:booking.categories.create');
+
+        Route::get('categories/{category}/edit', [UserCategoryController::class, 'edit'])
+            ->name('categories.edit')
+            ->middleware('can:booking.categories.edit');
+
+        Route::put('categories/{category}', [UserCategoryController::class, 'update'])
+            ->name('categories.update')
+            ->middleware('can:booking.categories.edit');
+
+        Route::delete('categories/{category}', [UserCategoryController::class, 'destroy'])
+            ->name('categories.destroy')
+            ->middleware('can:booking.categories.delete');
 
 
         // برنامه زمانی «ارائه‌دهندگان» فقط برای ادمین‌ها و کسانی که permission دارند

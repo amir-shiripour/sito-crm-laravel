@@ -102,9 +102,19 @@ class SettingsController extends Controller
         $protectedRoleNames = ['super-admin', 'admin'];
 
         // پرمیشن‌هایی که Provider همیشه باید داشته باشد
-        $providerAlwaysPerms   = ['booking.services.view'];
+        $providerAlwaysPerms   = [
+            'booking.services.view',
+            'booking.categories.view',
+        ];
         // پرمیشن‌هایی که فقط در صورت allow_role_service_creation = true داده می‌شوند
-        $providerCreationPerms = ['booking.services.create', 'booking.services.edit', 'booking.services.delete'];
+        $providerCreationPerms = [
+            'booking.services.create',
+            'booking.services.edit',
+            'booking.services.delete',
+            'booking.categories.create',
+            'booking.categories.edit',
+            'booking.categories.delete',
+        ];
 
         // 1) نقش‌هایی که تازه Provider شده‌اند → همیشه view بگیرند
         if (!empty($new)) {
