@@ -24,10 +24,18 @@ class AppointmentController extends Controller
 
     public function index(Request $request)
     {
-        $appointments = Appointment::query()
+        $settings = BookingSetting::current();
+        $user = $request->user();
+
+        $appointmentsQuery = Appointment::query()
             ->with(['service', 'provider', 'client'])
-            ->orderByDesc('start_at_utc')
-            ->paginate(25);
+            ->orderByDesc('start_at_utc');
+
+        if ($this->userIsProvider($user, $settings) && ! $this->isAdminUser($user)) {
+            $appointmentsQuery->where('provider_user_id', $user->id);
+        }
+
+        $appointments = $appointmentsQuery->paginate(25);
 
         return view('booking::user.appointments.index', compact('appointments'));
     }
