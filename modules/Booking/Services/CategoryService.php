@@ -18,6 +18,7 @@ class CategoryService
     public function paginate(User $user, int $perPage = 50): LengthAwarePaginator
     {
         return $this->scopedQuery($user)
+            ->with('creator')
             ->orderByDesc('id')
             ->paginate($perPage);
     }
