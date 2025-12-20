@@ -6,17 +6,17 @@
          x-init="init()">
 
         <div class="flex items-center justify-between">
-            <h1 class="text-xl font-bold">ثبت نوبت (مرحله‌ای)</h1>
-            <a class="text-blue-600 hover:underline" href="{{ route('user.booking.appointments.index') }}">بازگشت</a>
+            <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">ثبت نوبت (مرحله‌ای)</h1>
+            <a class="text-blue-600 dark:text-blue-400 hover:underline" href="{{ route('user.booking.appointments.index') }}">بازگشت</a>
         </div>
 
         @if(session('success'))
-            <div class="p-3 bg-green-50 border border-green-200 rounded text-green-700">{{ session('success') }}</div>
+            <div class="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded text-green-700 dark:text-green-200">{{ session('success') }}</div>
         @endif
 
         <form method="POST"
               action="{{ route('user.booking.appointments.store') }}"
-              class="bg-white rounded border p-4 space-y-4"
+              class="bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 p-4 space-y-4"
               x-ref="form"
               @submit.prevent="handleSubmit">
             @csrf
@@ -29,7 +29,7 @@
             <input type="hidden" name="appointment_form_response_json" x-ref="formJsonInput">
 
             <div class="flex items-center justify-between">
-                <div class="text-sm text-gray-600">
+                <div class="text-sm text-gray-600 dark:text-gray-300">
                     مرحله:
                     <span class="font-semibold" x-text="step"></span>
                     از
@@ -37,41 +37,111 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button type="button" class="px-3 py-1 rounded border" @click="prev()" :disabled="step===1">قبلی</button>
-                    <button type="button" class="px-3 py-1 rounded bg-indigo-600 text-white" @click="next()" x-show="step<6">بعدی</button>
+                    <button type="button"
+                            class="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 dark:text-gray-100 disabled:opacity-50"
+                            @click="prev()"
+                            :disabled="step===1">قبلی</button>
+
+                    {{-- در مراحل ۱ و ۲ انتخاب به صورت کارت انجام می‌شود و بعد از انتخاب اتومات مرحله بعدی می‌رویم --}}
+                    <button type="button"
+                            class="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white"
+                            @click="next()"
+                            x-show="step<6 && step>2">بعدی</button>
                 </div>
             </div>
 
             {{-- STEP 1 --}}
             <div x-show="step===1" class="space-y-3">
-                <div class="text-sm text-gray-600">
+                <div class="text-sm text-gray-600 dark:text-gray-300">
                     @php $flowValue = $flow ?? 'PROVIDER_FIRST'; @endphp
                     حالت انتخاب: <span class="font-semibold">{{ $flowValue === 'SERVICE_FIRST' ? 'اول سرویس' : 'اول ارائه‌دهنده' }}</span>
                 </div>
 
                 <template x-if="flow==='PROVIDER_FIRST'">
-                    <div>
-                        <label class="block text-sm mb-1">انتخاب ارائه‌دهنده</label>
-                        <input type="text" class="w-full border rounded p-2 mb-2" placeholder="جستجو..." x-model="providerSearch" @input.debounce.300ms="fetchProviders()">
-                        <select class="w-full border rounded p-2" x-model="providerId" @change="onProviderSelected()">
-                            <option value="">انتخاب کنید</option>
+                    <div class="space-y-2">
+                        <label class="block text-sm mb-1 dark:text-gray-200">انتخاب ارائه‌دهنده</label>
+                        <div class="relative">
+                            <input type="text"
+                                   class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                   placeholder="جستجو ارائه‌دهنده..."
+                                   x-model="providerSearch"
+                                   @input.debounce.300ms="fetchProviders()">
+                            <span class="absolute right-3 top-2.5 text-gray-400">🔎</span>
+                        </div>
+
+                        <template x-if="providerLoading">
+                            <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت ارائه‌دهنده‌ها...</div>
+                        </template>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                             <template x-for="p in providers" :key="p.id">
-                                <option :value="p.id" x-text="p.name"></option>
+                                <button type="button"
+                                        class="text-right border rounded-xl p-3 transition"
+                                        :class="String(providerId)===String(p.id)
+                                            ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200'
+                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70'"
+                                        @click="selectProvider(p, true)">
+                                    <div class="font-semibold text-sm" x-text="p.name"></div>
+                                    <div class="text-[11px] text-gray-500 dark:text-gray-400" x-show="p.subtitle" x-text="p.subtitle"></div>
+                                </button>
                             </template>
-                        </select>
+                        </div>
+
+                        <template x-if="!providerLoading && (!providers || providers.length===0)">
+                            <div class="text-xs text-amber-600">موردی یافت نشد.</div>
+                        </template>
+
+                        <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                            بعد از انتخاب ارائه‌دهنده، به صورت خودکار به مرحله بعد می‌روید.
+                        </div>
                     </div>
                 </template>
 
                 <template x-if="flow==='SERVICE_FIRST'">
-                    <div>
-                        <label class="block text-sm mb-1">انتخاب سرویس</label>
-                        <input type="text" class="w-full border rounded p-2 mb-2" placeholder="جستجو..." x-model="serviceSearch" @input.debounce.300ms="fetchServicesForServiceFirst()">
-                        <select class="w-full border rounded p-2" x-model="serviceId" @change="onServiceSelected()">
-                            <option value="">انتخاب کنید</option>
-                            <template x-for="s in services" :key="s.id">
-                                <option :value="s.id" x-text="s.name"></option>
+                    <div class="space-y-2">
+                        <label class="block text-sm mb-1 dark:text-gray-200">انتخاب سرویس</label>
+                        <div class="relative">
+                            <input type="text"
+                                   class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                   placeholder="جستجو سرویس..."
+                                   x-model="serviceSearch"
+                                   @input.debounce.300ms="fetchServicesForServiceFirst()">
+                            <span class="absolute right-3 top-2.5 text-gray-400">🔎</span>
+                        </div>
+
+                        <template x-if="serviceLoading">
+                            <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت سرویس‌ها...</div>
+                        </template>
+
+                        <div class="space-y-4" x-show="!serviceLoading">
+                            <template x-for="grp in groupedServices" :key="grp.key">
+                                <div class="space-y-2">
+                                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-300" x-text="grp.title"></div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                        <template x-for="s in grp.items" :key="s.id">
+                                            <button type="button"
+                                                    class="text-right border rounded-xl p-3 transition"
+                                                    :class="String(serviceId)===String(s.id)
+                                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200'
+                                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70'"
+                                                    @click="selectService(s, true)">
+                                                <div class="font-semibold text-sm" x-text="s.name"></div>
+                                                <div class="text-[11px] text-gray-500 dark:text-gray-400" x-show="s.duration_min || s.price"
+                                                     x-text="[s.duration_min ? (s.duration_min + ' دقیقه') : null, s.price ? (s.price + ' تومان') : null].filter(Boolean).join(' • ')"></div>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
                             </template>
-                        </select>
+                        </div>
+
+                        <template x-if="!serviceLoading && (!services || services.length===0)">
+                            <div class="text-xs text-amber-600">موردی یافت نشد.</div>
+                        </template>
+
+                        <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                            بعد از انتخاب سرویس، به صورت خودکار به مرحله بعد می‌روید.
+                        </div>
                     </div>
                 </template>
             </div>
@@ -81,8 +151,8 @@
                 <template x-if="flow==='PROVIDER_FIRST'">
                     <div class="space-y-3">
                         <div>
-                            <label class="block text-sm mb-1">دسته‌بندی</label>
-                            <select class="w-full border rounded p-2" x-model="categoryId" @change="fetchServicesForProvider()">
+                            <label class="block text-sm mb-1 dark:text-gray-200">دسته‌بندی</label>
+                            <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100" x-model="categoryId" @change="fetchServicesForProvider()">
                                 <option value="">همه</option>
                                 <template x-for="c in categories" :key="c.id">
                                     <option :value="c.id" x-text="c.name"></option>
@@ -91,29 +161,88 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm mb-1">انتخاب سرویس</label>
-                            <input type="text" class="w-full border rounded p-2 mb-2" placeholder="جستجو..." x-model="serviceSearch" @input.debounce.300ms="fetchServicesForProvider()">
-                            <select class="w-full border rounded p-2" x-model="serviceId" @change="onServiceSelected()">
-                                <option value="">انتخاب کنید</option>
-                                <template x-for="s in services" :key="s.id">
-                                    <option :value="s.id" x-text="s.name"></option>
+                            <label class="block text-sm mb-1 dark:text-gray-200">انتخاب سرویس</label>
+                            <div class="relative">
+                                <input type="text"
+                                       class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                       placeholder="جستجو سرویس..."
+                                       x-model="serviceSearch"
+                                       @input.debounce.300ms="fetchServicesForProvider()">
+                                <span class="absolute right-3 top-2.5 text-gray-400">🔎</span>
+                            </div>
+
+                            <template x-if="serviceLoading">
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">در حال دریافت سرویس‌ها...</div>
+                            </template>
+
+                            <div class="space-y-4 mt-2" x-show="!serviceLoading">
+                                <template x-for="grp in groupedServices" :key="grp.key">
+                                    <div class="space-y-2">
+                                        <div class="text-xs font-semibold text-gray-600 dark:text-gray-300" x-text="grp.title"></div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                            <template x-for="s in grp.items" :key="s.id">
+                                                <button type="button"
+                                                        class="text-right border rounded-xl p-3 transition"
+                                                        :class="String(serviceId)===String(s.id)
+                                                            ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200'
+                                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70'"
+                                                        @click="selectService(s, true)">
+                                                    <div class="font-semibold text-sm" x-text="s.name"></div>
+                                                    <div class="text-[11px] text-gray-500 dark:text-gray-400" x-show="s.duration_min || s.price"
+                                                         x-text="[s.duration_min ? (s.duration_min + ' دقیقه') : null, s.price ? (s.price + ' تومان') : null].filter(Boolean).join(' • ')"></div>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
                                 </template>
-                            </select>
-                            <div class="text-xs text-gray-500 mt-1">فقط سرویس‌هایی که برای این ارائه‌دهنده فعال هستند نمایش داده می‌شود.</div>
+                            </div>
+
+                            <template x-if="!serviceLoading && (!services || services.length===0)">
+                                <div class="text-xs text-amber-600 mt-2">موردی یافت نشد.</div>
+                            </template>
+
+                            <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">فقط سرویس‌هایی که برای این ارائه‌دهنده فعال هستند نمایش داده می‌شود. بعد از انتخاب، به صورت خودکار به مرحله بعد می‌روید.</div>
                         </div>
                     </div>
                 </template>
 
                 <template x-if="flow==='SERVICE_FIRST'">
-                    <div>
-                        <label class="block text-sm mb-1">انتخاب ارائه‌دهنده (برای سرویس انتخابی)</label>
-                        <input type="text" class="w-full border rounded p-2 mb-2" placeholder="جستجو..." x-model="providerSearch" @input.debounce.300ms="fetchProviders()">
-                        <select class="w-full border rounded p-2" x-model="providerId" @change="onProviderSelected()">
-                            <option value="">انتخاب کنید</option>
+                    <div class="space-y-2">
+                        <label class="block text-sm mb-1 dark:text-gray-200">انتخاب ارائه‌دهنده (برای سرویس انتخابی)</label>
+                        <div class="relative">
+                            <input type="text"
+                                   class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                   placeholder="جستجو ارائه‌دهنده..."
+                                   x-model="providerSearch"
+                                   @input.debounce.300ms="fetchProviders()">
+                            <span class="absolute right-3 top-2.5 text-gray-400">🔎</span>
+                        </div>
+
+                        <template x-if="providerLoading">
+                            <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت ارائه‌دهنده‌ها...</div>
+                        </template>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                             <template x-for="p in providers" :key="p.id">
-                                <option :value="p.id" x-text="p.name"></option>
+                                <button type="button"
+                                        class="text-right border rounded-xl p-3 transition"
+                                        :class="String(providerId)===String(p.id)
+                                            ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200'
+                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70'"
+                                        @click="selectProvider(p, true)">
+                                    <div class="font-semibold text-sm" x-text="p.name"></div>
+                                    <div class="text-[11px] text-gray-500 dark:text-gray-400" x-show="p.subtitle" x-text="p.subtitle"></div>
+                                </button>
                             </template>
-                        </select>
+                        </div>
+
+                        <template x-if="!providerLoading && (!providers || providers.length===0)">
+                            <div class="text-xs text-amber-600">موردی یافت نشد.</div>
+                        </template>
+
+                        <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                            بعد از انتخاب ارائه‌دهنده، به صورت خودکار به مرحله بعد می‌روید.
+                        </div>
                     </div>
                 </template>
             </div>
@@ -121,21 +250,25 @@
             {{-- STEP 3: Calendar month --}}
             <div x-show="step===3" class="space-y-3">
                 <div class="flex items-center justify-between">
-                    <div class="font-semibold text-sm">انتخاب روز</div>
+                    <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">انتخاب روز</div>
                     <div class="flex items-center gap-2">
-                        <button type="button" class="px-2 py-1 border rounded" @click="prevMonth()">ماه قبل</button>
-                        <div class="text-sm" x-text="monthLabel"></div>
-                        <button type="button" class="px-2 py-1 border rounded" @click="nextMonth()">ماه بعد</button>
+                        <button type="button"
+                                class="px-2 py-1 border rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                                @click="prevMonth()">ماه قبل</button>
+                        <div class="text-sm text-gray-700 dark:text-gray-100" x-text="monthLabel"></div>
+                        <button type="button"
+                                class="px-2 py-1 border rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                                @click="nextMonth()">ماه بعد</button>
                     </div>
                 </div>
 
                 <template x-if="calendarLoading">
-                    <div class="text-xs text-gray-500">در حال بارگذاری تقویم...</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">در حال بارگذاری تقویم...</div>
                 </template>
 
                 <div class="grid grid-cols-7 gap-2 text-xs" dir="rtl">
                     <template x-for="w in weekDays" :key="w">
-                        <div class="text-center text-[11px] font-semibold text-gray-500 py-1">
+                        <div class="text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 py-1">
                             <span x-text="w"></span>
                         </div>
                     </template>
@@ -161,7 +294,7 @@
                     </template>
                 </div>
 
-                <div class="text-xs text-gray-500">
+                <div class="text-xs text-gray-500 dark:text-gray-400">
                     بعد از انتخاب روز، در مرحله بعد اسلات‌ها نمایش داده می‌شوند.
                 </div>
             </div>
@@ -169,12 +302,14 @@
             {{-- STEP 4: Slots --}}
             <div x-show="step===4" class="space-y-3">
                 <div class="flex items-center justify-between">
-                    <div class="font-semibold text-sm">انتخاب اسلات زمانی</div>
-                    <button type="button" class="text-xs px-3 py-1 rounded border" @click="fetchSlots()">بروزرسانی</button>
+                    <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">انتخاب اسلات زمانی</div>
+                    <button type="button"
+                            class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                            @click="fetchSlots()">بروزرسانی</button>
                 </div>
 
                 <template x-if="slotsLoading">
-                    <div class="text-xs text-gray-500">در حال دریافت اسلات‌ها...</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت اسلات‌ها...</div>
                 </template>
 
                 <template x-if="slotsError">
@@ -184,11 +319,11 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" x-show="slots.length && !slotsLoading">
                     <template x-for="slot in slots" :key="slot.start_at_utc">
                         <button type="button"
-                                class="border rounded px-2 py-2 text-xs text-center hover:bg-indigo-50"
-                                :class="selectedSlotKey === slot.start_at_utc ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-700'"
+                                class="border rounded px-2 py-2 text-xs text-center hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                                :class="selectedSlotKey === slot.start_at_utc ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-200' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800'"
                                 @click="selectSlot(slot)">
                             <div class="font-semibold" x-text="formatTime(slot.start_at_view)"></div>
-                            <div class="text-[11px] text-gray-500 mt-0.5">
+                            <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                                 ظرفیت: <span x-text="slot.remaining_capacity"></span>
                             </div>
                         </button>
@@ -196,39 +331,39 @@
                 </div>
 
                 <template x-if="!slotsLoading && dateLocal && slots.length === 0 && !slotsError">
-                    <div class="text-xs text-amber-600">اسلات خالی برای این روز یافت نشد.</div>
+                    <div class="text-xs text-amber-600 dark:text-amber-300">اسلات خالی برای این روز یافت نشد.</div>
                 </template>
             </div>
 
             {{-- STEP 5: Appointment Form --}}
             <div x-show="step===5" class="space-y-3">
-                <div class="font-semibold text-sm">فرم اطلاعات نوبت</div>
+                <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">فرم اطلاعات نوبت</div>
 
                 <template x-if="selectedService && selectedService.appointment_form_id">
                     <div class="space-y-2">
-                        <div class="text-xs text-gray-500">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
                             سرویس فرم دارد. (فعلاً پاسخ را به صورت JSON ذخیره می‌کنیم؛ اگر کامپوننت فرم‌ساز دارید، همینجا جایگزین می‌شود.)
                         </div>
-                        <textarea class="w-full border rounded p-2 text-xs" rows="6"
+                        <textarea class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-xs dark:text-gray-100 placeholder:text-gray-400" rows="6"
                                   placeholder='مثلاً: {"field1":"value"}'
                                   x-model="appointmentFormJson"></textarea>
                     </div>
                 </template>
 
                 <template x-if="!selectedService || !selectedService.appointment_form_id">
-                    <div class="text-xs text-gray-500">برای این سرویس فرم اختصاصی تعریف نشده است.</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">برای این سرویس فرم اختصاصی تعریف نشده است.</div>
                 </template>
             </div>
 
             {{-- STEP 6: Client --}}
             <div x-show="step===6" class="space-y-3">
-                <div class="font-semibold text-sm">انتخاب مشتری</div>
+                <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">انتخاب مشتری</div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                        <input type="text" class="w-full border rounded p-2" placeholder="جستجو مشتری (نام/موبایل/ایمیل)"
+                        <input type="text" class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400" placeholder="جستجو مشتری (نام/موبایل/ایمیل)"
                                x-model="clientSearch" @input.debounce.300ms="fetchClients()">
-                        <select class="w-full border rounded p-2 mt-2" x-model="clientId">
+                        <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 mt-2 text-sm dark:text-gray-100" x-model="clientId">
                             <option value="">انتخاب کنید</option>
                             <template x-for="c in clients" :key="c.id">
                                 <option :value="c.id" x-text="`${c.full_name} (${c.phone || '-'})`"></option>
@@ -236,12 +371,12 @@
                         </select>
                     </div>
 
-                    <div class="border rounded p-3 bg-gray-50">
-                        <div class="text-sm font-semibold mb-2">ایجاد سریع مشتری</div>
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
+                        <div class="text-sm font-semibold mb-2 text-gray-800 dark:text-gray-100">ایجاد سریع مشتری</div>
                         <div class="space-y-2">
-                            <input class="w-full border rounded p-2 text-sm" placeholder="نام کامل" x-model="quickClient.full_name">
-                            <input class="w-full border rounded p-2 text-sm" placeholder="موبایل" x-model="quickClient.phone">
-                            <input class="w-full border rounded p-2 text-sm" placeholder="ایمیل" x-model="quickClient.email">
+                            <input class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400" placeholder="نام کامل" x-model="quickClient.full_name">
+                            <input class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400" placeholder="موبایل" x-model="quickClient.phone">
+                            <input class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400" placeholder="ایمیل" x-model="quickClient.email">
                             <button type="button" class="px-3 py-1 rounded bg-emerald-600 text-white text-sm" @click="quickCreateClient()">
                                 ثبت مشتری
                             </button>
@@ -251,12 +386,12 @@
                 </div>
 
                 <div class="pt-2">
-                    <label class="block text-sm mb-1">یادداشت</label>
-                    <textarea name="notes" rows="3" class="w-full border rounded p-2"></textarea>
+                    <label class="block text-sm mb-1 text-gray-700 dark:text-gray-200">یادداشت</label>
+                    <textarea name="notes" rows="3" class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"></textarea>
                 </div>
 
                 <div class="pt-2 flex items-center justify-between">
-                    <div class="text-[11px] text-gray-500">
+                    <div class="text-[11px] text-gray-500 dark:text-gray-400">
                         ثبت نهایی فقط وقتی ممکن است که سرویس/ارائه‌دهنده/روز/اسلات/مشتری کامل باشند.
                     </div>
                     <button class="px-4 py-2 bg-blue-600 text-white rounded">
@@ -281,6 +416,9 @@
                 providers: [],
                 services: [],
                 categories: [],
+
+                providerLoading: false,
+                serviceLoading: false,
 
                 providerSearch: '',
                 serviceSearch: '',
@@ -327,7 +465,52 @@
 
                 // ---------------- providers/services/categories ----------------
 
+                get groupedServices() {
+                    // سرویس‌ها را بر اساس دسته‌بندی گروه‌بندی کن.
+                    // اگر دسته‌ای نبود: «بدون دسته»
+                    const items = Array.isArray(this.services) ? this.services : [];
+
+                    const getCatName = (s) => {
+                        if (!s) return '';
+                        // چند حالت رایج برگشتی API
+                        if (typeof s.category_name === 'string' && s.category_name.trim()) return s.category_name.trim();
+                        if (typeof s.categoryTitle === 'string' && s.categoryTitle.trim()) return s.categoryTitle.trim();
+                        if (typeof s.category === 'string' && s.category.trim()) return s.category.trim();
+                        if (s.category && typeof s.category.name === 'string' && s.category.name.trim()) return s.category.name.trim();
+                        if (s.category_obj && typeof s.category_obj.name === 'string' && s.category_obj.name.trim()) return s.category_obj.name.trim();
+                        // اگر فقط category_id داریم و لیست دسته‌ها موجود است
+                        const cid = s.category_id ?? s.categoryId ?? null;
+                        if (cid && Array.isArray(this.categories) && this.categories.length) {
+                            const found = this.categories.find(c => String(c.id) === String(cid));
+                            if (found && typeof found.name === 'string' && found.name.trim()) return found.name.trim();
+                        }
+                        return '';
+                    };
+
+                    const groups = new Map();
+                    for (const s of items) {
+                        const cat = getCatName(s);
+                        const key = cat ? `cat:${cat}` : 'cat:__none__';
+                        if (!groups.has(key)) groups.set(key, { key, title: cat || 'بدون دسته', items: [] });
+                        groups.get(key).items.push(s);
+                    }
+
+                    // مرتب‌سازی: دسته‌ها الفبایی، «بدون دسته» آخر.
+                    const arr = Array.from(groups.values());
+                    arr.sort((a, b) => {
+                        if (a.key === 'cat:__none__') return 1;
+                        if (b.key === 'cat:__none__') return -1;
+                        return (a.title || '').localeCompare(b.title || '', 'fa');
+                    });
+                    // مرتب‌سازی داخل هر گروه
+                    for (const g of arr) {
+                        g.items.sort((x, y) => (x.name || '').localeCompare(y.name || '', 'fa'));
+                    }
+                    return arr;
+                },
+
                 async fetchProviders() {
+                    this.providerLoading = true;
                     const params = new URLSearchParams({
                         q: this.providerSearch || '',
                     });
@@ -335,11 +518,15 @@
                         params.set('service_id', this.serviceId);
                     }
 
-                    const res = await fetch(`{{ route('user.booking.appointments.wizard.providers') }}?` + params.toString(), {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const json = await res.json();
-                    this.providers = json.data || [];
+                    try {
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.providers') }}?` + params.toString(), {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const json = await res.json();
+                        this.providers = json.data || [];
+                    } finally {
+                        this.providerLoading = false;
+                    }
                 },
 
                 async fetchCategories() {
@@ -354,28 +541,38 @@
 
                 async fetchServicesForProvider() {
                     if (!this.providerId) return;
+                    this.serviceLoading = true;
                     const params = new URLSearchParams({
                         provider_id: this.providerId,
                         q: this.serviceSearch || '',
                     });
                     if (this.categoryId) params.set('category_id', this.categoryId);
 
-                    const res = await fetch(`{{ route('user.booking.appointments.wizard.services') }}?` + params.toString(), {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const json = await res.json();
-                    this.services = json.data || [];
+                    try {
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.services') }}?` + params.toString(), {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const json = await res.json();
+                        this.services = json.data || [];
+                    } finally {
+                        this.serviceLoading = false;
+                    }
                 },
 
                 async fetchAllActiveServices() {
+                    this.serviceLoading = true;
                     const params = new URLSearchParams({ q: this.serviceSearch || '' });
 
-                    const res = await fetch(`{{ route('user.booking.appointments.wizard.all-services') }}?` + params.toString(), {
-                        headers: { 'Accept': 'application/json' }
-                    });
+                    try {
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.all-services') }}?` + params.toString(), {
+                            headers: { 'Accept': 'application/json' }
+                        });
 
-                    const json = await res.json();
-                    this.services = json.data || [];
+                        const json = await res.json();
+                        this.services = json.data || [];
+                    } finally {
+                        this.serviceLoading = false;
+                    }
                 },
 
                 async fetchServicesForServiceFirst() {
@@ -383,7 +580,18 @@
                     await this.fetchAllActiveServices();
                 },
 
-                onProviderSelected() {
+                async selectProvider(p, autoGo = false) {
+                    this.providerId = String(p?.id ?? '');
+                    await this.onProviderSelected();
+                    if (autoGo && this.step === 1 && this.flow === 'PROVIDER_FIRST') {
+                        await this.next();
+                    }
+                    if (autoGo && this.step === 2 && this.flow === 'SERVICE_FIRST') {
+                        await this.next();
+                    }
+                },
+
+                async onProviderSelected() {
                     this.categoryId = '';
 
                     // نکته مهم:
@@ -394,8 +602,8 @@
                         this.categories = [];
                         this.resetCalendarAndSlots();
 
-                        this.fetchCategories();
-                        this.fetchServicesForProvider();
+                        await this.fetchCategories();
+                        await this.fetchServicesForProvider();
                         return;
                     }
 
@@ -403,13 +611,23 @@
                     this.resetCalendarAndSlots();
                 },
 
+                async selectService(s, autoGo = false) {
+                    this.serviceId = String(s?.id ?? '');
+                    await this.onServiceSelected();
+                    if (autoGo && this.step === 1 && this.flow === 'SERVICE_FIRST') {
+                        await this.next();
+                    }
+                    if (autoGo && this.step === 2 && this.flow === 'PROVIDER_FIRST') {
+                        await this.next();
+                    }
+                },
 
-                onServiceSelected() {
+                async onServiceSelected() {
                     this.selectedService = this.services.find(s => String(s.id) === String(this.serviceId)) || null;
                     this.resetCalendarAndSlots();
 
                     if (this.flow === 'SERVICE_FIRST') {
-                        this.fetchProviders(); // حالا providers برای این service
+                        await this.fetchProviders(); // حالا providers برای این service
                     }
                 },
 
@@ -501,11 +719,11 @@
 
                 dayBtnClass(d) {
                     const isSelected = this.dateLocal && this.dateLocal === d.local_date;
-                    if (!d.is_closed && !d.has_available_slots) return 'bg-amber-50 text-amber-700 border-amber-200';
-                    if (d.is_closed) return 'bg-gray-100 text-gray-400 border-gray-200';
-                    if (isSelected) return 'bg-indigo-50 text-indigo-700 border-indigo-500';
-                    if (d.capacity_per_day !== null && d.remaining_day_capacity === 0) return 'bg-amber-50 text-amber-700 border-amber-200';
-                    return 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50';
+                    if (!d.is_closed && !d.has_available_slots) return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-800';
+                    if (d.is_closed) return 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700';
+                    if (isSelected) return 'bg-indigo-50 text-indigo-700 border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-500';
+                    if (d.capacity_per_day !== null && d.remaining_day_capacity === 0) return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-800';
+                    return 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/70';
                 },
 
                 toPersianDayNumber(localDate) {
