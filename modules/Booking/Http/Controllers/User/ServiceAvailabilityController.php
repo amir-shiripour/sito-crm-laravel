@@ -67,6 +67,7 @@ class ServiceAvailabilityController extends Controller
         $data = $request->validate([
             'rules' => ['required', 'array'],
 
+            'rules.*.weekday' => ['nullable', 'integer', 'min:0', 'max:6'],
             'rules.*.is_closed' => ['required', Rule::in(['0','1'])],
             'rules.*.work_start_local' => ['nullable', 'date_format:H:i'],
             'rules.*.work_end_local'   => ['nullable', 'date_format:H:i'],
@@ -85,7 +86,10 @@ class ServiceAvailabilityController extends Controller
         $rules = $data['rules'] ?? [];
 
         foreach ($rules as $weekday => $ruleRow) {
-            $weekday = (int) $weekday;
+            $weekday = (int) Arr::get($ruleRow, 'weekday', $weekday);
+            if ($weekday < 0 || $weekday > 6) {
+                continue;
+            }
 
             // نرمال‌سازی فیلدها (مهم: 0 باید حفظ شود)
             $workStart = Arr::get($ruleRow, 'work_start_local');

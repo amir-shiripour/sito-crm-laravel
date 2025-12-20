@@ -36,6 +36,21 @@ return [
     ],
 
     [
+        'title'      => 'دسته‌بندی‌ها',
+        'route'      => 'user.booking.categories.index',
+        'permission' => 'booking.categories.view',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <rect x="4" y="4" width="7" height="7" rx="1" />
+            <rect x="13" y="4" width="7" height="7" rx="1" />
+            <rect x="4" y="13" width="7" height="7" rx="1" />
+            <rect x="13" y="13" width="7" height="7" rx="1" />
+        </svg>',
+        'group'     => 'booking',
+        'position'  => 12.5,
+    ],
+
+    [
         'title' => 'برنامه زمانی ارائه‌دهندگان',
         'route' => 'user.booking.providers.index',
         'permission' => 'booking.availability.manage',

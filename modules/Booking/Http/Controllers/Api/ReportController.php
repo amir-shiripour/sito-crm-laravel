@@ -104,10 +104,12 @@ class ReportController extends Controller
         [$from, $to] = $this->resolveUtcRange($request);
 
         $rows = Appointment::query()
-            ->selectRaw('service_id, COUNT(*) as total')
+            ->leftJoin('booking_services', 'appointments.service_id', '=', 'booking_services.id')
+            ->leftJoin('booking_categories', 'booking_services.category_id', '=', 'booking_categories.id')
+            ->selectRaw('appointments.service_id, booking_services.name as service_name, booking_services.category_id, booking_categories.name as category_name, COUNT(*) as total')
             ->where('start_at_utc', '>=', $from)
             ->where('start_at_utc', '<', $to)
-            ->groupBy('service_id')
+            ->groupBy('appointments.service_id', 'booking_services.name', 'booking_services.category_id', 'booking_categories.name')
             ->orderByDesc('total')
             ->get();
 
