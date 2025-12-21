@@ -15,6 +15,7 @@ use App\Models\User;
 use Modules\Clients\Entities\Client;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AppointmentController extends Controller
 {
@@ -45,6 +46,8 @@ class AppointmentController extends Controller
         $settings = BookingSetting::current();
         $this->ensureAppointmentCreateAccess(request(), $settings);
 
+        $shouldLog = (bool) config('app.debug') || (bool) config('booking.debug_logs', false);
+
         // مرحله اول از تنظیمات
         $flow = $settings->operator_appointment_flow ?: 'PROVIDER_FIRST';
 
@@ -56,6 +59,18 @@ class AppointmentController extends Controller
             $fixedProvider = $user;
         }
 
+        if ($shouldLog) {
+            Log::info('[Booking][Appointments][Create] create view context', [
+                'user_id' => $user?->id,
+                'is_admin' => $this->isAdminUser($user),
+                'is_provider' => $this->userIsProvider($user, $settings),
+                'operator_flow_setting' => $settings->operator_appointment_flow,
+                'final_flow' => $flow,
+                'fixed_provider_id' => $fixedProvider?->id,
+                'allowed_roles_raw' => $settings->allowed_roles,
+            ]);
+        }
+
         return view('booking::user.appointments.create', compact('settings', 'flow', 'fixedProvider'));
     }
 
@@ -63,6 +78,8 @@ class AppointmentController extends Controller
     {
         $settings = BookingSetting::current();
         $this->ensureAppointmentCreateAccess($request, $settings);
+
+        $shouldLog = (bool) config('app.debug') || (bool) config('booking.debug_logs', false);
 
         $data = $request->validate([
             'service_id'        => ['required', 'integer', 'exists:booking_services,id'],
@@ -81,8 +98,29 @@ class AppointmentController extends Controller
 
         $authUser = $request->user();
 
+        if ($shouldLog) {
+            Log::info('[Booking][Appointments][Store] incoming', [
+                'auth_user_id' => $authUser?->id,
+                'service_id' => $data['service_id'] ?? null,
+                'provider_user_id' => $data['provider_user_id'] ?? null,
+                'client_id' => $data['client_id'] ?? null,
+                'allowed_roles_raw' => $settings->allowed_roles,
+            ]);
+        }
+
         // provider باید جزو allowed_roles باشد
-        $roleIds = (array) ($settings->allowed_roles ?? []);
+        $roleIds = array_values(array_filter(
+            array_map('intval', (array) ($settings->allowed_roles ?? [])),
+            fn ($v) => $v > 0
+        ));
+
+        if ($shouldLog) {
+            Log::info('[Booking][Appointments][Store] provider role filter snapshot', [
+                'roleIds' => $roleIds,
+                'roleIds_empty' => empty($roleIds),
+            ]);
+        }
+
         if (!empty($roleIds)) {
             $isValidProvider = User::query()
                 ->whereKey($data['provider_user_id'])
@@ -90,6 +128,18 @@ class AppointmentController extends Controller
                 ->exists();
 
             if (!$isValidProvider) {
+                $providerUser = User::query()->whereKey($data['provider_user_id'])->first();
+                $providerRoleIds = $providerUser
+                    ? $providerUser->roles()->pluck('id')->map(fn ($v) => (int) $v)->all()
+                    : null;
+
+                Log::warning('[Booking][Appointments][Store] provider rejected by allowed_roles', [
+                    'provider_user_id' => (int) $data['provider_user_id'],
+                    'provider_role_ids' => $providerRoleIds,
+                    'allowed_role_ids' => $roleIds,
+                    'allowed_roles_raw' => $settings->allowed_roles,
+                ]);
+
                 return back()
                     ->withErrors(['provider_user_id' => 'ارائه‌دهنده انتخاب‌شده مجاز نیست.'])
                     ->withInput();
@@ -98,6 +148,11 @@ class AppointmentController extends Controller
 
         if ($this->userIsProvider($authUser, $settings) && ! $this->isAdminUser($authUser)) {
             if ((int) $data['provider_user_id'] !== (int) $authUser->id) {
+                Log::warning('[Booking][Appointments][Store] provider tried to create for another provider', [
+                    'auth_user_id' => (int) $authUser->id,
+                    'requested_provider_user_id' => (int) $data['provider_user_id'],
+                ]);
+
                 return back()
                     ->withErrors(['provider_user_id' => 'ارائه‌دهنده انتخاب‌شده معتبر نیست.'])
                     ->withInput();
@@ -107,6 +162,10 @@ class AppointmentController extends Controller
         // client باید قابل مشاهده باشد
         $client = Client::query()->whereKey($data['client_id'])->firstOrFail();
         if (!$client->isVisibleFor($request->user())) {
+            Log::warning('[Booking][Appointments][Store] client not visible for user', [
+                'auth_user_id' => $authUser?->id,
+                'client_id' => (int) $data['client_id'],
+            ]);
             abort(403, 'شما به این مشتری دسترسی ندارید.');
         }
 
@@ -119,6 +178,13 @@ class AppointmentController extends Controller
             ->first();
 
         if (!$sp || !$sp->is_active) {
+            Log::warning('[Booking][Appointments][Store] service-provider relation invalid/inactive', [
+                'service_id' => (int) $service->id,
+                'provider_user_id' => (int) $data['provider_user_id'],
+                'sp_exists' => (bool) $sp,
+                'sp_active' => $sp ? (bool) $sp->is_active : null,
+            ]);
+
             return back()
                 ->withErrors(['service_id' => 'این سرویس برای این ارائه‌دهنده فعال نیست.'])
                 ->withInput();
@@ -129,6 +195,10 @@ class AppointmentController extends Controller
         $endUtc   = Carbon::parse($data['end_at_utc'], 'UTC');
 
         if ($endUtc->lte($startUtc)) {
+            Log::warning('[Booking][Appointments][Store] invalid slot time range', [
+                'start_at_utc' => $data['start_at_utc'],
+                'end_at_utc' => $data['end_at_utc'],
+            ]);
             return back()->withErrors(['start_at_utc' => 'بازه زمانی اسلات نامعتبر است.'])->withInput();
         }
 
@@ -136,6 +206,12 @@ class AppointmentController extends Controller
         if (!empty($data['appointment_form_response_json'])) {
             $decoded = json_decode($data['appointment_form_response_json'], true);
             $formJson = is_array($decoded) ? $decoded : null;
+
+            if ($shouldLog && $formJson === null) {
+                Log::warning('[Booking][Appointments][Store] invalid appointment_form_response_json', [
+                    'raw' => $data['appointment_form_response_json'],
+                ]);
+            }
         }
 
         $this->service->createAppointmentByOperator(
@@ -148,6 +224,17 @@ class AppointmentController extends Controller
             notes: $data['notes'] ?? null,
             appointmentFormResponse: $formJson
         );
+
+        if ($shouldLog) {
+            Log::info('[Booking][Appointments][Store] appointment created', [
+                'service_id' => (int) $service->id,
+                'provider_user_id' => (int) $data['provider_user_id'],
+                'client_id' => (int) $client->id,
+                'start_at_utc' => $startUtc->toIso8601String(),
+                'end_at_utc' => $endUtc->toIso8601String(),
+                'created_by_user_id' => (int) $request->user()->id,
+            ]);
+        }
 
         return redirect()
             ->route('user.booking.appointments.index')
@@ -162,10 +249,24 @@ class AppointmentController extends Controller
     {
         $settings = BookingSetting::current();
         $this->ensureAppointmentCreateAccess($request, $settings);
-        $roleIds  = (array) ($settings->allowed_roles ?? []);
+
+        $shouldLog = (bool) config('app.debug') || (bool) config('booking.debug_logs', false);
+
+        $roleIds = array_values(array_filter(
+            array_map('intval', (array) ($settings->allowed_roles ?? [])),
+            fn ($v) => $v > 0
+        ));
 
         $authUser = $request->user();
         if ($this->userIsProvider($authUser, $settings) && ! $this->isAdminUser($authUser)) {
+            if ($shouldLog) {
+                Log::info('[Booking][WizardProviders] provider-self mode', [
+                    'auth_user_id' => $authUser?->id,
+                    'allowed_role_ids' => $roleIds,
+                    'allowed_roles_raw' => $settings->allowed_roles,
+                ]);
+            }
+
             return response()->json([
                 'data' => $authUser ? [['id' => $authUser->id, 'name' => $authUser->name]] : [],
             ]);
@@ -199,6 +300,16 @@ class AppointmentController extends Controller
 
         $providers = $providersQuery->orderBy('name')->limit(50)->get(['id','name']);
 
+        if ($shouldLog) {
+            Log::info('[Booking][WizardProviders] result', [
+                'q' => $q,
+                'service_id' => $serviceId,
+                'allowed_role_ids' => $roleIds,
+                'allowed_roles_raw' => $settings->allowed_roles,
+                'count' => $providers->count(),
+            ]);
+        }
+
         return response()->json(['data' => $providers]);
     }
 
@@ -221,14 +332,39 @@ class AppointmentController extends Controller
             return false;
         }
 
-        $providerRoleIds = array_map('intval', (array) ($settings->allowed_roles ?? []));
+        $shouldLog = (bool) config('app.debug') || (bool) config('booking.debug_logs', false);
+
+        $providerRoleIds = array_values(array_filter(
+            array_map('intval', (array) ($settings->allowed_roles ?? [])),
+            fn ($v) => $v > 0
+        ));
+
         if (empty($providerRoleIds)) {
+            if ($shouldLog) {
+                Log::info('[Booking][ProviderCheck] allowed_roles empty => not provider', [
+                    'user_id' => $user->id,
+                    'allowed_roles_raw' => $settings->allowed_roles,
+                ]);
+            }
             return false;
         }
 
         $userRoleIds = $user->roles()->pluck('id')->map(fn ($v) => (int) $v)->all();
+        $intersect = array_values(array_intersect($providerRoleIds, $userRoleIds));
+        $isProvider = count($intersect) > 0;
 
-        return count(array_intersect($providerRoleIds, $userRoleIds)) > 0;
+        if ($shouldLog) {
+            Log::info('[Booking][ProviderCheck] userIsProvider check', [
+                'user_id' => $user->id,
+                'user_role_ids' => $userRoleIds,
+                'allowed_role_ids' => $providerRoleIds,
+                'allowed_roles_raw' => $settings->allowed_roles,
+                'intersect' => $intersect,
+                'is_provider' => $isProvider,
+            ]);
+        }
+
+        return $isProvider;
     }
 
     protected function ensureAppointmentCreateAccess(Request $request, BookingSetting $settings): void
@@ -238,13 +374,30 @@ class AppointmentController extends Controller
             abort(403);
         }
 
-        if ($user->can('booking.appointments.create') || $this->isAdminUser($user) || $this->userIsProvider($user, $settings)) {
+        $allowed =
+            $user->can('booking.appointments.create')
+            || $this->isAdminUser($user)
+            || $this->userIsProvider($user, $settings);
+
+        if ($allowed) {
             return;
+        }
+
+        $shouldLog = (bool) config('app.debug') || (bool) config('booking.debug_logs', false);
+        if ($shouldLog) {
+            Log::warning('[Booking][Access] appointment create access denied', [
+                'user_id' => $user->id,
+                'can_create' => $user->can('booking.appointments.create'),
+                'is_admin' => $this->isAdminUser($user),
+                'is_provider' => $this->userIsProvider($user, $settings),
+                'allowed_roles_raw' => $settings->allowed_roles,
+            ]);
         }
 
         abort(403);
     }
 
+    // بقیه متدها بدون تغییر
     public function wizardServices(Request $request)
     {
         $settings = BookingSetting::current();
@@ -258,7 +411,6 @@ class AppointmentController extends Controller
             return response()->json(['data' => []]);
         }
 
-        // سرویس‌هایی که برای این provider فعال هستند (public + own)
         $serviceIds = BookingServiceProvider::query()
             ->where('provider_user_id', $providerId)
             ->where('is_active', 1)
@@ -365,7 +517,6 @@ class AppointmentController extends Controller
         $start = Carbon::create($year, $month, 1, 0, 0, 0, $scheduleTz)->startOfMonth();
         $end   = $start->copy()->endOfMonth();
 
-        // 1) همه اسلات‌های قابل رزرو ماه (remaining_capacity > 0) را یک‌جا می‌گیریم
         $allSlots = $engine->generateSlots(
             $serviceId,
             $providerId,
@@ -374,7 +525,6 @@ class AppointmentController extends Controller
             viewerTimezone: config('booking.timezones.display_default', $scheduleTz)
         );
 
-        // Group by local_date
         $slotsByDay = [];
         foreach ($allSlots as $s) {
             $slotsByDay[$s['local_date']][] = $s;
@@ -386,12 +536,9 @@ class AppointmentController extends Controller
         for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
             $localDate = $d->toDateString();
 
-            // Policy واقعی همین روز
             $policy = $engine->resolveDayPolicy($serviceId, $providerId, $d);
-
             $hasWork = !$policy['is_closed'] && !empty($policy['work_windows']);
 
-            // Booked/Held روز (برای ظرفیت روزانه)
             $dayStartUtc = $d->copy()->startOfDay()->timezone('UTC');
             $dayEndUtc   = $d->copy()->addDay()->startOfDay()->timezone('UTC');
 
@@ -417,16 +564,10 @@ class AppointmentController extends Controller
                 $remainingDayCap = max(0, (int)$capDay - (int)$booked - (int)$held);
             }
 
-            // اسلات‌های قابل رزرو برای این روز
             $availableSlots = $slotsByDay[$localDate] ?? [];
             $availableSlotsCount = count($availableSlots);
 
-            // وضعیت روز:
-            // - CLOSED: تعطیل یا بدون بازه کاری
-            // - FULL: بازه دارد ولی هیچ اسلات قابل رزرو نیست (پر / یا ظرفیت صفر)
-            // - AVAILABLE: اسلات دارد
             $isClosed = !$hasWork;
-
             $hasAvailableSlots = (!$isClosed) && ($availableSlotsCount > 0);
             $status = $isClosed ? 'CLOSED' : ($hasAvailableSlots ? 'AVAILABLE' : 'FULL');
 
@@ -442,7 +583,6 @@ class AppointmentController extends Controller
                 'held' => (int) $held,
                 'remaining_day_capacity' => $remainingDayCap,
 
-                // برای UI اگر لازم شد:
                 'capacity_per_slot' => (int) ($policy['capacity_per_slot'] ?? 1),
                 'slot_duration_minutes' => (int) ($policy['slot_duration_minutes'] ?? 30),
             ];

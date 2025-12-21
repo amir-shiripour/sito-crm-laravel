@@ -1,11 +1,19 @@
 @extends('layouts.user')
+@php
+    $fixedProviderPayload = (isset($fixedProvider) && $fixedProvider)
+      ? ['id' => $fixedProvider->id, 'name' => $fixedProvider->name]
+      : null;
+@endphp
 
 @section('content')
     <div class="space-y-6"
-         x-data="operatorWizard({
-             fixedProvider: @json(isset($fixedProvider) && $fixedProvider ? ['id' => $fixedProvider->id, 'name' => $fixedProvider->name] : null)
-         })"
-         x-init="init()">
+         data-fixed-provider='@json($fixedProviderPayload)'
+         x-data="operatorWizard({ fixedProvider: null })"
+         x-init="
+    const raw = $el.dataset.fixedProvider;
+    try { fixedProvider = raw ? JSON.parse(raw) : null } catch(e) { fixedProvider = null }
+    init();
+  ">
 
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">ثبت نوبت (مرحله‌ای)</h1>

@@ -49,8 +49,92 @@ class SettingsController extends Controller
     {
         $settings = BookingSetting::current();
 
-        // قدیمی‌ها قبل از آپدیت برای محاسبه تفاوت
-        $oldAllowedRoles = (array) ($settings->allowed_roles ?? []);
+        $shouldLog = (bool) config('app.debug') || (bool) config('booking.debug_logs', false);
+
+        // ---------------------------
+        // Helper: نرمال‌سازی allowed_roles به ID نقش‌ها
+        // ---------------------------
+        $normalizeAllowedRolesToIds = function ($rolesInput) use ($shouldLog): array {
+            if ($shouldLog) {
+                Log::info('[Booking][Settings] allowed_roles raw input', [
+                    'type' => gettype($rolesInput),
+                    'raw'  => $rolesInput,
+                ]);
+            }
+
+            // ممکن است از UI به صورت JSON string ارسال شود
+            if (is_string($rolesInput)) {
+                $decoded = json_decode($rolesInput, true);
+
+                if ($shouldLog) {
+                    Log::info('[Booking][Settings] allowed_roles decode attempt', [
+                        'is_json' => is_array($decoded),
+                        'decoded' => $decoded,
+                    ]);
+                }
+
+                // اگر JSON نبود، مثل CSV هم پشتیبانی کن
+                if (is_array($decoded)) {
+                    $rolesInput = $decoded;
+                } else {
+                    $rolesInput = preg_split('/\s*,\s*/', trim($rolesInput), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                }
+            }
+
+            if (!is_array($rolesInput)) {
+                $rolesInput = [];
+            }
+
+            $rolesInput = array_values(array_filter($rolesInput, fn ($v) => $v !== null && $v !== ''));
+
+            if ($shouldLog) {
+                Log::info('[Booking][Settings] allowed_roles filtered', [
+                    'filtered' => $rolesInput,
+                ]);
+            }
+
+            $normalizedRoleIds = [];
+            foreach ($rolesInput as $v) {
+                // اگر ID عددی بود
+                if (is_int($v) || (is_string($v) && ctype_digit($v))) {
+                    $id = (int) $v;
+                    if ($id > 0) {
+                        $normalizedRoleIds[] = $id;
+                    }
+                    continue;
+                }
+
+                // اگر name نقش ارسال شده بود، به ID تبدیل کن
+                if (is_string($v)) {
+                    $name = trim($v);
+                    if ($name !== '') {
+                        $id = Role::query()->where('name', $name)->value('id');
+                        if ($id) {
+                            $normalizedRoleIds[] = (int) $id;
+                        } else {
+                            if ($shouldLog) {
+                                Log::warning('[Booking][Settings] unknown role name in allowed_roles', [
+                                    'name' => $name,
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            $final = array_values(array_unique($normalizedRoleIds));
+
+            if ($shouldLog) {
+                Log::info('[Booking][Settings] allowed_roles normalized', [
+                    'normalized_ids' => $final,
+                ]);
+            }
+
+            return $final;
+        };
+
+        // قدیمی‌ها قبل از آپدیت برای محاسبه تفاوت (نرمال‌شده به ID)
+        $oldAllowedRoles = $normalizeAllowedRolesToIds($settings->allowed_roles ?? []);
 
         $data = $request->validate([
             'currency_unit' => ['required', Rule::in(['IRR', 'IRT'])],
@@ -75,23 +159,35 @@ class SettingsController extends Controller
         // پر کردن فیلدهای ساده
         $settings->fill($data);
 
-        // نرمال‌سازی allowed_roles
+        // نرمال‌سازی allowed_roles (همیشه به ID نقش‌ها)
         $rolesInput = $request->input('allowed_roles', []);
-        if (is_string($rolesInput)) {
-            $decoded = json_decode($rolesInput, true);
-            $rolesInput = is_array($decoded) ? $decoded : [];
-        }
-        $rolesInput = array_values(array_filter($rolesInput, fn ($v) => $v !== null && $v !== ''));
+        $settings->allowed_roles = $normalizeAllowedRolesToIds($rolesInput);
 
-        $settings->allowed_roles = $rolesInput;
+        if ($shouldLog) {
+            Log::info('[Booking][Settings] BEFORE save snapshot', [
+                'booking_setting_id' => $settings->id ?? null,
+                'old_allowed_roles'  => $oldAllowedRoles,
+                'to_save_allowed_roles' => $settings->allowed_roles,
+                'allow_role_service_creation' => (bool) $settings->allow_role_service_creation,
+            ]);
+        }
+
         $settings->save();
+
+        if ($shouldLog) {
+            Log::info('[Booking][Settings] AFTER save snapshot', [
+                'saved_allowed_roles' => $settings->fresh()->allowed_roles,
+            ]);
+        }
 
         // ---------------------------
         // مدیریت Permission نقش‌های Provider
         // ---------------------------
 
+        // جدیدها بعد از ذخیره (IDها)
         $newAllowedRoles = (array) ($settings->allowed_roles ?? []);
 
+        // برای diff مطمئن باش همه چیز ID و به شکل string یکسان شده
         $old = array_map('strval', $oldAllowedRoles);
         $new = array_map('strval', $newAllowedRoles);
 
@@ -100,6 +196,16 @@ class SettingsController extends Controller
 
         $allowCreation      = (bool) $settings->allow_role_service_creation;
         $protectedRoleNames = ['super-admin', 'admin'];
+
+        if ($shouldLog) {
+            Log::info('[Booking][Settings] allowed_roles diff', [
+                'old' => $oldAllowedRoles,
+                'new' => $newAllowedRoles,
+                'added' => $added,
+                'removed' => $removed,
+                'allow_creation' => $allowCreation,
+            ]);
+        }
 
         // پرمیشن‌هایی که Provider همیشه باید داشته باشد
         $providerAlwaysPerms   = [
