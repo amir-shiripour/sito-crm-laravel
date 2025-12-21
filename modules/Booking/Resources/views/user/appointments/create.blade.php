@@ -468,7 +468,11 @@
                     if (this.fixedProvider) {
                         this.providerId = String(this.fixedProvider.id || '');
                         this.providers = [this.fixedProvider];
-                        this.onProviderSelected().then(() => this.next());
+                        this.onProviderSelected().then(() => {
+                            if (this.flow === 'PROVIDER_FIRST') {
+                                this.step = 2;
+                            }
+                        });
                     } else if (this.flow === 'PROVIDER_FIRST') {
                         // شروع
                         this.fetchProviders();
