@@ -43,6 +43,7 @@ class AppointmentController extends Controller
     public function create()
     {
         $settings = BookingSetting::current();
+        $this->ensureAppointmentCreateAccess(request(), $settings);
 
         // مرحله اول از تنظیمات
         $flow = $settings->operator_appointment_flow ?: 'PROVIDER_FIRST';
@@ -60,6 +61,9 @@ class AppointmentController extends Controller
 
     public function store(Request $request)
     {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentCreateAccess($request, $settings);
+
         $data = $request->validate([
             'service_id'        => ['required', 'integer', 'exists:booking_services,id'],
             'provider_user_id'  => ['required', 'integer', 'exists:users,id'],
@@ -75,7 +79,6 @@ class AppointmentController extends Controller
             'appointment_form_response_json' => ['nullable', 'string'],
         ]);
 
-        $settings = BookingSetting::current();
         $authUser = $request->user();
 
         // provider باید جزو allowed_roles باشد
@@ -158,6 +161,7 @@ class AppointmentController extends Controller
     public function wizardProviders(Request $request)
     {
         $settings = BookingSetting::current();
+        $this->ensureAppointmentCreateAccess($request, $settings);
         $roleIds  = (array) ($settings->allowed_roles ?? []);
 
         $authUser = $request->user();
@@ -227,9 +231,24 @@ class AppointmentController extends Controller
         return count(array_intersect($providerRoleIds, $userRoleIds)) > 0;
     }
 
+    protected function ensureAppointmentCreateAccess(Request $request, BookingSetting $settings): void
+    {
+        $user = $request->user();
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($user->can('booking.appointments.create') || $this->isAdminUser($user) || $this->userIsProvider($user, $settings)) {
+            return;
+        }
+
+        abort(403);
+    }
+
     public function wizardServices(Request $request)
     {
         $settings = BookingSetting::current();
+        $this->ensureAppointmentCreateAccess($request, $settings);
 
         $providerId = (int) $request->query('provider_id', 0);
         $categoryId = $request->query('category_id');
@@ -275,6 +294,7 @@ class AppointmentController extends Controller
 
     public function wizardCategories(Request $request)
     {
+        $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
         $providerId = (int) $request->query('provider_id', 0);
         if (!$providerId) {
             return response()->json(['data' => []]);
@@ -296,6 +316,7 @@ class AppointmentController extends Controller
 
     public function wizardAllServices(Request $request)
     {
+        $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
         $q = trim((string) $request->query('q', ''));
 
         $servicesQ = BookingService::query()
@@ -328,6 +349,7 @@ class AppointmentController extends Controller
 
     public function wizardCalendar(Request $request)
     {
+        $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
         $serviceId  = (int) $request->query('service_id', 0);
         $providerId = (int) $request->query('provider_id', 0);
         $year       = (int) $request->query('year', 0);
@@ -434,6 +456,7 @@ class AppointmentController extends Controller
 
     public function wizardClients(Request $request)
     {
+        $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
         $user = $request->user();
         $q = trim((string)$request->query('q',''));
 

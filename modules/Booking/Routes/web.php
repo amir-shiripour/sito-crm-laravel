@@ -102,32 +102,26 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->middleware('can:booking.availability.manage');
 
         Route::get('appointments', [UserAppointmentController::class, 'index'])->name('appointments.index')->middleware('can:booking.appointments.view');
-        Route::get('appointments/create', [UserAppointmentController::class, 'create'])->name('appointments.create')->middleware('can:booking.appointments.create');
-        Route::post('appointments', [UserAppointmentController::class, 'store'])->name('appointments.store')->middleware('can:booking.appointments.create');
+        Route::get('appointments/create', [UserAppointmentController::class, 'create'])->name('appointments.create');
+        Route::post('appointments', [UserAppointmentController::class, 'store'])->name('appointments.store');
 
         Route::get('appointments/wizard/providers', [UserAppointmentController::class, 'wizardProviders'])
-            ->name('appointments.wizard.providers')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.providers');
 
         Route::get('appointments/wizard/services', [UserAppointmentController::class, 'wizardServices'])
-            ->name('appointments.wizard.services')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.services');
 
         Route::get('appointments/wizard/all-services', [UserAppointmentController::class, 'wizardAllServices'])
-            ->name('appointments.wizard.all-services')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.all-services');
 
         Route::get('appointments/wizard/categories', [UserAppointmentController::class, 'wizardCategories'])
-            ->name('appointments.wizard.categories')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.categories');
 
         Route::get('appointments/wizard/calendar', [UserAppointmentController::class, 'wizardCalendar'])
-            ->name('appointments.wizard.calendar')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.calendar');
 
         Route::get('appointments/wizard/clients', [UserAppointmentController::class, 'wizardClients'])
-            ->name('appointments.wizard.clients')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.clients');
 
         Route::get('settings', [UserSettingsController::class, 'edit'])->name('settings.edit')->middleware('can:booking.settings.manage');
         Route::post('settings', [UserSettingsController::class, 'update'])->name('settings.update')->middleware('can:booking.settings.manage');
