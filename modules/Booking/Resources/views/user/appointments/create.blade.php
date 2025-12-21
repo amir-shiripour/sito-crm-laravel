@@ -221,7 +221,7 @@
                     </div>
                 </template>
 
-                <template x-if="flow==='SERVICE_FIRST'">
+                <template x-if="flow==='SERVICE_FIRST' && !fixedProvider">
                     <div class="space-y-2">
                         <label class="block text-sm mb-1 dark:text-gray-200">انتخاب ارائه‌دهنده (برای سرویس انتخابی)</label>
                         <div class="relative">
@@ -257,6 +257,19 @@
 
                         <div class="text-[11px] text-gray-500 dark:text-gray-400">
                             بعد از انتخاب ارائه‌دهنده، به صورت خودکار به مرحله بعد می‌روید.
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="flow==='SERVICE_FIRST' && fixedProvider">
+                    <div class="space-y-2">
+                        <label class="block text-sm mb-1 dark:text-gray-200">ارائه‌دهنده انتخاب‌شده</label>
+                        <div class="border rounded-xl p-3 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200">
+                            <div class="font-semibold text-sm" x-text="fixedProvider.name"></div>
+                            <div class="text-[11px] text-gray-500 dark:text-gray-400">به صورت خودکار انتخاب شد.</div>
+                        </div>
+                        <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                            ارائه‌دهنده قابل تغییر نیست.
                         </div>
                     </div>
                 </template>
@@ -650,7 +663,13 @@
                     this.serviceId = String(s?.id ?? '');
                     await this.onServiceSelected();
                     if (autoGo && this.step === 1 && this.flow === 'SERVICE_FIRST') {
+                        if (this.fixedProvider && this.fixedProvider.id && !this.providerId) {
+                            this.providerId = String(this.fixedProvider.id);
+                        }
                         await this.next();
+                        if (this.fixedProvider && this.step === 2) {
+                            await this.next();
+                        }
                     }
                     if (autoGo && this.step === 2 && this.flow === 'PROVIDER_FIRST') {
                         await this.next();
