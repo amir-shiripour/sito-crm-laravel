@@ -5,6 +5,7 @@ namespace Modules\Booking\Http\Controllers\User;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Modules\Booking\Entities\BookingAvailabilityRule;
 use Modules\Booking\Entities\BookingSetting;
@@ -84,16 +85,41 @@ class ProviderAvailabilityController extends Controller
             }
         }
 
+        $rulesInput = (array) $request->input('rules', []);
+
+        foreach ($rulesInput as $day => $row) {
+            foreach (['work_start_local', 'work_end_local'] as $f) {
+                if (array_key_exists($f, $row)) {
+                    $v = trim((string) $row[$f]);
+                    $rulesInput[$day][$f] = ($v === '') ? null : substr($v, 0, 5);
+                }
+            }
+
+            if (isset($row['breaks']) && is_array($row['breaks'])) {
+                foreach ($row['breaks'] as $i => $br) {
+                    foreach (['start_local', 'end_local'] as $bf) {
+                        if (array_key_exists($bf, $br)) {
+                            $v = trim((string) $br[$bf]);
+                            $rulesInput[$day]['breaks'][$i][$bf] = ($v === '') ? null : substr($v, 0, 5);
+                        }
+                    }
+                }
+            }
+        }
+
+        $request->merge(['rules' => $rulesInput]);
+
         $data = $request->validate([
             'rules' => ['required', 'array'],
 
+            'rules.*.weekday' => ['nullable', 'integer', 'min:0', 'max:6'],
             'rules.*.is_closed' => ['required', Rule::in(['0', '1'])],
             'rules.*.work_start_local' => ['nullable', 'date_format:H:i'],
             'rules.*.work_end_local'   => ['nullable', 'date_format:H:i'],
 
             'rules.*.slot_duration_minutes' => ['nullable', 'integer', 'min:5', 'max:720'],
-            'rules.*.capacity_per_slot'     => ['nullable', 'integer', 'min:1', 'max:1000'],
-            'rules.*.capacity_per_day'      => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'rules.*.capacity_per_slot'     => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'rules.*.capacity_per_day'      => ['nullable', 'integer', 'min:0', 'max:10000'],
 
             'rules.*.breaks' => ['nullable', 'array'],
             'rules.*.breaks.*.start_local' => ['required_with:rules.*.breaks', 'date_format:H:i'],
@@ -101,7 +127,7 @@ class ProviderAvailabilityController extends Controller
         ]);
 
         foreach ($data['rules'] as $weekday => $ruleRow) {
-            $weekdayInt = (int) $weekday;
+            $weekdayInt = (int) Arr::get($ruleRow, 'weekday', $weekday);
             if ($weekdayInt < 0 || $weekdayInt > 6) {
                 continue;
             }
@@ -111,13 +137,13 @@ class ProviderAvailabilityController extends Controller
                 'scope_id'   => $provider->id,
                 'weekday'    => $weekdayInt,
 
-                'is_closed'        => (bool)($ruleRow['is_closed'] ?? false),
+                'is_closed'        => ((string) Arr::get($ruleRow, 'is_closed', '0') === '1'),
                 'work_start_local' => $ruleRow['work_start_local'] ?: null,
                 'work_end_local'   => $ruleRow['work_end_local'] ?: null,
 
-                'slot_duration_minutes' => $ruleRow['slot_duration_minutes'] ?: null,
-                'capacity_per_slot'     => $ruleRow['capacity_per_slot'] ?: null,
-                'capacity_per_day'      => $ruleRow['capacity_per_day'] ?: null,
+                'slot_duration_minutes' => $ruleRow['slot_duration_minutes'] === '' ? null : $ruleRow['slot_duration_minutes'],
+                'capacity_per_slot'     => $ruleRow['capacity_per_slot'] === '' ? null : $ruleRow['capacity_per_slot'],
+                'capacity_per_day'      => $ruleRow['capacity_per_day'] === '' ? null : $ruleRow['capacity_per_day'],
 
                 'breaks_json' => isset($ruleRow['breaks']) ? array_values($ruleRow['breaks']) : null,
             ];
