@@ -103,6 +103,7 @@ class SettingsController extends Controller
 
         // پرمیشن‌هایی که Provider همیشه باید داشته باشد
         $providerAlwaysPerms   = [
+            'booking.view',
             'booking.services.view',
             'booking.categories.view',
             'booking.appointments.view',
