@@ -339,7 +339,7 @@
                                 @click="selectSlot(slot)">
                             <div class="font-semibold" x-text="formatTime(slot.start_at_view)"></div>
                             <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                ظرفیت: <span x-text="slot.remaining_capacity"></span>
+                                ظرفیت: <span x-text="slotCapacityDisplay(slot)"></span>
                             </div>
                         </button>
                     </template>
@@ -423,6 +423,7 @@
                 flow: @json($flow ?? 'PROVIDER_FIRST'),
                 step: 1,
 
+                defaultSlotCapacity: @json($settings->default_capacity_per_slot ?? 1),
                 fixedProvider: options.fixedProvider || null,
                 providerId: '',
                 serviceId: '',
@@ -527,6 +528,16 @@
                         g.items.sort((x, y) => (x.name || '').localeCompare(y.name || '', 'fa'));
                     }
                     return arr;
+                },
+                slotCapacityDisplay(slot) {
+                    if (!slot) return this.defaultSlotCapacity;
+                    if (slot.remaining_capacity !== null && slot.remaining_capacity !== undefined) {
+                        return slot.remaining_capacity;
+                    }
+                    if (slot.capacity_per_slot !== null && slot.capacity_per_slot !== undefined && Number(slot.capacity_per_slot) > 0) {
+                        return slot.capacity_per_slot;
+                    }
+                    return this.defaultSlotCapacity;
                 },
 
                 async fetchProviders() {
