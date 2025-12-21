@@ -105,6 +105,8 @@ class SettingsController extends Controller
         $providerAlwaysPerms   = [
             'booking.services.view',
             'booking.categories.view',
+            'booking.appointments.view',
+            'booking.appointments.create',
         ];
         // پرمیشن‌هایی که فقط در صورت allow_role_service_creation = true داده می‌شوند
         $providerCreationPerms = [
