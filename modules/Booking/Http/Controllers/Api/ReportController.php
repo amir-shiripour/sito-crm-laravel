@@ -8,9 +8,30 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Modules\Booking\Entities\Appointment;
 use Modules\Booking\Entities\BookingPayment;
+use Modules\Booking\Entities\BookingSetting;
+use App\Models\User;
 
 class ReportController extends Controller
 {
+    protected function resolveProviderScope(Request $request): ?int
+    {
+        $user = $request->user();
+        if (! $user) {
+            return null;
+        }
+
+        if ($this->isAdminUser($user)) {
+            return null;
+        }
+
+        $settings = BookingSetting::current();
+        if ($this->userIsProvider($user, $settings)) {
+            return (int) $user->id;
+        }
+
+        return null;
+    }
+
     protected function resolveUtcRange(Request $request): array
     {
         // Supports:
@@ -42,10 +63,15 @@ class ReportController extends Controller
     public function overview(Request $request)
     {
         [$from, $to] = $this->resolveUtcRange($request);
+        $providerId = $this->resolveProviderScope($request);
 
         $base = Appointment::query()
             ->where('start_at_utc', '>=', $from)
             ->where('start_at_utc', '<', $to);
+
+        if ($providerId) {
+            $base->where('provider_user_id', $providerId);
+        }
 
         $total = (clone $base)->count();
 
@@ -67,6 +93,17 @@ class ReportController extends Controller
             })
             ->sum('amount');
 
+        if ($providerId) {
+            $revenuePaid = BookingPayment::query()
+                ->where('status', BookingPayment::STATUS_PAID)
+                ->whereHas('appointment', function ($q) use ($from, $to, $providerId) {
+                    $q->where('start_at_utc', '>=', $from)
+                      ->where('start_at_utc', '<', $to)
+                      ->where('provider_user_id', $providerId);
+                })
+                ->sum('amount');
+        }
+
         return response()->json([
             'data' => [
                 'range' => ['from_utc' => $from->toIso8601String(), 'to_utc' => $to->toIso8601String()],
@@ -81,6 +118,7 @@ class ReportController extends Controller
     public function providers(Request $request)
     {
         [$from, $to] = $this->resolveUtcRange($request);
+        $providerId = $this->resolveProviderScope($request);
 
         $rows = Appointment::query()
             ->selectRaw('provider_user_id, COUNT(*) as total,
@@ -92,6 +130,7 @@ class ReportController extends Controller
                 ])
             ->where('start_at_utc', '>=', $from)
             ->where('start_at_utc', '<', $to)
+            ->when($providerId, fn ($q) => $q->where('provider_user_id', $providerId))
             ->groupBy('provider_user_id')
             ->orderByDesc('total')
             ->get();
@@ -102,12 +141,16 @@ class ReportController extends Controller
     public function services(Request $request)
     {
         [$from, $to] = $this->resolveUtcRange($request);
+        $providerId = $this->resolveProviderScope($request);
 
         $rows = Appointment::query()
-            ->selectRaw('service_id, COUNT(*) as total')
+            ->leftJoin('booking_services', 'appointments.service_id', '=', 'booking_services.id')
+            ->leftJoin('booking_categories', 'booking_services.category_id', '=', 'booking_categories.id')
+            ->selectRaw('appointments.service_id, booking_services.name as service_name, booking_services.category_id, booking_categories.name as category_name, COUNT(*) as total')
             ->where('start_at_utc', '>=', $from)
             ->where('start_at_utc', '<', $to)
-            ->groupBy('service_id')
+            ->when($providerId, fn ($q) => $q->where('appointments.provider_user_id', $providerId))
+            ->groupBy('appointments.service_id', 'booking_services.name', 'booking_services.category_id', 'booking_categories.name')
             ->orderByDesc('total')
             ->get();
 
@@ -117,16 +160,50 @@ class ReportController extends Controller
     public function finance(Request $request)
     {
         [$from, $to] = $this->resolveUtcRange($request);
+        $providerId = $this->resolveProviderScope($request);
 
         $rows = BookingPayment::query()
             ->selectRaw('status, COUNT(*) as total, SUM(amount) as sum_amount')
-            ->whereHas('appointment', function ($q) use ($from, $to) {
+            ->whereHas('appointment', function ($q) use ($from, $to, $providerId) {
                 $q->where('start_at_utc', '>=', $from)
                   ->where('start_at_utc', '<', $to);
+
+                if ($providerId) {
+                    $q->where('provider_user_id', $providerId);
+                }
             })
             ->groupBy('status')
             ->get();
 
         return response()->json(['data' => $rows]);
+    }
+
+    protected function isAdminUser(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasAnyRole(['super-admin', 'admin'])) {
+            return true;
+        }
+
+        return $user->can('booking.manage') || $user->can('booking.reports.view');
+    }
+
+    protected function userIsProvider(?User $user, BookingSetting $settings): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $providerRoleIds = array_map('intval', (array) ($settings->allowed_roles ?? []));
+        if (empty($providerRoleIds)) {
+            return false;
+        }
+
+        $userRoleIds = $user->roles()->pluck('id')->map(fn ($v) => (int) $v)->all();
+
+        return count(array_intersect($providerRoleIds, $userRoleIds)) > 0;
     }
 }

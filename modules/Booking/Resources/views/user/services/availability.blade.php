@@ -106,6 +106,29 @@
                         if (is_null($breaksArray) && is_array($r?->breaks_json)) {
                             $breaksArray = $r->breaks_json;
                         }
+
+                        $startValue = $start ? substr((string) $start, 0, 5) : null;
+                        $endValue = $end ? substr((string) $end, 0, 5) : null;
+
+                        if (is_array($breaksArray)) {
+                            foreach ($breaksArray as $breakIndex => $breakItem) {
+                                if (! is_array($breakItem)) {
+                                    continue;
+                                }
+
+                                if (array_key_exists('start_local', $breakItem)) {
+                                    $breaksArray[$breakIndex]['start_local'] = $breakItem['start_local']
+                                        ? substr((string) $breakItem['start_local'], 0, 5)
+                                        : null;
+                                }
+
+                                if (array_key_exists('end_local', $breakItem)) {
+                                    $breaksArray[$breakIndex]['end_local'] = $breakItem['end_local']
+                                        ? substr((string) $breakItem['end_local'], 0, 5)
+                                        : null;
+                                }
+                            }
+                        }
                     @endphp
 
                     <div class="{{ $cardClass }}"
@@ -134,6 +157,7 @@
 
                                 {{-- سلکت باز/بسته با استایل بهتر --}}
                                 <div class="relative">
+                                    <input type="hidden" name="rules[{{ $d }}][weekday]" value="{{ $d }}">
                                     <select name="rules[{{ $d }}][is_closed]"
                                             x-model="isClosed"
                                             class="h-9 pl-3 pr-8 rounded-xl border-gray-300 bg-white text-xs font-bold focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 cursor-pointer shadow-sm appearance-none hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
@@ -159,13 +183,13 @@
                                 <div>
                                     <label class="{{ $labelClass }}">شروع کار</label>
                                     <input type="text" data-jdp-only-time name="rules[{{ $d }}][work_start_local]"
-                                           class="{{ $inputClass }}" value="{{ $start }}" placeholder="08:00">
+                                           class="{{ $inputClass }}" value="{{ $startValue }}" placeholder="08:00">
                                 </div>
 
                                 <div>
                                     <label class="{{ $labelClass }}">پایان کار</label>
                                     <input type="text" data-jdp-only-time name="rules[{{ $d }}][work_end_local]"
-                                           class="{{ $inputClass }}" value="{{ $end }}" placeholder="17:00">
+                                           class="{{ $inputClass }}" value="{{ $endValue }}" placeholder="17:00">
                                 </div>
 
                                 <div>

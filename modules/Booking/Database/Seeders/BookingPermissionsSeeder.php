@@ -31,6 +31,10 @@ class BookingPermissionsSeeder extends Seeder
             'booking.appointments.create',
             'booking.appointments.edit',
 
+            'booking.categories.view',
+            'booking.categories.create',
+            'booking.categories.edit',
+            'booking.categories.delete',
             'booking.categories.manage',
             'booking.forms.manage',
         ];
@@ -48,6 +52,7 @@ class BookingPermissionsSeeder extends Seeder
                 'booking.settings.manage',
                 'booking.services.view','booking.services.create','booking.services.edit','booking.services.delete','booking.services.manage',
                 'booking.appointments.view','booking.appointments.create','booking.appointments.edit',
+                'booking.categories.view','booking.categories.create','booking.categories.edit','booking.categories.delete',
                 'booking.categories.manage','booking.forms.manage',
             ],
             'OPERATOR' => [
@@ -62,6 +67,10 @@ class BookingPermissionsSeeder extends Seeder
                 'booking.services.create',
                 'booking.services.edit',
                 'booking.appointments.view',
+                'booking.appointments.create',
+                'booking.categories.view',
+                'booking.categories.create',
+                'booking.categories.edit',
             ],
         ];
 

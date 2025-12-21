@@ -10,6 +10,7 @@ use Modules\Booking\Http\Controllers\User\ServiceAvailabilityController as UserS
 use Modules\Booking\Http\Controllers\User\ProviderAvailabilityController;
 use Modules\Booking\Http\Controllers\User\ServiceExceptionController;
 use Modules\Booking\Http\Controllers\User\ProviderExceptionController;
+use Modules\Booking\Http\Controllers\User\CategoryController as UserCategoryController;
 
 
 // Public minimal pages (optional)
@@ -62,6 +63,30 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::post('services/{service}/availability', [UserServiceAvailabilityController::class, 'update'])
             ->name('services.availability.update');
 
+        Route::get('categories', [UserCategoryController::class, 'index'])
+            ->name('categories.index')
+            ->middleware('can:booking.categories.view');
+
+        Route::get('categories/create', [UserCategoryController::class, 'create'])
+            ->name('categories.create')
+            ->middleware('can:booking.categories.create');
+
+        Route::post('categories', [UserCategoryController::class, 'store'])
+            ->name('categories.store')
+            ->middleware('can:booking.categories.create');
+
+        Route::get('categories/{category}/edit', [UserCategoryController::class, 'edit'])
+            ->name('categories.edit')
+            ->middleware('can:booking.categories.edit');
+
+        Route::put('categories/{category}', [UserCategoryController::class, 'update'])
+            ->name('categories.update')
+            ->middleware('can:booking.categories.edit');
+
+        Route::delete('categories/{category}', [UserCategoryController::class, 'destroy'])
+            ->name('categories.destroy')
+            ->middleware('can:booking.categories.delete');
+
 
         // برنامه زمانی «ارائه‌دهندگان» فقط برای ادمین‌ها و کسانی که permission دارند
         Route::get('providers', [ProviderAvailabilityController::class, 'index'])
@@ -77,32 +102,26 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->middleware('can:booking.availability.manage');
 
         Route::get('appointments', [UserAppointmentController::class, 'index'])->name('appointments.index')->middleware('can:booking.appointments.view');
-        Route::get('appointments/create', [UserAppointmentController::class, 'create'])->name('appointments.create')->middleware('can:booking.appointments.create');
-        Route::post('appointments', [UserAppointmentController::class, 'store'])->name('appointments.store')->middleware('can:booking.appointments.create');
+        Route::get('appointments/create', [UserAppointmentController::class, 'create'])->name('appointments.create');
+        Route::post('appointments', [UserAppointmentController::class, 'store'])->name('appointments.store');
 
         Route::get('appointments/wizard/providers', [UserAppointmentController::class, 'wizardProviders'])
-            ->name('appointments.wizard.providers')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.providers');
 
         Route::get('appointments/wizard/services', [UserAppointmentController::class, 'wizardServices'])
-            ->name('appointments.wizard.services')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.services');
 
         Route::get('appointments/wizard/all-services', [UserAppointmentController::class, 'wizardAllServices'])
-            ->name('appointments.wizard.all-services')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.all-services');
 
         Route::get('appointments/wizard/categories', [UserAppointmentController::class, 'wizardCategories'])
-            ->name('appointments.wizard.categories')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.categories');
 
         Route::get('appointments/wizard/calendar', [UserAppointmentController::class, 'wizardCalendar'])
-            ->name('appointments.wizard.calendar')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.calendar');
 
         Route::get('appointments/wizard/clients', [UserAppointmentController::class, 'wizardClients'])
-            ->name('appointments.wizard.clients')
-            ->middleware('can:booking.appointments.create');
+            ->name('appointments.wizard.clients');
 
         Route::get('settings', [UserSettingsController::class, 'edit'])->name('settings.edit')->middleware('can:booking.settings.manage');
         Route::post('settings', [UserSettingsController::class, 'update'])->name('settings.update')->middleware('can:booking.settings.manage');
