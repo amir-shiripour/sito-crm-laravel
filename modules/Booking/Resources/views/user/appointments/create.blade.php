@@ -827,6 +827,20 @@
                     this.categories = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fa'));
                 },
 
+                syncCategoriesFromServices() {
+                    if (this.flow !== 'SERVICE_FIRST') return;
+                    const map = new Map();
+                    for (const s of (this.services || [])) {
+                        const id = s.category_id ?? null;
+                        const name = s.category_name ?? null;
+                        if (!id || !name) continue;
+                        if (!map.has(String(id))) {
+                            map.set(String(id), { id, name });
+                        }
+                    }
+                    this.categories = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fa'));
+                },
+
                 resetCalendarAndSlots() {
                     this.dateLocal = '';
                     this.calendarDays = [];
