@@ -1176,10 +1176,3 @@
         }
     </script>
 @endsection
-                get totalSteps() {
-                    return this.hasAppointmentForm ? 6 : 5;
-                },
-
-                get clientStep() {
-                    return this.hasAppointmentForm ? 6 : 5;
-                },
