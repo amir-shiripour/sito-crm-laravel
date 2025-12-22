@@ -48,7 +48,7 @@
                     مرحله:
                     <span class="font-semibold" x-text="step"></span>
                     از
-                    <span class="font-semibold">6</span>
+                    <span class="font-semibold" x-text="totalSteps"></span>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -61,7 +61,7 @@
                     <button type="button"
                             class="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white"
                             @click="next()"
-                            x-show="step<6 && step>2">بعدی</button>
+                            x-show="step < totalSteps && step > 2">بعدی</button>
                 </div>
             </div>
 
@@ -414,7 +414,7 @@
             </div>
 
             {{-- STEP 5: Appointment Form --}}
-            <div x-show="step===5" class="space-y-3">
+            <div x-show="step===5 && hasAppointmentForm" class="space-y-3">
                 <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">فرم اطلاعات نوبت</div>
 
                 <template x-if="selectedService && selectedService.appointment_form_id">
@@ -495,7 +495,7 @@
             </div>
 
             {{-- STEP 6: Client --}}
-            <div x-show="step===6" class="space-y-3">
+            <div x-show="step===clientStep" class="space-y-3">
                 <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">انتخاب مشتری</div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -503,8 +503,7 @@
                         <input type="text" class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400" placeholder="جستجو مشتری (نام/موبایل/ایمیل)"
                                x-model="clientSearch" @input.debounce.300ms="fetchClients()">
                     <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 mt-2 text-sm dark:text-gray-100"
-                            x-model="clientId"
-                            @change="onClientSelected()">
+                            x-model="clientId">
                         <option value="">انتخاب کنید</option>
                         <template x-for="c in clients" :key="c.id">
                             <option :value="c.id" x-text="`${c.full_name} (${c.phone || '-'})`"></option>
@@ -595,6 +594,7 @@
                 quickClient: { full_name: '', phone: '', email: '' },
                 quickClientError: '',
                 weekDays: ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'],
+                hasAppointmentForm: false,
 
                 init() {
                     const now = new Date();
@@ -809,7 +809,8 @@
                         await this.fetchProviders(); // حالا providers برای این service
                     }
 
-                    if (this.selectedService && this.selectedService.appointment_form_id) {
+                    this.hasAppointmentForm = Boolean(this.selectedService && this.selectedService.appointment_form_id);
+                    if (this.hasAppointmentForm) {
                         await this.fetchAppointmentForm(this.selectedService.appointment_form_id);
                     }
                 },
@@ -842,6 +843,7 @@
                 resetAppointmentForm() {
                     this.appointmentFormSchema = null;
                     this.appointmentFormValues = {};
+                    this.hasAppointmentForm = false;
                 },
 
                 async fetchAppointmentForm(formId) {
@@ -1115,12 +1117,14 @@
                         }
                     }
 
-                    // STEP 5 -> 6 (فرم json را آماده کن)
-                    if (this.step === 5) {
+                    const nextStep = this.step + 1;
+                    if (this.hasAppointmentForm && nextStep === this.clientStep) {
                         this.prepareAppointmentFormJson();
                     }
 
-                    this.step++;
+                    if (this.step < this.totalSteps) {
+                        this.step++;
+                    }
                 },
 
                 prev() {
@@ -1153,12 +1157,6 @@
                     this.$refs.form.submit();
                 },
 
-                onClientSelected() {
-                    if (this.step === 6 && this.clientId) {
-                        this.handleSubmit();
-                    }
-                },
-
                 prepareAppointmentFormJson() {
                     if (this.selectedService && this.selectedService.appointment_form_id && this.appointmentFormSchema) {
                         this.$refs.formJsonInput.value = JSON.stringify(this.appointmentFormValues || {});
@@ -1170,3 +1168,10 @@
         }
     </script>
 @endsection
+                get totalSteps() {
+                    return this.hasAppointmentForm ? 6 : 5;
+                },
+
+                get clientStep() {
+                    return this.hasAppointmentForm ? 6 : 5;
+                },
