@@ -521,7 +521,7 @@ class AppointmentController extends Controller
             ->where('booking_services.status', BookingService::STATUS_ACTIVE);
 
         if ($categoryId !== null && $categoryId !== '') {
-            $servicesQ->where('category_id', (int) $categoryId);
+            $servicesQ->where('booking_services.category_id', (int) $categoryId);
         }
 
         if (! $this->isAdminUser($user)) {
@@ -534,7 +534,7 @@ class AppointmentController extends Controller
         }
 
         if ($q !== '') {
-            $servicesQ->where('name', 'like', "%{$q}%");
+            $servicesQ->where('booking_services.name', 'like', "%{$q}%");
         }
 
         $services = $servicesQ
