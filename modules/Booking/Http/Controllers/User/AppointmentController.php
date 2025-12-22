@@ -87,8 +87,11 @@ class AppointmentController extends Controller
             'client_id'         => ['required', 'integer', 'exists:clients,id'],
 
             // از UI اسلات
-            'start_at_utc'      => ['required', 'date'],
-            'end_at_utc'        => ['required', 'date'],
+            'start_at_utc'      => ['nullable', 'date'],
+            'end_at_utc'        => ['nullable', 'date'],
+            'date_local'        => ['nullable', 'date_format:Y-m-d'],
+            'start_time_local'  => ['nullable', 'date_format:H:i'],
+            'end_time_local'    => ['nullable', 'date_format:H:i'],
 
             'notes'             => ['nullable', 'string'],
 
@@ -191,13 +194,36 @@ class AppointmentController extends Controller
         }
 
         // زمان‌ها
-        $startUtc = Carbon::parse($data['start_at_utc'], 'UTC');
-        $endUtc   = Carbon::parse($data['end_at_utc'], 'UTC');
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        $usesCustomSchedule = (bool) $service->custom_schedule_enabled;
+
+        if ($usesCustomSchedule) {
+            if (empty($data['date_local']) || empty($data['start_time_local']) || empty($data['end_time_local'])) {
+                return back()
+                    ->withErrors(['start_time_local' => 'لطفاً تاریخ و ساعت شروع/پایان را کامل وارد کنید.'])
+                    ->withInput();
+            }
+
+            $startLocal = Carbon::createFromFormat('Y-m-d H:i', "{$data['date_local']} {$data['start_time_local']}", $scheduleTz);
+            $endLocal   = Carbon::createFromFormat('Y-m-d H:i', "{$data['date_local']} {$data['end_time_local']}", $scheduleTz);
+
+            $startUtc = $startLocal->copy()->timezone('UTC');
+            $endUtc   = $endLocal->copy()->timezone('UTC');
+        } else {
+            if (empty($data['start_at_utc']) || empty($data['end_at_utc'])) {
+                return back()
+                    ->withErrors(['start_at_utc' => 'لطفاً یک اسلات زمانی را انتخاب کنید.'])
+                    ->withInput();
+            }
+
+            $startUtc = Carbon::parse($data['start_at_utc'], 'UTC');
+            $endUtc   = Carbon::parse($data['end_at_utc'], 'UTC');
+        }
 
         if ($endUtc->lte($startUtc)) {
             Log::warning('[Booking][Appointments][Store] invalid slot time range', [
-                'start_at_utc' => $data['start_at_utc'],
-                'end_at_utc' => $data['end_at_utc'],
+                'start_at_utc' => $startUtc->toIso8601String(),
+                'end_at_utc' => $endUtc->toIso8601String(),
             ]);
             return back()->withErrors(['start_at_utc' => 'بازه زمانی اسلات نامعتبر است.'])->withInput();
         }
@@ -214,16 +240,32 @@ class AppointmentController extends Controller
             }
         }
 
-        $this->service->createAppointmentByOperator(
-            (int) $service->id,
-            (int) $data['provider_user_id'],
-            (int) $client->id,
-            $startUtc->toIso8601String(),
-            $endUtc->toIso8601String(),
-            createdByUserId: $request->user()->id,
-            notes: $data['notes'] ?? null,
-            appointmentFormResponse: $formJson
-        );
+        try {
+            $this->service->createAppointmentByOperator(
+                (int) $service->id,
+                (int) $data['provider_user_id'],
+                (int) $client->id,
+                $startUtc->toIso8601String(),
+                $endUtc->toIso8601String(),
+                createdByUserId: $request->user()->id,
+                notes: $data['notes'] ?? null,
+                appointmentFormResponse: $formJson
+            );
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            $message = match ($e->getMessage()) {
+                'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل است.',
+                'Day capacity is full.' => 'ظرفیت روز تکمیل است.',
+                'This day is closed.' => 'این روز بسته است.',
+                'Slot is outside work windows.' => 'این بازه خارج از ساعات کاری است.',
+                'Slot overlaps with break.' => 'این بازه با زمان استراحت تداخل دارد.',
+                'Slot crosses day boundary.' => 'بازه انتخابی باید داخل همان روز باشد.',
+                default => 'امکان ثبت نوبت در این بازه وجود ندارد.',
+            };
+
+            return back()
+                ->withErrors(['start_at_utc' => $message])
+                ->withInput();
+        }
 
         if ($shouldLog) {
             Log::info('[Booking][Appointments][Store] appointment created', [
@@ -277,7 +319,7 @@ class AppointmentController extends Controller
 
         $providersQuery = User::query();
 
-        if (!empty($roleIds)) {
+        if (! $this->isAdminUser($authUser) && !empty($roleIds)) {
             $providersQuery->whereHas('roles', fn ($r) => $r->whereIn('id', $roleIds));
         }
 
@@ -438,6 +480,7 @@ class AppointmentController extends Controller
                 'booking_services.name',
                 'booking_services.category_id',
                 'booking_services.appointment_form_id',
+                'booking_services.custom_schedule_enabled',
                 'bc.name as category_name',
             ]);
 
@@ -469,20 +512,29 @@ class AppointmentController extends Controller
     public function wizardAllServices(Request $request)
     {
         $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
+        $user = $request->user();
         $q = trim((string) $request->query('q', ''));
+        $categoryId = $request->query('category_id');
 
         $servicesQ = BookingService::query()
             ->leftJoin('booking_categories as bc', 'booking_services.category_id', '=', 'bc.id')
-            ->where('booking_services.status', BookingService::STATUS_ACTIVE)
-            ->whereExists(function ($sub) {
+            ->where('booking_services.status', BookingService::STATUS_ACTIVE);
+
+        if ($categoryId !== null && $categoryId !== '') {
+            $servicesQ->where('booking_services.category_id', (int) $categoryId);
+        }
+
+        if (! $this->isAdminUser($user)) {
+            $servicesQ->whereExists(function ($sub) {
                 $sub->from('booking_service_providers')
                     ->selectRaw('1')
                     ->whereColumn('booking_service_providers.service_id', 'booking_services.id')
                     ->where('booking_service_providers.is_active', 1);
             });
+        }
 
         if ($q !== '') {
-            $servicesQ->where('name', 'like', "%{$q}%");
+            $servicesQ->where('booking_services.name', 'like', "%{$q}%");
         }
 
         $services = $servicesQ
@@ -493,6 +545,7 @@ class AppointmentController extends Controller
                 'booking_services.name',
                 'booking_services.category_id',
                 'booking_services.appointment_form_id',
+                'booking_services.custom_schedule_enabled',
                 'bc.name as category_name',
             ]);
 
