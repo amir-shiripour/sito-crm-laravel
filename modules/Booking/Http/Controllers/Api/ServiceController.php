@@ -85,6 +85,7 @@ class ServiceController extends Controller
             'client_profile_required_fields.*' => ['string'],
 
             'provider_can_customize' => ['nullable', 'boolean'],
+            'custom_schedule_enabled' => ['nullable', 'boolean'],
 
             // optional attach providers
             'provider_user_ids' => ['nullable', 'array'],
@@ -122,6 +123,10 @@ class ServiceController extends Controller
 
         $providerIds = $data['provider_user_ids'] ?? [];
         unset($data['provider_user_ids']);
+
+        if (array_key_exists('custom_schedule_enabled', $data)) {
+            $data['custom_schedule_enabled'] = (bool) $data['custom_schedule_enabled'];
+        }
 
         $service = BookingService::query()->create($data);
 
@@ -181,9 +186,13 @@ class ServiceController extends Controller
             'client_profile_required_fields.*' => ['string'],
 
             'provider_can_customize' => ['sometimes', 'boolean'],
+            'custom_schedule_enabled' => ['sometimes', 'boolean'],
         ]);
 
         $before = $service->toArray();
+        if (array_key_exists('custom_schedule_enabled', $data)) {
+            $data['custom_schedule_enabled'] = (bool) $data['custom_schedule_enabled'];
+        }
         $service->fill($data);
         $service->save();
         $this->audit->log('SERVICE_UPDATED', 'booking_services', $service->id, $before, $service->toArray());
