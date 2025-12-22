@@ -212,6 +212,7 @@ class SettingsController extends Controller
             'booking.view',
             'booking.services.view',
             'booking.categories.view',
+            'booking.forms.view',
             'booking.appointments.view',
             'booking.appointments.create',
         ];
@@ -223,6 +224,9 @@ class SettingsController extends Controller
             'booking.categories.create',
             'booking.categories.edit',
             'booking.categories.delete',
+            'booking.forms.create',
+            'booking.forms.edit',
+            'booking.forms.delete',
         ];
 
         // 1) نقش‌هایی که تازه Provider شده‌اند → همیشه view بگیرند
