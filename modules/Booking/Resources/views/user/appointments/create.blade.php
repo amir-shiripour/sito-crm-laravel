@@ -590,6 +590,7 @@
                 clients: [],
                 clientSearch: '',
                 clientId: '',
+                isSubmitting: false,
 
                 quickClient: { full_name: '', phone: '', email: '' },
                 quickClientError: '',
@@ -811,20 +812,6 @@
                     if (this.selectedService && this.selectedService.appointment_form_id) {
                         await this.fetchAppointmentForm(this.selectedService.appointment_form_id);
                     }
-                },
-
-                syncCategoriesFromServices() {
-                    if (this.flow !== 'SERVICE_FIRST') return;
-                    const map = new Map();
-                    for (const s of (this.services || [])) {
-                        const id = s.category_id ?? null;
-                        const name = s.category_name ?? null;
-                        if (!id || !name) continue;
-                        if (!map.has(String(id))) {
-                            map.set(String(id), { id, name });
-                        }
-                    }
-                    this.categories = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fa'));
                 },
 
                 syncCategoriesFromServices() {
@@ -1147,6 +1134,7 @@
                 },
 
                 handleSubmit() {
+                    if (this.isSubmitting) return;
                     if (!this.serviceId || !this.providerId) return alert('سرویس/ارائه‌دهنده ناقص است.');
                     if (!this.dateLocal) return alert('روز انتخاب نشده است.');
                     if (this.isCustomScheduleEnabled()) {
@@ -1161,6 +1149,7 @@
                     // فرم JSON
                     this.prepareAppointmentFormJson();
 
+                    this.isSubmitting = true;
                     this.$refs.form.submit();
                 },
 
