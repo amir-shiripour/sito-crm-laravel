@@ -512,17 +512,21 @@ class AppointmentController extends Controller
     public function wizardAllServices(Request $request)
     {
         $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
+        $user = $request->user();
         $q = trim((string) $request->query('q', ''));
 
         $servicesQ = BookingService::query()
             ->leftJoin('booking_categories as bc', 'booking_services.category_id', '=', 'bc.id')
-            ->where('booking_services.status', BookingService::STATUS_ACTIVE)
-            ->whereExists(function ($sub) {
+            ->where('booking_services.status', BookingService::STATUS_ACTIVE);
+
+        if (! $this->isAdminUser($user)) {
+            $servicesQ->whereExists(function ($sub) {
                 $sub->from('booking_service_providers')
                     ->selectRaw('1')
                     ->whereColumn('booking_service_providers.service_id', 'booking_services.id')
                     ->where('booking_service_providers.is_active', 1);
             });
+        }
 
         if ($q !== '') {
             $servicesQ->where('name', 'like', "%{$q}%");

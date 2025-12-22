@@ -345,9 +345,7 @@ class ServiceController extends Controller
         if ($isAdminUser) {
             $data['provider_can_customize'] = (bool)($data['provider_can_customize'] ?? false);
         }
-        if (array_key_exists('custom_schedule_enabled', $data)) {
-            $data['custom_schedule_enabled'] = (bool) $data['custom_schedule_enabled'];
-        }
+        $data['custom_schedule_enabled'] = (bool) $request->input('custom_schedule_enabled', false);
 
         $service->fill($data)->save();
 
