@@ -24,6 +24,8 @@
             <div class="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded text-green-700 dark:text-green-200">{{ session('success') }}</div>
         @endif
 
+        @includeIf('partials.jalali-date-picker')
+
         <form method="POST"
               action="{{ route('user.booking.appointments.store') }}"
               class="bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 p-4 space-y-4"
@@ -381,14 +383,16 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs mb-1 text-gray-600 dark:text-gray-300">ساعت شروع</label>
-                            <input type="time"
+                            <input type="text"
+                                   data-jdp-only-time
                                    class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
                                    x-model="manualStartTime"
                                    @input="clearSlotSelection()">
                         </div>
                         <div>
                             <label class="block text-xs mb-1 text-gray-600 dark:text-gray-300">ساعت پایان</label>
-                            <input type="time"
+                            <input type="text"
+                                   data-jdp-only-time
                                    class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
                                    x-model="manualEndTime"
                                    @input="clearSlotSelection()">
@@ -465,6 +469,12 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.jalaliDatepicker) {
+                window.jalaliDatepicker.startWatch({ selector: '[data-jdp-only-time]', hasSecond: false });
+            }
+        });
+
         function operatorWizard(options = {}) {
             return {
                 flow: @json($flow ?? 'PROVIDER_FIRST'),
