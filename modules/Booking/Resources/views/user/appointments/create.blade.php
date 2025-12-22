@@ -596,6 +596,14 @@
                 weekDays: ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'],
                 hasAppointmentForm: false,
 
+                get totalSteps() {
+                    return this.hasAppointmentForm ? 6 : 5;
+                },
+
+                get clientStep() {
+                    return this.hasAppointmentForm ? 6 : 5;
+                },
+
                 init() {
                     const now = new Date();
                     this.calendarYear = now.getFullYear();
