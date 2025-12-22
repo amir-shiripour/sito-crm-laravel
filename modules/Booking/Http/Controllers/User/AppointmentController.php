@@ -319,7 +319,7 @@ class AppointmentController extends Controller
 
         $providersQuery = User::query();
 
-        if (!empty($roleIds)) {
+        if (! $this->isAdminUser($authUser) && !empty($roleIds)) {
             $providersQuery->whereHas('roles', fn ($r) => $r->whereIn('id', $roleIds));
         }
 
