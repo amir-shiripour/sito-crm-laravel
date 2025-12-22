@@ -56,8 +56,19 @@
 
                 <div>
                     <label class="block text-xs mb-1">نوع (HTML)</label>
-                    <input type="text" name="schema_json[fields][{{ $i }}][type]" class="w-full border rounded p-2 text-sm"
-                           list="field-types" value="{{ $field['type'] ?? 'text' }}" required>
+                    @php $fieldType = $field['type'] ?? 'text'; @endphp
+                    <select name="schema_json[fields][{{ $i }}][type]" class="w-full border rounded p-2 text-sm" required>
+                        <option value="text" @selected($fieldType === 'text')>text</option>
+                        <option value="number" @selected($fieldType === 'number')>number</option>
+                        <option value="email" @selected($fieldType === 'email')>email</option>
+                        <option value="tel" @selected($fieldType === 'tel')>tel</option>
+                        <option value="date" @selected($fieldType === 'date')>date</option>
+                        <option value="time" @selected($fieldType === 'time')>time</option>
+                        <option value="textarea" @selected($fieldType === 'textarea')>textarea</option>
+                        <option value="select" @selected($fieldType === 'select')>select</option>
+                        <option value="radio" @selected($fieldType === 'radio')>radio</option>
+                        <option value="checkbox" @selected($fieldType === 'checkbox')>checkbox</option>
+                    </select>
                 </div>
 
                 <div>
@@ -92,67 +103,63 @@
     @error('schema_json.fields.*.type')<div class="text-red-600 text-xs">{{ $message }}</div>@enderror
 </div>
 
-<datalist id="field-types">
-    <option value="text"></option>
-    <option value="number"></option>
-    <option value="email"></option>
-    <option value="tel"></option>
-    <option value="date"></option>
-    <option value="time"></option>
-    <option value="textarea"></option>
-    <option value="select"></option>
-    <option value="radio"></option>
-    <option value="checkbox"></option>
-</datalist>
-
 <div class="flex items-center gap-3 pt-4">
     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">ذخیره</button>
     <a class="text-gray-600 hover:underline" href="{{ route('user.booking.forms.index') }}">بازگشت</a>
 </div>
 
-@push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const container = document.getElementById('form-fields-container');
-            const addBtn = document.getElementById('add-form-field');
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const container = document.getElementById('form-fields-container');
+        const addBtn = document.getElementById('add-form-field');
 
-            if (!container || !addBtn) return;
+        if (!container || !addBtn) return;
 
-            addBtn.addEventListener('click', function () {
-                const index = Date.now();
-                const row = document.createElement('div');
-                row.className = 'grid grid-cols-1 md:grid-cols-6 gap-3 border rounded p-3 form-field-row';
-                row.innerHTML = `
-                    <div class="md:col-span-2">
-                        <label class="block text-xs mb-1">برچسب</label>
-                        <input type="text" name="schema_json[fields][${index}][label]" class="w-full border rounded p-2 text-sm" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs mb-1">نام فیلد</label>
-                        <input type="text" name="schema_json[fields][${index}][name]" class="w-full border rounded p-2 text-sm" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs mb-1">نوع (HTML)</label>
-                        <input type="text" name="schema_json[fields][${index}][type]" class="w-full border rounded p-2 text-sm" list="field-types" value="text" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs mb-1">Placeholder</label>
-                        <input type="text" name="schema_json[fields][${index}][placeholder]" class="w-full border rounded p-2 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs mb-1">گزینه‌ها (CSV)</label>
-                        <input type="text" name="schema_json[fields][${index}][options]" class="w-full border rounded p-2 text-sm" placeholder="مثلاً: گزینه۱,گزینه۲">
-                    </div>
-                    <div class="flex items-end gap-3">
-                        <label class="inline-flex items-center gap-2 text-xs">
-                            <input type="checkbox" name="schema_json[fields][${index}][required]" value="1">
-                            ضروری
-                        </label>
-                        <button type="button" class="text-red-600 text-xs" onclick="this.closest('.form-field-row').remove()">حذف</button>
-                    </div>
-                `;
-                container.appendChild(row);
-            });
+        addBtn.addEventListener('click', function () {
+            const index = Date.now();
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-1 md:grid-cols-6 gap-3 border rounded p-3 form-field-row';
+            row.innerHTML = `
+                <div class="md:col-span-2">
+                    <label class="block text-xs mb-1">برچسب</label>
+                    <input type="text" name="schema_json[fields][${index}][label]" class="w-full border rounded p-2 text-sm" required>
+                </div>
+                <div>
+                    <label class="block text-xs mb-1">نام فیلد</label>
+                    <input type="text" name="schema_json[fields][${index}][name]" class="w-full border rounded p-2 text-sm" required>
+                </div>
+                <div>
+                    <label class="block text-xs mb-1">نوع (HTML)</label>
+                    <select name="schema_json[fields][${index}][type]" class="w-full border rounded p-2 text-sm" required>
+                        <option value="text">text</option>
+                        <option value="number">number</option>
+                        <option value="email">email</option>
+                        <option value="tel">tel</option>
+                        <option value="date">date</option>
+                        <option value="time">time</option>
+                        <option value="textarea">textarea</option>
+                        <option value="select">select</option>
+                        <option value="radio">radio</option>
+                        <option value="checkbox">checkbox</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs mb-1">Placeholder</label>
+                    <input type="text" name="schema_json[fields][${index}][placeholder]" class="w-full border rounded p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs mb-1">گزینه‌ها (CSV)</label>
+                    <input type="text" name="schema_json[fields][${index}][options]" class="w-full border rounded p-2 text-sm" placeholder="مثلاً: گزینه۱,گزینه۲">
+                </div>
+                <div class="flex items-end gap-3">
+                    <label class="inline-flex items-center gap-2 text-xs">
+                        <input type="checkbox" name="schema_json[fields][${index}][required]" value="1">
+                        ضروری
+                    </label>
+                    <button type="button" class="text-red-600 text-xs" onclick="this.closest('.form-field-row').remove()">حذف</button>
+                </div>
+            `;
+            container.appendChild(row);
         });
-    </script>
-@endpush
+    });
+</script>
