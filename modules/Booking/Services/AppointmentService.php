@@ -485,6 +485,8 @@ class AppointmentService
             throw new \RuntimeException('This day is closed.');
         }
 
+        $this->assertTimeWithinPolicy($localDate, $scheduleTz, $startUtc, $endUtc, $policy);
+
         $capSlot = (int) ($policy['capacity_per_slot'] ?? 0); // 0 => unlimited
         $capDay  = $policy['capacity_per_day'] !== null ? (int) $policy['capacity_per_day'] : null; // null => unlimited
 
@@ -494,14 +496,16 @@ class AppointmentService
             ->where('service_id', $serviceId)
             ->where('provider_user_id', $providerUserId)
             ->whereIn('status', $statuses)
-            ->where('start_at_utc', $startUtc)
+            ->where('start_at_utc', '<', $endUtc)
+            ->where('end_at_utc', '>', $startUtc)
             ->count();
 
         $slotHeldQ = BookingSlotHold::query()
             ->where('service_id', $serviceId)
             ->where('provider_user_id', $providerUserId)
             ->where('expires_at_utc', '>', now('UTC'))
-            ->where('start_at_utc', $startUtc);
+            ->where('start_at_utc', '<', $endUtc)
+            ->where('end_at_utc', '>', $startUtc);
 
         if ($excludeHoldId) {
             $slotHeldQ->where('id', '!=', $excludeHoldId);
@@ -544,6 +548,50 @@ class AppointmentService
 
             if (($dayBooked + $dayHeld) >= $capDay) {
                 throw new \RuntimeException('Day capacity is full.');
+            }
+        }
+    }
+
+    protected function assertTimeWithinPolicy(
+        string $localDate,
+        string $scheduleTz,
+        Carbon $startUtc,
+        Carbon $endUtc,
+        array $policy
+    ): void {
+        $startLocal = $startUtc->copy()->timezone($scheduleTz);
+        $endLocal   = $endUtc->copy()->timezone($scheduleTz);
+
+        if ($startLocal->toDateString() !== $localDate || $endLocal->toDateString() !== $localDate) {
+            throw new \RuntimeException('Slot crosses day boundary.');
+        }
+
+        $windows = $policy['work_windows'] ?? [];
+        $withinWindow = false;
+
+        foreach ($windows as $win) {
+            $startLocalWindow = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$win['start']}", $scheduleTz);
+            $endLocalWindow   = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$win['end']}", $scheduleTz);
+
+            if ($startLocal->gte($startLocalWindow) && $endLocal->lte($endLocalWindow)) {
+                $withinWindow = true;
+                break;
+            }
+        }
+
+        if (!$withinWindow) {
+            throw new \RuntimeException('Slot is outside work windows.');
+        }
+
+        foreach (($policy['breaks'] ?? []) as $break) {
+            if (empty($break['start_local']) || empty($break['end_local'])) {
+                continue;
+            }
+            $breakStart = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$break['start_local']}", $scheduleTz);
+            $breakEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$break['end_local']}", $scheduleTz);
+
+            if ($startLocal->lt($breakEnd) && $endLocal->gt($breakStart)) {
+                throw new \RuntimeException('Slot overlaps with break.');
             }
         }
     }
