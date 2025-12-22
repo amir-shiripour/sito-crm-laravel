@@ -127,6 +127,18 @@
 
                 <template x-if="flow==='SERVICE_FIRST'">
                     <div class="space-y-2">
+                        <div>
+                            <label class="block text-sm mb-1 dark:text-gray-200">دسته‌بندی</label>
+                            <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                    x-model="categoryId"
+                                    @change="fetchServicesForServiceFirst()">
+                                <option value="">همه</option>
+                                <template x-for="c in categories" :key="c.id">
+                                    <option :value="c.id" x-text="c.name"></option>
+                                </template>
+                            </select>
+                        </div>
+
                         <label class="block text-sm mb-1 dark:text-gray-200">انتخاب سرویس</label>
                         <div class="relative">
                             <input type="text"
@@ -656,6 +668,7 @@
                 async fetchAllActiveServices() {
                     this.serviceLoading = true;
                     const params = new URLSearchParams({ q: this.serviceSearch || '' });
+                    if (this.categoryId) params.set('category_id', this.categoryId);
 
                     try {
                         const res = await fetch(`{{ route('user.booking.appointments.wizard.all-services') }}?` + params.toString(), {
@@ -664,6 +677,7 @@
 
                         const json = await res.json();
                         this.services = json.data || [];
+                        this.syncCategoriesFromServices();
                     } finally {
                         this.serviceLoading = false;
                     }
@@ -686,11 +700,10 @@
                 },
 
                 async onProviderSelected() {
-                    this.categoryId = '';
-
                     // نکته مهم:
                     // در SERVICE_FIRST نباید serviceId را reset کنیم
                     if (this.flow === 'PROVIDER_FIRST') {
+                        this.categoryId = '';
                         this.serviceId = '';
                         this.services = [];
                         this.categories = [];
@@ -729,6 +742,20 @@
                     if (this.flow === 'SERVICE_FIRST') {
                         await this.fetchProviders(); // حالا providers برای این service
                     }
+                },
+
+                syncCategoriesFromServices() {
+                    if (this.flow !== 'SERVICE_FIRST') return;
+                    const map = new Map();
+                    for (const s of (this.services || [])) {
+                        const id = s.category_id ?? null;
+                        const name = s.category_name ?? null;
+                        if (!id || !name) continue;
+                        if (!map.has(String(id))) {
+                            map.set(String(id), { id, name });
+                        }
+                    }
+                    this.categories = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fa'));
                 },
 
                 resetCalendarAndSlots() {

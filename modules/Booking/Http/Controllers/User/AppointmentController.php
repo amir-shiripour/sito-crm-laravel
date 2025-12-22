@@ -514,10 +514,15 @@ class AppointmentController extends Controller
         $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
         $user = $request->user();
         $q = trim((string) $request->query('q', ''));
+        $categoryId = $request->query('category_id');
 
         $servicesQ = BookingService::query()
             ->leftJoin('booking_categories as bc', 'booking_services.category_id', '=', 'bc.id')
             ->where('booking_services.status', BookingService::STATUS_ACTIVE);
+
+        if ($categoryId !== null && $categoryId !== '') {
+            $servicesQ->where('category_id', (int) $categoryId);
+        }
 
         if (! $this->isAdminUser($user)) {
             $servicesQ->whereExists(function ($sub) {
