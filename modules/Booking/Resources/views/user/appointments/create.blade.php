@@ -700,11 +700,10 @@
                 },
 
                 async onProviderSelected() {
-                    this.categoryId = '';
-
                     // نکته مهم:
                     // در SERVICE_FIRST نباید serviceId را reset کنیم
                     if (this.flow === 'PROVIDER_FIRST') {
+                        this.categoryId = '';
                         this.serviceId = '';
                         this.services = [];
                         this.categories = [];
