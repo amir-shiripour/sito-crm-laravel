@@ -125,6 +125,7 @@ class ServiceController extends Controller
 
             'appointment_form_id'   => ['nullable', 'integer', 'exists:booking_forms,id'],
             'provider_can_customize'=> ['nullable', 'boolean'],
+            'custom_schedule_enabled' => ['nullable', 'boolean'],
         ]);
 
         $this->ensureCategorySelectionAllowed($authUser, $settings, $data['category_id'] ?? null);
@@ -135,6 +136,7 @@ class ServiceController extends Controller
         } else {
             $data['provider_can_customize'] = (bool)($data['provider_can_customize'] ?? false);
         }
+        $data['custom_schedule_enabled'] = (bool)($data['custom_schedule_enabled'] ?? false);
 
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
@@ -325,6 +327,7 @@ class ServiceController extends Controller
             'payment_amount_value' => ['nullable', 'numeric', 'min:0'],
 
             'appointment_form_id'   => ['nullable', 'integer', 'exists:booking_forms,id'],
+            'custom_schedule_enabled' => ['nullable', 'boolean'],
         ];
 
         // فقط admin می‌تواند provider_can_customize را تغییر دهد
@@ -342,6 +345,7 @@ class ServiceController extends Controller
         if ($isAdminUser) {
             $data['provider_can_customize'] = (bool)($data['provider_can_customize'] ?? false);
         }
+        $data['custom_schedule_enabled'] = (bool) $request->input('custom_schedule_enabled', false);
 
         $service->fill($data)->save();
 
