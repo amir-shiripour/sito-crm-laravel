@@ -194,6 +194,21 @@
         @error('online_booking_mode')<div class="text-red-600 text-xs mt-1">{{ $message }}</div>@enderror
     </div>
 
+    {{-- زمان‌بندی سفارشی --}}
+    @if(!($editingPublicAsProvider ?? false))
+        <div class="md:col-span-2">
+            <label class="inline-flex items-center gap-2">
+                <input type="checkbox" name="custom_schedule_enabled" value="1"
+                       @checked(old('custom_schedule_enabled', $service->custom_schedule_enabled ?? false))>
+                <span class="text-sm">فعال‌سازی زمان‌بندی سفارشی برای ثبت دستی ساعت شروع/پایان</span>
+            </label>
+            <div class="text-xs text-gray-500 mt-1">
+                در صورت فعال بودن، در مرحله انتخاب اسلات می‌توانید ساعت شروع و پایان را دستی وارد کنید.
+            </div>
+            @error('custom_schedule_enabled')<div class="text-red-600 text-xs mt-1">{{ $message }}</div>@enderror
+        </div>
+    @endif
+
     {{-- پرداخت --}}
     <div>
         <label class="block text-sm mb-1">سیاست پرداخت آنلاین</label>
