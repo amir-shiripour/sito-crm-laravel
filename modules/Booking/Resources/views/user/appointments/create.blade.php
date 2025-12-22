@@ -441,11 +441,13 @@
                     <div>
                         <input type="text" class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400" placeholder="جستجو مشتری (نام/موبایل/ایمیل)"
                                x-model="clientSearch" @input.debounce.300ms="fetchClients()">
-                        <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 mt-2 text-sm dark:text-gray-100" x-model="clientId">
-                            <option value="">انتخاب کنید</option>
-                            <template x-for="c in clients" :key="c.id">
-                                <option :value="c.id" x-text="`${c.full_name} (${c.phone || '-'})`"></option>
-                            </template>
+                    <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 mt-2 text-sm dark:text-gray-100"
+                            x-model="clientId"
+                            @change="onClientSelected()">
+                        <option value="">انتخاب کنید</option>
+                        <template x-for="c in clients" :key="c.id">
+                            <option :value="c.id" x-text="`${c.full_name} (${c.phone || '-'})`"></option>
+                        </template>
                         </select>
                     </div>
 
@@ -837,7 +839,7 @@
                     this.loadCalendar();
                 },
 
-                selectDay(day) {
+                async selectDay(day) {
                     if (day.is_closed || !day.has_available_slots) return;
                     this.dateLocal = day.local_date;
                     this.slots = [];
@@ -846,6 +848,9 @@
                     this.manualEndTime = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
+                    if (this.step === 3) {
+                        await this.next();
+                    }
                 },
 
                 dayBtnClass(d) {
@@ -895,10 +900,23 @@
                     }
                 },
 
-                selectSlot(slot) {
+                async selectSlot(slot) {
                     this.selectedSlotKey = slot.start_at_utc;
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = slot.start_at_utc;
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = slot.end_at_utc;
+                    if (this.step === 4) {
+                        await this.next();
+                    }
+                },
+
+                clearSlotSelection() {
+                    this.selectedSlotKey = '';
+                    if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
+                    if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
+                },
+
+                isCustomScheduleEnabled() {
+                    return Boolean(this.selectedService && this.selectedService.custom_schedule_enabled);
                 },
 
                 clearSlotSelection() {
@@ -1048,6 +1066,12 @@
                     }
 
                     this.$refs.form.submit();
+                },
+
+                onClientSelected() {
+                    if (this.step === 6 && this.clientId) {
+                        this.handleSubmit();
+                    }
                 }
             }
         }
