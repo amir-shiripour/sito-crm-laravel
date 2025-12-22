@@ -24,6 +24,8 @@
             <div class="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded text-green-700 dark:text-green-200">{{ session('success') }}</div>
         @endif
 
+        @includeIf('partials.jalali-date-picker')
+
         <form method="POST"
               action="{{ route('user.booking.appointments.store') }}"
               class="bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 p-4 space-y-4"
@@ -36,6 +38,9 @@
             <input type="hidden" name="client_id" x-model="clientId">
             <input type="hidden" name="start_at_utc" x-ref="startUtcInput">
             <input type="hidden" name="end_at_utc" x-ref="endUtcInput">
+            <input type="hidden" name="date_local" x-model="dateLocal">
+            <input type="hidden" name="start_time_local" x-model="manualStartTime">
+            <input type="hidden" name="end_time_local" x-model="manualEndTime">
             <input type="hidden" name="appointment_form_response_json" x-ref="formJsonInput">
 
             <div class="flex items-center justify-between">
@@ -341,18 +346,19 @@
                     <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">انتخاب اسلات زمانی</div>
                     <button type="button"
                             class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70"
-                            @click="fetchSlots()">بروزرسانی</button>
+                            @click="fetchSlots()"
+                            x-show="!isCustomScheduleEnabled()">بروزرسانی</button>
                 </div>
 
-                <template x-if="slotsLoading">
+                <template x-if="slotsLoading && !isCustomScheduleEnabled()">
                     <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت اسلات‌ها...</div>
                 </template>
 
-                <template x-if="slotsError">
+                <template x-if="slotsError && !isCustomScheduleEnabled()">
                     <div class="text-xs text-red-600" x-text="slotsError"></div>
                 </template>
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" x-show="slots.length && !slotsLoading">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" x-show="slots.length && !slotsLoading && !isCustomScheduleEnabled()">
                     <template x-for="slot in slots" :key="slot.start_at_utc">
                         <button type="button"
                                 class="border rounded px-2 py-2 text-xs text-center hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
@@ -366,9 +372,33 @@
                     </template>
                 </div>
 
-                <template x-if="!slotsLoading && dateLocal && slots.length === 0 && !slotsError">
+                <template x-if="!slotsLoading && dateLocal && slots.length === 0 && !slotsError && !isCustomScheduleEnabled()">
                     <div class="text-xs text-amber-600 dark:text-amber-300">اسلات خالی برای این روز یافت نشد.</div>
                 </template>
+
+                <div x-show="isCustomScheduleEnabled()" class="space-y-2">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                        برای این سرویس زمان‌بندی سفارشی فعال است؛ ساعت شروع و پایان را به صورت دستی وارد کنید.
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs mb-1 text-gray-600 dark:text-gray-300">ساعت شروع</label>
+                            <input type="text"
+                                   data-jdp-only-time
+                                   class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                   x-model="manualStartTime"
+                                   @input="clearSlotSelection()">
+                        </div>
+                        <div>
+                            <label class="block text-xs mb-1 text-gray-600 dark:text-gray-300">ساعت پایان</label>
+                            <input type="text"
+                                   data-jdp-only-time
+                                   class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                   x-model="manualEndTime"
+                                   @input="clearSlotSelection()">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {{-- STEP 5: Appointment Form --}}
@@ -439,6 +469,12 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.jalaliDatepicker) {
+                window.jalaliDatepicker.startWatch({ selector: '[data-jdp-only-time]', hasSecond: false });
+            }
+        });
+
         function operatorWizard(options = {}) {
             return {
                 flow: @json($flow ?? 'PROVIDER_FIRST'),
@@ -450,6 +486,8 @@
                 serviceId: '',
                 categoryId: '',
                 dateLocal: '',
+                manualStartTime: '',
+                manualEndTime: '',
 
                 providers: [],
                 services: [],
@@ -698,6 +736,8 @@
                     this.calendarDays = [];
                     this.slots = [];
                     this.selectedSlotKey = '';
+                    this.manualStartTime = '';
+                    this.manualEndTime = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
                 },
@@ -775,6 +815,8 @@
                     this.dateLocal = day.local_date;
                     this.slots = [];
                     this.selectedSlotKey = '';
+                    this.manualStartTime = '';
+                    this.manualEndTime = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
                 },
@@ -830,6 +872,16 @@
                     this.selectedSlotKey = slot.start_at_utc;
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = slot.start_at_utc;
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = slot.end_at_utc;
+                },
+
+                clearSlotSelection() {
+                    this.selectedSlotKey = '';
+                    if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
+                    if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
+                },
+
+                isCustomScheduleEnabled() {
+                    return Boolean(this.selectedService && this.selectedService.custom_schedule_enabled);
                 },
 
                 formatTime(isoString) {
@@ -913,12 +965,18 @@
                     // STEP 3 -> 4 (روز باید انتخاب شود، بعد slots را بگیر)
                     if (this.step === 3) {
                         if (!this.dateLocal) return alert('لطفاً یک روز قابل رزرو انتخاب کنید.');
-                        await this.fetchSlots();
+                        if (!this.isCustomScheduleEnabled()) {
+                            await this.fetchSlots();
+                        }
                     }
 
                     // STEP 4 -> 5 (اسلات باید انتخاب شود)
                     if (this.step === 4) {
-                        if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) {
+                        if (this.isCustomScheduleEnabled()) {
+                            if (!this.manualStartTime || !this.manualEndTime) {
+                                return alert('لطفاً ساعت شروع و پایان را وارد کنید.');
+                            }
+                        } else if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) {
                             return alert('لطفاً یک اسلات زمانی را انتخاب کنید.');
                         }
                     }
@@ -948,7 +1006,13 @@
                 handleSubmit() {
                     if (!this.serviceId || !this.providerId) return alert('سرویس/ارائه‌دهنده ناقص است.');
                     if (!this.dateLocal) return alert('روز انتخاب نشده است.');
-                    if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) return alert('لطفاً یک اسلات انتخاب کنید.');
+                    if (this.isCustomScheduleEnabled()) {
+                        if (!this.manualStartTime || !this.manualEndTime) {
+                            return alert('لطفاً ساعت شروع و پایان را وارد کنید.');
+                        }
+                    } else if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) {
+                        return alert('لطفاً یک اسلات انتخاب کنید.');
+                    }
                     if (!this.clientId) return alert('لطفاً مشتری را انتخاب کنید.');
 
                     // فرم JSON
