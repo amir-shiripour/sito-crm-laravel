@@ -220,9 +220,13 @@ class BookingEngine
             $policy['slot_duration_minutes'] = (int)$rule->slot_duration_minutes;
         }
 
-        // capacities: rule وجود دارد، null هم یعنی unlimited
-        $policy['capacity_per_slot'] = $rule->capacity_per_slot; // may be null
-        $policy['capacity_per_day']  = $rule->capacity_per_day;  // may be null
+        if ($rule->capacity_per_slot !== null) {
+            $policy['capacity_per_slot'] = $rule->capacity_per_slot;
+        }
+
+        if ($rule->capacity_per_day !== null) {
+            $policy['capacity_per_day'] = $rule->capacity_per_day;
+        }
 
         return $policy;
     }
@@ -253,9 +257,13 @@ class BookingEngine
             $policy['breaks'] = $breaks ?: [];
         }
 
-        // capacities: exception وجود دارد، null هم یعنی unlimited
-        $policy['capacity_per_slot'] = $ex->override_capacity_per_slot; // may be null
-        $policy['capacity_per_day']  = $ex->override_capacity_per_day;  // may be null
+        if ($ex->override_capacity_per_slot !== null) {
+            $policy['capacity_per_slot'] = $ex->override_capacity_per_slot;
+        }
+
+        if ($ex->override_capacity_per_day !== null) {
+            $policy['capacity_per_day'] = $ex->override_capacity_per_day;
+        }
 
         return $policy;
     }

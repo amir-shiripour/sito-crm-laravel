@@ -30,9 +30,12 @@
         </div>
     </div>
 
-    <div class="flex gap-3">
+    <div class="flex gap-3 flex-wrap">
         <a class="px-4 py-2 bg-blue-600 text-white rounded" href="{{ route('user.booking.services.index') }}">مدیریت سرویس‌ها</a>
         <a class="px-4 py-2 bg-green-600 text-white rounded" href="{{ route('user.booking.appointments.index') }}">لیست نوبت‌ها</a>
+        @if(auth()->user()?->can('booking.forms.view'))
+            <a class="px-4 py-2 bg-indigo-600 text-white rounded" href="{{ route('user.booking.forms.index') }}">مدیریت فرم‌ها</a>
+        @endif
         <a class="px-4 py-2 bg-gray-700 text-white rounded" href="{{ route('user.booking.settings.edit') }}">تنظیمات</a>
     </div>
 </div>
