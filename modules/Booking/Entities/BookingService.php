@@ -44,6 +44,7 @@ class BookingService extends Model
         'appointment_form_id',
         'client_profile_required_fields',
         'provider_can_customize',
+        'custom_schedule_enabled',
     ];
 
     protected $casts = [
@@ -51,6 +52,7 @@ class BookingService extends Model
         'discount_to' => 'datetime',
         'client_profile_required_fields' => 'array',
         'provider_can_customize' => 'boolean',
+        'custom_schedule_enabled' => 'boolean',
     ];
 
     protected static function booted(): void

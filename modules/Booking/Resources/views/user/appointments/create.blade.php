@@ -24,6 +24,8 @@
             <div class="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded text-green-700 dark:text-green-200">{{ session('success') }}</div>
         @endif
 
+        @includeIf('partials.jalali-date-picker')
+
         <form method="POST"
               action="{{ route('user.booking.appointments.store') }}"
               class="bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 p-4 space-y-4"
@@ -36,6 +38,9 @@
             <input type="hidden" name="client_id" x-model="clientId">
             <input type="hidden" name="start_at_utc" x-ref="startUtcInput">
             <input type="hidden" name="end_at_utc" x-ref="endUtcInput">
+            <input type="hidden" name="date_local" x-model="dateLocal">
+            <input type="hidden" name="start_time_local" x-model="manualStartTime">
+            <input type="hidden" name="end_time_local" x-model="manualEndTime">
             <input type="hidden" name="appointment_form_response_json" x-ref="formJsonInput">
 
             <div class="flex items-center justify-between">
@@ -122,6 +127,18 @@
 
                 <template x-if="flow==='SERVICE_FIRST'">
                     <div class="space-y-2">
+                        <div>
+                            <label class="block text-sm mb-1 dark:text-gray-200">دسته‌بندی</label>
+                            <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                    x-model="categoryId"
+                                    @change="fetchServicesForServiceFirst()">
+                                <option value="">همه</option>
+                                <template x-for="c in categories" :key="c.id">
+                                    <option :value="c.id" x-text="c.name"></option>
+                                </template>
+                            </select>
+                        </div>
+
                         <label class="block text-sm mb-1 dark:text-gray-200">انتخاب سرویس</label>
                         <div class="relative">
                             <input type="text"
@@ -341,18 +358,19 @@
                     <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">انتخاب اسلات زمانی</div>
                     <button type="button"
                             class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70"
-                            @click="fetchSlots()">بروزرسانی</button>
+                            @click="fetchSlots()"
+                            x-show="!isCustomScheduleEnabled()">بروزرسانی</button>
                 </div>
 
-                <template x-if="slotsLoading">
+                <template x-if="slotsLoading && !isCustomScheduleEnabled()">
                     <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت اسلات‌ها...</div>
                 </template>
 
-                <template x-if="slotsError">
+                <template x-if="slotsError && !isCustomScheduleEnabled()">
                     <div class="text-xs text-red-600" x-text="slotsError"></div>
                 </template>
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" x-show="slots.length && !slotsLoading">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" x-show="slots.length && !slotsLoading && !isCustomScheduleEnabled()">
                     <template x-for="slot in slots" :key="slot.start_at_utc">
                         <button type="button"
                                 class="border rounded px-2 py-2 text-xs text-center hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
@@ -366,9 +384,33 @@
                     </template>
                 </div>
 
-                <template x-if="!slotsLoading && dateLocal && slots.length === 0 && !slotsError">
+                <template x-if="!slotsLoading && dateLocal && slots.length === 0 && !slotsError && !isCustomScheduleEnabled()">
                     <div class="text-xs text-amber-600 dark:text-amber-300">اسلات خالی برای این روز یافت نشد.</div>
                 </template>
+
+                <div x-show="isCustomScheduleEnabled()" class="space-y-2">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                        برای این سرویس زمان‌بندی سفارشی فعال است؛ ساعت شروع و پایان را به صورت دستی وارد کنید.
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs mb-1 text-gray-600 dark:text-gray-300">ساعت شروع</label>
+                            <input type="text"
+                                   data-jdp-only-time
+                                   class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                   x-model="manualStartTime"
+                                   @input="clearSlotSelection()">
+                        </div>
+                        <div>
+                            <label class="block text-xs mb-1 text-gray-600 dark:text-gray-300">ساعت پایان</label>
+                            <input type="text"
+                                   data-jdp-only-time
+                                   class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                   x-model="manualEndTime"
+                                   @input="clearSlotSelection()">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {{-- STEP 5: Appointment Form --}}
@@ -377,12 +419,73 @@
 
                 <template x-if="selectedService && selectedService.appointment_form_id">
                     <div class="space-y-2">
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                            سرویس فرم دارد. (فعلاً پاسخ را به صورت JSON ذخیره می‌کنیم؛ اگر کامپوننت فرم‌ساز دارید، همینجا جایگزین می‌شود.)
+                        <div class="text-xs text-gray-500 dark:text-gray-400" x-show="!appointmentFormSchema">
+                            در حال دریافت فرم...
                         </div>
-                        <textarea class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-xs dark:text-gray-100 placeholder:text-gray-400" rows="6"
-                                  placeholder='مثلاً: {"field1":"value"}'
-                                  x-model="appointmentFormJson"></textarea>
+
+                        <template x-if="appointmentFormSchema && appointmentFormSchema.fields && appointmentFormSchema.fields.length">
+                            <div class="space-y-3">
+                                <template x-for="field in appointmentFormSchema.fields" :key="field.name">
+                                    <div class="space-y-1">
+                                        <label class="block text-xs text-gray-600 dark:text-gray-300" x-text="field.label"></label>
+
+                                        <template x-if="field.type === 'textarea'">
+                                            <textarea class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                                      :placeholder="field.placeholder || ''"
+                                                      :required="field.required"
+                                                      x-model="appointmentFormValues[field.name]"></textarea>
+                                        </template>
+
+                                        <template x-if="field.type === 'select'">
+                                            <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                                    :required="field.required"
+                                                    x-model="appointmentFormValues[field.name]">
+                                                <option value="">انتخاب کنید</option>
+                                                <template x-for="opt in (field.options || [])" :key="opt">
+                                                    <option :value="opt" x-text="opt"></option>
+                                                </template>
+                                            </select>
+                                        </template>
+
+                                        <template x-if="field.type === 'radio'">
+                                            <div class="flex flex-wrap gap-3">
+                                                <template x-for="opt in (field.options || [])" :key="opt">
+                                                    <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
+                                                        <input type="radio"
+                                                               :name="`form_${field.name}`"
+                                                               :value="opt"
+                                                               :required="field.required"
+                                                               x-model="appointmentFormValues[field.name]">
+                                                        <span x-text="opt"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="field.type === 'checkbox'">
+                                            <div class="flex flex-wrap gap-3">
+                                                <template x-for="opt in (field.options || [])" :key="opt">
+                                                    <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
+                                                        <input type="checkbox"
+                                                               :value="opt"
+                                                               x-model="appointmentFormValues[field.name]">
+                                                        <span x-text="opt"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="!['textarea','select','radio','checkbox'].includes(field.type)">
+                                            <input class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                                   :type="field.type || 'text'"
+                                                   :placeholder="field.placeholder || ''"
+                                                   :required="field.required"
+                                                   x-model="appointmentFormValues[field.name]">
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                 </template>
 
@@ -399,11 +502,13 @@
                     <div>
                         <input type="text" class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400" placeholder="جستجو مشتری (نام/موبایل/ایمیل)"
                                x-model="clientSearch" @input.debounce.300ms="fetchClients()">
-                        <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 mt-2 text-sm dark:text-gray-100" x-model="clientId">
-                            <option value="">انتخاب کنید</option>
-                            <template x-for="c in clients" :key="c.id">
-                                <option :value="c.id" x-text="`${c.full_name} (${c.phone || '-'})`"></option>
-                            </template>
+                    <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 mt-2 text-sm dark:text-gray-100"
+                            x-model="clientId"
+                            @change="onClientSelected()">
+                        <option value="">انتخاب کنید</option>
+                        <template x-for="c in clients" :key="c.id">
+                            <option :value="c.id" x-text="`${c.full_name} (${c.phone || '-'})`"></option>
+                        </template>
                         </select>
                     </div>
 
@@ -439,6 +544,12 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.jalaliDatepicker) {
+                window.jalaliDatepicker.startWatch({ selector: '[data-jdp-only-time]', hasSecond: false });
+            }
+        });
+
         function operatorWizard(options = {}) {
             return {
                 flow: @json($flow ?? 'PROVIDER_FIRST'),
@@ -450,6 +561,8 @@
                 serviceId: '',
                 categoryId: '',
                 dateLocal: '',
+                manualStartTime: '',
+                manualEndTime: '',
 
                 providers: [],
                 services: [],
@@ -472,7 +585,8 @@
                 selectedSlotKey: '',
                 selectedService: null,
 
-                appointmentFormJson: '',
+                appointmentFormSchema: null,
+                appointmentFormValues: {},
                 clients: [],
                 clientSearch: '',
                 clientId: '',
@@ -618,6 +732,7 @@
                 async fetchAllActiveServices() {
                     this.serviceLoading = true;
                     const params = new URLSearchParams({ q: this.serviceSearch || '' });
+                    if (this.categoryId) params.set('category_id', this.categoryId);
 
                     try {
                         const res = await fetch(`{{ route('user.booking.appointments.wizard.all-services') }}?` + params.toString(), {
@@ -626,6 +741,7 @@
 
                         const json = await res.json();
                         this.services = json.data || [];
+                        this.syncCategoriesFromServices();
                     } finally {
                         this.serviceLoading = false;
                     }
@@ -648,11 +764,10 @@
                 },
 
                 async onProviderSelected() {
-                    this.categoryId = '';
-
                     // نکته مهم:
                     // در SERVICE_FIRST نباید serviceId را reset کنیم
                     if (this.flow === 'PROVIDER_FIRST') {
+                        this.categoryId = '';
                         this.serviceId = '';
                         this.services = [];
                         this.categories = [];
@@ -687,10 +802,29 @@
                 async onServiceSelected() {
                     this.selectedService = this.services.find(s => String(s.id) === String(this.serviceId)) || null;
                     this.resetCalendarAndSlots();
+                    this.resetAppointmentForm();
 
                     if (this.flow === 'SERVICE_FIRST') {
                         await this.fetchProviders(); // حالا providers برای این service
                     }
+
+                    if (this.selectedService && this.selectedService.appointment_form_id) {
+                        await this.fetchAppointmentForm(this.selectedService.appointment_form_id);
+                    }
+                },
+
+                syncCategoriesFromServices() {
+                    if (this.flow !== 'SERVICE_FIRST') return;
+                    const map = new Map();
+                    for (const s of (this.services || [])) {
+                        const id = s.category_id ?? null;
+                        const name = s.category_name ?? null;
+                        if (!id || !name) continue;
+                        if (!map.has(String(id))) {
+                            map.set(String(id), { id, name });
+                        }
+                    }
+                    this.categories = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fa'));
                 },
 
                 resetCalendarAndSlots() {
@@ -698,8 +832,41 @@
                     this.calendarDays = [];
                     this.slots = [];
                     this.selectedSlotKey = '';
+                    this.manualStartTime = '';
+                    this.manualEndTime = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
+                },
+
+                resetAppointmentForm() {
+                    this.appointmentFormSchema = null;
+                    this.appointmentFormValues = {};
+                },
+
+                async fetchAppointmentForm(formId) {
+                    this.appointmentFormSchema = null;
+                    this.appointmentFormValues = {};
+                    if (!formId) return;
+
+                    const params = new URLSearchParams({ form_id: formId });
+                    const res = await fetch(`{{ route('user.booking.appointments.wizard.form') }}?` + params.toString(), {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const json = await res.json();
+                    const schema = json.data?.schema_json || null;
+                    if (!schema || !Array.isArray(schema.fields)) {
+                        this.appointmentFormSchema = { fields: [] };
+                        return;
+                    }
+
+                    this.appointmentFormSchema = schema;
+                    for (const field of schema.fields) {
+                        if (field.type === 'checkbox') {
+                            this.appointmentFormValues[field.name] = [];
+                        } else {
+                            this.appointmentFormValues[field.name] = '';
+                        }
+                    }
                 },
 
                 // ---------------- calendar ----------------
@@ -770,13 +937,18 @@
                     this.loadCalendar();
                 },
 
-                selectDay(day) {
+                async selectDay(day) {
                     if (day.is_closed || !day.has_available_slots) return;
                     this.dateLocal = day.local_date;
                     this.slots = [];
                     this.selectedSlotKey = '';
+                    this.manualStartTime = '';
+                    this.manualEndTime = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
+                    if (this.step === 3) {
+                        await this.next();
+                    }
                 },
 
                 dayBtnClass(d) {
@@ -826,10 +998,23 @@
                     }
                 },
 
-                selectSlot(slot) {
+                async selectSlot(slot) {
                     this.selectedSlotKey = slot.start_at_utc;
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = slot.start_at_utc;
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = slot.end_at_utc;
+                    if (this.step === 4) {
+                        await this.next();
+                    }
+                },
+
+                clearSlotSelection() {
+                    this.selectedSlotKey = '';
+                    if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
+                    if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
+                },
+
+                isCustomScheduleEnabled() {
+                    return Boolean(this.selectedService && this.selectedService.custom_schedule_enabled);
                 },
 
                 formatTime(isoString) {
@@ -913,23 +1098,25 @@
                     // STEP 3 -> 4 (روز باید انتخاب شود، بعد slots را بگیر)
                     if (this.step === 3) {
                         if (!this.dateLocal) return alert('لطفاً یک روز قابل رزرو انتخاب کنید.');
-                        await this.fetchSlots();
+                        if (!this.isCustomScheduleEnabled()) {
+                            await this.fetchSlots();
+                        }
                     }
 
                     // STEP 4 -> 5 (اسلات باید انتخاب شود)
                     if (this.step === 4) {
-                        if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) {
+                        if (this.isCustomScheduleEnabled()) {
+                            if (!this.manualStartTime || !this.manualEndTime) {
+                                return alert('لطفاً ساعت شروع و پایان را وارد کنید.');
+                            }
+                        } else if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) {
                             return alert('لطفاً یک اسلات زمانی را انتخاب کنید.');
                         }
                     }
 
                     // STEP 5 -> 6 (فرم json را آماده کن)
                     if (this.step === 5) {
-                        if (this.selectedService && this.selectedService.appointment_form_id) {
-                            this.$refs.formJsonInput.value = this.appointmentFormJson || '';
-                        } else {
-                            this.$refs.formJsonInput.value = '';
-                        }
+                        this.prepareAppointmentFormJson();
                     }
 
                     this.step++;
@@ -948,16 +1135,34 @@
                 handleSubmit() {
                     if (!this.serviceId || !this.providerId) return alert('سرویس/ارائه‌دهنده ناقص است.');
                     if (!this.dateLocal) return alert('روز انتخاب نشده است.');
-                    if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) return alert('لطفاً یک اسلات انتخاب کنید.');
+                    if (this.isCustomScheduleEnabled()) {
+                        if (!this.manualStartTime || !this.manualEndTime) {
+                            return alert('لطفاً ساعت شروع و پایان را وارد کنید.');
+                        }
+                    } else if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) {
+                        return alert('لطفاً یک اسلات انتخاب کنید.');
+                    }
                     if (!this.clientId) return alert('لطفاً مشتری را انتخاب کنید.');
 
                     // فرم JSON
-                    if (this.selectedService && this.selectedService.appointment_form_id) {
-                        this.$refs.formJsonInput.value = this.appointmentFormJson || '';
-                    }
+                    this.prepareAppointmentFormJson();
 
                     this.$refs.form.submit();
-                }
+                },
+
+                onClientSelected() {
+                    if (this.step === 6 && this.clientId) {
+                        this.handleSubmit();
+                    }
+                },
+
+                prepareAppointmentFormJson() {
+                    if (this.selectedService && this.selectedService.appointment_form_id && this.appointmentFormSchema) {
+                        this.$refs.formJsonInput.value = JSON.stringify(this.appointmentFormValues || {});
+                    } else {
+                        this.$refs.formJsonInput.value = '';
+                    }
+                },
             }
         }
     </script>
