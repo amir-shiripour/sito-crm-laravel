@@ -11,6 +11,7 @@ use Modules\Booking\Http\Controllers\User\ProviderAvailabilityController;
 use Modules\Booking\Http\Controllers\User\ServiceExceptionController;
 use Modules\Booking\Http\Controllers\User\ProviderExceptionController;
 use Modules\Booking\Http\Controllers\User\CategoryController as UserCategoryController;
+use Modules\Booking\Http\Controllers\User\FormController as UserFormController;
 
 
 // Public minimal pages (optional)
@@ -87,6 +88,30 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->name('categories.destroy')
             ->middleware('can:booking.categories.delete');
 
+        Route::get('forms', [UserFormController::class, 'index'])
+            ->name('forms.index')
+            ->middleware('can:booking.forms.view');
+
+        Route::get('forms/create', [UserFormController::class, 'create'])
+            ->name('forms.create')
+            ->middleware('can:booking.forms.create');
+
+        Route::post('forms', [UserFormController::class, 'store'])
+            ->name('forms.store')
+            ->middleware('can:booking.forms.create');
+
+        Route::get('forms/{form}/edit', [UserFormController::class, 'edit'])
+            ->name('forms.edit')
+            ->middleware('can:booking.forms.edit');
+
+        Route::put('forms/{form}', [UserFormController::class, 'update'])
+            ->name('forms.update')
+            ->middleware('can:booking.forms.edit');
+
+        Route::delete('forms/{form}', [UserFormController::class, 'destroy'])
+            ->name('forms.destroy')
+            ->middleware('can:booking.forms.delete');
+
 
         // برنامه زمانی «ارائه‌دهندگان» فقط برای ادمین‌ها و کسانی که permission دارند
         Route::get('providers', [ProviderAvailabilityController::class, 'index'])
@@ -122,6 +147,9 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
 
         Route::get('appointments/wizard/clients', [UserAppointmentController::class, 'wizardClients'])
             ->name('appointments.wizard.clients');
+
+        Route::get('appointments/wizard/form', [UserAppointmentController::class, 'wizardForm'])
+            ->name('appointments.wizard.form');
 
         Route::get('settings', [UserSettingsController::class, 'edit'])->name('settings.edit')->middleware('can:booking.settings.manage');
         Route::post('settings', [UserSettingsController::class, 'update'])->name('settings.update')->middleware('can:booking.settings.manage');
