@@ -10,6 +10,7 @@ use Modules\Booking\Entities\BookingService;
 use Modules\Booking\Entities\BookingSetting;
 use Modules\Booking\Entities\BookingSlotHold;
 use Modules\Booking\Entities\BookingServiceProvider;
+use Modules\Booking\Entities\BookingForm;
 use Modules\Booking\Services\AppointmentService;
 use App\Models\User;
 use Modules\Clients\Entities\Client;
@@ -666,5 +667,32 @@ class AppointmentController extends Controller
         $clients = $clientsQ->orderByDesc('id')->limit(30)->get(['id','full_name','phone','email']);
 
         return response()->json(['data' => $clients]);
+    }
+
+    public function wizardForm(Request $request)
+    {
+        $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
+        $formId = (int) $request->query('form_id', 0);
+
+        if (! $formId) {
+            return response()->json(['data' => null]);
+        }
+
+        $form = BookingForm::query()
+            ->whereKey($formId)
+            ->where('status', BookingForm::STATUS_ACTIVE)
+            ->first();
+
+        if (! $form) {
+            return response()->json(['data' => null]);
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => $form->id,
+                'name' => $form->name,
+                'schema_json' => $form->schema_json ?? [],
+            ],
+        ]);
     }
 }

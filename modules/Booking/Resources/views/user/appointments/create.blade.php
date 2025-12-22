@@ -419,12 +419,73 @@
 
                 <template x-if="selectedService && selectedService.appointment_form_id">
                     <div class="space-y-2">
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                            سرویس فرم دارد. (فعلاً پاسخ را به صورت JSON ذخیره می‌کنیم؛ اگر کامپوننت فرم‌ساز دارید، همینجا جایگزین می‌شود.)
+                        <div class="text-xs text-gray-500 dark:text-gray-400" x-show="!appointmentFormSchema">
+                            در حال دریافت فرم...
                         </div>
-                        <textarea class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-xs dark:text-gray-100 placeholder:text-gray-400" rows="6"
-                                  placeholder='مثلاً: {"field1":"value"}'
-                                  x-model="appointmentFormJson"></textarea>
+
+                        <template x-if="appointmentFormSchema && appointmentFormSchema.fields && appointmentFormSchema.fields.length">
+                            <div class="space-y-3">
+                                <template x-for="field in appointmentFormSchema.fields" :key="field.name">
+                                    <div class="space-y-1">
+                                        <label class="block text-xs text-gray-600 dark:text-gray-300" x-text="field.label"></label>
+
+                                        <template x-if="field.type === 'textarea'">
+                                            <textarea class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                                      :placeholder="field.placeholder || ''"
+                                                      :required="field.required"
+                                                      x-model="appointmentFormValues[field.name]"></textarea>
+                                        </template>
+
+                                        <template x-if="field.type === 'select'">
+                                            <select class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                                    :required="field.required"
+                                                    x-model="appointmentFormValues[field.name]">
+                                                <option value="">انتخاب کنید</option>
+                                                <template x-for="opt in (field.options || [])" :key="opt">
+                                                    <option :value="opt" x-text="opt"></option>
+                                                </template>
+                                            </select>
+                                        </template>
+
+                                        <template x-if="field.type === 'radio'">
+                                            <div class="flex flex-wrap gap-3">
+                                                <template x-for="opt in (field.options || [])" :key="opt">
+                                                    <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
+                                                        <input type="radio"
+                                                               :name="`form_${field.name}`"
+                                                               :value="opt"
+                                                               :required="field.required"
+                                                               x-model="appointmentFormValues[field.name]">
+                                                        <span x-text="opt"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="field.type === 'checkbox'">
+                                            <div class="flex flex-wrap gap-3">
+                                                <template x-for="opt in (field.options || [])" :key="opt">
+                                                    <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
+                                                        <input type="checkbox"
+                                                               :value="opt"
+                                                               x-model="appointmentFormValues[field.name]">
+                                                        <span x-text="opt"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="!['textarea','select','radio','checkbox'].includes(field.type)">
+                                            <input class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                                   :type="field.type || 'text'"
+                                                   :placeholder="field.placeholder || ''"
+                                                   :required="field.required"
+                                                   x-model="appointmentFormValues[field.name]">
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                 </template>
 
@@ -524,7 +585,8 @@
                 selectedSlotKey: '',
                 selectedService: null,
 
-                appointmentFormJson: '',
+                appointmentFormSchema: null,
+                appointmentFormValues: {},
                 clients: [],
                 clientSearch: '',
                 clientId: '',
@@ -740,10 +802,29 @@
                 async onServiceSelected() {
                     this.selectedService = this.services.find(s => String(s.id) === String(this.serviceId)) || null;
                     this.resetCalendarAndSlots();
+                    this.resetAppointmentForm();
 
                     if (this.flow === 'SERVICE_FIRST') {
                         await this.fetchProviders(); // حالا providers برای این service
                     }
+
+                    if (this.selectedService && this.selectedService.appointment_form_id) {
+                        await this.fetchAppointmentForm(this.selectedService.appointment_form_id);
+                    }
+                },
+
+                syncCategoriesFromServices() {
+                    if (this.flow !== 'SERVICE_FIRST') return;
+                    const map = new Map();
+                    for (const s of (this.services || [])) {
+                        const id = s.category_id ?? null;
+                        const name = s.category_name ?? null;
+                        if (!id || !name) continue;
+                        if (!map.has(String(id))) {
+                            map.set(String(id), { id, name });
+                        }
+                    }
+                    this.categories = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fa'));
                 },
 
                 syncCategoriesFromServices() {
@@ -769,6 +850,37 @@
                     this.manualEndTime = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
+                },
+
+                resetAppointmentForm() {
+                    this.appointmentFormSchema = null;
+                    this.appointmentFormValues = {};
+                },
+
+                async fetchAppointmentForm(formId) {
+                    this.appointmentFormSchema = null;
+                    this.appointmentFormValues = {};
+                    if (!formId) return;
+
+                    const params = new URLSearchParams({ form_id: formId });
+                    const res = await fetch(`{{ route('user.booking.appointments.wizard.form') }}?` + params.toString(), {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const json = await res.json();
+                    const schema = json.data?.schema_json || null;
+                    if (!schema || !Array.isArray(schema.fields)) {
+                        this.appointmentFormSchema = { fields: [] };
+                        return;
+                    }
+
+                    this.appointmentFormSchema = schema;
+                    for (const field of schema.fields) {
+                        if (field.type === 'checkbox') {
+                            this.appointmentFormValues[field.name] = [];
+                        } else {
+                            this.appointmentFormValues[field.name] = '';
+                        }
+                    }
                 },
 
                 // ---------------- calendar ----------------
@@ -919,16 +1031,6 @@
                     return Boolean(this.selectedService && this.selectedService.custom_schedule_enabled);
                 },
 
-                clearSlotSelection() {
-                    this.selectedSlotKey = '';
-                    if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
-                    if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
-                },
-
-                isCustomScheduleEnabled() {
-                    return Boolean(this.selectedService && this.selectedService.custom_schedule_enabled);
-                },
-
                 formatTime(isoString) {
                     const d = new Date(isoString);
                     return d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
@@ -1028,11 +1130,7 @@
 
                     // STEP 5 -> 6 (فرم json را آماده کن)
                     if (this.step === 5) {
-                        if (this.selectedService && this.selectedService.appointment_form_id) {
-                            this.$refs.formJsonInput.value = this.appointmentFormJson || '';
-                        } else {
-                            this.$refs.formJsonInput.value = '';
-                        }
+                        this.prepareAppointmentFormJson();
                     }
 
                     this.step++;
@@ -1061,9 +1159,7 @@
                     if (!this.clientId) return alert('لطفاً مشتری را انتخاب کنید.');
 
                     // فرم JSON
-                    if (this.selectedService && this.selectedService.appointment_form_id) {
-                        this.$refs.formJsonInput.value = this.appointmentFormJson || '';
-                    }
+                    this.prepareAppointmentFormJson();
 
                     this.$refs.form.submit();
                 },
@@ -1072,7 +1168,15 @@
                     if (this.step === 6 && this.clientId) {
                         this.handleSubmit();
                     }
-                }
+                },
+
+                prepareAppointmentFormJson() {
+                    if (this.selectedService && this.selectedService.appointment_form_id && this.appointmentFormSchema) {
+                        this.$refs.formJsonInput.value = JSON.stringify(this.appointmentFormValues || {});
+                    } else {
+                        this.$refs.formJsonInput.value = '';
+                    }
+                },
             }
         }
     </script>
