@@ -27,8 +27,8 @@
         ];
         $statusMeta = $statusMap[$appointment->status] ?? ['label' => $appointment->status, 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'];
 
-        $entryValue = $entryLocal ? \Morilog\Jalali\Jalalian::fromDateTime($entryLocal)->format('Y/m/d H:i') : '—';
-        $exitValue = $exitLocal ? \Morilog\Jalali\Jalalian::fromDateTime($exitLocal)->format('Y/m/d H:i') : '—';
+        $entryValue = $entryLocal ? $entryLocal->format('H:i') : '—';
+        $exitValue = $exitLocal ? $exitLocal->format('H:i') : '—';
 
         $formResponses = $appointment->appointment_form_response_json ?? [];
     @endphp
@@ -91,11 +91,11 @@
 
                 @if($settings->allow_appointment_entry_exit_times)
                     <div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">زمان ورود (شمسی)</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">زمان ورود</div>
                         <div class="font-semibold text-gray-900 dark:text-gray-100 font-mono">{{ $entryValue }}</div>
                     </div>
                     <div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">زمان خروج (شمسی)</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">زمان خروج</div>
                         <div class="font-semibold text-gray-900 dark:text-gray-100 font-mono">{{ $exitValue }}</div>
                     </div>
                 @endif

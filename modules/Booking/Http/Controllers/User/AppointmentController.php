@@ -298,7 +298,32 @@ class AppointmentController extends Controller
         $settings = BookingSetting::current();
         $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
 
-        return view('booking::user.appointments.edit', compact('appointment', 'settings'));
+        $user = $request->user();
+
+        $services = BookingService::query()
+            ->where('status', BookingService::STATUS_ACTIVE)
+            ->orderBy('name')
+            ->get();
+
+        $providersQuery = User::query();
+        $roleIds = array_values(array_filter(
+            array_map('intval', (array) ($settings->allowed_roles ?? [])),
+            fn ($v) => $v > 0
+        ));
+
+        if (! $this->isAdminUser($user) && !empty($roleIds)) {
+            $providersQuery->whereHas('roles', fn ($r) => $r->whereIn('id', $roleIds));
+        }
+
+        $providers = $providersQuery->orderBy('name')->get(['id', 'name']);
+
+        $clients = Client::query()
+            ->visibleForUser($user)
+            ->orderBy('full_name')
+            ->limit(200)
+            ->get(['id', 'full_name']);
+
+        return view('booking::user.appointments.edit', compact('appointment', 'settings', 'services', 'providers', 'clients'));
     }
 
     public function update(Request $request, Appointment $appointment)
@@ -307,21 +332,86 @@ class AppointmentController extends Controller
         $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
 
         $data = $request->validate([
-            'notes' => ['nullable', 'string'],
-            'entry_at_local' => ['nullable', 'string'],
-            'exit_at_local' => ['nullable', 'string'],
+            'service_id'        => ['required', 'integer', 'exists:booking_services,id'],
+            'provider_user_id'  => ['required', 'integer', 'exists:users,id'],
+            'client_id'         => ['required', 'integer', 'exists:clients,id'],
+            'status'            => ['required', Rule::in([
+                Appointment::STATUS_DRAFT,
+                Appointment::STATUS_PENDING_PAYMENT,
+                Appointment::STATUS_CONFIRMED,
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+                Appointment::STATUS_NO_SHOW,
+                Appointment::STATUS_DONE,
+                Appointment::STATUS_RESCHEDULED,
+            ])],
+            'date_local'        => ['required', 'string'],
+            'start_time_local'  => ['required', 'string'],
+            'end_time_local'    => ['required', 'string'],
+            'notes'             => ['nullable', 'string'],
+            'entry_time_local'  => ['nullable', 'string'],
+            'exit_time_local'   => ['nullable', 'string'],
         ]);
 
+        $authUser = $request->user();
+
+        $client = Client::query()->whereKey($data['client_id'])->firstOrFail();
+        if (!$client->isVisibleFor($authUser)) {
+            abort(403, 'شما به این مشتری دسترسی ندارید.');
+        }
+
+        $service = BookingService::query()->whereKey($data['service_id'])->firstOrFail();
+        $sp = BookingServiceProvider::query()
+            ->where('service_id', $service->id)
+            ->where('provider_user_id', (int) $data['provider_user_id'])
+            ->first();
+
+        if (!$sp || !$sp->is_active) {
+            return back()
+                ->withErrors(['service_id' => 'این سرویس برای این ارائه‌دهنده فعال نیست.'])
+                ->withInput();
+        }
+
+        $tz = config('booking.timezones.display_default', 'Asia/Tehran');
+        $localDate = $this->convertJalaliDateToLocal($data['date_local'] ?? null, $tz);
+        if (!$localDate) {
+            return back()
+                ->withErrors(['date_local' => 'تاریخ وارد شده معتبر نیست.'])
+                ->withInput();
+        }
+
+        $startLocal = $this->combineLocalDateAndTime($localDate, $data['start_time_local'] ?? null);
+        $endLocal = $this->combineLocalDateAndTime($localDate, $data['end_time_local'] ?? null);
+
+        if (!$startLocal || !$endLocal) {
+            return back()
+                ->withErrors(['start_time_local' => 'زمان شروع/پایان معتبر نیست.'])
+                ->withInput();
+        }
+
+        if ($endLocal->lte($startLocal)) {
+            return back()
+                ->withErrors(['end_time_local' => 'زمان پایان باید بعد از زمان شروع باشد.'])
+                ->withInput();
+        }
+
+        $appointment->service_id = (int) $service->id;
+        $appointment->provider_user_id = (int) $data['provider_user_id'];
+        $appointment->client_id = (int) $client->id;
+        $appointment->status = $data['status'];
+        $appointment->start_at_utc = $startLocal->copy()->timezone('UTC');
+        $appointment->end_at_utc = $endLocal->copy()->timezone('UTC');
         $appointment->notes = $data['notes'] ?? null;
 
         if ($settings->allow_appointment_entry_exit_times) {
-            $tz = config('booking.timezones.display_default', 'Asia/Tehran');
-            $entryUtc = $this->convertJalaliDateTimeToUtc($data['entry_at_local'] ?? null, $tz);
-            $exitUtc = $this->convertJalaliDateTimeToUtc($data['exit_at_local'] ?? null, $tz);
+            $entryLocal = $this->combineLocalDateAndTime($localDate, $data['entry_time_local'] ?? null);
+            $exitLocal = $this->combineLocalDateAndTime($localDate, $data['exit_time_local'] ?? null);
+            $entryUtc = $entryLocal?->copy()->timezone('UTC');
+            $exitUtc = $exitLocal?->copy()->timezone('UTC');
 
             if ($entryUtc && $exitUtc && $exitUtc->lte($entryUtc)) {
                 return back()
-                    ->withErrors(['exit_at_local' => 'زمان خروج باید بعد از زمان ورود باشد.'])
+                    ->withErrors(['exit_time_local' => 'زمان خروج باید بعد از زمان ورود باشد.'])
                     ->withInput();
             }
 
@@ -526,18 +616,14 @@ class AppointmentController extends Controller
         }
     }
 
-    protected function convertJalaliDateTimeToUtc(?string $value, string $tz): ?Carbon
+    protected function convertJalaliDateToLocal(?string $value, string $tz): ?Carbon
     {
         if (empty($value)) {
             return null;
         }
 
         try {
-            $parts = preg_split('/\s+/', trim($value), 2);
-            $datePart = $parts[0] ?? '';
-            $timePart = $parts[1] ?? '';
-
-            $datePieces = preg_split('/[^\d]+/', trim($datePart));
+            $datePieces = preg_split('/[^\d]+/', trim($value));
             if (count($datePieces) < 3) {
                 return null;
             }
@@ -545,23 +631,10 @@ class AppointmentController extends Controller
             [$jy, $jm, $jd] = array_map('intval', array_slice($datePieces, 0, 3));
             [$gy, $gm, $gd] = CalendarUtils::toGregorian($jy, $jm, $jd);
 
-            $hour = 0;
-            $minute = 0;
-
-            if (!empty($timePart)) {
-                $timePieces = preg_split('/[^\d]+/', trim($timePart));
-                if (count($timePieces) >= 2) {
-                    $hour = min(max((int) $timePieces[0], 0), 23);
-                    $minute = min(max((int) $timePieces[1], 0), 59);
-                }
-            }
-
-            $local = Carbon::create($gy, $gm, $gd, $hour, $minute, 0, $tz);
-
-            return $local->copy()->timezone('UTC');
+            return Carbon::create($gy, $gm, $gd, 0, 0, 0, $tz);
         } catch (\Throwable $e) {
             if (function_exists('logger')) {
-                logger()->warning('Failed to convert Jalali datetime', [
+                logger()->warning('Failed to convert Jalali date', [
                     'value' => $value,
                     'error' => $e->getMessage(),
                 ]);
@@ -569,6 +642,23 @@ class AppointmentController extends Controller
 
             return null;
         }
+    }
+
+    protected function combineLocalDateAndTime(?Carbon $date, ?string $time): ?Carbon
+    {
+        if (!$date || empty($time)) {
+            return null;
+        }
+
+        $timePieces = preg_split('/[^\d]+/', trim($time));
+        if (count($timePieces) < 2) {
+            return null;
+        }
+
+        $hour = min(max((int) $timePieces[0], 0), 23);
+        $minute = min(max((int) $timePieces[1], 0), 59);
+
+        return $date->copy()->setTime($hour, $minute, 0);
     }
 
     // بقیه متدها بدون تغییر
