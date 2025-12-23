@@ -516,11 +516,11 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <input type="text"
-                               class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                               class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
                                placeholder="جستجو مشتری (نام/موبایل/ایمیل)" x-model="clientSearch"
                                @input.debounce.300ms="fetchClients()">
                         <select
-                            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 mt-2 text-sm dark:text-gray-100"
+                            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 mt-2 text-sm dark:text-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
                             x-model="clientId">
                             <option value="">انتخاب کنید</option>
                             <template x-for="c in clients" :key="c.id">
@@ -530,23 +530,7 @@
                     </div>
 
                     <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
-                        <div class="text-sm font-semibold mb-2 text-gray-800 dark:text-gray-100">ایجاد سریع مشتری</div>
-                        <div class="space-y-2">
-                            <input
-                                class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
-                                placeholder="نام کامل" x-model="quickClient.full_name">
-                            <input
-                                class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
-                                placeholder="موبایل" x-model="quickClient.phone">
-                            <input
-                                class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
-                                placeholder="ایمیل" x-model="quickClient.email">
-                            <button type="button" class="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
-                                    @click="quickCreateClient()">
-                                ثبت مشتری
-                            </button>
-                            <div class="text-xs text-red-600" x-show="quickClientError" x-text="quickClientError"></div>
-                        </div>
+                        @includeIf('clients::widgets.client-quick-create')
                     </div>
                 </div>
 
@@ -583,10 +567,11 @@
                 flow: @json($flow ?? 'PROVIDER_FIRST'),
                 step: 1,
 
-                defaultSlotCapacity: @json($settings ->default_capacity_per_slot ?? 1),
+                defaultSlotCapacity: @json($settings -> default_capacity_per_slot ?? 1),
                 fixedProvider: options.fixedProvider || null,
                 providerId: '',
                 serviceId: '',
+
                 categoryId: '',
                 dateLocal: '',
                 manualStartTime: '',
@@ -620,12 +605,6 @@
                 clientId: '',
                 isSubmitting: false,
 
-                quickClient: {
-                    full_name: '',
-                    phone: '',
-                    email: ''
-                },
-                quickClientError: '',
                 weekDays: ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'],
                 hasAppointmentForm: false,
 
@@ -663,6 +642,14 @@
                     }
 
                     this.fetchClients();
+
+                    // وقتی مشتری سریع ساخته شد، لیست را رفرش و در صورت امکان انتخابش کن
+                    window.addEventListener('client-quick-saved', (e) => {
+                        const newId = e?.detail?.clientId;
+                        this.fetchClients().then(() => {
+                            if (newId) this.clientId = String(newId);
+                        });
+                    });
                 },
 
                 // ---------------- providers/services/categories ----------------
@@ -1147,41 +1134,6 @@
                     });
                     const json = await res.json();
                     this.clients = json.data || [];
-                },
-
-                async quickCreateClient() {
-                    this.quickClientError = '';
-                    try {
-                        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-                        const res = await fetch(`{{ route('user.clients.quick-store') }}`, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': token || ''
-                            },
-                            body: JSON.stringify(this.quickClient)
-                        });
-
-                        if (!res.ok) {
-                            const j = await res.json().catch(() => null);
-                            throw new Error(j?.message || 'خطا در ایجاد مشتری');
-                        }
-
-                        const j = await res.json();
-                        const c = j.client;
-                        this.clients.unshift(c);
-                        this.clientId = String(c.id);
-
-                        this.quickClient = {
-                            full_name: '',
-                            phone: '',
-                            email: ''
-                        };
-                    } catch (e) {
-                        this.quickClientError = e.message || 'خطای ناشناخته';
-                    }
                 },
 
                 // ---------------- wizard navigation ----------------

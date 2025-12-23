@@ -543,7 +543,7 @@ class ClientForm extends Component
 
         // ✅ در حالت ایجاد سریع: فقط مودال quick بسته شود، بدون ریدایرکت
         if ($this->isQuickMode) {
-            $this->dispatch('client-quick-saved');
+            $this->dispatch('client-quick-saved', clientId: $client->id, clientName: $client->full_name);
             return;
         }
 
