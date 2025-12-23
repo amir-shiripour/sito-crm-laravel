@@ -37,6 +37,7 @@
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">پایان</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">مدت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-left pl-6">وضعیت</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-left pl-6">عملیات</th>
                     </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60">
@@ -88,6 +89,20 @@
                                 class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold {{ $statusMeta['class'] }}">
                                 {{ $statusMeta['label'] }}
                             </span>
+                            </td>
+                            <td class="px-4 py-3 text-left">
+                                <div class="flex items-center gap-2 justify-end">
+                                    <a href="{{ route('user.booking.appointments.show', $a) }}"
+                                       class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:hover:bg-gray-700">
+                                        مشاهده
+                                    </a>
+                                    @can('booking.appointments.edit')
+                                        <a href="{{ route('user.booking.appointments.edit', $a) }}"
+                                           class="px-3 py-1.5 text-xs rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-200 dark:hover:bg-indigo-500/30">
+                                            ویرایش
+                                        </a>
+                                    @endcan
+                                </div>
                             </td>
                         </tr>
                     @endforeach
