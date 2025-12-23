@@ -18,6 +18,7 @@ use Modules\Booking\Http\Controllers\User\FormController as UserFormController;
 Route::prefix('booking')->name('booking.')->group(function () {
     Route::get('/', [OnlineBookingController::class, 'index'])->name('public.index');
     Route::get('/service/{service}', [OnlineBookingController::class, 'service'])->name('public.service');
+    Route::post('/service/{service}/book', [OnlineBookingController::class, 'book'])->name('public.book');
 
     /*Route::get('services/{service}/availability', [UserServiceAvailabilityController::class, 'edit'])
         ->name('services.availability.edit')
