@@ -151,10 +151,12 @@ class SettingsController extends Controller
             'service_category_selection_scope' => ['required', Rule::in(['ALL', 'OWN'])],
             'service_form_selection_scope' => ['required', Rule::in(['ALL', 'OWN'])],
             'operator_appointment_flow' => ['required', Rule::in(['PROVIDER_FIRST', 'SERVICE_FIRST'])],
+            'allow_appointment_entry_exit_times' => ['required'],
         ]);
 
         $data['global_online_booking_enabled'] = (bool) $data['global_online_booking_enabled'];
         $data['allow_role_service_creation']   = (bool) $data['allow_role_service_creation'];
+        $data['allow_appointment_entry_exit_times'] = (bool) $data['allow_appointment_entry_exit_times'];
 
         // پر کردن فیلدهای ساده
         $settings->fill($data);
@@ -215,6 +217,7 @@ class SettingsController extends Controller
             'booking.forms.view',
             'booking.appointments.view',
             'booking.appointments.create',
+            'booking.appointments.edit',
         ];
         // پرمیشن‌هایی که فقط در صورت allow_role_service_creation = true داده می‌شوند
         $providerCreationPerms = [
