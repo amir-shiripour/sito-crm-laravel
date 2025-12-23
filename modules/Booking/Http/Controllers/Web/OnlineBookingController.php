@@ -4,6 +4,7 @@ namespace Modules\Booking\Http\Controllers\Web;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Controller;
 use Modules\Booking\Entities\BookingService;
 use Modules\Booking\Entities\BookingSetting;
@@ -33,6 +34,43 @@ class OnlineBookingController extends Controller
         return view('booking::web.service', compact('service', 'settings'));
     }
 
+    public function slots(Request $request, BookingService $service, BookingEngine $engine)
+    {
+        $settings = BookingSetting::current();
+        if (! $settings->global_online_booking_enabled) {
+            return response()->json(['data' => []], 200);
+        }
+
+        $data = $request->validate([
+            'provider_user_id' => ['required', 'integer'],
+            'date_local' => ['required', 'string'],
+        ]);
+
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        $localDate = $this->convertJalaliDateToLocal($data['date_local'], $scheduleTz);
+        if (! $localDate) {
+            return response()->json(['data' => []], 200);
+        }
+
+        $providerId = (int) $data['provider_user_id'];
+
+        Log::info('[Booking][OnlineSlots] request', [
+            'service_id' => $service->id,
+            'provider_user_id' => $providerId,
+            'date_local' => $data['date_local'],
+        ]);
+
+        $slots = $engine->generateSlots(
+            $service->id,
+            $providerId,
+            $localDate->toDateString(),
+            $localDate->toDateString(),
+            viewerTimezone: config('booking.timezones.display_default', $scheduleTz)
+        );
+
+        return response()->json(['data' => $slots]);
+    }
+
     public function book(Request $request, BookingService $service, AppointmentService $appointmentService, BookingEngine $engine)
     {
         $settings = BookingSetting::current();
@@ -46,8 +84,8 @@ class OnlineBookingController extends Controller
         $rules = [
             'provider_user_id' => ['required', 'integer'],
             'date_local' => ['required', 'string'],
-            'start_time_local' => ['required', 'string'],
-            'end_time_local' => ['required', 'string'],
+            'start_at_utc' => ['required', 'date'],
+            'end_at_utc' => ['required', 'date'],
         ];
 
         if (! $client) {
@@ -71,18 +109,44 @@ class OnlineBookingController extends Controller
             return back()->withErrors(['date_local' => 'تاریخ وارد شده معتبر نیست.'])->withInput();
         }
 
-        $startLocal = $this->combineLocalDateAndTime($localDate, $data['start_time_local']);
-        $endLocal = $this->combineLocalDateAndTime($localDate, $data['end_time_local']);
-        if (! $startLocal || ! $endLocal || $endLocal->lte($startLocal)) {
-            return back()->withErrors(['end_time_local' => 'زمان پایان باید بعد از زمان شروع باشد.'])->withInput();
+        $startUtc = Carbon::parse($data['start_at_utc'], 'UTC');
+        $endUtc = Carbon::parse($data['end_at_utc'], 'UTC');
+
+        $slots = $engine->generateSlots(
+            $service->id,
+            $providerId,
+            $localDate->toDateString(),
+            $localDate->toDateString(),
+            viewerTimezone: config('booking.timezones.display_default', $scheduleTz)
+        );
+
+        $slotMatched = collect($slots)->first(function ($slot) use ($startUtc, $endUtc) {
+            return $slot['start_at_utc'] === $startUtc->toIso8601String()
+                && $slot['end_at_utc'] === $endUtc->toIso8601String();
+        });
+
+        if (! $slotMatched) {
+            Log::warning('[Booking][OnlineBooking] slot mismatch', [
+                'service_id' => $service->id,
+                'provider_user_id' => $providerId,
+                'date_local' => $data['date_local'],
+                'start_at_utc' => $startUtc->toIso8601String(),
+                'end_at_utc' => $endUtc->toIso8601String(),
+            ]);
+            return back()
+                ->withErrors(['start_at_utc' => 'اسلات انتخاب‌شده معتبر نیست یا ظرفیت ندارد.'])
+                ->withInput();
         }
+
+        $startLocal = $startUtc->copy()->timezone($scheduleTz);
+        $endLocal = $endUtc->copy()->timezone($scheduleTz);
 
         try {
             $hold = $appointmentService->startOnlineHold(
                 $service->id,
                 $providerId,
-                $startLocal->copy()->timezone('UTC')->toIso8601String(),
-                $endLocal->copy()->timezone('UTC')->toIso8601String(),
+                $startUtc->toIso8601String(),
+                $endUtc->toIso8601String(),
                 $request->session()->getId()
             );
         } catch (\RuntimeException $e) {
@@ -96,7 +160,16 @@ class OnlineBookingController extends Controller
                 default => 'امکان رزرو در این بازه وجود ندارد.',
             };
 
-            return back()->withErrors(['start_time_local' => $message])->withInput();
+            Log::warning('[Booking][OnlineBooking] hold failed', [
+                'service_id' => $service->id,
+                'provider_user_id' => $providerId,
+                'date_local' => $data['date_local'],
+                'start_at_utc' => $startUtc->toIso8601String(),
+                'end_at_utc' => $endUtc->toIso8601String(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['start_at_utc' => $message])->withInput();
         }
 
         $clientInput = [
@@ -114,15 +187,30 @@ class OnlineBookingController extends Controller
         }
 
         try {
-            $appointmentService->confirmOnlineHold(
+            $result = $appointmentService->confirmOnlineHold(
                 $hold->id,
                 $clientInput,
                 appointmentFormResponse: null,
                 payNow: true
             );
         } catch (\RuntimeException $e) {
-            return back()->withErrors(['start_time_local' => 'خطا در ثبت نوبت. لطفاً دوباره تلاش کنید.'])->withInput();
+            Log::error('[Booking][OnlineBooking] confirm failed', [
+                'hold_id' => $hold->id,
+                'service_id' => $service->id,
+                'provider_user_id' => $providerId,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->withErrors(['start_at_utc' => 'خطا در ثبت نوبت. لطفاً دوباره تلاش کنید.'])->withInput();
         }
+
+        Log::info('[Booking][OnlineBooking] appointment confirmed', [
+            'appointment_id' => $result['appointment']->id ?? null,
+            'service_id' => $service->id,
+            'provider_user_id' => $providerId,
+            'client_id' => $result['appointment']->client_id ?? $client?->id,
+            'start_at_utc' => $startUtc->toIso8601String(),
+            'end_at_utc' => $endUtc->toIso8601String(),
+        ]);
 
         return redirect()
             ->route('booking.public.service', $service)
