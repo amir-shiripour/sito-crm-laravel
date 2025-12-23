@@ -17,6 +17,7 @@ use Modules\Clients\Entities\Client;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Morilog\Jalali\CalendarUtils;
 
 class AppointmentController extends Controller
 {
@@ -284,6 +285,57 @@ class AppointmentController extends Controller
             ->with('success', 'نوبت با موفقیت ثبت شد.');
     }
 
+    public function show(Request $request, Appointment $appointment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentViewAccess($request->user(), $appointment, $settings);
+
+        return view('booking::user.appointments.show', compact('appointment', 'settings'));
+    }
+
+    public function edit(Request $request, Appointment $appointment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
+
+        return view('booking::user.appointments.edit', compact('appointment', 'settings'));
+    }
+
+    public function update(Request $request, Appointment $appointment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
+
+        $data = $request->validate([
+            'notes' => ['nullable', 'string'],
+            'entry_at_local' => ['nullable', 'string'],
+            'exit_at_local' => ['nullable', 'string'],
+        ]);
+
+        $appointment->notes = $data['notes'] ?? null;
+
+        if ($settings->allow_appointment_entry_exit_times) {
+            $tz = config('booking.timezones.display_default', 'Asia/Tehran');
+            $entryUtc = $this->convertJalaliDateTimeToUtc($data['entry_at_local'] ?? null, $tz);
+            $exitUtc = $this->convertJalaliDateTimeToUtc($data['exit_at_local'] ?? null, $tz);
+
+            if ($entryUtc && $exitUtc && $exitUtc->lte($entryUtc)) {
+                return back()
+                    ->withErrors(['exit_at_local' => 'زمان خروج باید بعد از زمان ورود باشد.'])
+                    ->withInput();
+            }
+
+            $appointment->entry_at_utc = $entryUtc;
+            $appointment->exit_at_utc = $exitUtc;
+        }
+
+        $appointment->save();
+
+        return redirect()
+            ->route('user.booking.appointments.show', $appointment)
+            ->with('success', 'نوبت با موفقیت به‌روزرسانی شد.');
+    }
+
     // ------------------------------------------------------------
     // Wizard JSON endpoints
     // ------------------------------------------------------------
@@ -438,6 +490,85 @@ class AppointmentController extends Controller
         }
 
         abort(403);
+    }
+
+    protected function ensureAppointmentViewAccess(?User $user, Appointment $appointment, BookingSetting $settings): void
+    {
+        if (! $user) {
+            abort(403);
+        }
+
+        if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.view') && ! $this->userIsProvider($user, $settings)) {
+            abort(403);
+        }
+
+        if ($this->userIsProvider($user, $settings) && ! $this->isAdminUser($user)) {
+            if ((int) $appointment->provider_user_id !== (int) $user->id) {
+                abort(403, 'شما به این نوبت دسترسی ندارید.');
+            }
+        }
+    }
+
+    protected function ensureAppointmentEditAccess(?User $user, Appointment $appointment, BookingSetting $settings): void
+    {
+        if (! $user) {
+            abort(403);
+        }
+
+        if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.edit')) {
+            abort(403);
+        }
+
+        if ($this->userIsProvider($user, $settings) && ! $this->isAdminUser($user)) {
+            if ((int) $appointment->provider_user_id !== (int) $user->id) {
+                abort(403, 'شما به این نوبت دسترسی ندارید.');
+            }
+        }
+    }
+
+    protected function convertJalaliDateTimeToUtc(?string $value, string $tz): ?Carbon
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            $parts = preg_split('/\s+/', trim($value), 2);
+            $datePart = $parts[0] ?? '';
+            $timePart = $parts[1] ?? '';
+
+            $datePieces = preg_split('/[^\d]+/', trim($datePart));
+            if (count($datePieces) < 3) {
+                return null;
+            }
+
+            [$jy, $jm, $jd] = array_map('intval', array_slice($datePieces, 0, 3));
+            [$gy, $gm, $gd] = CalendarUtils::toGregorian($jy, $jm, $jd);
+
+            $hour = 0;
+            $minute = 0;
+
+            if (!empty($timePart)) {
+                $timePieces = preg_split('/[^\d]+/', trim($timePart));
+                if (count($timePieces) >= 2) {
+                    $hour = min(max((int) $timePieces[0], 0), 23);
+                    $minute = min(max((int) $timePieces[1], 0), 59);
+                }
+            }
+
+            $local = Carbon::create($gy, $gm, $gd, $hour, $minute, 0, $tz);
+
+            return $local->copy()->timezone('UTC');
+        } catch (\Throwable $e) {
+            if (function_exists('logger')) {
+                logger()->warning('Failed to convert Jalali datetime', [
+                    'value' => $value,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return null;
+        }
     }
 
     // بقیه متدها بدون تغییر

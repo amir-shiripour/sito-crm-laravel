@@ -88,6 +88,22 @@
                             </div>
                         </div>
                     </div>
+
+                    <div>
+                        <label class="{{ $labelClass }}">ثبت زمان ورود/خروج برای نوبت</label>
+                        <div class="relative">
+                            <select name="allow_appointment_entry_exit_times" class="{{ $selectClass }}">
+                                <option value="1" @selected((string)old('allow_appointment_entry_exit_times', (int)$settings->allow_appointment_entry_exit_times)==='1')>فعال (مجاز)</option>
+                                <option value="0" @selected((string)old('allow_appointment_entry_exit_times', (int)$settings->allow_appointment_entry_exit_times)==='0')>غیرفعال (بسته)</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-2">
+                            در صورت فعال بودن، در صفحه مدیریت نوبت می‌توان برای مشتری زمان ورود و خروج ثبت کرد.
+                        </p>
+                    </div>
                 </div>
             </div>
 
