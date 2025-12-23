@@ -34,6 +34,8 @@ class Appointment extends Model
         'status',
         'start_at_utc',
         'end_at_utc',
+        'entry_at_utc',
+        'exit_at_utc',
         'created_by_type',
         'created_by_user_id',
         'notes',
@@ -55,6 +57,22 @@ class Appointment extends Model
     }
 
     protected function endAtUtc(): Attribute
+    {
+        return Attribute::make(
+            get: fn($value) => $this->asUtcCarbon($value),
+            set: fn($value) => $this->asUtcCarbon($value),
+        );
+    }
+
+    protected function entryAtUtc(): Attribute
+    {
+        return Attribute::make(
+            get: fn($value) => $this->asUtcCarbon($value),
+            set: fn($value) => $this->asUtcCarbon($value),
+        );
+    }
+
+    protected function exitAtUtc(): Attribute
     {
         return Attribute::make(
             get: fn($value) => $this->asUtcCarbon($value),

@@ -23,12 +23,14 @@ class BookingSetting extends Model
         'service_form_selection_scope',
 
         'operator_appointment_flow',
+        'allow_appointment_entry_exit_times',
     ];
 
     protected $casts = [
         'global_online_booking_enabled' => 'boolean',
         'allow_role_service_creation' => 'boolean',
         'allowed_roles' => 'array',
+        'allow_appointment_entry_exit_times' => 'boolean',
     ];
 
     public static function current(): self
@@ -51,6 +53,7 @@ class BookingSetting extends Model
             'service_category_selection_scope' => 'ALL',
             'service_form_selection_scope' => 'ALL',
             'operator_appointment_flow' => 'PROVIDER_FIRST',
+            'allow_appointment_entry_exit_times' => false,
         ]);
     }
 }
