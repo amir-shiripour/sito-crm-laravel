@@ -217,6 +217,7 @@ class SettingsController extends Controller
             'booking.forms.view',
             'booking.appointments.view',
             'booking.appointments.create',
+            'booking.appointments.edit',
         ];
         // پرمیشن‌هایی که فقط در صورت allow_role_service_creation = true داده می‌شوند
         $providerCreationPerms = [
