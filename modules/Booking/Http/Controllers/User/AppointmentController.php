@@ -345,12 +345,15 @@ class AppointmentController extends Controller
                 Appointment::STATUS_DONE,
                 Appointment::STATUS_RESCHEDULED,
             ])],
-            'date_local'        => ['required', 'string'],
-            'start_time_local'  => ['required', 'string'],
-            'end_time_local'    => ['required', 'string'],
+            'start_at_utc'      => ['nullable', 'date'],
+            'end_at_utc'        => ['nullable', 'date'],
+            'date_local'        => ['nullable', 'string'],
+            'start_time_local'  => ['nullable', 'string'],
+            'end_time_local'    => ['nullable', 'string'],
             'notes'             => ['nullable', 'string'],
             'entry_time_local'  => ['nullable', 'string'],
             'exit_time_local'   => ['nullable', 'string'],
+            'appointment_form_response_json' => ['nullable', 'string'],
         ]);
 
         $authUser = $request->user();
@@ -372,27 +375,66 @@ class AppointmentController extends Controller
                 ->withInput();
         }
 
-        $tz = config('booking.timezones.display_default', 'Asia/Tehran');
-        $localDate = $this->convertJalaliDateToLocal($data['date_local'] ?? null, $tz);
-        if (!$localDate) {
-            return back()
-                ->withErrors(['date_local' => 'تاریخ وارد شده معتبر نیست.'])
-                ->withInput();
-        }
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        $localDate = null;
+        $startLocal = null;
+        $endLocal = null;
 
-        $startLocal = $this->combineLocalDateAndTime($localDate, $data['start_time_local'] ?? null);
-        $endLocal = $this->combineLocalDateAndTime($localDate, $data['end_time_local'] ?? null);
+        if ($service->custom_schedule_enabled) {
+            $localDate = $this->convertJalaliDateToLocal($data['date_local'] ?? null, $scheduleTz);
+            if (!$localDate) {
+                return back()
+                    ->withErrors(['date_local' => 'تاریخ وارد شده معتبر نیست.'])
+                    ->withInput();
+            }
 
-        if (!$startLocal || !$endLocal) {
-            return back()
-                ->withErrors(['start_time_local' => 'زمان شروع/پایان معتبر نیست.'])
-                ->withInput();
-        }
+            $startLocal = $this->combineLocalDateAndTime($localDate, $data['start_time_local'] ?? null);
+            $endLocal = $this->combineLocalDateAndTime($localDate, $data['end_time_local'] ?? null);
 
-        if ($endLocal->lte($startLocal)) {
-            return back()
-                ->withErrors(['end_time_local' => 'زمان پایان باید بعد از زمان شروع باشد.'])
-                ->withInput();
+            if (!$startLocal || !$endLocal) {
+                return back()
+                    ->withErrors(['start_time_local' => 'زمان شروع/پایان معتبر نیست.'])
+                    ->withInput();
+            }
+
+            if ($endLocal->lte($startLocal)) {
+                return back()
+                    ->withErrors(['end_time_local' => 'زمان پایان باید بعد از زمان شروع باشد.'])
+                    ->withInput();
+            }
+        } else {
+            if (empty($data['start_at_utc']) || empty($data['end_at_utc'])) {
+                return back()
+                    ->withErrors(['start_at_utc' => 'لطفاً یک اسلات معتبر انتخاب کنید.'])
+                    ->withInput();
+            }
+
+            $startUtc = Carbon::parse($data['start_at_utc'], 'UTC');
+            $endUtc = Carbon::parse($data['end_at_utc'], 'UTC');
+            $localDate = $startUtc->copy()->timezone($scheduleTz)->startOfDay();
+
+            $engine = app(\Modules\Booking\Services\BookingEngine::class);
+            $slots = $engine->generateSlots(
+                $service->id,
+                (int) $data['provider_user_id'],
+                $localDate->toDateString(),
+                $localDate->toDateString(),
+                viewerTimezone: config('booking.timezones.display_default', $scheduleTz)
+            );
+
+            $slotMatched = collect($slots)->first(function ($slot) use ($startUtc, $endUtc) {
+                return $slot['start_at_utc'] === $startUtc->toIso8601String()
+                    && $slot['end_at_utc'] === $endUtc->toIso8601String();
+            });
+
+            if (!$slotMatched) {
+                return back()
+                    ->withErrors(['start_at_utc' => 'اسلات انتخاب‌شده معتبر نیست یا ظرفیت ندارد.'])
+                    ->withInput();
+            }
+
+            $startLocal = $startUtc->copy()->timezone($scheduleTz);
+            $endLocal = $endUtc->copy()->timezone($scheduleTz);
         }
 
         $appointment->service_id = (int) $service->id;
@@ -418,6 +460,14 @@ class AppointmentController extends Controller
             $appointment->entry_at_utc = $entryUtc;
             $appointment->exit_at_utc = $exitUtc;
         }
+
+        $formJson = null;
+        if (!empty($data['appointment_form_response_json'])) {
+            $decoded = json_decode($data['appointment_form_response_json'], true);
+            $formJson = is_array($decoded) ? $decoded : null;
+        }
+
+        $appointment->appointment_form_response_json = $formJson;
 
         $appointment->save();
 
