@@ -28,30 +28,50 @@
                 @if(!$settings->global_online_booking_enabled)
                     <div class="text-sm text-rose-600">رزرو آنلاین در حال حاضر غیرفعال است.</div>
                 @else
-                    <form method="POST" action="{{ route('booking.public.book', $service) }}" class="space-y-4" id="online-booking-form">
+                    <form method="POST" action="{{ route('booking.public.book', $service) }}" class="space-y-6" id="online-booking-form">
                         @csrf
-                        <input type="hidden" name="start_at_utc" id="start_at_utc">
-                        <input type="hidden" name="end_at_utc" id="end_at_utc">
+                        <input type="hidden" name="start_at_utc" id="start_at_utc" value="{{ old('start_at_utc') }}">
+                        <input type="hidden" name="end_at_utc" id="end_at_utc" value="{{ old('end_at_utc') }}">
+                        <input type="hidden" name="date_local" id="date_local" value="{{ old('date_local') }}">
 
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-2">ارائه‌دهنده</label>
-                            <select name="provider_user_id" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
-                                @foreach($service->serviceProviders->where('is_active', true) as $sp)
-                                    <option value="{{ $sp->provider_user_id }}" @selected(old('provider_user_id')==$sp->provider_user_id)>
-                                        {{ optional($sp->provider)->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('provider_user_id')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                        <div class="space-y-2">
+                            <div class="text-sm text-gray-600">مرحله ۱: انتخاب ارائه‌دهنده</div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-2">ارائه‌دهنده</label>
+                                <select name="provider_user_id" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
+                                    @foreach($service->serviceProviders->where('is_active', true) as $sp)
+                                        <option value="{{ $sp->provider_user_id }}" @selected(old('provider_user_id')==$sp->provider_user_id)>
+                                            {{ optional($sp->provider)->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('provider_user_id')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                            </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-2">تاریخ (شمسی)</label>
-                                <input type="text" name="date_local" value="{{ old('date_local') }}" data-jdp id="date_local"
-                                       class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
-                                @error('date_local')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                        <div class="space-y-2">
+                            <div class="text-sm text-gray-600">مرحله ۲: انتخاب تاریخ (شمسی)</div>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="font-semibold text-sm text-gray-800">تقویم نوبت‌دهی</div>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button"
+                                                class="px-2 py-1 border rounded border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                                                id="calendar-prev">ماه قبل</button>
+                                        <div class="text-sm text-gray-700" id="calendar-label"></div>
+                                        <button type="button"
+                                                class="px-2 py-1 border rounded border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                                                id="calendar-next">ماه بعد</button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-7 gap-2 text-xs" dir="rtl" id="calendar-grid"></div>
+                                <div class="text-xs text-rose-600" id="calendar-error"></div>
                             </div>
+                            @error('date_local')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="text-sm text-gray-600">مرحله ۳: انتخاب اسلات</div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 mb-2">اسلات‌های موجود</label>
                                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" id="slots-container"></div>
@@ -71,35 +91,38 @@
                             $client = auth('client')->user();
                         @endphp
 
-                        @if($client)
-                            <div class="rounded-xl bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700">
-                                رزرو برای: <span class="font-semibold">{{ $client->full_name }}</span>
-                                <span class="text-xs text-gray-500">({{ $client->phone ?? 'بدون شماره' }})</span>
-                            </div>
-                        @else
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-2">نام و نام خانوادگی</label>
-                                    <input type="text" name="full_name" value="{{ old('full_name') }}"
-                                           class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
-                                    @error('full_name')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                        <div class="space-y-2">
+                            <div class="text-sm text-gray-600">مرحله ۴: اطلاعات مشتری</div>
+                            @if($client)
+                                <div class="rounded-xl bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700">
+                                    رزرو برای: <span class="font-semibold">{{ $client->full_name }}</span>
+                                    <span class="text-xs text-gray-500">({{ $client->phone ?? 'بدون شماره' }})</span>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-2">شماره تماس</label>
-                                    <input type="text" name="phone" value="{{ old('phone') }}"
-                                           class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
-                                    @error('phone')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                            @else
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-2">نام و نام خانوادگی</label>
+                                        <input type="text" name="full_name" value="{{ old('full_name') }}"
+                                               class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
+                                        @error('full_name')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-2">شماره تماس</label>
+                                        <input type="text" name="phone" value="{{ old('phone') }}"
+                                               class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
+                                        @error('phone')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                                    </div>
                                 </div>
-                            </div>
-                            @if($clientMode === 'password')
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-2">رمز عبور</label>
-                                    <input type="password" name="password"
-                                           class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
-                                    @error('password')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
-                                </div>
+                                @if($clientMode === 'password')
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-2">رمز عبور</label>
+                                        <input type="password" name="password"
+                                               class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
+                                        @error('password')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                                    </div>
+                                @endif
                             @endif
-                        @endif
+                        </div>
 
                         <div class="flex items-center justify-end">
                             <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">
@@ -113,25 +136,32 @@
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            if (window.jalaliDatepicker) {
-                window.jalaliDatepicker.startWatch({
-                    selector: '[data-jdp]',
-                    hasSecond: false
-                });
-                window.jalaliDatepicker.startWatch({
-                    selector: '[data-jdp-only-time]',
-                    hasSecond: false
-                });
-            }
-
             const form = document.getElementById('online-booking-form');
             const providerSelect = form?.querySelector('select[name="provider_user_id"]');
-            const dateInput = document.getElementById('date_local');
             const slotsContainer = document.getElementById('slots-container');
             const slotsEmpty = document.getElementById('slots-empty');
             const startInput = document.getElementById('start_at_utc');
             const endInput = document.getElementById('end_at_utc');
             const slotSelected = document.getElementById('slot-selected');
+            const dateInput = document.getElementById('date_local');
+            const calendarGrid = document.getElementById('calendar-grid');
+            const calendarLabel = document.getElementById('calendar-label');
+            const calendarPrev = document.getElementById('calendar-prev');
+            const calendarNext = document.getElementById('calendar-next');
+            const calendarError = document.getElementById('calendar-error');
+
+            const weekDays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+            let calendarYear = new Date().getFullYear();
+            let calendarMonth = new Date().getMonth() + 1;
+            let calendarDays = [];
+            const initialDate = dateInput?.value || '';
+            if (initialDate) {
+                const parts = initialDate.split('-');
+                if (parts.length === 3) {
+                    calendarYear = Number(parts[0]);
+                    calendarMonth = Number(parts[1]);
+                }
+            }
 
             const clearSlots = (message = 'ابتدا تاریخ را انتخاب کنید.') => {
                 slotsContainer.innerHTML = '';
@@ -140,6 +170,75 @@
                 startInput.value = '';
                 endInput.value = '';
                 slotSelected.textContent = 'اسلاتی انتخاب نشده است.';
+            };
+
+            const renderCalendar = () => {
+                if (!calendarGrid) return;
+                calendarGrid.innerHTML = '';
+                calendarLabel.textContent = new Date(calendarYear, calendarMonth - 1, 1)
+                    .toLocaleDateString('fa-IR-u-ca-persian', { year: 'numeric', month: 'long' });
+
+                weekDays.forEach((w) => {
+                    const div = document.createElement('div');
+                    div.className = 'text-center text-[11px] font-semibold text-gray-500 py-1';
+                    div.textContent = w;
+                    calendarGrid.appendChild(div);
+                });
+
+                if (!calendarDays.length) return;
+                const first = calendarDays[0].local_date;
+                const firstDate = new Date(first + 'T00:00:00');
+                const persianWeekdayIndex = (firstDate.getDay() + 1) % 7;
+
+                for (let i = 0; i < persianWeekdayIndex; i++) {
+                    const empty = document.createElement('div');
+                    empty.className = 'h-[52px]';
+                    calendarGrid.appendChild(empty);
+                }
+
+                calendarDays.forEach((day) => {
+                    const cell = document.createElement('button');
+                    cell.type = 'button';
+                    const isSelected = dateInput.value === day.local_date;
+                    const isDisabled = day.is_closed || !day.has_available_slots;
+                    cell.className = 'w-full h-[52px] border rounded-lg p-2 text-center text-xs';
+                    if (isSelected) {
+                        cell.classList.add('border-indigo-600', 'bg-indigo-50', 'text-indigo-700');
+                    } else if (isDisabled) {
+                        cell.classList.add('border-gray-200', 'bg-gray-100', 'text-gray-400');
+                    } else {
+                        cell.classList.add('border-gray-200', 'bg-white', 'text-gray-700', 'hover:bg-gray-50');
+                    }
+                    cell.disabled = isDisabled;
+                    const num = new Date(day.local_date + 'T00:00:00').toLocaleDateString('fa-IR-u-ca-persian', { day: 'numeric' });
+                    cell.innerHTML = `<div class=\"font-semibold\">${num}</div>`;
+                    cell.addEventListener('click', () => {
+                        dateInput.value = day.local_date;
+                        fetchSlots();
+                        renderCalendar();
+                    });
+                    calendarGrid.appendChild(cell);
+                });
+            };
+
+            const fetchCalendar = async () => {
+                if (!providerSelect?.value) return;
+                calendarError.textContent = '';
+                const params = new URLSearchParams({
+                    provider_user_id: providerSelect.value,
+                    year: calendarYear,
+                    month: calendarMonth,
+                });
+                try {
+                    const res = await fetch(`{{ route('booking.public.calendar', $service) }}?` + params.toString(), {
+                        headers: {'Accept': 'application/json'}
+                    });
+                    const json = await res.json();
+                    calendarDays = json.data || [];
+                    renderCalendar();
+                } catch (e) {
+                    calendarError.textContent = 'خطا در دریافت تقویم.';
+                }
             };
 
             const renderSlots = (slots) => {
@@ -185,14 +284,37 @@
                     });
                     const json = await res.json();
                     renderSlots(json.data || []);
+                    if (startInput.value && endInput.value) {
+                        slotSelected.textContent = `از ${startInput.value} تا ${endInput.value}`;
+                    }
                 } catch (e) {
                     clearSlots('خطا در دریافت اسلات‌ها.');
                 }
             };
 
-            providerSelect?.addEventListener('change', fetchSlots);
-            dateInput?.addEventListener('change', fetchSlots);
+            providerSelect?.addEventListener('change', () => {
+                dateInput.value = '';
+                clearSlots();
+                fetchCalendar();
+            });
+            calendarPrev?.addEventListener('click', () => {
+                calendarMonth -= 1;
+                if (calendarMonth < 1) {
+                    calendarMonth = 12;
+                    calendarYear -= 1;
+                }
+                fetchCalendar();
+            });
+            calendarNext?.addEventListener('click', () => {
+                calendarMonth += 1;
+                if (calendarMonth > 12) {
+                    calendarMonth = 1;
+                    calendarYear += 1;
+                }
+                fetchCalendar();
+            });
 
+            fetchCalendar();
             if (dateInput?.value) {
                 fetchSlots();
             }
