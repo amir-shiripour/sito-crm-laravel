@@ -18,6 +18,7 @@ use Modules\Booking\Http\Controllers\User\FormController as UserFormController;
 Route::prefix('booking')->name('booking.')->group(function () {
     Route::get('/', [OnlineBookingController::class, 'index'])->name('public.index');
     Route::get('/service/{service}', [OnlineBookingController::class, 'service'])->name('public.service');
+    Route::post('/service/{service}/book', [OnlineBookingController::class, 'book'])->name('public.book');
 
     /*Route::get('services/{service}/availability', [UserServiceAvailabilityController::class, 'edit'])
         ->name('services.availability.edit')
@@ -150,6 +151,18 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
 
         Route::get('appointments/wizard/form', [UserAppointmentController::class, 'wizardForm'])
             ->name('appointments.wizard.form');
+
+        Route::get('appointments/{appointment}', [UserAppointmentController::class, 'show'])
+            ->name('appointments.show')
+            ->middleware('can:booking.appointments.view');
+
+        Route::get('appointments/{appointment}/edit', [UserAppointmentController::class, 'edit'])
+            ->name('appointments.edit')
+            ->middleware('can:booking.appointments.edit');
+
+        Route::post('appointments/{appointment}', [UserAppointmentController::class, 'update'])
+            ->name('appointments.update')
+            ->middleware('can:booking.appointments.edit');
 
         Route::get('settings', [UserSettingsController::class, 'edit'])->name('settings.edit')->middleware('can:booking.settings.manage');
         Route::post('settings', [UserSettingsController::class, 'update'])->name('settings.update')->middleware('can:booking.settings.manage');

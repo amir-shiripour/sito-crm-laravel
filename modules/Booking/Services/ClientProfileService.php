@@ -3,6 +3,7 @@
 namespace Modules\Booking\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientSetting;
@@ -82,6 +83,10 @@ class ClientProfileService
             'username' => $username,
             'created_by' => $creatorUserId,
         ]);
+
+        if (!empty($clientInput['password'])) {
+            $createPayload['password'] = Hash::make((string) $clientInput['password']);
+        }
 
         return Client::query()->create($createPayload);
     }
