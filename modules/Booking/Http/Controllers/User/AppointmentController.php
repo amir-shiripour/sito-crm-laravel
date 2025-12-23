@@ -351,6 +351,7 @@ class AppointmentController extends Controller
             'notes'             => ['nullable', 'string'],
             'entry_time_local'  => ['nullable', 'string'],
             'exit_time_local'   => ['nullable', 'string'],
+            'appointment_form_response_json' => ['nullable', 'string'],
         ]);
 
         $authUser = $request->user();
@@ -446,6 +447,13 @@ class AppointmentController extends Controller
             $appointment->entry_at_utc = $entryUtc;
             $appointment->exit_at_utc = $exitUtc;
         }
+
+        $formJson = null;
+        if (!empty($data['appointment_form_response_json'])) {
+            $decoded = json_decode($data['appointment_form_response_json'], true);
+            $formJson = is_array($decoded) ? $decoded : null;
+        }
+        $appointment->appointment_form_response_json = $formJson;
 
         $appointment->save();
 

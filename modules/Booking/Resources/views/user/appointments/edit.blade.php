@@ -145,6 +145,17 @@
                           class="{{ $inputClass }}">{{ old('notes', $appointment->notes) }}</textarea>
             </div>
 
+            <div class="border-t border-gray-100 dark:border-gray-700 pt-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">فرم اطلاعات نوبت</h2>
+                </div>
+                <input type="hidden" name="appointment_form_response_json" id="appointment_form_response_json">
+                <div id="appointment-form-container" class="space-y-4"></div>
+                <div id="appointment-form-empty" class="text-xs text-gray-500 dark:text-gray-400 hidden">
+                    برای این سرویس فرم اختصاصی تعریف نشده است.
+                </div>
+            </div>
+
             <div class="flex items-center justify-end">
                 <button type="submit"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition">
@@ -173,9 +184,14 @@
             const flow = form.dataset.flow || 'PROVIDER_FIRST';
             const serviceSelect = document.getElementById('service_id');
             const providerSelect = document.getElementById('provider_user_id');
+            const formContainer = document.getElementById('appointment-form-container');
+            const formEmpty = document.getElementById('appointment-form-empty');
+            const formJsonInput = document.getElementById('appointment_form_response_json');
 
             const selectedService = form.dataset.selectedService || '';
             const selectedProvider = form.dataset.selectedProvider || '';
+            const initialFormValues = @json($appointment->appointment_form_response_json ?? []);
+            const serviceFormMap = @json($services->mapWithKeys(fn ($s) => [$s->id => $s->appointment_form_id])->all());
 
             const buildOptions = (select, items, selectedId) => {
                 if (!select) return;
@@ -219,6 +235,147 @@
                 buildOptions(serviceSelect, services, current);
             };
 
+            const renderFormField = (field, value) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'space-y-1';
+                const label = document.createElement('label');
+                label.className = 'block text-xs text-gray-600 dark:text-gray-300';
+                label.textContent = field.label || field.name;
+                wrapper.appendChild(label);
+
+                const type = field.type || 'text';
+                if (type === 'textarea') {
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400';
+                    textarea.rows = 3;
+                    textarea.placeholder = field.placeholder || '';
+                    textarea.value = value ?? '';
+                    if (field.required) textarea.required = true;
+                    textarea.dataset.fieldName = field.name;
+                    wrapper.appendChild(textarea);
+                    return wrapper;
+                }
+
+                if (type === 'select') {
+                    const select = document.createElement('select');
+                    select.className = 'w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100';
+                    if (field.required) select.required = true;
+                    select.dataset.fieldName = field.name;
+                    const emptyOpt = document.createElement('option');
+                    emptyOpt.value = '';
+                    emptyOpt.textContent = 'انتخاب کنید';
+                    select.appendChild(emptyOpt);
+                    (field.options || []).forEach((opt) => {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.textContent = opt;
+                        if (value === opt) option.selected = true;
+                        select.appendChild(option);
+                    });
+                    wrapper.appendChild(select);
+                    return wrapper;
+                }
+
+                if (type === 'radio') {
+                    const container = document.createElement('div');
+                    container.className = 'flex flex-wrap gap-3';
+                    (field.options || []).forEach((opt) => {
+                        const labelWrap = document.createElement('label');
+                        labelWrap.className = 'inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200';
+                        const input = document.createElement('input');
+                        input.type = 'radio';
+                        input.name = `form_${field.name}`;
+                        input.value = opt;
+                        if (field.required) input.required = true;
+                        if (value === opt) input.checked = true;
+                        input.dataset.fieldName = field.name;
+                        labelWrap.appendChild(input);
+                        const span = document.createElement('span');
+                        span.textContent = opt;
+                        labelWrap.appendChild(span);
+                        container.appendChild(labelWrap);
+                    });
+                    wrapper.appendChild(container);
+                    return wrapper;
+                }
+
+                if (type === 'checkbox') {
+                    const container = document.createElement('div');
+                    container.className = 'flex flex-wrap gap-3';
+                    const currentValues = Array.isArray(value) ? value : [];
+                    (field.options || []).forEach((opt) => {
+                        const labelWrap = document.createElement('label');
+                        labelWrap.className = 'inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200';
+                        const input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.value = opt;
+                        input.dataset.fieldName = field.name;
+                        if (currentValues.includes(opt)) input.checked = true;
+                        labelWrap.appendChild(input);
+                        const span = document.createElement('span');
+                        span.textContent = opt;
+                        labelWrap.appendChild(span);
+                        container.appendChild(labelWrap);
+                    });
+                    wrapper.appendChild(container);
+                    return wrapper;
+                }
+
+                const input = document.createElement('input');
+                input.type = type;
+                input.className = 'w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400';
+                input.placeholder = field.placeholder || '';
+                input.value = value ?? '';
+                if (field.required) input.required = true;
+                input.dataset.fieldName = field.name;
+                wrapper.appendChild(input);
+                return wrapper;
+            };
+
+            const collectFormValues = () => {
+                const values = {};
+                formContainer.querySelectorAll('[data-field-name]').forEach((el) => {
+                    const name = el.dataset.fieldName;
+                    if (!name) return;
+                    if (el.type === 'checkbox') {
+                        if (!Array.isArray(values[name])) values[name] = [];
+                        if (el.checked) values[name].push(el.value);
+                        return;
+                    }
+                    if (el.type === 'radio') {
+                        if (el.checked) values[name] = el.value;
+                        return;
+                    }
+                    values[name] = el.value;
+                });
+                return values;
+            };
+
+            const loadAppointmentForm = async (serviceId) => {
+                const formId = serviceFormMap?.[serviceId] || null;
+                if (!formId) {
+                    formContainer.innerHTML = '';
+                    formEmpty?.classList.remove('hidden');
+                    return;
+                }
+                const params = new URLSearchParams({ form_id: formId });
+                const res = await fetch(`{{ route('user.booking.appointments.wizard.form') }}?` + params.toString(), {
+                    headers: {'Accept': 'application/json'}
+                });
+                const json = await res.json();
+                const schema = json.data?.schema_json || null;
+                formContainer.innerHTML = '';
+                if (!schema || !Array.isArray(schema.fields) || schema.fields.length === 0) {
+                    formEmpty?.classList.remove('hidden');
+                    return;
+                }
+                formEmpty?.classList.add('hidden');
+                schema.fields.forEach((field) => {
+                    const value = initialFormValues[field.name];
+                    formContainer.appendChild(renderFormField(field, value));
+                });
+            };
+
             if (flow === 'PROVIDER_FIRST' && serviceSelect && providerSelect) {
                 if (providerSelect.value) {
                     fetchServices(providerSelect.value);
@@ -228,20 +385,33 @@
                 });
                 serviceSelect.addEventListener('change', () => {
                     fetchProviders(serviceSelect.value, false);
+                    loadAppointmentForm(serviceSelect.value);
                 });
             }
 
             if (flow === 'SERVICE_FIRST' && serviceSelect && providerSelect) {
                 if (serviceSelect.value) {
                     fetchProviders(serviceSelect.value);
+                    loadAppointmentForm(serviceSelect.value);
                 }
                 serviceSelect.addEventListener('change', () => {
                     fetchProviders(serviceSelect.value, false);
+                    loadAppointmentForm(serviceSelect.value);
                 });
                 providerSelect.addEventListener('change', () => {
                     fetchServices(providerSelect.value, false);
                 });
             }
+
+            if (serviceSelect && serviceSelect.value) {
+                loadAppointmentForm(serviceSelect.value);
+            }
+
+            form.addEventListener('submit', () => {
+                if (formJsonInput) {
+                    formJsonInput.value = JSON.stringify(collectFormValues());
+                }
+            });
         });
     </script>
 @endsection
