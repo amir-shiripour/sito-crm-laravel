@@ -552,6 +552,85 @@ class AppointmentService
         }
     }
 
+    public function validateSlotAvailableForUpdate(
+        int $serviceId,
+        int $providerUserId,
+        string $localDate,
+        Carbon $startUtc,
+        Carbon $endUtc,
+        ?int $excludeAppointmentId = null
+    ): void {
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        $day = Carbon::createFromFormat('Y-m-d', $localDate, $scheduleTz)->startOfDay();
+        $policy = $this->engine->resolveDayPolicy($serviceId, $providerUserId, $day);
+
+        if ($policy['is_closed']) {
+            throw new \RuntimeException('This day is closed.');
+        }
+
+        $this->assertTimeWithinPolicy($localDate, $scheduleTz, $startUtc, $endUtc, $policy);
+
+        $capSlot = (int) ($policy['capacity_per_slot'] ?? 0);
+        $capDay  = $policy['capacity_per_day'] !== null ? (int) $policy['capacity_per_day'] : null;
+
+        $statuses = (array) config('booking.capacity_consuming_statuses', []);
+
+        $slotBookedQ = Appointment::query()
+            ->where('service_id', $serviceId)
+            ->where('provider_user_id', $providerUserId)
+            ->whereIn('status', $statuses)
+            ->where('start_at_utc', '<', $endUtc)
+            ->where('end_at_utc', '>', $startUtc);
+
+        if ($excludeAppointmentId) {
+            $slotBookedQ->where('id', '!=', $excludeAppointmentId);
+        }
+
+        $slotBooked = $slotBookedQ->count();
+
+        $slotHeld = BookingSlotHold::query()
+            ->where('service_id', $serviceId)
+            ->where('provider_user_id', $providerUserId)
+            ->where('expires_at_utc', '>', now('UTC'))
+            ->where('start_at_utc', '<', $endUtc)
+            ->where('end_at_utc', '>', $startUtc)
+            ->count();
+
+        if ($capSlot > 0 && ($slotBooked + $slotHeld) >= $capSlot) {
+            throw new \RuntimeException('Slot capacity is full.');
+        }
+
+        if ($capDay !== null && $capDay > 0) {
+            $dayStartUtc = $day->copy()->timezone('UTC');
+            $dayEndUtc   = $day->copy()->addDay()->timezone('UTC');
+
+            $dayBookedQ = Appointment::query()
+                ->where('service_id', $serviceId)
+                ->where('provider_user_id', $providerUserId)
+                ->whereIn('status', $statuses)
+                ->where('start_at_utc', '>=', $dayStartUtc)
+                ->where('start_at_utc', '<', $dayEndUtc);
+
+            if ($excludeAppointmentId) {
+                $dayBookedQ->where('id', '!=', $excludeAppointmentId);
+            }
+
+            $dayBooked = $dayBookedQ->count();
+
+            $dayHeld = BookingSlotHold::query()
+                ->where('service_id', $serviceId)
+                ->where('provider_user_id', $providerUserId)
+                ->where('expires_at_utc', '>', now('UTC'))
+                ->where('start_at_utc', '>=', $dayStartUtc)
+                ->where('start_at_utc', '<', $dayEndUtc)
+                ->count();
+
+            if (($dayBooked + $dayHeld) >= $capDay) {
+                throw new \RuntimeException('Day capacity is full.');
+            }
+        }
+    }
+
     protected function assertTimeWithinPolicy(
         string $localDate,
         string $scheduleTz,
