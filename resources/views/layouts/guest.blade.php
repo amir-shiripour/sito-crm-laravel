@@ -20,6 +20,10 @@
     </style>
 </head>
 <body class="font-sans text-gray-900 antialiased bg-gray-50 dark:bg-gray-950 dark:text-gray-100">
-{{ $slot }}
+@if (View::hasSection('content'))
+    @yield('content')
+@else
+    {{ $slot ?? '' }}
+@endif
 </body>
 </html>
