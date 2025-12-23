@@ -17,6 +17,7 @@ use Modules\Clients\Entities\Client;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Morilog\Jalali\CalendarUtils;
 
 class AppointmentController extends Controller
 {
@@ -284,6 +285,197 @@ class AppointmentController extends Controller
             ->with('success', 'نوبت با موفقیت ثبت شد.');
     }
 
+    public function show(Request $request, Appointment $appointment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentViewAccess($request->user(), $appointment, $settings);
+
+        return view('booking::user.appointments.show', compact('appointment', 'settings'));
+    }
+
+    public function edit(Request $request, Appointment $appointment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
+
+        $user = $request->user();
+
+        $services = BookingService::query()
+            ->where('status', BookingService::STATUS_ACTIVE)
+            ->orderBy('name')
+            ->get();
+
+        $providersQuery = User::query();
+        $roleIds = array_values(array_filter(
+            array_map('intval', (array) ($settings->allowed_roles ?? [])),
+            fn ($v) => $v > 0
+        ));
+
+        if (! $this->isAdminUser($user) && !empty($roleIds)) {
+            $providersQuery->whereHas('roles', fn ($r) => $r->whereIn('id', $roleIds));
+        }
+
+        $providers = $providersQuery->orderBy('name')->get(['id', 'name']);
+
+        $clients = Client::query()
+            ->visibleForUser($user)
+            ->orderBy('full_name')
+            ->limit(200)
+            ->get(['id', 'full_name']);
+
+        return view('booking::user.appointments.edit', compact('appointment', 'settings', 'services', 'providers', 'clients'));
+    }
+
+    public function update(Request $request, Appointment $appointment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
+
+        $data = $request->validate([
+            'service_id'        => ['required', 'integer', 'exists:booking_services,id'],
+            'provider_user_id'  => ['required', 'integer', 'exists:users,id'],
+            'client_id'         => ['required', 'integer', 'exists:clients,id'],
+            'status'            => ['required', Rule::in([
+                Appointment::STATUS_DRAFT,
+                Appointment::STATUS_PENDING_PAYMENT,
+                Appointment::STATUS_CONFIRMED,
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+                Appointment::STATUS_NO_SHOW,
+                Appointment::STATUS_DONE,
+                Appointment::STATUS_RESCHEDULED,
+            ])],
+            'start_at_utc'      => ['nullable', 'date'],
+            'end_at_utc'        => ['nullable', 'date'],
+            'date_local'        => ['nullable', 'string'],
+            'start_time_local'  => ['nullable', 'string'],
+            'end_time_local'    => ['nullable', 'string'],
+            'notes'             => ['nullable', 'string'],
+            'entry_time_local'  => ['nullable', 'string'],
+            'exit_time_local'   => ['nullable', 'string'],
+            'appointment_form_response_json' => ['nullable', 'string'],
+        ]);
+
+        $authUser = $request->user();
+
+        $client = Client::query()->whereKey($data['client_id'])->firstOrFail();
+        if (!$client->isVisibleFor($authUser)) {
+            abort(403, 'شما به این مشتری دسترسی ندارید.');
+        }
+
+        $service = BookingService::query()->whereKey($data['service_id'])->firstOrFail();
+        $sp = BookingServiceProvider::query()
+            ->where('service_id', $service->id)
+            ->where('provider_user_id', (int) $data['provider_user_id'])
+            ->first();
+
+        if (!$sp || !$sp->is_active) {
+            return back()
+                ->withErrors(['service_id' => 'این سرویس برای این ارائه‌دهنده فعال نیست.'])
+                ->withInput();
+        }
+
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        $localDate = null;
+        $startLocal = null;
+        $endLocal = null;
+
+        if ($service->custom_schedule_enabled) {
+            $localDate = $this->convertJalaliDateToLocal($data['date_local'] ?? null, $scheduleTz);
+            if (!$localDate) {
+                return back()
+                    ->withErrors(['date_local' => 'تاریخ وارد شده معتبر نیست.'])
+                    ->withInput();
+            }
+
+            $startLocal = $this->combineLocalDateAndTime($localDate, $data['start_time_local'] ?? null);
+            $endLocal = $this->combineLocalDateAndTime($localDate, $data['end_time_local'] ?? null);
+
+            if (!$startLocal || !$endLocal) {
+                return back()
+                    ->withErrors(['start_time_local' => 'زمان شروع/پایان معتبر نیست.'])
+                    ->withInput();
+            }
+
+            if ($endLocal->lte($startLocal)) {
+                return back()
+                    ->withErrors(['end_time_local' => 'زمان پایان باید بعد از زمان شروع باشد.'])
+                    ->withInput();
+            }
+        } else {
+            if (empty($data['start_at_utc']) || empty($data['end_at_utc'])) {
+                return back()
+                    ->withErrors(['start_at_utc' => 'لطفاً یک اسلات معتبر انتخاب کنید.'])
+                    ->withInput();
+            }
+
+            $startUtc = Carbon::parse($data['start_at_utc'], 'UTC');
+            $endUtc = Carbon::parse($data['end_at_utc'], 'UTC');
+            $localDate = $startUtc->copy()->timezone($scheduleTz)->startOfDay();
+
+            $engine = app(\Modules\Booking\Services\BookingEngine::class);
+            $slots = $engine->generateSlots(
+                $service->id,
+                (int) $data['provider_user_id'],
+                $localDate->toDateString(),
+                $localDate->toDateString(),
+                viewerTimezone: config('booking.timezones.display_default', $scheduleTz)
+            );
+
+            $slotMatched = collect($slots)->first(function ($slot) use ($startUtc, $endUtc) {
+                return $slot['start_at_utc'] === $startUtc->toIso8601String()
+                    && $slot['end_at_utc'] === $endUtc->toIso8601String();
+            });
+
+            if (!$slotMatched) {
+                return back()
+                    ->withErrors(['start_at_utc' => 'اسلات انتخاب‌شده معتبر نیست یا ظرفیت ندارد.'])
+                    ->withInput();
+            }
+
+            $startLocal = $startUtc->copy()->timezone($scheduleTz);
+            $endLocal = $endUtc->copy()->timezone($scheduleTz);
+        }
+
+        $appointment->service_id = (int) $service->id;
+        $appointment->provider_user_id = (int) $data['provider_user_id'];
+        $appointment->client_id = (int) $client->id;
+        $appointment->status = $data['status'];
+        $appointment->start_at_utc = $startLocal->copy()->timezone('UTC');
+        $appointment->end_at_utc = $endLocal->copy()->timezone('UTC');
+        $appointment->notes = $data['notes'] ?? null;
+
+        if ($settings->allow_appointment_entry_exit_times) {
+            $entryLocal = $this->combineLocalDateAndTime($localDate, $data['entry_time_local'] ?? null);
+            $exitLocal = $this->combineLocalDateAndTime($localDate, $data['exit_time_local'] ?? null);
+            $entryUtc = $entryLocal?->copy()->timezone('UTC');
+            $exitUtc = $exitLocal?->copy()->timezone('UTC');
+
+            if ($entryUtc && $exitUtc && $exitUtc->lte($entryUtc)) {
+                return back()
+                    ->withErrors(['exit_time_local' => 'زمان خروج باید بعد از زمان ورود باشد.'])
+                    ->withInput();
+            }
+
+            $appointment->entry_at_utc = $entryUtc;
+            $appointment->exit_at_utc = $exitUtc;
+        }
+
+        $formJson = null;
+        if (!empty($data['appointment_form_response_json'])) {
+            $decoded = json_decode($data['appointment_form_response_json'], true);
+            $formJson = is_array($decoded) ? $decoded : null;
+        }
+
+        $appointment->appointment_form_response_json = $formJson;
+
+        $appointment->save();
+
+        return redirect()
+            ->route('user.booking.appointments.show', $appointment)
+            ->with('success', 'نوبت با موفقیت به‌روزرسانی شد.');
+    }
+
     // ------------------------------------------------------------
     // Wizard JSON endpoints
     // ------------------------------------------------------------
@@ -438,6 +630,85 @@ class AppointmentController extends Controller
         }
 
         abort(403);
+    }
+
+    protected function ensureAppointmentViewAccess(?User $user, Appointment $appointment, BookingSetting $settings): void
+    {
+        if (! $user) {
+            abort(403);
+        }
+
+        if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.view') && ! $this->userIsProvider($user, $settings)) {
+            abort(403);
+        }
+
+        if ($this->userIsProvider($user, $settings) && ! $this->isAdminUser($user)) {
+            if ((int) $appointment->provider_user_id !== (int) $user->id) {
+                abort(403, 'شما به این نوبت دسترسی ندارید.');
+            }
+        }
+    }
+
+    protected function ensureAppointmentEditAccess(?User $user, Appointment $appointment, BookingSetting $settings): void
+    {
+        if (! $user) {
+            abort(403);
+        }
+
+        if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.edit')) {
+            abort(403);
+        }
+
+        if ($this->userIsProvider($user, $settings) && ! $this->isAdminUser($user)) {
+            if ((int) $appointment->provider_user_id !== (int) $user->id) {
+                abort(403, 'شما به این نوبت دسترسی ندارید.');
+            }
+        }
+    }
+
+    protected function convertJalaliDateToLocal(?string $value, string $tz): ?Carbon
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            $datePieces = preg_split('/[^\d]+/', trim($value));
+            if (count($datePieces) < 3) {
+                return null;
+            }
+
+            [$jy, $jm, $jd] = array_map('intval', array_slice($datePieces, 0, 3));
+            [$gy, $gm, $gd] = CalendarUtils::toGregorian($jy, $jm, $jd);
+
+            return Carbon::create($gy, $gm, $gd, 0, 0, 0, $tz);
+        } catch (\Throwable $e) {
+            if (function_exists('logger')) {
+                logger()->warning('Failed to convert Jalali date', [
+                    'value' => $value,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return null;
+        }
+    }
+
+    protected function combineLocalDateAndTime(?Carbon $date, ?string $time): ?Carbon
+    {
+        if (!$date || empty($time)) {
+            return null;
+        }
+
+        $timePieces = preg_split('/[^\d]+/', trim($time));
+        if (count($timePieces) < 2) {
+            return null;
+        }
+
+        $hour = min(max((int) $timePieces[0], 0), 23);
+        $minute = min(max((int) $timePieces[1], 0), 59);
+
+        return $date->copy()->setTime($hour, $minute, 0);
     }
 
     // بقیه متدها بدون تغییر
