@@ -24,16 +24,16 @@
         <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">نام گردش کار</label>
             <input type="text" name="name" value="{{ old('name', $workflow->name ?? '') }}"
-                   class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                          dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:ring-indigo-500/50"
+                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                          dark:bg-gray-900 dark:border-gray-600 dark:text-white dark:focus:ring-indigo-500/50"
                    placeholder="مثال: یادآوری نوبت" required>
         </div>
 
         <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">تریگر (رویداد)</label>
             <select name="key_preset" id="wf-key-preset"
-                    class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                           dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:ring-indigo-500/50">
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                           dark:bg-gray-900 dark:border-gray-600 dark:text-white dark:focus:ring-indigo-500/50">
                 <option value="">انتخاب کنید...</option>
 
                 @if(!empty($appointmentOptions))
@@ -54,8 +54,8 @@
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">کلید سیستمی (Key)</label>
         <div class="relative rounded-md shadow-sm">
             <input type="text" name="key" id="wf-key" value="{{ $currentKey }}"
-                   class="block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                          dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:ring-indigo-500/50 read-only:bg-gray-100 dark:read-only:bg-gray-900 read-only:text-gray-500"
+                   class="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                          dark:bg-gray-900 dark:border-gray-600 dark:text-white dark:focus:ring-indigo-500/50 read-only:bg-gray-100 dark:read-only:bg-gray-800 read-only:text-gray-500"
                    required>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">این کلید شناسه منحصر‌به‌فرد گردش کار است و در کد استفاده می‌شود.</p>
@@ -69,10 +69,10 @@
                 function setEditable(isEditable) {
                     if (isEditable) {
                         keyInput.removeAttribute('readonly');
-                        keyInput.classList.remove('bg-gray-100', 'text-gray-500');
+                        keyInput.classList.remove('bg-gray-100', 'text-gray-500', 'dark:bg-gray-800');
                     } else {
                         keyInput.setAttribute('readonly', 'readonly');
-                        keyInput.classList.add('bg-gray-100', 'text-gray-500');
+                        keyInput.classList.add('bg-gray-100', 'text-gray-500', 'dark:bg-gray-800');
                     }
                 }
 
@@ -96,8 +96,8 @@
     <div class="space-y-2">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">توضیحات</label>
         <textarea name="description" rows="3"
-                  class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                         dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:ring-indigo-500/50"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                         dark:bg-gray-900 dark:border-gray-600 dark:text-white dark:focus:ring-indigo-500/50"
                   placeholder="توضیحات اختیاری در مورد عملکرد این گردش کار...">{{ old('description', $workflow->description ?? '') }}</textarea>
     </div>
 
@@ -112,16 +112,16 @@
         </label>
     </div>
 
-    <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+    <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
         @if(($method ?? '') === 'patch')
             <a href="{{ route('user.workflows.index') }}"
-               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
+               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
                 انصراف
             </a>
         @endif
 
         <button type="submit"
-                class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+                class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
             {{ ($method ?? '') === 'patch' ? 'ذخیره تغییرات' : 'ایجاد گردش کار' }}
         </button>
     </div>
