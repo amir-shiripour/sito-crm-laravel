@@ -179,11 +179,10 @@ class AppointmentService
             // Consume hold
             $hold->delete();
 
-            // Integrations:
-            // - Reminders/Workflows/Tasks should be triggered only when CONFIRMED.
+            $this->triggerWorkflow('appointment_created', $appointment);
+
             if ($appointment->status === Appointment::STATUS_CONFIRMED) {
                 $this->onAppointmentConfirmed($appointment);
-                $this->triggerWorkflow('appointment_created', $appointment);
             }
 
             $this->audit->log(
@@ -283,8 +282,8 @@ class AppointmentService
                 'appointment_form_response_json' => $appointmentFormResponse,
             ]);
 
-            $this->onAppointmentConfirmed($appointment);
             $this->triggerWorkflow('appointment_created', $appointment);
+            $this->onAppointmentConfirmed($appointment);
 
             $this->audit->log(
                 action: 'APPOINTMENT_CREATED_OPERATOR',
