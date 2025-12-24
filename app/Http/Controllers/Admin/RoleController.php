@@ -19,12 +19,18 @@ class RoleController extends Controller
 {
     public function index()
     {
-        $roles = Role::query()
-            ->when(
-                Schema::hasColumn('roles', 'display_name'),
-                fn ($q) => $q->orderBy('display_name')->orderBy('name'),
-                fn ($q) => $q->orderBy('name')
-            )
+        $query = Role::query();
+
+        // اگر کاربر لاگین شده super-admin نیست، نقش super-admin را از لیست حذف کن
+        if (!auth()->user()->hasRole('super-admin')) {
+            $query->where('name', '!=', 'super-admin');
+        }
+
+        $roles = $query->when(
+            Schema::hasColumn('roles', 'display_name'),
+            fn($q) => $q->orderBy('display_name')->orderBy('name'),
+            fn($q) => $q->orderBy('name')
+        )
             ->get();
 
         $roleUserCounts = [];
@@ -33,7 +39,7 @@ class RoleController extends Controller
                 ->where('role_id', $role->id)->count();
         }
 
-        return view('admin.roles.index', compact('roles','roleUserCounts'));
+        return view('admin.roles.index', compact('roles', 'roleUserCounts'));
     }
 
     public function create()
@@ -45,7 +51,7 @@ class RoleController extends Controller
         // 🔹 همه ویجت‌های ثبت‌شده از Registry
         $widgets = WidgetRegistry::all();
 
-        return view('admin.roles.create', compact('permissions','permissionGroups','widgets'));
+        return view('admin.roles.create', compact('permissions', 'permissionGroups', 'widgets'));
     }
 
     private function makeUniqueSlug(string $base, ?int $ignoreId = null): string
@@ -61,7 +67,7 @@ class RoleController extends Controller
         $original = $slug;
         $i = 2;
 
-        $exists = fn (string $candidate) => Role::where('name', $candidate)
+        $exists = fn(string $candidate) => Role::where('name', $candidate)
             ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
             ->exists();
 
@@ -80,6 +86,13 @@ class RoleController extends Controller
         $slug = $data['name'] ?? null;
         if (!$slug) {
             $slug = $this->makeUniqueSlug($data['display_name'] ?? '');
+        }
+
+        // جلوگیری از ایجاد نقش با نام super-admin توسط ادمین عادی
+        if (!auth()->user()->hasRole('super-admin') && $slug === 'super-admin') {
+            return back()
+                ->withErrors(['name' => 'شما نمی‌توانید نقش با نام super-admin ایجاد کنید.'])
+                ->withInput();
         }
 
         $role = Role::create([
@@ -107,8 +120,9 @@ class RoleController extends Controller
 
     public function edit(Role $role)
     {
-        if ($role->name === 'super-admin') {
-            // همون تذکر قبلی
+        // جلوگیری از ویرایش نقش super-admin توسط ادمین عادی
+        if (!auth()->user()->hasRole('super-admin') && $role->name === 'super-admin') {
+            abort(403, 'شما نمی‌توانید نقش super-admin را ویرایش کنید.');
         }
 
         $permissions   = Permission::orderBy('name')->pluck('name')->toArray();
@@ -137,6 +151,11 @@ class RoleController extends Controller
 
     public function update(UpdateRoleRequest $request, Role $role)
     {
+        // جلوگیری از ویرایش نقش super-admin توسط ادمین عادی
+        if (!auth()->user()->hasRole('super-admin') && $role->name === 'super-admin') {
+            abort(403, 'شما نمی‌توانید نقش super-admin را ویرایش کنید.');
+        }
+
         $data = $request->validated();
 
         $incomingSlug = $data['name'] ?? null;
@@ -147,9 +166,17 @@ class RoleController extends Controller
             );
         }
 
+        // جلوگیری از تغییر نام نقش super-admin
         if ($role->name === 'super-admin' && $incomingSlug !== 'super-admin') {
             return back()
                 ->withErrors(['name' => 'نقش super-admin قابل تغییر نام نیست.'])
+                ->withInput();
+        }
+
+        // جلوگیری از تغییر نام یک نقش دیگر به super-admin توسط ادمین عادی
+        if (!auth()->user()->hasRole('super-admin') && $incomingSlug === 'super-admin') {
+            return back()
+                ->withErrors(['name' => 'شما نمی‌توانید نام نقش را به super-admin تغییر دهید.'])
                 ->withInput();
         }
 
@@ -182,13 +209,19 @@ class RoleController extends Controller
 
     public function destroy(Role $role)
     {
+        // جلوگیری از حذف نقش super-admin
         if ($role->name === 'super-admin') {
-            return back()->withErrors(['role'=>'نقش super-admin قابل حذف نیست.']);
+            return back()->withErrors(['role' => 'نقش super-admin قابل حذف نیست.']);
+        }
+
+        // جلوگیری از حذف نقش super-admin توسط ادمین عادی (برای اطمینان)
+        if (!auth()->user()->hasRole('super-admin') && $role->name === 'super-admin') {
+            abort(403, 'شما نمی‌توانید نقش super-admin را حذف کنید.');
         }
 
         $role->delete();
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        return redirect()->route('admin.roles.index')->with('success','نقش حذف شد.');
+        return redirect()->route('admin.roles.index')->with('success', 'نقش حذف شد.');
     }
 }

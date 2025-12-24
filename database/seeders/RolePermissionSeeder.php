@@ -80,13 +80,21 @@ class RolePermissionSeeder extends Seeder
         // سوپرادمین: همه‌چیز
         $super->syncPermissions(Permission::pluck('name')->toArray());
 
-        // ادمین: مثل قبل، بدون دسترسی به مدیریت فیلدها (فقط سوپر)
-        $admin->syncPermissions([
-            'users.view', 'users.create', 'users.update',
-            'roles.view',
-            'menu.see.users', 'menu.see.roles',
-            // عمداً: بدون menu.see.custom-fields و بدون custom-fields.*
-        ]);
+        // ادمین: همه permission ها به جز موارد استثنا
+        // استثناها:
+        // - modules.manage (مدیریت ماژول‌ها - نصب/حذف/فعال/غیرفعال)
+        // - clients.manage (تنظیمات لیبل و سایر تنظیمات ماژول clients)
+        $allPermissions = Permission::pluck('name')->toArray();
+        $excludedPermissions = [
+            'modules.manage',
+            'clients.manage',
+        ];
+
+        $adminPermissions = array_filter($allPermissions, function ($perm) use ($excludedPermissions) {
+            return !in_array($perm, $excludedPermissions);
+        });
+
+        $admin->syncPermissions($adminPermissions);
 
         // سایر نقش‌ها
         $sales->syncPermissions(['menu.see.users']);

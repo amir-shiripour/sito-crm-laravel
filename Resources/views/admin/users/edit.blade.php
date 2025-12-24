@@ -1,9 +1,10 @@
-@extends('layouts.admin')
+@extends('layouts.user')
 
 @section('content')
     @php
         // نقش انتخابی امن
-        $selectedRole = old('role', isset($selectedRole) ? $selectedRole : (optional(optional($user)->roles->first())->name ?? ''));
+        $selectedRole = old('role', isset($selectedRole) ? $selectedRole : (optional(optional($user)->roles->first())->name ??
+        ''));
 
         // همیشه یک کالکشن داشته باشیم؛ اگر رابطه لود/تعریف نشده بود هم خطا نده
         // نکته: برای بهترین نتیجه، در مدل User رابطه customValues را تعریف کن و در کنترلر edit با loadMissing لود کن.
@@ -23,19 +24,20 @@
                 </a>
 
                 @if($user && $user->exists)
-                    <form method="POST" action="{{ route('admin.users.destroy',$user) }}" class="inline"
-                          onsubmit="return confirm('حذف این کاربر؟')">
-                        @csrf @method('DELETE')
-                        <button class="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700">حذف</button>
-                    </form>
+                    @can('users.delete')
+                        <form method="POST" action="{{ route('admin.users.destroy',$user) }}" class="inline"
+                              onsubmit="return confirm('حذف این کاربر؟')">
+                            @csrf @method('DELETE')
+                            <button class="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700">حذف</button>
+                        </form>
+                    @endcan
                 @endif
             </div>
         </div>
 
         <form method="POST"
               action="{{ ($user && $user->exists) ? route('admin.users.update', $user) : route('admin.users.store') }}"
-              enctype="multipart/form-data"
-              class="p-6 space-y-5">
+              enctype="multipart/form-data" class="p-6 space-y-5">
             @csrf
             @if($user && $user->exists)
                 @method('PUT')
@@ -84,15 +86,14 @@
                 <label class="block text-sm font-medium mb-1 text-gray-800 dark:text-gray-200">نقش</label>
                 <select name="role"
                         class="w-full border rounded-lg p-2.5 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                        required
-                        x-on:change="role = $event.target.value">
+                        required x-on:change="role = $event.target.value">
                     <option value="" disabled {{ $selectedRole ? '' : 'selected' }}>انتخاب نقش...</option>
 
                     {{-- نمایش نام فارسی نقش؛ مقدار = آیدی لاتین --}}
                     @foreach($roles as $k => $v)
                         @php
-                            $optionValue = is_object($v) ? ($v->name ?? $k) : $k;                           // name (slug)
-                            $optionLabel = is_object($v) ? ($v->display_name ?? $v->name ?? $k) : $v;       // display_name
+                            $optionValue = is_object($v) ? ($v->name ?? $k) : $k; // name (slug)
+                            $optionLabel = is_object($v) ? ($v->display_name ?? $v->name ?? $k) : $v; // display_name
                         @endphp
                         <option value="{{ $optionValue }}" {{ $selectedRole === $optionValue ? 'selected' : '' }}>
                             {{ $optionLabel }}
@@ -118,19 +119,21 @@
                                         // برای checkbox چندانتخابی
                                         $checkedVals = [];
                                         if ($type === 'checkbox') {
-                                            $oldArr = old('custom.' . $field->field_name);
-                                            if (is_array($oldArr)) {
-                                                $checkedVals = $oldArr;
-                                            } else {
-                                                $checkedVals = is_string($existing) ? (json_decode($existing, true) ?: []) : (is_array($existing) ? $existing : []);
-                                            }
+                                        $oldArr = old('custom.' . $field->field_name);
+                                        if (is_array($oldArr)) {
+                                        $checkedVals = $oldArr;
+                                        } else {
+                                        $checkedVals = is_string($existing) ? (json_decode($existing, true) ?: []) : (is_array($existing) ?
+                                        $existing : []);
+                                        }
                                         }
 
                                         $opts = $field->meta['options'] ?? null; // اگر meta cast=array شده باشد
                                     @endphp
 
                                     <div class="mt-4">
-                                        <label class="block text-sm font-medium mb-1 text-gray-800 dark:text-gray-200">{{ $field->label }}</label>
+                                        <label
+                                            class="block text-sm font-medium mb-1 text-gray-800 dark:text-gray-200">{{ $field->label }}</label>
 
                                         @if($type === 'textarea')
                                             <textarea name="custom[{{ $field->field_name }}]" rows="4"
@@ -155,7 +158,8 @@
                                             <div class="space-y-2">
                                                 @foreach($opts as $opt)
                                                     <label class="inline-flex items-center gap-2">
-                                                        <input type="radio" name="custom[{{ $field->field_name }}]" value="{{ $opt }}" {{ (string)$value === (string)$opt ? 'checked' : '' }}>
+                                                        <input type="radio" name="custom[{{ $field->field_name }}]" value="{{ $opt }}"
+                                                            {{ (string)$value === (string)$opt ? 'checked' : '' }}>
                                                         <span>{{ $opt }}</span>
                                                     </label>
                                                 @endforeach
@@ -165,7 +169,8 @@
                                             <div class="space-y-2">
                                                 @foreach($opts as $opt)
                                                     <label class="inline-flex items-center gap-2">
-                                                        <input type="checkbox" name="custom[{{ $field->field_name }}][]" value="{{ $opt }}" {{ in_array($opt, $checkedVals, true) ? 'checked' : '' }}>
+                                                        <input type="checkbox" name="custom[{{ $field->field_name }}][]" value="{{ $opt }}"
+                                                            {{ in_array($opt, $checkedVals, true) ? 'checked' : '' }}>
                                                         <span>{{ $opt }}</span>
                                                     </label>
                                                 @endforeach

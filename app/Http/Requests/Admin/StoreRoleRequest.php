@@ -9,16 +9,16 @@ class StoreRoleRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->hasRole('super-admin');
+        return auth()->check() && auth()->user()->can('roles.create');
     }
 
     public function rules(): array
     {
         return [
-            'display_name' => ['required','string','max:100'], // فارسی
-            'name'         => ['nullable','string','max:100','alpha_dash','unique:roles,name'],
+            'display_name' => ['required', 'string', 'max:100'], // فارسی
+            'name'         => ['nullable', 'string', 'max:100', 'alpha_dash', 'unique:roles,name'],
             'permissions'  => ['array'],
-            'permissions.*'=> ['string'],
+            'permissions.*' => ['string'],
         ];
     }
 }

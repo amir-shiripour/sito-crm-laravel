@@ -1,5 +1,5 @@
 {{-- resources/views/admin/users/create.blade.php --}}
-@extends('layouts.admin')
+@extends('layouts.user')
 @php($title = 'کاربر جدید')
 
 @section('content')

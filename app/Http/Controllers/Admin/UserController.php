@@ -20,29 +20,50 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $users = User::with('roles')->orderByDesc('id')->paginate(20);
+        $query = User::with('roles');
+
+        // اگر کاربر لاگین شده super-admin نیست، کاربران super-admin را از لیست حذف کن
+        if (!auth()->user()->hasRole('super-admin')) {
+            $query->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'super-admin');
+            });
+        }
+
+        $users = $query->orderByDesc('id')->paginate(20);
         return view('admin.users.index', compact('users'));
     }
 
     public function create()
     {
         $user  = new User();
-        $roles = Role::orderBy('name')->pluck('display_name', 'name');
+        $allRoles = Role::orderBy('name')->pluck('display_name', 'name');
+
+        // اگر کاربر ادمین است (نه سوپر ادمین)، نقش super-admin را از لیست حذف کن
+        $roles = $allRoles;
+        if (!auth()->user()->hasRole('super-admin')) {
+            $roles = $allRoles->except('super-admin');
+        }
+
         $selectedRole = ''; // جلوگیری از null
         $customFieldsByRole = CustomUserField::orderBy('role_name')->get()->groupBy('role_name');
 
-        return view('admin.users.edit', compact('user','roles','selectedRole','customFieldsByRole'));
+        return view('admin.users.edit', compact('user', 'roles', 'selectedRole', 'customFieldsByRole'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'     => ['required','string','max:255'],
-            'email'    => ['required','email','max:255','unique:users,email'],
-            'mobile'   => ['nullable','string','max:30','unique:users,mobile'],
-            'password' => ['required','confirmed', Rules\Password::defaults()],
-            'role'     => ['required','string', 'exists:roles,name'],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'email', 'max:255', 'unique:users,email'],
+            'mobile'   => ['nullable', 'string', 'max:30', 'unique:users,mobile'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'role'     => ['required', 'string', 'exists:roles,name'],
         ]);
+
+        // جلوگیری از ایجاد کاربر با نقش super-admin توسط ادمین عادی
+        if (!auth()->user()->hasRole('super-admin') && $validated['role'] === 'super-admin') {
+            return back()->withErrors(['role' => 'شما نمی‌توانید کاربر با نقش super-admin ایجاد کنید.'])->withInput();
+        }
 
         $roleName = $validated['role'];
         $fields   = $this->fieldsForRole($roleName);
@@ -68,31 +89,53 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        $user->loadMissing(['roles','customValues']);
+        $user->loadMissing(['roles', 'customValues']);
 
-        $roles = Role::orderBy('name')->pluck('display_name', 'name');
+        // جلوگیری از ویرایش کاربر super-admin توسط ادمین عادی
+        if (!auth()->user()->hasRole('super-admin') && $user->hasRole('super-admin')) {
+            abort(403, 'شما نمی‌توانید کاربر super-admin را ویرایش کنید.');
+        }
+
+        $allRoles = Role::orderBy('name')->pluck('display_name', 'name');
+
+        // اگر کاربر ادمین است (نه سوپر ادمین)، نقش super-admin را از لیست حذف کن
+        $roles = $allRoles;
+        if (!auth()->user()->hasRole('super-admin')) {
+            $roles = $allRoles->except('super-admin');
+        }
+
         $selectedRole = optional($user->roles->first())->name ?? '';
         $customFieldsByRole = CustomUserField::orderBy('role_name')->get()->groupBy('role_name');
 
-        return view('admin.users.edit', compact('user','roles','customFieldsByRole','selectedRole'));
+        return view('admin.users.edit', compact('user', 'roles', 'customFieldsByRole', 'selectedRole'));
     }
 
 
     public function update(Request $request, User $user)
     {
+        // جلوگیری از ویرایش کاربر super-admin توسط ادمین عادی
+        if (!auth()->user()->hasRole('super-admin') && $user->hasRole('super-admin')) {
+            abort(403, 'شما نمی‌توانید کاربر super-admin را ویرایش کنید.');
+        }
+
         $validated = $request->validate([
-            'name'     => ['required','string','max:255'],
-            'email'    => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'mobile'   => ['nullable','string','max:30', Rule::unique('users','mobile')->ignore($user->id)],
-            'password' => ['nullable','confirmed', Rules\Password::defaults()],
-            'role'     => ['required','string','exists:roles,name'],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'mobile'   => ['nullable', 'string', 'max:30', Rule::unique('users', 'mobile')->ignore($user->id)],
+            'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
+            'role'     => ['required', 'string', 'exists:roles,name'],
         ]);
+
+        // جلوگیری از اختصاص نقش super-admin به کاربر توسط ادمین عادی
+        if (!auth()->user()->hasRole('super-admin') && $validated['role'] === 'super-admin') {
+            return back()->withErrors(['role' => 'شما نمی‌توانید نقش super-admin را به کاربر اختصاص دهید.'])->withInput();
+        }
 
         // جلوگیری از حذف آخرین سوپرادمین
         if ($user->hasRole('super-admin') && $validated['role'] !== 'super-admin') {
             $superCount = DB::table('model_has_roles')
-                ->join('roles','roles.id','=','model_has_roles.role_id')
-                ->where('roles.name','super-admin')
+                ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                ->where('roles.name', 'super-admin')
                 ->count();
             if ($superCount <= 1) {
                 return back()->withErrors(['role' => 'نمی‌توان نقش super-admin آخر را حذف کرد.'])->withInput();
@@ -130,10 +173,15 @@ class UserController extends Controller
             return back()->withErrors(['user' => 'نمی‌توانید حساب کاربری خودتان را حذف کنید.']);
         }
 
+        // جلوگیری از حذف کاربر super-admin توسط ادمین عادی
+        if (!auth()->user()->hasRole('super-admin') && $user->hasRole('super-admin')) {
+            return back()->withErrors(['user' => 'شما نمی‌توانید کاربر super-admin را حذف کنید.']);
+        }
+
         if ($user->hasRole('super-admin')) {
             $superCount = DB::table('model_has_roles')
-                ->join('roles','roles.id','=','model_has_roles.role_id')
-                ->where('roles.name','super-admin')
+                ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                ->where('roles.name', 'super-admin')
                 ->count();
 
             if ($superCount <= 1) {

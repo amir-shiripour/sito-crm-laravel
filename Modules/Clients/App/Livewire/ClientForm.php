@@ -27,6 +27,7 @@ class ClientForm extends Component
     public ?string $email = null;
     public ?string $phone = null;
     public ?string $national_code = null;
+    public ?string $case_number = null;
     public ?string $notes = null;
 
     // 🔹 فیلدهای مربوط به ورود کلاینت
@@ -111,6 +112,7 @@ class ClientForm extends Component
             $this->email         = $client->email;
             $this->phone         = $client->phone;
             $this->national_code = $client->national_code;
+            $this->case_number   = $client->case_number;
             $this->notes         = $client->notes;
             $this->meta          = $client->meta ?? [];
             $this->status_id     = $client->status_id;
@@ -125,6 +127,7 @@ class ClientForm extends Component
             $this->email         = null;
             $this->phone         = null;
             $this->national_code = null;
+            $this->case_number   = null;
             $this->notes         = null;
             $this->meta          = [];
             $this->status_id     = null;
@@ -162,7 +165,7 @@ class ClientForm extends Component
     public function usersForRole(?string $role)
     {
         if (!$role) return collect();
-        return User::role($role)->select('id','name')->orderBy('name')->get();
+        return User::role($role)->select('id', 'name')->orderBy('name')->get();
     }
 
     /**
@@ -202,10 +205,11 @@ class ClientForm extends Component
 
         // رول‌های پایه برای هر فیلد سیستمی
         $baseRules = [
-            'full_name'     => ['string','max:255'],
+            'full_name'     => ['string', 'max:255'],
             'phone'         => ['string'],
             'email'         => ['email'],
-            'national_code' => ['string','max:20'],
+            'national_code' => ['string', 'max:20'],
+            'case_number'   => ['string', 'max:100'],
             'notes'         => ['string'],
             // status_id و password جدا
         ];
@@ -329,6 +333,7 @@ class ClientForm extends Component
             $this->phone         = $this->quick['phone']         ?? $this->phone;
             $this->email         = $this->quick['email']         ?? $this->email;
             $this->national_code = $this->quick['national_code'] ?? $this->national_code;
+            $this->case_number   = $this->quick['case_number']   ?? $this->case_number;
             $this->notes         = $this->quick['notes']         ?? $this->notes;
             $this->status_id     = $this->quick['status_id']     ?? $this->status_id;
 
@@ -354,7 +359,6 @@ class ClientForm extends Component
             $this->isQuickMode = true;
 
             return $this->save();
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -443,13 +447,13 @@ class ClientForm extends Component
         $strategy = ClientSetting::getValue('username_strategy')
             ?: config('clients.username.strategy', 'email_local');
 
-        if (in_array($strategy, ['email','mobile','national_code'], true) && empty($this->username)) {
+        if (in_array($strategy, ['email', 'mobile', 'national_code'], true) && empty($this->username)) {
             $this->addError('username', 'امکان ساخت یوزرنیم بر اساس استراتژی انتخاب‌شده وجود ندارد (ایمیل/موبایل/کدملی ناقص است).');
             $this->dispatch('notify', type: 'error', text: 'ایمیل/موبایل/کدملی برای ساخت یوزرنیم کافی نیست.');
             return;
         }
 
-        if (in_array($strategy, ['email','mobile','national_code'], true)) {
+        if (in_array($strategy, ['email', 'mobile', 'national_code'], true)) {
             $existsQuery = Client::query()->where('username', $this->username);
 
             if ($this->client && $this->client->exists) {
@@ -485,6 +489,7 @@ class ClientForm extends Component
             'email'         => $this->email,
             'phone'         => $this->phone,
             'national_code' => $this->national_code,
+            'case_number'   => $this->case_number,
             'notes'         => $this->notes,
             'status_id'     => $this->status_id,
             'meta'          => $this->meta ?? [],
@@ -565,7 +570,7 @@ class ClientForm extends Component
         $prefix = ClientSetting::getValue('username_prefix', 'clt');
         $minLen = 3;
 
-        $existsInClients = fn (string $u) =>
+        $existsInClients = fn(string $u) =>
         DB::table('clients')->where('username', $u)->exists();
 
         $candidate = null;
@@ -599,7 +604,7 @@ class ClientForm extends Component
 
             case 'prefix_increment':
                 $last = DB::table('clients')
-                    ->where('username','like', "{$prefix}-%")
+                    ->where('username', 'like', "{$prefix}-%")
                     ->selectRaw("MAX(CAST(SUBSTRING_INDEX(username, '-', -1) AS UNSIGNED)) as mx")
                     ->value('mx');
                 $next = (int)$last + 1;
@@ -640,20 +645,20 @@ class ClientForm extends Component
         if (!$exists($base)) return $base;
 
         $i = 1;
-        while ($exists($base.$i)) $i++;
-        return $base.$i;
+        while ($exists($base . $i)) $i++;
+        return $base . $i;
     }
 
     private function incrementUsername(string $base): string
     {
         $base = trim($base) ?: 'user';
 
-        $existsInClients = fn($u) => DB::table('clients')->where('username',$u)->exists();
+        $existsInClients = fn($u) => DB::table('clients')->where('username', $u)->exists();
         $u = $base;
         if (!$existsInClients($u)) return $u;
 
         $i = 1;
-        while ($existsInClients($base.$i)) $i++;
-        return $base.$i;
+        while ($existsInClients($base . $i)) $i++;
+        return $base . $i;
     }
 }

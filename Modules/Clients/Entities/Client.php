@@ -1,4 +1,5 @@
 <?php
+
 namespace Modules\Clients\Entities;
 
 use App\Models\User;
@@ -20,6 +21,7 @@ class Client extends Authenticatable
         'email',
         'phone',
         'national_code',
+        'case_number',
         'notes',
         'status_id',
         'meta',
@@ -115,6 +117,4 @@ class Client extends Authenticatable
             ->orderByDesc('due_at')
             ->orderByDesc('created_at');
     }
-
-
 }

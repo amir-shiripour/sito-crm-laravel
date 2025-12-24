@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.user')
 @php
     $title = 'ویرایش نقش';
     $widgetGroups = collect($widgets ?? [])->groupBy('group');

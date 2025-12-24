@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.user')
 @php($title = 'مدیریت کاربران')
 
 @section('content')
@@ -6,15 +6,15 @@
         <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <h1 class="font-semibold text-gray-900 dark:text-gray-100">کاربران</h1>
 
-            {{-- اگر می‌خواهی همه ببینند، @role را حذف کن --}}
-            @role('super-admin')
-            @if (Route::has('admin.users.create'))
-                <a href="{{ route('admin.users.create') }}"
-                   class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700">
-                    + کاربر جدید
-                </a>
-            @endif
-            @endrole
+            {{-- نمایش دکمه ایجاد برای کاربرانی که مجوز users.create دارند --}}
+            @can('users.create')
+                @if (Route::has('admin.users.create'))
+                    <a href="{{ route('admin.users.create') }}"
+                       class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700">
+                        + کاربر جدید
+                    </a>
+                @endif
+            @endcan
         </div>
 
         <div class="overflow-x-auto">
@@ -38,16 +38,21 @@
                         <td class="p-3 text-gray-700 dark:text-gray-200">{{ $user->mobile }}</td>
                         <td class="p-3">
                             @forelse($user->roles as $r)
-                                <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-200 ml-1">
-                                    {{ $r->display_name ?? $r->name }}
-                                </span>
+                                <span
+                                    class="inline-flex items-center px-2 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-200 ml-1">
+                            {{ $r->display_name ?? $r->name }}
+                        </span>
                             @empty
                                 <span class="text-xs text-gray-500">-</span>
                             @endforelse
                         </td>
                         <td class="p-3">
-                            <a href="{{ route('admin.users.edit', $user) }}"
-                               class="text-indigo-600 dark:text-indigo-300 hover:underline">ویرایش</a>
+                            @can('users.update')
+                                <a href="{{ route('admin.users.edit', $user) }}"
+                                   class="text-indigo-600 dark:text-indigo-300 hover:underline">ویرایش</a>
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endcan
                         </td>
                     </tr>
                 @empty

@@ -241,22 +241,49 @@ class ClientCallController extends Controller
 
 
     /**
-     * جستجو مشتری‌ها برای ثبت تماس سریع.
+     * جستجو مشتری‌ها برای ثبت تماس سریع و جستجوی عمومی.
+     * فقط مشتری‌هایی که کاربر به آن‌ها دسترسی دارد را برمی‌گرداند.
      */
     public function searchClients(Request $request)
     {
         $query = $request->get('q', '');
+        $user = auth()->user();
 
-        // جستجوی کلاینت‌ها بر اساس نام، یوزرنیم، یا تلفن
+        if (empty($query)) {
+            return response()->json([]);
+        }
+
+        // جستجوی کلاینت‌ها بر اساس نام، شماره موبایل، کد ملی، و شماره پرونده
+        // فقط مشتری‌هایی که کاربر به آن‌ها دسترسی دارد
         $clients = Client::query()
+            ->visibleForUser($user)
             ->where(function ($queryBuilder) use ($query) {
                 $queryBuilder->where('full_name', 'like', "%{$query}%")
-                    ->orWhere('username', 'like', "%{$query}%")
-                    ->orWhere('phone', 'like', "%{$query}%");
+                    ->orWhere('phone', 'like', "%{$query}%")
+                    ->orWhere('national_code', 'like', "%{$query}%")
+                    ->orWhere('case_number', 'like', "%{$query}%");
             })
-            ->get(['id', 'full_name', 'username', 'phone']);
+            ->limit(10)
+            ->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
+
+        // تشخیص اینکه query در کدام فیلد match شده و اضافه کردن matched_field
+        $clients = $clients->map(function ($client) use ($query) {
+            $matchedField = null;
+
+            // چک کردن اینکه query در کدام فیلد match شده (اولویت: phone > national_code > case_number)
+            if ($client->phone && stripos($client->phone, $query) !== false) {
+                $matchedField = 'phone';
+            } elseif ($client->national_code && stripos($client->national_code, $query) !== false) {
+                $matchedField = 'national_code';
+            } elseif ($client->case_number && stripos($client->case_number, $query) !== false) {
+                $matchedField = 'case_number';
+            }
+            // اگر هیچکدام match نشد، یعنی بر اساس نام جستجو شده (matchedField = null)
+
+            $client->matched_field = $matchedField;
+            return $client;
+        });
 
         return response()->json($clients);
     }
-
 }

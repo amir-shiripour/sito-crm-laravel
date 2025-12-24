@@ -1,19 +1,19 @@
 {{-- resources/views/admin/custom_fields/index.blade.php --}}
-@extends('layouts.admin')
+@extends('layouts.user')
 @php($title = 'مدیریت فیلدها')
 
 @section('content')
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <h1 class="font-semibold text-gray-900 dark:text-gray-100">فیلدهای سفارشی</h1>
-            @role('super-admin')
-            @if (Route::has('admin.custom-fields.create'))
-                <a href="{{ route('admin.custom-fields.create') }}"
-                   class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700">
-                    + فیلد جدید
-                </a>
-            @endif
-            @endrole
+            @can('custom-fields.create')
+                @if (Route::has('admin.custom-fields.create'))
+                    <a href="{{ route('admin.custom-fields.create') }}"
+                       class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700">
+                        + فیلد جدید
+                    </a>
+                @endif
+            @endcan
         </div>
 
         <div class="overflow-x-auto">
@@ -39,12 +39,20 @@
                         <td class="p-3 text-gray-700 dark:text-gray-200">{{ $f->field_type }}</td>
                         <td class="p-3 text-gray-700 dark:text-gray-200">{{ $f->is_required ? 'بله' : 'خیر' }}</td>
                         <td class="p-3">
-                            <a href="{{ route('admin.custom-fields.edit', $f) }}" class="text-indigo-600 dark:text-indigo-300 hover:underline">ویرایش</a>
-                            <form method="POST" action="{{ route('admin.custom-fields.destroy', $f) }}" class="inline"
-                                  onsubmit="return confirm('حذف این فیلد؟')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="text-red-600 dark:text-red-300 hover:underline">حذف</button>
-                            </form>
+                            @can('custom-fields.update')
+                                <a href="{{ route('admin.custom-fields.edit', $f) }}"
+                                   class="text-indigo-600 dark:text-indigo-300 hover:underline">ویرایش</a>
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endcan
+
+                            @can('custom-fields.delete')
+                                <form method="POST" action="{{ route('admin.custom-fields.destroy', $f) }}" class="inline"
+                                      onsubmit="return confirm('حذف این فیلد؟')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-red-600 dark:text-red-300 hover:underline">حذف</button>
+                                </form>
+                            @endcan
                         </td>
                     </tr>
                 @empty

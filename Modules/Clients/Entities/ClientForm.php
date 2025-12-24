@@ -10,7 +10,7 @@ class ClientForm extends Model
 {
     protected $table = 'client_forms';
 
-    protected $fillable = ['name','key','is_active','schema'];
+    protected $fillable = ['name', 'key', 'is_active', 'schema'];
 
     protected $casts = [
         'schema'    => 'array',
@@ -27,6 +27,7 @@ class ClientForm extends Model
         'email'         => ['label' => 'ایمیل',              'column' => 'email'],
         'phone'         => ['label' => 'شماره تماس',         'column' => 'phone'],
         'national_code' => ['label' => 'کد ملی',             'column' => 'national_code'],
+        'case_number'   => ['label' => 'شماره پرونده',       'column' => 'case_number'],
         'status_id'     => ['label' => 'وضعیت',              'column' => 'status_id'],
         'notes'         => ['label' => 'یادداشت مدیریتی',    'column' => 'notes'],
         'password'      => ['label' => 'رمز عبور',           'column' => 'password'],
@@ -84,6 +85,18 @@ class ClientForm extends Model
                 'type'         => 'text',
                 'label'        => 'کد ملی',
                 'placeholder'  => 'مثلاً: 0012345678',
+                'group'        => 'اطلاعات هویتی',
+                'width'        => '1/2',
+                'required'     => false,
+                'quick_create' => false,
+                'is_system'    => true,
+                'required_status_keys' => [],
+            ],
+            'case_number' => [
+                'id'           => 'case_number',
+                'type'         => 'text',
+                'label'        => 'شماره پرونده',
+                'placeholder'  => 'مثلاً: 12345',
                 'group'        => 'اطلاعات هویتی',
                 'width'        => '1/2',
                 'required'     => false,
@@ -180,7 +193,7 @@ class ClientForm extends Model
                     $f['label'] = $canon['label'];
                 }
 
-                foreach (['group','width','placeholder','quick_create','required'] as $k) {
+                foreach (['group', 'width', 'placeholder', 'quick_create', 'required'] as $k) {
                     if (!array_key_exists($k, $f) && array_key_exists($k, $canon)) {
                         $f[$k] = $canon[$k];
                     }
@@ -273,10 +286,10 @@ class ClientForm extends Model
         $i    = 1;
 
         while (static::where('key', $key)
-            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
             ->exists()
         ) {
-            $key = $base.'_'.$i;
+            $key = $base . '_' . $i;
             $i++;
         }
 
