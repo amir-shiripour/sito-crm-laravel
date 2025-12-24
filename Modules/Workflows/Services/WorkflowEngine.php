@@ -95,9 +95,11 @@ class WorkflowEngine
 
         // Resolve target user/assignee
         $targetUserId = Auth::id();
-        if (($config['assignee_target'] ?? null) === 'APPOINTMENT_PROVIDER' && isset($context['appointment'])) {
+        $assigneeTarget = $config['assignee_target'] ?? 'CURRENT_USER';
+
+        if ($assigneeTarget === 'APPOINTMENT_PROVIDER' && isset($context['appointment'])) {
             $targetUserId = $context['appointment']->provider_user_id ?? $targetUserId;
-        } elseif (!empty($config['assignee_id'])) {
+        } elseif ($assigneeTarget === 'SPECIFIC_USER' && !empty($config['assignee_id'])) {
             $targetUserId = $config['assignee_id'];
         }
 

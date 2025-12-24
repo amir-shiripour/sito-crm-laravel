@@ -225,6 +225,7 @@ class AppointmentService
                 $appt->status = Appointment::STATUS_CONFIRMED;
                 $appt->save();
 
+                $this->triggerWorkflow('appointment_status_changed', $appt);
                 $this->onAppointmentConfirmed($appt);
 
                 $this->audit->log(
