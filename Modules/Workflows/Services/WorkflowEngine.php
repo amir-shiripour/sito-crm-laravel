@@ -16,8 +16,11 @@ class WorkflowEngine
 {
     public function start(string $workflowKey, string $relatedType, int $relatedId): ?WorkflowInstance
     {
+        Log::info("[Workflows] Request to start workflow: '{$workflowKey}' for {$relatedType}:{$relatedId}");
+
         $workflow = Workflow::where('key', $workflowKey)->where('is_active', true)->first();
         if (! $workflow) {
+            Log::warning("[Workflows] Workflow not found or inactive: '{$workflowKey}'");
             return null;
         }
 
@@ -25,6 +28,7 @@ class WorkflowEngine
             ?: $workflow->stages()->orderBy('sort_order')->first();
 
         if (! $initialStage) {
+            Log::warning("[Workflows] No initial stage found for workflow: '{$workflow->name}'");
             return null;
         }
 
@@ -39,6 +43,7 @@ class WorkflowEngine
                 'created_by'       => Auth::id(),
             ]);
 
+            Log::info("[Workflows] Instance created: {$instance->id}. Running initial stage actions.");
             $this->runStageActions($instance, $initialStage);
 
             return $instance;
@@ -58,6 +63,8 @@ class WorkflowEngine
     protected function runStageActions(WorkflowInstance $instance, WorkflowStage $stage): void
     {
         $actions = $stage->actions()->orderBy('sort_order')->get();
+        Log::info("[Workflows] Found " . $actions->count() . " actions for stage: {$stage->name}");
+
         $context = $this->buildContextData($instance);
 
         foreach ($actions as $action) {
@@ -90,6 +97,8 @@ class WorkflowEngine
         $result = ['status' => 'skipped'];
         $deps = config('workflows.dependencies', []);
 
+        Log::info("[Workflows] Running action ID: {$action->id} Type: {$action->action_type}", ['config' => $config]);
+
         // Base date for offsets: appointment start time if available, otherwise workflow start time
         $baseDate = $context['appointment']->start_at_utc ?? $instance->started_at ?? now();
 
@@ -99,8 +108,12 @@ class WorkflowEngine
 
         if ($assigneeTarget === 'APPOINTMENT_PROVIDER' && isset($context['appointment'])) {
             $targetUserId = $context['appointment']->provider_user_id ?? $targetUserId;
+            Log::info("[Workflows] Assignee resolved to PROVIDER: " . ($targetUserId ?? 'NULL'));
         } elseif ($assigneeTarget === 'SPECIFIC_USER' && !empty($config['assignee_id'])) {
             $targetUserId = $config['assignee_id'];
+            Log::info("[Workflows] Assignee resolved to SPECIFIC_USER: " . ($targetUserId ?? 'NULL'));
+        } else {
+            Log::info("[Workflows] Assignee resolved to CURRENT_USER (or default): " . ($targetUserId ?? 'NULL'));
         }
 
         switch ($action->action_type) {
@@ -117,20 +130,29 @@ class WorkflowEngine
                     $title = $this->renderTemplate($config['title'] ?? $stage->name, $context);
                     $description = $this->renderTemplate($config['description'] ?? '', $context);
 
-                    $task = $Model::create([
-                        'title'        => $title,
-                        'description'  => $description,
-                        'task_type'    => $isTask ? ($config['task_type'] ?? 'GENERAL') : 'FOLLOW_UP',
-                        'assignee_id'  => $targetUserId,
-                        'creator_id'   => Auth::id(),
-                        'status'       => $config['status'] ?? 'TODO',
-                        'priority'     => $config['priority'] ?? ($isTask ? 'MEDIUM' : 'HIGH'),
-                        'due_at'       => $dueAt,
-                        'related_type' => $instance->related_type,
-                        'related_id'   => $instance->related_id,
-                    ]);
+                    Log::info("[Workflows] Creating Task/FollowUp. Title: $title, Assignee: $targetUserId");
 
-                    $result = ['status' => 'created', 'task_id' => $task->id];
+                    try {
+                        $task = $Model::create([
+                            'title'        => $title,
+                            'description'  => $description,
+                            'task_type'    => $isTask ? ($config['task_type'] ?? 'GENERAL') : 'FOLLOW_UP',
+                            'assignee_id'  => $targetUserId,
+                            'creator_id'   => Auth::id(),
+                            'status'       => $config['status'] ?? 'TODO',
+                            'priority'     => $config['priority'] ?? ($isTask ? 'MEDIUM' : 'HIGH'),
+                            'due_at'       => $dueAt,
+                            'related_type' => $instance->related_type,
+                            'related_id'   => $instance->related_id,
+                        ]);
+                        Log::info("[Workflows] Task created successfully. ID: {$task->id}");
+                        $result = ['status' => 'created', 'task_id' => $task->id];
+                    } catch (\Exception $e) {
+                        Log::error("[Workflows] Task creation threw exception: " . $e->getMessage());
+                        throw $e;
+                    }
+                } else {
+                    Log::warning("[Workflows] Module $module not enabled or class $class not found.");
                 }
                 break;
 

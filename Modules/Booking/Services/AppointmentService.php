@@ -897,19 +897,23 @@ class AppointmentService
     public function triggerWorkflow(string $key, Appointment $appointment): void
     {
         if (!config('booking.integrations.workflows.enabled', true)) {
+            Log::info("[Booking] Workflows disabled in config. Skipping trigger: $key");
             return;
         }
 
         $workflowKey = config("booking.integrations.workflows.workflow_keys.{$key}") ?: $key;
         if (!$workflowKey) {
+            Log::info("[Booking] No workflow key mapped for: $key");
             return;
         }
 
         if (!class_exists('Modules\\Workflows\\Services\\WorkflowEngine')) {
+            Log::error("[Booking] WorkflowEngine class not found.");
             return;
         }
 
         try {
+            Log::info("[Booking] Triggering workflow: $workflowKey for Appointment: {$appointment->id}");
             $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
             $engine->start($workflowKey, 'APPOINTMENT', $appointment->id);
         } catch (\Throwable $e) {
