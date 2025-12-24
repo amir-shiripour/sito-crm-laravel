@@ -3,6 +3,7 @@
 namespace Modules\Workflows\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Modules\Workflows\Entities\Workflow;
@@ -94,8 +95,9 @@ class WorkflowController extends Controller
 
         $workflow->load(['stages.actions']);
         $triggerOptions = $this->getTriggerOptions();
+        $users = User::query()->select(['id', 'name'])->orderBy('name')->get();
 
-        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions'));
+        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users'));
     }
 
     public function update(Request $request, Workflow $workflow)
@@ -275,6 +277,23 @@ class WorkflowController extends Controller
                 'message'        => $config['message'] ?? null,
                 'params'         => array_values(array_filter($config['params'] ?? [], fn($v) => $v !== null && $v !== '')),
                 'offset_minutes' => isset($config['offset_minutes']) ? (int) $config['offset_minutes'] : null,
+            ];
+        } elseif (in_array($data['action_type'], [WorkflowAction::TYPE_CREATE_TASK, WorkflowAction::TYPE_CREATE_FOLLOWUP])) {
+             $config = [
+                'title'           => $config['title'] ?? null,
+                'description'     => $config['description'] ?? null,
+                'assignee_target' => $config['assignee_target'] ?? 'CURRENT_USER',
+                'assignee_id'     => $config['assignee_id'] ?? null,
+                'offset_days'     => isset($config['offset_days']) ? (int) $config['offset_days'] : 0,
+                'priority'        => $config['priority'] ?? 'MEDIUM',
+                'status'          => $config['status'] ?? 'TODO',
+            ];
+        } elseif ($data['action_type'] === WorkflowAction::TYPE_CREATE_REMINDER) {
+             $config = [
+                'message'         => $config['message'] ?? null,
+                'assignee_target' => $config['assignee_target'] ?? 'CURRENT_USER',
+                'assignee_id'     => $config['assignee_id'] ?? null,
+                'offset_minutes'  => isset($config['offset_minutes']) ? (int) $config['offset_minutes'] : 0,
             ];
         }
 

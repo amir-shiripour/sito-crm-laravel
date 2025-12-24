@@ -9,7 +9,10 @@
 
 <form method="post" action="{{ $formAction }}"
       class="border border-dashed border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-3"
-      x-data="{ actionType: '{{ $isEdit ? $actionInstance->action_type : \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_SMS }}' }">
+      x-data="{
+          actionType: '{{ $isEdit ? $actionInstance->action_type : \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_SMS }}',
+          assigneeTarget: '{{ $cfg['assignee_target'] ?? 'CURRENT_USER' }}'
+      }">
     @csrf
     @if($isEdit)
         @method('patch')
@@ -88,10 +91,19 @@
             </div>
             <div>
                 <label class="text-xs text-gray-500">منتسب به</label>
-                <select name="config[assignee_target]" class="w-full rounded-lg border-gray-200 text-sm px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                    <option value="CURRENT_USER" @selected(($cfg['assignee_target'] ?? '') === 'CURRENT_USER')>کاربر فعلی</option>
-                    <option value="APPOINTMENT_PROVIDER" @selected(($cfg['assignee_target'] ?? '') === 'APPOINTMENT_PROVIDER')>ارائه‌دهنده نوبت</option>
+                <select name="config[assignee_target]" x-model="assigneeTarget" class="w-full rounded-lg border-gray-200 text-sm px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                    <option value="CURRENT_USER">کاربر فعلی</option>
+                    <option value="APPOINTMENT_PROVIDER">ارائه‌دهنده نوبت</option>
+                    <option value="SPECIFIC_USER">کاربر خاص</option>
                 </select>
+                <div x-show="assigneeTarget === 'SPECIFIC_USER'" class="mt-2">
+                    <select name="config[assignee_id]" class="w-full rounded-lg border-gray-200 text-sm px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                        <option value="">انتخاب کاربر...</option>
+                        @foreach($users as $user)
+                            <option value="{{ $user->id }}" @selected(($cfg['assignee_id'] ?? '') == $user->id)>{{ $user->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
             <div>
                 <label class="text-xs text-gray-500">تاخیر ایجاد (روز)</label>
@@ -99,6 +111,27 @@
                 <p class="text-[10px] text-gray-400 mt-1">نسبت به زمان شروع نوبت.</p>
             </div>
         </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+             <div>
+                <label class="text-xs text-gray-500">اولویت</label>
+                <select name="config[priority]" class="w-full rounded-lg border-gray-200 text-sm px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                    <option value="LOW" @selected(($cfg['priority'] ?? '') === 'LOW')>کم</option>
+                    <option value="MEDIUM" @selected(($cfg['priority'] ?? 'MEDIUM') === 'MEDIUM')>معمولی</option>
+                    <option value="HIGH" @selected(($cfg['priority'] ?? '') === 'HIGH')>زیاد</option>
+                    <option value="CRITICAL" @selected(($cfg['priority'] ?? '') === 'CRITICAL')>بحرانی</option>
+                </select>
+            </div>
+             <div>
+                <label class="text-xs text-gray-500">وضعیت</label>
+                <select name="config[status]" class="w-full rounded-lg border-gray-200 text-sm px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                    <option value="TODO" @selected(($cfg['status'] ?? 'TODO') === 'TODO')>در صف انجام</option>
+                    <option value="IN_PROGRESS" @selected(($cfg['status'] ?? '') === 'IN_PROGRESS')>در حال انجام</option>
+                    <option value="DONE" @selected(($cfg['status'] ?? '') === 'DONE')>انجام شده</option>
+                </select>
+            </div>
+        </div>
+
         <div>
             <label class="text-xs text-gray-500">توضیحات</label>
             <textarea name="config[description]" rows="2" class="w-full rounded-lg border-gray-200 text-sm px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">{{ $cfg['description'] ?? '' }}</textarea>
@@ -110,10 +143,19 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
                 <label class="text-xs text-gray-500">منتسب به</label>
-                <select name="config[assignee_target]" class="w-full rounded-lg border-gray-200 text-sm px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                    <option value="CURRENT_USER" @selected(($cfg['assignee_target'] ?? '') === 'CURRENT_USER')>کاربر فعلی</option>
-                    <option value="APPOINTMENT_PROVIDER" @selected(($cfg['assignee_target'] ?? '') === 'APPOINTMENT_PROVIDER')>ارائه‌دهنده نوبت</option>
+                <select name="config[assignee_target]" x-model="assigneeTarget" class="w-full rounded-lg border-gray-200 text-sm px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                    <option value="CURRENT_USER">کاربر فعلی</option>
+                    <option value="APPOINTMENT_PROVIDER">ارائه‌دهنده نوبت</option>
+                    <option value="SPECIFIC_USER">کاربر خاص</option>
                 </select>
+                <div x-show="assigneeTarget === 'SPECIFIC_USER'" class="mt-2">
+                    <select name="config[assignee_id]" class="w-full rounded-lg border-gray-200 text-sm px-2 py-1.5 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                        <option value="">انتخاب کاربر...</option>
+                        @foreach($users as $user)
+                            <option value="{{ $user->id }}" @selected(($cfg['assignee_id'] ?? '') == $user->id)>{{ $user->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
             <div>
                 <label class="text-xs text-gray-500">تاخیر یادآوری (دقیقه)</label>
