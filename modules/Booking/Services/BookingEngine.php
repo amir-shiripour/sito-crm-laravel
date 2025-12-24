@@ -396,6 +396,8 @@ class BookingEngine
                             'end_at_utc' => $slotEndUtc->toIso8601String(),
                             'start_at_view' => $slotStartUtc->copy()->timezone($viewerTz)->toIso8601String(),
                             'end_at_view' => $slotEndUtc->copy()->timezone($viewerTz)->toIso8601String(),
+                            'start_time' => $slotStartUtc->copy()->timezone($viewerTz)->format('H:i'),
+                            'end_time' => $slotEndUtc->copy()->timezone($viewerTz)->format('H:i'),
                             'remaining_capacity' => $slotRemaining, // null => unlimited
                             'capacity_per_slot' => $capacityPerSlot,
                             'capacity_per_day_remaining' => $dailyRemaining,

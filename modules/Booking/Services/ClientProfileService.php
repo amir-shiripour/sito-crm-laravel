@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientSetting;
+use Modules\Clients\Entities\ClientStatus; // Import ClientStatus
 
 class ClientProfileService
 {
@@ -81,8 +82,18 @@ class ClientProfileService
 
         $createPayload = array_merge($payload, [
             'username' => $username,
-            'created_by' => $creatorUserId,
         ]);
+
+        if ($creatorUserId) {
+            $createPayload['created_by'] = $creatorUserId;
+        }
+
+        // Set default status for new clients
+        $defaultStatus = ClientStatus::query()->where('key', 'new')->first();
+        if ($defaultStatus) {
+            $createPayload['status_id'] = $defaultStatus->id;
+        }
+
 
         if (!empty($clientInput['password'])) {
             $createPayload['password'] = Hash::make((string) $clientInput['password']);

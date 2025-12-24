@@ -606,6 +606,10 @@
                 isSubmitting: false,
 
                 weekDays: ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'],
+                persianMonths: [
+                    'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+                    'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+                ],
                 hasAppointmentForm: false,
 
                 get totalSteps() {
@@ -618,8 +622,17 @@
 
                 init() {
                     const now = new Date();
-                    this.calendarYear = now.getFullYear();
-                    this.calendarMonth = now.getMonth() + 1;
+                    const formatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+                        year: 'numeric',
+                        month: 'numeric'
+                    });
+                    const parts = formatter.formatToParts(now);
+                    const y = parts.find(p => p.type === 'year').value;
+                    const m = parts.find(p => p.type === 'month').value;
+
+                    // Convert Persian digits to English digits if necessary
+                    this.calendarYear = parseInt(y.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+                    this.calendarMonth = parseInt(m.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
 
                     if (this.fixedProvider) {
                         this.providerId = String(this.fixedProvider.id || '');
@@ -633,17 +646,11 @@
                         // شروع
                         this.fetchProviders();
                     } else {
-                        // service first: اول لیست سرویس‌ها از روی provider_id نداریم؛ پس از API services با provider لازم است.
-                        // در این حالت سرویس‌ها را با یک provider_id نمی‌گیریم؛
-                        // برای سادگی، اینجا لیست سرویس‌ها را از providers فعال در سیستم نمی‌گیریم و فقط بعد از انتخاب سرویس،
-                        // providers را fetch می‌کنیم.
-                        // اگر خواستی، endpoint جدا برای "all active services" هم اضافه می‌کنیم.
                         this.fetchAllActiveServices();
                     }
 
                     this.fetchClients();
 
-                    // وقتی مشتری سریع ساخته شد، لیست را رفرش و در صورت امکان انتخابش کن
                     window.addEventListener('client-quick-saved', (e) => {
                         const newId = e?.detail?.clientId;
                         this.fetchClients().then(() => {
@@ -655,24 +662,13 @@
                 // ---------------- providers/services/categories ----------------
 
                 get groupedServices() {
-                    // سرویس‌ها را بر اساس دسته‌بندی گروه‌بندی کن.
-                    // اگر دسته‌ای نبود: «بدون دسته»
                     const items = Array.isArray(this.services) ? this.services : [];
 
                     const getCatName = (s) => {
                         if (!s) return '';
-                        // چند حالت رایج برگشتی API
-                        if (typeof s.category_name === 'string' && s.category_name.trim()) return s.category_name
-                            .trim();
-                        if (typeof s.categoryTitle === 'string' && s.categoryTitle.trim()) return s.categoryTitle
-                            .trim();
-                        if (typeof s.category === 'string' && s.category.trim()) return s.category.trim();
-                        if (s.category && typeof s.category.name === 'string' && s.category.name.trim()) return s
-                            .category.name.trim();
-                        if (s.category_obj && typeof s.category_obj.name === 'string' && s.category_obj.name.trim())
-                            return s.category_obj.name.trim();
-                        // اگر فقط category_id داریم و لیست دسته‌ها موجود است
-                        const cid = s.category_id ?? s.categoryId ?? null;
+                        if (typeof s.category_name === 'string' && s.category_name.trim()) return s.category_name.trim();
+                        if (s.category && typeof s.category.name === 'string' && s.category.name.trim()) return s.category.name.trim();
+                        const cid = s.category_id ?? null;
                         if (cid && Array.isArray(this.categories) && this.categories.length) {
                             const found = this.categories.find(c => String(c.id) === String(cid));
                             if (found && typeof found.name === 'string' && found.name.trim()) return found.name.trim();
@@ -692,14 +688,12 @@
                         groups.get(key).items.push(s);
                     }
 
-                    // مرتب‌سازی: دسته‌ها الفبایی، «بدون دسته» آخر.
                     const arr = Array.from(groups.values());
                     arr.sort((a, b) => {
                         if (a.key === 'cat:__none__') return 1;
                         if (b.key === 'cat:__none__') return -1;
                         return (a.title || '').localeCompare(b.title || '', 'fa');
                     });
-                    // مرتب‌سازی داخل هر گروه
                     for (const g of arr) {
                         g.items.sort((x, y) => (x.name || '').localeCompare(y.name || '', 'fa'));
                     }
@@ -710,8 +704,7 @@
                     if (slot.remaining_capacity !== null && slot.remaining_capacity !== undefined) {
                         return slot.remaining_capacity;
                     }
-                    if (slot.capacity_per_slot !== null && slot.capacity_per_slot !== undefined && Number(slot
-                        .capacity_per_slot) > 0) {
+                    if (slot.capacity_per_slot !== null && slot.capacity_per_slot !== undefined && Number(slot.capacity_per_slot) > 0) {
                         return slot.capacity_per_slot;
                     }
                     return this.defaultSlotCapacity;
@@ -719,20 +712,13 @@
 
                 async fetchProviders() {
                     this.providerLoading = true;
-                    const params = new URLSearchParams({
-                        q: this.providerSearch || '',
-                    });
+                    const params = new URLSearchParams({ q: this.providerSearch || '' });
                     if (this.flow === 'SERVICE_FIRST' && this.serviceId) {
                         params.set('service_id', this.serviceId);
                     }
 
                     try {
-                        const res = await fetch(`{{ route('user.booking.appointments.wizard.providers') }}?` + params
-                            .toString(), {
-                            headers: {
-                                'Accept': 'application/json'
-                            }
-                        });
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.providers') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
                         const json = await res.json();
                         this.providers = json.data || [];
                     } finally {
@@ -742,15 +728,8 @@
 
                 async fetchCategories() {
                     if (!this.providerId) return;
-                    const params = new URLSearchParams({
-                        provider_id: this.providerId
-                    });
-                    const res = await fetch(`{{ route('user.booking.appointments.wizard.categories') }}?` + params
-                        .toString(), {
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    });
+                    const params = new URLSearchParams({ provider_id: this.providerId });
+                    const res = await fetch(`{{ route('user.booking.appointments.wizard.categories') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
                     const json = await res.json();
                     this.categories = json.data || [];
                 },
@@ -765,12 +744,7 @@
                     if (this.categoryId) params.set('category_id', this.categoryId);
 
                     try {
-                        const res = await fetch(`{{ route('user.booking.appointments.wizard.services') }}?` + params
-                            .toString(), {
-                            headers: {
-                                'Accept': 'application/json'
-                            }
-                        });
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.services') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
                         const json = await res.json();
                         this.services = json.data || [];
                     } finally {
@@ -780,19 +754,11 @@
 
                 async fetchAllActiveServices() {
                     this.serviceLoading = true;
-                    const params = new URLSearchParams({
-                        q: this.serviceSearch || ''
-                    });
+                    const params = new URLSearchParams({ q: this.serviceSearch || '' });
                     if (this.categoryId) params.set('category_id', this.categoryId);
 
                     try {
-                        const res = await fetch(`{{ route('user.booking.appointments.wizard.all-services') }}?` + params
-                            .toString(), {
-                            headers: {
-                                'Accept': 'application/json'
-                            }
-                        });
-
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.all-services') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
                         const json = await res.json();
                         this.services = json.data || [];
                         this.syncCategoriesFromServices();
@@ -802,7 +768,6 @@
                 },
 
                 async fetchServicesForServiceFirst() {
-                    // همان fetchAllActiveServices (محدودیت بالا)
                     await this.fetchAllActiveServices();
                 },
 
@@ -818,8 +783,6 @@
                 },
 
                 async onProviderSelected() {
-                    // نکته مهم:
-                    // در SERVICE_FIRST نباید serviceId را reset کنیم
                     if (this.flow === 'PROVIDER_FIRST') {
                         this.categoryId = '';
                         this.serviceId = '';
@@ -831,8 +794,6 @@
                         await this.fetchServicesForProvider();
                         return;
                     }
-
-                    // SERVICE_FIRST
                     this.resetCalendarAndSlots();
                 },
 
@@ -859,7 +820,7 @@
                     this.resetAppointmentForm();
 
                     if (this.flow === 'SERVICE_FIRST') {
-                        await this.fetchProviders(); // حالا providers برای این service
+                        await this.fetchProviders();
                     }
 
                     this.hasAppointmentForm = Boolean(this.selectedService && this.selectedService.appointment_form_id);
@@ -876,10 +837,7 @@
                         const name = s.category_name ?? null;
                         if (!id || !name) continue;
                         if (!map.has(String(id))) {
-                            map.set(String(id), {
-                                id,
-                                name
-                            });
+                            map.set(String(id), { id, name });
                         }
                     }
                     this.categories = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fa'));
@@ -907,20 +865,12 @@
                     this.appointmentFormValues = {};
                     if (!formId) return;
 
-                    const params = new URLSearchParams({
-                        form_id: formId
-                    });
-                    const res = await fetch(`{{ route('user.booking.appointments.wizard.form') }}?` + params.toString(), {
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    });
+                    const params = new URLSearchParams({ form_id: formId });
+                    const res = await fetch(`{{ route('user.booking.appointments.wizard.form') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
                     const json = await res.json();
                     const schema = json.data?.schema_json || null;
                     if (!schema || !Array.isArray(schema.fields)) {
-                        this.appointmentFormSchema = {
-                            fields: []
-                        };
+                        this.appointmentFormSchema = { fields: [] };
                         return;
                     }
 
@@ -937,46 +887,29 @@
                 // ---------------- calendar ----------------
 
                 get monthLabel() {
-                    const d = new Date(this.calendarYear, this.calendarMonth - 1, 1);
-                    return d.toLocaleDateString('fa-IR-u-ca-persian', {
-                        year: 'numeric',
-                        month: 'long'
-                    });
+                    const monthName = this.persianMonths[this.calendarMonth - 1] || 'نامشخص';
+                    return `${monthName} ${this.calendarYear}`;
                 },
 
                 get calendarCells() {
-                    // خروجی: placeholder + روزهای ماه
                     const days = this.calendarDays || [];
                     if (!days.length) return [];
 
-                    const first = days[0].local_date; // YYYY-MM-DD
+                    const first = days[0].local_date;
                     const firstDate = new Date(first + 'T00:00:00');
-
-                    // JS getDay(): 0=Sun..6=Sat -> تبدیل به 0=Sat..6=Fri
                     const persianWeekdayIndex = (firstDate.getDay() + 1) % 7;
 
                     const cells = [];
                     for (let i = 0; i < persianWeekdayIndex; i++) {
-                        cells.push({
-                            key: `ph-${i}`,
-                            is_placeholder: true
-                        });
+                        cells.push({ key: `ph-${i}`, is_placeholder: true });
                     }
 
                     for (const d of days) {
-                        cells.push({
-                            key: d.local_date,
-                            is_placeholder: false,
-                            day: d
-                        });
+                        cells.push({ key: d.local_date, is_placeholder: false, day: d });
                     }
 
-                    // کامل شدن ردیف آخر
                     while (cells.length % 7 !== 0) {
-                        cells.push({
-                            key: `ph-end-${cells.length}`,
-                            is_placeholder: true
-                        });
+                        cells.push({ key: `ph-end-${cells.length}`, is_placeholder: true });
                     }
 
                     return cells;
@@ -993,12 +926,7 @@
                     });
 
                     try {
-                        const res = await fetch(`{{ route('user.booking.appointments.wizard.calendar') }}?` + params
-                            .toString(), {
-                            headers: {
-                                'Accept': 'application/json'
-                            }
-                        });
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.calendar') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
                         const json = await res.json();
                         this.calendarDays = json.data || [];
                     } finally {
@@ -1053,9 +981,7 @@
 
                 toPersianDayNumber(localDate) {
                     const dd = new Date(localDate + 'T00:00:00');
-                    return dd.toLocaleDateString('fa-IR-u-ca-persian', {
-                        day: 'numeric'
-                    });
+                    return dd.toLocaleDateString('fa-IR-u-ca-persian', { day: 'numeric' });
                 },
 
                 // ---------------- slots ----------------
@@ -1076,14 +1002,8 @@
                     });
 
                     try {
-                        const res = await fetch('/api/booking/availability/slots?' + params.toString(), {
-                            headers: {
-                                'Accept': 'application/json'
-                            }
-                        });
-
+                        const res = await fetch('/api/booking/availability/slots?' + params.toString(), { headers: { 'Accept': 'application/json' } });
                         if (!res.ok) throw new Error('خطا در دریافت اسلات‌ها (کد ' + res.status + ')');
-
                         const json = await res.json();
                         this.slots = json.data || [];
                     } catch (e) {
@@ -1114,24 +1034,14 @@
 
                 formatTime(isoString) {
                     const d = new Date(isoString);
-                    return d.toLocaleTimeString('fa-IR', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
+                    return d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
                 },
 
                 // ---------------- clients ----------------
 
                 async fetchClients() {
-                    const params = new URLSearchParams({
-                        q: this.clientSearch || ''
-                    });
-                    const res = await fetch(`{{ route('user.booking.appointments.wizard.clients') }}?` + params
-                        .toString(), {
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    });
+                    const params = new URLSearchParams({ q: this.clientSearch || '' });
+                    const res = await fetch(`{{ route('user.booking.appointments.wizard.clients') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
                     const json = await res.json();
                     this.clients = json.data || [];
                 },
@@ -1139,36 +1049,17 @@
                 // ---------------- wizard navigation ----------------
 
                 async next() {
-                    // STEP 1 -> 2
                     if (this.step === 1) {
-                        if (this.flow === 'PROVIDER_FIRST' && !this.providerId) return alert(
-                            'لطفاً ارائه‌دهنده را انتخاب کنید.');
+                        if (this.flow === 'PROVIDER_FIRST' && !this.providerId) return alert('لطفاً ارائه‌دهنده را انتخاب کنید.');
                         if (this.flow === 'SERVICE_FIRST' && !this.serviceId) return alert('لطفاً سرویس را انتخاب کنید.');
                     }
 
-                    // STEP 2 -> 3 (قبل از ورود به تقویم، خود تقویم را لود کن)
                     if (this.step === 2) {
                         if (!this.serviceId) return alert('لطفاً سرویس را انتخاب کنید.');
                         if (!this.providerId) return alert('لطفاً ارائه‌دهنده را انتخاب کنید.');
-
                         await this.loadCalendar();
-
-                        // انتخاب خودکار امروز (اگر موجود و قابل رزرو باشد)
-                        if (!this.dateLocal) {
-                            const today = new Date();
-                            const iso = today.toISOString().slice(0, 10);
-
-                            const found = this.calendarDays.find(x =>
-                                x.local_date === iso &&
-                                !x.is_closed &&
-                                x.has_available_slots
-                            );
-
-                            if (found) this.selectDay(found);
-                        }
                     }
 
-                    // STEP 3 -> 4 (روز باید انتخاب شود، بعد slots را بگیر)
                     if (this.step === 3) {
                         if (!this.dateLocal) return alert('لطفاً یک روز قابل رزرو انتخاب کنید.');
                         if (!this.isCustomScheduleEnabled()) {
@@ -1176,7 +1067,6 @@
                         }
                     }
 
-                    // STEP 4 -> 5 (اسلات باید انتخاب شود)
                     if (this.step === 4) {
                         if (this.isCustomScheduleEnabled()) {
                             if (!this.manualStartTime || !this.manualEndTime) {
@@ -1220,9 +1110,7 @@
                     }
                     if (!this.clientId) return alert('لطفاً مشتری را انتخاب کنید.');
 
-                    // فرم JSON
                     this.prepareAppointmentFormJson();
-
                     this.isSubmitting = true;
                     this.$refs.form.submit();
                 },

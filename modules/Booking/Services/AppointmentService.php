@@ -74,14 +74,15 @@ class AppointmentService
 
             $this->assertCapacityAvailable($serviceId, $providerUserId, $localDate, $startUtc, $endUtc);
 
+            // Use application timezone (now()) instead of UTC to ensure consistency with Laravel's casting
             return BookingSlotHold::query()->create([
                 'service_id' => $serviceId,
                 'provider_user_id' => $providerUserId,
                 'client_temp_key' => $clientTempKey,
                 'start_at_utc' => $startUtc,
                 'end_at_utc' => $endUtc,
-                'expires_at_utc' => now('UTC')->addMinutes($ttl),
-                'created_at' => now('UTC'),
+                'expires_at_utc' => now()->addMinutes($ttl),
+                'created_at' => now(),
             ]);
         });
     }
@@ -108,24 +109,28 @@ class AppointmentService
                 throw new \RuntimeException('Slot hold expired.');
             }
 
-            $localDate = $hold->start_at_utc->copy()->timezone($scheduleTz)->toDateString();
+            // Correctly interpret stored times as UTC
+            $startUtc = Carbon::parse($hold->getRawOriginal('start_at_utc'), 'UTC');
+            $endUtc   = Carbon::parse($hold->getRawOriginal('end_at_utc'), 'UTC');
 
-            $this->lockDayAndSlot($hold->service_id, $hold->provider_user_id, $localDate, $hold->start_at_utc, $hold->end_at_utc);
+            $localDate = $startUtc->copy()->timezone($scheduleTz)->toDateString();
+
+            $this->lockDayAndSlot($hold->service_id, $hold->provider_user_id, $localDate, $startUtc, $endUtc);
 
             // Capacity check excluding this hold itself
             $this->assertCapacityAvailable(
                 $hold->service_id,
                 $hold->provider_user_id,
                 $localDate,
-                $hold->start_at_utc,
-                $hold->end_at_utc,
+                $startUtc,
+                $endUtc,
                 excludeHoldId: $hold->id
             );
 
             $client = $this->clientProfileService->resolveOrCreateClient(
                 $clientInput,
                 $clientInput['client_id'] ?? null,
-                $clientInput['created_by_user_id'] ?? null
+                $hold->provider_user_id // Set provider as creator for new clients
             );
 
             $service = BookingService::query()->findOrFail($hold->service_id);
@@ -149,8 +154,8 @@ class AppointmentService
                 'provider_user_id' => $hold->provider_user_id,
                 'client_id' => $client->id,
                 'status' => $status,
-                'start_at_utc' => $hold->start_at_utc,
-                'end_at_utc' => $hold->end_at_utc,
+                'start_at_utc' => $startUtc,
+                'end_at_utc' => $endUtc,
                 'created_by_type' => Appointment::CREATED_BY_CLIENT_ONLINE,
                 'created_by_user_id' => null,
                 'notes' => $clientInput['notes'] ?? null,
@@ -640,6 +645,8 @@ class AppointmentService
     ): void {
         $startLocal = $startUtc->copy()->timezone($scheduleTz);
         $endLocal   = $endUtc->copy()->timezone($scheduleTz);
+
+        // Debug log removed
 
         if ($startLocal->toDateString() !== $localDate || $endLocal->toDateString() !== $localDate) {
             throw new \RuntimeException('Slot crosses day boundary.');

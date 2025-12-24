@@ -44,7 +44,7 @@ return [
     ],
 
     // Slot hold TTL for online booking (minutes)
-    'slot_hold_ttl_minutes' => 10,
+    'slot_hold_ttl_minutes' => 20,
 
     // Payment timeout for pending appointments (minutes)
     'payment_timeout_minutes' => 20,

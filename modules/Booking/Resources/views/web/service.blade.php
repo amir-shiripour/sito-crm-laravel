@@ -86,13 +86,44 @@
                             </div>
                         </div>
 
+                        @if($service->appointmentForm && is_array($service->appointmentForm->schema_json))
+                            <div class="space-y-2">
+                                <div class="text-sm text-gray-600">مرحله ۴: تکمیل فرم</div>
+                                <div class="space-y-4">
+                                    @foreach($service->appointmentForm->schema_json as $field)
+                                        @if(empty($field['name'])) @continue @endif
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-2">
+                                                {{ $field['label'] ?? $field['name'] }}
+                                                @if(!empty($field['required'])) <span class="text-red-500">*</span> @endif
+                                            </label>
+                                            @if(($field['type'] ?? 'text') === 'textarea')
+                                                <textarea name="form_data[{{ $field['name'] }}]" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">{{ old('form_data.'.$field['name']) }}</textarea>
+                                            @elseif(($field['type'] ?? 'text') === 'select')
+                                                <select name="form_data[{{ $field['name'] }}]" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
+                                                    <option value="">انتخاب کنید...</option>
+                                                    @foreach($field['options'] ?? [] as $opt)
+                                                        <option value="{{ $opt }}" @selected(old('form_data.'.$field['name']) == $opt)>{{ $opt }}</option>
+                                                    @endforeach
+                                                </select>
+                                            @else
+                                                <input type="{{ $field['type'] ?? 'text' }}" name="form_data[{{ $field['name'] }}]" value="{{ old('form_data.'.$field['name']) }}"
+                                                       class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900">
+                                            @endif
+                                            @error('form_data.'.$field['name'])<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
                         @php
                             $clientMode = \Modules\Clients\Entities\ClientSetting::getValue('auth.mode', 'password');
                             $client = auth('client')->user();
                         @endphp
 
                         <div class="space-y-2">
-                            <div class="text-sm text-gray-600">مرحله ۴: اطلاعات مشتری</div>
+                            <div class="text-sm text-gray-600">مرحله ۵: اطلاعات مشتری</div>
                             @if($client)
                                 <div class="rounded-xl bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700">
                                     رزرو برای: <span class="font-semibold">{{ $client->full_name }}</span>
@@ -151,16 +182,21 @@
             const calendarError = document.getElementById('calendar-error');
 
             const weekDays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
-            let calendarYear = new Date().getFullYear();
-            let calendarMonth = new Date().getMonth() + 1;
+            const persianMonths = [
+                'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+                'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+            ];
+
+            // Initialize with server-provided Jalali date if available, otherwise fallback to JS date
+            let calendarYear = {{ $currentJalali['year'] ?? 'new Date().getFullYear()' }};
+            let calendarMonth = {{ $currentJalali['month'] ?? 'new Date().getMonth() + 1' }};
+
             let calendarDays = [];
             const initialDate = dateInput?.value || '';
             if (initialDate) {
-                const parts = initialDate.split('-');
-                if (parts.length === 3) {
-                    calendarYear = Number(parts[0]);
-                    calendarMonth = Number(parts[1]);
-                }
+                // If there's an old input (e.g. validation error), try to parse it.
+                // Note: date_local might be Gregorian if it came from a previous post.
+                // But for calendar navigation, we stick to the current view year/month.
             }
 
             const clearSlots = (message = 'ابتدا تاریخ را انتخاب کنید.') => {
@@ -175,8 +211,10 @@
             const renderCalendar = () => {
                 if (!calendarGrid) return;
                 calendarGrid.innerHTML = '';
-                calendarLabel.textContent = new Date(calendarYear, calendarMonth - 1, 1)
-                    .toLocaleDateString('fa-IR-u-ca-persian', { year: 'numeric', month: 'long' });
+
+                // Use manual array for month name to avoid Gregorian conversion issues
+                const monthName = persianMonths[calendarMonth - 1] || 'نامشخص';
+                calendarLabel.textContent = `${monthName} ${calendarYear}`;
 
                 weekDays.forEach((w) => {
                     const div = document.createElement('div');
@@ -253,11 +291,18 @@
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'border rounded px-2 py-2 text-xs text-center hover:bg-indigo-50';
-                    btn.textContent = slot.start_at_view ? slot.start_at_view.split(' ')[1] : slot.start_at_utc;
+                    // Use start_time if available (formatted by backend), else fallback to parsing ISO
+                    const timeLabel = slot.start_time ? slot.start_time : slot.start_at_view.split(' ')[1].substring(0, 5);
+                    btn.textContent = timeLabel;
+
                     btn.addEventListener('click', () => {
                         startInput.value = slot.start_at_utc;
                         endInput.value = slot.end_at_utc;
-                        slotSelected.textContent = `از ${slot.start_at_view} تا ${slot.end_at_view}`;
+
+                        const sTime = slot.start_time || slot.start_at_view.split(' ')[1].substring(0, 5);
+                        const eTime = slot.end_time || slot.end_at_view.split(' ')[1].substring(0, 5);
+
+                        slotSelected.textContent = `از ${sTime} تا ${eTime}`;
                         slotsContainer.querySelectorAll('button').forEach((b) => {
                             b.classList.remove('border-indigo-600', 'bg-indigo-50', 'text-indigo-700');
                         });
@@ -285,7 +330,7 @@
                     const json = await res.json();
                     renderSlots(json.data || []);
                     if (startInput.value && endInput.value) {
-                        slotSelected.textContent = `از ${startInput.value} تا ${endInput.value}`;
+                        // Optional: Restore selection visual state if needed
                     }
                 } catch (e) {
                     clearSlots('خطا در دریافت اسلات‌ها.');

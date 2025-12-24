@@ -28,10 +28,150 @@ class OnlineBookingController extends Controller
 
     public function service(BookingService $service)
     {
-        $service->load(['serviceProviders.provider']);
+        $service->load(['serviceProviders.provider', 'appointmentForm']);
         $settings = BookingSetting::current();
 
-        return view('booking::web.service', compact('service', 'settings'));
+        $now = Carbon::now();
+        $jDate = CalendarUtils::toJalali($now->year, $now->month, $now->day);
+        $currentJalali = [
+            'year' => $jDate[0],
+            'month' => $jDate[1],
+            'day' => $jDate[2],
+        ];
+
+        return view('booking::web.service', compact('service', 'settings', 'currentJalali'));
+    }
+
+    /**
+     * Public Calendar endpoint:
+     * Returns month days in format expected by frontend:
+     * [
+     *   { local_date: "YYYY-MM-DD", is_closed: bool, has_available_slots: bool }
+     * ]
+     *
+     * IMPORTANT:
+     * - local_date is returned in Gregorian ISO (Y-m-d) so JS Date parsing works.
+     * - input "year/month" can be Gregorian or Jalali. We auto-detect by year.
+     */
+    public function calendar(Request $request, BookingService $service, BookingEngine $engine)
+    {
+        $settings = BookingSetting::current();
+        if (! $settings->global_online_booking_enabled) {
+            return response()->json(['data' => []], 200);
+        }
+
+        $data = $request->validate([
+            'provider_user_id' => ['required', 'integer'],
+            'year' => ['required', 'integer'],
+            'month' => ['required', 'integer', 'min:1', 'max:12'],
+        ]);
+
+        $providerId = (int) $data['provider_user_id'];
+
+        // اگر آنلاین بوکینگ برای این سرویس/ارائه‌دهنده فعال نیست، کل ماه رو خالی برگردون
+        if (! $engine->isOnlineBookingEnabled($service->id, $providerId)) {
+            return response()->json(['data' => []], 200);
+        }
+
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        $viewerTz = config('booking.timezones.display_default', $scheduleTz);
+
+        $year = (int) $data['year'];
+        $month = (int) $data['month'];
+
+        // تشخیص خودکار نوع تقویم:
+        // - اگر سال بزرگ (>=1700) بود => میلادی
+        // - اگر سال کوچک‌تر بود => جلالی (معمولاً 13xx/14xx)
+        $isGregorian = $year >= 1700;
+
+        // بازه ماه را به Carbon (میلادی) تبدیل می‌کنیم
+        if ($isGregorian) {
+            $start = Carbon::create($year, $month, 1, 0, 0, 0, $scheduleTz);
+            if (! $start) {
+                return response()->json(['data' => []], 200);
+            }
+            $end = $start->copy()->endOfMonth();
+        } else {
+            // Jalali year/month -> Gregorian start/end
+            $start = $this->parseFlexibleLocalDate(sprintf('%04d-%02d-01', $year, $month), $scheduleTz);
+            if (! $start) {
+                return response()->json(['data' => []], 200);
+            }
+
+            // طول ماه جلالی را محاسبه می‌کنیم با تبدیل روز 1..31 تا وقتی ماه عوض شود
+            // (این روش مطمئن است حتی اگر متد طول ماه در لایبرری شما متفاوت باشد)
+            $end = null;
+            for ($d = 1; $d <= 31; $d++) {
+                $tmp = $this->parseFlexibleLocalDate(sprintf('%04d-%02d-%02d', $year, $month, $d), $scheduleTz);
+                if (! $tmp) {
+                    break;
+                }
+                $end = $tmp;
+            }
+            if (! $end) {
+                return response()->json(['data' => []], 200);
+            }
+        }
+
+        Log::info('[Booking][OnlineCalendar] request', [
+            'service_id' => $service->id,
+            'provider_user_id' => $providerId,
+            'year' => $year,
+            'month' => $month,
+            'calendar' => $isGregorian ? 'gregorian' : 'jalali',
+            'range_start' => $start->toDateString(),
+            'range_end' => $end->toDateString(),
+        ]);
+
+        // روز به روز بررسی می‌کنیم که اسلات دارد یا نه
+        $days = [];
+        $cursor = $start->copy()->startOfDay();
+        $endDay = $end->copy()->startOfDay();
+
+        // برای جلوگیری از لوپ بی‌نهایت
+        $safety = 0;
+
+        while ($cursor->lte($endDay) && $safety < 40) {
+            $dateStr = $cursor->toDateString(); // Gregorian ISO Y-m-d (برای JS عالی)
+
+            try {
+                $slots = $engine->generateSlots(
+                    $service->id,
+                    $providerId,
+                    $dateStr,
+                    $dateStr,
+                    viewerTimezone: $viewerTz
+                );
+            } catch (\Throwable $e) {
+                Log::warning('[Booking][OnlineCalendar] generateSlots failed', [
+                    'service_id' => $service->id,
+                    'provider_user_id' => $providerId,
+                    'date' => $dateStr,
+                    'error' => $e->getMessage(),
+                ]);
+                $slots = [];
+            }
+
+            $has = ! empty($slots);
+
+            $days[] = [
+                'local_date' => $dateStr,
+                'is_closed' => ! $has,
+                'has_available_slots' => $has,
+            ];
+
+            $cursor->addDay();
+            $safety++;
+        }
+
+        return response()->json([
+            'data' => $days,
+            'meta' => [
+                'calendar' => $isGregorian ? 'gregorian' : 'jalali',
+                'schedule_tz' => $scheduleTz,
+                'viewer_tz' => $viewerTz,
+            ],
+        ], 200);
     }
 
     public function slots(Request $request, BookingService $service, BookingEngine $engine)
@@ -47,7 +187,9 @@ class OnlineBookingController extends Controller
         ]);
 
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
-        $localDate = $this->convertJalaliDateToLocal($data['date_local'], $scheduleTz);
+
+        // ✅ حالا هم جلالی رو قبول می‌کنه هم میلادی
+        $localDate = $this->parseFlexibleLocalDate($data['date_local'], $scheduleTz);
         if (! $localDate) {
             return response()->json(['data' => []], 200);
         }
@@ -58,6 +200,7 @@ class OnlineBookingController extends Controller
             'service_id' => $service->id,
             'provider_user_id' => $providerId,
             'date_local' => $data['date_local'],
+            'date_gregorian' => $localDate->toDateString(),
         ]);
 
         $slots = $engine->generateSlots(
@@ -104,7 +247,9 @@ class OnlineBookingController extends Controller
         }
 
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
-        $localDate = $this->convertJalaliDateToLocal($data['date_local'], $scheduleTz);
+
+        // ✅ حالا هم جلالی رو قبول می‌کنه هم میلادی
+        $localDate = $this->parseFlexibleLocalDate($data['date_local'], $scheduleTz);
         if (! $localDate) {
             return back()->withErrors(['date_local' => 'تاریخ وارد شده معتبر نیست.'])->withInput();
         }
@@ -121,8 +266,8 @@ class OnlineBookingController extends Controller
         );
 
         $slotMatched = collect($slots)->first(function ($slot) use ($startUtc, $endUtc) {
-            return $slot['start_at_utc'] === $startUtc->toIso8601String()
-                && $slot['end_at_utc'] === $endUtc->toIso8601String();
+            return ($slot['start_at_utc'] ?? null) === $startUtc->toIso8601String()
+                && ($slot['end_at_utc'] ?? null) === $endUtc->toIso8601String();
         });
 
         if (! $slotMatched) {
@@ -130,16 +275,37 @@ class OnlineBookingController extends Controller
                 'service_id' => $service->id,
                 'provider_user_id' => $providerId,
                 'date_local' => $data['date_local'],
+                'date_gregorian' => $localDate->toDateString(),
                 'start_at_utc' => $startUtc->toIso8601String(),
                 'end_at_utc' => $endUtc->toIso8601String(),
             ]);
+
             return back()
                 ->withErrors(['start_at_utc' => 'اسلات انتخاب‌شده معتبر نیست یا ظرفیت ندارد.'])
                 ->withInput();
         }
 
-        $startLocal = $startUtc->copy()->timezone($scheduleTz);
-        $endLocal = $endUtc->copy()->timezone($scheduleTz);
+        // Validate Form Data
+        $service->load('appointmentForm');
+        $formResponse = null;
+        if ($service->appointmentForm && is_array($service->appointmentForm->schema_json)) {
+            $formData = $request->input('form_data', []);
+            $errors = [];
+            foreach ($service->appointmentForm->schema_json as $field) {
+                $name = $field['name'] ?? null;
+                $label = $field['label'] ?? $name;
+                $required = $field['required'] ?? false;
+
+                if ($name && $required && empty($formData[$name])) {
+                    $errors["form_data.{$name}"] = "فیلد {$label} الزامی است.";
+                }
+            }
+
+            if (!empty($errors)) {
+                return back()->withErrors($errors)->withInput();
+            }
+            $formResponse = $formData;
+        }
 
         try {
             $hold = $appointmentService->startOnlineHold(
@@ -164,6 +330,7 @@ class OnlineBookingController extends Controller
                 'service_id' => $service->id,
                 'provider_user_id' => $providerId,
                 'date_local' => $data['date_local'],
+                'date_gregorian' => $localDate->toDateString(),
                 'start_at_utc' => $startUtc->toIso8601String(),
                 'end_at_utc' => $endUtc->toIso8601String(),
                 'error' => $e->getMessage(),
@@ -172,16 +339,14 @@ class OnlineBookingController extends Controller
             return back()->withErrors(['start_at_utc' => $message])->withInput();
         }
 
-        $clientInput = [
-            'notes' => null,
-        ];
+        $clientInput = ['notes' => null];
 
         if ($client) {
             $clientInput['client_id'] = $client->id;
         } else {
             $clientInput['full_name'] = $data['full_name'];
             $clientInput['phone'] = $data['phone'];
-            if (!empty($data['password'])) {
+            if (! empty($data['password'])) {
                 $clientInput['password'] = $data['password'];
             }
         }
@@ -190,17 +355,23 @@ class OnlineBookingController extends Controller
             $result = $appointmentService->confirmOnlineHold(
                 $hold->id,
                 $clientInput,
-                appointmentFormResponse: null,
+                appointmentFormResponse: $formResponse,
                 payNow: true
             );
-        } catch (\RuntimeException $e) {
+        } catch (\Throwable $e) {
             Log::error('[Booking][OnlineBooking] confirm failed', [
                 'hold_id' => $hold->id,
                 'service_id' => $service->id,
                 'provider_user_id' => $providerId,
                 'error' => $e->getMessage(),
+                'exception' => $e,
             ]);
+
             return back()->withErrors(['start_at_utc' => 'خطا در ثبت نوبت. لطفاً دوباره تلاش کنید.'])->withInput();
+        }
+
+        if (!empty($result['gateway']['payment_url'])) {
+            return redirect($result['gateway']['payment_url']);
         }
 
         Log::info('[Booking][OnlineBooking] appointment confirmed', [
@@ -217,17 +388,42 @@ class OnlineBookingController extends Controller
             ->with('success', 'نوبت شما با موفقیت ثبت شد.');
     }
 
-    protected function convertJalaliDateToLocal(string $value, string $tz): ?Carbon
+    /**
+     * Parses date_local that may be:
+     * - Gregorian ISO: 2025-12-23
+     * - Jalali: 1404-10-02 (or with / separators)
+     *
+     * Auto-detect based on year.
+     * Returns Carbon in $tz at 00:00:00.
+     */
+    protected function parseFlexibleLocalDate(string $value, string $tz): ?Carbon
     {
-        $datePieces = preg_split('/[^\d]+/', trim($value));
+        $value = trim($value);
+
+        $datePieces = preg_split('/[^\d]+/', $value);
         if (count($datePieces) < 3) {
             return null;
         }
 
-        [$jy, $jm, $jd] = array_map('intval', array_slice($datePieces, 0, 3));
-        [$gy, $gm, $gd] = CalendarUtils::toGregorian($jy, $jm, $jd);
+        [$y, $m, $d] = array_map('intval', array_slice($datePieces, 0, 3));
 
-        return Carbon::create($gy, $gm, $gd, 0, 0, 0, $tz);
+        // Basic guard
+        if ($m < 1 || $m > 12 || $d < 1 || $d > 31) {
+            return null;
+        }
+
+        try {
+            // Gregorian
+            if ($y >= 1700) {
+                return Carbon::create($y, $m, $d, 0, 0, 0, $tz);
+            }
+
+            // Jalali -> Gregorian
+            [$gy, $gm, $gd] = CalendarUtils::toGregorian($y, $m, $d);
+            return Carbon::create($gy, $gm, $gd, 0, 0, 0, $tz);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     protected function combineLocalDateAndTime(?Carbon $date, string $time): ?Carbon

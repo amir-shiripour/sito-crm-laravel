@@ -41,6 +41,11 @@ class BookingSlotHold extends Model
 
     public function isExpired(): bool
     {
-        return $this->expires_at_utc && $this->expires_at_utc->lte(now());
+        if (!$this->expires_at_utc) {
+            return true;
+        }
+
+        // Compare using application's timezone context, which should be consistent
+        return $this->expires_at_utc->isPast();
     }
 }

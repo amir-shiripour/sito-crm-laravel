@@ -825,8 +825,29 @@ class AppointmentController extends Controller
         $engine     = app(\Modules\Booking\Services\BookingEngine::class);
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
 
-        $start = Carbon::create($year, $month, 1, 0, 0, 0, $scheduleTz)->startOfMonth();
-        $end   = $start->copy()->endOfMonth();
+        $isGregorian = $year >= 1700;
+
+        if ($isGregorian) {
+            $start = Carbon::create($year, $month, 1, 0, 0, 0, $scheduleTz)->startOfMonth();
+            $end = $start->copy()->endOfMonth();
+        } else { // Jalali
+            $start = $this->parseFlexibleLocalDate(sprintf('%04d-%02d-01', $year, $month), $scheduleTz);
+            if (!$start) {
+                return response()->json(['data' => []]);
+            }
+
+            $end = null;
+            for ($d = 1; $d <= 31; $d++) {
+                $tmp = $this->parseFlexibleLocalDate(sprintf('%04d-%02d-%02d', $year, $month, $d), $scheduleTz);
+                if (!$tmp) {
+                    break;
+                }
+                $end = $tmp;
+            }
+            if (!$end) {
+                return response()->json(['data' => []]);
+            }
+        }
 
         $allSlots = $engine->generateSlots(
             $serviceId,
@@ -951,5 +972,32 @@ class AppointmentController extends Controller
                 'schema_json' => $form->schema_json ?? [],
             ],
         ]);
+    }
+
+    protected function parseFlexibleLocalDate(string $value, string $tz): ?Carbon
+    {
+        $value = trim($value);
+
+        $datePieces = preg_split('/[^\d]+/', $value);
+        if (count($datePieces) < 3) {
+            return null;
+        }
+
+        [$y, $m, $d] = array_map('intval', array_slice($datePieces, 0, 3));
+
+        if ($m < 1 || $m > 12 || $d < 1 || $d > 31) {
+            return null;
+        }
+
+        try {
+            if ($y >= 1700) {
+                return Carbon::create($y, $m, $d, 0, 0, 0, $tz);
+            }
+
+            [$gy, $gm, $gd] = CalendarUtils::toGregorian($y, $m, $d);
+            return Carbon::create($gy, $gm, $gd, 0, 0, 0, $tz);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }
