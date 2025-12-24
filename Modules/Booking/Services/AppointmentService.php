@@ -925,7 +925,7 @@ class AppointmentService
         }
     }
 
-    protected function triggerStatusWorkflows(Appointment $appointment, ?string $previousStatus = null): void
+    public function triggerStatusWorkflows(Appointment $appointment, ?string $previousStatus = null): void
     {
         $this->triggerWorkflow('appointment_status_changed', $appointment);
 

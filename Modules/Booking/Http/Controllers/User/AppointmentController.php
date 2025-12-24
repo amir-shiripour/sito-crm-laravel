@@ -424,6 +424,8 @@ class AppointmentController extends Controller
                 ->withInput();
         }
 
+        $previousStatus = $appointment->status;
+
         $appointment->service_id = (int) $service->id;
         $appointment->provider_user_id = (int) $data['provider_user_id'];
         $appointment->client_id = (int) $client->id;
@@ -456,6 +458,11 @@ class AppointmentController extends Controller
         $appointment->appointment_form_response_json = $formJson;
 
         $appointment->save();
+
+        // Trigger workflows
+        if ($previousStatus !== $appointment->status) {
+            $this->service->triggerStatusWorkflows($appointment, $previousStatus);
+        }
 
         return redirect()
             ->route('user.booking.appointments.show', $appointment)
