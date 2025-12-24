@@ -75,19 +75,29 @@ return [
         'workflows' => [
             'enabled' => true,
             // map internal keys to Workflows module workflow_keys
+            // If null, the key itself is used.
             'workflow_keys' => [
-                'appointment_created' => null,
-                'appointment_confirmed' => null,
-                'appointment_reminder' => null,
+                'appointment_created'        => null,
+                'appointment_created_online' => null,
+                'appointment_confirmed'      => null,
                 'appointment_status_changed' => null,
-                'appointment_canceled' => null,
-                'appointment_done' => null,
-                'appointment_rescheduled' => null,
-                'appointment_no_show' => null,
+                'appointment_canceled'       => null,
+                'appointment_done'           => null,
+                'appointment_rescheduled'    => null,
+                'appointment_no_show'        => null,
+
+                // Time-based triggers (mapped automatically in code, but listed here for reference)
+                'appointment_reminder_1_hour_before'  => null,
+                'appointment_reminder_2_hours_before' => null,
+                'appointment_reminder_1_day_before'   => null,
+                'appointment_reminder_2_days_before'  => null,
+                'appointment_reminder_3_days_before'  => null,
+                'appointment_reminder_7_days_before'  => null,
             ],
 
-            // Offsets (in minutes) relative to appointment start time to trigger workflow_reminder
-            'reminder_offsets_minutes' => [-1440, -120, -30],
+            // DEPRECATED: This array is no longer used.
+            // Reminders are now dynamically created based on active workflows matching 'appointment_reminder_%'
+            'reminder_offsets_minutes' => [],
         ],
     ],
 ];

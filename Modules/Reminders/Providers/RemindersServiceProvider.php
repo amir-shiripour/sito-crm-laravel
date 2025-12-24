@@ -4,6 +4,7 @@ namespace Modules\Reminders\Providers;
 
 use App\Support\WidgetRegistry;
 use Illuminate\Support\ServiceProvider;
+use Modules\Reminders\Console\ProcessRemindersCommand; // <--- اضافه شده
 
 class RemindersServiceProvider extends ServiceProvider
 {
@@ -24,6 +25,13 @@ class RemindersServiceProvider extends ServiceProvider
             foreach ($widgets as $key => $definition) {
                 WidgetRegistry::register($key, $definition);
             }
+        }
+
+        // <--- اضافه شده: ثبت دستورات کنسول
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ProcessRemindersCommand::class,
+            ]);
         }
     }
 

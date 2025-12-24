@@ -31,14 +31,23 @@ class AppointmentService
     public static function workflowTriggerOptions(): array
     {
         return [
-            'appointment_created'        => 'بعد از ایجاد نوبت',
+            // رویدادهای اصلی
+            'appointment_created'        => 'بعد از ایجاد نوبت (هر روشی)',
+            'appointment_created_online' => 'بعد از رزرو آنلاین نوبت', // <--- جدید
             'appointment_confirmed'      => 'بعد از تایید نوبت',
             'appointment_status_changed' => 'بعد از تغییر وضعیت نوبت',
             'appointment_canceled'       => 'بعد از لغو نوبت',
             'appointment_rescheduled'    => 'بعد از جابجایی/رزرو مجدد نوبت',
             'appointment_done'           => 'بعد از انجام شدن نوبت',
             'appointment_no_show'        => 'بعد از عدم حضور (No-Show)',
-            'appointment_reminder'       => 'یادآوری نوبت (Reminder)',
+
+            // یادآوری‌های زمان‌دار (Time-based Triggers)
+            'appointment_reminder_1_hour_before'  => 'یادآوری: ۱ ساعت قبل از نوبت',
+            'appointment_reminder_2_hours_before' => 'یادآوری: ۲ ساعت قبل از نوبت',
+            'appointment_reminder_1_day_before'   => 'یادآوری: ۱ روز قبل از نوبت',
+            'appointment_reminder_2_days_before'  => 'یادآوری: ۲ روز قبل از نوبت',
+            'appointment_reminder_3_days_before'  => 'یادآوری: ۳ روز قبل از نوبت',
+            'appointment_reminder_7_days_before'  => 'یادآوری: ۷ روز قبل از نوبت',
         ];
     }
 
@@ -179,7 +188,9 @@ class AppointmentService
             // Consume hold
             $hold->delete();
 
+            // تریگرهای ایجاد نوبت
             $this->triggerWorkflow('appointment_created', $appointment);
+            $this->triggerWorkflow('appointment_created_online', $appointment); // <--- تریگر جدید
 
             if ($appointment->status === Appointment::STATUS_CONFIRMED) {
                 $this->onAppointmentConfirmed($appointment);
@@ -698,13 +709,9 @@ class AppointmentService
             return;
         }
 
+        // 1. یادآوری‌های پیش‌فرض (کانفیگ)
         $templates = (array) config('booking.integrations.reminders.default_templates', []);
-        if (empty($templates)) {
-            return;
-        }
-
-        // Provider IN_APP reminders are stored in Reminders module (users table).
-        if (class_exists('Modules\\Reminders\\Entities\\Reminder')) {
+        if (!empty($templates) && class_exists('Modules\\Reminders\\Entities\\Reminder')) {
             $Reminder = \Modules\Reminders\Entities\Reminder::class;
 
             // Cleanup unsent reminders for this appointment & provider before re-creating
@@ -712,6 +719,7 @@ class AppointmentService
                 ->where('related_type', 'APPOINTMENT')
                 ->where('related_id', $appointment->id)
                 ->where('is_sent', false)
+                ->where('channel', '!=', 'WORKFLOW') // Don't delete workflow reminders here
                 ->delete();
 
             foreach ($templates as $tpl) {
@@ -736,14 +744,12 @@ class AppointmentService
             }
         }
 
-        // Workflow-based reminders (channel WORKFLOW) to trigger workflow events at specific offsets
-        $workflowKeyReminder = config('booking.integrations.workflows.workflow_keys.appointment_reminder');
-        $workflowOffsets = (array) config('booking.integrations.workflows.reminder_offsets_minutes', []);
-
-        if ($workflowKeyReminder && !empty($workflowOffsets) && class_exists('Modules\\Reminders\\Entities\\Reminder')) {
+        // 2. یادآوری‌های مبتنی بر ورک‌فلو (Dynamic Workflow Reminders)
+        if (class_exists('Modules\\Reminders\\Entities\\Reminder') && class_exists('Modules\\Workflows\\Entities\\Workflow')) {
             $Reminder = \Modules\Reminders\Entities\Reminder::class;
+            $Workflow = \Modules\Workflows\Entities\Workflow::class;
 
-            // cleanup existing workflow reminders for this appointment
+            // پاکسازی یادآوری‌های قبلی ورک‌فلو برای این نوبت
             $Reminder::query()
                 ->where('related_type', 'APPOINTMENT')
                 ->where('related_id', $appointment->id)
@@ -751,24 +757,45 @@ class AppointmentService
                 ->where('status', $Reminder::STATUS_OPEN)
                 ->delete();
 
-            foreach ($workflowOffsets as $offsetMinutes) {
-                $remindAt = $appointment->start_at_utc->copy()->addMinutes((int) $offsetMinutes);
+            // پیدا کردن تمام ورک‌فلوهای فعال که کلیدشان با appointment_reminder_ شروع می‌شود
+            $activeWorkflows = $Workflow::query()
+                ->where('is_active', true)
+                ->where('key', 'like', 'appointment_reminder_%')
+                ->get();
 
-                $Reminder::query()->create([
-                    'user_id' => $appointment->provider_user_id,
-                    'related_type' => 'APPOINTMENT',
-                    'related_id' => $appointment->id,
-                    'remind_at' => $remindAt,
-                    'channel' => 'WORKFLOW',
-                    'message' => 'appointment_reminder',
-                    'status' => $Reminder::STATUS_OPEN,
-                    'is_sent' => false,
-                ]);
+            // نگاشت کلیدها به دقیقه (آفست)
+            $offsetMap = [
+                'appointment_reminder_1_hour_before'  => -60,
+                'appointment_reminder_2_hours_before' => -120,
+                'appointment_reminder_1_day_before'   => -1440,
+                'appointment_reminder_2_days_before'  => -2880,
+                'appointment_reminder_3_days_before'  => -4320,
+                'appointment_reminder_7_days_before'  => -10080,
+            ];
+
+            foreach ($activeWorkflows as $wf) {
+                $offset = $offsetMap[$wf->key] ?? null;
+                if ($offset !== null) {
+                    $remindAt = $appointment->start_at_utc->copy()->addMinutes($offset);
+
+                    // اگر زمان یادآوری نگذشته باشد، ایجاد کن
+                    if ($remindAt->gt(now())) {
+                        $Reminder::query()->create([
+                            'user_id'      => $appointment->provider_user_id, // معمولاً سیستم پردازش می‌کند، کاربر مهم نیست
+                            'related_type' => 'APPOINTMENT',
+                            'related_id'   => $appointment->id,
+                            'remind_at'    => $remindAt,
+                            'channel'      => 'WORKFLOW',
+                            'message'      => $wf->key, // کلید ورک‌فلو به عنوان پیام ذخیره می‌شود تا بعداً تریگر شود
+                            'status'       => $Reminder::STATUS_OPEN,
+                            'is_sent'      => false,
+                        ]);
+                    }
+                }
             }
         }
 
-        // Client SMS reminders are scheduled via Sms module (because Reminders table requires user_id -> users).
-        // This keeps client reminders production-ready without breaking existing Reminders schema.
+        // 3. Client SMS reminders (Legacy/Config based)
         if (class_exists('Modules\\Sms\\Services\\SmsManager')) {
             $Sms = app(\Modules\Sms\Services\SmsManager::class);
 
