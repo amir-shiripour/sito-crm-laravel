@@ -42,7 +42,7 @@ class RouteServiceProvider extends ServiceProvider
     {
         Route::middleware('web')
             ->namespace($this->moduleNamespace)
-            ->group(module_path('Clients', '/routes/web.php'));
+            ->group(module_path('Clients', '/Routes/web.php'));
     }
 
     /**
@@ -55,13 +55,13 @@ class RouteServiceProvider extends ServiceProvider
         Route::prefix('api')
             ->middleware('api')
             ->namespace($this->moduleNamespace)
-            ->group(module_path('Clients', '/routes/api.php'));
+            ->group(module_path('Clients', '/Routes/api.php'));
     }
     protected function mapAdminRoutes(): void
     {
         Route::prefix('admin')
             ->as('admin.')
             ->middleware(['web','auth']) // هر میدلوری که می‌خوای
-            ->group(module_path('Clients', 'routes/admin.php'));
+            ->group(module_path('Clients', 'Routes/admin.php'));
     }
 }
