@@ -436,6 +436,8 @@ class ClientForm extends Component
             if ($v instanceof TemporaryUploadedFile) {
                 $this->meta[$k] = $v->store('clients/uploads', 'public');
             }
+            // مقادیر JSON string (مثل select-province-city) به صورت string نگه داشته می‌شوند
+            // و در meta به صورت JSON ذخیره می‌شوند
         }
 
         if ($this->client && $this->client->exists) {

@@ -43,9 +43,8 @@
 
     {{-- text / email / number / date --}}
 @elseif (in_array($type, ['text','email','number','date'], true))
-    <input type="{{ $type === 'text' ? 'text' : $type }}" wire:model.defer="{{ $model }}"
-           placeholder="{{ $placeholder }}"
-           class="{{ $baseInputClass }}"/>
+    <input type="{{ $type === 'text' ? 'text' : $type }}" wire:model.defer="{{ $model }}" placeholder="{{ $placeholder }}"
+           class="{{ $baseInputClass }}" />
 
     {{-- password --}}
 @elseif ($type === 'password')
@@ -53,21 +52,21 @@
         <div class="relative flex-1">
             <input x-bind:type="show ? 'text' : 'password'" wire:model.defer="{{ $model }}"
                    placeholder="{{ $placeholder ?: 'رمز عبور امن وارد کنید...' }}"
-                   class="{{ $baseInputClass }} pr-10 font-mono"/>
+                   class="{{ $baseInputClass }} pr-10 font-mono" />
             {{-- آیکون چشم --}}
             <button type="button"
                     class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                     @click="show = !show" x-tooltip.raw="نمایش / مخفی کردن رمز">
                 <svg x-show="!show" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
-                             -1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                             -1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
                 <svg x-show="show" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
                              .51-1.626 1.48-3.059 2.75-4.155M9.88 9.88a3 3 0 014.24 4.24
-                             M6.1 6.1L4 4m0 0l16 16m-2.1-2.1L20 20"/>
+                             M6.1 6.1L4 4m0 0l16 16m-2.1-2.1L20 20" />
                 </svg>
             </button>
         </div>
@@ -86,7 +85,7 @@
 @elseif ($type === 'checkbox')
     <div class="flex items-center h-full pt-2">
         <input type="checkbox" id="chk-{{ $fid }}" wire:model.defer="{{ $model }}"
-               class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer"/>
+               class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer" />
         <label for="chk-{{ $fid }}" class="mr-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none">
             {{ $placeholder ?: 'فعال / تأیید' }}
         </label>
@@ -210,7 +209,7 @@
                    file:bg-indigo-50 file:text-indigo-700
                    hover:file:bg-indigo-100
                    dark:file:bg-indigo-900/30 dark:file:text-indigo-300
-                   cursor-pointer transition-all"/>
+                   cursor-pointer transition-all" />
     </div>
 
     {{-- select-user-by-role --}}
@@ -237,9 +236,100 @@
         @endif
     </div>
 
+    {{-- select-province-city --}}
+@elseif ($type === 'select-province-city')
+    @php
+        // بارگذاری داده‌های استان و شهر
+        $jsonPath = base_path('Modules/Clients/Resources/data/iran-provinces-cities.json');
+        $provincesData = [];
+        if (file_exists($jsonPath)) {
+        $provincesData = json_decode(file_get_contents($jsonPath), true) ?? [];
+        }
+        $provinces = array_keys($provincesData);
+
+        // مقدار فعلی (می‌تواند یک آرایه باشد: ['province' => 'تهران', 'city' => 'تهران'])
+        $currentValue = $meta[$fid] ?? [];
+        if (is_string($currentValue)) {
+        $currentValue = json_decode($currentValue, true) ?? [];
+        }
+        if (!is_array($currentValue)) {
+        $currentValue = [];
+        }
+        $selectedProvince = $currentValue['province'] ?? '';
+        $selectedCity = $currentValue['city'] ?? '';
+
+        // شهرهای استان انتخاب شده
+        $cities = [];
+        if ($selectedProvince && isset($provincesData[$selectedProvince])) {
+        $cities = $provincesData[$selectedProvince];
+        }
+    @endphp
+
+    <div class="space-y-3" x-data="{
+        province: @js($selectedProvince),
+        city: @js($selectedCity),
+        provinces: @js($provinces),
+        cities: @js($cities),
+        provincesData: @js($provincesData),
+        init() {
+            // بارگذاری اولیه شهرها بر اساس استان انتخاب شده
+            if (this.province && this.provincesData[this.province]) {
+                this.cities = this.provincesData[this.province];
+            }
+        },
+        updateCities() {
+            if (this.province && this.provincesData[this.province]) {
+                this.cities = this.provincesData[this.province];
+                this.city = ''; // ریست شهر هنگام تغییر استان
+                this.updateValue();
+            } else {
+                this.cities = [];
+                this.city = '';
+                this.updateValue();
+            }
+        },
+        updateValue() {
+            const value = JSON.stringify({province: this.province || '', city: this.city || ''});
+            @this.set('meta.{{ $fid }}', value);
+        }
+    }" wire:ignore>
+        {{-- سلکتور استان --}}
+        <div class="relative">
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">استان</label>
+            <select x-model="province" @change="updateCities()" class="{{ $baseInputClass }} appearance-none">
+                <option value="">انتخاب استان...</option>
+                <template x-for="prov in provinces" :key="prov">
+                    <option :value="prov" x-text="prov"></option>
+                </template>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 top-6">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+        </div>
+
+        {{-- سلکتور شهر --}}
+        <div class="relative">
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">شهر</label>
+            <select x-model="city" @change="updateValue()" :disabled="!province || cities.length === 0"
+                    class="{{ $baseInputClass }} appearance-none disabled:opacity-50 disabled:cursor-not-allowed">
+                <option value="">انتخاب شهر...</option>
+                <template x-for="city in cities" :key="city">
+                    <option :value="city" x-text="city"></option>
+                </template>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 top-6">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+
     {{-- fallback --}}
 @else
-    <input type="text" wire:model.defer="{{ $model }}" placeholder="{{ $placeholder }}" class="{{ $baseInputClass }}"/>
+    <input type="text" wire:model.defer="{{ $model }}" placeholder="{{ $placeholder }}" class="{{ $baseInputClass }}" />
 @endif
 
 @php
@@ -251,7 +341,7 @@
 <div class="flex items-center gap-1 text-xs font-medium text-red-600 mt-1.5">
     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
     {{ $message }}
 </div>
