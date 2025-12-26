@@ -56,12 +56,16 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
                 Route::get('/{client}/portal-login', [ClientAuthController::class, 'autoLoginFromAdmin'])
                     ->name('portal-login')
                     ->middleware('permission:clients.view');
+
+                // جستجوی clients برای فیلدهای select
+                Route::get('/search', [UserClientController::class, 'search'])
+                    ->name('search')
+                    ->middleware('permission:clients.view');
             });
 
         Route::get('/clients/profile', [UserClientController::class, 'profile'])
             ->name('clients.profile')
             ->middleware('permission:clients.view');
-
     });
 
 Route::post('user/clients/quick-store', [UserClientController::class, 'quickStore'])
@@ -96,7 +100,6 @@ Route::prefix('clients')
 
             Route::post('login/otp/verify', [ClientAuthController::class, 'verifyOtp'])
                 ->name('otp.verify');
-
         });
 
         // کلاینت‌های لاگین کرده

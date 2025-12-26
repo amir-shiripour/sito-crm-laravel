@@ -218,6 +218,16 @@ class ClientForm extends Model
                 $f['required_status_keys'] = [];
             }
 
+            // نرمال‌سازی conditional_required برای همهٔ فیلدها
+            if (!empty($f['conditional_required']) && is_array($f['conditional_required'])) {
+                // فیلتر کردن قوانین معتبر (باید trigger_field_id داشته باشند)
+                $f['conditional_required'] = array_values(array_filter($f['conditional_required'], function ($rule) {
+                    return is_array($rule) && !empty($rule['trigger_field_id']);
+                }));
+            } else {
+                $f['conditional_required'] = [];
+            }
+
             $normalized[] = $f;
         }
 

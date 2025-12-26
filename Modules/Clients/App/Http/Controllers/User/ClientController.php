@@ -13,9 +13,9 @@ class ClientController extends Controller
     public function __construct()
     {
         // دسترسی‌ها بر اساس پرمیژن
-        $this->middleware('permission:clients.view')->only(['index','show','profile']);
-        $this->middleware('permission:clients.create')->only(['create','store']);
-        $this->middleware('permission:clients.edit')->only(['edit','update']);
+        $this->middleware('permission:clients.view')->only(['index', 'show', 'profile']);
+        $this->middleware('permission:clients.create')->only(['create', 'store']);
+        $this->middleware('permission:clients.edit')->only(['edit', 'update']);
         $this->middleware('permission:clients.delete')->only(['destroy']);
     }
 
@@ -120,7 +120,7 @@ class ClientController extends Controller
 
         return redirect()
             ->route('user.clients.index')
-            ->with('success','Client updated.');
+            ->with('success', 'Client updated.');
     }
 
     public function destroy(Client $client)
@@ -131,7 +131,7 @@ class ClientController extends Controller
         // $client->delete();
         $client->forceDelete();
 
-        return back()->with('success','Client deleted.');
+        return back()->with('success', 'Client deleted.');
     }
 
     /**
@@ -186,4 +186,75 @@ class ClientController extends Controller
             ->with('success', 'Client created.');
     }
 
+    /**
+     * جستجوی clients برای استفاده در فیلدهای select
+     * جستجو بر اساس: نام و نام خانوادگی، کد ملی، شماره تماس، شماره پرونده
+     * یا بارگذاری بر اساس IDs
+     */
+    public function search(Request $request)
+    {
+        $query = $request->get('q', '');
+        $ids = $request->get('ids', '');
+        $limit = min((int) $request->get('limit', 20), 50); // حداکثر 50 نتیجه
+
+        $user = auth()->user();
+
+        $clientsQuery = Client::query()->visibleForUser($user);
+
+        // اگر IDs ارسال شده، بر اساس آنها جستجو کن
+        if ($ids) {
+            $idsArray = array_filter(array_map('intval', explode(',', $ids)));
+            if (!empty($idsArray)) {
+                $clientsQuery->whereIn('id', $idsArray);
+            }
+        } elseif ($query) {
+            // جستجو بر اساس متن
+            $clientsQuery->where(function ($subQuery) use ($query) {
+                $subQuery->where('full_name', 'like', "%{$query}%")
+                    ->orWhere('national_code', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%")
+                    ->orWhere('case_number', 'like', "%{$query}%");
+            });
+        } else {
+            // اگر هیچکدام نبود، لیست خالی برگردان
+            return response()->json([
+                'results' => [],
+                'total' => 0,
+            ]);
+        }
+
+        $clients = $clientsQuery
+            ->select('id', 'full_name', 'national_code', 'phone', 'case_number')
+            ->orderBy('full_name')
+            ->limit($limit)
+            ->get()
+            ->map(function ($client) {
+                // ساخت لیبل نمایشی
+                $labelParts = [$client->full_name];
+                if ($client->national_code) {
+                    $labelParts[] = "کد ملی: {$client->national_code}";
+                }
+                if ($client->phone) {
+                    $labelParts[] = "تلفن: {$client->phone}";
+                }
+                if ($client->case_number) {
+                    $labelParts[] = "پرونده: {$client->case_number}";
+                }
+
+                return [
+                    'id' => $client->id,
+                    'value' => (string) $client->id,
+                    'label' => implode(' | ', $labelParts),
+                    'full_name' => $client->full_name,
+                    'national_code' => $client->national_code,
+                    'phone' => $client->phone,
+                    'case_number' => $client->case_number,
+                ];
+            });
+
+        return response()->json([
+            'results' => $clients,
+            'total' => $clients->count(),
+        ]);
+    }
 }

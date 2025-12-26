@@ -24,7 +24,7 @@ class ClientFormBuilder extends Component
     public bool $is_active = true;
 
     public array $schema = ['fields' => []];
-    public array $systemFieldIds = ['full_name','phone','email','national_code','notes','status_id','password'];
+    public array $systemFieldIds = ['full_name', 'phone', 'email', 'national_code', 'notes', 'status_id', 'password'];
 
     // لیست نقش‌ها برای select-user-by-role
     public array $roles = [];
@@ -90,6 +90,10 @@ class ClientFormBuilder extends Component
             if (!isset($f['required_status_keys']) || !is_array($f['required_status_keys'])) {
                 $f['required_status_keys'] = [];
             }
+            // مطمئن شو conditional_required همیشه آرایه است
+            if (!isset($f['conditional_required']) || !is_array($f['conditional_required'])) {
+                $f['conditional_required'] = [];
+            }
         }
         unset($f);
     }
@@ -112,7 +116,7 @@ class ClientFormBuilder extends Component
     // افزودن فیلد
     public function addField(string $type): void
     {
-        $id = $type.'_'.substr(str()->uuid()->toString(), 0, 8);
+        $id = $type . '_' . substr(str()->uuid()->toString(), 0, 8);
 
         $this->schema['fields'][] = [
             'type'                => $type,
@@ -122,19 +126,22 @@ class ClientFormBuilder extends Component
             'placeholder'         => '',
             'width'               => 'full',
             'group'               => '',
-            'required_status_keys'=> [], // مهم: از اول آرایه باشد
+            'required_status_keys' => [], // مهم: از اول آرایه باشد
+            'conditional_required' => [], // قوانین شرطی برای الزامی شدن
         ];
 
         $lastIndex = count($this->schema['fields']) - 1;
 
         if ($type === 'select') {
             $this->schema['fields'][$lastIndex]['options_json'] = '';
+            $this->schema['fields'][$lastIndex]['multiple'] = false;
+            $this->schema['fields'][$lastIndex]['use_clients_list'] = false;
         }
 
         if ($type === 'select-user-by-role') {
             $this->schema['fields'][$lastIndex]['role']                = null;
             $this->schema['fields'][$lastIndex]['multiple']            = false;
-            $this->schema['fields'][$lastIndex]['lock_current_if_role']= false;
+            $this->schema['fields'][$lastIndex]['lock_current_if_role'] = false;
         }
 
         if ($type === 'file') {
@@ -173,6 +180,9 @@ class ClientFormBuilder extends Component
         if (!isset($field['required_status_keys']) || !is_array($field['required_status_keys'])) {
             $field['required_status_keys'] = [];
         }
+        if (!isset($field['conditional_required']) || !is_array($field['conditional_required'])) {
+            $field['conditional_required'] = [];
+        }
 
         $this->schema['fields'][] = $field;
     }
@@ -186,7 +196,7 @@ class ClientFormBuilder extends Component
 
         $this->validate([
             'name'       => 'required|string|max:100',
-            'key'        => 'required|alpha_dash|max:100|unique:client_forms,key,'.($this->activeFormId ?? 'NULL').',id',
+            'key'        => 'required|alpha_dash|max:100|unique:client_forms,key,' . ($this->activeFormId ?? 'NULL') . ',id',
             'schema'     => 'required|array',
             'is_active'  => 'boolean',
         ]);
@@ -198,7 +208,7 @@ class ClientFormBuilder extends Component
             $fid = trim($f['id'] ?? '');
 
             if ($fid === '') {
-                $fid = 'f_'.substr((string) Str::uuid(), 0, 8);
+                $fid = 'f_' . substr((string) Str::uuid(), 0, 8);
             }
 
             $f['id'] = $fid;
@@ -231,6 +241,17 @@ class ClientFormBuilder extends Component
             $keys = array_values(array_filter($keys, fn($k) => is_string($k) && $k !== ''));
             $f['required_status_keys'] = $keys;
 
+            // نرمال‌سازی conditional_required → همیشه آرایه از قوانین معتبر
+            $conditionalRules = $f['conditional_required'] ?? [];
+            if (!is_array($conditionalRules)) {
+                $conditionalRules = [];
+            }
+            // فیلتر کردن قوانین معتبر (باید trigger_field_id داشته باشند)
+            $conditionalRules = array_values(array_filter($conditionalRules, function ($rule) {
+                return is_array($rule) && !empty($rule['trigger_field_id']);
+            }));
+            $f['conditional_required'] = $conditionalRules;
+
             $normalized[] = $f;
         }
 
@@ -250,6 +271,37 @@ class ClientFormBuilder extends Component
         $this->forms = ClientForm::orderBy('name')->get();
 
         $this->dispatch('notify', type: 'success', text: 'فرم ذخیره شد.');
+    }
+
+    // افزودن قانون شرطی به یک فیلد
+    public function addConditionalRule(int $fieldIndex): void
+    {
+        if (!isset($this->schema['fields'][$fieldIndex])) {
+            return;
+        }
+
+        if (!isset($this->schema['fields'][$fieldIndex]['conditional_required'])) {
+            $this->schema['fields'][$fieldIndex]['conditional_required'] = [];
+        }
+
+        $this->schema['fields'][$fieldIndex]['conditional_required'][] = [
+            'trigger_field_id' => '',
+            'operator' => 'filled', // filled, empty, equals, not_equals
+            'value' => '', // برای equals/not_equals
+        ];
+    }
+
+    // حذف قانون شرطی از یک فیلد
+    public function removeConditionalRule(int $fieldIndex, int $ruleIndex): void
+    {
+        if (!isset($this->schema['fields'][$fieldIndex]['conditional_required'][$ruleIndex])) {
+            return;
+        }
+
+        unset($this->schema['fields'][$fieldIndex]['conditional_required'][$ruleIndex]);
+        $this->schema['fields'][$fieldIndex]['conditional_required'] = array_values(
+            $this->schema['fields'][$fieldIndex]['conditional_required']
+        );
     }
 
     public function render()

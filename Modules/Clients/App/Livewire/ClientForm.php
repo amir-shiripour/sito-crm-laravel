@@ -14,6 +14,8 @@ use Modules\Clients\Entities\ClientForm as ClientFormSchema;
 use Modules\Clients\Entities\ClientSetting;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Morilog\Jalali\CalendarUtils;
+use Carbon\Carbon;
 
 #[Layout('layouts.user')]
 class ClientForm extends Component
@@ -81,7 +83,7 @@ class ClientForm extends Component
             : ClientFormSchema::active($keyFromSettings);
 
         $this->formDefinition = $form;
-        $this->schema         = $form?->schema ?? ['fields' => []];
+        $this->schema         = ($form && isset($form->schema)) ? $form->schema : ['fields' => []];
 
         // وضعیت‌های فعال
         $statuses = ClientStatus::active()->get();
@@ -114,7 +116,7 @@ class ClientForm extends Component
             $this->national_code = $client->national_code;
             $this->case_number   = $client->case_number;
             $this->notes         = $client->notes;
-            $this->meta          = $client->meta ?? [];
+            $this->meta          = $this->convertMetaDatesForDisplay($client->meta ?? [], $form);
             $this->status_id     = $client->status_id;
 
             // برای ویرایش، پسورد را خالی می‌گذاریم (اگر پر شود یعنی تغییر پسورد)
@@ -195,6 +197,83 @@ class ClientForm extends Component
     }
 
     /**
+     * بررسی اینکه آیا یک قانون شرطی فعال است یا نه
+     */
+    private function isConditionalRuleActive(array $rule, array $allFields, bool $forQuick = false): bool
+    {
+        $triggerFieldId = $rule['trigger_field_id'] ?? null;
+        if (!$triggerFieldId) {
+            return false;
+        }
+
+        // تعیین مسیر داده (سیستمی یا meta)
+        $systemModelMap = [
+            'full_name' => 'full_name',
+            'phone' => 'phone',
+            'email' => 'email',
+            'national_code' => 'national_code',
+            'case_number' => 'case_number',
+            'notes' => 'notes',
+            'password' => 'password',
+        ];
+
+        $isSystem = array_key_exists($triggerFieldId, ClientFormSchema::SYSTEM_FIELDS);
+
+        if ($forQuick) {
+            $triggerValue = $this->quick[$triggerFieldId] ?? null;
+        } else {
+            if ($isSystem) {
+                $prop = $systemModelMap[$triggerFieldId] ?? $triggerFieldId;
+                $triggerValue = $this->{$prop} ?? null;
+            } else {
+                $triggerValue = $this->meta[$triggerFieldId] ?? null;
+            }
+        }
+
+        $operator = $rule['operator'] ?? 'filled';
+        $expectedValue = $rule['value'] ?? '';
+
+        // تبدیل مقدار به string برای مقایسه
+        if (is_array($triggerValue)) {
+            $triggerValue = json_encode($triggerValue);
+        } else {
+            $triggerValue = (string) $triggerValue;
+        }
+
+        switch ($operator) {
+            case 'filled':
+                return !empty($triggerValue) && trim($triggerValue) !== '';
+            case 'empty':
+                return empty($triggerValue) || trim($triggerValue) === '';
+            case 'equals':
+                return trim($triggerValue) === trim($expectedValue);
+            case 'not_equals':
+                return trim($triggerValue) !== trim($expectedValue);
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * بررسی اینکه آیا یک فیلد باید به دلیل قوانین شرطی الزامی باشد
+     */
+    private function isFieldRequiredByConditional(array $field, array $allFields, bool $forQuick = false): bool
+    {
+        $conditionalRules = $field['conditional_required'] ?? [];
+        if (empty($conditionalRules) || !is_array($conditionalRules)) {
+            return false;
+        }
+
+        foreach ($conditionalRules as $rule) {
+            if ($this->isConditionalRuleActive($rule, $allFields, $forQuick)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * ساخت قوانین ولیدیشن برای فیلدهای سیستمی
      */
     private function buildSystemValidationRules(bool $forQuick = false, ?string $targetStatusKey = null): array
@@ -232,14 +311,15 @@ class ClientForm extends Component
                 $def['required_status_keys'] ?? [],
                 true
             );
+            $requiredConditional = $this->isFieldRequiredByConditional($def, $schemaFields->toArray(), $forQuick);
 
-            // در مودال quick اگر نه quick_create و نه required_by_status، ولیدیت نکن
-            if ($forQuick && !$quickField && !$requiredStatus) {
+            // در مودال quick اگر نه quick_create و نه required_by_status و نه required_by_conditional، ولیدیت نکن
+            if ($forQuick && !$quickField && !$requiredStatus && !$requiredConditional) {
                 continue;
             }
 
             $key    = $forQuick ? "quick.$sid" : $sid;
-            $prefix = ($requiredBase || $requiredStatus) ? ['required'] : ['nullable'];
+            $prefix = ($requiredBase || $requiredStatus || $requiredConditional) ? ['required'] : ['nullable'];
             $base   = $baseRules[$sid] ?? [];
 
             $rules[$key] = array_merge($prefix, $base);
@@ -255,10 +335,11 @@ class ClientForm extends Component
                 $statusField['required_status_keys'] ?? [],
                 true
             );
+            $requiredConditional = $this->isFieldRequiredByConditional($statusField, $schemaFields->toArray(), $forQuick);
 
-            if (!$forQuick || ($forQuick && ($quickField || $requiredStatus))) {
+            if (!$forQuick || ($forQuick && ($quickField || $requiredStatus || $requiredConditional))) {
                 $key    = $forQuick ? 'quick.status_id' : 'status_id';
-                $prefix = ($requiredBase || $requiredStatus) ? ['required'] : ['nullable'];
+                $prefix = ($requiredBase || $requiredStatus || $requiredConditional) ? ['required'] : ['nullable'];
 
                 $rules[$key] = array_merge($prefix, ['exists:client_statuses,id']);
             }
@@ -304,14 +385,15 @@ class ClientForm extends Component
 
                 $statusKeys       = (array)($f['required_status_keys'] ?? []);
                 $requiredByStatus = $targetStatusKey && in_array($targetStatusKey, $statusKeys, true);
+                $requiredByConditional = $this->isFieldRequiredByConditional($f, $quickFields->toArray(), true);
 
                 if (!empty($f['validate'])) {
                     $ruleStr = $f['validate'];
-                    if ($requiredByStatus && !str_contains($ruleStr, 'required')) {
+                    if (($requiredByStatus || $requiredByConditional) && !str_contains($ruleStr, 'required')) {
                         $ruleStr = 'required|' . $ruleStr;
                     }
                     $rules[$key] = $ruleStr;
-                } elseif (!empty($f['required']) || $requiredByStatus) {
+                } elseif (!empty($f['required']) || $requiredByStatus || $requiredByConditional) {
                     $rules[$key] = 'required';
                 }
             }
@@ -415,15 +497,16 @@ class ClientForm extends Component
 
             $statusKeys       = (array)($f['required_status_keys'] ?? []);
             $requiredByStatus = $targetStatusKey && in_array($targetStatusKey, $statusKeys, true);
+            $requiredByConditional = $this->isFieldRequiredByConditional($f, $this->schema['fields'] ?? [], false);
 
             if (!empty($f['validate'])) {
                 $ruleStr = $f['validate'];
-                if (($requiredByStatus || !empty($f['required'])) && !str_contains($ruleStr, 'required')) {
+                if (($requiredByStatus || $requiredByConditional || !empty($f['required'])) && !str_contains($ruleStr, 'required')) {
                     $ruleStr = 'required|' . $ruleStr;
                 }
                 $rules[$key] = $ruleStr;
-            } elseif (!empty($f['required']) || $requiredByStatus) {
-                if ($this->isQuickMode && empty($f['quick_create']) && !$requiredByStatus) {
+            } elseif (!empty($f['required']) || $requiredByStatus || $requiredByConditional) {
+                if ($this->isQuickMode && empty($f['quick_create']) && !$requiredByStatus && !$requiredByConditional) {
                     continue;
                 }
                 $rules[$key] = 'required';
@@ -431,6 +514,9 @@ class ClientForm extends Component
         }
 
         $this->validate($rules);
+
+        // تبدیل تاریخ‌های جلالی به میلادی قبل از ذخیره
+        $this->meta = $this->convertMetaDatesForStorage($this->meta ?? [], $this->schema);
 
         foreach (($this->meta ?? []) as $k => $v) {
             if ($v instanceof TemporaryUploadedFile) {
@@ -662,5 +748,144 @@ class ClientForm extends Component
         $i = 1;
         while ($existsInClients($base . $i)) $i++;
         return $base . $i;
+    }
+
+    /**
+     * تبدیل تاریخ‌های میلادی به جلالی برای نمایش در فرم
+     */
+    private function convertMetaDatesForDisplay(array $meta, ?ClientFormSchema $form): array
+    {
+        if (!$form) {
+            return $meta;
+        }
+
+        $fields = $form->schema['fields'] ?? [];
+        $dateFields = [];
+
+        // پیدا کردن فیلدهای تاریخ
+        foreach ($fields as $field) {
+            if (($field['type'] ?? null) === 'date') {
+                $fid = $field['id'] ?? null;
+                if ($fid) {
+                    $dateFields[] = $fid;
+                }
+            }
+        }
+
+        if (empty($dateFields)) {
+            return $meta;
+        }
+
+        foreach ($dateFields as $fid) {
+            if (!isset($meta[$fid]) || empty($meta[$fid])) {
+                continue;
+            }
+
+            $value = $meta[$fid];
+
+            // اگر مقدار به صورت Y-m-d (میلادی) است، به جلالی تبدیل کن
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                try {
+                    $carbon = Carbon::createFromFormat('Y-m-d', $value);
+                    [$jy, $jm, $jd] = CalendarUtils::toJalali(
+                        $carbon->year,
+                        $carbon->month,
+                        $carbon->day
+                    );
+                    $meta[$fid] = sprintf('%04d/%02d/%02d', $jy, $jm, $jd);
+                } catch (\Throwable $e) {
+                    Log::warning('[Clients] Failed to convert date for display', [
+                        'field' => $fid,
+                        'value' => $value,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        return $meta;
+    }
+
+    /**
+     * تبدیل تاریخ‌های جلالی به میلادی برای ذخیره در دیتابیس
+     */
+    private function convertMetaDatesForStorage(array $meta, array $schema): array
+    {
+        $fields = $schema['fields'] ?? [];
+        $dateFields = [];
+
+        // پیدا کردن فیلدهای تاریخ
+        foreach ($fields as $field) {
+            if (($field['type'] ?? null) === 'date') {
+                $fid = $field['id'] ?? null;
+                if ($fid) {
+                    $dateFields[] = $fid;
+                }
+            }
+        }
+
+        if (empty($dateFields)) {
+            return $meta;
+        }
+
+        foreach ($dateFields as $fid) {
+            if (!isset($meta[$fid]) || empty($meta[$fid])) {
+                continue;
+            }
+
+            $value = trim($meta[$fid]);
+
+            // اگر مقدار به صورت Y/m/d (جلالی) است، به میلادی تبدیل کن
+            // فرمت جلالی معمولاً 1403/09/15 است
+            if (preg_match('/^\d{4}\/\d{1,2}\/\d{1,2}$/', $value)) {
+                try {
+                    // نرمال‌سازی ارقام فارسی به انگلیسی
+                    $value = $this->normalizeJalaliDigits($value);
+
+                    $parts = preg_split('/[^\d]+/', $value);
+                    if (count($parts) >= 3) {
+                        [$jy, $jm, $jd] = array_map('intval', array_slice($parts, 0, 3));
+                        [$gy, $gm, $gd] = CalendarUtils::toGregorian($jy, $jm, $jd);
+                        $meta[$fid] = sprintf('%04d-%02d-%02d', $gy, $gm, $gd);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('[Clients] Failed to convert Jalali date for storage', [
+                        'field' => $fid,
+                        'value' => $value,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        return $meta;
+    }
+
+    /**
+     * تبدیل ارقام فارسی/عربی به انگلیسی
+     */
+    private function normalizeJalaliDigits(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹', '٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $latin   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        return str_replace($persian, $latin, $value);
+    }
+
+    /**
+     * بررسی اینکه آیا یک فیلد به صورت شرطی الزامی است (برای نمایش در UI)
+     */
+    public function isFieldConditionallyRequired(string $fieldId): bool
+    {
+        $field = collect($this->schema['fields'] ?? [])->firstWhere('id', $fieldId);
+        if (!$field) {
+            return false;
+        }
+
+        return $this->isFieldRequiredByConditional($field, $this->schema['fields'] ?? [], false);
     }
 }

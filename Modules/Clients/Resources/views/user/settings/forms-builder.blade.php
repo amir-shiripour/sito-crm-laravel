@@ -322,6 +322,89 @@
                                 </div>
                             @endif
 
+                            {{-- قوانین شرطی برای الزامی شدن --}}
+                            <div class="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between mb-3">
+                                    <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                        الزامی شرطی (اگر فیلد دیگری پر شد)
+                                    </p>
+                                    <button type="button" wire:click="addConditionalRule({{ $i }})"
+                                            class="text-xs px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-800/70 transition-colors">
+                                        + افزودن قانون
+                                    </button>
+                                </div>
+
+                                @if(!empty($field['conditional_required']))
+                                    <div class="space-y-2">
+                                        @foreach($field['conditional_required'] as $ruleIdx => $rule)
+                                            <div
+                                                class="flex items-center gap-2 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
+                                                <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                    {{-- فیلد ماشه --}}
+                                                    <div>
+                                                        <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">اگر
+                                                            فیلد:</label>
+                                                        <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.trigger_field_id">
+                                                            <option value="">انتخاب فیلد...</option>
+                                                            @foreach($schema['fields'] ?? [] as $otherIdx => $otherField)
+                                                                @if($otherIdx !== $i)
+                                                                    <option value="{{ $otherField['id'] ?? '' }}">
+                                                                        {{ $otherField['label'] ?? ($otherField['id'] ?? '') }}
+                                                                    </option>
+                                                                @endif
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+
+                                                    {{-- عملگر --}}
+                                                    <div>
+                                                        <label
+                                                            class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">شرط:</label>
+                                                        <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.operator">
+                                                            <option value="filled">پر شود</option>
+                                                            <option value="empty">خالی باشد</option>
+                                                            <option value="equals">برابر با</option>
+                                                            <option value="not_equals">مخالف با</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {{-- مقدار (برای equals/not_equals) --}}
+                                                    <div>
+                                                        <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">مقدار
+                                                            (اختیاری):</label>
+                                                        <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                               placeholder="فقط برای 'برابر با'"
+                                                               wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
+                                                               @if(!in_array($rule['operator'] ?? 'filled' , ['equals', 'not_equals'
+                                                               ])) disabled @endif>
+                                                    </div>
+                                                </div>
+
+                                                {{-- حذف قانون --}}
+                                                <button type="button" wire:click="removeConditionalRule({{ $i }}, {{ $ruleIdx }})"
+                                                        class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                                        title="حذف قانون">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                              d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 italic">
+                                        هنوز قانونی تعریف نشده است. با کلیک روی «افزودن قانون» می‌توانید قانون جدید اضافه کنید.
+                                    </p>
+                                @endif
+
+                                <p class="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+                                    مثال: اگر فیلد «نوع مشتری» برابر با «حقوقی» باشد، فیلد «شماره ثبت» الزامی می‌شود.
+                                </p>
+                            </div>
+
                         </div>
                     </div>
                 @endforeach
@@ -442,13 +525,49 @@
                             @endif
 
                             @if($field['type'] === 'select' || $field['type'] === 'radio')
-                                <div class="space-y-2">
-                                    <label class="{{ $labelClass }}">
-                                        گزینه‌ها (JSON Format: <code>{"key":"Label"}</code>)
-                                    </label>
-                                    <textarea class="{{ $inputClass }} font-mono text-xs dir-ltr" rows="3"
-                                              placeholder='{"m":"مرد", "f":"زن"}'
-                                              wire:model.lazy="schema.fields.{{ $i }}.options_json"></textarea>
+                                <div class="space-y-3">
+                                    {{-- گزینه استفاده از لیست clients --}}
+                                    @if($field['type'] === 'select')
+                                        <div
+                                            class="flex items-center gap-2 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
+                                            <input type="checkbox" id="use-clients-{{ $i }}"
+                                                   wire:model="schema.fields.{{ $i }}.use_clients_list"
+                                                   class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                            <label for="use-clients-{{ $i }}"
+                                                   class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none flex-1">
+                                                استفاده از لیست مشتریان (جستجو بر اساس نام، کد ملی، شماره تماس، شماره پرونده)
+                                            </label>
+                                        </div>
+                                    @endif
+
+                                    <div class="space-y-2"
+                                         x-show="@if($field['type'] === 'select') !$wire.get('schema.fields.{{ $i }}.use_clients_list') @else true @endif">
+                                        <label class="{{ $labelClass }}">
+                                            گزینه‌ها (JSON Format: <code>{"key":"Label"}</code>)
+                                        </label>
+                                        <textarea class="{{ $inputClass }} font-mono text-xs dir-ltr" rows="3"
+                                                  placeholder='{"m":"مرد", "f":"زن"}'
+                                                  wire:model.lazy="schema.fields.{{ $i }}.options_json" @if($field['type']==='select'
+                                    && !empty($field['use_clients_list'])) disabled @endif></textarea>
+                                        @if($field['type'] === 'select' && !empty($field['use_clients_list']))
+                                            <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                                                در صورت فعال بودن "استفاده از لیست مشتریان"، این فیلد غیرفعال می‌شود.
+                                            </p>
+                                        @endif
+                                    </div>
+
+                                    @if($field['type'] === 'select')
+                                        <div
+                                            class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600">
+                                            <input type="checkbox" id="multiple-{{ $i }}"
+                                                   wire:model="schema.fields.{{ $i }}.multiple"
+                                                   class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                            <label for="multiple-{{ $i }}"
+                                                   class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                حالت چند انتخابی (Multiple Selection)
+                                            </label>
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
 
@@ -517,6 +636,89 @@
                                     </p>
                                 </div>
                             @endif
+
+                            {{-- قوانین شرطی برای الزامی شدن --}}
+                            <div class="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between mb-3">
+                                    <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                        الزامی شرطی (اگر فیلد دیگری پر شد)
+                                    </p>
+                                    <button type="button" wire:click="addConditionalRule({{ $i }})"
+                                            class="text-xs px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-800/70 transition-colors">
+                                        + افزودن قانون
+                                    </button>
+                                </div>
+
+                                @if(!empty($field['conditional_required']))
+                                    <div class="space-y-2">
+                                        @foreach($field['conditional_required'] as $ruleIdx => $rule)
+                                            <div
+                                                class="flex items-center gap-2 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
+                                                <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                    {{-- فیلد ماشه --}}
+                                                    <div>
+                                                        <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">اگر
+                                                            فیلد:</label>
+                                                        <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.trigger_field_id">
+                                                            <option value="">انتخاب فیلد...</option>
+                                                            @foreach($schema['fields'] ?? [] as $otherIdx => $otherField)
+                                                                @if($otherIdx !== $i)
+                                                                    <option value="{{ $otherField['id'] ?? '' }}">
+                                                                        {{ $otherField['label'] ?? ($otherField['id'] ?? '') }}
+                                                                    </option>
+                                                                @endif
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+
+                                                    {{-- عملگر --}}
+                                                    <div>
+                                                        <label
+                                                            class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">شرط:</label>
+                                                        <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.operator">
+                                                            <option value="filled">پر شود</option>
+                                                            <option value="empty">خالی باشد</option>
+                                                            <option value="equals">برابر با</option>
+                                                            <option value="not_equals">مخالف با</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {{-- مقدار (برای equals/not_equals) --}}
+                                                    <div>
+                                                        <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">مقدار
+                                                            (اختیاری):</label>
+                                                        <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                               placeholder="فقط برای 'برابر با'"
+                                                               wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
+                                                               @if(!in_array($rule['operator'] ?? 'filled' , ['equals', 'not_equals'
+                                                               ])) disabled @endif>
+                                                    </div>
+                                                </div>
+
+                                                {{-- حذف قانون --}}
+                                                <button type="button" wire:click="removeConditionalRule({{ $i }}, {{ $ruleIdx }})"
+                                                        class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                                        title="حذف قانون">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                              d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 italic">
+                                        هنوز قانونی تعریف نشده است. با کلیک روی «افزودن قانون» می‌توانید قانون جدید اضافه کنید.
+                                    </p>
+                                @endif
+
+                                <p class="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+                                    مثال: اگر فیلد «نوع مشتری» برابر با «حقوقی» باشد، فیلد «شماره ثبت» الزامی می‌شود.
+                                </p>
+                            </div>
 
                         </div>
                     </div>
