@@ -32,6 +32,10 @@ class ClientFormBuilder extends Component
     // لیست وضعیت‌ها برای "الزامی بر اساس وضعیت"
     public array $statuses = [];
 
+    // حالت مرتب‌سازی فیلدها
+    public bool $reorderMode = false;
+    public ?array $schemaBackup = null;
+
     public function mount(): void
     {
         $this->forms = ClientForm::orderBy('name')->get();
@@ -302,6 +306,143 @@ class ClientFormBuilder extends Component
         $this->schema['fields'][$fieldIndex]['conditional_required'] = array_values(
             $this->schema['fields'][$fieldIndex]['conditional_required']
         );
+    }
+
+    // فعال/غیرفعال کردن حالت مرتب‌سازی
+    public function toggleReorderMode(): void
+    {
+        if (!$this->reorderMode) {
+            // ذخیره backup قبل از ورود به حالت مرتب‌سازی
+            $this->schemaBackup = $this->schema;
+            $this->reorderMode = true;
+            $this->dispatch('reorderModeChanged');
+        } else {
+            // لغو: بازگشت به حالت قبل
+            if ($this->schemaBackup !== null) {
+                $this->schema = $this->schemaBackup;
+            }
+            $this->reorderMode = false;
+            $this->schemaBackup = null;
+            $this->dispatch('reorderModeChanged');
+        }
+    }
+
+    // تایید مرتب‌سازی
+    public function confirmReorder(): void
+    {
+        $this->reorderMode = false;
+        $this->schemaBackup = null;
+        $this->dispatch('reorderModeChanged');
+        $this->dispatch('notify', type: 'success', text: 'ترتیب فیلدها ذخیره شد.');
+    }
+
+    // مرتب‌سازی ترتیب گروه‌ها
+    public function reorderGroups(array $groupNames): void
+    {
+        if (!$this->reorderMode) {
+            return;
+        }
+
+        // ایجاد map از فیلدها بر اساس گروه
+        $fieldsByGroup = [];
+        foreach ($this->schema['fields'] as $field) {
+            $fieldGroup = $field['group'] ?? '';
+            $normalizedGroup = $fieldGroup === '' ? '__no_group__' : $fieldGroup;
+
+            if (!isset($fieldsByGroup[$normalizedGroup])) {
+                $fieldsByGroup[$normalizedGroup] = [];
+            }
+            $fieldsByGroup[$normalizedGroup][] = $field;
+        }
+
+        // مرتب‌سازی فیلدها بر اساس ترتیب جدید گروه‌ها
+        $result = [];
+        foreach ($groupNames as $groupName) {
+            $normalizedGroup = $groupName === '' ? '__no_group__' : $groupName;
+            if (isset($fieldsByGroup[$normalizedGroup])) {
+                $result = array_merge($result, $fieldsByGroup[$normalizedGroup]);
+            }
+        }
+
+        // اضافه کردن گروه‌هایی که در لیست جدید نیستند
+        foreach ($fieldsByGroup as $group => $fields) {
+            if (!in_array($group === '__no_group__' ? '' : $group, $groupNames)) {
+                $result = array_merge($result, $fields);
+            }
+        }
+
+        $this->schema['fields'] = $result;
+    }
+
+    // مرتب‌سازی فیلدها در یک گروه
+    public function reorderFields(string $group, array $fieldIds): void
+    {
+        if (!$this->reorderMode) {
+            return;
+        }
+
+        // نرمال‌سازی نام گروه (برای مقایسه)
+        $normalizedGroup = $group === '' ? '__no_group__' : $group;
+
+        // 1. حفظ ترتیب فعلی گروه‌ها از schema
+        $groupOrder = [];
+        $seenGroups = [];
+        foreach ($this->schema['fields'] as $field) {
+            $fieldGroup = $field['group'] ?? '';
+            $normalizedFieldGroup = $fieldGroup === '' ? '__no_group__' : $fieldGroup;
+
+            if (!in_array($normalizedFieldGroup, $seenGroups)) {
+                $groupOrder[] = $normalizedFieldGroup;
+                $seenGroups[] = $normalizedFieldGroup;
+            }
+        }
+
+        // 2. ایجاد map از فیلدها بر اساس گروه
+        $fieldsByGroup = [];
+        foreach ($this->schema['fields'] as $field) {
+            $fieldId = $field['id'] ?? '';
+            $fieldGroup = $field['group'] ?? '';
+            $normalizedFieldGroup = $fieldGroup === '' ? '__no_group__' : $fieldGroup;
+
+            if (!isset($fieldsByGroup[$normalizedFieldGroup])) {
+                $fieldsByGroup[$normalizedFieldGroup] = [];
+            }
+            $fieldsByGroup[$normalizedFieldGroup][$fieldId] = $field;
+        }
+
+        // 3. مرتب‌سازی فیلدهای گروه مورد نظر بر اساس ترتیب جدید
+        $reorderedGroupFields = [];
+        foreach ($fieldIds as $fieldId) {
+            if (isset($fieldsByGroup[$normalizedGroup][$fieldId])) {
+                $reorderedGroupFields[] = $fieldsByGroup[$normalizedGroup][$fieldId];
+            }
+        }
+
+        // اضافه کردن فیلدهایی که در لیست جدید نیستند (در صورت وجود)
+        foreach ($fieldsByGroup[$normalizedGroup] ?? [] as $fieldId => $field) {
+            if (!in_array($fieldId, $fieldIds)) {
+                $reorderedGroupFields[] = $field;
+            }
+        }
+
+        // 4. به‌روزرسانی فیلدهای گروه مرتب‌سازی شده
+        $fieldsByGroup[$normalizedGroup] = [];
+        foreach ($reorderedGroupFields as $field) {
+            $fieldId = $field['id'] ?? '';
+            $fieldsByGroup[$normalizedGroup][$fieldId] = $field;
+        }
+
+        // 5. ترکیب مجدد فیلدها بر اساس ترتیب گروه‌ها
+        $result = [];
+        foreach ($groupOrder as $groupName) {
+            if (isset($fieldsByGroup[$groupName])) {
+                foreach ($fieldsByGroup[$groupName] as $field) {
+                    $result[] = $field;
+                }
+            }
+        }
+
+        $this->schema['fields'] = $result;
     }
 
     public function render()
