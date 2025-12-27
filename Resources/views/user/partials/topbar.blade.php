@@ -22,29 +22,40 @@
                              return;
                          }
                          this.isLoading = true;
-                         try {
-                             const response = await fetch('{{ route('user.clients.search') }}?q=' + encodeURIComponent(this.searchQuery), {
-                                 headers: {
-                                     'X-Requested-With': 'XMLHttpRequest',
-                                     'Accept': 'application/json'
-                                 }
-                             });
-                             this.clients = await response.json();
-                             this.showResults = this.clients.length > 0;
-                             this.selectedIndex = -1;
-                         } catch (error) {
-                             console.error('Search error:', error);
-                             this.clients = [];
-                         } finally {
-                             this.isLoading = false;
-                         }
+                        try {
+                            const response = await fetch('{{ route('user.clients.search') }}?q=' + encodeURIComponent(this.searchQuery), {
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            if (!response.ok) {
+                                throw new Error('Response not ok: ' + response.status);
+                            }
+                            const data = await response.json();
+                            // Handle both array format and object with results property
+                            this.clients = Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : (Array.isArray(data?.data) ? data.data : []));
+                            // Debug: log first client to see matched_field
+                            if (this.clients.length > 0) {
+                                console.log('First client:', this.clients[0]);
+                                console.log('matched_field value:', this.clients[0].matched_field);
+                            }
+                            this.showResults = Array.isArray(this.clients) && this.clients.length > 0;
+                            this.selectedIndex = -1;
+                        } catch (error) {
+                            console.error('Search error:', error);
+                            this.clients = [];
+                            this.showResults = false;
+                        } finally {
+                            this.isLoading = false;
+                        }
                      },
                     selectClient(client) {
                         const baseUrl = '{{ route('user.clients.show', ['client' => 0]) }}';
                         window.location.href = baseUrl.replace('/0', '/' + client.id);
                     },
                      handleKeydown(event) {
-                         if (!this.showResults || this.clients.length === 0) return;
+                         if (!this.showResults || !Array.isArray(this.clients) || this.clients.length === 0) return;
 
                          if (event.key === 'ArrowDown') {
                              event.preventDefault();
@@ -68,7 +79,8 @@
                     <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
                     <path d="M21 21l-6 -6" />
                 </svg>
-                <input type="text" placeholder="جستجوی {{config('clients.labels.singular')}} (نام، موبایل، کد ملی، شماره پرونده)..."
+                <input type="text"
+                       placeholder="جستجوی {{config('clients.labels.singular')}} (نام، موبایل، کد ملی، شماره پرونده)..."
                        x-model="searchQuery" @input.debounce.300ms="search()" @keydown="handleKeydown($event)"
                        class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
 
@@ -85,9 +97,10 @@
                 </div>
 
                 <!-- Results dropdown -->
-                <div x-cloak x-show="showResults && clients.length > 0" x-transition
+                <div x-cloak x-show="showResults && Array.isArray(clients) && clients.length > 0" x-transition
                      class="absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-80 overflow-y-auto z-50">
-                    <template x-for="(client, index) in clients" :key="client.id">
+                    <template x-for="(client, index) in (Array.isArray(clients) ? clients : [])"
+                              :key="client?.id || index">
                         <div @click="selectClient(client)" @mouseenter="selectedIndex = index" :class="{
                                 'bg-indigo-50 dark:bg-indigo-900/20': selectedIndex === index,
                                 'bg-white dark:bg-gray-800': selectedIndex !== index
@@ -97,14 +110,13 @@
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900 dark:text-gray-100"
                                          x-text="client.full_name || 'بدون نام'"></div>
-                                    <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        <!-- نمایش فقط فیلدی که match شده است -->
-                                        <span x-show="client.matched_field === 'phone' && client.phone"
-                                              x-text="'موبایل: ' + client.phone"></span>
-                                        <span x-show="client.matched_field === 'national_code' && client.national_code"
-                                              x-text="'کد ملی: ' + client.national_code"></span>
-                                        <span x-show="client.matched_field === 'case_number' && client.case_number"
-                                              x-text="'شماره پرونده: ' + client.case_number"></span>
+                                    <div
+                                        class="flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        <!-- نمایش همه اطلاعات موجود -->
+                                        <span x-show="client.phone" x-text="'📞 ' + client.phone"></span>
+                                        <span x-show="client.national_code"
+                                              x-text="'🆔 ' + client.national_code"></span>
+                                        <span x-show="client.case_number" x-text="'📋 ' + client.case_number"></span>
                                     </div>
                                 </div>
                             </div>

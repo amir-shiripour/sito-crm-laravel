@@ -115,7 +115,7 @@
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         @click="prev()" :disabled="step===1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                     </svg>
                     قبلی
                 </button>
@@ -130,7 +130,7 @@
                         @click="next()" x-show="step < totalSteps && (step === 1 || step > 3)" :disabled="step >= totalSteps">
                     بعدی
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                     </svg>
                 </button>
 
@@ -254,9 +254,7 @@
                                             <div class="text-xs text-emerald-700 dark:text-emerald-300 mt-1"
                                                  x-show="selectedClientPhone" x-text="selectedClientPhone"></div>
                                             <div class="text-xs text-emerald-600 dark:text-emerald-400 mt-1"
-                                                 x-show="selectedClient && selectedClient.email">
-                                                <span x-text="selectedClient.email"></span>
-                                            </div>
+                                                 x-show="selectedClientEmail" x-text="selectedClientEmail"></div>
                                         </div>
                                         <button type="button"
                                                 class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
@@ -1635,6 +1633,11 @@
                     if (client.national_code) parts.push(`کد ملی: ${client.national_code}`);
                     if (client.case_number) parts.push(`پرونده: ${client.case_number}`);
                     return parts.join(' • ');
+                },
+
+                get selectedClientEmail() {
+                    const client = this.selectedClient;
+                    return client && client.email ? client.email : '';
                 },
 
                 selectClient(client) {

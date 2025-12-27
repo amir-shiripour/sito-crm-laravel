@@ -271,18 +271,26 @@ class ClientCallController extends Controller
             $matchedField = null;
 
             // چک کردن اینکه query در کدام فیلد match شده (اولویت: phone > national_code > case_number)
-            if ($client->phone && stripos($client->phone, $query) !== false) {
+            // استفاده از mb_stripos برای پشتیبانی از کاراکترهای فارسی و بررسی دقیق‌تر
+            if ($client->phone && mb_stripos($client->phone, $query) !== false) {
                 $matchedField = 'phone';
-            } elseif ($client->national_code && stripos($client->national_code, $query) !== false) {
+            } elseif ($client->national_code && mb_stripos($client->national_code, $query) !== false) {
                 $matchedField = 'national_code';
-            } elseif ($client->case_number && stripos($client->case_number, $query) !== false) {
+            } elseif ($client->case_number && mb_stripos($client->case_number, $query) !== false) {
                 $matchedField = 'case_number';
             }
             // اگر هیچکدام match نشد، یعنی بر اساس نام جستجو شده (matchedField = null)
 
-            $client->matched_field = $matchedField;
-            return $client;
-        });
+            // تبدیل به array برای اینکه matched_field در JSON شامل شود
+            return [
+                'id' => $client->id,
+                'full_name' => $client->full_name,
+                'phone' => $client->phone,
+                'national_code' => $client->national_code,
+                'case_number' => $client->case_number,
+                'matched_field' => $matchedField,
+            ];
+        })->values(); // values() برای reset کردن keys
 
         return response()->json($clients);
     }

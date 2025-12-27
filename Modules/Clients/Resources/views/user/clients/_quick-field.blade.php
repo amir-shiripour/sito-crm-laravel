@@ -88,7 +88,8 @@
     <div class="flex items-center gap-2" x-data="{ show: false }">
         <div class="relative flex-1">
             <input x-bind:type="show ? 'text' : 'password'" class="{{ $baseInputClass }} pr-9 font-mono"
-                   wire:model.defer="password" placeholder="{{ $placeholder !== '...' ? $placeholder : 'رمز عبور امن...' }}">
+                   wire:model.defer="password" placeholder="{{ $placeholder !== '...' ? $placeholder : 'رمز عبور امن...' }}"
+                   autocomplete="new-password">
             <button type="button"
                     class="absolute inset-y-0 right-0 flex items-center px-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                     @click="show = !show">

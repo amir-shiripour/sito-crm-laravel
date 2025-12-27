@@ -55,7 +55,7 @@
     <div class="flex gap-2 items-center" x-data="{ show: false }">
         <div class="relative flex-1">
             <input x-bind:type="show ? 'text' : 'password'" wire:model.defer="{{ $model }}"
-                   placeholder="{{ $placeholder ?: 'رمز عبور امن وارد کنید...' }}"
+                   placeholder="{{ $placeholder ?: 'رمز عبور امن وارد کنید...' }}" autocomplete="new-password"
                    class="{{ $baseInputClass }} pr-10 font-mono" />
             {{-- آیکون چشم --}}
             <button type="button"

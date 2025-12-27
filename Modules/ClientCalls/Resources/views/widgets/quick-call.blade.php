@@ -5,21 +5,22 @@
     $todayJalali = Jalalian::fromCarbon(now())->format('Y/m/d');
 
     $statusMap = [
-        'planned' => 'برنامه‌ریزی شده',
-        'done'    => 'انجام شده',
-        'failed'  => 'ناموفق',
-        'canceled'=> 'لغو شده',
+    'planned' => 'برنامه‌ریزی شده',
+    'done' => 'انجام شده',
+    'failed' => 'ناموفق',
+    'canceled'=> 'لغو شده',
     ];
 
     // استایل‌های مشترک
-    $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-medium text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900";
+    $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-medium text-gray-900
+    placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all
+    dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900";
     $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5";
 @endphp
 
 @includeIf('partials.jalali-date-picker')
 
-<div x-data="clientCallsQuickWidget()"
-     class="relative h-full space-y-4 text-sm text-gray-800 dark:text-gray-200">
+<div x-data="clientCallsQuickWidget()" class="relative h-full space-y-4 text-sm text-gray-800 dark:text-gray-200">
 
     {{-- هدر ویجت --}}
     <div class="flex items-center justify-between mb-5">
@@ -28,7 +29,7 @@
                 class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
             </div>
             <h2 class="text-sm font-bold text-gray-900 dark:text-white">ثبت تماس جدید</h2>
@@ -36,9 +37,7 @@
     </div>
 
     {{-- فرم --}}
-    <form method="POST"
-          action="{{ route('user.client-calls.quick-store') }}"
-          class="space-y-4"
+    <form method="POST" action="{{ route('user.client-calls.quick-store') }}" class="space-y-4"
           @submit.prevent="handleSubmit($event)">
         @csrf
 
@@ -48,15 +47,12 @@
 
             {{-- ورودی جستجو --}}
             <div class="relative" x-show="!selectedClient">
-                <input type="text"
-                       x-model="searchQuery"
-                       @input.debounce.400ms="searchClients"
-                       placeholder="جستجوی نام، شماره تماس..."
-                       class="{{ $inputClass }} pr-9">
+                <input type="text" x-model="searchQuery" @input.debounce.400ms="searchClients"
+                       placeholder="جستجوی نام، شماره تماس..." class="{{ $inputClass }} pr-9">
                 <div class="absolute right-3 top-2.5 text-gray-400 pointer-events-none">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </div>
             </div>
@@ -81,38 +77,36 @@
                             class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-100 dark:text-emerald-400 dark:hover:bg-emerald-800 transition-colors">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M6 18L18 6M6 6l12 12"/>
+                                  d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
             </template>
 
             {{-- دراپ‌داون نتایج --}}
-            <div x-show="showResults"
-                 x-transition
-                 @click.away="showResults = false"
+            <div x-show="showResults" x-transition @click.away="showResults = false"
                  class="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 z-50 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
 
                 <template x-if="loading">
                     <div class="p-4 text-center text-xs text-gray-500">
                         <svg class="animate-spin h-4 w-4 mx-auto mb-2 text-indigo-500"
                              xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4"></circle>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
                             <path class="opacity-75" fill="currentColor"
-                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
                         </svg>
                         در حال جستجو...
                     </div>
                 </template>
 
-                <template x-if="!loading && results.length === 0">
+                <template x-if="!loading && Array.isArray(results) && results.length === 0">
                     <div class="p-3 text-center text-xs text-gray-500">موردی یافت نشد.</div>
                 </template>
 
-                <template x-for="client in results" :key="client.id">
-                    <button type="button"
-                            @click="selectClient(client)"
+                <template x-for="(client, index) in (Array.isArray(results) ? results : [])" :key="client?.id || index">
+                    <button type="button" @click="selectClient(client)"
                             class="w-full flex items-center justify-between px-4 py-3 text-right hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-50 dark:border-gray-700/50 last:border-0">
                         <span class="text-xs font-medium text-gray-900 dark:text-white"
                               x-text="client.full_name || client.username"></span>
@@ -146,7 +140,7 @@
                 <label class="{{ $labelClass }}">وضعیت <span class="text-red-500">*</span></label>
                 <select name="status" required class="{{ $inputClass }} appearance-none">
                     @foreach($statusMap as $key => $label)
-                        <option value="{{ $key }}" @selected($key === 'done')>{{ $label }}</option>
+                        <option value="{{ $key }}" @selected($key==='done' )>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
@@ -165,16 +159,18 @@
 
         {{-- دکمه ثبت --}}
         <div class="pt-2">
-            <button type="submit"
-                    :disabled="submitting"
+            <button type="submit" :disabled="submitting"
                     class="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/40 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed">
                 <span x-show="!submitting">ثبت تماس</span>
                 <span x-show="submitting" class="flex items-center gap-2">
                     <svg class="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
-                         viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                     stroke-width="4"></circle><path class="opacity-75"
-                                                                                     fill="currentColor"
-                                                                                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                         viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
                     در حال پردازش
                 </span>
             </button>
@@ -183,17 +179,13 @@
     </form>
 
     {{-- مودال کوچک پیشنهاد ثبت پیگیری بعد از تماس موفق --}}
-    <div
-        x-show="showFollowupPrompt"
-        x-transition.opacity
-        x-cloak
-        class="absolute inset-x-0 bottom-0 px-1 pb-1">
-        <div
-            class="mx-1 rounded-2xl border border-amber-100 bg-amber-50/95 shadow-xl
+    <div x-show="showFollowupPrompt" x-transition.opacity x-cloak class="absolute inset-x-0 bottom-0 px-1 pb-1">
+        <div class="mx-1 rounded-2xl border border-amber-100 bg-amber-50/95 shadow-xl
                    dark:border-amber-800 dark:bg-amber-900/95 text-xs text-amber-900 dark:text-amber-50">
             <div class="flex items-start gap-3 p-3">
                 <div class="mt-0.5">
-                    <svg class="w-5 h-5 text-amber-500 dark:text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="w-5 h-5 text-amber-500 dark:text-amber-300" fill="none" viewBox="0 0 24 24"
+                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
                               d="M13 16h-1v-4h-1m1-4h.01M4.93 4.93a10.5 10.5 0 0114.84 0 10.5 10.5 0 010 14.84A10.5 10.5 0 014.93 4.93z" />
                     </svg>
@@ -209,15 +201,12 @@
                         بهتر است همین حالا یک <span class="font-semibold">پیگیری</span> برای این مشتری ثبت کنید.
                     </p>
                     <div class="flex items-center justify-end gap-2 pt-1">
-                        <button type="button"
-                                @click="dismissFollowupPrompt()"
+                        <button type="button" @click="dismissFollowupPrompt()"
                                 class="px-2.5 py-1 rounded-xl border border-amber-200 text-[11px] text-amber-800 bg-amber-50 hover:bg-amber-100
                                        dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-100 dark:hover:bg-amber-800/80 transition-colors">
                             بعداً انجام می‌دم
                         </button>
-                        <button type="button"
-                                @click="openFollowup()"
-                                class="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-semibold
+                        <button type="button" @click="openFollowup()" class="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-semibold
                                        hover:bg-amber-600 shadow-md shadow-amber-500/30 transition-all">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -260,14 +249,19 @@
 
                 try {
                     // آدرس فرضی API سرچ - مطمئن شوید روت user.clients.search وجود دارد
-                    const response = await fetch(`{{ route('user.clients.search') }}?q=${encodeURIComponent(this.searchQuery)}`, {
-                        headers: {'Accept': 'application/json'}
-                    });
+                    const response = await fetch(
+                        `{{ route('user.clients.search') }}?q=${encodeURIComponent(this.searchQuery)}`, {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
 
                     if (!response.ok) throw new Error('خطا در ارتباط');
 
                     const data = await response.json();
-                    this.results = data.data || data;
+                    // Handle both array format and object with results property
+                    this.results = Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : (Array
+                        .isArray(data?.data) ? data.data : []));
                 } catch (e) {
                     console.error(e);
                     this.results = [];
@@ -288,7 +282,12 @@
             },
 
             notify(type, text) {
-                window.dispatchEvent(new CustomEvent('notify', {detail: {type, text}}));
+                window.dispatchEvent(new CustomEvent('notify', {
+                    detail: {
+                        type,
+                        text
+                    }
+                }));
             },
 
             openFollowup() {
@@ -324,7 +323,9 @@
                         headers: {
                             'Accept': 'application/json',
                             'X-Requested-With': 'XMLHttpRequest',
-                            ...(csrfToken ? {'X-CSRF-TOKEN': csrfToken} : {})
+                            ...(csrfToken ? {
+                                'X-CSRF-TOKEN': csrfToken
+                            } : {})
                         },
                         body: formData
                     });
