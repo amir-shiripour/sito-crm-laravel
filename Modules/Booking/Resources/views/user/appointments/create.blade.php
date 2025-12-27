@@ -51,88 +51,395 @@
             <input type="hidden" name="end_time_local" x-model="manualEndTime">
             <input type="hidden" name="appointment_form_response_json" x-ref="formJsonInput">
 
+            {{-- Stepper Component --}}
             <div
-                class="flex items-center justify-between rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 px-3 py-2">
-                <div class="text-sm text-gray-700 dark:text-gray-200 font-semibold flex items-center gap-2">
-                    <span>مرحله</span>
-                    <span
-                        class="px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200 text-xs"
-                        x-text="step"></span>
-                    <span class="text-gray-500 dark:text-gray-400">از</span>
-                    <span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs"
-                          x-text="totalSteps"></span>
-                </div>
+                class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 md:p-6 overflow-x-hidden">
+                <div class="relative">
+                    {{-- Progress Line --}}
+                    <div class="absolute top-5 md:top-6 right-0 left-0 h-0.5 bg-gray-200 dark:bg-gray-700 hidden md:block">
+                        <div class="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-500 ease-out"
+                             :style="`width: ${((step - 1) / (totalSteps - 1)) * 100}%`"></div>
+                    </div>
 
-                <div class="flex items-center gap-2">
-                    <button type="button"
-                            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
-                            @click="prev()" :disabled="step===1">قبلی</button>
+                    {{-- Steps --}}
+                    <div class="relative flex justify-between items-start gap-1 md:gap-0">
+                        <template x-for="(stepLabel, index) in stepLabels" :key="stepLabel.num">
+                            <div class="flex flex-col items-center flex-1" style="min-width: 0;">
+                                {{-- Step Circle --}}
+                                <div class="relative z-10 flex flex-col items-center">
+                                    <div class="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full border-2 transition-all duration-300"
+                                         :class="{
+                                         'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/50 scale-110 ring-4 ring-indigo-200 dark:ring-indigo-900/50': isStepActive(stepLabel.num),
+                                         'bg-emerald-500 border-emerald-500 text-white': isStepCompleted(stepLabel.num),
+                                         'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500': isStepUpcoming(stepLabel.num)
+                                     }">
+                                        <template x-if="isStepCompleted(stepLabel.num)">
+                                            <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor"
+                                                 viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                      d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </template>
+                                        <template x-if="!isStepCompleted(stepLabel.num)">
+                                            <span class="text-base md:text-lg" x-text="stepLabel.icon"></span>
+                                        </template>
+                                    </div>
+                                    {{-- Step Number Badge --}}
+                                    <div class="mt-1.5 md:mt-2 px-1.5 md:px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold transition-all"
+                                         :class="{
+                                         'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300': isStepActive(stepLabel.num),
+                                         'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300': isStepCompleted(stepLabel.num),
+                                         'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': isStepUpcoming(stepLabel.num)
+                                     }" x-text="stepLabel.num"></div>
+                                </div>
 
-                    {{-- در مراحل ۱ و ۲ انتخاب به صورت کارت انجام می‌شود و بعد از انتخاب اتومات مرحله بعدی می‌رویم --}}
-                    <button type="button"
-                            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm shadow-sm"
-                            @click="next()" x-show="step < totalSteps && step > 2">بعدی</button>
+                                {{-- Step Label --}}
+                                <div class="mt-2 md:mt-3 text-center px-0.5" style="max-width: 100px;">
+                                    <div class="text-[10px] md:text-xs font-semibold transition-colors leading-tight"
+                                         :class="{
+                                         'text-indigo-700 dark:text-indigo-300': isStepActive(stepLabel.num),
+                                         'text-emerald-700 dark:text-emerald-300': isStepCompleted(stepLabel.num),
+                                         'text-gray-500 dark:text-gray-400': isStepUpcoming(stepLabel.num)
+                                     }" x-text="stepLabel.title"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
 
-            {{-- STEP 1 --}}
-            <div x-show="step===1" class="space-y-3">
-                <div class="text-sm text-gray-600 dark:text-gray-300">
-                    @php $flowValue = $flow ?? 'PROVIDER_FIRST'; @endphp
-                    حالت انتخاب: <span
-                        class="font-semibold">{{ $flowValue === 'SERVICE_FIRST' ? 'اول سرویس' : 'اول ارائه‌دهنده' }}</span>
+            {{-- Navigation Buttons --}}
+            <div
+                class="flex items-center justify-between rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 px-4 py-3">
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        @click="prev()" :disabled="step===1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    قبلی
+                </button>
+
+                <div class="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    <span x-text="step"></span> از <span x-text="totalSteps"></span>
                 </div>
 
+                {{-- در مراحل ۲ و ۳ انتخاب به صورت کارت انجام می‌شود و بعد از انتخاب اتومات مرحله بعدی می‌رویم --}}
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        @click="next()" x-show="step < totalSteps && (step === 1 || step > 3)" :disabled="step >= totalSteps">
+                    بعدی
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+
+                <div x-show="step >= totalSteps" class="w-20"></div>
+            </div>
+
+            {{-- STEP 1: Client --}}
+            <div x-show="step===1" class="space-y-4">
+                <div
+                    class="bg-gradient-to-l from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800/50">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div
+                            class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                            <span class="text-xl">👤</span>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-base text-gray-800 dark:text-gray-100">انتخاب مشتری</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">مشتری مورد نظر را انتخاب کنید</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="lg:col-span-2 space-y-3">
+                        <div
+                            class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
+                                     viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                جستجو مشتری
+                            </span>
+                            </label>
+                            <div class="relative">
+                                <input type="text"
+                                       class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                                       placeholder="نام، شماره تماس، کد ملی یا شماره پرونده..." x-model="clientSearch"
+                                       @input.debounce.300ms="fetchClients()" @focus="clientSearchFocused = true"
+                                       @blur="setTimeout(() => clientSearchFocused = false, 200)">
+                                <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+
+                            <div class="mt-3" x-show="clientSearch && clients.length > 0">
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                    نتایج جستجو (<span x-text="clients.length"></span> مورد)
+                                </div>
+                                <div
+                                    class="max-h-64 overflow-y-auto space-y-2 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+                                    <template x-for="c in clients" :key="c.id">
+                                        <button type="button"
+                                                class="w-full text-right border-2 rounded-xl p-3 transition-all duration-200 hover:shadow-md"
+                                                :class="String(clientId) === String(c.id)
+                                            ? 'border-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-950/40 text-indigo-900 dark:text-indigo-100 shadow-md ring-2 ring-indigo-200 dark:ring-indigo-800'
+                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-indigo-300 dark:hover:border-indigo-600'"
+                                                @click="selectClient(c);">
+                                            <div class="flex items-start justify-between gap-2">
+                                                <div class="flex-1">
+                                                    <div class="font-semibold text-sm mb-1" x-text="c.full_name"></div>
+                                                    <div
+                                                        class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                                        <span x-show="c.phone" x-text="`📞 ${c.phone}`"></span>
+                                                        <span x-show="c.national_code"
+                                                              x-text="`🆔 ${c.national_code}`"></span>
+                                                        <span x-show="c.case_number" x-text="`📋 ${c.case_number}`"></span>
+                                                        <span x-show="c.email" x-text="`✉ ${c.email}`"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                                                     :class="String(clientId) === String(c.id)
+                                                     ? 'bg-indigo-600 text-white'
+                                                     : 'bg-gray-100 dark:bg-gray-700 text-gray-400'">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                         viewBox="0 0 24 24" x-show="String(clientId) === String(c.id)">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div class="mt-3" x-show="clientSearch && clients.length === 0 && !clientLoading">
+                                <div
+                                    class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4 text-center">
+                                    <div class="text-sm text-amber-800 dark:text-amber-200">مشتری یافت نشد</div>
+                                </div>
+                            </div>
+
+                            <template x-if="clientLoading">
+                                <div class="mt-3 flex items-center justify-center py-4">
+                                    <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                                        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                             viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                    stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor"
+                                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                            </path>
+                                        </svg>
+                                        <span class="text-sm">در حال جستجو...</span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <div class="mt-3" x-show="clientId">
+                                <div
+                                    class="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl p-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="font-semibold text-sm text-emerald-900 dark:text-emerald-100"
+                                                 x-text="selectedClientName"></div>
+                                            <div class="text-xs text-emerald-700 dark:text-emerald-300 mt-1"
+                                                 x-show="selectedClientPhone" x-text="selectedClientPhone"></div>
+                                            <div class="text-xs text-emerald-600 dark:text-emerald-400 mt-1"
+                                                 x-show="selectedClient && selectedClient.email">
+                                                <span x-text="selectedClient.email"></span>
+                                            </div>
+                                        </div>
+                                        <button type="button"
+                                                class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+                                                @click="clientId = ''; selectedClientObject = null; clientSearch = ''; fetchClients();">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
+                                </path>
+                            </svg>
+                            مشتری جدید
+                        </div>
+                        <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+                            @includeIf('clients::widgets.client-quick-create')
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-3 flex items-start gap-2">
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none"
+                         stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="text-xs text-blue-800 dark:text-blue-200">
+                        بعد از انتخاب مشتری، می‌توانید با دکمه "بعدی" به مرحله بعد بروید.
+                    </div>
+                </div>
+            </div>
+
+            {{-- STEP 2 --}}
+            <div x-show="step===2" class="space-y-4">
                 <template x-if="flow==='PROVIDER_FIRST' && !fixedProvider">
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">انتخاب ارائه‌دهنده</label>
-                        <div class="relative">
-                            <input type="text"
-                                   class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                                   placeholder="جستجو ارائه‌دهنده..." x-model="providerSearch"
-                                   @input.debounce.300ms="fetchProviders()">
-                            <span class="absolute right-3 top-2.5 text-gray-400">🔎</span>
+                    <div class="space-y-4">
+                        <div
+                            class="bg-gradient-to-l from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800/50">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                                    <span class="text-xl">👨‍⚕️</span>
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-base text-gray-800 dark:text-gray-100">انتخاب ارائه‌دهنده
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">ارائه‌دهنده مورد نظر را انتخاب
+                                        کنید</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
+                                     viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                جستجو ارائه‌دهنده
+                            </span>
+                            </label>
+                            <div class="relative">
+                                <input type="text"
+                                       class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                                       placeholder="نام ارائه‌دهنده را وارد کنید..." x-model="providerSearch"
+                                       @input.debounce.300ms="fetchProviders()">
+                                <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
                         </div>
 
                         <template x-if="providerLoading">
-                            <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت ارائه‌دهنده‌ها...</div>
+                            <div class="flex items-center justify-center py-8">
+                                <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                         viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor"
+                                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                        </path>
+                                    </svg>
+                                    <span class="text-sm">در حال دریافت ارائه‌دهنده‌ها...</span>
+                                </div>
+                            </div>
                         </template>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" x-show="!providerLoading">
                             <template x-for="p in providers" :key="p.id">
-                                <button type="button" class="text-right border rounded-xl p-3 transition"
+                                <button type="button"
+                                        class="group relative text-right border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-lg"
                                         :class="String(providerId)===String(p.id)
-                                            ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200'
-                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70'"
+                                    ? 'border-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-950/40 text-indigo-900 dark:text-indigo-100 shadow-md ring-2 ring-indigo-200 dark:ring-indigo-800'
+                                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md'"
                                         @click="selectProvider(p, true)">
-                                    <div class="font-semibold text-sm" x-text="p.name"></div>
-                                    <div class="text-[11px] text-gray-500 dark:text-gray-400" x-show="p.subtitle"
-                                         x-text="p.subtitle"></div>
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="flex-1">
+                                            <div class="font-semibold text-sm mb-1" x-text="p.name"></div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400" x-show="p.subtitle"
+                                                 x-text="p.subtitle"></div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                                             :class="String(providerId)===String(p.id)
+                                             ? 'bg-indigo-600 text-white'
+                                             : 'bg-gray-100 dark:bg-gray-700 text-gray-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/40'">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                                 x-show="String(providerId)===String(p.id)">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            <span class="text-xs" x-show="String(providerId)!==String(p.id)">👨‍⚕️</span>
+                                        </div>
+                                    </div>
                                 </button>
                             </template>
                         </div>
 
                         <template x-if="!providerLoading && (!providers || providers.length===0)">
-                            <div class="text-xs text-amber-600">موردی یافت نشد.</div>
+                            <div
+                                class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4 text-center">
+                                <div class="text-sm text-amber-800 dark:text-amber-200">موردی یافت نشد</div>
+                            </div>
                         </template>
-
-                        <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                            بعد از انتخاب ارائه‌دهنده، به صورت خودکار به مرحله بعد می‌روید.
-                        </div>
                     </div>
                 </template>
 
                 <template x-if="flow==='PROVIDER_FIRST' && fixedProvider">
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">ارائه‌دهنده
-                            انتخاب‌شده</label>
+                    <div class="space-y-4">
                         <div
-                            class="border rounded-xl p-3 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200">
-                            <div class="font-semibold text-sm" x-text="fixedProvider.name"></div>
-                            <div class="text-[11px] text-gray-500 dark:text-gray-400">به صورت خودکار انتخاب شد.</div>
+                            class="bg-gradient-to-l from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800/50">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                                    <span class="text-xl">👨‍⚕️</span>
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-base text-gray-800 dark:text-gray-100">ارائه‌دهنده
+                                        انتخاب‌شده</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">ارائه‌دهنده به صورت خودکار انتخاب
+                                        شده است</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                            ارائه‌دهنده قابل تغییر نیست.
+
+                        <div
+                            class="bg-white dark:bg-gray-800 rounded-xl border-2 border-indigo-300 dark:border-indigo-700 p-5 shadow-sm">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-xl">
+                                    <span>👨‍⚕️</span>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="font-semibold text-base text-gray-800 dark:text-gray-100"
+                                         x-text="fixedProvider.name"></div>
+                                    <div class="text-xs text-indigo-600 dark:text-indigo-400 mt-1">به صورت خودکار انتخاب شد
+                                    </div>
+                                </div>
+                                <div
+                                    class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none"
+                                         stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -199,8 +506,8 @@
                 </template>
             </div>
 
-            {{-- STEP 2 --}}
-            <div x-show="step===2" class="space-y-3">
+            {{-- STEP 3 --}}
+            <div x-show="step===3" class="space-y-3">
                 <template x-if="flow==='PROVIDER_FIRST'">
                     <div class="space-y-3">
                         <div>
@@ -319,87 +626,180 @@
                 </template>
             </div>
 
-            {{-- STEP 3: Calendar month --}}
-            <div x-show="step===3" class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">انتخاب روز</div>
-                    <div class="flex items-center gap-2">
-                        <button type="button"
-                                class="px-2 py-1 border rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70"
-                                @click="prevMonth()">ماه قبل</button>
-                        <div class="text-sm text-gray-700 dark:text-gray-100" x-text="monthLabel"></div>
-                        <button type="button"
-                                class="px-2 py-1 border rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70"
-                                @click="nextMonth()">ماه بعد</button>
+            {{-- STEP 4: Calendar month --}}
+            <div x-show="step===4" class="space-y-4">
+                <div
+                    class="bg-gradient-to-l from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800/50">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                            <span class="text-xl">📅</span>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold text-base text-gray-800 dark:text-gray-100">انتخاب روز</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">روز مورد نظر برای نوبت را انتخاب کنید
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <template x-if="calendarLoading">
-                    <div class="text-xs text-gray-500 dark:text-gray-400">در حال بارگذاری تقویم...</div>
-                </template>
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <button type="button"
+                                    class="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    @click="prevMonth()">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M15 19l-7-7 7-7"></path>
+                                </svg>
+                            </button>
+                            <div class="text-base font-semibold text-gray-800 dark:text-gray-100 px-4" x-text="monthLabel">
+                            </div>
+                            <button type="button"
+                                    class="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    @click="nextMonth()">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
 
-                <div class="grid grid-cols-7 gap-2 text-xs" dir="rtl">
-                    <template x-for="w in weekDays" :key="w">
-                        <div class="text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 py-1">
-                            <span x-text="w"></span>
+                    <template x-if="calendarLoading">
+                        <div class="flex items-center justify-center py-8">
+                            <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                     viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                                <span class="text-sm">در حال بارگذاری تقویم...</span>
+                            </div>
                         </div>
                     </template>
 
-                    <template x-for="cell in calendarCells" :key="cell.key">
-                        <div>
-                            <template x-if="cell.is_placeholder">
-                                <div class="h-[52px] border border-transparent"></div>
-                            </template>
+                    <div class="grid grid-cols-7 gap-2 text-xs" dir="rtl">
+                        <template x-for="w in weekDays" :key="w">
+                            <div class="text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 py-1">
+                                <span x-text="w"></span>
+                            </div>
+                        </template>
 
-                            <template x-if="!cell.is_placeholder">
-                                <button type="button" class="w-full h-[52px] border rounded-lg p-2 text-center"
-                                        :class="dayBtnClass(cell.day)" @click="selectDay(cell.day)"
-                                        :disabled="cell.day.is_closed || !cell.day.has_available_slots">
-                                    <div class="font-semibold" x-text="toPersianDayNumber(cell.day.local_date)"></div>
-                                    <div class="text-[10px] mt-1" x-show="cell.day.is_closed">تعطیل</div>
-                                    <div class="text-[10px] mt-1"
-                                         x-show="!cell.day.is_closed && !cell.day.has_available_slots">پر</div>
-                                </button>
-                            </template>
+                        <template x-for="cell in calendarCells" :key="cell.key">
+                            <div>
+                                <template x-if="cell.is_placeholder">
+                                    <div class="h-[52px] border border-transparent"></div>
+                                </template>
+
+                                <template x-if="!cell.is_placeholder">
+                                    <button type="button" class="w-full h-[52px] border rounded-lg p-2 text-center"
+                                            :class="dayBtnClass(cell.day)" @click="selectDay(cell.day)"
+                                            :disabled="cell.day.is_closed || !cell.day.has_available_slots">
+                                        <div class="font-semibold" x-text="toPersianDayNumber(cell.day.local_date)"></div>
+                                        <div class="text-[10px] mt-1" x-show="cell.day.is_closed">تعطیل</div>
+                                        <div class="text-[10px] mt-1"
+                                             x-show="!cell.day.is_closed && !cell.day.has_available_slots">پر</div>
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div
+                        class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-3 mt-4 flex items-start gap-2">
+                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none"
+                             stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-xs text-blue-800 dark:text-blue-200">
+                            بعد از انتخاب روز، در مرحله بعد اسلات‌های زمانی نمایش داده می‌شوند.
                         </div>
-                    </template>
-                </div>
-
-                <div class="text-xs text-gray-500 dark:text-gray-400">
-                    بعد از انتخاب روز، در مرحله بعد اسلات‌ها نمایش داده می‌شوند.
+                    </div>
                 </div>
             </div>
 
-            {{-- STEP 4: Slots --}}
-            <div x-show="step===4" class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">انتخاب اسلات زمانی</div>
-                    <button type="button"
-                            class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70"
-                            @click="fetchSlots()" x-show="!isCustomScheduleEnabled()">بروزرسانی</button>
+            {{-- STEP 5: Slots --}}
+            <div x-show="step===5" class="space-y-4">
+                <div
+                    class="bg-gradient-to-l from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800/50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                                <span class="text-xl">⏰</span>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-base text-gray-800 dark:text-gray-100">انتخاب زمان</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">زمان مورد نظر برای نوبت را انتخاب کنید
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button"
+                                class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                @click="fetchSlots()" x-show="!isCustomScheduleEnabled()">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                </path>
+                            </svg>
+                            بروزرسانی
+                        </button>
+                    </div>
                 </div>
 
-                <template x-if="slotsLoading && !isCustomScheduleEnabled()">
-                    <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت اسلات‌ها...</div>
-                </template>
-
-                <template x-if="slotsError && !isCustomScheduleEnabled()">
-                    <div class="text-xs text-red-600" x-text="slotsError"></div>
-                </template>
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2"
-                     x-show="slots.length && !slotsLoading && !isCustomScheduleEnabled()">
-                    <template x-for="slot in slots" :key="slot.start_at_utc">
-                        <button type="button"
-                                class="border rounded px-2 py-2 text-xs text-center hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-                                :class="selectedSlotKey === slot.start_at_utc ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-200' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800'"
-                                @click="selectSlot(slot)">
-                            <div class="font-semibold" x-text="formatTime(slot.start_at_view)"></div>
-                            <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                ظرفیت: <span x-text="slotCapacityDisplay(slot)"></span>
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                    <template x-if="slotsLoading && !isCustomScheduleEnabled()">
+                        <div class="flex items-center justify-center py-8">
+                            <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                     viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                                <span class="text-sm">در حال دریافت اسلات‌ها...</span>
                             </div>
-                        </button>
+                        </div>
                     </template>
+
+                    <template x-if="slotsError && !isCustomScheduleEnabled()">
+                        <div
+                            class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg p-4 text-center">
+                            <div class="text-sm text-red-800 dark:text-red-200" x-text="slotsError"></div>
+                        </div>
+                    </template>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
+                         x-show="slots.length && !slotsLoading && !isCustomScheduleEnabled()">
+                        <template x-for="slot in slots" :key="slot.start_at_utc">
+                            <button type="button"
+                                    class="group relative border-2 rounded-xl p-3 text-center transition-all duration-200 hover:shadow-lg"
+                                    :class="selectedSlotKey === slot.start_at_utc
+                                ? 'border-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-950/40 text-indigo-900 dark:text-indigo-100 shadow-md ring-2 ring-indigo-200 dark:ring-indigo-800'
+                                : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md'"
+                                    @click="selectSlot(slot)">
+                                <div class="font-bold text-sm mb-1" x-text="formatTime(slot.start_at_view)"></div>
+                                <div class="text-[10px] text-gray-500 dark:text-gray-400">
+                                    ظرفیت: <span class="font-semibold" x-text="slotCapacityDisplay(slot)"></span>
+                                </div>
+                                <div class="absolute top-2 left-2" x-show="selectedSlotKey === slot.start_at_utc">
+                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none"
+                                         stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                            </button>
+                        </template>
+                    </div>
                 </div>
 
                 <template
@@ -428,123 +828,155 @@
                 </div>
             </div>
 
-            {{-- STEP 5: Appointment Form --}}
-            <div x-show="step===5 && hasAppointmentForm" class="space-y-3">
-                <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">فرم اطلاعات نوبت</div>
-
-                <template x-if="selectedService && selectedService.appointment_form_id">
-                    <div class="space-y-2">
-                        <div class="text-xs text-gray-500 dark:text-gray-400" x-show="!appointmentFormSchema">
-                            در حال دریافت فرم...
+            {{-- STEP 6: Appointment Form --}}
+            <div x-show="step===6 && hasAppointmentForm" class="space-y-4">
+                <div
+                    class="bg-gradient-to-l from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800/50">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                            <span class="text-xl">📝</span>
                         </div>
-
-                        <template
-                            x-if="appointmentFormSchema && appointmentFormSchema.fields && appointmentFormSchema.fields.length">
-                            <div class="space-y-3">
-                                <template x-for="field in appointmentFormSchema.fields" :key="field.name">
-                                    <div class="space-y-1">
-                                        <label class="block text-xs text-gray-600 dark:text-gray-300"
-                                               x-text="field.label"></label>
-
-                                        <template x-if="field.type === 'textarea'">
-                                        <textarea
-                                            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
-                                            :placeholder="field.placeholder || ''" :required="field.required"
-                                            x-model="appointmentFormValues[field.name]"></textarea>
-                                        </template>
-
-                                        <template x-if="field.type === 'select'">
-                                            <select
-                                                class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
-                                                :required="field.required" x-model="appointmentFormValues[field.name]">
-                                                <option value="">انتخاب کنید</option>
-                                                <template x-for="opt in (field.options || [])" :key="opt">
-                                                    <option :value="opt" x-text="opt"></option>
-                                                </template>
-                                            </select>
-                                        </template>
-
-                                        <template x-if="field.type === 'radio'">
-                                            <div class="flex flex-wrap gap-3">
-                                                <template x-for="opt in (field.options || [])" :key="opt">
-                                                    <label
-                                                        class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
-                                                        <input type="radio" :name="`form_${field.name}`" :value="opt"
-                                                               :required="field.required"
-                                                               x-model="appointmentFormValues[field.name]">
-                                                        <span x-text="opt"></span>
-                                                    </label>
-                                                </template>
-                                            </div>
-                                        </template>
-
-                                        <template x-if="field.type === 'checkbox'">
-                                            <div class="flex flex-wrap gap-3">
-                                                <template x-for="opt in (field.options || [])" :key="opt">
-                                                    <label
-                                                        class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
-                                                        <input type="checkbox" :value="opt"
-                                                               x-model="appointmentFormValues[field.name]">
-                                                        <span x-text="opt"></span>
-                                                    </label>
-                                                </template>
-                                            </div>
-                                        </template>
-
-                                        <template x-if="!['textarea','select','radio','checkbox'].includes(field.type)">
-                                            <input
-                                                class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
-                                                :type="field.type || 'text'" :placeholder="field.placeholder || ''"
-                                                :required="field.required" x-model="appointmentFormValues[field.name]">
-                                        </template>
-                                    </div>
-                                </template>
-                            </div>
-                        </template>
+                        <div>
+                            <div class="font-semibold text-base text-gray-800 dark:text-gray-100">فرم اطلاعات نوبت</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">لطفاً اطلاعات اضافی را تکمیل کنید</div>
+                        </div>
                     </div>
-                </template>
+                </div>
 
-                <template x-if="!selectedService || !selectedService.appointment_form_id">
-                    <div class="text-xs text-gray-500 dark:text-gray-400">برای این سرویس فرم اختصاصی تعریف نشده است.</div>
-                </template>
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+
+                    <template x-if="selectedService && selectedService.appointment_form_id">
+                        <div class="space-y-2">
+                            <div class="text-xs text-gray-500 dark:text-gray-400" x-show="!appointmentFormSchema">
+                                در حال دریافت فرم...
+                            </div>
+
+                            <template
+                                x-if="appointmentFormSchema && appointmentFormSchema.fields && appointmentFormSchema.fields.length">
+                                <div class="space-y-4">
+                                    <template x-for="field in appointmentFormSchema.fields" :key="field.name">
+                                        <div class="space-y-1">
+                                            <label class="block text-xs text-gray-600 dark:text-gray-300"
+                                                   x-text="field.label"></label>
+
+                                            <template x-if="field.type === 'textarea'">
+                                            <textarea
+                                                class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                                :placeholder="field.placeholder || ''" :required="field.required"
+                                                x-model="appointmentFormValues[field.name]"></textarea>
+                                            </template>
+
+                                            <template x-if="field.type === 'select'">
+                                                <select
+                                                    class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                                    :required="field.required" x-model="appointmentFormValues[field.name]">
+                                                    <option value="">انتخاب کنید</option>
+                                                    <template x-for="opt in (field.options || [])" :key="opt">
+                                                        <option :value="opt" x-text="opt"></option>
+                                                    </template>
+                                                </select>
+                                            </template>
+
+                                            <template x-if="field.type === 'radio'">
+                                                <div class="flex flex-wrap gap-3">
+                                                    <template x-for="opt in (field.options || [])" :key="opt">
+                                                        <label
+                                                            class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
+                                                            <input type="radio" :name="`form_${field.name}`" :value="opt"
+                                                                   :required="field.required"
+                                                                   x-model="appointmentFormValues[field.name]">
+                                                            <span x-text="opt"></span>
+                                                        </label>
+                                                    </template>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="field.type === 'checkbox'">
+                                                <div class="flex flex-wrap gap-3">
+                                                    <template x-for="opt in (field.options || [])" :key="opt">
+                                                        <label
+                                                            class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
+                                                            <input type="checkbox" :value="opt"
+                                                                   x-model="appointmentFormValues[field.name]">
+                                                            <span x-text="opt"></span>
+                                                        </label>
+                                                    </template>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="!['textarea','select','radio','checkbox'].includes(field.type)">
+                                                <input
+                                                    class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
+                                                    :type="field.type || 'text'" :placeholder="field.placeholder || ''"
+                                                    :required="field.required" x-model="appointmentFormValues[field.name]">
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="!selectedService || !selectedService.appointment_form_id">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">برای این سرویس فرم اختصاصی تعریف نشده است.
+                        </div>
+                    </template>
+                </div>
             </div>
 
-            {{-- STEP 6: Client --}}
-            <div x-show="step===clientStep" class="space-y-3">
-                <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">انتخاب مشتری</div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                        <input type="text"
-                               class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                               placeholder="جستجو مشتری (نام/موبایل/ایمیل)" x-model="clientSearch"
-                               @input.debounce.300ms="fetchClients()">
-                        <select
-                            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 mt-2 text-sm dark:text-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                            x-model="clientId">
-                            <option value="">انتخاب کنید</option>
-                            <template x-for="c in clients" :key="c.id">
-                                <option :value="c.id" x-text="`${c.full_name} (${c.phone || '-'})`"></option>
-                            </template>
-                        </select>
-                    </div>
-
-                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
-                        @includeIf('clients::widgets.client-quick-create')
+            {{-- Final Step: Notes and Submit (shown at last step) --}}
+            <div x-show="step === (hasAppointmentForm ? 7 : 6)" class="space-y-4">
+                <div
+                    class="bg-gradient-to-l from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800/50">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                            <span class="text-xl">✓</span>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-base text-gray-800 dark:text-gray-100">ثبت نهایی نوبت</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">لطفاً یادداشت را وارد کرده و نوبت را
+                                ثبت کنید</div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="pt-2">
-                    <label class="block text-sm mb-1 text-gray-700 dark:text-gray-200">یادداشت</label>
-                    <textarea name="notes" rows="3"
-                              class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"></textarea>
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                            </path>
+                        </svg>
+                        یادداشت (اختیاری)
+                    </span>
+                    </label>
+                    <textarea name="notes" rows="4"
+                              class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                              placeholder="یادداشت یا توضیحات اضافی را اینجا وارد کنید..."></textarea>
                 </div>
 
-                <div class="pt-2 flex items-center justify-between">
-                    <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                        ثبت نهایی فقط وقتی ممکن است که سرویس/ارائه‌دهنده/روز/اسلات/مشتری کامل باشند.
+                <div
+                    class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-4 flex items-start gap-3">
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none"
+                         stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="flex-1">
+                        <div class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">آماده ثبت نوبت</div>
+                        <div class="text-xs text-blue-700 dark:text-blue-300">اطمینان حاصل کنید که تمام اطلاعات به درستی
+                            وارد شده‌اند.</div>
                     </div>
-                    <button class="px-4 py-2 bg-blue-600 text-white rounded">
+                    <button type="button"
+                            class="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+                            @click.stop="handleSubmit($event)">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
                         ثبت نوبت
                     </button>
                 </div>
@@ -603,6 +1035,9 @@
                 clients: [],
                 clientSearch: '',
                 clientId: '',
+                selectedClientObject: null,
+                clientLoading: false,
+                clientSearchFocused: false,
                 isSubmitting: false,
 
                 weekDays: ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'],
@@ -613,11 +1048,73 @@
                 hasAppointmentForm: false,
 
                 get totalSteps() {
-                    return this.hasAppointmentForm ? 6 : 5;
+                    return this.hasAppointmentForm ? 7 : 6;
                 },
 
                 get clientStep() {
-                    return this.hasAppointmentForm ? 6 : 5;
+                    return 1;
+                },
+
+                get finalStep() {
+                    return this.hasAppointmentForm ? 7 : 6;
+                },
+
+                get stepLabels() {
+                    const labels = [{
+                        num: 1,
+                        title: 'انتخاب مشتری',
+                        icon: '👤'
+                    },
+                        {
+                            num: 2,
+                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب ارائه‌دهنده' : 'انتخاب سرویس',
+                            icon: this.flow === 'PROVIDER_FIRST' ? '👨‍⚕️' : '🛎️'
+                        },
+                        {
+                            num: 3,
+                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب سرویس' : 'انتخاب ارائه‌دهنده',
+                            icon: this.flow === 'PROVIDER_FIRST' ? '🛎️' : '👨‍⚕️'
+                        },
+                        {
+                            num: 4,
+                            title: 'انتخاب روز',
+                            icon: '📅'
+                        },
+                        {
+                            num: 5,
+                            title: 'انتخاب زمان',
+                            icon: '⏰'
+                        },
+                    ];
+
+                    if (this.hasAppointmentForm) {
+                        labels.push({
+                            num: 6,
+                            title: 'فرم اطلاعات',
+                            icon: '📝'
+                        });
+                    }
+
+                    const finalStepNum = this.hasAppointmentForm ? 7 : 6;
+                    labels.push({
+                        num: finalStepNum,
+                        title: 'ثبت نهایی',
+                        icon: '✓'
+                    });
+
+                    return labels;
+                },
+
+                isStepCompleted(stepNum) {
+                    return this.step > stepNum;
+                },
+
+                isStepActive(stepNum) {
+                    return this.step === stepNum;
+                },
+
+                isStepUpcoming(stepNum) {
+                    return this.step < stepNum;
                 },
 
                 init() {
@@ -634,27 +1131,32 @@
                     this.calendarYear = parseInt(y.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
                     this.calendarMonth = parseInt(m.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
 
+                    // Initialize fixedProvider if available
                     if (this.fixedProvider) {
                         this.providerId = String(this.fixedProvider.id || '');
                         this.providers = [this.fixedProvider];
-                        this.onProviderSelected().then(() => {
-                            if (this.flow === 'PROVIDER_FIRST') {
-                                this.step = 2;
-                            }
-                        });
+                        this.onProviderSelected();
                     } else if (this.flow === 'PROVIDER_FIRST') {
-                        // شروع
-                        this.fetchProviders();
+                        // Will fetch providers when user reaches step 2
                     } else {
-                        this.fetchAllActiveServices();
+                        // Will fetch services when user reaches step 2
                     }
 
+                    // Start with client selection (step 1)
+                    this.step = 1;
                     this.fetchClients();
 
                     window.addEventListener('client-quick-saved', (e) => {
                         const newId = e?.detail?.clientId;
                         this.fetchClients().then(() => {
-                            if (newId) this.clientId = String(newId);
+                            if (newId) {
+                                this.clientId = String(newId);
+                                // Find and store the new client object
+                                const newClient = this.clients.find(c => String(c.id) === String(newId));
+                                if (newClient) {
+                                    this.selectedClientObject = newClient;
+                                }
+                            }
                         });
                     });
                 },
@@ -666,8 +1168,10 @@
 
                     const getCatName = (s) => {
                         if (!s) return '';
-                        if (typeof s.category_name === 'string' && s.category_name.trim()) return s.category_name.trim();
-                        if (s.category && typeof s.category.name === 'string' && s.category.name.trim()) return s.category.name.trim();
+                        if (typeof s.category_name === 'string' && s.category_name.trim()) return s.category_name
+                            .trim();
+                        if (s.category && typeof s.category.name === 'string' && s.category.name.trim()) return s
+                            .category.name.trim();
                         const cid = s.category_id ?? null;
                         if (cid && Array.isArray(this.categories) && this.categories.length) {
                             const found = this.categories.find(c => String(c.id) === String(cid));
@@ -704,7 +1208,8 @@
                     if (slot.remaining_capacity !== null && slot.remaining_capacity !== undefined) {
                         return slot.remaining_capacity;
                     }
-                    if (slot.capacity_per_slot !== null && slot.capacity_per_slot !== undefined && Number(slot.capacity_per_slot) > 0) {
+                    if (slot.capacity_per_slot !== null && slot.capacity_per_slot !== undefined && Number(slot
+                        .capacity_per_slot) > 0) {
                         return slot.capacity_per_slot;
                     }
                     return this.defaultSlotCapacity;
@@ -712,13 +1217,20 @@
 
                 async fetchProviders() {
                     this.providerLoading = true;
-                    const params = new URLSearchParams({ q: this.providerSearch || '' });
+                    const params = new URLSearchParams({
+                        q: this.providerSearch || ''
+                    });
                     if (this.flow === 'SERVICE_FIRST' && this.serviceId) {
                         params.set('service_id', this.serviceId);
                     }
 
                     try {
-                        const res = await fetch(`{{ route('user.booking.appointments.wizard.providers') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.providers') }}?` + params
+                            .toString(), {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
                         const json = await res.json();
                         this.providers = json.data || [];
                     } finally {
@@ -728,8 +1240,15 @@
 
                 async fetchCategories() {
                     if (!this.providerId) return;
-                    const params = new URLSearchParams({ provider_id: this.providerId });
-                    const res = await fetch(`{{ route('user.booking.appointments.wizard.categories') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
+                    const params = new URLSearchParams({
+                        provider_id: this.providerId
+                    });
+                    const res = await fetch(`{{ route('user.booking.appointments.wizard.categories') }}?` + params
+                        .toString(), {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
                     const json = await res.json();
                     this.categories = json.data || [];
                 },
@@ -744,7 +1263,12 @@
                     if (this.categoryId) params.set('category_id', this.categoryId);
 
                     try {
-                        const res = await fetch(`{{ route('user.booking.appointments.wizard.services') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.services') }}?` + params
+                            .toString(), {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
                         const json = await res.json();
                         this.services = json.data || [];
                     } finally {
@@ -754,11 +1278,18 @@
 
                 async fetchAllActiveServices() {
                     this.serviceLoading = true;
-                    const params = new URLSearchParams({ q: this.serviceSearch || '' });
+                    const params = new URLSearchParams({
+                        q: this.serviceSearch || ''
+                    });
                     if (this.categoryId) params.set('category_id', this.categoryId);
 
                     try {
-                        const res = await fetch(`{{ route('user.booking.appointments.wizard.all-services') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.all-services') }}?` + params
+                            .toString(), {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
                         const json = await res.json();
                         this.services = json.data || [];
                         this.syncCategoriesFromServices();
@@ -774,10 +1305,10 @@
                 async selectProvider(p, autoGo = false) {
                     this.providerId = String(p?.id ?? '');
                     await this.onProviderSelected();
-                    if (autoGo && this.step === 1 && this.flow === 'PROVIDER_FIRST') {
+                    if (autoGo && this.step === 2 && this.flow === 'PROVIDER_FIRST') {
                         await this.next();
                     }
-                    if (autoGo && this.step === 2 && this.flow === 'SERVICE_FIRST') {
+                    if (autoGo && this.step === 3 && this.flow === 'SERVICE_FIRST') {
                         await this.next();
                     }
                 },
@@ -800,16 +1331,16 @@
                 async selectService(s, autoGo = false) {
                     this.serviceId = String(s?.id ?? '');
                     await this.onServiceSelected();
-                    if (autoGo && this.step === 1 && this.flow === 'SERVICE_FIRST') {
+                    if (autoGo && this.step === 2 && this.flow === 'SERVICE_FIRST') {
                         if (this.fixedProvider && this.fixedProvider.id && !this.providerId) {
                             this.providerId = String(this.fixedProvider.id);
                         }
                         await this.next();
-                        if (this.fixedProvider && this.step === 2) {
+                        if (this.fixedProvider && this.step === 3) {
                             await this.next();
                         }
                     }
-                    if (autoGo && this.step === 2 && this.flow === 'PROVIDER_FIRST') {
+                    if (autoGo && this.step === 3 && this.flow === 'PROVIDER_FIRST') {
                         await this.next();
                     }
                 },
@@ -837,7 +1368,10 @@
                         const name = s.category_name ?? null;
                         if (!id || !name) continue;
                         if (!map.has(String(id))) {
-                            map.set(String(id), { id, name });
+                            map.set(String(id), {
+                                id,
+                                name
+                            });
                         }
                     }
                     this.categories = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fa'));
@@ -865,12 +1399,20 @@
                     this.appointmentFormValues = {};
                     if (!formId) return;
 
-                    const params = new URLSearchParams({ form_id: formId });
-                    const res = await fetch(`{{ route('user.booking.appointments.wizard.form') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
+                    const params = new URLSearchParams({
+                        form_id: formId
+                    });
+                    const res = await fetch(`{{ route('user.booking.appointments.wizard.form') }}?` + params.toString(), {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
                     const json = await res.json();
                     const schema = json.data?.schema_json || null;
                     if (!schema || !Array.isArray(schema.fields)) {
-                        this.appointmentFormSchema = { fields: [] };
+                        this.appointmentFormSchema = {
+                            fields: []
+                        };
                         return;
                     }
 
@@ -901,15 +1443,25 @@
 
                     const cells = [];
                     for (let i = 0; i < persianWeekdayIndex; i++) {
-                        cells.push({ key: `ph-${i}`, is_placeholder: true });
+                        cells.push({
+                            key: `ph-${i}`,
+                            is_placeholder: true
+                        });
                     }
 
                     for (const d of days) {
-                        cells.push({ key: d.local_date, is_placeholder: false, day: d });
+                        cells.push({
+                            key: d.local_date,
+                            is_placeholder: false,
+                            day: d
+                        });
                     }
 
                     while (cells.length % 7 !== 0) {
-                        cells.push({ key: `ph-end-${cells.length}`, is_placeholder: true });
+                        cells.push({
+                            key: `ph-end-${cells.length}`,
+                            is_placeholder: true
+                        });
                     }
 
                     return cells;
@@ -926,7 +1478,12 @@
                     });
 
                     try {
-                        const res = await fetch(`{{ route('user.booking.appointments.wizard.calendar') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.calendar') }}?` + params
+                            .toString(), {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
                         const json = await res.json();
                         this.calendarDays = json.data || [];
                     } finally {
@@ -961,7 +1518,7 @@
                     this.manualEndTime = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
-                    if (this.step === 3) {
+                    if (this.step === 4) {
                         await this.next();
                     }
                 },
@@ -981,7 +1538,9 @@
 
                 toPersianDayNumber(localDate) {
                     const dd = new Date(localDate + 'T00:00:00');
-                    return dd.toLocaleDateString('fa-IR-u-ca-persian', { day: 'numeric' });
+                    return dd.toLocaleDateString('fa-IR-u-ca-persian', {
+                        day: 'numeric'
+                    });
                 },
 
                 // ---------------- slots ----------------
@@ -1002,7 +1561,11 @@
                     });
 
                     try {
-                        const res = await fetch('/api/booking/availability/slots?' + params.toString(), { headers: { 'Accept': 'application/json' } });
+                        const res = await fetch('/api/booking/availability/slots?' + params.toString(), {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
                         if (!res.ok) throw new Error('خطا در دریافت اسلات‌ها (کد ' + res.status + ')');
                         const json = await res.json();
                         this.slots = json.data || [];
@@ -1017,7 +1580,7 @@
                     this.selectedSlotKey = slot.start_at_utc;
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = slot.start_at_utc;
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = slot.end_at_utc;
-                    if (this.step === 4) {
+                    if (this.step === 5) {
                         await this.next();
                     }
                 },
@@ -1034,40 +1597,119 @@
 
                 formatTime(isoString) {
                     const d = new Date(isoString);
-                    return d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+                    return d.toLocaleTimeString('fa-IR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
                 },
 
                 // ---------------- clients ----------------
 
+                get selectedClient() {
+                    if (!this.clientId) return null;
+                    // Return stored client object if available
+                    if (this.selectedClientObject && String(this.selectedClientObject.id) === String(this.clientId)) {
+                        return this.selectedClientObject;
+                    }
+                    // Try to find in current clients array
+                    if (this.clients && this.clients.length > 0) {
+                        const found = this.clients.find(c => String(c.id) === String(this.clientId));
+                        if (found) {
+                            this.selectedClientObject = found;
+                            return found;
+                        }
+                    }
+                    return null;
+                },
+
+                get selectedClientName() {
+                    const client = this.selectedClient;
+                    return client ? client.full_name : '';
+                },
+
+                get selectedClientPhone() {
+                    const client = this.selectedClient;
+                    if (!client) return '';
+                    const parts = [];
+                    if (client.phone) parts.push(client.phone);
+                    if (client.national_code) parts.push(`کد ملی: ${client.national_code}`);
+                    if (client.case_number) parts.push(`پرونده: ${client.case_number}`);
+                    return parts.join(' • ');
+                },
+
+                selectClient(client) {
+                    this.clientId = String(client.id);
+                    this.selectedClientObject = client;
+                    // Keep the selected client in the list if not already there
+                    if (!this.clients.find(c => String(c.id) === String(client.id))) {
+                        this.clients = [client, ...this.clients];
+                    }
+                    this.clientSearch = '';
+                },
+
                 async fetchClients() {
-                    const params = new URLSearchParams({ q: this.clientSearch || '' });
-                    const res = await fetch(`{{ route('user.booking.appointments.wizard.clients') }}?` + params.toString(), { headers: { 'Accept': 'application/json' } });
-                    const json = await res.json();
-                    this.clients = json.data || [];
+                    this.clientLoading = true;
+                    const params = new URLSearchParams({
+                        q: this.clientSearch || ''
+                    });
+                    try {
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.clients') }}?` + params
+                            .toString(), {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        const json = await res.json();
+                        this.clients = json.data || [];
+                        // If we have a selected clientId, make sure it's in the list
+                        if (this.clientId && !this.clients.find(c => String(c.id) === String(this.clientId))) {
+                            // Client not in search results, but that's ok - we'll show it anyway via selectedClient
+                        }
+                    } finally {
+                        this.clientLoading = false;
+                    }
                 },
 
                 // ---------------- wizard navigation ----------------
 
                 async next() {
                     if (this.step === 1) {
-                        if (this.flow === 'PROVIDER_FIRST' && !this.providerId) return alert('لطفاً ارائه‌دهنده را انتخاب کنید.');
-                        if (this.flow === 'SERVICE_FIRST' && !this.serviceId) return alert('لطفاً سرویس را انتخاب کنید.');
+                        if (!this.clientId) return alert('لطفاً مشتری را انتخاب کنید.');
+                        // Load providers/services when moving to step 2
+                        if (this.flow === 'PROVIDER_FIRST' && !this.fixedProvider) {
+                            await this.fetchProviders();
+                        } else if (this.flow === 'SERVICE_FIRST') {
+                            await this.fetchAllActiveServices();
+                        }
                     }
 
                     if (this.step === 2) {
-                        if (!this.serviceId) return alert('لطفاً سرویس را انتخاب کنید.');
-                        if (!this.providerId) return alert('لطفاً ارائه‌دهنده را انتخاب کنید.');
-                        await this.loadCalendar();
+                        if (this.flow === 'PROVIDER_FIRST' && !this.providerId) {
+                            return alert('لطفاً ارائه‌دهنده را انتخاب کنید.');
+                        }
+                        if (this.flow === 'SERVICE_FIRST' && !this.serviceId) {
+                            return alert('لطفاً سرویس را انتخاب کنید.');
+                        }
                     }
 
                     if (this.step === 3) {
+                        if (!this.providerId) return alert('لطفاً ارائه‌دهنده را انتخاب کنید.');
+                        if (!this.serviceId) return alert('لطفاً سرویس را انتخاب کنید.');
+                        // Ensure services are loaded if not already
+                        if (this.flow === 'PROVIDER_FIRST' && (!this.services || this.services.length === 0)) {
+                            await this.onProviderSelected();
+                        }
+                        await this.loadCalendar();
+                    }
+
+                    if (this.step === 4) {
                         if (!this.dateLocal) return alert('لطفاً یک روز قابل رزرو انتخاب کنید.');
                         if (!this.isCustomScheduleEnabled()) {
                             await this.fetchSlots();
                         }
                     }
 
-                    if (this.step === 4) {
+                    if (this.step === 5) {
                         if (this.isCustomScheduleEnabled()) {
                             if (!this.manualStartTime || !this.manualEndTime) {
                                 return alert('لطفاً ساعت شروع و پایان را وارد کنید.');
@@ -1075,11 +1717,11 @@
                         } else if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) {
                             return alert('لطفاً یک اسلات زمانی را انتخاب کنید.');
                         }
-                    }
 
-                    const nextStep = this.step + 1;
-                    if (this.hasAppointmentForm && nextStep === this.clientStep) {
-                        this.prepareAppointmentFormJson();
+                        // Prepare appointment form if needed before moving to form step
+                        if (this.hasAppointmentForm) {
+                            this.prepareAppointmentFormJson();
+                        }
                     }
 
                     if (this.step < this.totalSteps) {
@@ -1097,22 +1739,66 @@
                     }
                 },
 
-                handleSubmit() {
-                    if (this.isSubmitting) return;
-                    if (!this.serviceId || !this.providerId) return alert('سرویس/ارائه‌دهنده ناقص است.');
-                    if (!this.dateLocal) return alert('روز انتخاب نشده است.');
+                handleSubmit(e) {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+
+                    console.log('handleSubmit called', {
+                        isSubmitting: this.isSubmitting,
+                        serviceId: this.serviceId,
+                        providerId: this.providerId,
+                        dateLocal: this.dateLocal,
+                        clientId: this.clientId,
+                        step: this.step,
+                        finalStep: this.finalStep
+                    });
+
+                    if (this.isSubmitting) {
+                        console.log('Already submitting, returning');
+                        return false;
+                    }
+
+                    if (!this.serviceId || !this.providerId) {
+                        alert('سرویس/ارائه‌دهنده ناقص است.');
+                        return false;
+                    }
+                    if (!this.dateLocal) {
+                        alert('روز انتخاب نشده است.');
+                        return false;
+                    }
                     if (this.isCustomScheduleEnabled()) {
                         if (!this.manualStartTime || !this.manualEndTime) {
-                            return alert('لطفاً ساعت شروع و پایان را وارد کنید.');
+                            alert('لطفاً ساعت شروع و پایان را وارد کنید.');
+                            return false;
                         }
-                    } else if (!this.$refs.startUtcInput.value || !this.$refs.endUtcInput.value) {
-                        return alert('لطفاً یک اسلات انتخاب کنید.');
+                    } else {
+                        if (!this.$refs.startUtcInput || !this.$refs.startUtcInput.value || !this.$refs.endUtcInput || !this
+                            .$refs.endUtcInput.value) {
+                            alert('لطفاً یک اسلات زمانی را انتخاب کنید.');
+                            return false;
+                        }
                     }
-                    if (!this.clientId) return alert('لطفاً مشتری را انتخاب کنید.');
+                    if (!this.clientId) {
+                        alert('لطفاً مشتری را انتخاب کنید.');
+                        return false;
+                    }
 
+                    console.log('All validations passed, preparing form...');
                     this.prepareAppointmentFormJson();
                     this.isSubmitting = true;
-                    this.$refs.form.submit();
+
+                    if (this.$refs.form) {
+                        console.log('Submitting form...');
+                        this.$refs.form.submit();
+                    } else {
+                        console.error('Form reference not found');
+                        this.isSubmitting = false;
+                        alert('خطا: فرم یافت نشد. لطفاً صفحه را رفرش کنید.');
+                    }
+
+                    return false;
                 },
 
                 prepareAppointmentFormJson() {

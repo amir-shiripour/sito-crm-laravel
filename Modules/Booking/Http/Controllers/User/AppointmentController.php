@@ -21,9 +21,7 @@ use Morilog\Jalali\CalendarUtils;
 
 class AppointmentController extends Controller
 {
-    public function __construct(protected AppointmentService $service)
-    {
-    }
+    public function __construct(protected AppointmentService $service) {}
 
     public function index(Request $request)
     {
@@ -116,7 +114,7 @@ class AppointmentController extends Controller
         // provider باید جزو allowed_roles باشد
         $roleIds = array_values(array_filter(
             array_map('intval', (array) ($settings->allowed_roles ?? [])),
-            fn ($v) => $v > 0
+            fn($v) => $v > 0
         ));
 
         if ($shouldLog) {
@@ -129,13 +127,13 @@ class AppointmentController extends Controller
         if (!empty($roleIds)) {
             $isValidProvider = User::query()
                 ->whereKey($data['provider_user_id'])
-                ->whereHas('roles', fn ($q) => $q->whereIn('id', $roleIds))
+                ->whereHas('roles', fn($q) => $q->whereIn('id', $roleIds))
                 ->exists();
 
             if (!$isValidProvider) {
                 $providerUser = User::query()->whereKey($data['provider_user_id'])->first();
                 $providerRoleIds = $providerUser
-                    ? $providerUser->roles()->pluck('id')->map(fn ($v) => (int) $v)->all()
+                    ? $providerUser->roles()->pluck('id')->map(fn($v) => (int) $v)->all()
                     : null;
 
                 Log::warning('[Booking][Appointments][Store] provider rejected by allowed_roles', [
@@ -253,7 +251,7 @@ class AppointmentController extends Controller
                 notes: $data['notes'] ?? null,
                 appointmentFormResponse: $formJson
             );
-        } catch (\InvalidArgumentException|\RuntimeException $e) {
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
             $message = match ($e->getMessage()) {
                 'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل است.',
                 'Day capacity is full.' => 'ظرفیت روز تکمیل است.',
@@ -308,11 +306,11 @@ class AppointmentController extends Controller
         $providersQuery = User::query();
         $roleIds = array_values(array_filter(
             array_map('intval', (array) ($settings->allowed_roles ?? [])),
-            fn ($v) => $v > 0
+            fn($v) => $v > 0
         ));
 
         if (! $this->isAdminUser($user) && !empty($roleIds)) {
-            $providersQuery->whereHas('roles', fn ($r) => $r->whereIn('id', $roleIds));
+            $providersQuery->whereHas('roles', fn($r) => $r->whereIn('id', $roleIds));
         }
 
         $providers = $providersQuery->orderBy('name')->get(['id', 'name']);
@@ -408,7 +406,7 @@ class AppointmentController extends Controller
                 $endUtc,
                 $appointment->id
             );
-        } catch (\InvalidArgumentException|\RuntimeException $e) {
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
             $message = match ($e->getMessage()) {
                 'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل است.',
                 'Day capacity is full.' => 'ظرفیت روز تکمیل است.',
@@ -482,7 +480,7 @@ class AppointmentController extends Controller
 
         $roleIds = array_values(array_filter(
             array_map('intval', (array) ($settings->allowed_roles ?? [])),
-            fn ($v) => $v > 0
+            fn($v) => $v > 0
         ));
 
         $authUser = $request->user();
@@ -506,7 +504,7 @@ class AppointmentController extends Controller
         $providersQuery = User::query();
 
         if (! $this->isAdminUser($authUser) && !empty($roleIds)) {
-            $providersQuery->whereHas('roles', fn ($r) => $r->whereIn('id', $roleIds));
+            $providersQuery->whereHas('roles', fn($r) => $r->whereIn('id', $roleIds));
         }
 
         if ($serviceId) {
@@ -526,7 +524,7 @@ class AppointmentController extends Controller
             });
         }
 
-        $providers = $providersQuery->orderBy('name')->limit(50)->get(['id','name']);
+        $providers = $providersQuery->orderBy('name')->limit(50)->get(['id', 'name']);
 
         if ($shouldLog) {
             Log::info('[Booking][WizardProviders] result', [
@@ -564,7 +562,7 @@ class AppointmentController extends Controller
 
         $providerRoleIds = array_values(array_filter(
             array_map('intval', (array) ($settings->allowed_roles ?? [])),
-            fn ($v) => $v > 0
+            fn($v) => $v > 0
         ));
 
         if (empty($providerRoleIds)) {
@@ -577,7 +575,7 @@ class AppointmentController extends Controller
             return false;
         }
 
-        $userRoleIds = $user->roles()->pluck('id')->map(fn ($v) => (int) $v)->all();
+        $userRoleIds = $user->roles()->pluck('id')->map(fn($v) => (int) $v)->all();
         $intersect = array_values(array_intersect($providerRoleIds, $userRoleIds));
         $isProvider = count($intersect) > 0;
 
@@ -769,7 +767,7 @@ class AppointmentController extends Controller
         $rows = \Modules\Booking\Entities\BookingCategory::query()
             ->whereIn('id', BookingService::query()->whereIn('id', $serviceIds)->pluck('category_id')->filter()->all())
             ->orderBy('name')
-            ->get(['id','name']);
+            ->get(['id', 'name']);
 
         return response()->json(['data' => $rows]);
     }
@@ -937,7 +935,7 @@ class AppointmentController extends Controller
     {
         $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
         $user = $request->user();
-        $q = trim((string)$request->query('q',''));
+        $q = trim((string)$request->query('q', ''));
 
         $clientsQ = Client::query()->visibleForUser($user);
 
@@ -945,11 +943,13 @@ class AppointmentController extends Controller
             $clientsQ->where(function ($w) use ($q) {
                 $w->where('full_name', 'like', "%{$q}%")
                     ->orWhere('phone', 'like', "%{$q}%")
-                    ->orWhere('email', 'like', "%{$q}%");
+                    ->orWhere('email', 'like', "%{$q}%")
+                    ->orWhere('national_code', 'like', "%{$q}%")
+                    ->orWhere('case_number', 'like', "%{$q}%");
             });
         }
 
-        $clients = $clientsQ->orderByDesc('id')->limit(30)->get(['id','full_name','phone','email']);
+        $clients = $clientsQ->orderByDesc('id')->limit(50)->get(['id', 'full_name', 'phone', 'email', 'national_code', 'case_number']);
 
         return response()->json(['data' => $clients]);
     }
