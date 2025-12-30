@@ -1,0 +1,11 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # اگر فایل یا پوشه وجود دارد، آن را سرو کن (برای فایل‌های استاتیک و خود index.php روت)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # در غیر این صورت، درخواست را به پوشه public بفرست
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
+</IfModule>
