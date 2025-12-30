@@ -1,5 +1,11 @@
 <?php
 
+// --- DEBUG LOGGING START ---
+$logFile = __DIR__ . '/storage/logs/debug_root_request.log';
+$logData = date('Y-m-d H:i:s') . " - Root Request: " . $_SERVER['REQUEST_URI'] . "\n";
+file_put_contents($logFile, $logData, FILE_APPEND);
+// --- DEBUG LOGGING END ---
+
 /**
  * Laravel - A PHP Framework For Web Artisans
  *
