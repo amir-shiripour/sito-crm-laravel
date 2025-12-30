@@ -1,11 +1,13 @@
 <IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews
+    </IfModule>
+
     RewriteEngine On
 
-    # اگر فایل یا پوشه وجود دارد، آن را سرو کن (برای فایل‌های استاتیک و خود index.php روت)
-    RewriteCond %{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
-    RewriteRule ^ - [L]
+    # اگر درخواست قبلاً به public هدایت شده، بازنویسی را متوقف کن (جلوگیری از حلقه)
+    RewriteRule ^public/ - [L]
 
-    # در غیر این صورت، درخواست را به پوشه public بفرست
-    RewriteRule ^(.*)$ public/$1 [L,QSA]
+    # همه درخواست‌ها را به پوشه public بفرست
+    RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
