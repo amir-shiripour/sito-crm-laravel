@@ -21,7 +21,7 @@
         })();
     </script>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['Resources/css/app.css', 'Resources/js/app.js'])
     @livewireStyles
     <style>
         body { font-size: 14px;}
