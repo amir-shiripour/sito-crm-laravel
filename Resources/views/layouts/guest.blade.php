@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 
     <!-- Styles & Scripts -->
-    @vite([''Resources/css/app.css', 'Resources/js/app.js'])
+    @vite(['Resources/css/app.css', 'Resources/js/app.js'])
 
     <style>
         body { font-family: 'Vazirmatn', sans-serif; }

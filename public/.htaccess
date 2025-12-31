@@ -6,7 +6,7 @@
     RewriteEngine On
 
     # تنظیم ریشه برای ساب‌دایرکتوری
-    RewriteBase /drzabihi/
+#    RewriteBase /drzabihi/
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
