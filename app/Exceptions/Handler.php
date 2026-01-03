@@ -40,17 +40,18 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
-        // لاگ کردن خطا قبل از render
-        if (!$this->isHttpException($e) && config('app.debug')) {
-            \Illuminate\Support\Facades\Log::error('[EXCEPTION RENDER] خطا در render', [
-                'message' => $e->getMessage(),
-                'code' => $e->getCode(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'request_url' => $request->fullUrl(),
-                'request_method' => $request->method(),
-            ]);
-        }
+        // لاگ کردن خطا قبل از render - همیشه لاگ می‌کنیم برای debugging
+        \Illuminate\Support\Facades\Log::error('[EXCEPTION RENDER] خطا در render', [
+            'message' => $e->getMessage(),
+            'code' => $e->getCode(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'request_url' => $request->fullUrl(),
+            'request_method' => $request->method(),
+            'request_path' => $request->path(),
+            'is_http_exception' => $this->isHttpException($e),
+            'trace' => $e->getTraceAsString()
+        ]);
 
         return parent::render($request, $e);
     }

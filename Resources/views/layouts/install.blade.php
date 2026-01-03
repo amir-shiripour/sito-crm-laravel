@@ -19,50 +19,82 @@
 
 
     <!-- Scripts -->
-    @if(file_exists(public_path('build/manifest.json')))
-        @vite(['Resources/css/app.css', 'Resources/js/app.js'])
-    @else
-        {{-- Fallback در صورت عدم وجود vite build --}}
-        <style>
-            body {
-                font-family: 'Vazirmatn', sans-serif;
-            }
+    {{-- در صفحه نصب از @vite استفاده نمی‌کنیم چون ممکن است build نشده باشد --}}
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+        }
 
-            .mt-1 {
-                margin-top: 0.25rem;
-            }
+        .mt-1 {
+            margin-top: 0.25rem;
+        }
 
-            .block {
-                display: block;
-            }
+        .block {
+            display: block;
+        }
 
-            .w-full {
-                width: 100%;
-            }
+        .w-full {
+            width: 100%;
+        }
 
-            .px-3 {
-                padding-left: 0.75rem;
-                padding-right: 0.75rem;
-            }
+        .px-3 {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
 
-            .py-2 {
-                padding-top: 0.5rem;
-                padding-bottom: 0.5rem;
-            }
+        .py-2 {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
 
-            .border {
-                border-width: 1px;
-            }
+        .border {
+            border-width: 1px;
+        }
 
-            .border-gray-300 {
-                border-color: #d1d5db;
-            }
+        .border-gray-300 {
+            border-color: #d1d5db;
+        }
 
-            .rounded-md {
-                border-radius: 0.375rem;
-            }
-        </style>
-    @endif
+        .rounded-md {
+            border-radius: 0.375rem;
+        }
+
+        .text-xl {
+            font-size: 1.25rem;
+        }
+
+        .font-semibold {
+            font-weight: 600;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .text-gray-600 {
+            color: #4b5563;
+        }
+
+        .mb-6 {
+            margin-bottom: 1.5rem;
+        }
+
+        .space-y-4>*+* {
+            margin-top: 1rem;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .font-medium {
+            font-weight: 500;
+        }
+
+        .text-gray-700 {
+            color: #374151;
+        }
+    </style>
 </head>
 
 <body class="font-vazirmatn text-gray-900 antialiased bg-gray-100 rtl">
