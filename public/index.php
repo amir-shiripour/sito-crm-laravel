@@ -1,12 +1,4 @@
 <?php
-
-// --- DEBUG LOGGING START ---
-$logFile = __DIR__ . '/../storage/logs/debug_request.log';
-$logData = date('Y-m-d H:i:s') . " - Request: " . $_SERVER['REQUEST_URI'] . "\n";
-$logData .= "Script Name: " . $_SERVER['SCRIPT_NAME'] . "\n";
-file_put_contents($logFile, $logData, FILE_APPEND);
-// --- DEBUG LOGGING END ---
-
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 
