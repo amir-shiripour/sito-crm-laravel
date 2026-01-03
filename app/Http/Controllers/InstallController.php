@@ -186,7 +186,31 @@ class InstallController extends Controller
                 'exists_alternative' => file_exists($viewPathAlt)
             ]);
 
-            return view('install.step2');
+            Log::info('[INSTALL] در حال render کردن view install.step2...');
+
+            // تست ساده برای بررسی مشکل
+            try {
+                $view = view('install.step2');
+                Log::info('[INSTALL] View object ایجاد شد');
+                return $view;
+            } catch (\Exception $viewException) {
+                Log::error('[INSTALL] خطا در ایجاد view object', [
+                    'message' => $viewException->getMessage(),
+                    'file' => $viewException->getFile(),
+                    'line' => $viewException->getLine()
+                ]);
+
+                // Fallback به یک view ساده
+                return response('
+                    <html>
+                    <head><title>مرحله 2</title></head>
+                    <body>
+                        <h1>مرحله 2: ایجاد کاربر ادمین</h1>
+                        <p>خطا در بارگذاری view. لطفاً لاگ‌ها را بررسی کنید.</p>
+                    </body>
+                    </html>
+                ', 500);
+            }
         } catch (\Exception $e) {
             Log::error('[INSTALL] خطا در نمایش فرم مرحله 2', [
                 'message' => $e->getMessage(),
