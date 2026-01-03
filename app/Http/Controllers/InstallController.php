@@ -157,7 +157,19 @@ class InstallController extends Controller
      */
     public function step2()
     {
-        return view('install.step2');
+        Log::info('[INSTALL] نمایش فرم مرحله 2 - در حال بارگذاری view...');
+        try {
+            return view('install.step2');
+        } catch (\Exception $e) {
+            Log::error('[INSTALL] خطا در نمایش فرم مرحله 2', [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
     /**
@@ -249,13 +261,17 @@ class InstallController extends Controller
             Log::info('[INSTALL] تم‌ها با موفقیت بارگذاری شدند', [
                 'themes_count' => $themes->count()
             ]);
+            Log::info('[INSTALL] در حال بارگذاری view install.step3...');
             return view('install.step3', compact('themes'));
         } catch (\Exception $e) {
-            Log::error('[INSTALL] خطا در بارگذاری تم‌ها', [
+            Log::error('[INSTALL] خطا در نمایش فرم مرحله 3', [
                 'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return back()->withErrors(['general' => 'خطا در بارگذاری تم‌ها: ' . $e->getMessage()]);
+            throw $e; // دوباره throw می‌کنیم تا exception handler لاگ کند
         }
     }
 

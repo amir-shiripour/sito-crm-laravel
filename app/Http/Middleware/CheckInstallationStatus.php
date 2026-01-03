@@ -13,32 +13,46 @@ class CheckInstallationStatus
 
     public function handle(Request $request, Closure $next)
     {
-        // مسیر فایل پرچم نصب
-        $installedFlagPath = storage_path('app/installed.flag');
+        try {
+            // مسیر فایل پرچم نصب
+            $installedFlagPath = storage_path('app/installed.flag');
 
-        // ۱. آیا برنامه نصب شده است؟
-        if (File::exists($installedFlagPath)) {
-            // بله. پس هیچ کاری نکن. بگذار برنامه به صورت عادی اجرا شود.
-            return $next($request);
+            // ۱. آیا برنامه نصب شده است؟
+            if (File::exists($installedFlagPath)) {
+                // بله. پس هیچ کاری نکن. بگذار برنامه به صورت عادی اجرا شود.
+                \Illuminate\Support\Facades\Log::debug('[MIDDLEWARE] CheckInstallationStatus: برنامه نصب شده است');
+                return $next($request);
+            }
+
+            // ۲. برنامه نصب نشده است.
+            \Illuminate\Support\Facades\Log::debug('[MIDDLEWARE] CheckInstallationStatus: برنامه نصب نشده است', [
+                'path' => $request->path()
+            ]);
+
+            // ۳. آیا درخواست فعلی برای خود صفحه نصب‌کننده یا خطایابی است؟
+            if ($this->isInstallRoute($request)) {
+                // بله. پس باید سشن را به 'file' تغییر دهیم تا این صفحه کرش نکند.
+                // هر دو روش را برای اطمینان کامل انجام می‌دهیم.
+                \Illuminate\Support\Facades\Log::debug('[MIDDLEWARE] CheckInstallationStatus: مسیر نصب تشخیص داده شد');
+                Config::set('session.driver', 'file');
+                session()->setDefaultDriver('file');
+
+                // حالا بگذار درخواست به صفحه نصب‌کننده ادامه یابد.
+                return $next($request);
+            }
+
+            // ۴. برنامه نصب نشده و درخواست برای صفحه دیگری است (مثلاً صفحه اصلی).
+            // درخواست را همینجا متوقف کن و کاربر را به نصب‌کننده هدایت کن.
+            // این کار از اجرای میدل‌ور StartSession جلوگیری می‌کند.
+            \Illuminate\Support\Facades\Log::debug('[MIDDLEWARE] CheckInstallationStatus: هدایت به صفحه نصب');
+            return redirect()->to('/install');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[MIDDLEWARE] CheckInstallationStatus خطا', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
-
-        // ۲. برنامه نصب نشده است.
-
-        // ۳. آیا درخواست فعلی برای خود صفحه نصب‌کننده یا خطایابی است؟
-        if ($this->isInstallRoute($request)) {
-            // بله. پس باید سشن را به 'file' تغییر دهیم تا این صفحه کرش نکند.
-            // هر دو روش را برای اطمینان کامل انجام می‌دهیم.
-            Config::set('session.driver', 'file');
-            session()->setDefaultDriver('file');
-
-            // حالا بگذار درخواست به صفحه نصب‌کننده ادامه یابد.
-            return $next($request);
-        }
-
-        // ۴. برنامه نصب نشده و درخواست برای صفحه دیگری است (مثلاً صفحه اصلی).
-        // درخواست را همینجا متوقف کن و کاربر را به نصب‌کننده هدایت کن.
-        // این کار از اجرای میدل‌ور StartSession جلوگیری می‌کند.
-        return redirect()->to('/install');
     }
 
     /**
@@ -51,4 +65,3 @@ class CheckInstallationStatus
         return $request->is('install') || $request->is('install/*') || $request->is('_ignition/*');
     }
 }
-
