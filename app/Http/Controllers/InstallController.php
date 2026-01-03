@@ -148,8 +148,20 @@ class InstallController extends Controller
         }
 
         Log::info('[INSTALL] مرحله 1 با موفقیت تکمیل شد. هدایت به مرحله 2...');
-        // 4. هدایت به مرحله 2
-        return redirect()->route('install.step2');
+
+        try {
+            // 4. هدایت به مرحله 2
+            $redirectUrl = route('install.step2');
+            Log::info('[INSTALL] URL هدایت به مرحله 2', ['url' => $redirectUrl]);
+            return redirect()->route('install.step2');
+        } catch (\Exception $e) {
+            Log::error('[INSTALL] خطا در ایجاد redirect به مرحله 2', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // fallback به redirect ساده
+            return redirect('/install/step2');
+        }
     }
 
     /**
@@ -157,11 +169,35 @@ class InstallController extends Controller
      */
     public function step2()
     {
-        Log::info('[INSTALL] نمایش فرم مرحله 2 - در حال بارگذاری view...');
+        // لاگ اولیه - باید اولین خط باشد
+        \Illuminate\Support\Facades\Log::info('[INSTALL] متد step2 فراخوانی شد');
+
         try {
+            Log::info('[INSTALL] نمایش فرم مرحله 2 - در حال بارگذاری view...');
+
+            // بررسی وجود view
+            $viewPath = resource_path('views/install/step2.blade.php');
+            $viewPathAlt = base_path('Resources/views/install/step2.blade.php');
+
+            Log::info('[INSTALL] بررسی مسیر view', [
+                'standard_path' => $viewPath,
+                'exists_standard' => file_exists($viewPath),
+                'alternative_path' => $viewPathAlt,
+                'exists_alternative' => file_exists($viewPathAlt)
+            ]);
+
             return view('install.step2');
         } catch (\Exception $e) {
             Log::error('[INSTALL] خطا در نمایش فرم مرحله 2', [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('[INSTALL] خطای Throwable در نمایش فرم مرحله 2', [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
                 'file' => $e->getFile(),
