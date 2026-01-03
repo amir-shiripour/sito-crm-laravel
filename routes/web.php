@@ -1,4 +1,5 @@
 <?php
+
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
@@ -17,7 +18,8 @@ use App\Http\Controllers\User\DashboardController as UserDashboardController;
 
 // --- بخش نصب‌کننده ---
 // این بخش دارای میدل‌ور 'prevent.if.installed' است تا پس از نصب، این روت‌ها در دسترس نباشند
-Route::prefix('install')->middleware('prevent.if.installed')->group(function () {
+// همچنین نیاز به middleware 'web' دارد برای session و CSRF
+Route::prefix('install')->middleware(['web', 'prevent.if.installed'])->group(function () {
 
     // --- اصلاح شد: از 'showStep1' به 'step1' تغییر کرد ---
     Route::get('/', [InstallController::class, 'step1'])->name('install.step1');
@@ -56,7 +58,7 @@ Route::middleware([
 });
 
 
-Route::middleware(['web','auth'])->prefix('user')->name('user.')->group(function () {
+Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('dashboard');
     // سایر روت‌های مربوط به Jetstream / profile اینجا هستند
 });

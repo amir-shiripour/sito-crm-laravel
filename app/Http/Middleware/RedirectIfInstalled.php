@@ -24,9 +24,25 @@ class RedirectIfInstalled
 
             Log::debug('[MIDDLEWARE] RedirectIfInstalled: ادامه به route', [
                 'path' => $request->path(),
-                'route_name' => $request->route()?->getName()
+                'route_name' => $request->route()?->getName(),
+                'controller' => $request->route()?->getActionName()
             ]);
-            return $next($request);
+
+            try {
+                $response = $next($request);
+                Log::debug('[MIDDLEWARE] RedirectIfInstalled: پاسخ دریافت شد', [
+                    'status_code' => method_exists($response, 'getStatusCode') ? $response->getStatusCode() : 'unknown'
+                ]);
+                return $response;
+            } catch (\Throwable $e) {
+                Log::error('[MIDDLEWARE] RedirectIfInstalled: خطا در ادامه request', [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                throw $e;
+            }
         } catch (\Exception $e) {
             Log::error('[MIDDLEWARE] RedirectIfInstalled خطا', [
                 'message' => $e->getMessage(),

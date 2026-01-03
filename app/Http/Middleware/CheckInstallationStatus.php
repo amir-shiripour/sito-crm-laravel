@@ -33,12 +33,30 @@ class CheckInstallationStatus
             if ($this->isInstallRoute($request)) {
                 // بله. پس باید سشن را به 'file' تغییر دهیم تا این صفحه کرش نکند.
                 // هر دو روش را برای اطمینان کامل انجام می‌دهیم.
-                \Illuminate\Support\Facades\Log::debug('[MIDDLEWARE] CheckInstallationStatus: مسیر نصب تشخیص داده شد');
+                \Illuminate\Support\Facades\Log::debug('[MIDDLEWARE] CheckInstallationStatus: مسیر نصب تشخیص داده شد', [
+                    'path' => $request->path(),
+                    'route_name' => $request->route()?->getName(),
+                    'controller' => $request->route()?->getActionName()
+                ]);
                 Config::set('session.driver', 'file');
                 session()->setDefaultDriver('file');
 
-                // حالا بگذار درخواست به صفحه نصب‌کننده ادامه یابد.
-                return $next($request);
+                try {
+                    // حالا بگذار درخواست به صفحه نصب‌کننده ادامه یابد.
+                    $response = $next($request);
+                    \Illuminate\Support\Facades\Log::debug('[MIDDLEWARE] CheckInstallationStatus: پاسخ ارسال شد', [
+                        'status_code' => $response->getStatusCode()
+                    ]);
+                    return $response;
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('[MIDDLEWARE] CheckInstallationStatus: خطا در ادامه request', [
+                        'message' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    throw $e;
+                }
             }
 
             // ۴. برنامه نصب نشده و درخواست برای صفحه دیگری است (مثلاً صفحه اصلی).
