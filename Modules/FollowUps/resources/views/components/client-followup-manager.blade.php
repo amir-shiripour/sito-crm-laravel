@@ -1,4 +1,4 @@
-{{-- modules/FollowUps/Resources/views/components/client-followup-manager.blade.php --}}
+{{-- modules/FollowUps/resources/views/components/client-followup-manager.blade.php --}}
 
 @props(['client'])
 <script>

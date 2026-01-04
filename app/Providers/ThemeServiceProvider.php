@@ -42,16 +42,11 @@ class ThemeServiceProvider extends ServiceProvider
             if ($activeTheme) {
                 // ۳. مسیر ویوهای تم فعال را به لاراول اضافه می‌کنیم
                 // مثال: resources/views/themes/corporate
-                // بررسی هر دو مسیر (با حروف بزرگ و کوچک) برای سازگاری با پروژه کلون‌شده
                 $themeViewPath = resource_path('views/themes/' . $activeTheme->directory_name);
-                $themeViewPathCapital = base_path('Resources/views/themes/' . $activeTheme->directory_name);
 
                 if (is_dir($themeViewPath)) {
                     // به لاراول می‌گوییم که *اول* در این مسیر به دنبال ویو بگردد
                     View::addLocation($themeViewPath);
-                } elseif (is_dir($themeViewPathCapital)) {
-                    // اگر مسیر با حروف بزرگ وجود داشت، از آن استفاده می‌کنیم
-                    View::addLocation($themeViewPathCapital);
                 }
 
                 // ۴. متغیر $activeTheme را با تمام ویوها به اشتراک می‌گذاریم

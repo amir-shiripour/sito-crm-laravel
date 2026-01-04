@@ -177,13 +177,10 @@ class InstallController extends Controller
 
             // بررسی وجود view
             $viewPath = resource_path('views/install/step2.blade.php');
-            $viewPathAlt = base_path('Resources/views/install/step2.blade.php');
 
             Log::info('[INSTALL] بررسی مسیر view', [
                 'standard_path' => $viewPath,
-                'exists_standard' => file_exists($viewPath),
-                'alternative_path' => $viewPathAlt,
-                'exists_alternative' => file_exists($viewPathAlt)
+                'exists_standard' => file_exists($viewPath)
             ]);
 
             Log::info('[INSTALL] در حال render کردن view install.step2...');

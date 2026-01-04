@@ -17,8 +17,8 @@
 @source "./resources/views";
 @source "./resources/js";
 @source "./storage/framework/views";
-@source "./Modules/**/Resources/views";
-@source "./Modules/**/Resources/js";
+@source "./Modules/**/resources/views";
+@source "./Modules/**/resources/js";
 
 /* اعمال کردن جهت‌دهی راست‌به‌چپ (RTL) به کل سند HTML
   این کار باعث می‌شود تمام المان‌ها به صورت پیش‌فرض راست‌چین شوند.
