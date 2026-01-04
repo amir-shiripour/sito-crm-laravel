@@ -45,8 +45,11 @@
     </div>
 
     <div class="w-full sm:max-w-xl mt-6 px-6 py-6 bg-white shadow-md overflow-hidden sm:rounded-lg">
-        {{-- محتوای فرم‌های نصب (step1, step2, step3) اینجا قرار می‌گیرد --}}
-        @yield('content')
+        @if (View::hasSection('content'))
+            @yield('content')
+        @else
+            {{ $slot ?? '' }}
+        @endif
     </div>
 </div>
 </body>
