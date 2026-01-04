@@ -19,7 +19,7 @@ class ClientsServiceProvider extends ServiceProvider
 
     public function boot(Router $router)
     {
-        $this->loadViewsFrom(__DIR__ . '/../Resources/views', 'clients');
+        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'clients');
         $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
 
         if (file_exists(__DIR__ . '/../Routes/web.php')) {

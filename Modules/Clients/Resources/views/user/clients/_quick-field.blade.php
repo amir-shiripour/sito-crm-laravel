@@ -58,7 +58,7 @@
 
     if ($type === 'select-province-city') {
     // بارگذاری داده‌های استان و شهر
-    $jsonPath = base_path('Modules/Clients/Resources/data/iran-provinces-cities.json');
+    $jsonPath = base_path('Modules/Clients/resources/data/iran-provinces-cities.json');
     if (file_exists($jsonPath)) {
     $provincesData = json_decode(file_get_contents($jsonPath), true) ?? [];
     }

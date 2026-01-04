@@ -14,10 +14,10 @@ export default {
         './resources/js/**/*.js',
 
         // ⬇️ اضافه کن (ساختار nwidart modules)
-        './Modules/**/Resources/views/**/*.blade.php',
-        './Modules/**/Resources/js/**/*.js',
-        './Modules/**/Resources/**/*.vue', // اگر Vue داری
-        './Modules/**/Resources/**/*.tsx', // اگر React/TSX داری
+        './Modules/**/resources/views/**/*.blade.php',
+        './Modules/**/resources/js/**/*.js',
+        './Modules/**/resources/**/*.vue', // اگر Vue داری
+        './Modules/**/resources/**/*.tsx', // اگر React/TSX داری
     ],
     theme: {
         extend: {

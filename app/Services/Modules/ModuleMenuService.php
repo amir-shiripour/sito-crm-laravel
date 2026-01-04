@@ -9,7 +9,7 @@ class ModuleMenuService
 {
     /**
      * بازگرداندن آیتم‌های منو برای یک کاربر مشخص (فقط از ماژول‌های installed+active)
-     * هر ماژول می‌تواند فایل Resources/menu.php داشته باشد که آرایه‌ای از آیتم‌ها برمی‌گرداند.
+     * هر ماژول می‌تواند فایل resources/menu.php داشته باشد که آرایه‌ای از آیتم‌ها برمی‌گرداند.
      *
      * ساختار بازگشتی:
      * [
@@ -81,7 +81,7 @@ class ModuleMenuService
         foreach ($modules as $module) {
             // مسیر فایل menu در ماژول
             $moduleName = Str::studly($module->slug);
-            $menuPath = base_path("Modules/{$moduleName}/Resources/menu.php");
+            $menuPath = base_path("Modules/{$moduleName}/resources/menu.php");
 
             if (file_exists($menuPath)) {
                 try {

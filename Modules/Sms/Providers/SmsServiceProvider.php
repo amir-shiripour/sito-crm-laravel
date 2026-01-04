@@ -31,7 +31,7 @@ class SmsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
-        $this->loadViewsFrom(__DIR__.'/../Resources/views', 'sms');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'sms');
 
         $this->mapRoutes();
         if ($this->app->runningInConsole()) {

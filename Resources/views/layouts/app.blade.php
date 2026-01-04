@@ -21,7 +21,7 @@
     {{--
       Vite به صورت خودکار فایل‌های CSS و JS را بر اساس تنظیمات rtl ما بارگذاری می‌کند.
     --}}
-    @vite(['Resources/css/app.css', 'Resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Styles -->
     @livewireStyles
