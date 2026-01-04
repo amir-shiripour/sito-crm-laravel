@@ -37,10 +37,6 @@ Route::prefix('user')
             ->name('reminders.bulk-status')
             ->middleware('can:reminders.edit');
 
-        Route::patch('reminders/bulk/status', [ReminderController::class, 'bulkUpdateStatus'])
-            ->name('reminders.bulk-status')
-            ->middleware('can:reminders.edit');
-
         // حذف
         Route::delete('reminders/{reminder}', [ReminderController::class, 'destroy'])
             ->name('reminders.destroy')
