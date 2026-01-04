@@ -80,7 +80,8 @@ class InstallController extends Controller
             $envWriter->overwrite('DB_PORT', $validated['db_port']);
             $envWriter->overwrite('DB_DATABASE', $validated['db_database']);
             $envWriter->overwrite('DB_USERNAME', $validated['db_username']);
-            $password = $validated['db_password'] ? '"' . $validated['db_password'] . '"' : '';
+            // Escape quotes in password and wrap in quotes for .env file
+            $password = $validated['db_password'] ? '"' . str_replace('"', '\\"', $validated['db_password']) . '"' : '';
             $envWriter->overwrite('DB_PASSWORD', $password);
             Log::info('[INSTALL] اطلاعات دیتابیس با موفقیت در فایل .env نوشته شد');
         } catch (\Exception $e) {
