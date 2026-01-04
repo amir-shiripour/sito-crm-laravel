@@ -56,6 +56,29 @@ class Installer extends BaseModuleInstaller
         // اجرای migrate و کارهای پایه از BaseModuleInstaller
         parent::install();
 
+        // ایجاد permissions و نقش‌ها
+        $this->createPermissionsAndRoles();
+    }
+
+    /**
+     * Reset ماژول SMS - بازگرداندن به حالت اولیه با ایجاد مجدد permissions
+     */
+    public function reset(): void
+    {
+        // اجرای reset پایه (backup, migrate-refresh, seed)
+        parent::reset();
+
+        // ایجاد مجدد permissions و نقش‌ها
+        $this->createPermissionsAndRoles();
+
+        Log::info("Sms Installer: reset completed with permissions recreated.");
+    }
+
+    /**
+     * ایجاد permissions و نقش‌ها (برای استفاده در install و reset)
+     */
+    protected function createPermissionsAndRoles(): void
+    {
         $guard = config('auth.defaults.guard', 'web');
 
         // ----- Permissions -----
