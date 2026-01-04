@@ -17,6 +17,8 @@ class RouteServiceProvider extends ServiceProvider
     protected function mapWebRoutes(): void
     {
         Route::middleware(['web', 'auth'])
+            ->prefix('user')
+            ->as('user.')
             ->namespace($this->moduleNamespace)
             ->group(module_path('FollowUps', '/Routes/web.php'));
     }

@@ -10,6 +10,7 @@ class RouteServiceProvider extends ServiceProvider
     public function map(): void
     {
         $this->mapWebRoutes();
+        $this->mapUserRoutes();
         $this->mapApiRoutes();
     }
 
@@ -19,6 +20,14 @@ class RouteServiceProvider extends ServiceProvider
             ->prefix('user')
             ->as('user.')
             ->group(__DIR__ . '/../Routes/web.php');
+    }
+
+    protected function mapUserRoutes(): void
+    {
+        Route::middleware(['web', 'auth'])
+            ->prefix('user')
+            ->as('user.')
+            ->group(__DIR__ . '/../Routes/user.php');
     }
 
     protected function mapApiRoutes(): void
