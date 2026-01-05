@@ -80,21 +80,13 @@ class ModuleMenuService
 
         foreach ($modules as $module) {
             // مسیر فایل menu در ماژول
-            $moduleName = Str::studly($module->slug);
+            // استفاده از name به جای slug چون name در module.json همان نام فولدر است
+            $moduleName = $module->name;
             $menuPath = base_path("Modules/{$moduleName}/resources/menu.php");
-
-            \Log::debug("Checking menu for module: {$moduleName} (slug: {$module->slug})", [
-                'menu_path' => $menuPath,
-                'file_exists' => file_exists($menuPath)
-            ]);
 
             if (file_exists($menuPath)) {
                 try {
                     $menu = include $menuPath;
-                    \Log::debug("Menu loaded for module {$moduleName}", [
-                        'menu_count' => is_array($menu) ? count($menu) : 0
-                    ]);
-
                     if (is_array($menu)) {
                         $moduleItems = [];
                         $moduleSettings = [];
@@ -102,16 +94,7 @@ class ModuleMenuService
                         foreach ($menu as $m) {
                             // اگر permission تعریف شده باشد و کاربر دسترسی ندارد، رد کن
                             if (!empty($m['permission'])) {
-                                $hasPermission = $user->can($m['permission']);
-                                \Log::debug("Checking permission for menu item", [
-                                    'module' => $moduleName,
-                                    'permission' => $m['permission'],
-                                    'user_id' => $user->id,
-                                    'has_permission' => $hasPermission,
-                                    'title' => $m['title'] ?? 'N/A'
-                                ]);
-
-                                if (! $hasPermission) {
+                                if (! $user->can($m['permission'])) {
                                     continue;
                                 }
                             }
@@ -131,25 +114,15 @@ class ModuleMenuService
                         }
 
                         // اگر ماژول بیشتر از یک آیتم غیر تنظیمات دارد، گروه بساز
-                        \Log::debug("Module {$moduleName} menu items count", [
-                            'module_items_count' => count($moduleItems),
-                            'module_settings_count' => count($moduleSettings)
-                        ]);
-
                         if (count($moduleItems) > 1) {
                             $moduleGroups[] = [
                                 'module' => $module->slug,
                                 'module_name' => $module->name,
                                 'items' => $moduleItems,
                             ];
-                            \Log::debug("Module {$moduleName} added as group");
                         } elseif (count($moduleItems) === 1) {
                             // اگر فقط یک آیتم دارد، به لیست آیتم‌های تکی اضافه کن
                             $items[] = $moduleItems[0];
-                            \Log::debug("Module {$moduleName} added as single item", [
-                                'item_title' => $moduleItems[0]['title'] ?? 'N/A',
-                                'item_route' => $moduleItems[0]['route'] ?? 'N/A'
-                            ]);
                         }
 
                         // تمام تنظیمات را به لیست تنظیمات اضافه کن
