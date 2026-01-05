@@ -9,6 +9,17 @@ class RouteServiceProvider extends ServiceProvider
 {
     protected string $moduleNamespace = 'Modules\\FollowUps\\Http\\Controllers';
 
+    /**
+     * Called before routes are registered.
+     */
+    public function boot(): void
+    {
+        parent::boot();
+    }
+
+    /**
+     * Define the routes for the application.
+     */
     public function map(): void
     {
         $this->mapWebRoutes();
