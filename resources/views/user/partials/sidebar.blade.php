@@ -77,8 +77,17 @@
 
     {{-- نمایش آیتم‌های تکی (ماژول‌هایی که یک آیتم غیر تنظیمات دارند) --}}
     @foreach($menuItems as $item)
-        <a href="{{ $item['route'] ? route($item['route']) : '#' }}"
-           class="mt-1 flex items-center gap-3 rounded-lg px-3 py-2 transition-colors {{ request()->routeIs($item['route'] . '*') ? 'bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }} ">
+        @php
+            try {
+            $routeExists = $item['route'] && \Illuminate\Support\Facades\Route::has($item['route']);
+            $routeUrl = $routeExists ? route($item['route']) : '#';
+            } catch (\Exception $e) {
+            $routeExists = false;
+            $routeUrl = '#';
+            }
+        @endphp
+        <a href="{{ $routeUrl }}"
+           class="mt-1 flex items-center gap-3 rounded-lg px-3 py-2 transition-colors {{ $routeExists && request()->routeIs($item['route'] . '*') ? 'bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }} ">
             @php
                 echo $item['icon'];
             @endphp
