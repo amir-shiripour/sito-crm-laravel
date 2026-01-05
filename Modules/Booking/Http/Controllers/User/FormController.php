@@ -10,9 +10,7 @@ use Modules\Booking\Services\FormService;
 
 class FormController extends Controller
 {
-    public function __construct(protected FormService $forms)
-    {
-    }
+    public function __construct(protected FormService $forms) {}
 
     public function index(Request $request)
     {
@@ -120,6 +118,7 @@ class FormController extends Controller
             'schema_json.fields.*.label' => ['required', 'string', 'max:255'],
             'schema_json.fields.*.type' => ['required', 'string', 'max:50'],
             'schema_json.fields.*.required' => ['nullable'],
+            'schema_json.fields.*.collect_from_online' => ['nullable'],
             'schema_json.fields.*.placeholder' => ['nullable', 'string', 'max:255'],
             'schema_json.fields.*.options' => ['nullable', 'string'],
         ]);
@@ -136,13 +135,14 @@ class FormController extends Controller
             $optionsRaw = trim((string) ($field['options'] ?? ''));
             $options = $optionsRaw === ''
                 ? []
-                : array_values(array_filter(array_map('trim', explode(',', $optionsRaw)), fn ($v) => $v !== ''));
+                : array_values(array_filter(array_map('trim', explode(',', $optionsRaw)), fn($v) => $v !== ''));
 
             $normalized[] = [
                 'name' => $name,
                 'label' => $label,
                 'type' => $type ?: 'text',
                 'required' => ! empty($field['required']),
+                'collect_from_online' => ! empty($field['collect_from_online']),
                 'placeholder' => $placeholder ?: null,
                 'options' => $options,
             ];
