@@ -216,6 +216,32 @@
                                     @endif
                                 </div>
                             </div>
+
+                            {{-- کد ملی --}}
+                            @if($client->national_code)
+                                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50">
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">کد ملی</div>
+                                    <div class="font-medium text-gray-900 dark:text-gray-200 dir-ltr text-right flex items-center justify-end gap-2">
+                                        {{ $client->national_code }}
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0c0 .884-.5 2-2 2h4c-1.5 0-2-1.116-2-2z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- شماره پرونده --}}
+                            @if($client->case_number)
+                                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50">
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">شماره پرونده</div>
+                                    <div class="font-medium text-gray-900 dark:text-gray-200 dir-ltr text-right flex items-center justify-end gap-2">
+                                        {{ $client->case_number }}
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     </section>
 
@@ -392,17 +418,25 @@
                     </h3>
 
                     @if(is_array($client->meta) && count($client->meta))
-                        <div class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             @foreach($client->meta as $k => $v)
-                                <div
-                                        class="relative pl-3 before:absolute before:right-0 before:top-1.5 before:h-1.5 before:w-1.5 before:rounded-full before:bg-gray-300 dark:before:bg-gray-600">
-                                    <dt class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ $k }}</dt>
-                                    <dd class="text-sm font-medium text-gray-900 dark:text-gray-200 break-words">
+                                @php
+                                    // پیدا کردن لیبل فیلد از روی فرم فعال
+                                    $fieldLabel = $k;
+                                    if (isset($activeForm) && isset($activeForm->schema['fields'])) {
+                                        $fieldDef = collect($activeForm->schema['fields'])->firstWhere('id', $k);
+                                        if ($fieldDef) {
+                                            $fieldLabel = $fieldDef['label'] ?? $k;
+                                        }
+                                    }
+                                @endphp
+                                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50">
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ $fieldLabel }}</div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-200 break-words">
                                         @if(is_array($v))
                                             <div class="flex flex-wrap gap-1 mt-1">
                                                 @foreach($v as $item)
-                                                    <span
-                                                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white border border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300">
                                                         {{ is_string($item) ? $item : json_encode($item) }}
                                                     </span>
                                                 @endforeach
@@ -414,7 +448,7 @@
                                         @else
                                             {{ $v ?: '—' }}
                                         @endif
-                                    </dd>
+                                    </div>
                                 </div>
                             @endforeach
                         </div>

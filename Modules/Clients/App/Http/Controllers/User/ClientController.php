@@ -94,7 +94,11 @@ class ClientController extends Controller
             'followUps.assignee',
         ]);
 
-        return view('clients::user.clients.show', compact('client'));
+        // دریافت فرم فعال برای نمایش لیبل فیلدها
+        $keyFromSettings = \Modules\Clients\Entities\ClientSetting::getValue('default_form_key');
+        $activeForm = \Modules\Clients\Entities\ClientForm::active($keyFromSettings);
+
+        return view('clients::user.clients.show', compact('client', 'activeForm'));
     }
 
 

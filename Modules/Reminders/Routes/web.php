@@ -33,7 +33,7 @@ Route::prefix('user')
             ->middleware('can:reminders.edit');
 
         // تغییر وضعیت گروهی
-        Route::post('reminders/bulk-status', [ReminderController::class, 'bulkUpdateStatus'])
+        Route::match(['post', 'patch'], 'reminders/bulk-status', [ReminderController::class, 'bulkUpdateStatus'])
             ->name('reminders.bulk-status')
             ->middleware('can:reminders.edit');
 

@@ -19,7 +19,9 @@ use App\Http\Controllers\Admin\CustomFieldController;
 */
 
 // داشبورد اصلی ادمین  =>  GET /admin/dashboard   name: admin.dashboard
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->name('dashboard')
+    ->middleware(['role:super-admin']); // محدودیت دسترسی فقط برای سوپر ادمین
 
 // --- مدیریت کاربران (هسته) => همه زیر: /admin/users  و name: admin.users.* ---
 Route::prefix('users')->name('users.')->middleware(['permission:users.view'])->group(function () {

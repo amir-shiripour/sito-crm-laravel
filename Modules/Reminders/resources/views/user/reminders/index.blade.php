@@ -205,7 +205,7 @@
                                 $remindJalali = $reminder->remind_at ? Jalalian::fromCarbon($reminder->remind_at)->format('Y/m/d H:i') : '—';
                                 $priorityInfo = $task ? taskPriorityLabel($task->priority) : ['label' => '—', 'class' => 'bg-gray-100'];
                             @endphp
-                            <tr class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-colors">
+                            <tr id="reminder-row-{{ $reminder->id }}" class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-colors">
                                 <td class="px-4 py-3 text-center align-middle">
                                     <input type="checkbox" name="ids[]" value="{{ $reminder->id }}" class="reminder-checkbox reminder-checkbox-task rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
                                 </td>
@@ -243,13 +243,12 @@
                                 <td class="px-4 py-3 align-middle text-left">
                                     <div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
                                         @if($reminder->status !== \Modules\Reminders\Entities\Reminder::STATUS_DONE)
-                                            <form method="POST" action="{{ route('user.reminders.update-status', $reminder) }}" class="inline-block">
-                                                @csrf @method('PATCH')
-                                                <input type="hidden" name="status" value="{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}">
-                                                <button type="submit" class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors" title="انجام شد">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                                </button>
-                                            </form>
+                                            <button type="button"
+                                                    onclick="updateSingleStatus('{{ $reminder->id }}', '{{ route('user.reminders.update-status', $reminder) }}', '{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
+                                                    class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors"
+                                                    title="انجام شد">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                            </button>
                                         @endif
                                         <form method="POST" action="{{ route('user.reminders.destroy', $reminder) }}" class="inline-block" onsubmit="return confirm('آیا از حذف این یادآوری اطمینان دارید؟')">
                                             @csrf @method('DELETE')
@@ -325,7 +324,7 @@
                                 $remindJalali = $reminder->remind_at ? Jalalian::fromCarbon($reminder->remind_at)->format('Y/m/d H:i') : '—';
                                 $priorityInfo = $followUp ? taskPriorityLabel($followUp->priority) : ['label' => '—', 'class' => 'bg-gray-100'];
                             @endphp
-                            <tr class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-colors">
+                            <tr id="reminder-row-{{ $reminder->id }}" class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-colors">
                                 <td class="px-4 py-3 text-center align-middle">
                                     <input type="checkbox" name="ids[]" value="{{ $reminder->id }}" class="reminder-checkbox reminder-checkbox-followup rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
                                 </td>
@@ -363,13 +362,12 @@
                                 <td class="px-4 py-3 align-middle text-left">
                                     <div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
                                         @if($reminder->status !== \Modules\Reminders\Entities\Reminder::STATUS_DONE)
-                                            <form method="POST" action="{{ route('user.reminders.update-status', $reminder) }}" class="inline-block">
-                                                @csrf @method('PATCH')
-                                                <input type="hidden" name="status" value="{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}">
-                                                <button type="submit" class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors" title="انجام شد">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                                </button>
-                                            </form>
+                                            <button type="button"
+                                                    onclick="updateSingleStatus('{{ $reminder->id }}', '{{ route('user.reminders.update-status', $reminder) }}', '{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
+                                                    class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors"
+                                                    title="انجام شد">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                            </button>
                                         @endif
                                         <form method="POST" action="{{ route('user.reminders.destroy', $reminder) }}" class="inline-block" onsubmit="return confirm('آیا از حذف اطمینان دارید؟')">
                                             @csrf @method('DELETE')
@@ -397,7 +395,7 @@
         </form>
     </div>
 
-    {{-- اسکریپت‌های مدیریت چک‌باکس --}}
+    {{-- اسکریپت‌های مدیریت چک‌باکس و تغییر وضعیت --}}
     <script>
         function toggleAll(source, type) {
             const selector = type === 'task' ? '.reminder-checkbox-task' : '.reminder-checkbox-followup';
@@ -423,6 +421,53 @@
                 document.getElementById('bulk-status-value').value = status;
                 document.getElementById('bulk-status-form').submit();
             }
+        }
+
+        function updateSingleStatus(reminderId, url, status) {
+            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            const token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    _method: 'PATCH',
+                    status: status
+                })
+            })
+            .then(response => {
+                if (!response.ok) throw response;
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // بروزرسانی DOM
+                    const row = document.getElementById('reminder-row-' + reminderId);
+                    if (row) {
+                        // ستون وضعیت (ایندکس 5)
+                        const statusCell = row.cells[5];
+                        statusCell.innerHTML = `
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                انجام‌شده
+                            </span>
+                        `;
+
+                        // حذف دکمه انجام شد از ستون عملیات (ایندکس 6)
+                        const actionsCell = row.cells[6];
+                        const doneBtn = actionsCell.querySelector('button[onclick^="updateSingleStatus"]');
+                        if (doneBtn) doneBtn.remove();
+                    }
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('خطا در تغییر وضعیت. لطفا مجددا تلاش کنید.');
+            });
         }
     </script>
 @endsection

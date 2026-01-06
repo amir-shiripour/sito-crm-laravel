@@ -493,17 +493,26 @@ class TaskController extends Controller
         // موجودیت مرتبط
         $relatedTarget = $meta['related_target'] ?? null;
 
+        // اگر در meta نبود، از خود task حدس بزن
+        if (! $relatedTarget) {
+            if ($task->related_type === Task::RELATED_TYPE_USER) {
+                $relatedTarget = 'user';
+            } elseif ($task->related_type === Task::RELATED_TYPE_CLIENT) {
+                $relatedTarget = 'client';
+            } else {
+                $relatedTarget = 'none';
+            }
+        }
+
         $relatedUser = null;
         $relatedClient = null;
 
         if ($task->related_type === Task::RELATED_TYPE_USER && $task->related_id) {
             $relatedUser = User::find($task->related_id);
-            $relatedTarget = 'user';
         }
 
         if ($task->related_type === Task::RELATED_TYPE_CLIENT && $task->related_id) {
             $relatedClient = Client::find($task->related_id);
-            $relatedTarget = 'client';
         }
 
         // برای نمایش roleها در بخش meta

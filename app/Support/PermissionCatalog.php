@@ -39,6 +39,30 @@ class PermissionCatalog
                 'title'    => 'تماس‌های مشتریان',
                 'matchers' => ['client-calls.'],
             ],
+            'followups' => [
+                'title'    => 'پیگیری‌ها (FollowUps)',
+                'matchers' => ['followups.'],
+            ],
+            'reminders' => [
+                'title'    => 'یادآوری‌ها (Reminders)',
+                'matchers' => ['reminders.'],
+            ],
+            'sms' => [
+                'title'    => 'پیامک (SMS)',
+                'matchers' => ['sms.'],
+            ],
+            'tasks' => [
+                'title'    => 'وظایف (Tasks)',
+                'matchers' => ['tasks.'],
+            ],
+            'workflows' => [
+                'title'    => 'گردش کار (Workflows)',
+                'matchers' => ['workflows.'],
+            ],
+            'modules' => [
+                'title'    => 'مدیریت ماژول‌ها',
+                'matchers' => ['modules.'],
+            ],
 
             // Booking module (based on Modules/Booking/Installer.php)
             'booking' => [
@@ -132,6 +156,56 @@ class PermissionCatalog
             'client-calls.edit'          => 'ویرایش تماس‌ها',
             'client-calls.delete'        => 'حذف تماس‌ها',
 
+            // FollowUps
+            'followups.manage'        => 'مدیریت پیگیری‌ها',
+            'followups.view'          => 'مشاهده پیگیری‌ها',
+            'followups.view.all'      => 'مشاهده همه پیگیری‌ها',
+            'followups.view.assigned' => 'مشاهده پیگیری‌های مرتبط',
+            'followups.view.own'      => 'مشاهده پیگیری‌های ثبت‌شده توسط خود',
+            'followups.create'        => 'ثبت پیگیری جدید',
+            'followups.edit'          => 'ویرایش پیگیری‌ها',
+            'followups.delete'        => 'حذف پیگیری‌ها',
+
+            // Reminders
+            'reminders.manage'        => 'مدیریت یادآوری‌ها',
+            'reminders.view'          => 'مشاهده یادآوری‌ها',
+            'reminders.view.all'      => 'مشاهده همه یادآوری‌ها',
+            'reminders.view.assigned' => 'مشاهده یادآوری‌های مرتبط',
+            'reminders.view.own'      => 'مشاهده یادآوری‌های ثبت‌شده توسط خود',
+            'reminders.create'        => 'ثبت یادآوری جدید',
+            'reminders.edit'          => 'ویرایش یادآوری‌ها',
+            'reminders.delete'        => 'حذف یادآوری‌ها',
+
+            // SMS
+            'sms.manage'              => 'مدیریت پیامک‌ها',
+            'sms.messages.view'       => 'مشاهده پیامک‌ها',
+            'sms.messages.view.all'   => 'مشاهده همه پیامک‌ها',
+            'sms.messages.view.own'   => 'مشاهده پیامک‌های خود',
+            'sms.messages.create'     => 'ارسال پیامک',
+            'sms.messages.delete'     => 'حذف پیامک‌ها',
+            'sms.templates.manage'    => 'مدیریت قالب‌های پیامک',
+            'sms.settings.manage'     => 'مدیریت تنظیمات پیامک',
+
+            // Tasks
+            'tasks.manage'            => 'مدیریت وظایف',
+            'tasks.view'              => 'مشاهده وظایف',
+            'tasks.view.all'          => 'مشاهده همه وظایف',
+            'tasks.view.assigned'     => 'مشاهده وظایف محول شده',
+            'tasks.view.own'          => 'مشاهده وظایف خود',
+            'tasks.create'            => 'ایجاد وظیفه',
+            'tasks.edit'              => 'ویرایش وظیفه',
+            'tasks.delete'            => 'حذف وظیفه',
+
+            // Workflows
+            'workflows.manage'        => 'مدیریت گردش کار',
+            'workflows.view'          => 'مشاهده گردش کارها',
+            'workflows.create'        => 'ایجاد گردش کار',
+            'workflows.edit'          => 'ویرایش گردش کار',
+            'workflows.delete'        => 'حذف گردش کار',
+
+            // Modules
+            'modules.manage'          => 'مدیریت ماژول‌ها (نصب/حذف)',
+
             // Booking (Modules/Booking/Installer.php)
             'booking.view'                 => 'مشاهده ماژول نوبت‌دهی',
             'booking.manage'               => 'مدیریت کامل نوبت‌دهی',
@@ -205,9 +279,19 @@ class PermissionCatalog
             $out[$k] = ['title' => $g['title'], 'items' => []];
         }
 
+        // دریافت کاربر جاری برای بررسی نقش سوپر ادمین
+        $user = auth()->user();
+        $isSuperAdmin = $user && $user->hasRole('super-admin');
+
         foreach ($permissions as $perm) {
             /** @var Permission $perm */
             $name  = $perm->name;
+
+            // اگر مجوز modules.manage است و کاربر سوپر ادمین نیست، آن را نادیده بگیر
+            if ($name === 'modules.manage' && !$isSuperAdmin) {
+                continue;
+            }
+
             $label = self::translate($name);
             $group = self::detectGroup($name);
 

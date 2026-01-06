@@ -60,5 +60,6 @@ Route::middleware([
 
 Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('dashboard');
+    Route::post('/dashboard/layout', [UserDashboardController::class, 'updateLayout'])->name('dashboard.update-layout');
     // سایر روت‌های مربوط به Jetstream / profile اینجا هستند
 });
