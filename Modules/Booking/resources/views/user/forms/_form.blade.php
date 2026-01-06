@@ -101,6 +101,11 @@
                             @checked(!empty($field['required']))>
                         ضروری
                     </label>
+                    <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                        <input type="checkbox" name="schema_json[fields][{{ $i }}][collect_from_online]" value="1"
+                            @checked(!empty($field['collect_from_online']))>
+                        دریافت از کاربر آنلاین
+                    </label>
                     <button type="button" class="text-rose-600 dark:text-rose-300 text-xs font-medium hover:underline"
                             onclick="this.closest('.form-field-row').remove()">
                         حذف
@@ -176,6 +181,10 @@
                     <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
                         <input type="checkbox" name="schema_json[fields][${index}][required]" value="1">
                         ضروری
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                        <input type="checkbox" name="schema_json[fields][${index}][collect_from_online]" value="1">
+                        دریافت از کاربر آنلاین
                     </label>
                     <button type="button" class="text-rose-600 dark:text-rose-300 text-xs font-medium hover:underline" onclick="this.closest('.form-field-row').remove()">حذف</button>
                 </div>

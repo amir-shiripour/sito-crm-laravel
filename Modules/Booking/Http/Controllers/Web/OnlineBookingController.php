@@ -16,14 +16,37 @@ use Carbon\Carbon;
 
 class OnlineBookingController extends Controller
 {
-    public function index()
+    public function index(BookingEngine $engine)
     {
+        $settings = BookingSetting::current();
+
+        // فقط سرویس‌های فعال را بگیر
         $services = BookingService::query()
             ->where('status', BookingService::STATUS_ACTIVE)
+            ->with(['serviceProviders' => function ($query) {
+                $query->where('is_active', true);
+            }])
             ->orderBy('name')
             ->get();
 
-        return view('booking::web.index', compact('services'));
+        // فیلتر کردن سرویس‌هایی که حداقل یک provider فعال دارند و امکان رزرو آنلاین دارند
+        $availableServices = $services->filter(function ($service) use ($engine, $settings) {
+            // اگر رزرو آنلاین در سطح global غیرفعال است
+            if (!$settings->global_online_booking_enabled) {
+                return false;
+            }
+
+            // بررسی اینکه آیا حداقل یک provider فعال دارد که امکان رزرو آنلاین دارد
+            foreach ($service->serviceProviders as $sp) {
+                if ($sp->is_active && $engine->isOnlineBookingEnabled($service->id, $sp->provider_user_id)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        return view('booking::web.index', ['services' => $availableServices]);
     }
 
     public function service(BookingService $service)
@@ -291,8 +314,18 @@ class OnlineBookingController extends Controller
         if ($service->appointmentForm && is_array($service->appointmentForm->schema_json)) {
             $formData = $request->input('form_data', []);
             $errors = [];
-            foreach ($service->appointmentForm->schema_json as $field) {
+            $fields = $service->appointmentForm->schema_json['fields'] ?? [];
+
+            // فقط فیلدهایی که collect_from_online دارند را بررسی می‌کنیم
+            foreach ($fields as $field) {
                 $name = $field['name'] ?? null;
+                $collectFromOnline = !empty($field['collect_from_online']);
+
+                // اگر فیلد collect_from_online ندارد، از validation رد می‌شود
+                if (!$collectFromOnline) {
+                    continue;
+                }
+
                 $label = $field['label'] ?? $name;
                 $required = $field['required'] ?? false;
 
