@@ -15,7 +15,8 @@ class FollowUpsServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
 
-        $widgetsFile = __DIR__ . '/../config/widgets.php';
+        // Fix: Use 'Config' instead of 'config' to match directory case sensitivity on Linux
+        $widgetsFile = __DIR__ . '/../Config/widgets.php';
 
         if (file_exists($widgetsFile)) {
             $widgets = require $widgetsFile;
