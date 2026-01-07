@@ -132,7 +132,16 @@ class ClientForm extends Component
             $this->case_number   = null;
             $this->notes         = null;
             $this->meta          = [];
-            $this->status_id     = null;
+
+            // تنظیم وضعیت پیش‌فرض روی اولین وضعیت فعال
+            $firstStatus = $statuses->first();
+            $this->status_id = $firstStatus ? $firstStatus->id : null;
+
+            // تنظیم وضعیت پیش‌فرض برای فرم quick
+            if ($this->status_id) {
+                $this->quick['status_id'] = $this->status_id;
+            }
+
             $this->password      = null;
             $this->password_confirmation = null;
             $this->auto_generate_password = false;
@@ -637,6 +646,22 @@ class ClientForm extends Component
         // ✅ در حالت ایجاد سریع: فقط مودال quick بسته شود، بدون ریدایرکت
         if ($this->isQuickMode) {
             $this->dispatch('client-quick-saved', clientId: $client->id, clientName: $client->full_name);
+
+            // اگر ویجت داشبورد است، فیلدها را پاک کن تا برای ثبت بعدی آماده شود
+            if ($this->forWidget) {
+                $this->reset(['quick', 'full_name', 'phone', 'email', 'national_code', 'case_number', 'notes', 'status_id', 'meta', 'password', 'password_confirmation', 'auto_generate_password']);
+                $this->client = new Client();
+
+                // بازنشانی وضعیت پیش‌فرض برای مشتری جدید بعدی
+                $firstStatus = ClientStatus::active()->first();
+                $this->status_id = $firstStatus ? $firstStatus->id : null;
+
+                // اضافه شده: بازنشانی وضعیت پیش‌فرض برای فرم quick
+                if ($this->status_id) {
+                    $this->quick['status_id'] = $this->status_id;
+                }
+            }
+
             return;
         }
 

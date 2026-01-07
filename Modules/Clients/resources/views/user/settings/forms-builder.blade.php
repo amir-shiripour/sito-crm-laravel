@@ -610,7 +610,7 @@
                                     </div>
                                 @endif
 
-                                @if($field['type'] === 'select' || $field['type'] === 'radio')
+                                @if($field['type'] === 'select' || $field['type'] === 'radio' || $field['type'] === 'checkbox')
                                     <div class="space-y-3">
                                         {{-- گزینه استفاده از لیست clients --}}
                                         @if($field['type'] === 'select')

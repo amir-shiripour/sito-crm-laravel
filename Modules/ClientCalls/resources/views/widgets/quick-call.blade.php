@@ -3,12 +3,11 @@
 @php
     use Morilog\Jalali\Jalalian;
     $todayJalali = Jalalian::fromCarbon(now())->format('Y/m/d');
+    $currentTime = now()->format('H:i');
 
     $statusMap = [
-    'planned' => 'برنامه‌ریزی شده',
-    'done' => 'انجام شده',
+    'done' => 'موفق',
     'failed' => 'ناموفق',
-    'canceled'=> 'لغو شده',
     ];
 
     // استایل‌های مشترک
@@ -129,7 +128,7 @@
             </div>
             <div>
                 <label class="{{ $labelClass }}">ساعت <span class="text-red-500">*</span></label>
-                <input type="text" name="call_time" data-jdp-only-time placeholder="14:30" required
+                <input type="text" name="call_time" data-jdp-only-time value="{{ $currentTime }}" placeholder="14:30" required
                        class="{{ $inputClass }} text-center dir-ltr">
             </div>
         </div>
@@ -349,6 +348,7 @@
                     form.reset();
                     // بازگرداندن مقادیر پیش‌فرض
                     form.call_date_jalali.value = '{{ $todayJalali }}';
+                    form.call_time.value = '{{ $currentTime }}';
                     // مشتری را نگه می‌داریم
 
                 } catch (e) {

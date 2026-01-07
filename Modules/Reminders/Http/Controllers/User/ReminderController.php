@@ -243,14 +243,24 @@ class ReminderController extends Controller
         if (! empty($data['remind_at'])) {
             $remindAt = Carbon::parse($data['remind_at']);
         } else {
-            if (empty($data['remind_date_jalali']) || empty($data['remind_time'])) {
+            if (empty($data['remind_date_jalali'])) {
                 throw ValidationException::withMessages([
-                    'remind_date_jalali' => 'تاریخ و ساعت یادآوری الزامی است.',
+                    'remind_date_jalali' => 'تاریخ یادآوری الزامی است.',
                 ]);
             }
 
             $jalali = Jalalian::fromFormat('Y/m/d', $data['remind_date_jalali']);
-            $remindAt = $jalali->toCarbon()->setTimeFromTimeString($data['remind_time']);
+            $remindAt = $jalali->toCarbon();
+
+            // اگر ساعت وارد شده بود، ست کن. وگرنه پیش‌فرض 00:00:00 می‌ماند (یا هر منطق دیگری)
+            if (! empty($data['remind_time'])) {
+                $remindAt->setTimeFromTimeString($data['remind_time']);
+            } else {
+                // مثلاً اگر ساعت ندهد، پیش‌فرض ساعت 9 صبح باشد؟ یا همان 00:00؟
+                // اینجا فرض می‌کنیم اگر ساعت ندهد، همان ابتدای روز (00:00) باشد.
+                // یا می‌توانید یک ساعت پیش‌فرض مثل 09:00 تنظیم کنید:
+                // $remindAt->setTime(9, 0, 0);
+            }
         }
 
         $reminder = Reminder::create([
@@ -361,6 +371,7 @@ class ReminderController extends Controller
             ]);
         }
 
+        // اگر درخواست JSON نبود، ریدایرکت کن به صفحه قبل
         return back()->with('status', 'وضعیت یادآوری به‌روزرسانی شد.');
     }
 

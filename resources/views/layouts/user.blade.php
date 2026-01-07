@@ -132,13 +132,18 @@
     function dashboardLayout() {
         return {
             mobileOpen: false,
-            sidebarCollapsed: false,
+            sidebarCollapsed: false, // پیش‌فرض باز باشد
             theme: localStorage.getItem('theme') || 'system',
             themeIcon: 'system',
 
             init() {
-                // بازیابی حالت سایدبار
-                this.sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === '1';
+                // بازیابی حالت سایدبار (اگر قبلاً ذخیره شده باشد)
+                // اگر ذخیره نشده باشد (null)، پیش‌فرض false (باز) می‌ماند
+                const storedState = localStorage.getItem('sidebarCollapsed');
+                if (storedState !== null) {
+                    this.sidebarCollapsed = storedState === '1';
+                }
+
                 // آیکن تم
                 this.updateThemeIcon();
                 // واکنش به تغییر سیستم
@@ -158,9 +163,13 @@
             },
 
             isMenuOpen(key) {
+                // اگر سایدبار بسته است، هیچ منویی باز نیست
+                if (this.sidebarCollapsed) return false;
                 return localStorage.getItem('menu:'+key) === '1';
             },
             toggleMenu(key) {
+                // اگر سایدبار بسته است، این تابع کار نمی‌کند
+                if (this.sidebarCollapsed) return;
                 const val = this.isMenuOpen(key) ? '0' : '1';
                 localStorage.setItem('menu:'+key, val);
             },
