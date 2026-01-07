@@ -1,4 +1,5 @@
 {{-- clients::user.clients._dynamic-field --}}
+{{-- Cache Buster: {{ time() }} --}}
 @php
     // تعیین ID نهایی فیلد
     $fid = $fid ?? ($field['id'] ?? null);
@@ -518,12 +519,16 @@
         }
     @endphp
 
-    <div class="space-y-3 flex items-center gap-3.5" x-data="{
+    <div class="space-y-3 flex items-center gap-3.5" wire:key="field-{{ $fid }}-province-city" x-data="{
         province: @js($selectedProvince),
         city: @js($selectedCity),
         provinces: @js($provinces),
         cities: @js($cities),
         provincesData: @js($provincesData),
+        searchProvince: '',
+        searchCity: '',
+        openProvince: false,
+        openCity: false,
         init() {
             // بارگذاری اولیه شهرها بر اساس استان انتخاب شده
             if (this.province && this.provincesData[this.province]) {
@@ -534,48 +539,92 @@
             if (this.province && this.provincesData[this.province]) {
                 this.cities = this.provincesData[this.province];
                 this.city = ''; // ریست شهر هنگام تغییر استان
+                this.searchCity = '';
                 this.updateValue();
             } else {
                 this.cities = [];
                 this.city = '';
+                this.searchCity = '';
                 this.updateValue();
             }
         },
         updateValue() {
             const value = JSON.stringify({province: this.province || '', city: this.city || ''});
             @this.set('meta.{{ $fid }}', value);
+        },
+        get filteredProvinces() {
+            if (this.searchProvince === '') return this.provinces;
+            return this.provinces.filter(p => p.includes(this.searchProvince));
+        },
+        get filteredCities() {
+            if (this.searchCity === '') return this.cities;
+            return this.cities.filter(c => c.includes(this.searchCity));
         }
     }" wire:ignore>
-        {{-- سلکتور استان --}}
-        <div class="relative w-full m-0">
-            {{-- <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">استان</label>--}}
-            <select x-model="province" @change="updateCities()" class="{{ $baseInputClass }} appearance-none">
-                <option value="">انتخاب استان...</option>
-                <template x-for="prov in provinces" :key="prov">
-                    <option :value="prov" x-text="prov"></option>
-                </template>
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 ">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {{-- سلکتور استان با جستجو --}}
+        <div class="relative w-full m-0" @click.outside="openProvince = false">
+            <div @click="openProvince = !openProvince"
+                 class="{{ $baseInputClass }} flex items-center justify-between cursor-pointer">
+                <span x-text="province ? province : 'انتخاب استان...'" :class="{'text-gray-400': !province}"></span>
+                <svg class="h-4 w-4 text-gray-500 transition-transform duration-200" :class="{'rotate-180': openProvince}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
             </div>
+
+            <div x-show="openProvince" x-transition
+                 class="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl ring-1 ring-black ring-opacity-5 dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10"
+                 style="display: none;">
+                <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+                    <input type="text" x-model="searchProvince" placeholder="جستجو..."
+                           class="w-full rounded-lg border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                           @click.stop>
+                </div>
+                <ul class="max-h-60 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                    <template x-for="prov in filteredProvinces" :key="prov">
+                        <li @click="province = prov; updateCities(); openProvince = false; searchProvince = ''"
+                            class="cursor-pointer select-none py-2 px-3 text-xs rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                            :class="{'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-900/30 dark:text-indigo-300': province === prov, 'text-gray-700 dark:text-gray-200': province !== prov}">
+                            <span x-text="prov"></span>
+                        </li>
+                    </template>
+                    <li x-show="filteredProvinces.length === 0" class="py-2 px-3 text-xs text-gray-500 dark:text-gray-400 text-center">
+                        موردی یافت نشد
+                    </li>
+                </ul>
+            </div>
         </div>
 
-        {{-- سلکتور شهر --}}
-        <div class="relative w-full">
-            {{-- <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">شهر</label>--}}
-            <select x-model="city" @change="updateValue()" :disabled="!province || cities.length === 0"
-                    class="{{ $baseInputClass }} appearance-none disabled:opacity-50 disabled:cursor-not-allowed">
-                <option value="">انتخاب شهر...</option>
-                <template x-for="city in cities" :key="city">
-                    <option :value="city" x-text="city"></option>
-                </template>
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {{-- سلکتور شهر با جستجو --}}
+        <div class="relative w-full" @click.outside="openCity = false">
+            <div @click="if(province && cities.length > 0) openCity = !openCity"
+                 class="{{ $baseInputClass }} flex items-center justify-between cursor-pointer"
+                 :class="{'opacity-50 cursor-not-allowed': !province || cities.length === 0}">
+                <span x-text="city ? city : 'انتخاب شهر...'" :class="{'text-gray-400': !city}"></span>
+                <svg class="h-4 w-4 text-gray-500 transition-transform duration-200" :class="{'rotate-180': openCity}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
+            </div>
+
+            <div x-show="openCity" x-transition
+                 class="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl ring-1 ring-black ring-opacity-5 dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10"
+                 style="display: none;">
+                <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+                    <input type="text" x-model="searchCity" placeholder="جستجو..."
+                           class="w-full rounded-lg border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                           @click.stop>
+                </div>
+                <ul class="max-h-60 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                    <template x-for="(cityItem, index) in filteredCities" :key="index">
+                        <li @click="city = cityItem; updateValue(); openCity = false; searchCity = ''"
+                            class="cursor-pointer select-none py-2 px-3 text-xs rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                            :class="{'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-900/30 dark:text-indigo-300': city === cityItem, 'text-gray-700 dark:text-gray-200': city !== cityItem}">
+                            <span x-text="cityItem"></span>
+                        </li>
+                    </template>
+                    <li x-show="filteredCities.length === 0" class="py-2 px-3 text-xs text-gray-500 dark:text-gray-400 text-center">
+                        موردی یافت نشد
+                    </li>
+                </ul>
             </div>
         </div>
     </div>

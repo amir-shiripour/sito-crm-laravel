@@ -165,6 +165,16 @@ class FollowUpController extends Controller
             $query->where('priority', $priority);
         }
 
+        // فیلتر نوع موجودیت مرتبط (مثلاً client)
+        if ($relatedType = $request->get('related_type')) {
+            $query->where('related_type', $relatedType);
+        }
+
+        // فیلتر شناسه موجودیت مرتبط (مثلاً id کلاینت)
+        if ($relatedId = $request->get('related_id')) {
+            $query->where('related_id', $relatedId);
+        }
+
         // فیلتر جستجو در عنوان/توضیحات
         if ($q = $request->get('q')) {
             $query->where(function ($qBuilder) use ($q) {
