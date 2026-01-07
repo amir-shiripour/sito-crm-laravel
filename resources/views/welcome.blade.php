@@ -50,7 +50,7 @@
 
         <nav class="flex items-center gap-4">
             @auth
-                <a href="{{ route('admin.dashboard') }}"
+                <a href="{{ auth()->user()->hasRole('super-admin') ? route('admin.dashboard') : route('user.dashboard') }}"
                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-all dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-none">
                     <span>پنل مدیریت</span>
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -114,7 +114,7 @@
                 رزرو آنلاین نوبت
             </a>
             @auth
-                <a href="{{ route('admin.dashboard') }}"
+                <a href="{{ auth()->user()->hasRole('super-admin') ? route('admin.dashboard') : route('user.dashboard') }}"
                    class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white text-gray-700 font-bold text-lg border-2 border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all dark:bg-gray-900 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:border-indigo-500 dark:hover:text-indigo-400 flex items-center justify-center gap-2">
                     ورود به داشبورد
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
