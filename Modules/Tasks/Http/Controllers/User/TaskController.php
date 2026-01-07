@@ -331,7 +331,15 @@ class TaskController extends Controller
             $query->where('priority', $priority);
         }
 
-        // اگر خواستی می‌تونی فیلتر نوع و موجودیت مرتبط رو هم از querystring بگیری
+        // فیلتر نوع موجودیت مرتبط (مثلاً client)
+        if ($relatedType = $request->get('related_type')) {
+            $query->where('related_type', $relatedType);
+        }
+
+        // فیلتر شناسه موجودیت مرتبط (مثلاً id کلاینت)
+        if ($relatedId = $request->get('related_id')) {
+            $query->where('related_id', $relatedId);
+        }
 
         $perPage = config('tasks.default_items_per_page', 15);
         $tasks   = $query->paginate($perPage)->withQueryString();

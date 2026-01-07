@@ -1,4 +1,5 @@
 {{-- clients::user.clients._quick-field --}}
+{{-- Cache Buster: {{ time() }} --}}
 @php
     $type = $field['type'] ?? 'text';
 
@@ -462,7 +463,7 @@
 
 @elseif($type === 'select-province-city')
     {{-- select-province-city --}}
-    <div class="space-y-2 flex items-center gap-2" x-data="{
+    <div class="space-y-2 flex items-center gap-2" wire:key="quick-field-{{ $fid }}-province-city" x-data="{
         province: @js($selectedProvince),
         city: @js($selectedCity),
         provinces: @js($provinces),
@@ -504,8 +505,8 @@
             <select x-model="city" @change="updateValue()" :disabled="!province || cities.length === 0"
                     class="{{ $baseInputClass }} appearance-none text-xs disabled:opacity-50 disabled:cursor-not-allowed">
                 <option value="">شهر...</option>
-                <template x-for="city in cities" :key="city">
-                    <option :value="city" x-text="city"></option>
+                <template x-for="(cityItem, index) in cities" :key="index">
+                    <option :value="cityItem" x-text="cityItem"></option>
                 </template>
             </select>
         </div>

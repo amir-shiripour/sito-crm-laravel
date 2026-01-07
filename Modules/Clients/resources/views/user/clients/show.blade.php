@@ -423,17 +423,28 @@
                                 @php
                                     // پیدا کردن لیبل فیلد از روی فرم فعال
                                     $fieldLabel = $k;
+                                    $fieldType = 'text'; // پیش‌فرض
                                     if (isset($activeForm) && isset($activeForm->schema['fields'])) {
                                         $fieldDef = collect($activeForm->schema['fields'])->firstWhere('id', $k);
                                         if ($fieldDef) {
                                             $fieldLabel = $fieldDef['label'] ?? $k;
+                                            $fieldType = $fieldDef['type'] ?? 'text';
                                         }
                                     }
                                 @endphp
                                 <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50">
                                     <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ $fieldLabel }}</div>
                                     <div class="text-sm font-medium text-gray-900 dark:text-gray-200 break-words">
-                                        @if(is_array($v))
+                                        @if($fieldType === 'select-province-city' && is_string($v))
+                                            @php
+                                                $decoded = json_decode($v, true);
+                                            @endphp
+                                            @if(is_array($decoded))
+                                                {{ $decoded['province'] ?? '' }} - {{ $decoded['city'] ?? '' }}
+                                            @else
+                                                {{ $v }}
+                                            @endif
+                                        @elseif(is_array($v))
                                             <div class="flex flex-wrap gap-1 mt-1">
                                                 @foreach($v as $item)
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white border border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300">
