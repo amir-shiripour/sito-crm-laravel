@@ -89,7 +89,7 @@ class PropertyController extends Controller
             $prefix = $this->getPropertyCodePrefix();
             $data['code'] = $prefix . $data['code'];
 
-            if (Property::where('code', $data['code'])->exists()) {
+            if (Property::withTrashed()->where('code', $data['code'])->exists()) {
                 $errorMsg = 'کد ملک وارد شده (با احتساب پیش‌وند) تکراری است.';
                 if ($request->wantsJson()) {
                     return response()->json(['errors' => ['code' => [$errorMsg]]], 422);
@@ -137,7 +137,39 @@ class PropertyController extends Controller
 
         $data['created_by'] = auth()->id();
 
-        $property = Property::create($data);
+        $property = null;
+        $retryCount = 0;
+        $maxRetries = 3;
+
+        while ($retryCount < $maxRetries) {
+            try {
+                $property = Property::create($data);
+                break;
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ($e->errorInfo[1] == 1062 && strpos($e->getMessage(), 'properties_code_unique') !== false) {
+                    if ($request->input('code_type') === 'auto' || empty($request->input('code'))) {
+                        $data['code'] = $this->generateUniquePropertyCode();
+                        $retryCount++;
+                        continue;
+                    } else {
+                        $errorMsg = 'کد ملک وارد شده تکراری است.';
+                        if ($request->wantsJson()) {
+                            return response()->json(['errors' => ['code' => [$errorMsg]]], 422);
+                        }
+                        return back()->withInput()->with('error', $errorMsg);
+                    }
+                }
+                throw $e;
+            }
+        }
+
+        if (!$property) {
+            $errorMsg = 'خطا در ثبت ملک (کد تکراری). لطفا مجددا تلاش کنید.';
+            if ($request->wantsJson()) {
+                return response()->json(['message' => $errorMsg], 500);
+            }
+            return back()->withInput()->with('error', $errorMsg);
+        }
 
         // Handle Gallery Images
         if ($request->hasFile('gallery_images')) {
@@ -540,7 +572,8 @@ class PropertyController extends Controller
     {
         $prefixPart = $this->getPropertyCodePrefix();
 
-        $lastProperty = Property::where('code', 'like', "{$prefixPart}%")
+        $lastProperty = Property::withTrashed()
+            ->where('code', 'like', "{$prefixPart}%")
             ->orderBy('id', 'desc')
             ->first();
 
@@ -557,7 +590,14 @@ class PropertyController extends Controller
             $newNumber = 1001;
         }
 
-        return $prefixPart . $newNumber;
+        $newCode = $prefixPart . $newNumber;
+
+        while (Property::withTrashed()->where('code', $newCode)->exists()) {
+            $newNumber++;
+            $newCode = $prefixPart . $newNumber;
+        }
+
+        return $newCode;
     }
 
     private function uploadFile($file, $directory)

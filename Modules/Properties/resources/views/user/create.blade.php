@@ -1,125 +1,137 @@
 @extends('layouts.user')
 
 @php
-    $title = 'افزودن ملک جدید - مرحله ۱: مشخصات اصلی';
+    $title = 'افزودن ملک جدید';
+
+    // استایل‌های مشترک
+    $cardClass = "bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-visible transition-all duration-200";
+    $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2";
+    $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-600";
+    $selectClass = $inputClass . " appearance-none cursor-pointer";
 @endphp
 
 @section('content')
 
-<style>
-    /* Fix Geosearch Z-Index & Dark Mode */
-    .leaflet-control-geosearch {
-        z-index: 800;
-    }
-    .leaflet-control-geosearch form {
-        background: white;
-        border-radius: 0.75rem; /* rounded-xl */
-        padding: 0.25rem;
-        border: 1px solid #e5e7eb; /* border-gray-200 */
-        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    }
+    {{-- استایل‌های اختصاصی نقشه برای دارک‌مود --}}
+    <style>
+        .leaflet-control-geosearch form {
+            background: var(--bg-white, #ffffff);
+            border-radius: 0.75rem;
+            padding: 0.25rem;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .dark .leaflet-control-geosearch form {
+            background: #1f2937;
+            border-color: #374151;
+            color: #f3f4f6;
+        }
+        .leaflet-control-geosearch input {
+            color: inherit;
+            background: transparent;
+            border-radius: 0.5rem;
+            height: 2.5rem;
+            font-size: 0.875rem;
+        }
+        .dark .leaflet-control-geosearch input { color: #f3f4f6; }
 
-    /* Dark Mode Styles */
-    .dark .leaflet-control-geosearch form {
-        background: #1f2937; /* bg-gray-800 */
-        border-color: #374151; /* border-gray-700 */
-        color: #f3f4f6; /* text-gray-100 */
-    }
+        .leaflet-control-geosearch .results {
+            background: white;
+            border-radius: 0.5rem;
+            margin-top: 6px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            z-index: 1000 !important;
+        }
+        .dark .leaflet-control-geosearch .results {
+            background: #1f2937;
+            border-color: #374151;
+        }
+        .leaflet-control-geosearch .results > * {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .dark .leaflet-control-geosearch .results > * {
+            border-bottom-color: #374151;
+            color: #d1d5db;
+        }
+        .leaflet-control-geosearch .results > :hover {
+            background-color: #f9fafb;
+        }
+        .dark .leaflet-control-geosearch .results > :hover {
+            background-color: #374151;
+            color: white;
+        }
+        .leaflet-control-geosearch a.reset {
+            background-color: transparent;
+            line-height: 40px;
+            padding: 0 10px;
+            color: #9ca3af;
+        }
+        .leaflet-container {
+            font-family: inherit;
+            z-index: 0;
+        }
+    </style>
 
-    .leaflet-control-geosearch input {
-        color: inherit;
-        background: transparent;
-        border-radius: 0.5rem;
-    }
+    <div class="max-w-7xl mx-auto px-4 py-8" x-data="propertyForm()">
 
-    .dark .leaflet-control-geosearch input {
-        color: #f3f4f6;
-    }
-
-    .leaflet-control-geosearch .results {
-        background: white;
-        border-radius: 0.5rem;
-        margin-top: 4px;
-        border: 1px solid #e5e7eb;
-    }
-
-    .dark .leaflet-control-geosearch .results {
-        background: #1f2937;
-        border-color: #374151;
-    }
-
-    .leaflet-control-geosearch .results > * {
-        padding: 0.5rem 0.75rem;
-        border-bottom: 1px solid #f3f4f6;
-        cursor: pointer;
-    }
-
-    .dark .leaflet-control-geosearch .results > * {
-        border-bottom-color: #374151;
-        color: #d1d5db;
-    }
-
-    .leaflet-control-geosearch .results > :hover {
-        background-color: #f9fafb;
-    }
-
-    .dark .leaflet-control-geosearch .results > :hover {
-        background-color: #374151;
-        color: white;
-    }
-
-    .leaflet-control-geosearch a.reset {
-        color: #6b7280;
-        padding: 0 8px;
-        line-height: 30px;
-    }
-
-    .dark .leaflet-control-geosearch a.reset {
-        color: #9ca3af;
-        background: #1f2937;
-    }
-</style>
-
-<div class="max-w-6xl mx-auto" x-data="propertyForm()">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">افزودن ملک جدید</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">مرحله ۱: مشخصات اصلی ملک را وارد کنید.</p>
+        {{-- هدر صفحه --}}
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                </span>
+                    افزودن ملک جدید
+                </h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mr-10">مشخصات اصلی و تصاویر ملک را وارد کنید.</p>
+            </div>
+        </div>
 
         <form id="property-form" action="{{ route('user.properties.store') }}" method="POST" enctype="multipart/form-data" @submit.prevent="submitForm" novalidate>
             @csrf
-
-            {{-- Hidden Inputs for Map --}}
+            {{-- Inputs مخفی نقشه --}}
             <input type="hidden" name="latitude" x-model="lat">
             <input type="hidden" name="longitude" x-model="lng">
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-12 gap-6">
 
-                {{-- Left Column: Images & File Info --}}
-                <div class="lg:col-span-1 space-y-6">
+                {{-- ستون چپ (مدیا و وضعیت) --}}
+                <div class="col-span-12 lg:col-span-4 space-y-6 order-2 lg:order-1">
 
-                    {{-- Cover Image --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">عکس شاخص (اجباری)</label>
-                        <div
-                            class="relative w-full h-64 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-colors"
-                            :class="coverPreview ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
-                            @dragover.prevent="dragOver = true"
-                            @dragleave.prevent="dragOver = false"
-                            @drop.prevent="handleCoverDrop($event)"
-                        >
+                    {{-- کارت تصویر شاخص --}}
+                    <div class="{{ $cardClass }} p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <label class="{{ $labelClass }} mb-0">تصویر شاخص <span class="text-red-500">*</span></label>
+                            <span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded dark:bg-indigo-900/30 dark:text-indigo-300">Cover</span>
+                        </div>
+
+                        <div class="relative w-full aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden group"
+                             :class="coverPreview ? 'border-indigo-500 bg-white dark:bg-gray-800' : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 hover:border-indigo-400 dark:hover:border-indigo-500'"
+                             @dragover.prevent="dragOver = true"
+                             @dragleave.prevent="dragOver = false"
+                             @drop.prevent="handleCoverDrop($event)">
+
                             <template x-if="!coverPreview">
                                 <div class="text-center p-4 pointer-events-none">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">کلیک یا رها کردن عکس</p>
+                                    <div class="w-12 h-12 mx-auto bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3 text-gray-400 dark:text-gray-500">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    </div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">کلیک یا رها کردن تصویر</p>
                                 </div>
                             </template>
 
                             <template x-if="coverPreview">
-                                <div class="absolute inset-0 w-full h-full">
-                                    <img :src="coverPreview" class="w-full h-full object-cover rounded-xl">
-                                    <button type="button" @click="removeCover" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 shadow-sm">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                    </button>
+                                <div class="absolute inset-0 w-full h-full group-hover:scale-105 transition-transform duration-500">
+                                    <img :src="coverPreview" class="w-full h-full object-cover">
+                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button type="button" @click="removeCover" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-lg transform hover:scale-110 transition-all">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </template>
 
@@ -127,55 +139,57 @@
                         </div>
                     </div>
 
-                    {{-- Gallery Images --}}
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">گالری تصاویر</label>
-                            <label class="inline-flex items-center cursor-pointer">
-                                <input type="checkbox" x-model="enableGallery" class="sr-only peer">
-                                <div class="relative w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                                <span class="ms-2 text-xs font-medium text-gray-500 dark:text-gray-400">فعال</span>
-                            </label>
+                    {{-- کارت گالری --}}
+                    <div class="{{ $cardClass }} p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <label class="{{ $labelClass }} mb-0">گالری تصاویر</label>
+                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="enable_gallery" id="enable_gallery" x-model="enableGallery" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer peer checked:right-0 right-5"/>
+                                <label for="enable_gallery" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 dark:bg-gray-700 cursor-pointer peer-checked:bg-indigo-500"></label>
+                            </div>
                         </div>
 
-                        <div x-show="enableGallery" x-transition>
-                            <div class="grid grid-cols-3 gap-2 mb-2">
+                        <div x-show="enableGallery" x-transition class="space-y-3">
+                            <div class="grid grid-cols-3 gap-3">
                                 <template x-for="(img, index) in galleryPreviews" :key="index">
                                     <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group">
                                         <img :src="img" class="w-full h-full object-cover">
-                                        <button type="button" @click="removeGalleryImage(index)" class="absolute top-1 right-1 bg-red-500/80 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button type="button" @click="removeGalleryImage(index)" class="absolute top-1 right-1 bg-red-500/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                         </button>
                                     </div>
                                 </template>
 
-                                <label class="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-colors">
-                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                <label class="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-colors text-gray-400 hover:text-indigo-500">
+                                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                    <span class="text-[10px]">افزودن</span>
                                     <input type="file" name="gallery_images[]" multiple class="hidden" @change="handleGallerySelect" accept="image/*">
                                 </label>
                             </div>
-                            <p class="text-xs text-gray-500">حداکثر ۱۰ تصویر</p>
+                            <p class="text-[10px] text-gray-400 text-center">حداکثر ۱۰ تصویر قابل بارگذاری است.</p>
                         </div>
                     </div>
 
-                    {{-- Video Upload --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ویدیو ملک (اختیاری)</label>
-                        <div class="relative w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4 flex flex-col items-center justify-center hover:border-indigo-400 transition-colors">
+                    {{-- کارت ویدیو --}}
+                    <div class="{{ $cardClass }} p-5">
+                        <label class="{{ $labelClass }}">ویدیو معرفی (اختیاری)</label>
+                        <div class="relative w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col items-center justify-center hover:border-indigo-400 transition-colors bg-gray-50 dark:bg-gray-900/30 overflow-hidden">
 
                             <template x-if="!videoPreview">
                                 <div class="text-center pointer-events-none">
-                                    <svg class="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                    <p class="mt-1 text-xs text-gray-500">انتخاب ویدیو</p>
+                                    <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    <p class="mt-1 text-[10px] text-gray-500">MP4, MKV (Max 20MB)</p>
                                 </div>
                             </template>
 
                             <template x-if="videoPreview">
-                                <div class="w-full relative">
-                                    <video :src="videoPreview" controls class="w-full rounded-lg max-h-48"></video>
-                                    <button type="button" @click="removeVideo" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 shadow-sm z-10">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                    </button>
+                                <div class="w-full h-full relative group">
+                                    <video :src="videoPreview" class="w-full h-full object-cover"></video>
+                                    <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button type="button" @click="removeVideo" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-sm">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </template>
 
@@ -183,591 +197,659 @@
                         </div>
                     </div>
 
-                    {{-- File Information (Moved Here) --}}
-                    <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">اطلاعات فایل</h3>
+                    {{-- کارت تنظیمات انتشار --}}
+                    <div class="{{ $cardClass }} p-5">
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            تنظیمات انتشار
+                        </h3>
                         <div class="space-y-4">
                             <div>
-                                <label for="registered_at" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاریخ ثبت ملک</label>
-                                <input type="text" id="registered_at" name="registered_at" data-jdp value="{{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d') }}" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
+                                <label class="{{ $labelClass }}">تاریخ ثبت</label>
+                                <input type="text" name="registered_at" data-jdp value="{{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d') }}" class="{{ $inputClass }} text-center">
                             </div>
 
                             <div>
-                                <label for="status_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">وضعیت ملک</label>
-                                <select id="status_id" name="status_id" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">انتخاب کنید</option>
-                                    @foreach($statuses as $status)
-                                        <option value="{{ $status->id }}">{{ $status->name }}</option>
-                                    @endforeach
-                                </select>
+                                <label class="{{ $labelClass }}">وضعیت ملک</label>
+                                <div class="relative">
+                                    <select name="status_id" class="{{ $selectClass }}">
+                                        <option value="">انتخاب کنید...</option>
+                                        @foreach($statuses as $status)
+                                            <option value="{{ $status->id }}">{{ $status->label }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+                                </div>
                             </div>
 
                             <div>
-                                <label for="publication_status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">وضعیت انتشار</label>
-                                <select id="publication_status" name="publication_status" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="published" selected>منتشر شده</option>
-                                    <option value="draft">پیش‌نویس</option>
-                                </select>
+                                <label class="{{ $labelClass }}">وضعیت انتشار</label>
+                                <div class="flex gap-2">
+                                    <label class="flex-1 cursor-pointer">
+                                        <input type="radio" name="publication_status" value="published" class="peer sr-only" checked>
+                                        <div class="text-center py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 peer-checked:bg-emerald-50 peer-checked:text-emerald-600 peer-checked:border-emerald-200 dark:peer-checked:bg-emerald-900/20 dark:peer-checked:border-emerald-800 transition-all text-xs font-bold">
+                                            منتشر شده
+                                        </div>
+                                    </label>
+                                    <label class="flex-1 cursor-pointer">
+                                        <input type="radio" name="publication_status" value="draft" class="peer sr-only">
+                                        <div class="text-center py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 peer-checked:bg-amber-50 peer-checked:text-amber-600 peer-checked:border-amber-200 dark:peer-checked:bg-amber-900/20 dark:peer-checked:border-amber-800 transition-all text-xs font-bold">
+                                            پیش‌نویس
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
 
                             <div>
-                                <label for="confidential_notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">یادداشت‌های محرمانه</label>
-                                <textarea id="confidential_notes" name="confidential_notes" rows="3" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500" placeholder="این یادداشت‌ها فقط برای شما قابل مشاهده است..."></textarea>
+                                <label class="{{ $labelClass }}">یادداشت محرمانه</label>
+                                <textarea name="confidential_notes" rows="3" class="{{ $inputClass }} resize-none" placeholder="یادداشت خصوصی برای مدیران..."></textarea>
                             </div>
                         </div>
                     </div>
 
                 </div>
 
-                {{-- Right Column: Form Fields --}}
-                <div class="lg:col-span-2 space-y-6">
+                {{-- ستون راست (اطلاعات اصلی) --}}
+                <div class="col-span-12 lg:col-span-8 space-y-6 order-1 lg:order-2">
 
-                    {{-- Title & Type --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="md:col-span-2">
-                            <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">عنوان ملک</label>
-                            <input type="text" id="title" name="title" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500" required placeholder="مثلا: آپارتمان ۱۲۰ متری در زعفرانیه">
+                    {{-- کارت اطلاعات پایه --}}
+                    <div class="{{ $cardClass }} p-6">
+                        <div class="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">اطلاعات پایه ملک</h2>
                         </div>
 
-                        <div>
-                            <label for="listing_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">نوع فایل</label>
-                            <select id="listing_type" name="listing_type" x-model="listingType" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="sale">فروش</option>
-                                <option value="presale">پیش‌فروش</option>
-                                <option value="rent">رهن و اجاره</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="property_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">نوع ملک</label>
-                            <select id="property_type" name="property_type" x-model="propertyType" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="apartment">خانه و آپارتمان</option>
-                                <option value="villa">ویلا</option>
-                                <option value="land">زمین و باغ</option>
-                                <option value="office">اداری و تجاری</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="document_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">نوع سند</label>
-                            <select id="document_type" name="document_type" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">انتخاب کنید</option>
-                                @foreach(\Modules\Properties\Entities\Property::DOCUMENT_TYPES as $key => $label)
-                                    <option value="{{ $key }}">{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="building_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ساختمان / برج</label>
-                            <select id="building_id" name="building_id" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">انتخاب کنید</option>
-                                {{-- Options will be loaded dynamically later --}}
-                            </select>
-                        </div>
-
-                        {{-- Conditional Fields --}}
-                        <div x-show="propertyType === 'land'" x-transition class="md:col-span-2">
-                            <label for="usage_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">نوع کاربری</label>
-                            <select id="usage_type" name="usage_type" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">انتخاب کنید</option>
-                                <option value="residential">مسکونی</option>
-                                <option value="industrial">صنعتی</option>
-                                <option value="commercial">اداری و تجاری</option>
-                                <option value="agricultural">کشاورزی</option>
-                            </select>
-                        </div>
-
-                        <div x-show="listingType === 'presale'" x-transition class="md:col-span-2">
-                            <label for="delivery_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاریخ تحویل (حدودی)</label>
-                            <input type="text" id="delivery_date" name="delivery_date" data-jdp class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500" placeholder="تاریخ را انتخاب کنید">
-                        </div>
-                    </div>
-
-                    {{-- Description --}}
-                    <div>
-                        <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">توضیحات</label>
-                        <textarea id="description" name="description" rows="4" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500" placeholder="توضیحات کامل در مورد ملک..."></textarea>
-                    </div>
-
-                    {{-- Code & Category --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="code_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">کد ملک</label>
-                            <div class="flex rounded-xl shadow-sm">
-                                <select id="code_type" x-model="codeType" class="w-auto rounded-r-xl rounded-l-none border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="auto">اتوماتیک</option>
-                                    <option value="manual">دستی</option>
-                                </select>
-                                <input type="text" name="code" x-show="codeType === 'manual'" class="w-full rounded-l-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500" placeholder="کد دلخواه">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="category_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">دسته‌بندی شخصی</label>
-                            <select id="category_id" name="category_id" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">بدون دسته‌بندی</option>
-                                @foreach(\Modules\Properties\Entities\PropertyCategory::where('user_id', auth()->id())->get() as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-
-                    {{-- Owner Selection with Search --}}
-                    <div class="md:col-span-2">
-                        <label for="owner_search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">مالک</label>
-                        <div class="flex gap-2 relative">
-                            <input type="hidden" name="owner_id" x-model="selectedOwnerId">
-                            <div class="relative flex-1">
-                                <input
-                                    type="text"
-                                    id="owner_search"
-                                    x-model="searchQuery"
-                                    @input.debounce.300ms="searchOwners()"
-                                    @focus="if(searchQuery.length >= 2) showResults = true"
-                                    @click.away="showResults = false"
-                                    class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500"
-                                    placeholder="جستجو بر اساس نام یا شماره تماس..."
-                                    autocomplete="off"
-                                >
-                                <div x-show="isSearching" class="absolute left-3 top-3">
-                                    <svg class="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                </div>
-
-                                {{-- Search Results Dropdown --}}
-                                <div x-show="showResults && searchResults.length > 0" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                                    <ul>
-                                        <template x-for="owner in searchResults" :key="owner.id">
-                                            <li @click="selectOwner(owner)" class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                                                <div class="font-medium" x-text="owner.first_name + ' ' + owner.last_name"></div>
-                                                <div class="text-xs text-gray-500" x-text="owner.phone"></div>
-                                            </li>
-                                        </template>
-                                    </ul>
-                                </div>
-                                <div x-show="showResults && searchResults.length === 0 && !isSearching" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-4 text-center text-sm text-gray-500">
-                                    موردی یافت نشد.
-                                </div>
-                            </div>
-
-                            <button type="button" @click="showOwnerModal = true" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    {{-- Map & Address --}}
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">موقعیت روی نقشه</label>
-                            <button type="button" @click="getCurrentLocation" class="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                دریافت موقعیت فعلی
-                            </button>
-                        </div>
-
-                        <div id="map" class="w-full h-64 rounded-xl z-0 border border-gray-300 dark:border-gray-700"></div>
-
-                        <div>
-                            <label for="address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">آدرس دقیق</label>
-                            <textarea id="address" name="address" x-model="address" rows="2" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500" placeholder="آدرس به صورت خودکار از نقشه دریافت می‌شود..."></textarea>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <a href="{{ route('user.properties.index') }}" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">انصراف</a>
-                <button type="submit" class="px-6 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30 flex items-center gap-2" :disabled="isSubmitting">
-                    <span x-show="isSubmitting" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span x-text="isSubmitting ? 'در حال ذخیره...' : 'ذخیره و ادامه (قیمت‌گذاری)'"></span>
-                </button>
-            </div>
-        </form>
-    </div>
-
-    {{-- Create Owner Modal --}}
-    <div x-show="showOwnerModal" class="fixed inset-0 z-[100] overflow-y-auto" style="display: none;">
-        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div x-show="showOwnerModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <div x-show="showOwnerModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
-                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div class="sm:flex sm:items-start">
-                        <div class="mt-3 text-center sm:mt-0 sm:mr-4 sm:text-right w-full">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100" id="modal-title">
-                                افزودن مالک جدید
-                            </h3>
-                            <div class="mt-4 space-y-4">
-                                <template x-if="ownerErrors.general">
-                                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                                        <span class="block sm:inline" x-text="ownerErrors.general[0]"></span>
-                                    </div>
-                                </template>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">نام</label>
-                                        <input type="text" x-model="newOwner.first_name" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                        <template x-if="ownerErrors.first_name">
-                                            <p class="text-red-500 text-xs mt-1" x-text="ownerErrors.first_name[0]"></p>
-                                        </template>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">نام خانوادگی</label>
-                                        <input type="text" x-model="newOwner.last_name" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                        <template x-if="ownerErrors.last_name">
-                                            <p class="text-red-500 text-xs mt-1" x-text="ownerErrors.last_name[0]"></p>
-                                        </template>
-                                    </div>
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div class="md:col-span-3">
+                                    <label class="{{ $labelClass }}">عنوان ملک <span class="text-red-500">*</span></label>
+                                    <input type="text" name="title" class="{{ $inputClass }}" required placeholder="مثلاً: آپارتمان ۱۲۰ متری نوساز در خیابان اصلی">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">شماره تماس</label>
-                                    <input type="text" x-model="newOwner.phone" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <template x-if="ownerErrors.phone">
-                                        <p class="text-red-500 text-xs mt-1" x-text="ownerErrors.phone[0]"></p>
-                                    </template>
+                                    <label class="{{ $labelClass }}">نوع فایل</label>
+                                    <select name="listing_type" x-model="listingType" class="{{ $selectClass }}">
+                                        <option value="sale">فروش</option>
+                                        <option value="presale">پیش‌فروش</option>
+                                        <option value="rent">رهن و اجاره</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label class="{{ $labelClass }}">نوع ملک</label>
+                                    <select name="property_type" x-model="propertyType" class="{{ $selectClass }}">
+                                        <option value="apartment">خانه و آپارتمان</option>
+                                        <option value="villa">ویلا و باغچه</option>
+                                        <option value="land">زمین و کلنگی</option>
+                                        <option value="office">اداری و تجاری</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="{{ $labelClass }}">نوع سند</label>
+                                    <select name="document_type" class="{{ $selectClass }}">
+                                        <option value="">انتخاب کنید...</option>
+                                        @foreach(\Modules\Properties\Entities\Property::DOCUMENT_TYPES as $key => $label)
+                                            <option value="{{ $key }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="{{ $labelClass }}">ساختمان / برج</label>
+                                    <select name="building_id" class="{{ $selectClass }}">
+                                        <option value="">انتخاب کنید (اختیاری)</option>
+                                        {{-- Options loaded dynamically --}}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- فیلدهای شرطی --}}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" x-show="propertyType === 'land' || listingType === 'presale'" x-transition>
+                                <div x-show="propertyType === 'land'">
+                                    <label class="{{ $labelClass }}">نوع کاربری</label>
+                                    <select name="usage_type" class="{{ $selectClass }}">
+                                        <option value="">انتخاب کنید...</option>
+                                        <option value="residential">مسکونی</option>
+                                        <option value="industrial">صنعتی</option>
+                                        <option value="commercial">اداری / تجاری</option>
+                                        <option value="agricultural">کشاورزی</option>
+                                    </select>
+                                </div>
+                                <div x-show="listingType === 'presale'">
+                                    <label class="{{ $labelClass }}">تاریخ تحویل</label>
+                                    <input type="text" name="delivery_date" data-jdp class="{{ $inputClass }} text-center" placeholder="1404/01/01">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="{{ $labelClass }}">توضیحات تکمیلی</label>
+                                <textarea name="description" rows="4" class="{{ $inputClass }} resize-none leading-relaxed" placeholder="جزئیات بیشتر درباره امکانات، دسترسی‌ها و شرایط ملک..."></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">
+                                <div>
+                                    <label class="{{ $labelClass }}">کد ملک</label>
+                                    <div class="flex">
+                                        <select x-model="codeType" class="{{ $selectClass }} rounded-l-none border-l-0 w-28 bg-white dark:bg-gray-800">
+                                            <option value="auto">اتوماتیک</option>
+                                            <option value="manual">دستی</option>
+                                        </select>
+                                        <input type="text" name="code" x-show="codeType === 'manual'" class="{{ $inputClass }} rounded-r-none" placeholder="کد دلخواه">
+                                        <div x-show="codeType === 'auto'" class="{{ $inputClass }} rounded-r-none bg-gray-100 text-gray-500 flex items-center justify-center cursor-not-allowed dark:bg-gray-800 dark:text-gray-500">
+                                            تولید خودکار توسط سیستم
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="{{ $labelClass }}">دسته‌بندی داخلی</label>
+                                    <select name="category_id" class="{{ $selectClass }} bg-white dark:bg-gray-800">
+                                        <option value="">بدون دسته‌بندی</option>
+                                        @foreach(\Modules\Properties\Entities\PropertyCategory::where('user_id', auth()->id())->get() as $category)
+                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    {{-- کارت مالک --}}
+                    <div class="{{ $cardClass }} p-6 overflow-visible">
+                        <div class="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">اطلاعات مالک</h2>
+                        </div>
+
+                        <div class="relative">
+                            <label class="{{ $labelClass }}">جستجو یا انتخاب مالک</label>
+                            <div class="flex gap-2">
+                                <input type="hidden" name="owner_id" x-model="selectedOwnerId">
+
+                                <div class="relative flex-1 group">
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    </div>
+                                    <input type="text"
+                                           x-model="searchQuery"
+                                           @input.debounce.300ms="searchOwners()"
+                                           @focus="if(searchQuery.length >= 2) showResults = true"
+                                           @click.outside="showResults = false"
+                                           class="{{ $inputClass }} pr-10"
+                                           placeholder="نام، نام خانوادگی یا شماره تماس..."
+                                           autocomplete="off">
+
+                                    {{-- Loading Indicator --}}
+                                    <div x-show="isSearching" class="absolute left-3 top-2.5">
+                                        <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+
+                                    {{-- Results Dropdown --}}
+                                    <div x-show="showResults && searchResults.length > 0"
+                                         x-transition:enter="transition ease-out duration-100"
+                                         x-transition:enter-start="opacity-0 translate-y-2"
+                                         x-transition:enter-end="opacity-100 translate-y-0"
+                                         class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                        <ul class="py-1">
+                                            <template x-for="owner in searchResults" :key="owner.id">
+                                                <li @click="selectOwner(owner)" class="px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors group/item">
+                                                    <div class="flex items-center justify-between">
+                                                        <div class="flex flex-col">
+                                                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200 group-hover/item:text-indigo-600 dark:group-hover/item:text-indigo-400" x-text="owner.first_name + ' ' + owner.last_name"></span>
+                                                            <span class="text-xs text-gray-500 dark:text-gray-400 dir-ltr text-right mt-0.5" x-text="owner.phone"></span>
+                                                        </div>
+                                                        <svg class="w-4 h-4 text-gray-300 group-hover/item:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                    </div>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                    <div x-show="showResults && searchResults.length === 0 && !isSearching" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 text-center">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">مالکی با این مشخصات یافت نشد.</p>
+                                    </div>
+                                </div>
+
+                                <button type="button" @click="showOwnerModal = true" class="px-4 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors border border-indigo-100 dark:border-indigo-800" title="افزودن مالک جدید">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- کارت نقشه --}}
+                    <div class="{{ $cardClass }} p-6">
+                        <div class="flex items-center justify-between gap-2 mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-white">موقعیت مکانی</h2>
+                            </div>
+                            <button type="button" @click="getCurrentLocation" class="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                دریافت لوکیشن من
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div id="map" class="w-full h-80 rounded-2xl z-0 border border-gray-200 dark:border-gray-600 shadow-inner"></div>
+
+                            <div>
+                                <label class="{{ $labelClass }}">آدرس دقیق</label>
+                                <div class="relative">
+                                    <textarea name="address" x-model="address" rows="2" class="{{ $inputClass }} resize-none text-right pr-10 leading-relaxed" placeholder="آدرس به صورت خودکار از روی نقشه دریافت می‌شود..."></textarea>
+                                    <div class="absolute right-3 top-3 text-gray-400">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
-                <div class="bg-gray-50 dark:bg-gray-700/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button" @click="createOwner" :disabled="isSavingOwner" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
-                        <span x-show="!isSavingOwner">ذخیره</span>
-                        <span x-show="isSavingOwner">در حال ذخیره...</span>
-                    </button>
-                    <button type="button" @click="showOwnerModal = false" class="mt-3 w-full inline-flex justify-center rounded-xl border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+
+            </div>
+
+            {{-- دکمه‌های فوتر --}}
+            <div class="fixed bottom-0 left-0 right-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 px-4 py-4">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <a href="{{ route('user.properties.index') }}" class="px-6 py-2.5 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors">
                         انصراف
+                    </a>
+                    <button type="submit"
+                            class="px-8 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/50 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                            :disabled="isSubmitting"
+                            :class="{'opacity-70 cursor-not-allowed': isSubmitting}">
+                        <span x-show="isSubmitting" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        <span x-text="isSubmitting ? 'در حال پردازش...' : 'ذخیره و ادامه (قیمت‌گذاری)'"></span>
+                        <svg x-show="!isSubmitting" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                     </button>
+                </div>
+            </div>
+        </form>
+
+        {{-- مدال افزودن مالک --}}
+        <div x-show="showOwnerModal"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-[100] overflow-y-auto"
+             style="display: none;">
+
+            <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="showOwnerModal = false"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div x-show="showOwnerModal"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-right shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-gray-100 dark:border-gray-700">
+
+                    <div class="bg-gray-50/50 dark:bg-gray-900/50 px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                            افزودن مالک جدید
+                        </h3>
+                        <button @click="showOwnerModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    <div class="px-6 py-6 space-y-5">
+                        {{-- نمایش خطاهای عمومی --}}
+                        <template x-if="ownerErrors.general">
+                            <div class="bg-red-50 border border-red-100 text-red-700 px-4 py-3 rounded-xl text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-300">
+                                <span x-text="ownerErrors.general[0]"></span>
+                            </div>
+                        </template>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="{{ $labelClass }}">نام</label>
+                                <input type="text" x-model="newOwner.first_name" class="{{ $inputClass }}">
+                                <template x-if="ownerErrors.first_name">
+                                    <p class="text-red-500 text-xs mt-1" x-text="ownerErrors.first_name[0]"></p>
+                                </template>
+                            </div>
+                            <div>
+                                <label class="{{ $labelClass }}">نام خانوادگی</label>
+                                <input type="text" x-model="newOwner.last_name" class="{{ $inputClass }}">
+                                <template x-if="ownerErrors.last_name">
+                                    <p class="text-red-500 text-xs mt-1" x-text="ownerErrors.last_name[0]"></p>
+                                </template>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="{{ $labelClass }}">شماره تماس</label>
+                            <input type="text" x-model="newOwner.phone" class="{{ $inputClass }} dir-ltr text-left" placeholder="0912...">
+                            <template x-if="ownerErrors.phone">
+                                <p class="text-red-500 text-xs mt-1" x-text="ownerErrors.phone[0]"></p>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-gray-900/30 px-6 py-4 flex flex-row-reverse gap-3 border-t border-gray-100 dark:border-gray-700">
+                        <button type="button" @click="createOwner" :disabled="isSavingOwner"
+                                class="inline-flex w-full justify-center rounded-xl border border-transparent bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:ml-3 sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed">
+                            <span x-show="!isSavingOwner">ثبت و انتخاب</span>
+                            <span x-show="isSavingOwner" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            در حال ذخیره...
+                        </span>
+                        </button>
+                        <button type="button" @click="showOwnerModal = false"
+                                class="mt-3 inline-flex w-full justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
+                            انصراف
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+
     </div>
-</div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        jalaliDatepicker.startWatch({
-            minDate: "attr",
-            maxDate: "attr"
-        });
-    });
-
-    function propertyForm() {
-        return {
-            listingType: 'sale',
-            propertyType: 'apartment',
-            codeType: 'auto',
-            isSubmitting: false,
-
-            // Image Upload
-            coverPreview: null,
-            enableGallery: false,
-            galleryPreviews: [],
-            galleryFiles: [], // To store File objects
-
-            // Video Upload
-            videoPreview: null,
-
-            // Map
-            map: null,
-            marker: null,
-            lat: 35.6892, // Default Tehran
-            lng: 51.3890,
-            address: '',
-
-            // Owner Management
-            searchQuery: '',
-            searchResults: [],
-            showResults: false,
-            selectedOwnerId: '',
-            isSearching: false,
-            showOwnerModal: false,
-            newOwner: {
-                first_name: '',
-                last_name: '',
-                phone: ''
-            },
-            ownerErrors: {},
-            isSavingOwner: false,
-
-            init() {
-                this.initMap();
-                this.$watch('showOwnerModal', (value) => {
-                    if (value) {
-                        this.ownerErrors = {};
-                    }
-                });
-            },
-
-            // --- Owner Search & Creation ---
-            async searchOwners() {
-                if (this.searchQuery.length < 2) {
-                    this.searchResults = [];
-                    this.showResults = false;
-                    return;
-                }
-
-                this.isSearching = true;
-                try {
-                    const response = await fetch(`{{ route('user.properties.owners.search') }}?q=${this.searchQuery}`);
-                    this.searchResults = await response.json();
-                    this.showResults = true;
-                } catch (error) {
-                    console.error('Search error:', error);
-                } finally {
-                    this.isSearching = false;
-                }
-            },
-
-            selectOwner(owner) {
-                this.selectedOwnerId = owner.id;
-                this.searchQuery = `${owner.first_name} ${owner.last_name} (${owner.phone})`;
-                this.showResults = false;
-            },
-
-            async createOwner() {
-                this.ownerErrors = {};
-                this.isSavingOwner = true;
-
-                try {
-                    const response = await fetch('{{ route("user.properties.owners.store") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(this.newOwner)
-                    });
-
-                    const data = await response.json();
-
-                    if (response.ok && data.success) {
-                        this.selectOwner(data.owner);
-                        this.showOwnerModal = false;
-                        this.newOwner = { first_name: '', last_name: '', phone: '' };
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'success', text: 'مالک جدید با موفقیت ایجاد شد.' } }));
-                    } else if (response.status === 422) {
-                        this.ownerErrors = data.errors;
-                    } else {
-                        this.ownerErrors.general = [data.message || 'یک خطای غیرمنتظره رخ داد.'];
-                    }
-                } catch (error) {
-                    console.error('Error creating owner:', error);
-                    this.ownerErrors.general = ['خطا در برقراری ارتباط با سرور.'];
-                } finally {
-                    this.isSavingOwner = false;
-                }
-            },
-
-            // --- Image Handling ---
-            handleCoverSelect(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    this.previewFile(file, (url) => this.coverPreview = url);
-                }
-            },
-            handleCoverDrop(e) {
-                const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('image/')) {
-                    const input = document.getElementById('cover_image');
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(file);
-                    input.files = dataTransfer.files;
-                    this.previewFile(file, (url) => this.coverPreview = url);
-                }
-            },
-            removeCover() {
-                this.coverPreview = null;
-                document.getElementById('cover_image').value = '';
-            },
-
-            handleGallerySelect(e) {
-                const files = Array.from(e.target.files);
-                this.processGalleryFiles(files);
-            },
-            processGalleryFiles(files) {
-                if (this.galleryPreviews.length + files.length > 10) {
-                    window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'حداکثر ۱۰ تصویر مجاز است.' } }));
-                    return;
-                }
-                files.forEach(file => {
-                    this.galleryFiles.push(file);
-                    this.previewFile(file, (url) => this.galleryPreviews.push(url));
-                });
-                this.updateGalleryInput();
-            },
-            updateGalleryInput() {
-                const input = document.querySelector('input[name="gallery_images[]"]');
-                const dataTransfer = new DataTransfer();
-                this.galleryFiles.forEach(file => dataTransfer.items.add(file));
-                input.files = dataTransfer.files;
-            },
-            removeGalleryImage(index) {
-                this.galleryPreviews.splice(index, 1);
-                this.galleryFiles.splice(index, 1);
-                this.updateGalleryInput();
-            },
-            previewFile(file, callback) {
-                const reader = new FileReader();
-                reader.onload = (e) => callback(e.target.result);
-                reader.readAsDataURL(file);
-            },
-
-            // --- Video Handling ---
-            handleVideoSelect(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const url = URL.createObjectURL(file);
-                    this.videoPreview = url;
-                }
-            },
-            removeVideo() {
-                this.videoPreview = null;
-                document.getElementById('video').value = '';
-            },
-
-            // --- Map Handling ---
-            initMap() {
-                this.map = L.map('map').setView([this.lat, this.lng], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(this.map);
-
-                // Add Search Control
-                const provider = new OpenStreetMapProvider();
-                const searchControl = new GeoSearchControl({
-                    provider: provider,
-                    style: 'bar',
-                    searchLabel: 'جستجوی آدرس...',
-                    notFoundMessage: 'آدرس یافت نشد',
-                    showMarker: false, // We handle marker manually
-                    retainZoomLevel: false,
-                    animateZoom: true,
-                    autoClose: true,
-                });
-                this.map.addControl(searchControl);
-
-                // Handle Search Result
-                this.map.on('geosearch/showlocation', (result) => {
-                    const { x, y, label } = result.location;
-                    this.updateLocation(y, x); // y=lat, x=lng
-                });
-
-                this.map.on('click', (e) => {
-                    this.updateLocation(e.latlng.lat, e.latlng.lng);
-                });
-            },
-            updateLocation(lat, lng) {
-                this.lat = lat;
-                this.lng = lng;
-                if (this.marker) {
-                    this.marker.setLatLng([lat, lng]);
-                } else {
-                    this.marker = L.marker([lat, lng]).addTo(this.map);
-                }
-                this.getAddress(lat, lng);
-            },
-            getCurrentLocation() {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition((position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        this.map.setView([lat, lng], 15);
-                        this.updateLocation(lat, lng);
-                    }, (error) => {
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'خطا در دریافت موقعیت: ' + error.message } }));
-                    });
-                } else {
-                    window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'مرورگر شما از موقعیت مکانی پشتیبانی نمی‌کند.' } }));
-                }
-            },
-            async getAddress(lat, lng) {
-                this.address = 'در حال دریافت آدرس...';
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fa`);
-                    const data = await response.json();
-                    if (data && data.address) {
-                        const addr = data.address;
-                        const state = addr.state || '';
-                        const city = addr.city || addr.town || addr.village || addr.county || '';
-                        const details = [];
-                        if (addr.suburb) details.push(addr.suburb);
-                        if (addr.neighbourhood) details.push(addr.neighbourhood);
-                        if (addr.district) details.push(addr.district);
-                        if (addr.road) details.push(addr.road);
-                        if (addr.pedestrian) details.push(addr.pedestrian);
-                        if (addr.house_number) details.push('پلاک ' + addr.house_number);
-                        const uniqueDetails = [...new Set(details)].filter(Boolean);
-                        const exactAddress = uniqueDetails.join('، ');
-                        const parts = [state, city, exactAddress].filter(Boolean);
-                        this.address = parts.join('، ');
-                    } else if (data && data.display_name) {
-                        this.address = data.display_name;
-                    } else {
-                        this.address = 'آدرس یافت نشد';
-                    }
-                } catch (error) {
-                    console.error('Error fetching address:', error);
-                    this.address = 'خطا در دریافت آدرس';
-                }
-            },
-
-            async submitForm(e) {
-                if (this.isSubmitting) return;
-                this.isSubmitting = true;
-
-                const form = e.target;
-                const formData = new FormData(form);
-
-                try {
-                    const response = await fetch(form.action, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    const data = await response.json();
-
-                    if (response.ok) {
-                        // Success
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'success', text: data.message || 'عملیات با موفقیت انجام شد.' } }));
-                        if (data.redirect_url) {
-                            setTimeout(() => {
-                                window.location.href = data.redirect_url;
-                            }, 1000);
-                        }
-                    } else {
-                        // Validation or Server Error
-                        if (data.errors) {
-                            Object.values(data.errors).flat().forEach(error => {
-                                window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: error } }));
-                            });
-                        } else {
-                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: data.message || 'خطایی رخ داده است.' } }));
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'خطا در برقراری ارتباط با سرور.' } }));
-                } finally {
-                    this.isSubmitting = false;
-                }
+    {{-- اسکریپت‌های مربوط به نقشه و فرم --}}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if(typeof jalaliDatepicker !== 'undefined') {
+                jalaliDatepicker.startWatch({ minDate: "attr", maxDate: "attr" });
             }
+        });
+
+        function propertyForm() {
+            return {
+                listingType: 'sale',
+                propertyType: 'apartment',
+                codeType: 'auto',
+                isSubmitting: false,
+
+                // مدیا
+                coverPreview: null,
+                enableGallery: false,
+                galleryPreviews: [],
+                galleryFiles: [],
+                videoPreview: null,
+
+                // نقشه
+                map: null,
+                marker: null,
+                lat: 35.6892,
+                lng: 51.3890,
+                address: '',
+
+                // مالک
+                searchQuery: '',
+                searchResults: [],
+                showResults: false,
+                selectedOwnerId: '',
+                isSearching: false,
+                showOwnerModal: false,
+                newOwner: { first_name: '', last_name: '', phone: '' },
+                ownerErrors: {},
+                isSavingOwner: false,
+
+                init() {
+                    this.initMap();
+                    this.$watch('showOwnerModal', (value) => {
+                        if (value) this.ownerErrors = {};
+                    });
+                },
+
+                // --- جستجو و ایجاد مالک ---
+                async searchOwners() {
+                    if (this.searchQuery.length < 2) {
+                        this.searchResults = [];
+                        this.showResults = false;
+                        return;
+                    }
+                    this.isSearching = true;
+                    try {
+                        const response = await fetch(`{{ route('user.properties.owners.search') }}?q=${this.searchQuery}`);
+                        const data = await response.json();
+                        this.searchResults = data.data || data; // هندل کردن ساختار ریسپانس
+                        this.showResults = true;
+                    } catch (error) {
+                        console.error('Search error:', error);
+                    } finally {
+                        this.isSearching = false;
+                    }
+                },
+
+                selectOwner(owner) {
+                    this.selectedOwnerId = owner.id;
+                    this.searchQuery = `${owner.first_name} ${owner.last_name} (${owner.phone})`;
+                    this.showResults = false;
+                },
+
+                async createOwner() {
+                    this.ownerErrors = {};
+                    this.isSavingOwner = true;
+                    try {
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                        const response = await fetch('{{ route("user.properties.owners.store") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(this.newOwner)
+                        });
+                        const data = await response.json();
+                        if (response.ok && data.success) {
+                            this.selectOwner(data.owner);
+                            this.showOwnerModal = false;
+                            this.newOwner = { first_name: '', last_name: '', phone: '' };
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'success', text: 'مالک ایجاد شد.' } }));
+                        } else if (response.status === 422) {
+                            this.ownerErrors = data.errors;
+                        } else {
+                            this.ownerErrors.general = [data.message || 'خطای ناشناخته'];
+                        }
+                    } catch (error) {
+                        this.ownerErrors.general = ['خطا در ارتباط با سرور'];
+                    } finally {
+                        this.isSavingOwner = false;
+                    }
+                },
+
+                // --- هندلینگ تصاویر ---
+                handleCoverSelect(e) {
+                    const file = e.target.files[0];
+                    if (file) this.previewFile(file, (url) => this.coverPreview = url);
+                },
+                handleCoverDrop(e) {
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        const input = document.getElementById('cover_image');
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        input.files = dt.files;
+                        this.previewFile(file, (url) => this.coverPreview = url);
+                    }
+                },
+                removeCover() {
+                    this.coverPreview = null;
+                    document.getElementById('cover_image').value = '';
+                },
+                handleGallerySelect(e) {
+                    const files = Array.from(e.target.files);
+                    this.processGalleryFiles(files);
+                },
+                processGalleryFiles(files) {
+                    if (this.galleryPreviews.length + files.length > 10) {
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'حداکثر ۱۰ تصویر مجاز است.' } }));
+                        return;
+                    }
+                    files.forEach(file => {
+                        this.galleryFiles.push(file);
+                        this.previewFile(file, (url) => this.galleryPreviews.push(url));
+                    });
+                    this.updateGalleryInput();
+                },
+                updateGalleryInput() {
+                    const input = document.querySelector('input[name="gallery_images[]"]');
+                    const dt = new DataTransfer();
+                    this.galleryFiles.forEach(file => dt.items.add(file));
+                    input.files = dt.files;
+                },
+                removeGalleryImage(index) {
+                    this.galleryPreviews.splice(index, 1);
+                    this.galleryFiles.splice(index, 1);
+                    this.updateGalleryInput();
+                },
+                previewFile(file, callback) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => callback(e.target.result);
+                    reader.readAsDataURL(file);
+                },
+
+                // --- هندلینگ ویدیو ---
+                handleVideoSelect(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        this.videoPreview = URL.createObjectURL(file);
+                    }
+                },
+                removeVideo() {
+                    this.videoPreview = null;
+                    document.getElementById('video').value = '';
+                },
+
+                // --- نقشه ---
+                initMap() {
+                    // اطمینان از لود شدن کتابخانه لیفلت
+                    if (typeof L === 'undefined') return;
+
+                    this.map = L.map('map').setView([this.lat, this.lng], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(this.map);
+
+                    // جستجوگر آدرس
+                    if (typeof GeoSearchControl !== 'undefined' && typeof OpenStreetMapProvider !== 'undefined') {
+                        const provider = new OpenStreetMapProvider();
+                        const searchControl = new GeoSearchControl({
+                            provider: provider,
+                            style: 'bar',
+                            searchLabel: 'جستجوی آدرس...',
+                            notFoundMessage: 'یافت نشد',
+                            showMarker: false,
+                            retainZoomLevel: false,
+                            animateZoom: true,
+                            autoClose: true,
+                        });
+                        this.map.addControl(searchControl);
+                    }
+
+                    this.map.on('geosearch/showlocation', (result) => {
+                        const { x, y } = result.location;
+                        this.updateLocation(y, x);
+                    });
+
+                    this.map.on('click', (e) => {
+                        this.updateLocation(e.latlng.lat, e.latlng.lng);
+                    });
+
+                    // مارکر اولیه
+                    this.updateLocation(this.lat, this.lng);
+                },
+                updateLocation(lat, lng) {
+                    this.lat = lat;
+                    this.lng = lng;
+                    if (this.marker) {
+                        this.marker.setLatLng([lat, lng]);
+                    } else {
+                        this.marker = L.marker([lat, lng]).addTo(this.map);
+                    }
+                    this.getAddress(lat, lng);
+                },
+                getCurrentLocation() {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition((pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            this.map.setView([lat, lng], 15);
+                            this.updateLocation(lat, lng);
+                        }, (err) => {
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'خطا در دریافت موقعیت' } }));
+                        });
+                    } else {
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'مرورگر پشتیبانی نمی‌کند' } }));
+                    }
+                },
+                async getAddress(lat, lng) {
+                    this.address = 'در حال دریافت آدرس...';
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fa`);
+                        const data = await res.json();
+                        if (data && data.address) {
+                            const a = data.address;
+                            const parts = [
+                                a.state,
+                                a.city || a.town || a.village || a.county,
+                                a.road,
+                                a.house_number ? 'پلاک ' + a.house_number : ''
+                            ].filter(Boolean);
+                            this.address = parts.join('، ');
+                        } else if (data.display_name) {
+                            this.address = data.display_name;
+                        }
+                    } catch (e) {
+                        this.address = 'خطا در دریافت آدرس';
+                    }
+                },
+
+                // --- ثبت فرم ---
+                async submitForm(e) {
+                    if (this.isSubmitting) return;
+                    this.isSubmitting = true;
+                    const form = e.target;
+                    const formData = new FormData(form);
+
+                    try {
+                        const res = await fetch(form.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const data = await res.json();
+
+                        if (res.ok) {
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'success', text: data.message || 'ثبت شد.' } }));
+                            if (data.redirect_url) {
+                                setTimeout(() => window.location.href = data.redirect_url, 1000);
+                            }
+                        } else {
+                            if (data.errors) {
+                                Object.values(data.errors).flat().forEach(err => {
+                                    window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: err } }));
+                                });
+                            } else {
+                                window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: data.message || 'خطا در ثبت.' } }));
+                            }
+                        }
+                    } catch (error) {
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'خطای سرور' } }));
+                    } finally {
+                        this.isSubmitting = false;
+                    }
+                }
+            };
         }
-    }
-</script>
+    </script>
 @endsection

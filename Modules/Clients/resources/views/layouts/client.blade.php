@@ -10,12 +10,11 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css','resources/js/app.js'])
     @livewireStyles
     <style>
-        body { font-family: 'Vazirmatn', sans-serif; }
+        body { font-family: 'IRANYekanX', sans-serif; }
     </style>
 </head>
 <body class="h-full bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased selection:bg-indigo-500 selection:text-white">
