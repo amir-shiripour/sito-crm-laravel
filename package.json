@@ -20,7 +20,9 @@
     },
     "dependencies": {
         "@majidh1/jalalidatepicker": "^0.9.12",
-        "alpinejs": "^3.15.1"
+        "alpinejs": "^3.15.1",
+        "leaflet": "^1.9.4",
+        "leaflet-geosearch": "^4.0.0"
     },
     "overrides": {
         "esbuild": "^0.25.0"
