@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\User;
+use Carbon\Carbon;
 
 class Property extends Model
 {
@@ -111,5 +112,15 @@ class Property extends Model
     public function attributeValues()
     {
         return $this->hasMany(PropertyAttributeValue::class);
+    }
+
+    public function getSlugAttribute()
+    {
+        // Format: YmdHis-code (e.g., 20231027123045-1001)
+        // If code is null, use id as fallback
+        $identifier = $this->code ?? $this->id;
+        $timestamp = $this->created_at ? $this->created_at->format('YmdHis') : now()->format('YmdHis');
+
+        return "{$timestamp}-{$identifier}";
     }
 }

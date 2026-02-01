@@ -19,6 +19,7 @@
         "livewire/livewire": "^3.0",
         "morilog/jalali": "^3.4",
         "nwidart/laravel-modules": "11",
+        "spatie/browsershot": "^4.0",
         "spatie/laravel-permission": "6"
     },
     "require-dev": {

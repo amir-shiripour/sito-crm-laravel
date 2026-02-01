@@ -3,7 +3,7 @@
     $fields = old('schema_json.fields', $form->schema_json['fields'] ?? []);
     if (!is_array($fields) || count($fields) === 0) {
     $fields = [
-    ['label' => '', 'name' => '', 'type' => 'text', 'required' => false, 'placeholder' => '', 'options' => []],
+    ['label' => '', 'name' => '', 'type' => 'text', 'required' => false, 'placeholder' => '', 'options' => [], 'icon' => ''],
     ];
     }
 
@@ -23,6 +23,16 @@
         <label class="{{ $labelClass }}">نام فرم</label>
         <input type="text" name="name" class="{{ $inputClass }}" value="{{ old('name', $form->name ?? '') }}" required>
         @error('name')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+    </div>
+
+    <div>
+        <label class="{{ $labelClass }}">نوع فرم</label>
+        <select name="form_type" class="{{ $selectClass }}">
+            @php $type = old('form_type', $form->form_type ?? \Modules\Booking\Entities\BookingForm::TYPE_CUSTOM); @endphp
+            <option value="CUSTOM" @selected($type==='CUSTOM' )>شخصی سازی</option>
+            <option value="TOOTH_NUMBER" @selected($type==='TOOTH_NUMBER' )>شماره دندان</option>
+        </select>
+        @error('form_type')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
     </div>
 
     <div>
@@ -95,7 +105,13 @@
                            value="{{ $optionsValue }}" placeholder="مثلاً: گزینه۱,گزینه۲">
                 </div>
 
-                <div class="flex items-end gap-3">
+                <div>
+                    <label class="{{ $smallLabelClass }}">آیکون (SVG)</label>
+                    <input type="text" name="schema_json[fields][{{ $i }}][icon]" class="{{ $inputClass }} text-sm"
+                           value="{{ $field['icon'] ?? '' }}" placeholder="کد SVG">
+                </div>
+
+                <div class="flex items-end gap-3 md:col-span-6">
                     <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
                         <input type="checkbox" name="schema_json[fields][{{ $i }}][required]" value="1"
                             @checked(!empty($field['required']))>
@@ -106,7 +122,7 @@
                             @checked(!empty($field['collect_from_online']))>
                         دریافت از کاربر آنلاین
                     </label>
-                    <button type="button" class="text-rose-600 dark:text-rose-300 text-xs font-medium hover:underline"
+                    <button type="button" class="text-rose-600 dark:text-rose-300 text-xs font-medium hover:underline mr-auto"
                             onclick="this.closest('.form-field-row').remove()">
                         حذف
                     </button>
@@ -177,7 +193,11 @@
                     <label class="${smallLabelClass}">گزینه‌ها (CSV)</label>
                     <input type="text" name="schema_json[fields][${index}][options]" class="${inputClass}" placeholder="مثلاً: گزینه۱,گزینه₂">
                 </div>
-                <div class="flex items-end gap-3">
+                <div>
+                    <label class="${smallLabelClass}">آیکون (SVG)</label>
+                    <input type="text" name="schema_json[fields][${index}][icon]" class="${inputClass}" placeholder="کد SVG">
+                </div>
+                <div class="flex items-end gap-3 md:col-span-6">
                     <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
                         <input type="checkbox" name="schema_json[fields][${index}][required]" value="1">
                         ضروری
@@ -186,7 +206,7 @@
                         <input type="checkbox" name="schema_json[fields][${index}][collect_from_online]" value="1">
                         دریافت از کاربر آنلاین
                     </label>
-                    <button type="button" class="text-rose-600 dark:text-rose-300 text-xs font-medium hover:underline" onclick="this.closest('.form-field-row').remove()">حذف</button>
+                    <button type="button" class="text-rose-600 dark:text-rose-300 text-xs font-medium hover:underline mr-auto" onclick="this.closest('.form-field-row').remove()">حذف</button>
                 </div>
             `;
             container.appendChild(row);

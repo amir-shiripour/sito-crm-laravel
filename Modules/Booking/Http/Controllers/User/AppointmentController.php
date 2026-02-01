@@ -467,6 +467,18 @@ class AppointmentController extends Controller
             ->with('success', 'نوبت با موفقیت به‌روزرسانی شد.');
     }
 
+    public function destroy(Request $request, Appointment $appointment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
+
+        $appointment->delete();
+
+        return redirect()
+            ->back()
+            ->with('success', 'نوبت با موفقیت حذف شد.');
+    }
+
     // ------------------------------------------------------------
     // Wizard JSON endpoints
     // ------------------------------------------------------------

@@ -25,6 +25,9 @@ class SettingsController extends Controller
         $property_code_separator = PropertySetting::get('property_code_separator', '-');
         $property_code_include_year = PropertySetting::get('property_code_include_year', 1);
 
+        // Card Display Settings
+        $show_features_in_card = PropertySetting::get('show_features_in_card', 1);
+
         // Storage Report
         $storagePath = 'properties';
         $totalSize = 0;
@@ -50,6 +53,7 @@ class SettingsController extends Controller
             'property_code_prefix',
             'property_code_separator',
             'property_code_include_year',
+            'show_features_in_card',
             'formattedSize',
             'fileCount'
         ));
@@ -67,6 +71,7 @@ class SettingsController extends Controller
             'property_code_prefix' => 'nullable|string|max:10',
             'property_code_separator' => 'nullable|string|max:5',
             'property_code_include_year' => 'nullable|boolean',
+            'show_features_in_card' => 'nullable|boolean',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -83,6 +88,8 @@ class SettingsController extends Controller
         PropertySetting::set('property_code_prefix', $request->property_code_prefix);
         PropertySetting::set('property_code_separator', $request->property_code_separator);
         PropertySetting::set('property_code_include_year', $request->has('property_code_include_year') ? 1 : 0);
+
+        PropertySetting::set('show_features_in_card', $request->has('show_features_in_card') ? 1 : 0);
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
     }

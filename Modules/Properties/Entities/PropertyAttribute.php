@@ -9,11 +9,22 @@ class PropertyAttribute extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'type', 'section', 'options', 'sort_order', 'is_active'];
+    protected $fillable = [
+        'name',
+        'type',
+        'section',
+        'options',
+        'sort_order',
+        'is_active',
+        'is_filterable',
+        'is_range_filter'
+    ];
 
     protected $casts = [
         'options' => 'array',
         'is_active' => 'boolean',
+        'is_filterable' => 'boolean',
+        'is_range_filter' => 'boolean',
     ];
 
     public function values()

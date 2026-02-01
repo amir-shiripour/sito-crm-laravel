@@ -162,25 +162,48 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="{{ $labelClass }}">نقش‌های ارائه‌دهنده / مجاز</label>
-                        <select name="allowed_roles[]" multiple class="{{ $inputClass }} h-32">
-                            @php
-                                $selectedRoles = old('allowed_roles', $settings->allowed_roles ?? []);
-                                if (is_string($selectedRoles)) {
-                                    $decoded = json_decode($selectedRoles, true);
-                                    $selectedRoles = is_array($decoded) ? $decoded : [];
-                                }
-                            @endphp
-                            @foreach($roles ?? [] as $role)
-                                <option value="{{ $role->id }}" {{ in_array($role->id, $selectedRoles) ? 'selected' : '' }}>
-                                    {{ $role->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <p class="text-[11px] text-gray-400 mt-2">
-                            برای انتخاب چند مورد، کلید Ctrl (ویندوز) یا Command (مک) را نگه دارید.
-                        </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="{{ $labelClass }}">نقش‌های ارائه‌دهنده / مجاز</label>
+                            <select name="allowed_roles[]" multiple class="{{ $inputClass }} h-32">
+                                @php
+                                    $selectedRoles = old('allowed_roles', $settings->allowed_roles ?? []);
+                                    if (is_string($selectedRoles)) {
+                                        $decoded = json_decode($selectedRoles, true);
+                                        $selectedRoles = is_array($decoded) ? $decoded : [];
+                                    }
+                                @endphp
+                                @foreach($roles ?? [] as $role)
+                                    <option value="{{ $role->id }}" {{ in_array($role->id, $selectedRoles) ? 'selected' : '' }}>
+                                        {{ $role->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-[11px] text-gray-400 mt-2">
+                                برای انتخاب چند مورد، کلید Ctrl (ویندوز) یا Command (مک) را نگه دارید.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="{{ $labelClass }}">نقش‌های صورت وضعیت (Statement)</label>
+                            <select name="statement_roles[]" multiple class="{{ $inputClass }} h-32">
+                                @php
+                                    $selectedStatementRoles = old('statement_roles', $settings->statement_roles ?? []);
+                                    if (is_string($selectedStatementRoles)) {
+                                        $decoded = json_decode($selectedStatementRoles, true);
+                                        $selectedStatementRoles = is_array($decoded) ? $decoded : [];
+                                    }
+                                @endphp
+                                @foreach($roles ?? [] as $role)
+                                    <option value="{{ $role->id }}" {{ in_array($role->id, $selectedStatementRoles) ? 'selected' : '' }}>
+                                        {{ $role->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-[11px] text-gray-400 mt-2">
+                                نقش‌هایی که در صفحه صورت وضعیت قابل انتخاب هستند.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

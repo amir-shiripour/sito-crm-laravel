@@ -22,9 +22,29 @@
         "@majidh1/jalalidatepicker": "^0.9.12",
         "alpinejs": "^3.15.1",
         "leaflet": "^1.9.4",
-        "leaflet-geosearch": "^4.0.0"
+        "leaflet-geosearch": "^4.0.0",
+        "puppeteer": "^24.3.1"
     },
     "overrides": {
         "esbuild": "^0.25.0"
-    }
+    },
+    "name": "laravel-crm",
+    "version": "1.0.0",
+    "description": "Sito CRM (Laravel)",
+    "main": "postcss.config.js",
+    "directories": {
+        "doc": "docs",
+        "test": "tests"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/amir-shiripour/sito-crm-laravel.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/amir-shiripour/sito-crm-laravel/issues"
+    },
+    "homepage": "https://github.com/amir-shiripour/sito-crm-laravel#readme"
 }

@@ -80,6 +80,7 @@ class PropertyController extends Controller
             'longitude' => 'nullable|numeric',
             'cover_image' => "required|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
+            'is_special' => 'nullable|boolean',
         ]);
 
         // Handle Property Code
@@ -136,6 +137,11 @@ class PropertyController extends Controller
         }
 
         $data['created_by'] = auth()->id();
+
+        // Handle Special Property
+        if ($request->has('is_special')) {
+            $data['meta']['is_special'] = true;
+        }
 
         $property = null;
         $retryCount = 0;
@@ -434,6 +440,7 @@ class PropertyController extends Controller
             'longitude' => 'nullable|numeric',
             'cover_image' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
+            'is_special' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('cover_image')) {
@@ -466,6 +473,16 @@ class PropertyController extends Controller
                 }
             }
         }
+
+        // Handle Special Property
+        $meta = $property->meta ?? [];
+        if ($request->has('is_special')) {
+            $meta['is_special'] = true;
+        } else {
+            $meta['is_special'] = false;
+        }
+        $property->meta = $meta;
+        $property->save();
 
         $property->update($data);
 

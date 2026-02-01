@@ -243,6 +243,14 @@
                             </div>
 
                             <div>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="is_special" value="1" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600">
+                                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300">آگهی ویژه / فوری</span>
+                                </label>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-7">با فعال کردن این گزینه، ملک با نشان ویژه نمایش داده می‌شود.</p>
+                            </div>
+
+                            <div>
                                 <label class="{{ $labelClass }}">یادداشت محرمانه</label>
                                 <textarea name="confidential_notes" rows="3" class="{{ $inputClass }} resize-none" placeholder="یادداشت خصوصی برای مدیران..."></textarea>
                             </div>

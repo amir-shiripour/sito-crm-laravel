@@ -11,7 +11,7 @@ use Modules\Properties\App\Livewire\Settings\PropertyStatusesManager;
 // Public Routes
 Route::group(['prefix' => 'properties', 'as' => 'properties.'], function() {
     Route::get('/', [PublicPropertyController::class, 'index'])->name('index');
-    Route::get('/{id}', [PublicPropertyController::class, 'show'])->name('show');
+    Route::get('/{slug}', [PublicPropertyController::class, 'show'])->name('show');
 });
 
 // User Panel Routes

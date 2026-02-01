@@ -12,6 +12,7 @@ use Modules\Booking\Http\Controllers\User\ServiceExceptionController;
 use Modules\Booking\Http\Controllers\User\ProviderExceptionController;
 use Modules\Booking\Http\Controllers\User\CategoryController as UserCategoryController;
 use Modules\Booking\Http\Controllers\User\FormController as UserFormController;
+use Modules\Booking\Http\Controllers\User\StatementController;
 
 
 // Public minimal pages (optional)
@@ -166,6 +167,10 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->name('appointments.update')
             ->middleware('can:booking.appointments.edit');
 
+        Route::delete('appointments/{appointment}', [UserAppointmentController::class, 'destroy'])
+            ->name('appointments.destroy')
+            ->middleware('can:booking.appointments.edit');
+
         Route::get('settings', [UserSettingsController::class, 'edit'])->name('settings.edit')->middleware('can:booking.settings.manage');
         Route::post('settings', [UserSettingsController::class, 'update'])->name('settings.update')->middleware('can:booking.settings.manage');
 
@@ -195,5 +200,21 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->name('providers.exceptions.destroy')
             ->middleware('can:booking.availability.manage');
 
+        // Statement of Account
+        Route::get('statement', [StatementController::class, 'index'])
+            ->name('statement.index')
+            ->middleware('can:booking.appointments.view');
+
+        Route::get('statement/search-providers', [StatementController::class, 'searchProviders'])
+            ->name('statement.search-providers')
+            ->middleware('can:booking.appointments.view');
+
+        Route::get('statement/search-users', [StatementController::class, 'searchUsers'])
+            ->name('statement.search-users')
+            ->middleware('can:booking.appointments.view');
+
+        Route::get('statement/print', [StatementController::class, 'print'])
+            ->name('statement.print')
+            ->middleware('can:booking.appointments.view');
     });
 });

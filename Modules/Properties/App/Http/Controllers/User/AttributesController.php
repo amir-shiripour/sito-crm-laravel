@@ -4,6 +4,7 @@ namespace Modules\Properties\App\Http\Controllers\User;
 
 use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Modules\Properties\Entities\PropertyAttribute;
 
 class AttributesController extends Controller
@@ -18,11 +19,16 @@ class AttributesController extends Controller
 
     public function store(Request $request)
     {
+        Log::info('--- AttributesController Store Debug ---');
+        Log::info('Request Data:', $request->all());
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:text,number,select,checkbox',
             'section' => 'required|in:details,features',
-            'options' => 'nullable|string', // Comma separated options for select
+            'options' => 'nullable|string',
+            'is_filterable' => 'nullable|boolean',
+            'is_range_filter' => 'nullable|boolean',
         ]);
 
         if ($data['type'] === 'select' && !empty($data['options'])) {
@@ -33,7 +39,16 @@ class AttributesController extends Controller
 
         $data['sort_order'] = PropertyAttribute::where('section', $data['section'])->max('sort_order') + 1;
 
-        PropertyAttribute::create($data);
+        // Checkbox handling
+        $data['is_filterable'] = $request->has('is_filterable');
+        $data['is_range_filter'] = $request->has('is_range_filter');
+        $data['is_active'] = true;
+
+        Log::info('Data to Create:', $data);
+
+        $attr = PropertyAttribute::create($data);
+
+        Log::info('Created Attribute:', $attr->toArray());
 
         return back()->with('success', 'ویژگی با موفقیت اضافه شد.');
     }
@@ -44,6 +59,8 @@ class AttributesController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|in:text,number,select,checkbox',
             'options' => 'nullable|string',
+            'is_filterable' => 'nullable|boolean',
+            'is_range_filter' => 'nullable|boolean',
         ]);
 
         if ($data['type'] === 'select' && !empty($data['options'])) {
@@ -51,6 +68,10 @@ class AttributesController extends Controller
         } else {
             $data['options'] = null;
         }
+
+        // Checkbox handling
+        $data['is_filterable'] = $request->has('is_filterable');
+        $data['is_range_filter'] = $request->has('is_range_filter');
 
         $attribute->update($data);
 

@@ -111,6 +111,7 @@ class FormController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'form_type' => ['nullable', Rule::in([BookingForm::TYPE_CUSTOM, BookingForm::TYPE_TOOTH_NUMBER])],
             'status' => ['nullable', Rule::in([BookingForm::STATUS_ACTIVE, BookingForm::STATUS_INACTIVE])],
             'schema_json' => ['required', 'array'],
             'schema_json.fields' => ['required', 'array', 'min:1'],
@@ -121,6 +122,7 @@ class FormController extends Controller
             'schema_json.fields.*.collect_from_online' => ['nullable'],
             'schema_json.fields.*.placeholder' => ['nullable', 'string', 'max:255'],
             'schema_json.fields.*.options' => ['nullable', 'string'],
+            'schema_json.fields.*.icon' => ['nullable', 'string'],
         ]);
 
         $fields = array_values($data['schema_json']['fields'] ?? []);
@@ -131,6 +133,7 @@ class FormController extends Controller
             $label = trim((string) ($field['label'] ?? ''));
             $type = trim((string) ($field['type'] ?? 'text'));
             $placeholder = trim((string) ($field['placeholder'] ?? ''));
+            $icon = trim((string) ($field['icon'] ?? ''));
 
             $optionsRaw = trim((string) ($field['options'] ?? ''));
             $options = $optionsRaw === ''
@@ -145,12 +148,16 @@ class FormController extends Controller
                 'collect_from_online' => ! empty($field['collect_from_online']),
                 'placeholder' => $placeholder ?: null,
                 'options' => $options,
+                'icon' => $icon ?: null,
             ];
         }
 
         $data['schema_json'] = [
             'fields' => $normalized,
         ];
+
+        // Ensure form_type is set, default to CUSTOM if not present
+        $data['form_type'] = $data['form_type'] ?? BookingForm::TYPE_CUSTOM;
 
         return $data;
     }
