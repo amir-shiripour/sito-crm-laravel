@@ -1,0 +1,13 @@
+{
+    "name": "Properties",
+    "alias": "properties",
+    "description": "Properties Management Module",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Properties\\App\\Providers\\PropertiesServiceProvider",
+        "Modules\\Properties\\App\\Providers\\RouteServiceProvider",
+        "Modules\\Properties\\Providers\\PropertiesServiceProvider"
+    ],
+    "files": []
+}

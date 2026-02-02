@@ -16,6 +16,7 @@ class BookingSetting extends Model
         'default_capacity_per_day',
         'allow_role_service_creation',
         'allowed_roles',
+        'statement_roles',
 
         'category_management_scope',
         'form_management_scope',
@@ -30,6 +31,7 @@ class BookingSetting extends Model
         'global_online_booking_enabled' => 'boolean',
         'allow_role_service_creation' => 'boolean',
         'allowed_roles' => 'array',
+        'statement_roles' => 'array',
         'allow_appointment_entry_exit_times' => 'boolean',
     ];
 
@@ -48,6 +50,7 @@ class BookingSetting extends Model
             'default_capacity_per_day' => $defaults['capacity_per_day'] ?? null,
             'allow_role_service_creation' => false,
             'allowed_roles' => [],
+            'statement_roles' => [],
             'category_management_scope' => 'ALL',
             'form_management_scope' => 'ALL',
             'service_category_selection_scope' => 'ALL',

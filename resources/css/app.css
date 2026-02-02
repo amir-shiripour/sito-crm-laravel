@@ -1,7 +1,3 @@
-/* ایمپورت کردن فونت وزیرمتن (Vazirmatn) از Google Fonts
-  ما از وزن‌های مختلف آن برای انعطاف‌پذیری در طراحی استفاده می‌کنیم.
-*/
-@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
 @import "tailwindcss";
 
 @font-face{
@@ -43,4 +39,11 @@ html { font-family: var(--font-sans); font-variation-settings:"wght" 400; font-o
 :focus-visible{outline: none !important}
 [x-cloak] {
     display: none;
+}
+
+/* Leaflet Custom Styles */
+.leaflet-container {
+    z-index: 0; /* Fix z-index issue with modals/dropdowns */
+    border-radius: 0.75rem;
+    font-family: var(--font-sans);
 }

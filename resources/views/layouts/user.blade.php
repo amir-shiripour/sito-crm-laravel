@@ -25,6 +25,8 @@
     @livewireStyles
     <style>
         body { font-size: 14px;}
+        /* Jalali Datepicker Z-Index Fix */
+        jdp-container { z-index: 9999 !important; }
     </style>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -35,21 +37,41 @@
         items: [],
         notify(e) {
             const id = Date.now() + Math.random();
-            const detail = e.detail || {};
+            const detail = e.detail || e; // Support both event detail and direct object
             this.items.push({
                 id,
                 type: detail.type || 'info',
                 text: detail.text || detail.message || '',
             });
             // auto hide
-            setTimeout(() => this.remove(id), 4000);
+            setTimeout(() => this.remove(id), 5000);
         },
         remove(id) {
             this.items = this.items.filter(i => i.id !== id);
         }
     }"
     x-on:notify.window="notify($event)"
-    class="fixed right-3 top-3 z-50 w-80 max-w-[90vw] space-y-2" style="z-index: 999"
+    x-init="
+        @if(session()->has('success'))
+            notify({ type: 'success', text: '{{ session('success') }}' });
+        @endif
+        @if(session()->has('error'))
+            notify({ type: 'error', text: '{{ session('error') }}' });
+        @endif
+        @if(session()->has('warning'))
+            notify({ type: 'warning', text: '{{ session('warning') }}' });
+        @endif
+        @if(session()->has('info'))
+            notify({ type: 'info', text: '{{ session('info') }}' });
+        @endif
+
+        @if($errors->any())
+            @foreach($errors->all() as $error)
+                notify({ type: 'error', text: '{{ $error }}' });
+            @endforeach
+        @endif
+    "
+    class="fixed right-3 top-3 z-50 w-80 max-w-[90vw] space-y-2" style="z-index: 9999"
 >
     <template x-for="item in items" :key="item.id">
         <div
@@ -100,29 +122,6 @@
 
     {{-- Drawer برای موبایل --}}
     <div class="fixed inset-0 bg-black/40 z-40 lg:hidden" x-show="mobileOpen" x-transition.opacity @click="mobileOpen=false"></div>
-
-    {{--<aside class="fixed top-0 bottom-0 right-0 w-72 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-50 lg:hidden" x-show="mobileOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full opacity-0" x-transition:enter-end="translate-x-0 opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0 opacity-100" x-transition:leave-end="translate-x-full opacity-0">
-        <div class="h-16 px-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
-            <span class="font-bold">منو</span>
-            <button @click="mobileOpen=false" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-        <div class="p-3 space-y-1">
-            <a href="#" class="block rounded-lg px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">پیشخوان</a>
-            <div x-data="{open:false}">
-                <button @click="open=!open" class="w-full flex items-center justify-between rounded-lg px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <span>مشتریان</span>
-                    <svg :class="open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5"/></svg>
-                </button>
-                <div x-show="open" x-collapse class="pr-3">
-                    <a href="#" class="block rounded-lg px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">لیست مشتریان</a>
-                    <a href="#" class="block rounded-lg px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">افزودن مشتری</a>
-                </div>
-            </div>
-            <a href="#" class="block rounded-lg px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">سفارش‌ها</a>
-        </div>
-    </aside>--}}
 
 </div>
 
@@ -201,30 +200,5 @@
 </script>
 @livewireScripts
 @livewireScriptConfig
-<script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.store('toast', {
-            items: [],
-            push(message) {
-                const id = Date.now() + Math.random();
-                this.items.push({ id, ...message });
-                setTimeout(() => this.close(id), message.timeout ?? 3000);
-            },
-            close(id) {
-                this.items = this.items.filter(i => i.id !== id);
-            }
-        });
-
-        // شنیدن ایونت‌های Livewire (v3) و تبدیل به toast
-        window.addEventListener('notify', (e) => {
-            const detail = e?.detail || {};
-            Alpine.store('toast').push({
-                type: detail.type || 'info',
-                text: detail.text || '',
-                timeout: detail.timeout || 3000
-            });
-        });
-    });
-</script>
 </body>
 </html>

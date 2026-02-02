@@ -7,5 +7,6 @@
     "Reminders": true,
     "Workflows": true,
     "Sms": true,
-    "Booking": true
+    "Booking": true,
+    "Properties": true
 }

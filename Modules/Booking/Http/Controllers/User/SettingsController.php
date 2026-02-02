@@ -54,9 +54,9 @@ class SettingsController extends Controller
         // ---------------------------
         // Helper: نرمال‌سازی allowed_roles به ID نقش‌ها
         // ---------------------------
-        $normalizeAllowedRolesToIds = function ($rolesInput) use ($shouldLog): array {
+        $normalizeRolesToIds = function ($rolesInput) use ($shouldLog): array {
             if ($shouldLog) {
-                Log::info('[Booking][Settings] allowed_roles raw input', [
+                Log::info('[Booking][Settings] roles raw input', [
                     'type' => gettype($rolesInput),
                     'raw'  => $rolesInput,
                 ]);
@@ -67,7 +67,7 @@ class SettingsController extends Controller
                 $decoded = json_decode($rolesInput, true);
 
                 if ($shouldLog) {
-                    Log::info('[Booking][Settings] allowed_roles decode attempt', [
+                    Log::info('[Booking][Settings] roles decode attempt', [
                         'is_json' => is_array($decoded),
                         'decoded' => $decoded,
                     ]);
@@ -88,7 +88,7 @@ class SettingsController extends Controller
             $rolesInput = array_values(array_filter($rolesInput, fn ($v) => $v !== null && $v !== ''));
 
             if ($shouldLog) {
-                Log::info('[Booking][Settings] allowed_roles filtered', [
+                Log::info('[Booking][Settings] roles filtered', [
                     'filtered' => $rolesInput,
                 ]);
             }
@@ -113,7 +113,7 @@ class SettingsController extends Controller
                             $normalizedRoleIds[] = (int) $id;
                         } else {
                             if ($shouldLog) {
-                                Log::warning('[Booking][Settings] unknown role name in allowed_roles', [
+                                Log::warning('[Booking][Settings] unknown role name in roles', [
                                     'name' => $name,
                                 ]);
                             }
@@ -125,7 +125,7 @@ class SettingsController extends Controller
             $final = array_values(array_unique($normalizedRoleIds));
 
             if ($shouldLog) {
-                Log::info('[Booking][Settings] allowed_roles normalized', [
+                Log::info('[Booking][Settings] roles normalized', [
                     'normalized_ids' => $final,
                 ]);
             }
@@ -134,7 +134,7 @@ class SettingsController extends Controller
         };
 
         // قدیمی‌ها قبل از آپدیت برای محاسبه تفاوت (نرمال‌شده به ID)
-        $oldAllowedRoles = $normalizeAllowedRolesToIds($settings->allowed_roles ?? []);
+        $oldAllowedRoles = $normalizeRolesToIds($settings->allowed_roles ?? []);
 
         $data = $request->validate([
             'currency_unit' => ['required', Rule::in(['IRR', 'IRT'])],
@@ -145,6 +145,7 @@ class SettingsController extends Controller
 
             'allow_role_service_creation' => ['required'],
             'allowed_roles' => ['nullable'],
+            'statement_roles' => ['nullable'],
 
             'category_management_scope' => ['required', Rule::in(['ALL', 'OWN'])],
             'form_management_scope' => ['required', Rule::in(['ALL', 'OWN'])],
@@ -163,13 +164,18 @@ class SettingsController extends Controller
 
         // نرمال‌سازی allowed_roles (همیشه به ID نقش‌ها)
         $rolesInput = $request->input('allowed_roles', []);
-        $settings->allowed_roles = $normalizeAllowedRolesToIds($rolesInput);
+        $settings->allowed_roles = $normalizeRolesToIds($rolesInput);
+
+        // نرمال‌سازی statement_roles
+        $statementRolesInput = $request->input('statement_roles', []);
+        $settings->statement_roles = $normalizeRolesToIds($statementRolesInput);
 
         if ($shouldLog) {
             Log::info('[Booking][Settings] BEFORE save snapshot', [
                 'booking_setting_id' => $settings->id ?? null,
                 'old_allowed_roles'  => $oldAllowedRoles,
                 'to_save_allowed_roles' => $settings->allowed_roles,
+                'to_save_statement_roles' => $settings->statement_roles,
                 'allow_role_service_creation' => (bool) $settings->allow_role_service_creation,
             ]);
         }

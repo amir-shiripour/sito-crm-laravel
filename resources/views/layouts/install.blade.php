@@ -17,8 +17,6 @@
     {{-- فونت فارسی وزیرمتن --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 
     <!-- Tailwind CSS CDN برای استفاده در صفحات نصب -->
     {{-- در صفحه نصب از @vite استفاده نمی‌کنیم چون ممکن است build نشده باشد --}}
@@ -26,12 +24,12 @@
 
     <style>
         body {
-            font-family: 'Vazirmatn', sans-serif;
+            font-family: 'IRANYekanX', sans-serif;
         }
     </style>
 </head>
 
-<body class="font-vazirmatn text-gray-900 antialiased bg-gray-100 rtl">
+<body class="text-gray-900 antialiased bg-gray-100 rtl">
 <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
     <div>
         <a href="/">

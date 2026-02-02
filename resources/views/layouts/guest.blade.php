@@ -10,13 +10,12 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 
     <!-- Styles & Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        body { font-family: 'Vazirmatn', sans-serif; }
+        body { font-family: 'IRANYekanX', sans-serif; }
     </style>
 </head>
 <body class="font-sans text-gray-900 antialiased bg-gray-50 dark:bg-gray-950 dark:text-gray-100">

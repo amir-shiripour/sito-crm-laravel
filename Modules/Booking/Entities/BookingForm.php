@@ -11,10 +11,14 @@ class BookingForm extends Model
     public const STATUS_ACTIVE = 'ACTIVE';
     public const STATUS_INACTIVE = 'INACTIVE';
 
+    public const TYPE_CUSTOM = 'CUSTOM';
+    public const TYPE_TOOTH_NUMBER = 'TOOTH_NUMBER';
+
     protected $table = 'booking_forms';
 
     protected $fillable = [
         'name',
+        'form_type',
         'status',
         'creator_id',
         'schema_json',
