@@ -4,6 +4,7 @@ namespace Modules\Properties\App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Factory;
+use App\Services\Modules\BaseModuleInstaller;
 
 class PropertiesServiceProvider extends ServiceProvider
 {
@@ -27,7 +28,10 @@ class PropertiesServiceProvider extends ServiceProvider
         $this->registerTranslations();
         $this->registerConfig();
         $this->registerViews();
-        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
+            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        }
     }
 
     /**

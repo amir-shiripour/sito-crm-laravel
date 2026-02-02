@@ -21,6 +21,15 @@ class BaseModuleInstaller implements ModuleInstallerInterface
     }
 
     /**
+     * Check if a module is installed (based on tracker file existence).
+     */
+    public static function isInstalled(string $moduleName): bool
+    {
+        $slug = strtolower($moduleName);
+        return File::exists(storage_path("app/module-installer/{$slug}/created.json"));
+    }
+
+    /**
      * Run an artisan command safely:
      * - checks exit code
      * - logs output

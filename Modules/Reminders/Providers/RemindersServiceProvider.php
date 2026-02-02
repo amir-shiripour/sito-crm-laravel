@@ -5,6 +5,7 @@ namespace Modules\Reminders\Providers;
 use App\Support\WidgetRegistry;
 use Illuminate\Support\ServiceProvider;
 use Modules\Reminders\Console\ProcessRemindersCommand; // <--- اضافه شده
+use App\Services\Modules\BaseModuleInstaller;
 
 class RemindersServiceProvider extends ServiceProvider
 {
@@ -15,7 +16,10 @@ class RemindersServiceProvider extends ServiceProvider
     {
         $this->registerConfig();
         $this->registerViews();
-        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
+            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        }
 
         // Fix: Use 'Config' instead of 'config' to match directory case sensitivity on Linux
         $widgetsFile = __DIR__ . '/../Config/widgets.php';
