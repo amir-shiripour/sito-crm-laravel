@@ -181,10 +181,16 @@ class StatementController extends Controller
         // You can change these paths based on your server configuration
         // Or read from .env file: env('NODE_PATH', 'C:\\Program Files\\nodejs\\node.exe')
 
-        $pdf = Browsershot::html($html)
-            ->setNodeBinary('C:\\Program Files\\nodejs\\node.exe')
-            ->setNpmBinary('C:\\Program Files\\nodejs\\npm.cmd')
-            ->setChromePath('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe')
+        $browsershot = Browsershot::html($html);
+
+        // Only set Windows paths if running on Windows
+        if (PHP_OS_FAMILY === 'Windows') {
+            $browsershot->setNodeBinary('C:\\Program Files\\nodejs\\node.exe')
+                ->setNpmBinary('C:\\Program Files\\nodejs\\npm.cmd')
+                ->setChromePath('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe');
+        }
+
+        $pdf = $browsershot
             ->format('A4')
             ->margins(10, 10, 10, 10)
             ->showBackground()
