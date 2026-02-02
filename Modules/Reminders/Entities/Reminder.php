@@ -19,6 +19,7 @@ class Reminder extends Model
     public const CHANNEL_EMAIL  = 'EMAIL';
     public const CHANNEL_SMS    = 'SMS';
     public const CHANNEL_PUSH   = 'PUSH';
+    public const CHANNEL_WORKFLOW = 'WORKFLOW';
 
     // وضعیت‌ها
     public const STATUS_OPEN     = 'OPEN';

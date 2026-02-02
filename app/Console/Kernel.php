@@ -14,6 +14,8 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command('sms:process-scheduled')->everyMinute();
+        $schedule->command('workflows:process')->everyMinute();
+        $schedule->command('booking:dispatch-reminders')->everyMinute();
     }
 
     /**

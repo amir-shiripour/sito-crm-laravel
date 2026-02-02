@@ -29,6 +29,7 @@ class BookingServiceProvider extends Model
         'override_appointment_form_id',
 
         'override_online_booking_mode',
+        'override_auto_confirm',
 
         'override_payment_mode',
         'override_payment_amount_type',
@@ -46,6 +47,7 @@ class BookingServiceProvider extends Model
         'override_category_id' => 'integer',
         'override_appointment_form_id' => 'integer',
         'override_payment_amount_value' => 'float',
+        'override_auto_confirm' => 'boolean',
     ];
 
     public function service(): BelongsTo
@@ -76,6 +78,15 @@ class BookingServiceProvider extends Model
         }
 
         return $this->service?->online_booking_mode ?? BookingService::ONLINE_MODE_INHERIT;
+    }
+
+    public function effectiveAutoConfirm(): bool
+    {
+        if ($this->override_auto_confirm !== null) {
+            return $this->override_auto_confirm;
+        }
+
+        return $this->service?->auto_confirm_online_booking ?? false;
     }
 
     public function effectivePrice(): float

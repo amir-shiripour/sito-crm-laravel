@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Gate;
 use Modules\Workflows\Entities\Workflow;
 use Modules\Workflows\Entities\WorkflowAction;
 use Modules\Workflows\Entities\WorkflowStage;
+use Modules\Workflows\Entities\WorkflowTrigger;
 
 class WorkflowController extends Controller
 {
@@ -18,6 +19,7 @@ class WorkflowController extends Controller
 
         $q = Workflow::query()->withCount('stages');
 
+        // Search
         if ($search = $request->get('q')) {
             $q->where(function ($qq) use ($search) {
                 $qq->where('name', 'like', "%{$search}%")
@@ -25,9 +27,35 @@ class WorkflowController extends Controller
             });
         }
 
+        // Filter by Status
+        if ($request->filled('status')) {
+            $status = $request->get('status');
+            if ($status === 'active') {
+                $q->where('is_active', true);
+            } elseif ($status === 'inactive') {
+                $q->where('is_active', false);
+            }
+        }
+
+        // Filter by Trigger Type
+        if ($request->filled('trigger_type')) {
+            $triggerType = $request->get('trigger_type');
+            $q->whereHas('triggers', function ($query) use ($triggerType) {
+                $query->where('type', $triggerType);
+            });
+        }
+
         $workflows = $q->orderBy('created_at', 'desc')->paginate(20);
 
-        return view('workflows::user.workflows.index', compact('workflows'));
+        // Stats
+        $stats = [
+            'total' => Workflow::count(),
+            'active' => Workflow::where('is_active', true)->count(),
+            'inactive' => Workflow::where('is_active', false)->count(),
+            // 'executed' => \Modules\Workflows\Entities\WorkflowInstance::count(), // If needed
+        ];
+
+        return view('workflows::user.workflows.index', compact('workflows', 'stats'));
     }
 
     protected function getTriggerOptions(): array
@@ -67,6 +95,7 @@ class WorkflowController extends Controller
             'key'         => ['required', 'string', 'max:255', 'unique:workflows,key'],
             'description' => ['nullable', 'string'],
             'is_active'   => ['boolean'],
+            'triggers'    => ['nullable', 'array'],
         ]);
 
         $workflow = Workflow::query()->create([
@@ -77,6 +106,10 @@ class WorkflowController extends Controller
             'created_by'  => $request->user()?->id,
         ]);
 
+        if (!empty($data['triggers'])) {
+            $this->syncTriggers($workflow, $data['triggers']);
+        }
+
         return redirect()->route('user.workflows.edit', $workflow)->with('success', 'گردش کار ایجاد شد.');
     }
 
@@ -84,7 +117,7 @@ class WorkflowController extends Controller
     {
         Gate::authorize('workflows.view');
 
-        $workflow->load(['stages.actions']);
+        $workflow->load(['stages.actions', 'triggers']);
 
         return view('workflows::user.workflows.show', compact('workflow'));
     }
@@ -93,7 +126,7 @@ class WorkflowController extends Controller
     {
         Gate::authorize('workflows.manage');
 
-        $workflow->load(['stages.actions']);
+        $workflow->load(['stages.actions', 'triggers']);
         $triggerOptions = $this->getTriggerOptions();
         $users = User::query()->select(['id', 'name'])->orderBy('name')->get();
 
@@ -114,6 +147,7 @@ class WorkflowController extends Controller
             'key'         => ['required', 'string', 'max:255', 'unique:workflows,key,' . $workflow->id],
             'description' => ['nullable', 'string'],
             'is_active'   => ['boolean'],
+            'triggers'    => ['nullable', 'array'],
         ]);
 
         $workflow->update([
@@ -123,7 +157,27 @@ class WorkflowController extends Controller
             'is_active'   => (bool) ($data['is_active'] ?? false),
         ]);
 
+        if (isset($data['triggers'])) {
+            $this->syncTriggers($workflow, $data['triggers']);
+        }
+
         return back()->with('success', 'گردش کار به‌روزرسانی شد.');
+    }
+
+    protected function syncTriggers(Workflow $workflow, array $triggersData): void
+    {
+        // For now, we replace all triggers.
+        // In a more complex UI, we might update existing ones.
+        $workflow->triggers()->delete();
+
+        foreach ($triggersData as $tData) {
+            if (empty($tData['type'])) continue;
+
+            $workflow->triggers()->create([
+                'type'   => $tData['type'],
+                'config' => $tData['config'] ?? [],
+            ]);
+        }
     }
 
     public function destroy(Workflow $workflow)
@@ -259,7 +313,6 @@ class WorkflowController extends Controller
             'action_type' => ['required', 'string', 'in:' . implode(',', [
                     WorkflowAction::TYPE_CREATE_TASK,
                     WorkflowAction::TYPE_CREATE_FOLLOWUP,
-                    WorkflowAction::TYPE_CREATE_REMINDER,
                     WorkflowAction::TYPE_SEND_NOTIFICATION,
                     WorkflowAction::TYPE_SEND_SMS,
                 ])],
@@ -272,6 +325,7 @@ class WorkflowController extends Controller
         if ($data['action_type'] === WorkflowAction::TYPE_SEND_SMS) {
             $config = [
                 'target'         => $config['target'] ?? 'APPOINTMENT_CLIENT',
+                'target_user_id' => $config['target_user_id'] ?? null,
                 'phone'          => $config['phone'] ?? null,
                 'pattern_key'    => $config['pattern_key'] ?? null,
                 'message'        => $config['message'] ?? null,
@@ -287,13 +341,6 @@ class WorkflowController extends Controller
                 'offset_days'     => isset($config['offset_days']) ? (int) $config['offset_days'] : 0,
                 'priority'        => $config['priority'] ?? 'MEDIUM',
                 'status'          => $config['status'] ?? 'TODO',
-            ];
-        } elseif ($data['action_type'] === WorkflowAction::TYPE_CREATE_REMINDER) {
-             $config = [
-                'message'         => $config['message'] ?? null,
-                'assignee_target' => $config['assignee_target'] ?? 'CURRENT_USER',
-                'assignee_id'     => $config['assignee_id'] ?? null,
-                'offset_minutes'  => isset($config['offset_minutes']) ? (int) $config['offset_minutes'] : 0,
             ];
         }
 

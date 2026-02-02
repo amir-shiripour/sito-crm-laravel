@@ -14,6 +14,7 @@
 
     $statusOptions = [
         \Modules\Booking\Entities\Appointment::STATUS_DRAFT => 'پیش‌نویس',
+        \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'در انتظار تایید',
         \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'در انتظار پرداخت',
         \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'تایید شده',
         \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN => 'لغو شده (ادمین)',

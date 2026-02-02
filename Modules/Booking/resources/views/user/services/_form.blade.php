@@ -79,6 +79,13 @@
     : ($service->online_booking_mode ?? \Modules\Booking\Entities\BookingService::ONLINE_MODE_INHERIT);
     }
 
+    $effectiveAutoConfirm = old('auto_confirm_online_booking');
+    if ($effectiveAutoConfirm === null) {
+        $effectiveAutoConfirm = ($editingPublicAsProvider && $serviceProvider && $serviceProvider->override_auto_confirm !== null)
+            ? $serviceProvider->override_auto_confirm
+            : ($service->auto_confirm_online_booking ?? false);
+    }
+
     $effectivePaymentMode = old('payment_mode');
     if ($effectivePaymentMode === null) {
     $effectivePaymentMode = ($editingPublicAsProvider && $serviceProvider && $serviceProvider->override_payment_mode)
@@ -192,6 +199,17 @@
             <option value="FORCE_OFF" @selected($effectiveOnlineMode==='FORCE_OFF' )>غیرفعال برای رزرو آنلاین</option>
         </select>
         @error('online_booking_mode')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+    </div>
+
+    <div>
+        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 mt-6">
+            <input type="checkbox" name="auto_confirm_online_booking" value="1" @checked($effectiveAutoConfirm)>
+            <span>تایید خودکار رزروهای آنلاین</span>
+        </label>
+        <div class="{{ $helpClass }}">
+            در صورت فعال بودن، نوبت‌های ثبت شده به صورت آنلاین بلافاصله تایید می‌شوند و نیازی به تایید دستی ندارند.
+        </div>
+        @error('auto_confirm_online_booking')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
     </div>
 
     {{-- زمان‌بندی سفارشی --}}
