@@ -3,6 +3,7 @@
 namespace Modules\Booking\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Services\Modules\BaseModuleInstaller;
 
 class BookingServiceProvider extends ServiceProvider
 {
@@ -14,7 +15,9 @@ class BookingServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
 
-        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
+            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        }
 
         if ($this->app->runningInConsole()) {
             $this->commands([

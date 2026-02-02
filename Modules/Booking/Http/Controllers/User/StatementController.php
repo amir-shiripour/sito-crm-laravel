@@ -188,6 +188,10 @@ class StatementController extends Controller
             $browsershot->setNodeBinary('C:\\Program Files\\nodejs\\node.exe')
                 ->setNpmBinary('C:\\Program Files\\nodejs\\npm.cmd')
                 ->setChromePath('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe');
+        } else {
+            // Linux / Server configuration
+            $browsershot->noSandbox()
+                ->setOption('args', ['--disable-web-security']);
         }
 
         $pdf = $browsershot

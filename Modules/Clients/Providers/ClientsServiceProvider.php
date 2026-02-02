@@ -8,7 +8,7 @@ use Nwidart\Modules\Facades\Module;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Modules\Clients\Entities\ClientSetting;
-
+use App\Services\Modules\BaseModuleInstaller;
 
 class ClientsServiceProvider extends ServiceProvider
 {
@@ -20,7 +20,10 @@ class ClientsServiceProvider extends ServiceProvider
     public function boot(Router $router)
     {
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'clients');
-        $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+
+        if (BaseModuleInstaller::isInstalled('Clients')) {
+            $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+        }
 
         if (file_exists(__DIR__ . '/../Routes/web.php')) {
             $this->loadRoutesFrom(__DIR__ . '/../Routes/web.php');

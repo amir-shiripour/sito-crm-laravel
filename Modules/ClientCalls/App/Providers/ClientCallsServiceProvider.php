@@ -5,6 +5,7 @@ namespace Modules\ClientCalls\App\Providers;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use App\Support\WidgetRegistry;
+use App\Services\Modules\BaseModuleInstaller;
 
 class ClientCallsServiceProvider extends ServiceProvider
 {
@@ -22,7 +23,11 @@ class ClientCallsServiceProvider extends ServiceProvider
         $this->registerTranslations();
         $this->registerConfig();
         $this->registerViews();
-        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
+            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        }
+
         Blade::component('clientcalls::components.client-call-manager', 'client-call-manager');
         $widgetsFile = __DIR__ . '/../../config/widgets.php';
 

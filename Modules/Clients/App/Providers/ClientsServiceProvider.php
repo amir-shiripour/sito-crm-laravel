@@ -5,6 +5,7 @@ namespace Modules\Clients\App\Providers;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use App\Support\WidgetRegistry;
+use App\Services\Modules\BaseModuleInstaller;
 
 class ClientsServiceProvider extends ServiceProvider
 {
@@ -22,7 +23,10 @@ class ClientsServiceProvider extends ServiceProvider
         $this->registerTranslations();
         $this->registerConfig();
         $this->registerViews();
-        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
+            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        }
 
         $widgetsFile = __DIR__ . '/../../config/widgets.php';
         if (file_exists($widgetsFile)) {

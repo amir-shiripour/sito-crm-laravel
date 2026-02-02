@@ -3,6 +3,7 @@
 namespace Modules\Tasks\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Services\Modules\BaseModuleInstaller;
 
 class TasksServiceProvider extends ServiceProvider
 {
@@ -13,7 +14,10 @@ class TasksServiceProvider extends ServiceProvider
     {
         $this->registerConfig();
         $this->registerViews();
-        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
+            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        }
     }
 
     public function register(): void

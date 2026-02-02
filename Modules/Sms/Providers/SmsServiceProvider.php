@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Modules\Sms\Services\SmsManager;
 use Modules\Sms\Services\Contracts\SmsSender;
+use App\Services\Modules\BaseModuleInstaller;
 
 class SmsServiceProvider extends ServiceProvider
 {
@@ -30,7 +31,10 @@ class SmsServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
+        if (BaseModuleInstaller::isInstalled('Sms')) {
+            $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
+        }
+
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sms');
 
         $this->mapRoutes();
