@@ -6,18 +6,20 @@
     <title>صورت وضعیت</title>
     <style>
         @font-face {
-            font-family: 'Vazirmatn';
-            src: url('{{ public_path('fonts/Vazirmatn-Regular.ttf') }}') format('truetype');
+            font-family: 'IRANYekanX';
+            src: url('data:font/ttf;base64,{{ base64_encode(file_get_contents(resource_path('fonts/iranYekanX/IRANYekanMediumFaNum.ttf'))) }}') format('truetype');
             font-weight: normal;
+            font-style: normal;
         }
         @font-face {
-            font-family: 'Vazirmatn';
-            src: url('{{ public_path('fonts/Vazirmatn-Bold.ttf') }}') format('truetype');
+            font-family: 'IRANYekanX';
+            src: url('data:font/ttf;base64,{{ base64_encode(file_get_contents(resource_path('fonts/iranYekanX/IRANYekanMediumFaNum.ttf'))) }}') format('truetype');
             font-weight: bold;
+            font-style: normal;
         }
 
         body {
-            font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+            font-family: 'IRANYekanX', Tahoma, Arial, sans-serif;
             font-size: 13px;
             direction: rtl;
             color: #212121;
@@ -195,6 +197,8 @@
                         @if(!$isSingleDay)
                             <th style="width: 12%;">تاریخ نوبت</th>
                         @endif
+                        <th style="width: 10%;">ساعت ورود</th>
+                        <th style="width: 10%;">ساعت خروج</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -207,7 +211,7 @@
                             </td>
                             <td>{{ $appointment->client?->full_name ?? '-' }}</td>
                             <td>{{ $appointment->client?->case_number ?? '-' }}</td>
-                            <td style="text-align: right;">
+                            <td style="text-align: center;">
                                 @php
                                     $parts = [];
                                     if($appointment->unit_count) {
@@ -233,6 +237,8 @@
                                     <span class="ltr">{{ $appointment->start_at_utc ? $appointment->start_at_utc->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('Y/m/d') : '-' }}</span>
                                 </td>
                             @endif
+                            <td></td>
+                            <td></td>
                         </tr>
                     @endforeach
                 </tbody>
