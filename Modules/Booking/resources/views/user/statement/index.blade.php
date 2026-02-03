@@ -259,7 +259,7 @@
 
                                         @foreach($statementRoles as $role)
                                             <div class="mb-4 relative" @click.outside="closeResults('{{ $role->id }}')">
-                                                <label for="modal_role_{{ $role->id }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $role->name }}</label>
+                                                <label for="modal_role_{{ $role->id }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $role->display_name ?? $role->name }}</label>
 
                                                 <div class="relative">
                                                     <input type="text"
@@ -271,7 +271,7 @@
                                                            @focus="showResults['{{ $role->id }}'] = true"
                                                            autocomplete="off">
 
-                                                    <input type="hidden" name="role_{{ $role->id }}" :value="selectedIds['{{ $role->id }}']" required>
+                                                    <input type="hidden" name="role_{{ $role->id }}" :value="selectedIds['{{ $role->id }}']">
 
                                                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                         <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -436,19 +436,7 @@
                 },
 
                 submitPrint() {
-                    // Basic validation
-                    let valid = true;
-                    @foreach($statementRoles as $role)
-                        if (!this.selectedIds['{{ $role->id }}']) {
-                            valid = false;
-                        }
-                    @endforeach
-
-                    if (!valid) {
-                        alert('لطفاً تمام نقش‌های مورد نیاز را انتخاب کنید.');
-                        return;
-                    }
-
+                    // Basic validation removed to allow optional selection
                     document.getElementById('printForm').submit();
                     this.isPrintModalOpen = false;
                 }
