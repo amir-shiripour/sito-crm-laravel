@@ -101,8 +101,7 @@ class StatementController extends Controller
             fn($v) => $v > 0
         ));
 
-        // 2. Validate that a user is selected for EACH required role
-        $missingRoleNames = [];
+        // 2. Get selected users (Optional now)
         $statementRoles = Role::whereIn('id', $statementRoleIds)->get();
         $selectedUsers = [];
 
@@ -110,21 +109,12 @@ class StatementController extends Controller
             $inputName = 'role_' . $role->id;
             $userId = $request->input($inputName);
 
-            if (!$userId) {
-                $missingRoleNames[] = $role->name;
-            } else {
+            if ($userId) {
                 $userObj = User::find($userId);
                 if ($userObj) {
                     $selectedUsers[$role->id] = $userObj;
-                } else {
-                    // User ID provided but not found in DB
-                    $missingRoleNames[] = $role->name . ' (کاربر نامعتبر)';
                 }
             }
-        }
-
-        if (!empty($missingRoleNames)) {
-            return redirect()->back()->with('error', 'جهت دریافت خروجی PDF، انتخاب کاربر برای نقش‌های زیر الزامی است: ' . implode('، ', $missingRoleNames));
         }
 
         // 3. Prepare Data for PDF
@@ -191,7 +181,9 @@ class StatementController extends Controller
         } else {
             // Linux / Server configuration
             $browsershot->noSandbox()
-                ->setOption('args', ['--disable-web-security']);
+                ->setOption('args', ['--disable-web-security'])
+                // Explicitly set node_modules path for Linux server
+                ->setNodeModulePath(base_path('node_modules'));
         }
 
         $pdf = $browsershot

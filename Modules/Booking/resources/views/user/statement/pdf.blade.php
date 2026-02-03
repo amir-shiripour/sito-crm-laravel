@@ -126,7 +126,7 @@
         $otherUsersList = [];
         foreach($others as $roleId => $user) {
             $role = $statementRoles->firstWhere('id', $roleId);
-            $roleName = $role ? $role->name : 'همکار';
+            $roleName = $role ? ($role->display_name ?? $role->name) : 'همکار';
             $otherUsersList[] = ['role' => $roleName, 'name' => $user->name];
         }
     @endphp
