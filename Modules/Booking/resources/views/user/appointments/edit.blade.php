@@ -377,30 +377,30 @@
                 });
             };
 
+            // Initial load logic
             if (flow === 'PROVIDER_FIRST' && serviceSelect && providerSelect) {
-                if (providerSelect.value) {
-                    fetchServices(providerSelect.value);
-                }
+                // Don't trigger fetch on initial load to preserve server-rendered options
+                // unless user changes selection
                 providerSelect.addEventListener('change', () => {
                     fetchServices(providerSelect.value, false);
                 });
                 serviceSelect.addEventListener('change', () => {
-                    fetchProviders(serviceSelect.value, false);
+                    // When service changes, we might want to filter providers, but usually
+                    // in PROVIDER_FIRST flow, provider is fixed first.
+                    // However, if we want bidirectional filtering:
+                    // fetchProviders(serviceSelect.value, true);
                     loadAppointmentForm(serviceSelect.value);
                 });
             }
 
             if (flow === 'SERVICE_FIRST' && serviceSelect && providerSelect) {
-                if (serviceSelect.value) {
-                    fetchProviders(serviceSelect.value);
-                    loadAppointmentForm(serviceSelect.value);
-                }
+                 // Don't trigger fetch on initial load to preserve server-rendered options
                 serviceSelect.addEventListener('change', () => {
                     fetchProviders(serviceSelect.value, false);
                     loadAppointmentForm(serviceSelect.value);
                 });
                 providerSelect.addEventListener('change', () => {
-                    fetchServices(providerSelect.value, false);
+                    // fetchServices(providerSelect.value, true);
                 });
             }
 
