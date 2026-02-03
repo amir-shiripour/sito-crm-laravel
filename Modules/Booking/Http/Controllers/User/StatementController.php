@@ -192,6 +192,7 @@ class StatementController extends Controller
             ->format('A4')
             ->margins(10, 10, 10, 10)
             ->showBackground()
+            ->waitUntilNetworkIdle() // Wait for fonts and resources to load
             ->pdf();
 
         $filenameDate = str_replace('/', '-', $startDateLocal);

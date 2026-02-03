@@ -7,14 +7,13 @@
     <style>
         @font-face {
             font-family: 'IRANYekanX';
-            src: url('{{ public_path('resources/fonts/iranYekanX/IRANYekanMediumFaNum.ttf') }}') format('truetype');
+            src: url('data:font/ttf;base64,{{ base64_encode(file_get_contents(resource_path('fonts/iranYekanX/IRANYekanMediumFaNum.ttf'))) }}') format('truetype');
             font-weight: normal;
             font-style: normal;
         }
-        /* چون فقط یک وزن فونت داریم، برای حالت بولد هم از همان استفاده می‌کنیم یا اگر فونت بولد جداگانه دارید اضافه کنید */
         @font-face {
             font-family: 'IRANYekanX';
-            src: url('{{ public_path('resources/fonts/iranYekanX/IRANYekanMediumFaNum.ttf') }}') format('truetype');
+            src: url('data:font/ttf;base64,{{ base64_encode(file_get_contents(resource_path('fonts/iranYekanX/IRANYekanMediumFaNum.ttf'))) }}') format('truetype');
             font-weight: bold;
             font-style: normal;
         }
@@ -198,6 +197,8 @@
                         @if(!$isSingleDay)
                             <th style="width: 12%;">تاریخ نوبت</th>
                         @endif
+                        <th style="width: 10%;">ساعت ورود</th>
+                        <th style="width: 10%;">ساعت خروج</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -210,7 +211,7 @@
                             </td>
                             <td>{{ $appointment->client?->full_name ?? '-' }}</td>
                             <td>{{ $appointment->client?->case_number ?? '-' }}</td>
-                            <td style="text-align: right;">
+                            <td style="text-align: center;">
                                 @php
                                     $parts = [];
                                     if($appointment->unit_count) {
@@ -236,6 +237,8 @@
                                     <span class="ltr">{{ $appointment->start_at_utc ? $appointment->start_at_utc->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('Y/m/d') : '-' }}</span>
                                 </td>
                             @endif
+                            <td></td>
+                            <td></td>
                         </tr>
                     @endforeach
                 </tbody>
