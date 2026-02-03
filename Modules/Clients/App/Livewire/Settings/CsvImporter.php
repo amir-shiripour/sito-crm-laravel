@@ -144,6 +144,10 @@ class CsvImporter extends Component
 
     public function processImport()
     {
+        // Increase execution time
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+
         $this->validate(['fieldMapping' => 'required|array']);
 
         $this->importing = true;
@@ -235,7 +239,10 @@ class CsvImporter extends Component
                     }
                 }
 
-                $clientData['password'] = isset($clientData['password']) ? Hash::make($clientData['password']) : Hash::make(Str::random(12));
+                // Use lower cost for hashing to speed up import
+                $password = isset($clientData['password']) ? $clientData['password'] : Str::random(12);
+                $clientData['password'] = Hash::make($password, ['rounds' => 4]); // Lower rounds for speed
+
                 $clientData['created_by'] = auth()->id();
                 $clientData['custom_fields'] = $customData;
 
