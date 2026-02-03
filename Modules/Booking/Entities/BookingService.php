@@ -38,6 +38,7 @@ class BookingService extends Model
         'discount_to',
         'category_id',
         'online_booking_mode',
+        'auto_confirm_online_booking',
         'payment_mode',
         'payment_amount_type',
         'payment_amount_value',
@@ -53,6 +54,7 @@ class BookingService extends Model
         'client_profile_required_fields' => 'array',
         'provider_can_customize' => 'boolean',
         'custom_schedule_enabled' => 'boolean',
+        'auto_confirm_online_booking' => 'boolean',
     ];
 
     protected static function booted(): void

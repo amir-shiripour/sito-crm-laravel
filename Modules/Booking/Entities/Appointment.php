@@ -13,6 +13,7 @@ use Modules\Clients\Entities\Client;
 class Appointment extends Model
 {
     public const STATUS_DRAFT = 'DRAFT';
+    public const STATUS_PENDING = 'PENDING';
     public const STATUS_PENDING_PAYMENT = 'PENDING_PAYMENT';
     public const STATUS_CONFIRMED = 'CONFIRMED';
     public const STATUS_CANCELED_BY_CLIENT = 'CANCELED_BY_CLIENT';

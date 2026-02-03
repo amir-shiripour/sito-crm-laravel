@@ -28,17 +28,112 @@ class AppointmentController extends Controller
         $settings = BookingSetting::current();
         $user = $request->user();
 
-        $appointmentsQuery = Appointment::query()
-            ->with(['service', 'provider', 'client'])
-            ->orderByDesc('start_at_utc');
+        $query = Appointment::query()
+            ->with(['service', 'provider', 'client']);
 
+        // Permission Scope
         if ($this->userIsProvider($user, $settings) && ! $this->isAdminUser($user)) {
-            $appointmentsQuery->where('provider_user_id', $user->id);
+            $query->where('provider_user_id', $user->id);
         }
 
-        $appointments = $appointmentsQuery->paginate(25);
+        // --- Filtering ---
 
-        return view('booking::user.appointments.index', compact('appointments'));
+        // 1. Search
+        if ($q = $request->input('q')) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('id', $q)
+                    ->orWhereHas('client', function ($c) use ($q) {
+                        $c->where('full_name', 'like', "%{$q}%")
+                            ->orWhere('phone', 'like', "%{$q}%")
+                            ->orWhere('national_code', 'like', "%{$q}%");
+                    });
+            });
+        }
+
+        // 2. Status
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        // 3. Service
+        if ($serviceId = $request->input('service_id')) {
+            $query->where('service_id', $serviceId);
+        }
+
+        // 4. Provider
+        if ($providerId = $request->input('provider_user_id')) {
+            $query->where('provider_user_id', $providerId);
+        }
+
+        // 5. Date Range
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        if ($dateFrom = $request->input('date_from')) {
+            // Jalali Datepicker usually sends YYYY/MM/DD
+            $localDate = $this->convertJalaliDateToLocal($dateFrom, $scheduleTz);
+            if ($localDate) {
+                $query->where('start_at_utc', '>=', $localDate->startOfDay()->timezone('UTC'));
+            }
+        }
+        if ($dateTo = $request->input('date_to')) {
+            $localDate = $this->convertJalaliDateToLocal($dateTo, $scheduleTz);
+            if ($localDate) {
+                $query->where('start_at_utc', '<=', $localDate->endOfDay()->timezone('UTC'));
+            }
+        }
+
+        // --- Stats ---
+        $statsQuery = $query->clone();
+        $totalCount = $statsQuery->count();
+        $statusCounts = $statsQuery->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // --- Sorting ---
+        $sort = $request->input('sort', 'newest');
+        if ($sort === 'oldest') {
+            $query->orderBy('start_at_utc');
+        } elseif ($sort === 'created_desc') {
+            $query->orderByDesc('created_at');
+        } else {
+            // Default: Newest (Start Time) DESC
+            $query->orderByDesc('start_at_utc');
+        }
+
+        $appointments = $query->paginate(25)->withQueryString();
+
+        // Data for Filters
+        $services = BookingService::query()->orderBy('name')->get(['id', 'name']);
+
+        $providers = [];
+        if ($this->isAdminUser($user)) {
+            // Filter providers based on allowed roles in settings
+            $roleIds = array_values(array_filter(
+                array_map('intval', (array) ($settings->allowed_roles ?? [])),
+                fn($v) => $v > 0
+            ));
+
+            $providersQuery = User::query();
+
+            if (!empty($roleIds)) {
+                $providersQuery->whereHas('roles', fn($r) => $r->whereIn('id', $roleIds));
+            } else {
+                // Fallback: if no roles defined, show users who are attached to services
+                $providersQuery->whereIn('id', function($q) {
+                    $q->select('provider_user_id')->from('booking_service_providers');
+                });
+            }
+
+            $providers = $providersQuery->orderBy('name')->get(['id', 'name']);
+        }
+
+        return view('booking::user.appointments.index', compact(
+            'appointments',
+            'services',
+            'providers',
+            'totalCount',
+            'statusCounts'
+        ));
     }
 
     public function create()
@@ -335,6 +430,7 @@ class AppointmentController extends Controller
             'client_id'         => ['required', 'integer', 'exists:clients,id'],
             'status'            => ['required', Rule::in([
                 Appointment::STATUS_DRAFT,
+                Appointment::STATUS_PENDING,
                 Appointment::STATUS_PENDING_PAYMENT,
                 Appointment::STATUS_CONFIRMED,
                 Appointment::STATUS_CANCELED_BY_ADMIN,

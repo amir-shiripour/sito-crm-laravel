@@ -4,6 +4,7 @@ namespace Modules\Workflows\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use App\Services\Modules\BaseModuleInstaller;
+use Modules\Workflows\Console\ProcessWorkflowsCommand;
 
 class WorkflowsServiceProvider extends ServiceProvider
 {
@@ -24,5 +25,11 @@ class WorkflowsServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../Config/config.php' => config_path('workflows.php'),
         ], 'workflows-config');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ProcessWorkflowsCommand::class,
+            ]);
+        }
     }
 }

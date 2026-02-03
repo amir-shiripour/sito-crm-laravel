@@ -30,4 +30,9 @@ class Workflow extends Model
     {
         return $this->hasMany(WorkflowInstance::class);
     }
+
+    public function triggers(): HasMany
+    {
+        return $this->hasMany(WorkflowTrigger::class);
+    }
 }

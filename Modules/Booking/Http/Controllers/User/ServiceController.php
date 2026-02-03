@@ -110,6 +110,7 @@ class ServiceController extends Controller
                 BookingService::ONLINE_MODE_FORCE_ON,
                 BookingService::ONLINE_MODE_FORCE_OFF,
             ])],
+            'auto_confirm_online_booking' => ['nullable', 'boolean'],
 
             'payment_mode'       => ['required', Rule::in([
                 BookingService::PAYMENT_MODE_NONE,
@@ -137,6 +138,7 @@ class ServiceController extends Controller
             $data['provider_can_customize'] = (bool)($data['provider_can_customize'] ?? false);
         }
         $data['custom_schedule_enabled'] = (bool)($data['custom_schedule_enabled'] ?? false);
+        $data['auto_confirm_online_booking'] = (bool)($data['auto_confirm_online_booking'] ?? false);
 
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
@@ -241,6 +243,7 @@ class ServiceController extends Controller
                     BookingService::ONLINE_MODE_FORCE_ON,
                     BookingService::ONLINE_MODE_FORCE_OFF,
                 ])],
+                'auto_confirm_online_booking' => ['nullable', 'boolean'],
 
                 'payment_mode'       => ['required', Rule::in([
                     BookingService::PAYMENT_MODE_NONE,
@@ -280,6 +283,7 @@ class ServiceController extends Controller
             $sp->override_appointment_form_id  = $data['appointment_form_id'] ?? null;
 
             $sp->override_online_booking_mode  = $data['online_booking_mode'];
+            $sp->override_auto_confirm         = (bool)($data['auto_confirm_online_booking'] ?? false);
 
             $sp->override_payment_mode         = $data['payment_mode'];
             $sp->override_payment_amount_type  = $data['payment_amount_type'] ?? null;
@@ -313,6 +317,7 @@ class ServiceController extends Controller
                 BookingService::ONLINE_MODE_FORCE_ON,
                 BookingService::ONLINE_MODE_FORCE_OFF,
             ])],
+            'auto_confirm_online_booking' => ['nullable', 'boolean'],
 
             'payment_mode'       => ['required', Rule::in([
                 BookingService::PAYMENT_MODE_NONE,
@@ -346,6 +351,7 @@ class ServiceController extends Controller
             $data['provider_can_customize'] = (bool)($data['provider_can_customize'] ?? false);
         }
         $data['custom_schedule_enabled'] = (bool) $request->input('custom_schedule_enabled', false);
+        $data['auto_confirm_online_booking'] = (bool)($data['auto_confirm_online_booking'] ?? false);
 
         $service->fill($data)->save();
 

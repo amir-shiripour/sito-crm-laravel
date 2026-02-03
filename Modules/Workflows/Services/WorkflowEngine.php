@@ -2,6 +2,7 @@
 
 namespace Modules\Workflows\Services;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,13 +15,12 @@ use Modules\Workflows\Entities\WorkflowLog;
 
 class WorkflowEngine
 {
-    public function start(string $workflowKey, string $relatedType, int $relatedId): ?WorkflowInstance
+    public function startWorkflow(Workflow $workflow, ?string $relatedType = null, ?int $relatedId = null): ?WorkflowInstance
     {
-        Log::info("[Workflows] Request to start workflow: '{$workflowKey}' for {$relatedType}:{$relatedId}");
+        Log::info("[Workflows] Request to start workflow: '{$workflow->key}' for {$relatedType}:{$relatedId}");
 
-        $workflow = Workflow::where('key', $workflowKey)->where('is_active', true)->first();
-        if (! $workflow) {
-            Log::warning("[Workflows] Workflow not found or inactive: '{$workflowKey}'");
+        if (!$workflow->is_active) {
+            Log::warning("[Workflows] Workflow inactive: '{$workflow->key}'");
             return null;
         }
 
@@ -35,8 +35,8 @@ class WorkflowEngine
         return DB::transaction(function () use ($workflow, $initialStage, $relatedType, $relatedId) {
             $instance = WorkflowInstance::create([
                 'workflow_id'      => $workflow->id,
-                'related_type'     => $relatedType,
-                'related_id'       => $relatedId,
+                'related_type'     => $relatedType ?? 'WORKFLOW_SCHEDULE',
+                'related_id'       => $relatedId ?? 0,
                 'current_stage_id' => $initialStage->id,
                 'status'           => WorkflowInstance::STATUS_ACTIVE,
                 'started_at'       => now(),
@@ -48,6 +48,16 @@ class WorkflowEngine
 
             return $instance;
         });
+    }
+
+    public function start(string $workflowKey, string $relatedType, int $relatedId): ?WorkflowInstance
+    {
+        $workflow = Workflow::where('key', $workflowKey)->first();
+        if (!$workflow) {
+            Log::warning("[Workflows] Workflow not found: '{$workflowKey}'");
+            return null;
+        }
+        return $this->startWorkflow($workflow, $relatedType, $relatedId);
     }
 
     public function moveToStage(WorkflowInstance $instance, WorkflowStage $stage): void
@@ -102,18 +112,14 @@ class WorkflowEngine
         // Base date for offsets: appointment start time if available, otherwise workflow start time
         $baseDate = $context['appointment']->start_at_utc ?? $instance->started_at ?? now();
 
-        // Resolve target user/assignee
+        // Resolve target user/assignee for Tasks/FollowUps
         $targetUserId = Auth::id();
         $assigneeTarget = $config['assignee_target'] ?? 'CURRENT_USER';
 
         if ($assigneeTarget === 'APPOINTMENT_PROVIDER' && isset($context['appointment'])) {
             $targetUserId = $context['appointment']->provider_user_id ?? $targetUserId;
-            Log::info("[Workflows] Assignee resolved to PROVIDER: " . ($targetUserId ?? 'NULL'));
         } elseif ($assigneeTarget === 'SPECIFIC_USER' && !empty($config['assignee_id'])) {
             $targetUserId = $config['assignee_id'];
-            Log::info("[Workflows] Assignee resolved to SPECIFIC_USER: " . ($targetUserId ?? 'NULL'));
-        } else {
-            Log::info("[Workflows] Assignee resolved to CURRENT_USER (or default): " . ($targetUserId ?? 'NULL'));
         }
 
         switch ($action->action_type) {
@@ -156,27 +162,6 @@ class WorkflowEngine
                 }
                 break;
 
-            case WorkflowAction::TYPE_CREATE_REMINDER:
-                if ($this->isModuleEnabled($deps['reminders'] ?? null) && class_exists('Modules\\Reminders\\Entities\\Reminder')) {
-                    $Reminder = 'Modules\\Reminders\\Entities\\Reminder';
-
-                    $remindAt = $this->calcOffsetMinutes($config['offset_minutes'] ?? 0, $baseDate);
-                    $message = $this->renderTemplate($config['message'] ?? ('یادآوری: ' . $stage->name), $context);
-
-                    $reminder = $Reminder::create([
-                        'user_id'      => $targetUserId,
-                        'related_type' => 'WORKFLOW_INSTANCE',
-                        'related_id'   => $instance->id,
-                        'remind_at'    => $remindAt,
-                        'channel'      => $config['channel'] ?? config('workflows.default_reminder_channel', 'IN_APP'),
-                        'message'      => $message,
-                        'is_sent'      => false,
-                    ]);
-
-                    $result = ['status' => 'created', 'reminder_id' => $reminder->id];
-                }
-                break;
-
             case WorkflowAction::TYPE_SEND_NOTIFICATION:
                 $message = $this->renderTemplate($config['message'] ?? ('اجرای مرحله '.$stage->name), $context);
                 Log::info('[Workflows] notification', [
@@ -189,6 +174,7 @@ class WorkflowEngine
             case WorkflowAction::TYPE_SEND_SMS:
                 if ($this->isModuleEnabled($deps['sms'] ?? null) && class_exists('Modules\\Sms\\Services\\SmsManager')) {
                     $to = $this->resolveTargetPhone($config, $context);
+                    Log::info("[Workflows] Sending SMS to: " . ($to ?? 'NULL'));
 
                     if ($to) {
                         $Sms = app(\Modules\Sms\Services\SmsManager::class);
@@ -206,15 +192,20 @@ class WorkflowEngine
                         }
 
                         if (!empty($config['pattern_key'])) {
+                            Log::info("[Workflows] Sending Pattern SMS: {$config['pattern_key']}");
                             $sms = $Sms->sendPattern($to, $config['pattern_key'], $params, $options);
                             $result = ['status' => 'pattern_sent', 'sms_id' => $sms->id, 'to' => $to];
                         } else {
+                            Log::info("[Workflows] Sending Text SMS: {$message}");
                             $sms = $Sms->sendText($to, $message, $options);
                             $result = ['status' => 'text_sent', 'sms_id' => $sms->id, 'to' => $to];
                         }
                     } else {
+                        Log::warning("[Workflows] SMS skipped: No phone number found.");
                         $result = ['status' => 'skipped', 'reason' => 'missing_phone'];
                     }
+                } else {
+                    Log::warning("[Workflows] SMS module not enabled or manager not found.");
                 }
                 break;
         }
@@ -265,6 +256,8 @@ class WorkflowEngine
                     'appointment_date_jalali' => $dateJalali?->format('Y/m/d'),
                     'appointment_time_jalali' => $dateJalali?->format('H:i'),
                     'appointment_datetime_jalali' => $dateJalali?->format('Y/m/d H:i'),
+                    // Add payment link if available (placeholder logic)
+                    'payment_link' => route('booking.payment.show', ['id' => $appt->id]),
                 ];
             }
         }
@@ -275,12 +268,29 @@ class WorkflowEngine
     protected function resolveTargetPhone(array $config, array $context): ?string
     {
         $target = $config['target'] ?? 'APPOINTMENT_CLIENT';
+
         if ($target === 'APPOINTMENT_CLIENT') {
             return $context['tokens']['client_phone'] ?? null;
         }
+
+        if ($target === 'APPOINTMENT_PROVIDER') {
+            // Assuming provider has a phone number in User model or profile
+            $provider = $context['appointment']->provider ?? null;
+            return $provider?->phone ?? $provider?->mobile ?? null;
+        }
+
+        if ($target === 'SPECIFIC_USER') {
+            $userId = $config['target_user_id'] ?? null;
+            if ($userId) {
+                $user = User::find($userId);
+                return $user?->phone ?? $user?->mobile ?? null;
+            }
+        }
+
         if ($target === 'CUSTOM_PHONE') {
             return $config['phone'] ?? null;
         }
+
         return null;
     }
 
@@ -289,7 +299,9 @@ class WorkflowEngine
         $tokens = $context['tokens'] ?? [];
         $params = [];
         foreach ($paramKeys as $key) {
-            $params[] = $tokens[$key] ?? '';
+            // If key is a token name, use its value. If it's a raw string (not in tokens), use it as is?
+            // For now, we assume keys are token names from the dropdown.
+            $params[] = $tokens[$key] ?? $key;
         }
         return $params;
     }
