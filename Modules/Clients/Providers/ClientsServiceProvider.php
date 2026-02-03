@@ -52,5 +52,6 @@ class ClientsServiceProvider extends ServiceProvider
         Livewire::component('clients.statuses-builder', \Modules\Clients\App\Livewire\Settings\ClientStatusesManager::class);
         Livewire::component('clients.form', \Modules\Clients\App\Livewire\ClientForm::class);
         Livewire::component('client-auth-settings', \Modules\Clients\App\Livewire\Settings\ClientAuthSettings::class);
+        Livewire::component('clients.csv-importer', \Modules\Clients\App\Livewire\Settings\CsvImporter::class);
     }
 }
