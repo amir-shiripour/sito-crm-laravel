@@ -32,7 +32,7 @@
         $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2";
     @endphp
 
-    <div class="space-y-6">
+    <div class="space-y-6" x-data="editAppointment()">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 {{ $cardClass }} p-4">
             <div>
                 <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">ویرایش نوبت #{{ $appointment->id }}</h1>
@@ -50,7 +50,8 @@
               class="{{ $cardClass }} p-6 space-y-6"
               data-flow="{{ $settings->operator_appointment_flow ?? 'PROVIDER_FIRST' }}"
               data-selected-provider="{{ $appointment->provider_user_id }}"
-              data-selected-service="{{ $appointment->service_id }}">
+              data-selected-service="{{ $appointment->service_id }}"
+              @submit="handleSubmit">
             @csrf
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -78,18 +79,83 @@
                     </select>
                     @error('provider_user_id')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
                 </div>
-                <div class="md:col-span-2">
+
+                {{-- Client Selector with Search --}}
+                <div class="md:col-span-2 relative" @click.outside="closeResults()">
                     <label class="{{ $labelClass }}">مشتری</label>
-                    <select name="client_id"
-                            class="{{ $inputClass }}">
-                        @foreach($clients as $client)
-                            <option value="{{ $client->id }}" @selected((string)old('client_id', $appointment->client_id)===(string)$client->id)>
-                                {{ $client->full_name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <div class="relative">
+                        <input type="text"
+                               class="{{ $inputClass }} pl-10"
+                               placeholder="جستجو نام، شماره تماس، کد ملی..."
+                               x-model="clientSearch"
+                               @input.debounce.300ms="fetchClients()"
+                               @focus="showResults = true"
+                               autocomplete="off">
+
+                        <input type="hidden" name="client_id" x-model="clientId">
+
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+
+                        <button type="button"
+                                x-show="clientId"
+                                @click="clearClient()"
+                                class="absolute inset-y-0 left-8 pl-2 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Selected Client Display --}}
+                    <div x-show="clientId && !showResults" class="mt-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-indigo-900 dark:text-indigo-100" x-text="selectedClientName"></div>
+                            <div class="text-xs text-indigo-600 dark:text-indigo-300 mt-0.5" x-text="selectedClientDetail"></div>
+                        </div>
+                        <button type="button" @click="clearClient()" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-200">
+                            <span class="text-xs">تغییر</span>
+                        </button>
+                    </div>
+
+                    {{-- Dropdown Results --}}
+                    <div x-show="showResults && (clients.length > 0 || loading)"
+                         x-transition.opacity
+                         class="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-700">
+
+                        <template x-if="loading">
+                            <div class="cursor-default select-none relative py-2 pl-3 pr-9 text-gray-500 dark:text-gray-400 text-center">
+                                در حال جستجو...
+                            </div>
+                        </template>
+
+                        <template x-for="client in clients" :key="client.id">
+                            <div @click="selectClient(client)"
+                                 class="cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-gray-900 dark:text-gray-100 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span class="font-medium block truncate" x-text="client.full_name"></span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-0.5">
+                                            <span x-show="client.phone" x-text="client.phone"></span>
+                                            <span x-show="client.national_code" x-text="' | ' + client.national_code"></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template x-if="!loading && clients.length === 0">
+                             <div class="cursor-default select-none relative py-2 pl-3 pr-9 text-gray-500 dark:text-gray-400 text-center">
+                                موردی یافت نشد
+                            </div>
+                        </template>
+                    </div>
                     @error('client_id')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
                 </div>
+
                 <div>
                     <label class="{{ $labelClass }}">وضعیت</label>
                     <select name="status"
@@ -167,6 +233,79 @@
     </div>
 
     <script>
+        function editAppointment() {
+            return {
+                clientSearch: '',
+                clientId: '{{ old('client_id', $appointment->client_id) }}',
+                clients: [],
+                loading: false,
+                showResults: false,
+                selectedClientName: '{{ optional($appointment->client)->full_name }}',
+                selectedClientDetail: '{{ optional($appointment->client)->phone }}',
+
+                init() {
+                    // If we have an initial client but no name (e.g. validation error with new ID), fetch it
+                    if (this.clientId && !this.selectedClientName) {
+                        // Ideally we would fetch single client, but search works too
+                        // Or we rely on server-side rendering for initial state which is safer
+                    }
+                },
+
+                async fetchClients() {
+                    if (!this.clientSearch) {
+                        this.clients = [];
+                        return;
+                    }
+
+                    this.loading = true;
+                    try {
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.clients') }}?q=${this.clientSearch}`, {
+                            headers: {'Accept': 'application/json'}
+                        });
+                        const json = await res.json();
+                        this.clients = json.data || [];
+                        this.showResults = true;
+                    } catch (e) {
+                        console.error(e);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                selectClient(client) {
+                    this.clientId = client.id;
+                    this.selectedClientName = client.full_name;
+                    this.selectedClientDetail = [client.phone, client.national_code].filter(Boolean).join(' | ');
+                    this.clientSearch = '';
+                    this.showResults = false;
+                },
+
+                clearClient() {
+                    this.clientId = '';
+                    this.selectedClientName = '';
+                    this.selectedClientDetail = '';
+                    this.clientSearch = '';
+                    // Focus search input next tick
+                    setTimeout(() => {
+                        this.$el.querySelector('input[placeholder*="جستجو"]').focus();
+                    }, 50);
+                },
+
+                closeResults() {
+                    this.showResults = false;
+                },
+
+                handleSubmit() {
+                    // Form submission logic handled by standard form submit,
+                    // but we can add extra validation here if needed
+                    const formJsonInput = document.getElementById('appointment_form_response_json');
+                    if (formJsonInput && typeof collectFormValues === 'function') {
+                         formJsonInput.value = JSON.stringify(collectFormValues());
+                    }
+                }
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             if (window.jalaliDatepicker) {
                 window.jalaliDatepicker.startWatch({
@@ -333,7 +472,8 @@
                 return wrapper;
             };
 
-            const collectFormValues = () => {
+            // Expose globally for Alpine to call
+            window.collectFormValues = () => {
                 const values = {};
                 formContainer.querySelectorAll('[data-field-name]').forEach((el) => {
                     const name = el.dataset.fieldName;
@@ -379,40 +519,24 @@
 
             // Initial load logic
             if (flow === 'PROVIDER_FIRST' && serviceSelect && providerSelect) {
-                // Don't trigger fetch on initial load to preserve server-rendered options
-                // unless user changes selection
                 providerSelect.addEventListener('change', () => {
                     fetchServices(providerSelect.value, false);
                 });
                 serviceSelect.addEventListener('change', () => {
-                    // When service changes, we might want to filter providers, but usually
-                    // in PROVIDER_FIRST flow, provider is fixed first.
-                    // However, if we want bidirectional filtering:
-                    // fetchProviders(serviceSelect.value, true);
                     loadAppointmentForm(serviceSelect.value);
                 });
             }
 
             if (flow === 'SERVICE_FIRST' && serviceSelect && providerSelect) {
-                 // Don't trigger fetch on initial load to preserve server-rendered options
                 serviceSelect.addEventListener('change', () => {
                     fetchProviders(serviceSelect.value, false);
                     loadAppointmentForm(serviceSelect.value);
-                });
-                providerSelect.addEventListener('change', () => {
-                    // fetchServices(providerSelect.value, true);
                 });
             }
 
             if (serviceSelect && serviceSelect.value) {
                 loadAppointmentForm(serviceSelect.value);
             }
-
-            form.addEventListener('submit', () => {
-                if (formJsonInput) {
-                    formJsonInput.value = JSON.stringify(collectFormValues());
-                }
-            });
         });
     </script>
 @endsection
