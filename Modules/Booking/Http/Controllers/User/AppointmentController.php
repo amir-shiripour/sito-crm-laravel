@@ -611,19 +611,21 @@ class AppointmentController extends Controller
 
         $providersQuery = User::query();
 
+        // 1. First filter by allowed roles (if any)
         if (! $this->isAdminUser($authUser) && !empty($roleIds)) {
             $providersQuery->whereHas('roles', fn($r) => $r->whereIn('id', $roleIds));
         }
 
-        if ($serviceId) {
-            // فقط ارائه‌دهنده‌هایی که این سرویس برایشان فعال است
-            $providersQuery->whereIn('id', function ($sub) use ($serviceId) {
-                $sub->from('booking_service_providers')
-                    ->select('provider_user_id')
-                    ->where('service_id', $serviceId)
-                    ->where('is_active', 1);
-            });
-        }
+        // 2. Then filter by active service providers
+        $providersQuery->whereIn('id', function ($sub) use ($serviceId) {
+            $sub->from('booking_service_providers')
+                ->select('provider_user_id')
+                ->where('is_active', 1);
+
+            if ($serviceId) {
+                $sub->where('service_id', $serviceId);
+            }
+        });
 
         if ($q !== '') {
             $providersQuery->where(function ($w) use ($q) {
