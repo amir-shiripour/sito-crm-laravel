@@ -183,7 +183,9 @@ class StatementController extends Controller
             $browsershot->noSandbox()
                 ->setOption('args', ['--disable-web-security'])
                 // Explicitly set node_modules path for Linux server
-                ->setNodeModulePath(base_path('node_modules'));
+                ->setNodeModulePath(base_path('node_modules'))
+                // Set Chrome path for Linux
+                ->setChromePath('/usr/bin/google-chrome');
         }
 
         $pdf = $browsershot
