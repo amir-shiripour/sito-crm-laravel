@@ -194,10 +194,14 @@ class StatementController extends Controller
             ->showBackground()
             ->pdf();
 
+        $filenameDate = str_replace('/', '-', $startDateLocal);
+        if ($startDateLocal !== $endDateLocal) {
+            $filenameDate .= '_to_' . str_replace('/', '-', $endDateLocal);
+        }
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="statement.pdf"',
+            'Content-Disposition' => 'inline; filename="statement_' . $filenameDate . '.pdf"',
         ]);
     }
 
@@ -297,8 +301,8 @@ class StatementController extends Controller
             ->orderBy('start_at_utc')
             ->get();
 
-        $first = $appointments->first()?->start_at_utc;
-        $last = $appointments->last()?->start_at_utc;
+        $first = $appointments->min('start_at_utc');
+        $last = $appointments->max('end_at_utc');
 
         // Process appointments (same logic as before)
         foreach ($appointments as $appointment) {

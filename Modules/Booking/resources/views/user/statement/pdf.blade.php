@@ -6,18 +6,21 @@
     <title>صورت وضعیت</title>
     <style>
         @font-face {
-            font-family: 'Vazirmatn';
-            src: url('{{ public_path('fonts/Vazirmatn-Regular.ttf') }}') format('truetype');
+            font-family: 'IRANYekanX';
+            src: url('{{ public_path('resources/fonts/iranYekanX/IRANYekanMediumFaNum.ttf') }}') format('truetype');
             font-weight: normal;
+            font-style: normal;
         }
+        /* چون فقط یک وزن فونت داریم، برای حالت بولد هم از همان استفاده می‌کنیم یا اگر فونت بولد جداگانه دارید اضافه کنید */
         @font-face {
-            font-family: 'Vazirmatn';
-            src: url('{{ public_path('fonts/Vazirmatn-Bold.ttf') }}') format('truetype');
+            font-family: 'IRANYekanX';
+            src: url('{{ public_path('resources/fonts/iranYekanX/IRANYekanMediumFaNum.ttf') }}') format('truetype');
             font-weight: bold;
+            font-style: normal;
         }
 
         body {
-            font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+            font-family: 'IRANYekanX', Tahoma, Arial, sans-serif;
             font-size: 13px;
             direction: rtl;
             color: #212121;
