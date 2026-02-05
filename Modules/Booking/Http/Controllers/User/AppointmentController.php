@@ -335,6 +335,16 @@ class AppointmentController extends Controller
             }
         }
 
+        if ($shouldLog) {
+            Log::info('[Booking][Appointments][Store] Attempting to create appointment', [
+                'service_id' => $service->id,
+                'provider_id' => $data['provider_user_id'],
+                'client_id' => $client->id,
+                'start_utc' => $startUtc->toIso8601String(),
+                'end_utc' => $endUtc->toIso8601String(),
+            ]);
+        }
+
         try {
             $this->service->createAppointmentByOperator(
                 (int) $service->id,
@@ -347,6 +357,13 @@ class AppointmentController extends Controller
                 appointmentFormResponse: $formJson
             );
         } catch (\InvalidArgumentException | \RuntimeException $e) {
+            Log::error('[Booking][Appointments][Store] Failed to create appointment', [
+                'message' => $e->getMessage(),
+                'start_utc' => $startUtc->toIso8601String(),
+                'end_utc' => $endUtc->toIso8601String(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             $message = match ($e->getMessage()) {
                 'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل است.',
                 'Day capacity is full.' => 'ظرفیت روز تکمیل است.',
