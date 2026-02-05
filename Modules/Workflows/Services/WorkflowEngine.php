@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Morilog\Jalali\Jalalian;
 use Modules\Workflows\Entities\Workflow;
 use Modules\Workflows\Entities\WorkflowStage;
@@ -247,6 +248,11 @@ class WorkflowEngine
                 $scheduleTz = config('booking.timezones.display_default', 'Asia/Tehran');
                 $dateJalali = $appt->start_at_utc ? Jalalian::fromDateTime($appt->start_at_utc->copy()->timezone($scheduleTz)) : null;
 
+                // Check if route exists before using it
+                $paymentLink = Route::has('booking.payment.show')
+                    ? route('booking.payment.show', ['id' => $appt->id])
+                    : '#';
+
                 $data['appointment'] = $appt;
                 $data['tokens'] = [
                     'client_name' => $appt->client?->full_name,
@@ -256,8 +262,7 @@ class WorkflowEngine
                     'appointment_date_jalali' => $dateJalali?->format('Y/m/d'),
                     'appointment_time_jalali' => $dateJalali?->format('H:i'),
                     'appointment_datetime_jalali' => $dateJalali?->format('Y/m/d H:i'),
-                    // Add payment link if available (placeholder logic)
-                    'payment_link' => route('booking.payment.show', ['id' => $appt->id]),
+                    'payment_link' => $paymentLink,
                 ];
             }
         }
