@@ -97,6 +97,7 @@ class SmsManager implements SmsSender
         $config = config("sms.driver_config.$name", []);
 
         $user = Auth::user();
+        $setting = null;
 
         if ($user) {
             // اگر کاربر لاگین است → تنظیمات مخصوص همان کاربر
@@ -125,10 +126,16 @@ class SmsManager implements SmsSender
             $config = array_merge($config, $dbConfig);
         }
 
+        // Force check env if sender is missing
+        if (empty($config['sender']) && $name === 'limosms') {
+            $config['sender'] = env('LIMOSMS_SENDER');
+        }
+
         Log::debug('[SmsManager] resolveDriver', [
             'driver'     => $name,
             'has_apiKey' => ! empty($config['api_key'] ?? null),
-            'config'     => array_keys($config),
+            'sender'     => $config['sender'] ?? 'NULL',
+            'config_keys'=> array_keys($config),
         ]);
 
         return new $class($config);
