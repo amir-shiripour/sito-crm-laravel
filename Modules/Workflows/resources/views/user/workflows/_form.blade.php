@@ -140,10 +140,17 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">کدام رویداد؟</label>
                                 <select name="triggers[{{ $index }}][config][event_key]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                                     <option value="">انتخاب رویداد...</option>
-                                    <option value="appointment_created" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created')>ایجاد نوبت جدید (توسط هر کسی)</option>
-                                    <option value="appointment_created_online" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created_online')>رزرو آنلاین نوبت (توسط مشتری)</option>
-                                    <option value="appointment_canceled" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_canceled')>لغو نوبت</option>
-                                    <option value="appointment_no_show" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_no_show')>عدم حضور مشتری (No-Show)</option>
+                                    @if(isset($triggerOptions['APPOINTMENT']))
+                                        @foreach($triggerOptions['APPOINTMENT'] as $key => $label)
+                                            <option value="{{ $key }}" @selected(($trigger['config']['event_key'] ?? '') === $key)>{{ $label }}</option>
+                                        @endforeach
+                                    @else
+                                        <option value="appointment_created" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created')>ایجاد نوبت جدید (توسط هر کسی)</option>
+                                        <option value="appointment_created_online" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created_online')>رزرو آنلاین نوبت (توسط مشتری)</option>
+                                        <option value="appointment_created_operator" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created_operator')>ثبت نوبت توسط اپراتور</option>
+                                        <option value="appointment_canceled" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_canceled')>لغو نوبت</option>
+                                        <option value="appointment_no_show" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_no_show')>عدم حضور مشتری (No-Show)</option>
+                                    @endif
                                 </select>
                                 <p class="text-xs text-gray-500 mt-2">به محض رخ دادن این اتفاق، گردش کار اجرا می‌شود.</p>
                             </div>
