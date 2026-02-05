@@ -14,6 +14,7 @@ class FollowUpsServiceProvider extends ServiceProvider
     {
         $this->registerConfig();
         $this->registerViews();
+        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
 
         // Fix: Use 'Config' instead of 'config' to match directory case sensitivity on Linux
         $widgetsFile = __DIR__ . '/../Config/widgets.php';

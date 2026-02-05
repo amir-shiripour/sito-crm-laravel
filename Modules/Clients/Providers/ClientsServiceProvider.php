@@ -21,9 +21,7 @@ class ClientsServiceProvider extends ServiceProvider
     {
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'clients');
 
-        if (BaseModuleInstaller::isInstalled('Clients')) {
-            $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
-        }
+        $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
 
         if (file_exists(__DIR__ . '/../Routes/web.php')) {
             $this->loadRoutesFrom(__DIR__ . '/../Routes/web.php');

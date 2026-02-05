@@ -5,7 +5,7 @@
         <div
             class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <div>
-                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">روزهای خاص / استثناهای ارائه‌دهنده</h1>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">روزهای خاص / استثناهای {{ config('booking.labels.provider') }}</h1>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $provider->name }}</span>
                     @if($provider->email)
@@ -32,7 +32,7 @@
 
         <div
             class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 text-sm text-gray-700 dark:text-gray-300 space-y-1">
-            <p>در این بخش می‌توانید روزهایی که این ارائه‌دهنده استثنائاً تعطیل است یا ساعات متفاوتی دارد را تنظیم کنید.</p>
+            <p>در این بخش می‌توانید روزهایی که این {{ config('booking.labels.provider') }} استثنائاً تعطیل است یا ساعات متفاوتی دارد را تنظیم کنید.</p>
         </div>
 
         {{-- فرم --}}
@@ -152,7 +152,7 @@
         {{-- لیست --}}
         <div
             class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-3">
-            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">استثناهای این ارائه‌دهنده</h2>
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">استثناهای این {{ config('booking.labels.provider') }}</h2>
 
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div class="overflow-x-auto">
@@ -220,7 +220,7 @@
                         @empty
                             <tr>
                                 <td colspan="6" class="p-3 text-center text-gray-500 dark:text-gray-400">
-                                    هنوز استثنایی برای این ارائه‌دهنده ثبت نشده است.
+                                    هنوز استثنایی برای این {{ config('booking.labels.provider') }} ثبت نشده است.
                                 </td>
                             </tr>
                         @endforelse

@@ -15,9 +15,7 @@ class TasksServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
 
-        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
-            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
-        }
+        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
     }
 
     public function register(): void

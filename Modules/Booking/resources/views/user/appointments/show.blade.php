@@ -67,7 +67,7 @@
                     <div class="font-semibold text-gray-900 dark:text-gray-100">{{ optional($appointment->service)->name ?? '—' }}</div>
                 </div>
                 <div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">ارائه‌دهنده</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ config('booking.labels.provider') }}</div>
                     <div class="font-semibold text-gray-900 dark:text-gray-100">{{ optional($appointment->provider)->name ?? '—' }}</div>
                 </div>
                 <div>

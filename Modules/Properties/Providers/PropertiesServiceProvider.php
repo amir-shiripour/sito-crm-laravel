@@ -19,9 +19,7 @@ class PropertiesServiceProvider extends ServiceProvider
     {
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'properties');
 
-        if (BaseModuleInstaller::isInstalled('Properties')) {
-            $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
-        }
+        $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
 
         if (file_exists(__DIR__ . '/../Routes/web.php')) {
             $this->loadRoutesFrom(__DIR__ . '/../Routes/web.php');

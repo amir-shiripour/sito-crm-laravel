@@ -704,9 +704,10 @@ class AppointmentService
         $this->syncReminders($appointment);
         $this->triggerWorkflow('appointment_confirmed', $appointment);
 
-        if (config('booking.integrations.tasks.enabled', true) && config('booking.integrations.tasks.create_provider_task_on_confirm', false)) {
-            $this->createProviderPreparationTask($appointment);
-        }
+        // REMOVED: Automatic task creation for provider
+        // if (config('booking.integrations.tasks.enabled', true) && config('booking.integrations.tasks.create_provider_task_on_confirm', false)) {
+        //     $this->createProviderPreparationTask($appointment);
+        // }
     }
 
     protected function syncReminders(Appointment $appointment): void
@@ -716,6 +717,8 @@ class AppointmentService
         }
 
         // 1. یادآوری‌های پیش‌فرض (کانفیگ)
+        // REMOVED: Default config-based reminders to rely solely on Workflows
+        /*
         $templates = (array) config('booking.integrations.reminders.default_templates', []);
         if (!empty($templates) && class_exists('Modules\\Reminders\\Entities\\Reminder')) {
             $Reminder = \Modules\Reminders\Entities\Reminder::class;
@@ -749,6 +752,7 @@ class AppointmentService
                 }
             }
         }
+        */
 
         // 2. یادآوری‌های مبتنی بر ورک‌فلو (Dynamic Workflow Reminders)
         if (class_exists('Modules\\Reminders\\Entities\\Reminder') && class_exists('Modules\\Workflows\\Entities\\Workflow')) {
@@ -800,45 +804,6 @@ class AppointmentService
                 }
             }
         }
-
-        // 3. Client SMS reminders (Legacy/Config based) - REMOVED AS REQUESTED
-        /*
-        if (class_exists('Modules\\Sms\\Services\\SmsManager')) {
-            $Sms = app(\Modules\Sms\Services\SmsManager::class);
-
-            // Cleanup previously scheduled sms (pending + in future) for this appointment
-            if (class_exists('Modules\\Sms\\Entities\\SmsMessage')) {
-                \Modules\Sms\Entities\SmsMessage::query()
-                    ->where('related_type', 'APPOINTMENT')
-                    ->where('related_id', $appointment->id)
-                    ->where('status', \Modules\Sms\Entities\SmsMessage::STATUS_PENDING)
-                    ->whereNotNull('scheduled_at')
-                    ->where('scheduled_at', '>', now())
-                    ->delete();
-            }
-
-            foreach ($templates as $tpl) {
-                $target = $tpl['target'] ?? null;
-                $offsetMinutes = (int) ($tpl['offset_minutes'] ?? 0);
-                $channel = $tpl['channel'] ?? 'IN_APP';
-
-                if ($target !== 'CLIENT') continue;
-                if ($channel !== 'SMS') continue;
-
-                $to = $appointment->client?->phone;
-                if (!$to) continue;
-
-                $scheduledAt = $appointment->start_at_utc->copy()->addMinutes($offsetMinutes);
-
-                $Sms->sendText($to, $this->buildReminderMessage($appointment, $target), [
-                    'type' => \Modules\Sms\Entities\SmsMessage::TYPE_SYSTEM,
-                    'related_type' => 'APPOINTMENT',
-                    'related_id' => $appointment->id,
-                    'scheduled_at' => $scheduledAt,
-                ]);
-            }
-        }
-        */
     }
 
     protected function buildReminderMessage(Appointment $appointment, string $target): string
@@ -868,19 +833,6 @@ class AppointmentService
                 ->where('remind_at', '>', now())
                 ->delete();
         }
-
-        // Scheduled client SMS - REMOVED AS REQUESTED
-        /*
-        if (class_exists('Modules\\Sms\\Entities\\SmsMessage')) {
-            \Modules\Sms\Entities\SmsMessage::query()
-                ->where('related_type', 'APPOINTMENT')
-                ->where('related_id', $appointment->id)
-                ->where('status', \Modules\Sms\Entities\SmsMessage::STATUS_PENDING)
-                ->whereNotNull('scheduled_at')
-                ->where('scheduled_at', '>', now())
-                ->delete();
-        }
-        */
     }
 
     protected function createProviderPreparationTask(Appointment $appointment): void

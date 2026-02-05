@@ -27,7 +27,7 @@
                     <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </span>
-                    برنامه زمانی ارائه‌دهنده
+                    برنامه زمانی {{ config('booking.labels.provider') }}
                 </h1>
                 <div class="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
                     <span class="font-medium text-gray-800 dark:text-gray-200">{{ $provider->name }}</span>
@@ -61,7 +61,7 @@
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3">
             <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             <div class="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                <p>در این بخش می‌توانید برنامه زمانی اختصاصی این ارائه‌دهنده را برای هر روز هفته تنظیم کنید.</p>
+                <p>در این بخش می‌توانید برنامه زمانی اختصاصی این {{ config('booking.labels.provider') }} را برای هر روز هفته تنظیم کنید.</p>
                 <p class="text-xs opacity-80">اگر برای یک روز هیچ مقداری ثبت نکنید، آن روز از <span class="font-bold border-b border-blue-300 dark:border-blue-500">برنامه زمانی سراسری و سرویس</span> پیروی می‌کند.</p>
             </div>
         </div>
@@ -250,7 +250,7 @@
                     <button type="submit"
                             class="flex-1 px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/50 transition-all transform active:scale-95 flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                        ذخیره برنامه زمانی ارائه‌دهنده
+                        ذخیره برنامه زمانی {{ config('booking.labels.provider') }}
                     </button>
                 </div>
             </div>
