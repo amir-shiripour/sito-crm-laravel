@@ -13,6 +13,11 @@ return [
         'display_default' => 'Asia/Tehran',
     ],
 
+    'labels' => [
+        'provider' => 'ارائه‌دهنده',
+        'providers' => 'ارائه‌دهندگان',
+    ],
+
     'defaults' => [
         'currency_unit' => 'IRR',
         'global_online_booking_enabled' => true,

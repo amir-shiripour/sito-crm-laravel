@@ -92,9 +92,9 @@
                 {{-- Provider (Admin Only) --}}
                 @if(!empty($providers) && count($providers) > 0)
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">ارائه‌دهنده</label>
+                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ config('booking.labels.provider') }}</label>
                         <select name="provider_user_id" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            <option value="">همه ارائه‌دهندگان</option>
+                            <option value="">همه {{ config('booking.labels.providers') }}</option>
                             @foreach($providers as $prov)
                                 <option value="{{ $prov->id }}" {{ (int)request('provider_user_id') === $prov->id ? 'selected' : '' }}>{{ $prov->name }}</option>
                             @endforeach
@@ -142,7 +142,7 @@
                     <tr>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">#</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">مشتری</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">سرویس / ارائه‌دهنده</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">سرویس / {{ config('booking.labels.provider') }}</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تاریخ نوبت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ساعت نوبت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">مدت</th>

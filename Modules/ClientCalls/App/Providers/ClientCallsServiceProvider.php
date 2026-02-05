@@ -24,9 +24,7 @@ class ClientCallsServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
 
-        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
-            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
-        }
+        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
 
         Blade::component('clientcalls::components.client-call-manager', 'client-call-manager');
         $widgetsFile = __DIR__ . '/../../config/widgets.php';

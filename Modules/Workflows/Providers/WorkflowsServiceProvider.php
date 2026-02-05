@@ -15,9 +15,7 @@ class WorkflowsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        if (BaseModuleInstaller::isInstalled('Workflows')) {
-            $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
-        }
+        $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
 
         $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'workflows');

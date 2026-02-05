@@ -25,6 +25,10 @@ class BookingSetting extends Model
 
         'operator_appointment_flow',
         'allow_appointment_entry_exit_times',
+
+        // Key-Value store for labels and other dynamic settings
+        'key',
+        'value',
     ];
 
     protected $casts = [
@@ -37,7 +41,7 @@ class BookingSetting extends Model
 
     public static function current(): self
     {
-        $row = static::query()->first();
+        $row = static::query()->whereNull('key')->first();
         if ($row) return $row;
 
         $defaults = (array) config('booking.defaults', []);
@@ -58,5 +62,21 @@ class BookingSetting extends Model
             'operator_appointment_flow' => 'PROVIDER_FIRST',
             'allow_appointment_entry_exit_times' => false,
         ]);
+    }
+
+    // --- Key-Value Helpers ---
+
+    public static function getValue(string $key, $default = null)
+    {
+        $row = static::query()->where('key', $key)->first();
+        return $row ? $row->value : $default;
+    }
+
+    public static function setValue(string $key, $value)
+    {
+        return static::query()->updateOrCreate(
+            ['key' => $key],
+            ['value' => $value]
+        );
     }
 }

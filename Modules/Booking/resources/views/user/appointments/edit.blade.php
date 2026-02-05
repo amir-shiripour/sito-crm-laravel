@@ -68,7 +68,7 @@
                     @error('service_id')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
                 </div>
                 <div>
-                    <label class="{{ $labelClass }}">ارائه‌دهنده</label>
+                    <label class="{{ $labelClass }}">{{ config('booking.labels.provider') }}</label>
                     <select name="provider_user_id" id="provider_user_id"
                             class="{{ $inputClass }}">
                         @foreach($providers as $provider)

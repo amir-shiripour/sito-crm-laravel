@@ -17,9 +17,7 @@ class RemindersServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
 
-        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
-            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
-        }
+        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
 
         // Fix: Use 'Config' instead of 'config' to match directory case sensitivity on Linux
         $widgetsFile = __DIR__ . '/../Config/widgets.php';

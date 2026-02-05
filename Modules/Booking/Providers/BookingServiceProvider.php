@@ -4,6 +4,8 @@ namespace Modules\Booking\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use App\Services\Modules\BaseModuleInstaller;
+use Modules\Booking\Entities\BookingSetting;
+use Illuminate\Support\Facades\Schema;
 
 class BookingServiceProvider extends ServiceProvider
 {
@@ -15,8 +17,24 @@ class BookingServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
 
-        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
-            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        // Load migrations unconditionally
+        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        // Load dynamic labels from DB if table exists - REMOVED BaseModuleInstaller check
+        if (Schema::hasTable('booking_settings')) {
+            try {
+                $labelProvider = BookingSetting::getValue('label_provider');
+                $labelProviders = BookingSetting::getValue('label_providers');
+
+                if ($labelProvider) {
+                    config(['booking.labels.provider' => $labelProvider]);
+                }
+                if ($labelProviders) {
+                    config(['booking.labels.providers' => $labelProviders]);
+                }
+            } catch (\Exception $e) {
+                // Ignore errors during boot
+            }
         }
 
         if ($this->app->runningInConsole()) {

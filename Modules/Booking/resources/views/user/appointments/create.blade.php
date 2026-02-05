@@ -17,7 +17,7 @@
             class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <div>
                 <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">ثبت نوبت (مرحله‌ای)</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">جریان اپراتوری با انتخاب سرویس/ارائه‌دهنده و اسلات
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">جریان اپراتوری با انتخاب سرویس/{{ config('booking.labels.provider') }} و اسلات
                 </p>
             </div>
             <a class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition"
@@ -310,9 +310,9 @@
                                     <span class="text-xl">👨‍⚕️</span>
                                 </div>
                                 <div>
-                                    <div class="font-semibold text-base text-gray-800 dark:text-gray-100">انتخاب ارائه‌دهنده
+                                    <div class="font-semibold text-base text-gray-800 dark:text-gray-100">انتخاب {{ config('booking.labels.provider') }}
                                     </div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">ارائه‌دهنده مورد نظر را انتخاب
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ config('booking.labels.provider') }} مورد نظر را انتخاب
                                         کنید</div>
                                 </div>
                             </div>
@@ -327,13 +327,13 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
-                                جستجو ارائه‌دهنده
+                                جستجو {{ config('booking.labels.provider') }}
                             </span>
                             </label>
                             <div class="relative">
                                 <input type="text"
                                        class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                                       placeholder="نام ارائه‌دهنده را وارد کنید..." x-model="providerSearch"
+                                       placeholder="نام {{ config('booking.labels.provider') }} را وارد کنید..." x-model="providerSearch"
                                        @input.debounce.300ms="fetchProviders()">
                                 <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
                                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -354,7 +354,7 @@
                                               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                         </path>
                                     </svg>
-                                    <span class="text-sm">در حال دریافت ارائه‌دهنده‌ها...</span>
+                                    <span class="text-sm">در حال دریافت {{ config('booking.labels.providers') }}...</span>
                                 </div>
                             </div>
                         </template>
@@ -408,9 +408,9 @@
                                     <span class="text-xl">👨‍⚕️</span>
                                 </div>
                                 <div>
-                                    <div class="font-semibold text-base text-gray-800 dark:text-gray-100">ارائه‌دهنده
+                                    <div class="font-semibold text-base text-gray-800 dark:text-gray-100">{{ config('booking.labels.provider') }}
                                         انتخاب‌شده</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">ارائه‌دهنده به صورت خودکار انتخاب
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ config('booking.labels.provider') }} به صورت خودکار انتخاب
                                         شده است</div>
                                 </div>
                             </div>
@@ -563,7 +563,7 @@
                             </template>
 
                             <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">فقط سرویس‌هایی که برای این
-                                ارائه‌دهنده فعال هستند نمایش داده می‌شود. بعد از انتخاب، به صورت خودکار به مرحله بعد
+                                {{ config('booking.labels.provider') }} فعال هستند نمایش داده می‌شود. بعد از انتخاب، به صورت خودکار به مرحله بعد
                                 می‌روید.</div>
                         </div>
                     </div>
@@ -571,18 +571,18 @@
 
                 <template x-if="flow==='SERVICE_FIRST' && !fixedProvider">
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">انتخاب ارائه‌دهنده (برای
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">انتخاب {{ config('booking.labels.provider') }} (برای
                             سرویس انتخابی)</label>
                         <div class="relative">
                             <input type="text"
                                    class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                                   placeholder="جستجو ارائه‌دهنده..." x-model="providerSearch"
+                                   placeholder="جستجو {{ config('booking.labels.provider') }}..." x-model="providerSearch"
                                    @input.debounce.300ms="fetchProviders()">
                             <span class="absolute right-3 top-2.5 text-gray-400">🔎</span>
                         </div>
 
                         <template x-if="providerLoading">
-                            <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت ارائه‌دهنده‌ها...</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت {{ config('booking.labels.providers') }}...</div>
                         </template>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -604,21 +604,21 @@
                         </template>
 
                         <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                            بعد از انتخاب ارائه‌دهنده، به صورت خودکار به مرحله بعد می‌روید.
+                            بعد از انتخاب {{ config('booking.labels.provider') }}، به صورت خودکار به مرحله بعد می‌روید.
                         </div>
                     </div>
                 </template>
 
                 <template x-if="flow==='SERVICE_FIRST' && fixedProvider">
                     <div class="space-y-2">
-                        <label class="block text-sm mb-1 dark:text-gray-200">ارائه‌دهنده انتخاب‌شده</label>
+                        <label class="block text-sm mb-1 dark:text-gray-200">{{ config('booking.labels.provider') }} انتخاب‌شده</label>
                         <div
                             class="border rounded-xl p-3 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200">
                             <div class="font-semibold text-sm" x-text="fixedProvider.name"></div>
                             <div class="text-[11px] text-gray-500 dark:text-gray-400">به صورت خودکار انتخاب شد.</div>
                         </div>
                         <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                            ارائه‌دهنده قابل تغییر نیست.
+                            {{ config('booking.labels.provider') }} قابل تغییر نیست.
                         </div>
                     </div>
                 </template>
@@ -1066,12 +1066,12 @@
                     },
                         {
                             num: 2,
-                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب ارائه‌دهنده' : 'انتخاب سرویس',
+                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب {{ config('booking.labels.provider') }}' : 'انتخاب سرویس',
                             icon: this.flow === 'PROVIDER_FIRST' ? '👨‍⚕️' : '🛎️'
                         },
                         {
                             num: 3,
-                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب سرویس' : 'انتخاب ارائه‌دهنده',
+                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب سرویس' : 'انتخاب {{ config('booking.labels.provider') }}',
                             icon: this.flow === 'PROVIDER_FIRST' ? '🛎️' : '👨‍⚕️'
                         },
                         {
@@ -1689,7 +1689,7 @@
 
                     if (this.step === 2) {
                         if (this.flow === 'PROVIDER_FIRST' && !this.providerId) {
-                            return alert('لطفاً ارائه‌دهنده را انتخاب کنید.');
+                            return alert('لطفاً {{ config('booking.labels.provider') }} را انتخاب کنید.');
                         }
                         if (this.flow === 'SERVICE_FIRST' && !this.serviceId) {
                             return alert('لطفاً سرویس را انتخاب کنید.');
@@ -1697,7 +1697,7 @@
                     }
 
                     if (this.step === 3) {
-                        if (!this.providerId) return alert('لطفاً ارائه‌دهنده را انتخاب کنید.');
+                        if (!this.providerId) return alert('لطفاً {{ config('booking.labels.provider') }} را انتخاب کنید.');
                         if (!this.serviceId) return alert('لطفاً سرویس را انتخاب کنید.');
                         // Ensure services are loaded if not already
                         if (this.flow === 'PROVIDER_FIRST' && (!this.services || this.services.length === 0)) {
@@ -1765,7 +1765,7 @@
                     }
 
                     if (!this.serviceId || !this.providerId) {
-                        alert('سرویس/ارائه‌دهنده ناقص است.');
+                        alert('سرویس/{{ config('booking.labels.provider') }} ناقص است.');
                         return false;
                     }
                     if (!this.dateLocal) {

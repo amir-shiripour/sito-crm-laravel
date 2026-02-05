@@ -77,7 +77,7 @@
                         <div class="relative">
                             <select name="operator_appointment_flow" class="{{ $selectClass }}">
                                 <option value="PROVIDER_FIRST" @selected(old('operator_appointment_flow', $settings->operator_appointment_flow)==='PROVIDER_FIRST')>
-                                    ابتدا انتخاب ارائه‌دهنده
+                                    ابتدا انتخاب {{ config('booking.labels.provider') }}
                                 </option>
                                 <option value="SERVICE_FIRST" @selected(old('operator_appointment_flow', $settings->operator_appointment_flow)==='SERVICE_FIRST')>
                                     ابتدا انتخاب سرویس
@@ -146,7 +146,7 @@
                         <div class="flex-1">
                             <label class="text-sm font-bold text-gray-900 dark:text-white">اجازه ساخت سرویس توسط نقش‌ها</label>
                             <p class="text-xs text-gray-500 mt-1 leading-relaxed">
-                                در صورت فعال‌سازی، نقش‌های انتخاب شده در پایین، علاوه بر <span class="font-bold text-gray-700 dark:text-gray-300">ارائه‌دهنده بودن</span>، امکان <span class="font-bold text-gray-700 dark:text-gray-300">تعریف سرویس جدید</span> را نیز خواهند داشت.
+                                در صورت فعال‌سازی، نقش‌های انتخاب شده در پایین، علاوه بر <span class="font-bold text-gray-700 dark:text-gray-300">{{ config('booking.labels.provider') }} بودن</span>، امکان <span class="font-bold text-gray-700 dark:text-gray-300">تعریف سرویس جدید</span> را نیز خواهند داشت.
                             </p>
                         </div>
                         <div class="w-full md:w-48">
@@ -164,7 +164,7 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label class="{{ $labelClass }}">نقش‌های ارائه‌دهنده / مجاز</label>
+                            <label class="{{ $labelClass }}">نقش‌های {{ config('booking.labels.provider') }} / مجاز</label>
                             <select name="allowed_roles[]" multiple class="{{ $inputClass }} h-32">
                                 @php
                                     $selectedRoles = old('allowed_roles', $settings->allowed_roles ?? []);

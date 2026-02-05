@@ -31,9 +31,7 @@ class SmsServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (BaseModuleInstaller::isInstalled('Sms')) {
-            $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
-        }
+        $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sms');
 
