@@ -15,7 +15,10 @@ class LimoSmsDriver implements DriverInterface
     public function __construct(array $config = [])
     {
         $this->apiKey  = $config['api_key']  ?? null;
-        $this->sender  = $config['sender']   ?? ($config['sender_number'] ?? null);
+
+        // Fallback to env if config is null (useful for CLI/Cron)
+        $this->sender  = $config['sender']   ?? ($config['sender_number'] ?? env('LIMOSMS_SENDER'));
+
         $this->baseUrl = rtrim($config['base_url'] ?? 'https://api.limosms.com/api', '/');
 
         // اگر کاربر فقط دامین را داده بود، خودمان /api را اضافه می‌کنیم
