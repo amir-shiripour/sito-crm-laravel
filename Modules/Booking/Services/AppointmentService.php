@@ -922,9 +922,32 @@ class AppointmentService
             } else {
                 Log::info("[Booking] No active EVENT workflow found for key '$key'");
             }
+
+            // 2. Check for workflows with APPOINTMENT_STATUS trigger (NEW LOGIC)
+            // If the key starts with 'status_', it might be a status change trigger
+            if (str_starts_with($key, 'status_')) {
+                $status = substr($key, 7); // remove 'status_' prefix
+                $statusWorkflows = Workflow::query()
+                    ->where('is_active', true)
+                    ->whereHas('triggers', function ($q) use ($status) {
+                        $q->where('type', 'APPOINTMENT_STATUS')
+                          ->whereJsonContains('config->status', $status);
+                    })
+                    ->get();
+
+                if ($statusWorkflows->isNotEmpty()) {
+                    $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
+                    foreach ($statusWorkflows as $wf) {
+                        Log::info("[Booking] Triggering APPOINTMENT_STATUS workflow '{$wf->name}' for status '$status'");
+                        $engine->startWorkflow($wf, 'APPOINTMENT', $appointment->id);
+                    }
+                } else {
+                    Log::info("[Booking] No active APPOINTMENT_STATUS workflow found for status '$status'");
+                }
+            }
         }
 
-        // 2. Legacy: Check for workflow key mapping in config
+        // 3. Legacy: Check for workflow key mapping in config
         $workflowKey = config("booking.integrations.workflows.workflow_keys.{$key}") ?: $key;
 
         // If we found event workflows above, we might not want to run legacy logic,
