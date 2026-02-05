@@ -117,7 +117,7 @@ class SmsSendController extends Controller
         $messagesCount = 0;
 
         foreach ($recipients as $target) {
-            $phone = $target->phone ?? null;
+            $phone = $target->phone ?? $target->mobile ?? null;
             if (! $phone) {
                 continue;
             }
@@ -166,7 +166,7 @@ class SmsSendController extends Controller
             ->map(fn($v) => (int) $v)
             ->all();
 
-        $query = User::query()->whereNotNull('phone');
+        $query = User::query()->whereNotNull('mobile');
 
         if ($scope === 'filters') {
             if (empty($roleIds)) {
@@ -249,7 +249,7 @@ class SmsSendController extends Controller
         $fullName = $user->name ?? '';
         $username = $user->username ?? '';
         $national = $user->national_code ?? '';
-        $phone    = $user->phone ?? '';
+        $phone    = $user->mobile ?? '';
         $email    = $user->email ?? '';
 
         $roles = method_exists($user, 'roles')
