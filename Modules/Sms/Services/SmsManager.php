@@ -40,26 +40,12 @@ class SmsManager implements SmsSender
     }
 
     /**
-     * تشخیص اسم درایور فعال (اول از تنظیمات کاربر، بعد کانفیگ عمومی)
+     * تشخیص اسم درایور فعال
+     * طبق درخواست: تنظیمات به صورت سراسری خوانده می‌شود و وابسته به کاربر لاگین شده نیست.
      */
     protected function getActiveDriverName(): string
     {
-        $user = Auth::user();
-
-        // اگر کاربر لاگین است، از تنظیمات خودش استفاده کن
-        if ($user) {
-            $setting = SmsGatewaySetting::query()
-                ->where('user_id', $user->id)
-                ->whereNotNull('driver')
-                ->orderByDesc('id')
-                ->first();
-
-            if ($setting && $setting->driver) {
-                return $setting->driver;
-            }
-        }
-
-        // 👈 فـال‌بک برای زمانی که کاربر لاگین نیست (مثل کران)
+        // همیشه آخرین تنظیمات ذخیره شده در سیستم را بررسی می‌کنیم
         $globalSetting = SmsGatewaySetting::query()
             ->whereNotNull('driver')
             ->orderByDesc('id')
@@ -96,23 +82,11 @@ class SmsManager implements SmsSender
         // ۱) کانفیگ پایه از فایل sms.php
         $config = config("sms.driver_config.$name", []);
 
-        $user = Auth::user();
-        $setting = null;
-
-        if ($user) {
-            // اگر کاربر لاگین است → تنظیمات مخصوص همان کاربر
-            $setting = SmsGatewaySetting::query()
-                ->where('user_id', $user->id)
-                ->where('driver', $name)
-                ->orderByDesc('id')
-                ->first();
-        } else {
-            // 👈 اگر در کنسول / کران هستیم → آخرین تنظیم ذخیره‌شده برای این driver
-            $setting = SmsGatewaySetting::query()
-                ->where('driver', $name)
-                ->orderByDesc('id')
-                ->first();
-        }
+        // ۲) دریافت تنظیمات از دیتابیس (بدون توجه به کاربر لاگین شده - سراسری)
+        $setting = SmsGatewaySetting::query()
+            ->where('driver', $name)
+            ->orderByDesc('id')
+            ->first();
 
         if ($setting) {
             $dbConfig = $setting->config ?? [];
@@ -233,21 +207,11 @@ class SmsManager implements SmsSender
         // اگر OTP برای کلاینت است و پترن تعریف شده، با پترن بفرست
         $otpPatternId = null;
         if ($context === 'login_client') {
-            // اگر کاربر لاگین نبود (پرتال)، از آخرین setting عمومی استفاده می‌کنیم
+            // استفاده از تنظیمات سراسری برای پیدا کردن پترن OTP
             $setting = \Modules\Sms\Entities\SmsGatewaySetting::query()
-                ->when(Auth::user(), fn($q) => $q->where('user_id', Auth::id()))
-                ->when(!Auth::user(), fn($q) => $q->whereNull('user_id'))
                 ->whereNotNull('driver')
                 ->orderByDesc('id')
                 ->first();
-
-            // اگر در پروژه شما user_id همیشه null نیست، این fallback بهتره:
-            if (! $setting) {
-                $setting = \Modules\Sms\Entities\SmsGatewaySetting::query()
-                    ->whereNotNull('driver')
-                    ->orderByDesc('id')
-                    ->first();
-            }
 
             $otpPatternId = data_get($setting, 'config.client_otp_pattern');
         }

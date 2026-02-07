@@ -903,72 +903,65 @@ class AppointmentService
             return;
         }
 
-        // 1. Check for workflows with EVENT trigger matching this key
-        if (class_exists('Modules\\Workflows\\Entities\\Workflow')) {
-            $eventWorkflows = Workflow::query()
-                ->where('is_active', true)
-                ->whereHas('triggers', function ($q) use ($key) {
-                    $q->where('type', WorkflowTrigger::TYPE_EVENT)
-                      ->whereJsonContains('config->event_key', $key);
-                })
-                ->get();
+        if (!class_exists('Modules\\Workflows\\Entities\\Workflow')) {
+            return;
+        }
 
-            if ($eventWorkflows->isNotEmpty()) {
-                $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
-                foreach ($eventWorkflows as $wf) {
-                    Log::info("[Booking] Triggering EVENT workflow '{$wf->name}' for key '$key'");
-                    $engine->startWorkflow($wf, 'APPOINTMENT', $appointment->id);
-                }
-            } else {
-                Log::info("[Booking] No active EVENT workflow found for key '$key'");
-            }
+        $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
 
-            // 2. Check for workflows with APPOINTMENT_STATUS trigger (NEW LOGIC)
-            // If the key starts with 'status_', it might be a status change trigger
-            if (str_starts_with($key, 'status_')) {
-                $status = substr($key, 7); // remove 'status_' prefix
-                $statusWorkflows = Workflow::query()
-                    ->where('is_active', true)
-                    ->whereHas('triggers', function ($q) use ($status) {
-                        $q->where('type', 'APPOINTMENT_STATUS')
-                          ->whereJsonContains('config->status', $status);
-                    })
-                    ->get();
+        // 1. Get ALL active workflows and filter in PHP to avoid JSON query issues
+        $allWorkflows = Workflow::query()
+            ->where('is_active', true)
+            ->with('triggers')
+            ->get();
 
-                if ($statusWorkflows->isNotEmpty()) {
-                    $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
-                    foreach ($statusWorkflows as $wf) {
-                        Log::info("[Booking] Triggering APPOINTMENT_STATUS workflow '{$wf->name}' for status '$status'");
-                        $engine->startWorkflow($wf, 'APPOINTMENT', $appointment->id);
+        $matchedWorkflows = [];
+
+        foreach ($allWorkflows as $wf) {
+            foreach ($wf->triggers as $trigger) {
+                $type = $trigger->type;
+                $config = $trigger->config ?? [];
+
+                // Check EVENT triggers
+                if ($type === WorkflowTrigger::TYPE_EVENT) {
+                    $eventKey = $config['event_key'] ?? null;
+
+                    // Case-insensitive comparison
+                    if (strcasecmp($eventKey, $key) === 0) {
+                        $matchedWorkflows[] = $wf;
+                        break; // Found a match in this workflow
                     }
-                } else {
-                    Log::info("[Booking] No active APPOINTMENT_STATUS workflow found for status '$status'");
+                }
+
+                // Check APPOINTMENT_STATUS triggers (if key starts with status_)
+                if ($type === 'APPOINTMENT_STATUS' && str_starts_with($key, 'status_')) {
+                    $targetStatus = substr($key, 7); // remove 'status_'
+                    $configStatus = $config['status'] ?? null;
+
+                    // Case-insensitive comparison
+                    if (strcasecmp($configStatus, $targetStatus) === 0) {
+                        $matchedWorkflows[] = $wf;
+                        break; // Found a match
+                    }
                 }
             }
         }
 
-        // 3. Legacy: Check for workflow key mapping in config
+        if (!empty($matchedWorkflows)) {
+            foreach ($matchedWorkflows as $wf) {
+                Log::info("[Booking] Triggering workflow '{$wf->name}' (ID: {$wf->id}) for key '$key'");
+                $engine->startWorkflow($wf, 'APPOINTMENT', $appointment->id);
+            }
+        } else {
+            Log::info("[Booking] No active workflow found for key '$key' (Manual Scan)");
+        }
+
+        // 2. Legacy: Check for workflow key mapping in config
         $workflowKey = config("booking.integrations.workflows.workflow_keys.{$key}") ?: $key;
-
-        // If we found event workflows above, we might not want to run legacy logic,
-        // but for backward compatibility, we keep it or check if it's the same workflow.
-        // For now, let's keep it simple: if legacy mapping exists AND it's not one of the event workflows, run it.
-
-        if ($workflowKey && class_exists('Modules\\Workflows\\Services\\WorkflowEngine')) {
-             // Check if this key actually corresponds to a workflow
+        if ($workflowKey && $workflowKey !== $key) { // Only if mapped to something else
              $legacyWf = Workflow::where('key', $workflowKey)->where('is_active', true)->first();
              if ($legacyWf) {
-                 // Avoid double triggering if it was already triggered by EVENT trigger above
-                 // This is a bit tricky without checking IDs.
-                 // But typically legacy mapping uses the workflow KEY directly.
-
-                 // Let's just run it. The engine handles creating a new instance.
-                 // If the user configured BOTH an event trigger AND a legacy key mapping, it might run twice.
-                 // Ideally, users should migrate to Event Triggers.
-
-                 $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
-                 // Log::info("[Booking] Triggering LEGACY workflow: $workflowKey");
-                 // $engine->start($workflowKey, 'APPOINTMENT', $appointment->id);
+                 $engine->startWorkflow($legacyWf, 'APPOINTMENT', $appointment->id);
              }
         }
     }

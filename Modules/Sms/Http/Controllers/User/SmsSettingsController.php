@@ -11,16 +11,26 @@ class SmsSettingsController extends Controller
 {
     public function index(Request $request, SmsManager $sms)
     {
-        $user = $request->user();
-
+        // دریافت تنظیمات سراسری (بدون وابستگی به کاربر)
         $setting = SmsGatewaySetting::query()
-            ->where('user_id', $user->id)
+            ->whereNull('user_id')
+            ->orderByDesc('id')
             ->first();
+
+        // اگر تنظیمات سراسری نبود، برای جلوگیری از خالی بودن فرم، آخرین تنظیمات موجود را می‌گیریم (اختیاری)
+        if (! $setting) {
+            $setting = SmsGatewaySetting::query()
+                ->orderByDesc('id')
+                ->first();
+        }
 
         $balance = null;
 
-        if ($setting) {
+        if ($setting && $setting->driver) {
             try {
+                // برای گرفتن موجودی، باید مطمئن شویم درایور با این تنظیمات لود می‌شود
+                // اما متد driver() در SmsManager الان طوری تنظیم شده که آخرین تنظیمات را می‌خواند.
+                // اگر $setting فعلی همان آخرین تنظیمات باشد، درست کار می‌کند.
                 $balance = $sms->driver($setting->driver)->fetchBalance();
             } catch (\Throwable $e) {
                 $balance = null;
@@ -41,10 +51,9 @@ class SmsSettingsController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function store(Request $request)
     {
-        $user = $request->user();
-
+        // اعتبارسنجی داده‌ها
         $data = $request->validate([
             'driver'             => ['required', 'string', 'max:100'],
             'sender'             => ['nullable', 'string', 'max:191'],
@@ -61,8 +70,9 @@ class SmsSettingsController extends Controller
                 'client_otp_pattern' => $data['client_otp_pattern'] ?? null,
             ] + ($data['config'] ?? []);
 
+        // ذخیره به صورت سراسری (user_id = null)
         $setting = SmsGatewaySetting::updateOrCreate(
-            ['user_id' => $user->id],
+            ['user_id' => null],
             [
                 'driver' => $data['driver'],
                 'sender' => $data['sender'] ?? null,
@@ -71,7 +81,7 @@ class SmsSettingsController extends Controller
         );
 
         return redirect()
-            ->route('user.sms.settings.index')
+            ->route('sms.settings.index')
             ->with('status', 'تنظیمات پیامک با موفقیت ذخیره شد.');
     }
 }
