@@ -1,20 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\Sms\Http\Controllers\User\SmsSettingsController;
-use Modules\Sms\Http\Controllers\User\SmsLogController;
 
-Route::prefix('sms')
-    ->name('sms.')
-    ->group(function () {
-        // /user/sms/settings
-        Route::get('settings', [SmsSettingsController::class, 'index'])
-            ->name('settings.index');
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
 
-        Route::post('settings', [SmsSettingsController::class, 'store'])
-            ->name('settings.store');
-
-        // /user/sms/logs
-        Route::get('logs', [SmsLogController::class, 'index'])
-            ->name('logs.index');
-    });
+// روت‌های ماژول SMS در فایل user.php تعریف شده‌اند تا مدیریت بهتری روی میدل‌ورها و دسترسی‌ها داشته باشیم.
+// این فایل فعلاً خالی می‌ماند یا برای روت‌های عمومی (بدون پیشوند user) استفاده می‌شود.
