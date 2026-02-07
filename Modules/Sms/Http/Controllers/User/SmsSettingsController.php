@@ -28,9 +28,6 @@ class SmsSettingsController extends Controller
 
         if ($setting && $setting->driver) {
             try {
-                // برای گرفتن موجودی، باید مطمئن شویم درایور با این تنظیمات لود می‌شود
-                // اما متد driver() در SmsManager الان طوری تنظیم شده که آخرین تنظیمات را می‌خواند.
-                // اگر $setting فعلی همان آخرین تنظیمات باشد، درست کار می‌کند.
                 $balance = $sms->driver($setting->driver)->fetchBalance();
             } catch (\Throwable $e) {
                 $balance = null;
@@ -51,7 +48,7 @@ class SmsSettingsController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function update(Request $request)
     {
         // اعتبارسنجی داده‌ها
         $data = $request->validate([
@@ -81,7 +78,7 @@ class SmsSettingsController extends Controller
         );
 
         return redirect()
-            ->route('sms.settings.index')
+            ->route('user.sms.settings.index')
             ->with('status', 'تنظیمات پیامک با موفقیت ذخیره شد.');
     }
 }
