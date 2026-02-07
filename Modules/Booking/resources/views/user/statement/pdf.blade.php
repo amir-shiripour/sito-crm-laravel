@@ -84,7 +84,7 @@
             color: #212121;
             text-align: center;
             font-weight: bold;
-            font-size: 11pt;
+            font-size: 8pt;
         }
 
         .category-wrapper {
@@ -101,7 +101,7 @@
         th, td {
             border: 1px solid #d8d8d8;
             padding: 8px;
-            font-size: 9pt;
+            font-size: 8pt;
             text-align: center;
             font-weight: normal;
         }
@@ -109,7 +109,7 @@
         th {
             background-color: #f0f0f0;
             font-weight: bold;
-            font-size: 9pt;
+            font-size: 7pt;
         }
 
         .ltr {
@@ -189,23 +189,21 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 5%;">ردیف</th>
-                        <th style="width: 10%;">ساعت</th>
-                        <th style="width: 20%;">نام بیمار</th>
-                        <th style="width: 15%;">شماره پرونده</th>
+                        <th style="width: 8%;">ساعت</th>
+                        <th style="width: 15%;">نام بیمار</th>
+                        <th style="width: 11%;">شماره پرونده</th>
                         <th>نوع درمان</th>
+                        <th style="width: 21%;">یادداشت</th>
                         @if(!$isSingleDay)
-                            <th style="width: 12%;">تاریخ نوبت</th>
+                            <th style="width: 10%;">تاریخ نوبت</th>
                         @endif
                         <th style="width: 10%;">ساعت ورود</th>
                         <th style="width: 10%;">ساعت خروج</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @php $rowNumber = 1; @endphp
                     @foreach($categoryAppointments as $appointment)
                         <tr>
-                            <td>{{ $rowNumber++ }}</td>
                             <td>
                                 {{ $appointment->start_at_utc ? $appointment->start_at_utc->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('H:i') : '-' }}
                             </td>
@@ -232,6 +230,7 @@
                                 @endphp
                                 {{ implode(' - ', $parts) }}
                             </td>
+                            <td>{{ $appointment->notes ?? '-' }}</td>
                             @if(!$isSingleDay)
                                 <td>
                                     <span class="ltr">{{ $appointment->start_at_utc ? $appointment->start_at_utc->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('Y/m/d') : '-' }}</span>
