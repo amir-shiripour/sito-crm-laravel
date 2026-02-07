@@ -60,11 +60,11 @@
 
         /* Users Box */
         .users-box {
-            width: 100%;
+            width: 98%;
             overflow: hidden;
             border: 1px solid #d8d8d8;
             border-radius: 8px;
-            padding: 15px;
+            padding: 14px 8px;
             margin-bottom: 30px;
         }
 
@@ -84,7 +84,7 @@
             color: #212121;
             text-align: center;
             font-weight: bold;
-            font-size: 8pt;
+            font-size: 9pt;
         }
 
         .category-wrapper {
@@ -109,7 +109,7 @@
         th {
             background-color: #f0f0f0;
             font-weight: bold;
-            font-size: 7pt;
+            font-size: 7.6pt;
         }
 
         .ltr {
@@ -119,130 +119,130 @@
     </style>
 </head>
 <body>
-    @php
-        $isSingleDay = ($startDateLocal == $endDateLocal);
-        $provider = $selectedUsers['provider'] ?? null;
-        $others = collect($selectedUsers)->except('provider');
+@php
+    $isSingleDay = ($startDateLocal == $endDateLocal);
+    $provider = $selectedUsers['provider'] ?? null;
+    $others = collect($selectedUsers)->except('provider');
 
-        // Prepare other users for display (up to 2 slots)
-        $otherUsersList = [];
-        foreach($others as $roleId => $user) {
-            $role = $statementRoles->firstWhere('id', $roleId);
-            $roleName = $role ? ($role->display_name ?? $role->name) : 'همکار';
-            $otherUsersList[] = ['role' => $roleName, 'name' => $user->name];
-        }
-    @endphp
+    // Prepare other users for display (up to 2 slots)
+    $otherUsersList = [];
+    foreach($others as $roleId => $user) {
+        $role = $statementRoles->firstWhere('id', $roleId);
+        $roleName = $role ? ($role->display_name ?? $role->name) : 'همکار';
+        $otherUsersList[] = ['role' => $roleName, 'name' => $user->name];
+    }
+@endphp
 
-    <div class="pdf-header">
-        <div class="header-right">
-            <div class="report-title">صورت وضعیت کلینیک</div>
-            <div class="report-date">
-                تاریخ:
-                @if($isSingleDay)
-                    <span class="ltr">{{ $startDateLocal }}</span>
-                @else
-                    <span class="ltr">{{ $startDateLocal }}</span> تا <span class="ltr">{{ $endDateLocal }}</span>
-                @endif
-
-                @if($firstAppointmentTime && $lastAppointmentTime)
-                    (از ساعت {{ $firstAppointmentTime->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('H:i') }}
-                    تا {{ $lastAppointmentTime->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('H:i') }})
-                @endif
-            </div>
-        </div>
-        <div class="header-left">
-            {{-- Logo can be placed here if available --}}
-        </div>
-    </div>
-
-    <div class="users-box">
-        <div class="user-col" style="text-align: right;">
-            پزشک: <span style="font-weight: bold;">{{ $provider ? $provider->name : '______' }}</span>
-        </div>
-
-        <div class="user-col" style="text-align: center;">
-            @if(isset($otherUsersList[0]))
-                {{ $otherUsersList[0]['role'] }}: <span style="font-weight: bold;">{{ $otherUsersList[0]['name'] }}</span>
+<div class="pdf-header">
+    <div class="header-right">
+        <div class="report-title">صورت وضعیت کلینیک</div>
+        <div class="report-date">
+            تاریخ:
+            @if($isSingleDay)
+                <span class="ltr">{{ $startDateLocal }}</span>
             @else
-                &nbsp;
+                <span class="ltr">{{ $startDateLocal }}</span> تا <span class="ltr">{{ $endDateLocal }}</span>
+            @endif
+
+            @if($firstAppointmentTime && $lastAppointmentTime)
+                (از ساعت {{ $firstAppointmentTime->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('H:i') }}
+                تا {{ $lastAppointmentTime->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('H:i') }})
             @endif
         </div>
+    </div>
+    <div class="header-left">
+        {{-- Logo can be placed here if available --}}
+    </div>
+</div>
 
-        <div class="user-col" style="text-align: left;">
-            @if(isset($otherUsersList[1]))
-                {{ $otherUsersList[1]['role'] }}: <span style="font-weight: bold;">{{ $otherUsersList[1]['name'] }}</span>
-            @else
-                &nbsp;
-            @endif
-        </div>
-        <div style="clear: both;"></div>
+<div class="users-box">
+    <div class="user-col" style="text-align: right;">
+        پزشک: <span style="font-weight: bold;">{{ $provider ? $provider->name : '______' }}</span>
     </div>
 
-    @if(count($appointments) === 0)
-        <p style="text-align: center; margin-top: 50px;">هیچ رزروی یافت نشد</p>
-    @else
-        @foreach($appointments as $categoryName => $categoryAppointments)
-            <div class="category-wrapper">
-                <div class="booking-category">{{ $categoryName }}</div>
-            </div>
+    <div class="user-col" style="text-align: center;">
+        @if(isset($otherUsersList[0]))
+            {{ $otherUsersList[0]['role'] }}: <span style="font-weight: bold;">{{ $otherUsersList[0]['name'] }}</span>
+        @else
+            &nbsp;
+        @endif
+    </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 8%;">ساعت</th>
-                        <th style="width: 15%;">نام بیمار</th>
-                        <th style="width: 11%;">شماره پرونده</th>
-                        <th>نوع درمان</th>
-                        <th style="width: 21%;">یادداشت</th>
-                        @if(!$isSingleDay)
-                            <th style="width: 10%;">تاریخ نوبت</th>
-                        @endif
-                        <th style="width: 10%;">ساعت ورود</th>
-                        <th style="width: 10%;">ساعت خروج</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($categoryAppointments as $appointment)
-                        <tr>
-                            <td>
-                                {{ $appointment->start_at_utc ? $appointment->start_at_utc->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('H:i') : '-' }}
-                            </td>
-                            <td>{{ $appointment->client?->full_name ?? '-' }}</td>
-                            <td>{{ $appointment->client?->case_number ?? '-' }}</td>
-                            <td style="text-align: center;">
-                                @php
-                                    $parts = [];
-                                    if($appointment->unit_count) {
-                                        $parts[] = $appointment->unit_count . ' واحد';
-                                    }
-                                    if($appointment->service?->name) {
-                                        $parts[] = $appointment->service->name;
-                                    }
+    <div class="user-col" style="text-align: left;">
+        @if(isset($otherUsersList[1]))
+            {{ $otherUsersList[1]['role'] }}: <span style="font-weight: bold;">{{ $otherUsersList[1]['name'] }}</span>
+        @else
+            &nbsp;
+        @endif
+    </div>
+    <div style="clear: both;"></div>
+</div>
 
-                                    if(!empty($appointment->processed_form_response)) {
-                                        foreach($appointment->processed_form_response as $item) {
-                                            if(!empty($item['value'])) {
-                                                $val = is_array($item['value']) ? implode('/', $item['value']) : $item['value'];
-                                                $parts[] = $item['label'] . ' ' . $val;
-                                            }
-                                        }
+@if(count($appointments) === 0)
+    <p style="text-align: center; margin-top: 50px;">هیچ رزروی یافت نشد</p>
+@else
+    @foreach($appointments as $categoryName => $categoryAppointments)
+        <div class="category-wrapper">
+            <div class="booking-category">{{ $categoryName }}</div>
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th style="width: 8%;">ساعت</th>
+                <th style="width: 16%;">نام بیمار</th>
+                <th style="width: 11%;">شماره پرونده</th>
+                <th>نوع درمان</th>
+                <th style="width: 20%;">یادداشت</th>
+                @if(!$isSingleDay)
+                    <th style="width: 10%;">تاریخ نوبت</th>
+                @endif
+                <th style="width: 9%;">ورود</th>
+                <th style="width: 9%;">خروج</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach($categoryAppointments as $appointment)
+                <tr>
+                    <td>
+                        {{ $appointment->start_at_utc ? $appointment->start_at_utc->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('H:i') : '-' }}
+                    </td>
+                    <td>{{ $appointment->client?->full_name ?? '-' }}</td>
+                    <td>{{ $appointment->client?->case_number ?? '-' }}</td>
+                    <td style="text-align: center;">
+                        @php
+                            $parts = [];
+                            if($appointment->unit_count) {
+                                $parts[] = $appointment->unit_count . ' واحد';
+                            }
+                            if($appointment->service?->name) {
+                                $parts[] = $appointment->service->name;
+                            }
+
+                            if(!empty($appointment->processed_form_response)) {
+                                foreach($appointment->processed_form_response as $item) {
+                                    if(!empty($item['value'])) {
+                                        $val = is_array($item['value']) ? implode('/', $item['value']) : $item['value'];
+                                        $parts[] = $item['label'] . ' ' . $val;
                                     }
-                                @endphp
-                                {{ implode(' - ', $parts) }}
-                            </td>
-                            <td>{{ $appointment->notes ?? '-' }}</td>
-                            @if(!$isSingleDay)
-                                <td>
-                                    <span class="ltr">{{ $appointment->start_at_utc ? $appointment->start_at_utc->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('Y/m/d') : '-' }}</span>
-                                </td>
-                            @endif
-                            <td></td>
-                            <td></td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endforeach
-    @endif
+                                }
+                            }
+                        @endphp
+                        {{ implode(' - ', $parts) }}
+                    </td>
+                    <td>{{ $appointment->notes ?? '-' }}</td>
+                    @if(!$isSingleDay)
+                        <td>
+                            <span class="ltr">{{ $appointment->start_at_utc ? $appointment->start_at_utc->copy()->timezone(config('booking.timezones.display_default', 'Asia/Tehran'))->format('Y/m/d') : '-' }}</span>
+                        </td>
+                    @endif
+                    <td></td>
+                    <td></td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table>
+    @endforeach
+@endif
 </body>
 </html>
