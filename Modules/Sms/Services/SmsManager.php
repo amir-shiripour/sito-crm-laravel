@@ -41,12 +41,12 @@ class SmsManager implements SmsSender
 
     /**
      * تشخیص اسم درایور فعال
-     * طبق درخواست: تنظیمات به صورت سراسری خوانده می‌شود و وابسته به کاربر لاگین شده نیست.
+     * فقط تنظیمات سراسری (user_id = null) بررسی می‌شود.
      */
     protected function getActiveDriverName(): string
     {
-        // همیشه آخرین تنظیمات ذخیره شده در سیستم را بررسی می‌کنیم
         $globalSetting = SmsGatewaySetting::query()
+            ->whereNull('user_id') // فقط تنظیمات سیستم
             ->whereNotNull('driver')
             ->orderByDesc('id')
             ->first();
@@ -55,7 +55,6 @@ class SmsManager implements SmsSender
             return $globalSetting->driver;
         }
 
-        // در نهایت اگر هیچ تنظیمی نبود، برو سراغ کانفیگ
         return $this->getDefaultDriver();
     }
 
@@ -82,8 +81,9 @@ class SmsManager implements SmsSender
         // ۱) کانفیگ پایه از فایل sms.php
         $config = config("sms.driver_config.$name", []);
 
-        // ۲) دریافت تنظیمات از دیتابیس (بدون توجه به کاربر لاگین شده - سراسری)
+        // ۲) دریافت تنظیمات سراسری از دیتابیس
         $setting = SmsGatewaySetting::query()
+            ->whereNull('user_id') // فقط تنظیمات سیستم
             ->where('driver', $name)
             ->orderByDesc('id')
             ->first();
@@ -91,12 +91,10 @@ class SmsManager implements SmsSender
         if ($setting) {
             $dbConfig = $setting->config ?? [];
 
-            // اگر sender در config نیامده ولی ستون sender پر است، اضافه‌اش کن
             if (! isset($dbConfig['sender']) && $setting->sender) {
                 $dbConfig['sender'] = $setting->sender;
             }
 
-            // ادغام تنظیمات دیتابیس روی کانفیگ پایه
             $config = array_merge($config, $dbConfig);
         }
 
@@ -155,8 +153,6 @@ class SmsManager implements SmsSender
 
         $sms = $this->createMessageModel($driverName, $to, $message, $options);
 
-        // فعلاً ارسال زمان‌بندی‌شده را هم همان لحظه می‌فرستیم؛
-        // بعداً می‌تونیم بفرستیم تو صف
         if (empty($sms->scheduled_at) || $sms->scheduled_at <= now()) {
             $driver->sendText($sms);
         }
@@ -190,7 +186,6 @@ class SmsManager implements SmsSender
         $driverName = $options['driver'] ?? $this->getActiveDriverName();
         $driver     = $this->driver($driverName);
 
-        // این دو تا را از تنظیمات کلاینت هم می‌تونیم override کنیم
         $otpLength = (int) ($options['otp_length'] ?? config('sms.otp.length', 5));
         $ttl       = (int) ($options['otp_ttl'] ?? config('sms.otp.ttl', 5));
 
@@ -204,11 +199,11 @@ class SmsManager implements SmsSender
             'expires_at' => now()->addMinutes($ttl)->toIso8601String(),
         ]);
 
-        // اگر OTP برای کلاینت است و پترن تعریف شده، با پترن بفرست
         $otpPatternId = null;
         if ($context === 'login_client') {
-            // استفاده از تنظیمات سراسری برای پیدا کردن پترن OTP
+            // استفاده از تنظیمات سراسری
             $setting = \Modules\Sms\Entities\SmsGatewaySetting::query()
+                ->whereNull('user_id') // فقط تنظیمات سیستم
                 ->whereNotNull('driver')
                 ->orderByDesc('id')
                 ->first();
@@ -216,11 +211,9 @@ class SmsManager implements SmsSender
             $otpPatternId = data_get($setting, 'config.client_otp_pattern');
         }
 
-        // پیام را ذخیره می‌کنیم (code داخل message بماند)
         $sms = $this->createMessageModel($driverName, $to, $code, $options);
 
         if (!empty($otpPatternId)) {
-            // برای لیمو: ReplaceToken باید آرایه باشد. {0} = code
             $sms->template_key = (string) $otpPatternId;
             $sms->params = [$code];
             $sms->save();
@@ -229,10 +222,7 @@ class SmsManager implements SmsSender
             return $sms;
         }
 
-        // fallback: ارسال متنی (اگر پترن ست نبود)
         $driver->sendOtp($sms);
         return $sms;
     }
-
-
 }
