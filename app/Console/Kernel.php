@@ -18,7 +18,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('booking:dispatch-reminders')->everyMinute();
 
         // دستور تست کرون - بعد از اطمینان از کارکرد، این خط را حذف کنید
-        $schedule->command('sms:test-cron')->everyMinute();
+//        $schedule->command('sms:test-cron')->everyMinute();
     }
 
     /**

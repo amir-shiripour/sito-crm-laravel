@@ -39,7 +39,7 @@ class SmsServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \Modules\Sms\Console\Commands\ProcessScheduledSms::class,
-                \Modules\Sms\Console\Commands\TestCronSmsCommand::class, // <--- اضافه شد
+//                \Modules\Sms\Console\Commands\TestCronSmsCommand::class, // <--- اضافه شد
             ]);
         }
     }
