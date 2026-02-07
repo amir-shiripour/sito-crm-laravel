@@ -136,46 +136,72 @@
 
                             <!-- 1. EVENT -->
                             <div class="trigger-config config-EVENT {{ ($trigger['type'] ?? '') === 'EVENT' ? '' : 'hidden' }}">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">کدام رویداد؟</label>
-                                <select name="triggers[{{ $index }}][config][event_key]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
-                                    <option value="">انتخاب رویداد...</option>
-                                    @if(isset($triggerOptions['APPOINTMENT']))
-                                        @foreach($triggerOptions['APPOINTMENT'] as $key => $label)
-                                            @if(!str_starts_with($key, 'appointment_reminder_'))
-                                                <option value="{{ $key }}" @selected(($trigger['config']['event_key'] ?? '') === $key)>{{ $label }}</option>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">کدام رویداد؟</label>
+                                        <select name="triggers[{{ $index }}][config][event_key]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                            <option value="">انتخاب رویداد...</option>
+                                            @if(isset($triggerOptions['APPOINTMENT']))
+                                                @foreach($triggerOptions['APPOINTMENT'] as $key => $label)
+                                                    @if(!str_starts_with($key, 'appointment_reminder_'))
+                                                        <option value="{{ $key }}" @selected(($trigger['config']['event_key'] ?? '') === $key)>{{ $label }}</option>
+                                                    @endif
+                                                @endforeach
+                                            @else
+                                                <option value="appointment_created" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created')>ایجاد نوبت جدید (توسط هر کسی)</option>
+                                                <option value="appointment_created_online" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created_online')>رزرو آنلاین نوبت (توسط مشتری)</option>
+                                                <option value="appointment_created_operator" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created_operator')>ثبت نوبت توسط اپراتور</option>
+                                                <option value="appointment_canceled" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_canceled')>لغو نوبت</option>
+                                                <option value="appointment_no_show" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_no_show')>عدم حضور مشتری (No-Show)</option>
                                             @endif
-                                        @endforeach
-                                    @else
-                                        <option value="appointment_created" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created')>ایجاد نوبت جدید (توسط هر کسی)</option>
-                                        <option value="appointment_created_online" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created_online')>رزرو آنلاین نوبت (توسط مشتری)</option>
-                                        <option value="appointment_created_operator" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created_operator')>ثبت نوبت توسط اپراتور</option>
-                                        <option value="appointment_canceled" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_canceled')>لغو نوبت</option>
-                                        <option value="appointment_no_show" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_no_show')>عدم حضور مشتری (No-Show)</option>
-                                    @endif
-                                </select>
-                                <p class="text-xs text-gray-500 mt-2">به محض رخ دادن این اتفاق، گردش کار اجرا می‌شود.</p>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">محدود به سرویس خاص (اختیاری)</label>
+                                        <select name="triggers[{{ $index }}][config][service_id]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                            <option value="">همه سرویس‌ها</option>
+                                            @foreach($services as $service)
+                                                <option value="{{ $service->id }}" @selected(($trigger['config']['service_id'] ?? '') == $service->id)>{{ $service->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <p class="text-xs text-gray-500 mt-1">اگر انتخاب کنید، این گردش کار فقط برای نوبت‌های این سرویس اجرا می‌شود.</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- 2. APPOINTMENT_REMINDER -->
                             <div class="trigger-config config-APPOINTMENT_REMINDER {{ ($trigger['type'] ?? '') === 'APPOINTMENT_REMINDER' ? '' : 'hidden' }}">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">زمان اجرا</label>
-                                        <div class="relative rounded-md shadow-sm">
-                                            <input type="number" name="triggers[{{ $index }}][config][offset_minutes]" value="{{ $trigger['config']['offset_minutes'] ?? -60 }}"
-                                                   class="block w-full rounded-md border-gray-300 pr-2 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white text-left" dir="ltr">
-                                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                                <span class="text-gray-500 sm:text-sm">دقیقه</span>
+                                <div class="space-y-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">زمان اجرا</label>
+                                            <div class="relative rounded-md shadow-sm">
+                                                <input type="number" name="triggers[{{ $index }}][config][offset_minutes]" value="{{ $trigger['config']['offset_minutes'] ?? -60 }}"
+                                                       class="block w-full rounded-md border-gray-300 pr-2 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white text-left" dir="ltr">
+                                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                    <span class="text-gray-500 sm:text-sm">دقیقه</span>
+                                                </div>
                                             </div>
+                                            <p class="text-xs text-gray-500 mt-1">منفی (-) = قبل از نوبت | مثبت (+) = بعد از نوبت</p>
                                         </div>
-                                        <p class="text-xs text-gray-500 mt-1">منفی (-) = قبل از نوبت | مثبت (+) = بعد از نوبت</p>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">وضعیت نوبت</label>
+                                            <select name="triggers[{{ $index }}][config][status]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                                <option value="CONFIRMED" @selected(($trigger['config']['status'] ?? '') === 'CONFIRMED')>تایید شده (CONFIRMED)</option>
+                                                <option value="PENDING_PAYMENT" @selected(($trigger['config']['status'] ?? '') === 'PENDING_PAYMENT')>در انتظار پرداخت</option>
+                                                <option value="DONE" @selected(($trigger['config']['status'] ?? '') === 'DONE')>انجام شده</option>
+                                            </select>
+                                        </div>
                                     </div>
+
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">وضعیت نوبت</label>
-                                        <select name="triggers[{{ $index }}][config][status]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
-                                            <option value="CONFIRMED" @selected(($trigger['config']['status'] ?? '') === 'CONFIRMED')>تایید شده (CONFIRMED)</option>
-                                            <option value="PENDING_PAYMENT" @selected(($trigger['config']['status'] ?? '') === 'PENDING_PAYMENT')>در انتظار پرداخت</option>
-                                            <option value="DONE" @selected(($trigger['config']['status'] ?? '') === 'DONE')>انجام شده</option>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">محدود به سرویس خاص (اختیاری)</label>
+                                        <select name="triggers[{{ $index }}][config][service_id]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                            <option value="">همه سرویس‌ها</option>
+                                            @foreach($services as $service)
+                                                <option value="{{ $service->id }}" @selected(($trigger['config']['service_id'] ?? '') == $service->id)>{{ $service->name }}</option>
+                                            @endforeach
                                         </select>
                                     </div>
                                 </div>

@@ -781,12 +781,19 @@ class AppointmentService
                 ->delete();
 
             // پیدا کردن تمام ورک‌فلوهای فعال که کلیدشان با appointment_reminder_ شروع می‌شود
+            // یا دارای تریگر APPOINTMENT_REMINDER هستند
             $activeWorkflows = $Workflow::query()
                 ->where('is_active', true)
-                ->where('key', 'like', 'appointment_reminder_%')
+                ->where(function($q) {
+                    $q->where('key', 'like', 'appointment_reminder_%')
+                      ->orWhereHas('triggers', function($q2) {
+                          $q2->where('type', 'APPOINTMENT_REMINDER');
+                      });
+                })
+                ->with('triggers')
                 ->get();
 
-            // نگاشت کلیدها به دقیقه (آفست)
+            // نگاشت کلیدها به دقیقه (آفست) - برای پشتیبانی از ورک‌فلوهای قدیمی بدون تریگر صریح
             $offsetMap = [
                 'appointment_reminder_1_hour_before'  => -60,
                 'appointment_reminder_2_hours_before' => -120,
@@ -797,9 +804,47 @@ class AppointmentService
             ];
 
             foreach ($activeWorkflows as $wf) {
-                $offset = $offsetMap[$wf->key] ?? null;
-                if ($offset !== null) {
-                    $remindAt = $appointment->start_at_utc->copy()->addMinutes($offset);
+                $triggers = $wf->triggers;
+                $offset = null;
+                $applies = false;
+
+                // 1. بررسی تریگرهای صریح (Preferred)
+                $reminderTriggers = $triggers->where('type', 'APPOINTMENT_REMINDER');
+
+                if ($reminderTriggers->isNotEmpty()) {
+                    foreach ($reminderTriggers as $trigger) {
+                        $config = $trigger->config ?? [];
+
+                        // بررسی محدودیت سرویس
+                        if (!empty($config['service_id']) && (int)$config['service_id'] !== (int)$appointment->service_id) {
+                            continue;
+                        }
+
+                        // بررسی وضعیت (اگر تنظیم شده باشد)
+                        if (!empty($config['status']) && $config['status'] !== $appointment->status) {
+                            continue;
+                        }
+
+                        // تریگر منطبق پیدا شد
+                        $applies = true;
+                        $offset = $config['offset_minutes'] ?? null;
+
+                        // اگر آفست در کانفیگ نبود، از مپ کلید استفاده کن
+                        if ($offset === null) {
+                            $offset = $offsetMap[$wf->key] ?? null;
+                        }
+
+                        if ($applies) break;
+                    }
+                }
+                // 2. پشتیبانی از حالت قدیمی (بر اساس کلید) اگر تریگر صریح نداشت
+                elseif (str_starts_with($wf->key, 'appointment_reminder_')) {
+                    $applies = true;
+                    $offset = $offsetMap[$wf->key] ?? null;
+                }
+
+                if ($applies && $offset !== null) {
+                    $remindAt = $appointment->start_at_utc->copy()->addMinutes((int)$offset);
 
                     // اگر زمان یادآوری نگذشته باشد، ایجاد کن
                     if ($remindAt->gt(now())) {
@@ -921,6 +966,13 @@ class AppointmentService
             foreach ($wf->triggers as $trigger) {
                 $type = $trigger->type;
                 $config = $trigger->config ?? [];
+
+                // Check Service ID constraint
+                if (!empty($config['service_id'])) {
+                    if ((int)$config['service_id'] !== (int)$appointment->service_id) {
+                        continue;
+                    }
+                }
 
                 // Check EVENT triggers
                 if ($type === WorkflowTrigger::TYPE_EVENT) {
