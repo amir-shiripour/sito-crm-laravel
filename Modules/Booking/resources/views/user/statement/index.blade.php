@@ -135,6 +135,7 @@
                                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">نوع درمان</th>
                                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">شرح درمان</th>
                                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-left pl-6">وضعیت</th>
+                                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">یادداشت</th>
                                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-left pl-6">عملیات</th>
                                     </tr>
                                 </thead>
@@ -195,6 +196,9 @@
                                                 <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold {{ $statusMeta['class'] }}">
                                                     {{ $statusMeta['label'] }}
                                                 </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-gray-800 dark:text-gray-200 max-w-[200px] truncate" title="{{ $appointment->notes }}">
+                                                {{ $appointment->notes ?? '-' }}
                                             </td>
                                             <td class="px-4 py-3 text-left">
                                                 <div class="flex items-center gap-2 justify-end">
