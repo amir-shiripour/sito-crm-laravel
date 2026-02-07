@@ -118,7 +118,6 @@
                                 <option value="">انتخاب کنید...</option>
                                 <optgroup label="بر اساس رویداد (آنی)">
                                     <option value="EVENT" @selected(($trigger['type'] ?? '') === 'EVENT')>وقتی اتفاقی می‌افتد (Event)</option>
-                                    <option value="APPOINTMENT_STATUS" @selected(($trigger['type'] ?? '') === 'APPOINTMENT_STATUS')>وقتی وضعیت نوبت تغییر کرد</option>
                                 </optgroup>
                                 <optgroup label="بر اساس زمان (زمان‌بندی)">
                                     <option value="APPOINTMENT_REMINDER" @selected(($trigger['type'] ?? '') === 'APPOINTMENT_REMINDER')>یادآوری نوبت (قبل/بعد از زمان نوبت)</option>
@@ -142,7 +141,9 @@
                                     <option value="">انتخاب رویداد...</option>
                                     @if(isset($triggerOptions['APPOINTMENT']))
                                         @foreach($triggerOptions['APPOINTMENT'] as $key => $label)
-                                            <option value="{{ $key }}" @selected(($trigger['config']['event_key'] ?? '') === $key)>{{ $label }}</option>
+                                            @if(!str_starts_with($key, 'appointment_reminder_'))
+                                                <option value="{{ $key }}" @selected(($trigger['config']['event_key'] ?? '') === $key)>{{ $label }}</option>
+                                            @endif
                                         @endforeach
                                     @else
                                         <option value="appointment_created" @selected(($trigger['config']['event_key'] ?? '') === 'appointment_created')>ایجاد نوبت جدید (توسط هر کسی)</option>
@@ -178,18 +179,6 @@
                                         </select>
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- 3. APPOINTMENT_STATUS -->
-                            <div class="trigger-config config-APPOINTMENT_STATUS {{ ($trigger['type'] ?? '') === 'APPOINTMENT_STATUS' ? '' : 'hidden' }}">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">تغییر به وضعیت:</label>
-                                <select name="triggers[{{ $index }}][config][status]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
-                                    <option value="CONFIRMED" @selected(($trigger['config']['status'] ?? '') === 'CONFIRMED')>تایید شده (CONFIRMED)</option>
-                                    <option value="CANCELED_BY_CLIENT" @selected(($trigger['config']['status'] ?? '') === 'CANCELED_BY_CLIENT')>لغو توسط مشتری</option>
-                                    <option value="CANCELED_BY_ADMIN" @selected(($trigger['config']['status'] ?? '') === 'CANCELED_BY_ADMIN')>لغو توسط ادمین</option>
-                                    <option value="DONE" @selected(($trigger['config']['status'] ?? '') === 'DONE')>انجام شده</option>
-                                    <option value="NO_SHOW" @selected(($trigger['config']['status'] ?? '') === 'NO_SHOW')>عدم حضور (No-Show)</option>
-                                </select>
                             </div>
 
                             <!-- 4. SCHEDULE -->
