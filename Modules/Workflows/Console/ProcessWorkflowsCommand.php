@@ -73,27 +73,36 @@ class ProcessWorkflowsCommand extends Command
         $now = now()->startOfMinute();
 
         // Calculate target window
-        $targetTimeStart = $now->copy()->subMinutes($offsetMinutes);
-        $targetTimeEnd = $targetTimeStart->copy()->addMinutes(1); // Check 1 minute window
+        // Use 2 minutes window to ensure we don't miss anything due to seconds mismatch
+        // We check [Target - 1min, Target + 1min]
+
+        $targetTimeStart = $now->copy()->subMinutes($offsetMinutes)->subMinutes(1);
+        $targetTimeEnd = $now->copy()->subMinutes($offsetMinutes)->addMinutes(2);
 
 
         Log::debug("[Workflows] Checking reminders for workflow: {$workflow->name}", [
             'offset' => $offsetMinutes,
             'status' => $status,
             'now' => $now->toIso8601String(),
-            'target_start_range' => $targetTimeStart->toIso8601String(),
+            'target_start_range' => $targetTimeStart->toIso8601String(), // UTC conversion happens in query
             'target_end_range' => $targetTimeEnd->toIso8601String(),
         ]);
 
 
+        // Note: Laravel automatically converts Carbon dates to UTC for database queries if configured correctly.
+        // However, to be absolutely sure, we can force UTC conversion here if 'start_at_utc' is stored as UTC.
+        // Assuming 'start_at_utc' is a datetime column.
+
         $appointments = Appointment::query()
             ->where('status', $status)
-            ->where('start_at_utc', '>=', $targetTimeStart)
-            ->where('start_at_utc', '<', $targetTimeEnd)
+            ->where('start_at_utc', '>=', $targetTimeStart->utc()) // Force UTC for comparison
+            ->where('start_at_utc', '<', $targetTimeEnd->utc())   // Force UTC for comparison
             ->get();
 
         if ($appointments->isNotEmpty()) {
             Log::info("[Workflows] Found " . $appointments->count() . " appointments for reminder workflow: {$workflow->name}");
+        } else {
+             // Log::debug("[Workflows] No appointments found in range.");
         }
 
         foreach ($appointments as $appointment) {
