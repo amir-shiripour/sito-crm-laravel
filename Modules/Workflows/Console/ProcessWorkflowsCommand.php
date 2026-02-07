@@ -17,7 +17,7 @@ class ProcessWorkflowsCommand extends Command
 
     public function handle(WorkflowEngine $engine): void
     {
-        // Log::info("[Workflows] Starting process command..."); // Uncomment for verbose logging
+        Log::info("[Workflows] Starting process command...");
         $this->processScheduledWorkflows($engine);
         $this->processAppointmentReminders($engine);
     }
@@ -54,7 +54,7 @@ class ProcessWorkflowsCommand extends Command
             }])
             ->get();
 
-        // Log::info("[Workflows] Found " . $workflows->count() . " active reminder workflows.");
+        Log::info("[Workflows] Found " . $workflows->count() . " active reminder workflows.");
 
         foreach ($workflows as $workflow) {
             foreach ($workflow->triggers as $trigger) {
@@ -73,19 +73,10 @@ class ProcessWorkflowsCommand extends Command
         $now = now()->startOfMinute();
 
         // Calculate target window
-        // Target time is: Appointment Start Time + Offset
-        // Example: Reminder 1 hour BEFORE (-60 min). Appt at 10:00. Target check time is 09:00.
-        // Logic: We want to find appointments where (Start Time + Offset) is NOW.
-        // So: Start Time = NOW - Offset.
-
-        // Example: Offset = -60 (1 hour before). Now = 09:00.
-        // Target Start Time = 09:00 - (-60) = 10:00.
-        // So we look for appointments starting at 10:00.
-
         $targetTimeStart = $now->copy()->subMinutes($offsetMinutes);
         $targetTimeEnd = $targetTimeStart->copy()->addMinutes(1); // Check 1 minute window
 
-        /*
+
         Log::debug("[Workflows] Checking reminders for workflow: {$workflow->name}", [
             'offset' => $offsetMinutes,
             'status' => $status,
@@ -93,7 +84,7 @@ class ProcessWorkflowsCommand extends Command
             'target_start_range' => $targetTimeStart->toIso8601String(),
             'target_end_range' => $targetTimeEnd->toIso8601String(),
         ]);
-        */
+
 
         $appointments = Appointment::query()
             ->where('status', $status)
@@ -115,7 +106,7 @@ class ProcessWorkflowsCommand extends Command
                 Log::info("[Workflows] Triggering reminder workflow '{$workflow->name}' for Appointment #{$appointment->id}");
                 $engine->startWorkflow($workflow, 'APPOINTMENT', $appointment->id);
             } else {
-                // Log::debug("[Workflows] Reminder already sent for Appointment #{$appointment->id}");
+                Log::debug("[Workflows] Reminder already sent for Appointment #{$appointment->id}");
             }
         }
     }
