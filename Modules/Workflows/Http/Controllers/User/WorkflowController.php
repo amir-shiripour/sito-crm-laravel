@@ -77,8 +77,9 @@ class WorkflowController extends Controller
         Gate::authorize('workflows.manage');
 
         $triggerOptions = $this->getTriggerOptions();
+        $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
 
-        return view('workflows::user.workflows.create', compact('triggerOptions'));
+        return view('workflows::user.workflows.create', compact('triggerOptions', 'services'));
     }
 
     public function store(Request $request)
@@ -129,8 +130,9 @@ class WorkflowController extends Controller
         $workflow->load(['stages.actions', 'triggers']);
         $triggerOptions = $this->getTriggerOptions();
         $users = User::query()->select(['id', 'name'])->orderBy('name')->get();
+        $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
 
-        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users'));
+        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services'));
     }
 
     public function update(Request $request, Workflow $workflow)
