@@ -1108,6 +1108,106 @@ class AppointmentController extends Controller
         ]);
     }
 
+    public function wizardHistory(Request $request)
+    {
+        $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
+        $serviceId = (int) $request->query('service_id', 0);
+        $providerId = (int) $request->query('provider_id', 0);
+        $dateLocal = $request->query('date_local');
+
+        if (!$serviceId || !$providerId || !$dateLocal) {
+            return response()->json(['data' => [], 'stats' => [], 'suggested_time' => null]);
+        }
+
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+
+        // Use the same parsing logic as calendar to be consistent
+        $localDate = $this->parseFlexibleLocalDate($dateLocal, $scheduleTz);
+
+        if (!$localDate) {
+            return response()->json(['data' => [], 'stats' => [], 'suggested_time' => null]);
+        }
+
+        // Ensure we cover the full day in local time
+        $startUtc = $localDate->copy()->startOfDay()->timezone('UTC');
+        $endUtc = $localDate->copy()->endOfDay()->timezone('UTC');
+
+        $appointments = Appointment::query()
+            ->with(['client'])
+            ->where('service_id', $serviceId)
+            ->where('provider_user_id', $providerId)
+            ->where('start_at_utc', '>=', $startUtc)
+            ->where('start_at_utc', '<=', $endUtc)
+            ->orderBy('start_at_utc')
+            ->get();
+
+        $statusLabels = [
+            Appointment::STATUS_DRAFT => 'پیش‌نویس',
+            Appointment::STATUS_PENDING => 'در انتظار تایید',
+            Appointment::STATUS_PENDING_PAYMENT => 'در انتظار پرداخت',
+            Appointment::STATUS_CONFIRMED => 'قطعی شده',
+            Appointment::STATUS_CANCELED_BY_ADMIN => 'لغو توسط ادمین',
+            Appointment::STATUS_CANCELED_BY_CLIENT => 'لغو توسط مشتری',
+            Appointment::STATUS_NO_SHOW => 'عدم مراجعه',
+            Appointment::STATUS_DONE => 'انجام شده',
+            Appointment::STATUS_RESCHEDULED => 'جابجا شده',
+        ];
+
+        $data = $appointments->map(function ($app) use ($scheduleTz, $statusLabels) {
+            $start = $app->start_at_utc->timezone($scheduleTz);
+            $end = $app->end_at_utc->timezone($scheduleTz);
+
+            return [
+                'id' => $app->id,
+                'client_name' => $app->client->full_name ?? 'ناشناس',
+                'status' => $app->status,
+                'status_label' => $statusLabels[$app->status] ?? $app->status,
+                'start_time' => $start->format('H:i'),
+                'end_time' => $end->format('H:i'),
+                'duration_minutes' => $start->diffInMinutes($end),
+            ];
+        });
+
+        // Calculate Stats
+        $stats = [
+            'total' => $appointments->count(),
+            'confirmed' => $appointments->where('status', Appointment::STATUS_CONFIRMED)->count(),
+            'pending' => $appointments->whereIn('status', [Appointment::STATUS_PENDING, Appointment::STATUS_PENDING_PAYMENT])->count(),
+            'done' => $appointments->where('status', Appointment::STATUS_DONE)->count(),
+            'canceled' => $appointments->whereIn('status', [Appointment::STATUS_CANCELED_BY_ADMIN, Appointment::STATUS_CANCELED_BY_CLIENT, Appointment::STATUS_NO_SHOW])->count(),
+        ];
+
+        // Calculate Suggested Time (First Available Slot)
+        $suggestedTime = null;
+        try {
+            $engine = app(\Modules\Booking\Services\BookingEngine::class);
+            $slots = $engine->generateSlots(
+                $serviceId,
+                $providerId,
+                $localDate->toDateString(),
+                $localDate->toDateString(),
+                viewerTimezone: config('booking.timezones.display_default', $scheduleTz)
+            );
+
+            foreach ($slots as $slot) {
+                // Check if slot has capacity
+                $cap = $slot['remaining_capacity'] ?? 1;
+                if ($cap > 0) {
+                    $suggestedTime = Carbon::parse($slot['start_at_view'])->format('H:i');
+                    break;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore errors in suggestion calculation
+        }
+
+        return response()->json([
+            'data' => $data,
+            'stats' => $stats,
+            'suggested_time' => $suggestedTime
+        ]);
+    }
+
     protected function parseFlexibleLocalDate(string $value, string $tz): ?Carbon
     {
         $value = trim($value);
