@@ -155,6 +155,9 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::get('appointments/wizard/form', [UserAppointmentController::class, 'wizardForm'])
             ->name('appointments.wizard.form');
 
+        Route::get('appointments/wizard/history', [UserAppointmentController::class, 'wizardHistory'])
+            ->name('appointments.wizard.history');
+
         Route::get('appointments/{appointment}', [UserAppointmentController::class, 'show'])
             ->name('appointments.show')
             ->middleware('can:booking.appointments.view');

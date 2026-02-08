@@ -696,8 +696,9 @@
                                 </template>
 
                                 <template x-if="!cell.is_placeholder">
-                                    <button type="button" class="w-full h-[52px] border rounded-lg p-2 text-center"
+                                    <button type="button" class="w-full h-[52px] border rounded-lg p-2 text-center relative group"
                                             :class="dayBtnClass(cell.day)" @click="selectDay(cell.day)"
+                                            @contextmenu.prevent="openHistoryModal(cell.day.local_date)"
                                             :disabled="cell.day.is_closed || !cell.day.has_available_slots">
                                         <div class="font-semibold" x-text="toPersianDayNumber(cell.day.local_date)"></div>
                                         <div class="text-[10px] mt-1" x-show="cell.day.is_closed">تعطیل</div>
@@ -717,7 +718,7 @@
                                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         <div class="text-xs text-blue-800 dark:text-blue-200">
-                            بعد از انتخاب روز، در مرحله بعد اسلات‌های زمانی نمایش داده می‌شوند.
+                            با کلیک راست روی هر روز، می‌توانید تاریخچه نوبت‌های آن روز را مشاهده کنید.
                         </div>
                     </div>
                 </div>
@@ -810,12 +811,18 @@
                     <div class="text-xs text-gray-500 dark:text-gray-400">
                         برای این سرویس زمان‌بندی سفارشی فعال است؛ ساعت شروع و پایان را به صورت دستی وارد کنید.
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs mb-1 text-gray-600 dark:text-gray-300">ساعت شروع</label>
                             <input type="text" data-jdp-only-time
                                    class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
-                                   x-model="manualStartTime" @input="clearSlotSelection()">
+                                   x-model="manualStartTime" @input="calculateEndTime()">
+                        </div>
+                        <div>
+                            <label class="block text-xs mb-1 text-gray-600 dark:text-gray-300">مدت (دقیقه)</label>
+                            <input type="number" min="1"
+                                   class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                   x-model="manualDuration" @input="calculateEndTime()" placeholder="مثلاً 30">
                         </div>
                         <div>
                             <label class="block text-xs mb-1 text-gray-600 dark:text-gray-300">ساعت پایان</label>
@@ -980,6 +987,124 @@
                     </button>
                 </div>
             </div>
+
+            {{-- History Modal --}}
+            <div x-show="showHistoryModal" style="display: none;"
+                 class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0">
+
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]"
+                     @click.outside="closeHistoryModal">
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">
+                            تاریخچه نوبت‌های <span x-text="toPersianDayNumber(historyModalDate)"></span>
+                        </h3>
+                        <button type="button" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" @click="closeHistoryModal">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="p-4 overflow-y-auto flex-1">
+                        <template x-if="historyModalLoading">
+                            <div class="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+                                <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>در حال دریافت اطلاعات...</span>
+                            </div>
+                        </template>
+
+                        <template x-if="!historyModalLoading">
+                            <div class="space-y-4">
+                                {{-- Suggested Time Alert --}}
+                                <div x-show="historyModalSuggestedTime" class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3 flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">اولین زمان خالی پیشنهادی</div>
+                                        <div class="text-sm font-bold text-emerald-800 dark:text-emerald-200" x-text="historyModalSuggestedTime"></div>
+                                    </div>
+                                </div>
+
+                                {{-- Stats Section --}}
+                                <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                                    <div class="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800">
+                                        <div class="font-bold text-blue-700 dark:text-blue-300 text-lg" x-text="historyModalStats.total || 0"></div>
+                                        <div class="text-blue-600 dark:text-blue-400">کل</div>
+                                    </div>
+                                    <div class="bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                                        <div class="font-bold text-emerald-700 dark:text-emerald-300 text-lg" x-text="historyModalStats.confirmed || 0"></div>
+                                        <div class="text-emerald-600 dark:text-emerald-400">قطعی</div>
+                                    </div>
+                                    <div class="bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg border border-amber-100 dark:border-amber-800">
+                                        <div class="font-bold text-amber-700 dark:text-amber-300 text-lg" x-text="historyModalStats.pending || 0"></div>
+                                        <div class="text-amber-600 dark:text-amber-400">انتظار</div>
+                                    </div>
+                                    <div class="bg-red-50 dark:bg-red-900/20 p-2 rounded-lg border border-red-100 dark:border-red-800">
+                                        <div class="font-bold text-red-700 dark:text-red-300 text-lg" x-text="historyModalStats.canceled || 0"></div>
+                                        <div class="text-red-600 dark:text-red-400">لغو</div>
+                                    </div>
+                                </div>
+
+                                {{-- List Section --}}
+                                <template x-if="historyModalItems.length === 0">
+                                    <div class="text-center py-8 text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-6">
+                                        <div class="text-4xl mb-2">📭</div>
+                                        <div>هیچ نوبتی برای این روز ثبت نشده است.</div>
+                                    </div>
+                                </template>
+
+                                <div class="space-y-3" x-show="historyModalItems.length > 0">
+                                    <template x-for="item in historyModalItems" :key="item.id">
+                                        <div class="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                                                    <span x-text="item.start_time"></span>
+                                                </div>
+                                                <div>
+                                                    <div class="font-semibold text-gray-800 dark:text-gray-100 text-sm" x-text="item.client_name"></div>
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                        مدت: <span x-text="item.duration_minutes"></span> دقیقه • پایان: <span x-text="item.end_time"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <span class="px-2 py-1 rounded-lg text-xs font-medium"
+                                                      :class="{
+                                                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300': ['pending', 'pending_payment'].includes(item.status),
+                                                          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300': ['confirmed', 'done'].includes(item.status),
+                                                          'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300': ['canceled_by_admin', 'canceled_by_client', 'no_show'].includes(item.status),
+                                                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300': ['draft', 'rescheduled'].includes(item.status)
+                                                      }"
+                                                      x-text="item.status_label"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-end">
+                        <button type="button" class="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                @click="closeHistoryModal">
+                            بستن
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </form>
     </div>
 
@@ -1007,6 +1132,7 @@
                 dateLocal: '',
                 manualStartTime: '',
                 manualEndTime: '',
+                manualDuration: '',
 
                 providers: [],
                 services: [],
@@ -1038,6 +1164,14 @@
                 clientLoading: false,
                 clientSearchFocused: false,
                 isSubmitting: false,
+
+                // Modal State
+                showHistoryModal: false,
+                historyModalDate: '',
+                historyModalItems: [],
+                historyModalStats: {},
+                historyModalSuggestedTime: null,
+                historyModalLoading: false,
 
                 weekDays: ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'],
                 persianMonths: [
@@ -1158,6 +1292,8 @@
                             }
                         });
                     });
+
+                    this.$watch('manualStartTime', () => this.calculateEndTime());
                 },
 
                 // ---------------- providers/services/categories ----------------
@@ -1383,6 +1519,7 @@
                     this.selectedSlotKey = '';
                     this.manualStartTime = '';
                     this.manualEndTime = '';
+                    this.manualDuration = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
                 },
@@ -1515,6 +1652,7 @@
                     this.selectedSlotKey = '';
                     this.manualStartTime = '';
                     this.manualEndTime = '';
+                    this.manualDuration = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
                     if (this.step === 4) {
@@ -1540,6 +1678,40 @@
                     return dd.toLocaleDateString('fa-IR-u-ca-persian', {
                         day: 'numeric'
                     });
+                },
+
+                // ---------------- history ----------------
+                async openHistoryModal(localDate) {
+                    this.historyModalDate = localDate;
+                    this.showHistoryModal = true;
+                    this.historyModalItems = [];
+                    this.historyModalStats = {};
+                    this.historyModalSuggestedTime = null;
+                    this.historyModalLoading = true;
+
+                    const params = new URLSearchParams({
+                        service_id: this.serviceId,
+                        provider_id: this.providerId,
+                        date_local: localDate
+                    });
+
+                    try {
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.history') }}?` + params.toString(), {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const json = await res.json();
+                        this.historyModalItems = json.data || [];
+                        this.historyModalStats = json.stats || {};
+                        this.historyModalSuggestedTime = json.suggested_time || null;
+                    } catch (e) {
+                        console.error('Failed to fetch history', e);
+                    } finally {
+                        this.historyModalLoading = false;
+                    }
+                },
+
+                closeHistoryModal() {
+                    this.showHistoryModal = false;
                 },
 
                 // ---------------- slots ----------------
@@ -1588,6 +1760,28 @@
                     this.selectedSlotKey = '';
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
+                },
+
+                calculateEndTime() {
+                    this.clearSlotSelection();
+                    if (!this.manualStartTime || !this.manualDuration) return;
+
+                    const parts = this.manualStartTime.split(':');
+                    if (parts.length !== 2) return;
+
+                    const h = parseInt(parts[0]);
+                    const m = parseInt(parts[1]);
+                    const dur = parseInt(this.manualDuration);
+
+                    if (isNaN(h) || isNaN(m) || isNaN(dur)) return;
+
+                    let totalMinutes = h * 60 + m + dur;
+                    totalMinutes = totalMinutes % 1440;
+
+                    const endH = Math.floor(totalMinutes / 60);
+                    const endM = totalMinutes % 60;
+
+                    this.manualEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
                 },
 
                 isCustomScheduleEnabled() {
