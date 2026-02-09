@@ -36,20 +36,23 @@
 
         @includeIf('partials.jalali-date-picker')
 
-        <form method="POST" action="{{ route('user.booking.appointments.store') }}"
-              class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 space-y-5"
-              x-ref="form" @submit.prevent="handleSubmit">
-            @csrf
+        {{-- Main Wizard Container (Changed from FORM to DIV to avoid nesting issues with client widget) --}}
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 space-y-5">
 
-            <input type="hidden" name="service_id" x-model="serviceId">
-            <input type="hidden" name="provider_user_id" x-model="providerId">
-            <input type="hidden" name="client_id" x-model="clientId">
-            <input type="hidden" name="start_at_utc" x-ref="startUtcInput">
-            <input type="hidden" name="end_at_utc" x-ref="endUtcInput">
-            <input type="hidden" name="date_local" x-model="dateLocal">
-            <input type="hidden" name="start_time_local" x-model="manualStartTime">
-            <input type="hidden" name="end_time_local" x-model="manualEndTime">
-            <input type="hidden" name="appointment_form_response_json" x-ref="formJsonInput">
+            {{-- The Actual Form for Submission (Hidden) --}}
+            <form method="POST" action="{{ route('user.booking.appointments.store') }}" x-ref="realForm" class="hidden">
+                @csrf
+                <input type="hidden" name="service_id" x-model="serviceId">
+                <input type="hidden" name="provider_user_id" x-model="providerId">
+                <input type="hidden" name="client_id" x-model="clientId">
+                <input type="hidden" name="start_at_utc" x-ref="startUtcInput">
+                <input type="hidden" name="end_at_utc" x-ref="endUtcInput">
+                <input type="hidden" name="date_local" x-model="dateLocal">
+                <input type="hidden" name="start_time_local" x-model="manualStartTime">
+                <input type="hidden" name="end_time_local" x-model="manualEndTime">
+                <input type="hidden" name="appointment_form_response_json" x-ref="formJsonInput">
+                <input type="hidden" name="notes" x-model="notes">
+            </form>
 
             {{-- Stepper Component --}}
             <div
@@ -961,7 +964,7 @@
                     </label>
                     <textarea name="notes" rows="4"
                               class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                              placeholder="یادداشت یا توضیحات اضافی را اینجا وارد کنید..."></textarea>
+                              placeholder="یادداشت یا توضیحات اضافی را اینجا وارد کنید..." x-model="notes"></textarea>
                 </div>
 
                 <div
@@ -1105,7 +1108,7 @@
                 </div>
             </div>
 
-        </form>
+        </div>
     </div>
 
     <script>
@@ -1133,6 +1136,7 @@
                 manualStartTime: '',
                 manualEndTime: '',
                 manualDuration: '',
+                notes: '',
 
                 providers: [],
                 services: [],
@@ -1281,14 +1285,17 @@
 
                     window.addEventListener('client-quick-saved', (e) => {
                         const newId = e?.detail?.clientId;
+                        if (!newId) return;
+
+                        // 1. Clear search so we get the latest list (including the new one)
+                        this.clientSearch = '';
+
+                        // 2. Fetch and Select
                         this.fetchClients().then(() => {
-                            if (newId) {
-                                this.clientId = String(newId);
-                                // Find and store the new client object
-                                const newClient = this.clients.find(c => String(c.id) === String(newId));
-                                if (newClient) {
-                                    this.selectedClientObject = newClient;
-                                }
+                            this.clientId = String(newId);
+                            const newClient = this.clients.find(c => String(c.id) === String(newId));
+                            if (newClient) {
+                                this.selectedClientObject = newClient;
                             }
                         });
                     });
@@ -1987,9 +1994,9 @@
                     this.prepareAppointmentFormJson();
                     this.isSubmitting = true;
 
-                    if (this.$refs.form) {
+                    if (this.$refs.realForm) {
                         console.log('Submitting form...');
-                        this.$refs.form.submit();
+                        this.$refs.realForm.submit();
                     } else {
                         console.error('Form reference not found');
                         this.isSubmitting = false;

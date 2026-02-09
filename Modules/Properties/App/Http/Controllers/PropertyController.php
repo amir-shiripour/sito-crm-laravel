@@ -164,7 +164,7 @@ class PropertyController extends Controller
         Log::info("Extracted Identifier: " . $identifier);
 
         // Try to find by code first, then by id if code is not found or identifier is numeric
-        $property = Property::with(['status', 'creator', 'attributeValues.attribute'])
+        $property = Property::with(['status', 'creator', 'attributeValues.attribute', 'images', 'owner'])
             ->where(function($query) use ($identifier) {
                 $query->where('code', $identifier)
                       ->orWhere('id', $identifier);
