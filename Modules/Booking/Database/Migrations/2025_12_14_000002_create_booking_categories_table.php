@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('booking_categories')) {
+            return;
+        }
+
         Schema::create('booking_categories', function (Blueprint $table) {
             $table->id();
             $table->string('name');

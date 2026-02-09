@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('booking_availability_rules')) {
+            return;
+        }
+
         Schema::create('booking_availability_rules', function (Blueprint $table) {
             $table->id();
             $table->string('scope_type', 30); // GLOBAL / SERVICE / SERVICE_PROVIDER

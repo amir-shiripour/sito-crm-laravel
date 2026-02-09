@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('booking_settings')) {
+            return;
+        }
+
         Schema::create('booking_settings', function (Blueprint $table) {
             $table->id();
             $table->string('currency_unit', 10)->default('IRR');

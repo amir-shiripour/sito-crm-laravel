@@ -300,13 +300,20 @@
             // Hide all configs
             item.querySelectorAll('.trigger-config').forEach(el => el.classList.add('hidden'));
 
-            // Show selected config
+            // Disable inputs in hidden configs to prevent submission
+            item.querySelectorAll('.trigger-config input, .trigger-config select').forEach(input => {
+                input.disabled = true;
+            });
+
+            // Show selected config and enable its inputs
             if (type) {
                 const configDiv = item.querySelector(`.config-${type}`);
-                if (configDiv) configDiv.classList.remove('hidden');
-            } else {
-                // Show placeholder if nothing selected?
-                // item.querySelector('.trigger-config:not([class*="config-"])').classList.remove('hidden');
+                if (configDiv) {
+                    configDiv.classList.remove('hidden');
+                    configDiv.querySelectorAll('input, select').forEach(input => {
+                        input.disabled = false;
+                    });
+                }
             }
         }
 
