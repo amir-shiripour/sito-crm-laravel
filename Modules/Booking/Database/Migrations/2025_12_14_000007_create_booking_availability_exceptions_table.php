@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('booking_availability_exceptions')) {
+            return;
+        }
+
         Schema::create('booking_availability_exceptions', function (Blueprint $table) {
             $table->id();
             $table->string('scope_type', 30); // GLOBAL / SERVICE / SERVICE_PROVIDER

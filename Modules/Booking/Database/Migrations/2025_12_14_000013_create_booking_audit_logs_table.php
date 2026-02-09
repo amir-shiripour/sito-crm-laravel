@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (!Schema::hasTable('booking_service_providers')) {
+            return;
+        }
+
         Schema::table('booking_service_providers', function (Blueprint $table) {
             if (!Schema::hasColumn('booking_service_providers', 'override_category_id')) {
                 $table->unsignedBigInteger('override_category_id')->nullable()->after('override_discount_to');
@@ -35,6 +39,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (!Schema::hasTable('booking_service_providers')) {
+            return;
+        }
+
         Schema::table('booking_service_providers', function (Blueprint $table) {
             if (Schema::hasColumn('booking_service_providers', 'override_payment_amount_value')) {
                 $table->dropColumn('override_payment_amount_value');

@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('booking_services')) {
+            return;
+        }
+
         Schema::create('booking_services', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('owner_user_id')->nullable();

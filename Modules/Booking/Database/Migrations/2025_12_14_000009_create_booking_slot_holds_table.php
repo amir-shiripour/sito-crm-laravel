@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('booking_slot_holds')) {
+            return;
+        }
+
         Schema::create('booking_slot_holds', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('service_id');
