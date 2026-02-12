@@ -116,25 +116,31 @@
 
                 </div>
 
-                {{-- آپشن قابل تبدیل (فقط برای رهن و اجاره) --}}
-                @if($property->listing_type == 'rent')
-                    <div class="pt-6 border-t border-gray-100 dark:border-gray-700">
-                        <div class="flex flex-col gap-4">
-                            <label class="inline-flex items-center gap-3 cursor-pointer group w-fit">
-                                <div class="relative">
-                                    <input type="checkbox" name="is_convertible" value="1" x-model="isConvertible" class="sr-only peer">
-                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                                </div>
-                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">قابل تبدیل به رهن/اجاره دیگر</span>
-                            </label>
-
-                            <div x-show="isConvertible" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
-                                <label class="{{ $labelClass }}">شرایط تبدیل</label>
-                                <input type="text" name="convertible_with" class="{{ $inputClass }} !text-right !dir-rtl" placeholder="مثلاً: تا ۲۰۰ میلیون رهن قابل تبدیل است..." value="{{ old('convertible_with', $property->convertible_with) }}">
+                {{-- آپشن قابل تبدیل (برای همه نوع ملک‌ها) --}}
+                <div class="pt-6 border-t border-gray-100 dark:border-gray-700">
+                    <div class="flex flex-col gap-4">
+                        <label class="inline-flex items-center gap-3 cursor-pointer group w-fit">
+                            <div class="relative">
+                                <input type="checkbox" name="is_convertible" value="1" x-model="isConvertible" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                             </div>
+                            <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                @if($property->listing_type == 'rent')
+                                    قابل تبدیل به رهن/اجاره دیگر
+                                @else
+                                    قابل معاوضه با ملک یا خودرو
+                                @endif
+                            </span>
+                        </label>
+
+                        <div x-show="isConvertible" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+                            <label class="{{ $labelClass }}">شرایط تبدیل / معاوضه</label>
+                            <input type="text" name="convertible_with" class="{{ $inputClass }} !text-right !dir-rtl"
+                                   placeholder="@if($property->listing_type == 'rent') مثلاً: تا ۲۰۰ میلیون رهن قابل تبدیل است... @else مثلاً: معاوضه با آپارتمان کوچکتر در منطقه ۱... @endif"
+                                   value="{{ old('convertible_with', $property->convertible_with) }}">
                         </div>
                     </div>
-                @endif
+                </div>
 
                 {{-- دکمه‌های عملیات --}}
                 <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">

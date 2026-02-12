@@ -100,6 +100,9 @@
         </div>
 
         <nav class="flex items-center gap-4">
+            <a href="{{ route('properties.map') }}" class="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors dark:text-gray-300 dark:hover:text-white">
+                نمایش روی نقشه
+            </a>
             @auth
                 <a href="{{ auth()->user()->hasRole('super-admin') ? route('admin.dashboard') : route('user.dashboard') }}"
                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-all dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-none">
@@ -302,12 +305,23 @@
 
                 {{-- Action Buttons --}}
                 <div class="flex justify-between items-center gap-3 pt-2">
-                    {{-- Special Filter Toggle --}}
-                    <label class="inline-flex items-center cursor-pointer group">
-                        <input type="checkbox" name="special" value="1" {{ request('special') ? 'checked' : '' }} class="sr-only peer">
-                        <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
-                        <span class="ms-3 text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-amber-600 transition-colors">فقط آگهی‌های ویژه</span>
-                    </label>
+                    <div class="flex items-center gap-4">
+                        {{-- Special Filter Toggle --}}
+                        <label class="inline-flex items-center cursor-pointer group">
+                            <input type="checkbox" name="special" value="1" {{ request('special') ? 'checked' : '' }} class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+                            <span class="ms-3 text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-amber-600 transition-colors">فقط آگهی‌های ویژه</span>
+                        </label>
+
+                        {{-- Show All Filter Toggle (For All Logged-in Users) --}}
+                        @auth
+                            <label class="inline-flex items-center cursor-pointer group">
+                                <input type="checkbox" name="show_all" value="1" {{ request('show_all') ? 'checked' : '' }} class="sr-only peer">
+                                <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                <span class="ms-3 text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">نمایش همه املاک</span>
+                            </label>
+                        @endauth
+                    </div>
 
                     <div class="flex gap-3">
                         <a href="{{ route('properties.index') }}" class="px-6 py-2.5 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors">
@@ -328,8 +342,14 @@
         @if($properties->count() > 0)
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-100">
                 @foreach($properties as $property)
+                    @php
+                        $isMyProperty = auth()->check() && ($property->created_by === auth()->id() || $property->agent_id === auth()->id());
+                        $cardClass = $isMyProperty
+                            ? 'bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-500 dark:border-indigo-400 shadow-xl shadow-indigo-200/50 dark:shadow-indigo-900/30 ring-2 ring-indigo-200 dark:ring-indigo-800 ring-offset-2 dark:ring-offset-gray-900'
+                            : 'bg-white dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-200/40 dark:shadow-none';
+                    @endphp
                     <a href="{{ route('properties.show', $property->slug) }}"
-                       class="group relative flex flex-col bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-200/40 dark:shadow-none hover:border-indigo-500/30 transition-all duration-300 overflow-hidden hover:-translate-y-1 h-full">
+                       class="group relative flex flex-col backdrop-blur-sm rounded-2xl border shadow-lg hover:border-indigo-500/30 transition-all duration-300 overflow-hidden hover:-translate-y-1 h-full {{ $cardClass }}">
 
                         {{-- Image Section --}}
                         <div class="relative h-56 w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
@@ -340,6 +360,16 @@
                                     <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                                     </svg>
+                                </div>
+                            @endif
+
+                            {{-- My Property Badge --}}
+                            @if($isMyProperty)
+                                <div class="absolute top-0 left-1/2 -translate-x-1/2 z-20">
+                                    <span class="px-4 py-1 rounded-b-xl text-xs font-bold bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                        ملک من
+                                    </span>
                                 </div>
                             @endif
 
@@ -355,6 +385,12 @@
 
                             {{-- Badges --}}
                             <div class="absolute top-4 right-4 flex flex-col gap-2">
+                                @if($property->status)
+                                    <span class="px-3 py-1 rounded-lg text-xs font-bold text-white shadow-lg"
+                                          style="background-color: {{ $property->status->color }}; box-shadow: 0 4px 6px -1px {{ $property->status->color }}40;">
+                                        {{ $property->status->label ?? $property->status->name }}
+                                    </span>
+                                @endif
                                 @if($property->listing_type)
                                     <span class="px-3 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-lg shadow-indigo-600/20">
                                         {{ match($property->listing_type) {

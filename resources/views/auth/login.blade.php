@@ -27,13 +27,13 @@
             <form method="POST" action="{{ route('login') }}" class="space-y-6">
                 @csrf
 
-                {{-- ایمیل --}}
+                {{-- ایمیل یا موبایل --}}
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">پست الکترونیک</label>
+                    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">ایمیل یا شماره موبایل</label>
                     <div class="relative">
-                        <input id="email" type="email" name="email" :value="old('email')" required autofocus autocomplete="username"
+                        <input id="email" type="text" name="email" :value="old('email')" required autofocus autocomplete="username"
                                class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:bg-gray-800 dir-ltr"
-                               placeholder="user@example.com" />
+                               placeholder="user@example.com یا 0912..." />
                         <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />

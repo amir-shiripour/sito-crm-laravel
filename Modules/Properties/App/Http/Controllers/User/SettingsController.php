@@ -6,6 +6,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use Modules\Properties\Entities\PropertySetting;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
 
 class SettingsController extends Controller
 {
@@ -27,6 +28,26 @@ class SettingsController extends Controller
 
         // Card Display Settings
         $show_features_in_card = PropertySetting::get('show_features_in_card', 1);
+
+        // Visibility Settings
+        $roles = Role::all();
+
+        // Helper to get setting or default
+        $getSetting = function($key, $default = []) {
+            $val = PropertySetting::get($key);
+            return $val ? json_decode($val, true) : $default;
+        };
+
+        // For sensitive data, default to admin/super-admin if not set
+        $visibility_owner_info = $getSetting('visibility_owner_info', ['super-admin', 'admin']);
+        $visibility_confidential_notes = $getSetting('visibility_confidential_notes', ['super-admin', 'admin']);
+
+        // For public data, default to empty (public)
+        $visibility_price_info = $getSetting('visibility_price_info', []);
+        $visibility_map_info = $getSetting('visibility_map_info', []);
+
+        // Agent Roles
+        $agent_roles = $getSetting('agent_roles', []);
 
         // Storage Report
         $storagePath = 'properties';
@@ -55,7 +76,13 @@ class SettingsController extends Controller
             'property_code_include_year',
             'show_features_in_card',
             'formattedSize',
-            'fileCount'
+            'fileCount',
+            'roles',
+            'visibility_owner_info',
+            'visibility_confidential_notes',
+            'visibility_price_info',
+            'visibility_map_info',
+            'agent_roles'
         ));
     }
 
@@ -72,6 +99,11 @@ class SettingsController extends Controller
             'property_code_separator' => 'nullable|string|max:5',
             'property_code_include_year' => 'nullable|boolean',
             'show_features_in_card' => 'nullable|boolean',
+            'visibility_owner_info' => 'nullable|array',
+            'visibility_confidential_notes' => 'nullable|array',
+            'visibility_price_info' => 'nullable|array',
+            'visibility_map_info' => 'nullable|array',
+            'agent_roles' => 'nullable|array',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -90,6 +122,15 @@ class SettingsController extends Controller
         PropertySetting::set('property_code_include_year', $request->has('property_code_include_year') ? 1 : 0);
 
         PropertySetting::set('show_features_in_card', $request->has('show_features_in_card') ? 1 : 0);
+
+        // Save Visibility Settings
+        PropertySetting::set('visibility_owner_info', json_encode($request->input('visibility_owner_info', [])));
+        PropertySetting::set('visibility_confidential_notes', json_encode($request->input('visibility_confidential_notes', [])));
+        PropertySetting::set('visibility_price_info', json_encode($request->input('visibility_price_info', [])));
+        PropertySetting::set('visibility_map_info', json_encode($request->input('visibility_map_info', [])));
+
+        // Save Agent Roles
+        PropertySetting::set('agent_roles', json_encode($request->input('agent_roles', [])));
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
     }

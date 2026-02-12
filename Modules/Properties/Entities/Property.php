@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 class Property extends Model
 {
@@ -44,6 +45,7 @@ class Property extends Model
         'category_id',
         'owner_id',
         'created_by',
+        'agent_id', // Added agent_id
         'meta',
     ];
 
@@ -89,6 +91,11 @@ class Property extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function agent()
+    {
+        return $this->belongsTo(User::class, 'agent_id');
+    }
+
     public function status()
     {
         return $this->belongsTo(PropertyStatus::class, 'status_id');
@@ -122,5 +129,32 @@ class Property extends Model
         $timestamp = $this->created_at ? $this->created_at->format('YmdHis') : now()->format('YmdHis');
 
         return "{$timestamp}-{$identifier}";
+    }
+
+    /**
+     * Scope to filter properties visible to the current user.
+     *
+     * @param Builder $query
+     * @return Builder
+     */
+    public function scopeVisibleToUser(Builder $query)
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            // For guests (public view), only show published properties
+            return $query->where('publication_status', 'published');
+        }
+
+        // Super Admin or users with 'properties.view.all' permission can see everything
+        if ($user->hasRole('super-admin') || $user->can('properties.view.all')) {
+            return $query;
+        }
+
+        // Users can see properties they created OR properties where they are the assigned agent
+        return $query->where(function ($q) use ($user) {
+            $q->where('created_by', $user->id)
+              ->orWhere('agent_id', $user->id);
+        });
     }
 }

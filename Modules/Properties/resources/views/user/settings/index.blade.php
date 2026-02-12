@@ -105,6 +105,94 @@
                 </div>
             </div>
 
+            {{-- کارت جدید: تنظیمات دسترسی (Visibility) --}}
+            <div class="{{ $cardClass }} p-6">
+                <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+                    تنظیمات دسترسی و نمایش اطلاعات
+                </h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">
+                    مشخص کنید کدام نقش‌ها مجاز به مشاهده اطلاعات حساس هستند. اگر هیچ نقشی انتخاب نشود، اطلاعات برای همه (یا طبق پیش‌فرض سیستم) نمایش داده می‌شود.
+                </p>
+
+                <div class="space-y-6">
+                    {{-- اطلاعات مالک --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">مشاهده اطلاعات مالک</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="visibility_owner_info[]" value="{{ $role->name }}"
+                                        {{ in_array($role->name, $visibility_owner_info) ? 'checked' : '' }}
+                                        class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- یادداشت‌های محرمانه --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">مشاهده یادداشت‌های محرمانه</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="visibility_confidential_notes[]" value="{{ $role->name }}"
+                                        {{ in_array($role->name, $visibility_confidential_notes) ? 'checked' : '' }}
+                                        class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- اطلاعات قیمت --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">مشاهده اطلاعات قیمت</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="visibility_price_info[]" value="{{ $role->name }}"
+                                        {{ in_array($role->name, $visibility_price_info) ? 'checked' : '' }}
+                                        class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- اطلاعات نقشه و آدرس --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">مشاهده نقشه و آدرس دقیق</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="visibility_map_info[]" value="{{ $role->name }}"
+                                        {{ in_array($role->name, $visibility_map_info) ? 'checked' : '' }}
+                                        class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- نقش‌های مجاز برای مشاور --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">نقش‌های مجاز برای انتخاب به عنوان مشاور</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="agent_roles[]" value="{{ $role->name }}"
+                                        {{ in_array($role->name, $agent_roles) ? 'checked' : '' }}
+                                        class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- کارت ۴: تنظیمات آپلود --}}
             <div class="{{ $cardClass }} p-6">
                 <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">

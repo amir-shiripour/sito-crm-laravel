@@ -16,20 +16,103 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Morilog\Jalali\Jalalian;
+use App\Models\User;
 
 class PropertyController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $properties = Property::with('status', 'creator')->latest()->paginate(10);
-        return view('properties::user.index', compact('properties'));
+        $user = auth()->user();
+
+        // Start Query manually to control visibility logic
+        $query = Property::query()
+            ->with('status', 'creator', 'agent');
+
+        // Visibility Logic:
+        // Default: Show only user's properties (created_by OR agent_id)
+        // If user has permission AND requests 'show_all', then show all.
+
+        $canViewAll = $user->hasRole('super-admin') || $user->can('properties.view.all') || $user->can('properties.manage');
+
+        if ($canViewAll) {
+            if (!$request->has('show_all') || $request->show_all != '1') {
+                // Restrict to own properties by default
+                $query->where(function ($q) use ($user) {
+                    $q->where('created_by', $user->id)
+                      ->orWhere('agent_id', $user->id);
+                });
+            }
+            // If show_all=1, no restriction applied (shows all)
+        } else {
+            // Regular users always restricted
+            $query->where(function ($q) use ($user) {
+                $q->where('created_by', $user->id)
+                  ->orWhere('agent_id', $user->id);
+            });
+        }
+
+        // 1. Search (Title, Code, Address)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%");
+            });
+        }
+
+        // 2. Listing Type
+        if ($request->filled('listing_type')) {
+            $query->where('listing_type', $request->listing_type);
+        }
+
+        // 3. Property Type
+        if ($request->filled('property_type')) {
+            $query->where('property_type', $request->property_type);
+        }
+
+        // 4. Status
+        if ($request->filled('status_id')) {
+            $query->where('status_id', $request->status_id);
+        }
+
+        // 5. Publication Status
+        if ($request->filled('publication_status')) {
+            $query->where('publication_status', $request->publication_status);
+        }
+
+        // 6. Agent (For Admins/Managers)
+        if ($request->filled('agent_id') && $canViewAll) {
+            $query->where('agent_id', $request->agent_id);
+        }
+
+        $properties = $query->latest()->paginate(10)->withQueryString();
+
+        // Data for filters
+        $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
+
+        // Agents list for filter
+        $agents = [];
+        if ($canViewAll) {
+            $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
+            $agents = User::role($agentRoles)->get(['id', 'name']);
+        }
+
+        return view('properties::user.index', compact('properties', 'statuses', 'agents'));
     }
 
     public function create()
     {
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
-        return view('properties::user.create', compact('maxGalleryImages', 'statuses'));
+
+        // Fetch Agents (Initial load, maybe limit or just pass empty if using search)
+        // For now, let's pass all if not too many, or just rely on search.
+        // But the view expects $agents to check if the section should be shown.
+        $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
+        $agents = User::role($agentRoles)->get();
+
+        return view('properties::user.create', compact('maxGalleryImages', 'statuses', 'agents'));
     }
 
     public function store(Request $request)
@@ -81,6 +164,7 @@ class PropertyController extends Controller
             'cover_image' => "required|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'is_special' => 'nullable|boolean',
+            'agent_id' => 'nullable|exists:users,id', // Explicitly validate agent_id
         ]);
 
         // Handle Property Code
@@ -136,7 +220,23 @@ class PropertyController extends Controller
             }
         }
 
+        // Set created_by to current user
         $data['created_by'] = auth()->id();
+
+        // Handle agent_id logic
+        $user = auth()->user();
+        $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
+        $isAgent = $user->hasAnyRole($agentRoles);
+        $isAdmin = $user->hasRole(['super-admin', 'admin']);
+
+        if ($isAdmin || !$isAgent) {
+            // Admin or non-agent users (like call center) can set the agent.
+            // If they don't select anyone, it defaults to the creator.
+            $data['agent_id'] = $request->input('agent_id') ?: $user->id;
+        } else {
+            // User is an agent (and not admin), so they are forced to be the agent.
+            $data['agent_id'] = $user->id;
+        }
 
         // Handle Special Property
         if ($request->has('is_special')) {
@@ -211,12 +311,32 @@ class PropertyController extends Controller
 
     public function pricing(Property $property)
     {
+        // Check visibility
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.edit.all') &&
+            !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403);
+        }
+
         $currency = PropertySetting::get('currency', 'toman');
         return view('properties::user.pricing', compact('property', 'currency'));
     }
 
     public function updatePricing(Request $request, Property $property)
     {
+        // Check permission
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.edit.all') &&
+            !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403);
+        }
+
         $request->merge([
             'price' => str_replace(',', '', $request->input('price')),
             'min_price' => str_replace(',', '', $request->input('min_price')),
@@ -258,6 +378,16 @@ class PropertyController extends Controller
 
     public function details(Property $property)
     {
+        // Check visibility
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.edit.all') &&
+            !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403);
+        }
+
         $propertyAttributes = PropertyAttribute::where('section', 'details')->where('is_active', true)->orderBy('sort_order')->get();
 
         $customDetails = [];
@@ -272,6 +402,16 @@ class PropertyController extends Controller
 
     public function updateDetails(Request $request, Property $property)
     {
+        // Check permission
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.edit.all') &&
+            !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403);
+        }
+
         $data = $request->validate([
             'attributes' => 'array',
             'attributes.*' => 'nullable|string|max:255',
@@ -314,6 +454,16 @@ class PropertyController extends Controller
 
     public function features(Property $property)
     {
+        // Check visibility
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.edit.all') &&
+            !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403);
+        }
+
         $propertyAttributes = PropertyAttribute::where('section', 'features')->where('is_active', true)->orderBy('sort_order')->get();
 
         $customFeatures = [];
@@ -328,6 +478,16 @@ class PropertyController extends Controller
 
     public function updateFeatures(Request $request, Property $property)
     {
+        // Check permission
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.edit.all') &&
+            !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403);
+        }
+
         $data = $request->validate([
             'attributes' => 'array',
             'attributes.*' => 'exists:property_attributes,id',
@@ -366,6 +526,16 @@ class PropertyController extends Controller
 
     public function edit(Property $property)
     {
+        // Check visibility/permission
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.edit.all') &&
+            !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403);
+        }
+
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
         $owners = PropertyOwner::latest()->get();
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
@@ -392,11 +562,25 @@ class PropertyController extends Controller
             }
         }
 
-        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'customDetails', 'customFeatures', 'owners', 'statuses'));
+        // Fetch Agents
+        $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
+        $agents = User::role($agentRoles)->get();
+
+        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents'));
     }
 
     public function update(Request $request, Property $property)
     {
+        // Check permission
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.edit.all') &&
+            !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403);
+        }
+
         if ($request->has('delivery_date') && !empty($request->delivery_date)) {
             try {
                 $date = Jalalian::fromFormat('Y/m/d', $request->delivery_date)->toCarbon();
@@ -441,6 +625,7 @@ class PropertyController extends Controller
             'cover_image' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'is_special' => 'nullable|boolean',
+            'agent_id' => 'nullable|exists:users,id', // Explicitly validate agent_id
         ]);
 
         if ($request->hasFile('cover_image')) {
@@ -484,6 +669,17 @@ class PropertyController extends Controller
         $property->meta = $meta;
         $property->save();
 
+        // Enforce agent logic on update as well
+        $user = auth()->user();
+        $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
+        $isAgent = $user->hasAnyRole($agentRoles);
+        $isAdmin = $user->hasRole(['super-admin', 'admin']);
+
+        if (!$isAdmin && $isAgent) {
+            // If user is agent and not admin, they cannot change the agent_id
+            unset($data['agent_id']);
+        }
+
         $property->update($data);
 
         if ($request->hasFile('gallery_images')) {
@@ -515,6 +711,16 @@ class PropertyController extends Controller
 
     public function destroy(Property $property)
     {
+        // Check permission
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.delete.all') &&
+            !($user->can('properties.delete') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403);
+        }
+
         if ($property->cover_image) {
             Storage::disk('public')->delete($property->cover_image);
         }
@@ -532,7 +738,14 @@ class PropertyController extends Controller
 
     public function destroyImage(PropertyImage $image)
     {
-        if ($image->property->created_by !== auth()->id()) {
+        // Check permission via property relation
+        $user = auth()->user();
+        $property = $image->property;
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.edit.all') &&
+            !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
             abort(403);
         }
 
@@ -563,6 +776,27 @@ class PropertyController extends Controller
             'success' => true,
             'owner' => $owner
         ]);
+    }
+
+    public function searchAgents(Request $request)
+    {
+        $query = $request->get('q');
+        $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
+
+        if (empty($agentRoles)) {
+            return response()->json([]);
+        }
+
+        $agents = User::role($agentRoles)
+            ->where(function($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('mobile', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->limit(10)
+            ->get(['id', 'name', 'mobile', 'email']);
+
+        return response()->json($agents);
     }
 
     private function getPropertyCodePrefix(): string
