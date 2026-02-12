@@ -8,6 +8,24 @@
     $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2";
     $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-600";
     $selectClass = $inputClass . " appearance-none cursor-pointer";
+
+    // دریافت نقش‌های مجاز برای مشاور بودن از تنظیمات
+    $agentRoles = json_decode(\Modules\Properties\Entities\PropertySetting::get('agent_roles', '[]'), true);
+    $user = auth()->user();
+
+    // بررسی اینکه آیا کاربر فعلی یکی از نقش‌های مشاور را دارد
+    $isAgent = $user->hasAnyRole($agentRoles);
+
+    // بررسی اینکه آیا کاربر ادمین یا سوپر ادمین است (برای دسترسی کامل به تغییر مشاور)
+    $isAdmin = $user->hasRole(['super-admin', 'admin']);
+
+    // تعیین اینکه آیا کاربر می‌تواند مشاور را تغییر دهد
+    // اگر ادمین باشد یا نقش مشاور نداشته باشد (مثلا کال سنتر)، می‌تواند تغییر دهد.
+    // اگر نقش مشاور داشته باشد (و ادمین نباشد)، نمی‌تواند.
+    $canChangeAgent = $isAdmin || !$isAgent;
+
+    $defaultAgentId = $isAgent ? $user->id : null; // If user is an agent, default to themselves
+    $defaultAgentName = $isAgent ? $user->name : null;
 @endphp
 
 @section('content')
@@ -431,6 +449,81 @@
                         </div>
                     </div>
 
+                    {{-- کارت مشاور مسئول (جدید) --}}
+                    @if(isset($agents) && $agents->count() > 0)
+                        <div class="{{ $cardClass }} p-6 overflow-visible">
+                            <div class="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+                                <span class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)]"></span>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-white">مشاور مسئول</h2>
+                            </div>
+                            <div>
+                                @if($canChangeAgent)
+                                    <label class="{{ $labelClass }}">جستجو یا انتخاب مشاور</label>
+                                    <div class="relative">
+                                        <input type="hidden" name="agent_id" x-model="selectedAgentId">
+
+                                        <div class="relative flex-1 group">
+                                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                            </div>
+                                            <input type="text"
+                                                   x-model="searchAgentQuery"
+                                                   @input.debounce.300ms="searchAgents()"
+                                                   @focus="if(searchAgentQuery.length >= 2) showAgentResults = true"
+                                                   @click.outside="showAgentResults = false"
+                                                   class="{{ $inputClass }} pr-10"
+                                                   placeholder="نام، شماره تماس یا ایمیل مشاور..."
+                                                   autocomplete="off">
+
+                                            {{-- Loading Indicator --}}
+                                            <div x-show="isSearchingAgent" class="absolute left-3 top-2.5">
+                                                <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            </div>
+
+                                            {{-- Results Dropdown --}}
+                                            <div x-show="showAgentResults && searchAgentResults.length > 0"
+                                                 x-transition:enter="transition ease-out duration-100"
+                                                 x-transition:enter-start="opacity-0 translate-y-2"
+                                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                                 class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                                <ul class="py-1">
+                                                    <template x-for="agent in searchAgentResults" :key="agent.id">
+                                                        <li @click="selectAgent(agent)" class="px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors group/item">
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="flex flex-col">
+                                                                    <span class="text-sm font-bold text-gray-800 dark:text-gray-200 group-hover/item:text-indigo-600 dark:group-hover/item:text-indigo-400" x-text="agent.name"></span>
+                                                                    <span class="text-xs text-gray-500 dark:text-gray-400 dir-ltr text-right mt-0.5" x-text="agent.mobile || agent.email"></span>
+                                                                </div>
+                                                                <svg class="w-4 h-4 text-gray-300 group-hover/item:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                            </div>
+                                                        </li>
+                                                    </template>
+                                                </ul>
+                                            </div>
+                                            <div x-show="showAgentResults && searchAgentResults.length === 0 && !isSearchingAgent" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 text-center">
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">مشاوری با این مشخصات یافت نشد.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200 dark:bg-gray-900/20 dark:border-gray-700">
+                                        <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg dark:bg-indigo-900/30 dark:text-indigo-300">
+                                            {{ substr(auth()->user()->name, 0, 1) }}
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ auth()->user()->name }}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">مشاور مسئول (شما)</p>
+                                        </div>
+                                        <input type="hidden" name="agent_id" value="{{ auth()->id() }}">
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- کارت نقشه --}}
                     <div class="{{ $cardClass }} p-6">
                         <div class="flex items-center justify-between gap-2 mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
@@ -607,6 +700,14 @@
                 ownerErrors: {},
                 isSavingOwner: false,
 
+                // Agent Search
+                searchAgentQuery: '{{ $canChangeAgent ? '' : $defaultAgentName }}',
+                searchAgentResults: [],
+                showAgentResults: false,
+                selectedAgentId: '{{ $canChangeAgent ? '' : $defaultAgentId }}',
+                isSearchingAgent: false,
+                canChangeAgent: {{ $canChangeAgent ? 'true' : 'false' }}, // Pass PHP variable to Alpine.js
+
                 init() {
                     this.initMap();
                     this.$watch('showOwnerModal', (value) => {
@@ -670,6 +771,34 @@
                     } finally {
                         this.isSavingOwner = false;
                     }
+                },
+
+                // --- Agent Search ---
+                async searchAgents() {
+                    if (!this.canChangeAgent || this.searchAgentQuery.length < 2) { // Only search if canChangeAgent is true
+                        this.searchAgentResults = [];
+                        this.showAgentResults = false;
+                        return;
+                    }
+                    this.isSearchingAgent = true;
+                    try {
+                        const response = await fetch(`{{ route('user.properties.agents.search') }}?q=${this.searchAgentQuery}`);
+                        const data = await response.json();
+                        this.searchAgentResults = data;
+                        this.showAgentResults = true;
+                    } catch (error) {
+                        console.error('Agent Search error:', error);
+                    } finally {
+                        this.isSearchingAgent = false;
+                    }
+                },
+
+                selectAgent(agent) {
+                    if (!this.canChangeAgent) return; // Prevent selection if not allowed
+
+                    this.selectedAgentId = agent.id;
+                    this.searchAgentQuery = agent.name;
+                    this.showAgentResults = false;
                 },
 
                 // --- هندلینگ تصاویر ---

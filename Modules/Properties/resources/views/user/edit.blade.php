@@ -14,6 +14,24 @@
     $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5";
     $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-600";
     $selectClass = $inputClass . " appearance-none cursor-pointer";
+
+    // دریافت نقش‌های مجاز برای مشاور بودن از تنظیمات
+    $agentRoles = json_decode(\Modules\Properties\Entities\PropertySetting::get('agent_roles', '[]'), true);
+    $user = auth()->user();
+
+    // بررسی اینکه آیا کاربر فعلی یکی از نقش‌های مشاور را دارد
+    $isAgent = $user->hasAnyRole($agentRoles);
+
+    // بررسی اینکه آیا کاربر ادمین یا سوپر ادمین است (برای دسترسی کامل به تغییر مشاور)
+    $isAdmin = $user->hasRole(['super-admin', 'admin']);
+
+    // تعیین اینکه آیا کاربر می‌تواند مشاور را تغییر دهد
+    $canChangeAgent = $isAdmin || !$isAgent;
+
+    // Determine default agent for display
+    // If property has an agent, use that. If not, fallback to creator.
+    $currentAgentId = $property->agent_id ?? $property->created_by;
+    $currentAgentName = optional($property->agent)->name ?? optional($property->creator)->name;
 @endphp
 
 @section('content')
@@ -151,23 +169,29 @@
                                 @endif
                             </div>
 
-                            {{-- آپشن قابل تبدیل --}}
-                            @if($property->listing_type == 'rent')
-                                <div class="border-t border-gray-100 dark:border-gray-700 pt-6">
-                                    <label class="inline-flex items-center gap-3 cursor-pointer group mb-4">
-                                        <div class="relative">
-                                            <input type="checkbox" name="is_convertible" value="1" x-model="isConvertible" class="sr-only peer">
-                                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                                        </div>
-                                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">قابل تبدیل است</span>
-                                    </label>
-
-                                    <div x-show="isConvertible" x-transition>
-                                        <label class="{{ $labelClass }}">شرایط تبدیل</label>
-                                        <input type="text" name="convertible_with" class="{{ $inputClass }}" placeholder="مثلا: قابل تبدیل به رهن کامل یا معاوضه" value="{{ old('convertible_with', $property->convertible_with) }}">
+                            {{-- آپشن قابل تبدیل (برای همه نوع ملک‌ها) --}}
+                            <div class="border-t border-gray-100 dark:border-gray-700 pt-6">
+                                <label class="inline-flex items-center gap-3 cursor-pointer group mb-4">
+                                    <div class="relative">
+                                        <input type="checkbox" name="is_convertible" value="1" x-model="isConvertible" class="sr-only peer">
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                                     </div>
+                                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">
+                                        @if($property->listing_type == 'rent')
+                                            قابل تبدیل به رهن/اجاره دیگر
+                                        @else
+                                            قابل معاوضه با ملک یا خودرو
+                                        @endif
+                                    </span>
+                                </label>
+
+                                <div x-show="isConvertible" x-transition>
+                                    <label class="{{ $labelClass }}">شرایط تبدیل / معاوضه</label>
+                                    <input type="text" name="convertible_with" class="{{ $inputClass }}"
+                                           placeholder="@if($property->listing_type == 'rent') مثلاً: تا ۲۰۰ میلیون رهن قابل تبدیل است... @else مثلاً: معاوضه با آپارتمان کوچکتر در منطقه ۱... @endif"
+                                           value="{{ old('convertible_with', $property->convertible_with) }}">
                                 </div>
-                            @endif
+                            </div>
 
                             <div class="flex justify-end pt-4">
                                 <button type="submit" class="px-8 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all active:scale-95">
@@ -456,6 +480,13 @@
                 showResults: false,
                 searchResults: [],
 
+                // Agent Search
+                searchAgentQuery: '{{ $currentAgentName ?? auth()->user()->name }}',
+                searchAgentResults: [],
+                showAgentResults: false,
+                selectedAgentId: '{{ $currentAgentId }}',
+                isSearchingAgent: false,
+
                 init() {
                     this.initMap();
                     this.$watch('showOwnerModal', (value) => {
@@ -527,6 +558,32 @@
                     this.selectedOwner = owner.id;
                     this.searchQuery = owner.first_name + ' ' + owner.last_name;
                     this.showResults = false;
+                },
+
+                // --- Agent Search ---
+                async searchAgents() {
+                    if (this.searchAgentQuery.length < 2) {
+                        this.searchAgentResults = [];
+                        this.showAgentResults = false;
+                        return;
+                    }
+                    this.isSearchingAgent = true;
+                    try {
+                        const response = await fetch(`{{ route('user.properties.agents.search') }}?q=${this.searchAgentQuery}`);
+                        const data = await response.json();
+                        this.searchAgentResults = data;
+                        this.showAgentResults = true;
+                    } catch (error) {
+                        console.error('Agent Search error:', error);
+                    } finally {
+                        this.isSearchingAgent = false;
+                    }
+                },
+
+                selectAgent(agent) {
+                    this.selectedAgentId = agent.id;
+                    this.searchAgentQuery = agent.name;
+                    this.showAgentResults = false;
                 },
 
                 // --- Custom Fields Handling ---
@@ -687,7 +744,7 @@
                     this.address = 'در حال دریافت آدرس...';
                     try {
                         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fa`);
-                        const data = await response.json();
+                        const data = await res.json();
                         if (data && data.address) {
                             const addr = data.address;
                             const state = addr.state || '';

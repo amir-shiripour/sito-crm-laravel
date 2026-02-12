@@ -48,16 +48,44 @@ class Installer extends BaseModuleInstaller
     {
         $guard = config('auth.defaults.guard', 'web');
 
-        // لیست پرمیژن‌ها مشابه ماژول Clients
+        // لیست کامل پرمیژن‌های ماژول املاک
         $perms = [
+            // Properties (Main)
             'properties.view',
             'properties.view.all',
-            'properties.view.assigned',
             'properties.view.own',
             'properties.create',
             'properties.edit',
+            'properties.edit.all',
+            'properties.edit.own',
             'properties.delete',
+            'properties.delete.all',
+            'properties.delete.own',
             'properties.manage',
+
+            // Settings
+            'properties.settings.manage',
+
+            // Categories
+            'properties.categories.view',
+            'properties.categories.create',
+            'properties.categories.edit',
+            'properties.categories.delete',
+            'properties.categories.manage',
+
+            // Attributes
+            'properties.attributes.view',
+            'properties.attributes.create',
+            'properties.attributes.edit',
+            'properties.attributes.delete',
+            'properties.attributes.manage',
+
+            // Owners
+            'properties.owners.view',
+            'properties.owners.create',
+            'properties.owners.edit',
+            'properties.owners.delete',
+            'properties.owners.manage',
         ];
 
         $tracker = $this->loadTracker();

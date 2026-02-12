@@ -9,9 +9,12 @@ use Modules\Properties\App\Http\Controllers\User\AttributesController;
 use Modules\Properties\App\Livewire\Settings\PropertyStatusesManager;
 
 // Public Routes
-Route::group(['prefix' => 'properties', 'as' => 'properties.'], function() {
-    Route::get('/', [PublicPropertyController::class, 'index'])->name('index');
-    Route::get('/{slug}', [PublicPropertyController::class, 'show'])->name('show');
+Route::middleware(['web'])->group(function() {
+    Route::group(['prefix' => 'properties', 'as' => 'properties.'], function() {
+        Route::get('/', [PublicPropertyController::class, 'index'])->name('index');
+        Route::get('/map', [PublicPropertyController::class, 'map'])->name('map');
+        Route::get('/{slug}', [PublicPropertyController::class, 'show'])->name('show');
+    });
 });
 
 // User Panel Routes
@@ -50,6 +53,9 @@ Route::middleware(['web', 'auth'])
 
                 // Owner Search
                 Route::get('/owners/search', [OwnerController::class, 'search'])->name('owners.search');
+
+                // Agent Search
+                Route::get('/agents/search', [UserPropertyController::class, 'searchAgents'])->name('agents.search');
             });
 
         // Full Owner Management

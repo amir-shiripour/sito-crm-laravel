@@ -98,6 +98,28 @@ class PermissionCatalog
                 'matchers' => ['booking.reports.'],
             ],
 
+            // Properties module
+            'properties' => [
+                'title'    => 'املاک',
+                'matchers' => ['properties.view', 'properties.create', 'properties.edit', 'properties.delete', 'properties.manage'],
+            ],
+            'properties_settings' => [
+                'title'    => 'املاک: تنظیمات',
+                'matchers' => ['properties.settings.'],
+            ],
+            'properties_categories' => [
+                'title'    => 'املاک: دسته‌بندی‌ها',
+                'matchers' => ['properties.categories.'],
+            ],
+            'properties_attributes' => [
+                'title'    => 'املاک: ویژگی‌ها و امکانات',
+                'matchers' => ['properties.attributes.'],
+            ],
+            'properties_owners' => [
+                'title'    => 'املاک: مالکین',
+                'matchers' => ['properties.owners.'],
+            ],
+
             'other' => [
                 'title'    => 'سایر',
                 'matchers' => [''], // fallback
@@ -241,6 +263,39 @@ class PermissionCatalog
             'booking.appointments.manage'   => 'مدیریت نوبت‌ها',
 
             'booking.reports.view'          => 'مشاهده گزارش‌های نوبت‌دهی',
+
+            // Properties
+            'properties.view'               => 'مشاهده املاک',
+            'properties.view.all'           => 'مشاهده همه املاک',
+            'properties.view.own'           => 'مشاهده املاک خود',
+            'properties.create'             => 'ایجاد ملک',
+            'properties.edit'               => 'ویرایش ملک',
+            'properties.edit.all'           => 'ویرایش همه املاک',
+            'properties.edit.own'           => 'ویرایش املاک خود',
+            'properties.delete'             => 'حذف ملک',
+            'properties.delete.all'         => 'حذف همه املاک',
+            'properties.delete.own'         => 'حذف املاک خود',
+            'properties.manage'             => 'مدیریت کامل املاک',
+
+            'properties.settings.manage'    => 'مدیریت تنظیمات املاک',
+
+            'properties.categories.view'    => 'مشاهده دسته‌بندی‌های املاک',
+            'properties.categories.create'  => 'ایجاد دسته‌بندی املاک',
+            'properties.categories.edit'    => 'ویرایش دسته‌بندی املاک',
+            'properties.categories.delete'  => 'حذف دسته‌بندی املاک',
+            'properties.categories.manage'  => 'مدیریت دسته‌بندی‌های املاک',
+
+            'properties.attributes.view'    => 'مشاهده ویژگی‌ها و امکانات',
+            'properties.attributes.create'  => 'ایجاد ویژگی/امکانات',
+            'properties.attributes.edit'    => 'ویرایش ویژگی/امکانات',
+            'properties.attributes.delete'  => 'حذف ویژگی/امکانات',
+            'properties.attributes.manage'  => 'مدیریت ویژگی‌ها و امکانات',
+
+            'properties.owners.view'        => 'مشاهده مالکین',
+            'properties.owners.create'      => 'ایجاد مالک',
+            'properties.owners.edit'        => 'ویرایش مالک',
+            'properties.owners.delete'      => 'حذف مالک',
+            'properties.owners.manage'      => 'مدیریت مالکین',
         ];
 
         // اگر ترجمه صریح نداریم، یک تبدیل خوانا بساز:
