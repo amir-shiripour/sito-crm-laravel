@@ -26,7 +26,7 @@
     $currentAgentName = optional($property->agent)->name ?? optional($property->creator)->name;
 @endphp
 
-<form id="edit-details-form" action="{{ route('user.properties.update', $property) }}" method="POST" enctype="multipart/form-data" class="space-y-6" @submit="isSubmitting = true">
+<form action="{{ route('user.properties.update', $property) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
     @csrf
     @method('PUT')
 
@@ -267,49 +267,13 @@
 
                         <div>
                             <label class="{{ $labelClass }}">ساختمان / برج</label>
-                            <div class="relative">
-                                <input type="hidden" name="building_id" x-model="selectedBuildingId">
-                                <input type="text"
-                                       x-model="searchBuildingQuery"
-                                       @input.debounce.300ms="searchBuildings()"
-                                       @focus="handleBuildingFocus()"
-                                       @click.outside="showBuildingResults = false"
-                                       class="{{ $inputClass }} pr-10"
-                                       placeholder="جستجوی ساختمان..."
-                                       autocomplete="off">
-
-                                {{-- Loading Indicator --}}
-                                <div x-show="isSearchingBuilding" class="absolute left-3 top-2.5">
-                                    <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                </div>
-
-                                {{-- Results Dropdown --}}
-                                <div x-show="showBuildingResults && searchBuildingResults.length > 0"
-                                     x-transition:enter="transition ease-out duration-100"
-                                     x-transition:enter-start="opacity-0 translate-y-2"
-                                     x-transition:enter-end="opacity-100 translate-y-0"
-                                     class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
-                                    <ul class="py-1">
-                                        <template x-for="building in searchBuildingResults" :key="building.id">
-                                            <li @click="selectBuilding(building)" class="px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors group/item">
-                                                <div class="flex items-center justify-between">
-                                                    <div class="flex flex-col">
-                                                        <span class="text-sm font-bold text-gray-800 dark:text-gray-200 group-hover/item:text-indigo-600 dark:group-hover/item:text-indigo-400" x-text="building.name"></span>
-                                                        <span class="text-xs text-gray-500 dark:text-gray-400 dir-ltr text-right mt-0.5" x-text="building.address"></span>
-                                                    </div>
-                                                    <svg class="w-4 h-4 text-gray-300 group-hover/item:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                                </div>
-                                            </li>
-                                        </template>
-                                    </ul>
-                                </div>
-                                <div x-show="showBuildingResults && searchBuildingResults.length === 0 && !isSearchingBuilding" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 text-center">
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">ساختمانی با این مشخصات یافت نشد.</p>
-                                </div>
-                            </div>
+                            <select name="building_id" class="{{ $selectClass }}">
+                                <option value="">انتخاب کنید (اختیاری)</option>
+                                {{-- اگر ساختمان انتخاب شده وجود دارد --}}
+                                @if($property->building_id)
+                                    <option value="{{ $property->building_id }}" selected>ساختمان فعلی</option>
+                                @endif
+                            </select>
                         </div>
                     </div>
 
@@ -403,7 +367,7 @@
                                  class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto">
                                 <ul>
                                     <template x-for="owner in searchResults" :key="owner.id">
-                                        <li @click="selectOwner(owner)" class="px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors group/item">
+                                        <li @click="selectOwner(owner)" class="px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors">
                                             <div class="flex justify-between items-center">
                                                 <span class="text-sm font-bold" x-text="owner.first_name + ' ' + owner.last_name"></span>
                                                 <span class="text-xs text-gray-500 dir-ltr" x-text="owner.phone"></span>
@@ -505,7 +469,7 @@
                     </div>
                     <button type="button" @click="getCurrentLocation" class="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        دریافت لوکیشن من
+                        لوکیشن من
                     </button>
                 </div>
 
@@ -525,10 +489,9 @@
             </div>
 
         </div>
-
     </div>
 
-    {{-- دکمه‌های فوتر --}}
+    {{-- دکمه ذخیره اصلی --}}
     <div class="fixed bottom-0 left-0 right-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 px-4 py-4 lg:hidden">
         <button type="submit" class="w-full px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg hover:bg-indigo-700 transition-all">
             ذخیره تغییرات

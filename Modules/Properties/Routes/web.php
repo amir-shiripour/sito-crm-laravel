@@ -4,11 +4,8 @@ use Illuminate\Support\Facades\Route;
 use Modules\Properties\App\Http\Controllers\PropertyController as PublicPropertyController;
 use Modules\Properties\App\Http\Controllers\User\PropertyController as UserPropertyController;
 use Modules\Properties\App\Http\Controllers\User\OwnerController;
-use Modules\Properties\App\Http\Controllers\User\BuildingController;
 use Modules\Properties\App\Http\Controllers\User\SettingsController;
 use Modules\Properties\App\Http\Controllers\User\AttributesController;
-use Modules\Properties\App\Http\Controllers\User\CategoryController;
-use Modules\Properties\App\Http\Controllers\User\AIController;
 use Modules\Properties\App\Livewire\Settings\PropertyStatusesManager;
 
 // Public Routes
@@ -57,29 +54,14 @@ Route::middleware(['web', 'auth'])
                 // Owner Search
                 Route::get('/owners/search', [OwnerController::class, 'search'])->name('owners.search');
 
-                // Building Search
-                Route::get('/buildings/search', [BuildingController::class, 'search'])->name('buildings.search');
-
                 // Agent Search
                 Route::get('/agents/search', [UserPropertyController::class, 'searchAgents'])->name('agents.search');
-
-                // Category Management
-                Route::resource('categories', CategoryController::class)->except(['show', 'create', 'edit']);
-
-                // AI Routes
-                Route::post('/ai/complete', [AIController::class, 'completeProperty'])->name('ai.complete');
-                Route::post('/ai/search', [AIController::class, 'searchProperty'])->name('ai.search');
             });
 
         // Full Owner Management
         Route::resource('property-owners', OwnerController::class)
             ->except(['show', 'create', 'edit'])
             ->parameters(['property-owners' => 'owner']);
-
-        // Full Building Management
-        Route::resource('property-buildings', BuildingController::class)
-            ->except(['show', 'create', 'edit'])
-            ->parameters(['property-buildings' => 'building']);
 
         // Settings Routes
         Route::prefix('settings/properties')

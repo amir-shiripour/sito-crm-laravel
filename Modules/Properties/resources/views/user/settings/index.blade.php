@@ -105,28 +105,6 @@
                 </div>
             </div>
 
-            {{-- کارت جدید: تنظیمات هوش مصنوعی --}}
-            <div class="{{ $cardClass }} p-6">
-                <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
-                    تنظیمات هوش مصنوعی (AI)
-                </h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                    فعال‌سازی قابلیت‌های هوشمند برای تسهیل کار با سیستم املاک.
-                </p>
-                <div class="space-y-4">
-                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer transition-colors hover:bg-white dark:hover:bg-gray-800">
-                        <input type="checkbox" name="ai_property_completion" value="1" {{ ($ai_property_completion ?? false) ? 'checked' : '' }} class="{{ $checkboxClass }}">
-                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">فعال‌سازی تکمیل هوشمند اطلاعات ملک (در فرم ایجاد/ویرایش)</span>
-                    </label>
-
-                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer transition-colors hover:bg-white dark:hover:bg-gray-800">
-                        <input type="checkbox" name="ai_property_search" value="1" {{ ($ai_property_search ?? false) ? 'checked' : '' }} class="{{ $checkboxClass }}">
-                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">فعال‌سازی جستجوی هوشمند ملک</span>
-                    </label>
-                </div>
-            </div>
-
             {{-- کارت جدید: تنظیمات دسترسی (Visibility) --}}
             <div class="{{ $cardClass }} p-6">
                 <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -215,34 +193,6 @@
                 </div>
             </div>
 
-            {{-- کارت جدید: موقعیت دفتر مرکزی --}}
-            <div class="{{ $cardClass }} p-6" x-data="officeMap()">
-                <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                    موقعیت دفتر مرکزی
-                </h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                    این موقعیت در نقشه کلی املاک به عنوان دفتر مرکزی نمایش داده می‌شود.
-                </p>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="{{ $labelClass }}">عنوان دفتر</label>
-                        <input type="text" name="office_location_title" value="{{ $office_location_title }}" class="{{ $inputClass }}" placeholder="مثلا: دفتر مرکزی">
-                    </div>
-
-                    <div class="h-64 w-full rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 z-0 relative" id="office-map"></div>
-
-                    <input type="hidden" name="office_location_lat" x-model="lat">
-                    <input type="hidden" name="office_location_lng" x-model="lng">
-
-                    <div class="flex gap-4 text-xs text-gray-500 dark:text-gray-400 font-mono dir-ltr">
-                        <span>Lat: <span x-text="lat"></span></span>
-                        <span>Lng: <span x-text="lng"></span></span>
-                    </div>
-                </div>
-            </div>
-
             {{-- کارت ۴: تنظیمات آپلود --}}
             <div class="{{ $cardClass }} p-6">
                 <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -324,37 +274,4 @@
 
         </form>
     </div>
-
-    <script>
-        function officeMap() {
-            return {
-                lat: {{ $office_location_lat ?? 35.6892 }},
-                lng: {{ $office_location_lng ?? 51.3890 }},
-                map: null,
-                marker: null,
-                init() {
-                    if (typeof L === 'undefined') return;
-
-                    this.map = L.map('office-map').setView([this.lat, this.lng], 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '© OpenStreetMap contributors'
-                    }).addTo(this.map);
-
-                    this.marker = L.marker([this.lat, this.lng], {draggable: true}).addTo(this.map);
-
-                    this.marker.on('dragend', (e) => {
-                        const pos = e.target.getLatLng();
-                        this.lat = pos.lat;
-                        this.lng = pos.lng;
-                    });
-
-                    this.map.on('click', (e) => {
-                        this.lat = e.latlng.lat;
-                        this.lng = e.latlng.lng;
-                        this.marker.setLatLng([this.lat, this.lng]);
-                    });
-                }
-            }
-        }
-    </script>
 @endsection

@@ -8,36 +8,84 @@ use Illuminate\Support\Facades\Log;
 use Modules\Properties\Entities\Property;
 use Modules\Properties\Entities\PropertyAttribute;
 use Modules\Properties\Entities\PropertySetting;
-use Modules\Properties\Entities\PropertyCategory;
-use Modules\Properties\Entities\PropertyBuilding;
 
 class PropertyController extends Controller
 {
     public function index(Request $request)
     {
         // Start with the visibleToUser scope
-        $query = Property::visibleToUser()->with(['status', 'attributeValues', 'category', 'building'])->latest();
+        $query = Property::visibleToUser()->with(['status', 'attributeValues'])->latest();
 
         // Check if user has permission to see all properties and requested to do so
         $user = auth()->user();
         if ($user && ($user->hasRole('super-admin') || $user->can('properties.view.all'))) {
             if ($request->has('show_all') && $request->show_all == '1') {
-                // Show all: No additional restriction needed as visibleToUser() returns all for admins.
+                // If show_all is requested, we need to bypass the scope's restriction.
+                // Since visibleToUser already applied a restriction (unless super-admin/view.all),
+                // we need to re-initialize the query without the scope if we want to be explicit,
+                // BUT visibleToUser ALREADY allows everything for super-admin/view.all.
+                // So, the scope logic handles it:
+                // - If super-admin/view.all -> returns $query (all properties)
+                // - If agent -> returns $query->where(...) (restricted)
+
+                // The issue is: visibleToUser returns ALL for super-admin.
+                // If we want to filter by "my properties" vs "all properties" for admins, we can add logic here.
+                // But the request is: "add an option to remove the restriction".
+                // For agents, visibleToUser restricts them. They CANNOT remove the restriction unless they have permission.
+
+                // Wait, the request says: "محدودیت نمایشی که ایجاد کردیم برای نقش ها و مشاوران، در روت ... هم اعمال بشه"
+                // This is already done by adding visibleToUser() above.
+
+                // And: "به بخش فیلتر گزینه ایی اضافه بشه که محدودیت نمایش رو بشه برداشت و تمام ملک ها قابل مشاهده باشه"
+                // This implies that by default, even for admins/managers, they might want to see only their own?
+                // OR it implies that for those who HAVE permission, they can toggle between "Mine" and "All".
+
+                // Let's assume the default behavior of visibleToUser is correct (Restricted for agents, All for Admins).
+                // If an Admin wants to see ONLY theirs, that's a different filter.
+                // If an Agent wants to see ALL, they can't unless they have permission.
+
+                // Re-reading: "کسانی که به عنوان مشاور ... فقط بتونن ملک های ... خودشون ... رو ببینند" -> Done by visibleToUser.
+                // "به بخش فیلتر گزینه ایی اضافه بشه که محدودیت نمایش رو بشه برداشت" -> This is for those who HAVE permission but might be restricted by default?
+                // Or maybe the user wants the default to be RESTRICTED for everyone (even admins?), and then a toggle to see all?
+
+                // Let's implement: Default is what visibleToUser says.
+                // If user has permission to view all, they see all.
+                // If they want to see only theirs, we can add a filter `view=mine`.
+
+                // BUT, the prompt says: "محدودیت نمایش رو بشه برداشت". This suggests the default IS restricted.
+                // So, let's modify visibleToUser logic in the Model or handle it here.
+
+                // Let's modify the query here to support a "Show All" toggle for privileged users.
+                // We will start a fresh query to avoid double scoping issues if we need to change logic.
+
+                $query = Property::with(['status', 'attributeValues'])->latest();
+
+                // If user CAN see all:
+                //   Default: Show All (Standard) OR Show Mine (If requested)
+                //   Let's assume the user wants the restriction to be applied by default even for admins in this specific view?
+                //   "محدودیت نمایشی ... در روت ... هم اعمال بشه" -> Apply restriction.
+                //   "گزینه ایی اضافه بشه که محدودیت نمایش رو بشه برداشت" -> Remove restriction.
+
+                // So: Default = Restricted (Mine only). Toggle = Show All.
+
+                if (!$request->has('show_all') || $request->show_all != '1') {
+                     $query->where(function ($q) use ($user) {
+                        $q->where('created_by', $user->id)
+                          ->orWhere('agent_id', $user->id);
+                    });
+                }
+                // If show_all=1, we don't apply the restriction (showing all).
+
             } else {
-                // Default for admins/managers: Restrict to their own properties (Mine only)
-                // We need to explicitly apply this restriction because visibleToUser() returns ALL for admins.
+                // User CANNOT see all (e.g. Agent). Always restrict.
                 $query->where(function ($q) use ($user) {
                     $q->where('created_by', $user->id)
                       ->orWhere('agent_id', $user->id);
                 });
             }
         } else {
-            // Guest user or restricted user (Agent)
-            // visibleToUser() handles the restriction for Agents.
-            // For Guests, we need to ensure only published properties are shown.
-            if (!$user) {
-                 $query->where('publication_status', 'published');
-            }
+            // Guest user
+             $query->where('publication_status', 'published');
         }
 
         $this->applyFilters($query, $request);
@@ -57,17 +105,15 @@ class PropertyController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        // Fetch Categories and Buildings for filter
-        $categories = PropertyCategory::all();
-        $buildings = PropertyBuilding::latest()->get();
+        Log::info('Features found for filter: ' . $features->count());
 
-        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings'));
+        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features'));
     }
 
     public function map(Request $request)
     {
         // Start with the visibleToUser scope
-        $query = Property::with(['status', 'attributeValues', 'category', 'building'])->latest();
+        $query = Property::with(['status', 'attributeValues'])->latest();
 
         // Check if user has permission to see all properties and requested to do so
         $user = auth()->user();
@@ -75,7 +121,7 @@ class PropertyController extends Controller
             if ($request->has('show_all') && $request->show_all == '1') {
                 // Show all
             } else {
-                // Default for admins/managers: Restrict to their own properties (Mine only)
+                // Default: Restricted (Mine only)
                 $query->where(function ($q) use ($user) {
                     $q->where('created_by', $user->id)
                       ->orWhere('agent_id', $user->id);
@@ -114,14 +160,7 @@ class PropertyController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        // Office Location
-        $officeLocation = [
-            'lat' => PropertySetting::get('office_location_lat'),
-            'lng' => PropertySetting::get('office_location_lng'),
-            'title' => PropertySetting::get('office_location_title', 'دفتر مرکزی'),
-        ];
-
-        return view('properties::map', compact('properties', 'filterableAttributes', 'features', 'officeLocation'));
+        return view('properties::map', compact('properties', 'filterableAttributes', 'features'));
     }
 
     private function applyFilters($query, Request $request)
@@ -235,31 +274,28 @@ class PropertyController extends Controller
         if ($request->filled('special') && $request->special == '1') {
             $query->where('meta->is_special', true);
         }
-
-        // 9. Category
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
-
-        // 10. Building
-        if ($request->filled('building_id')) {
-            $query->where('building_id', $request->building_id);
-        }
     }
 
     public function show($slug)
     {
         Log::info("Show Property Slug: " . $slug);
 
+        // The slug format is YmdHis-CODE (e.g., 20260129171118-1404-P-1002)
+        // The timestamp is always 14 characters long.
+        // So the identifier starts from index 15 (14 chars + 1 dash).
+
         if (strlen($slug) > 15) {
             $identifier = substr($slug, 15);
         } else {
+            // Fallback for old links or weird formats
             $parts = explode('-', $slug);
             $identifier = end($parts);
         }
 
-        // Added 'building' to eager loading
-        $property = Property::with(['status', 'creator', 'attributeValues.attribute', 'images', 'owner', 'category', 'building'])
+        Log::info("Extracted Identifier: " . $identifier);
+
+        // Try to find by code first, then by id if code is not found or identifier is numeric
+        $property = Property::with(['status', 'creator', 'attributeValues.attribute', 'images', 'owner', 'category'])
             ->where(function($query) use ($identifier) {
                 $query->where('code', $identifier)
                       ->orWhere('id', $identifier);
@@ -267,10 +303,12 @@ class PropertyController extends Controller
             ->first();
 
         if (!$property) {
+            Log::error("Property not found for identifier: " . $identifier);
             abort(404);
         }
 
-        // Check visibility
+        // Check visibility for show page as well
+        // If user is not admin/can-view-all AND not creator/agent -> 403
         $user = auth()->user();
         if ($user) {
              if (!$user->hasRole('super-admin') && !$user->can('properties.view.all')) {
@@ -279,6 +317,7 @@ class PropertyController extends Controller
                  }
              }
         } else {
+            // Guest: only published
             if ($property->publication_status !== 'published') {
                 abort(404);
             }

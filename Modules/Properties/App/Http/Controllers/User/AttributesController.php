@@ -9,14 +9,6 @@ use Modules\Properties\Entities\PropertyAttribute;
 
 class AttributesController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('permission:properties.attributes.view|properties.attributes.manage')->only('index');
-        $this->middleware('permission:properties.attributes.create|properties.attributes.manage')->only('store');
-        $this->middleware('permission:properties.attributes.edit|properties.attributes.manage')->only('update');
-        $this->middleware('permission:properties.attributes.delete|properties.attributes.manage')->only('destroy');
-    }
-
     public function index()
     {
         $detailsAttributes = PropertyAttribute::where('section', 'details')->orderBy('sort_order')->get();

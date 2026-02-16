@@ -198,10 +198,8 @@
                                 $specs->push(['name' => 'کاربری', 'value' => $usageLabel]);
                             }
 
-                            // Building (Updated to show name)
-                            if($property->building) {
-                                $specs->push(['name' => 'ساختمان', 'value' => $property->building->name]);
-                            } elseif($property->building_id) {
+                            // Building ID (if exists)
+                            if($property->building_id) {
                                 $specs->push(['name' => 'شناسه ساختمان', 'value' => $property->building_id]);
                             }
 

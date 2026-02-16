@@ -10,8 +10,6 @@ use Modules\Properties\Entities\PropertyAttribute;
 use Modules\Properties\Entities\PropertyAttributeValue;
 use Modules\Properties\Entities\PropertyOwner;
 use Modules\Properties\Entities\PropertyStatus;
-use Modules\Properties\Entities\PropertyCategory;
-use Modules\Properties\Entities\PropertyBuilding;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -28,7 +26,7 @@ class PropertyController extends Controller
 
         // Start Query manually to control visibility logic
         $query = Property::query()
-            ->with('status', 'creator', 'agent', 'category', 'building');
+            ->with('status', 'creator', 'agent');
 
         // Visibility Logic:
         // Default: Show only user's properties (created_by OR agent_id)
@@ -88,22 +86,10 @@ class PropertyController extends Controller
             $query->where('agent_id', $request->agent_id);
         }
 
-        // 7. Category
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
-
-        // 8. Building
-        if ($request->filled('building_id')) {
-            $query->where('building_id', $request->building_id);
-        }
-
         $properties = $query->latest()->paginate(10)->withQueryString();
 
         // Data for filters
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
-        $categories = PropertyCategory::where('user_id', $user->id)->get();
-        $buildings = PropertyBuilding::latest()->get(); // Or filter by user if needed
 
         // Agents list for filter
         $agents = [];
@@ -112,7 +98,7 @@ class PropertyController extends Controller
             $agents = User::role($agentRoles)->get(['id', 'name']);
         }
 
-        return view('properties::user.index', compact('properties', 'statuses', 'agents', 'categories', 'buildings'));
+        return view('properties::user.index', compact('properties', 'statuses', 'agents'));
     }
 
     public function create()
@@ -178,20 +164,7 @@ class PropertyController extends Controller
             'cover_image' => "required|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'is_special' => 'nullable|boolean',
-            'agent_id' => 'nullable|exists:users,id',
-
-            // قیمت‌ها (اختیاری در این مرحله، اما اگر باشد ذخیره می‌شود)
-            'price' => 'nullable|numeric|min:0',
-            'min_price' => 'nullable|numeric|min:0',
-            'deposit_price' => 'nullable|numeric|min:0',
-            'rent_price' => 'nullable|numeric|min:0',
-            'advance_price' => 'nullable|numeric|min:0',
-
-            // ویژگی‌ها و امکانات (از طریق AI)
-            'attributes' => 'nullable|array',
-            'attributes.*' => 'nullable|string|max:255',
-            'features' => 'nullable|array',
-            'features.*' => 'exists:property_attributes,id',
+            'agent_id' => 'nullable|exists:users,id', // Explicitly validate agent_id
         ]);
 
         // Handle Property Code
@@ -257,19 +230,17 @@ class PropertyController extends Controller
         $isAdmin = $user->hasRole(['super-admin', 'admin']);
 
         if ($isAdmin || !$isAgent) {
+            // Admin or non-agent users (like call center) can set the agent.
+            // If they don't select anyone, it defaults to the creator.
             $data['agent_id'] = $request->input('agent_id') ?: $user->id;
         } else {
+            // User is an agent (and not admin), so they are forced to be the agent.
             $data['agent_id'] = $user->id;
         }
 
         // Handle Special Property
         if ($request->has('is_special')) {
             $data['meta']['is_special'] = true;
-        }
-
-        // Handle Features in Meta (for quick access)
-        if ($request->has('features')) {
-            $data['meta']['features'] = $request->input('features');
         }
 
         $property = null;
@@ -321,30 +292,6 @@ class PropertyController extends Controller
                         Log::error('Gallery Image Store Failed: ' . $e->getMessage());
                     }
                 }
-            }
-        }
-
-        // Save Attributes (Details)
-        if ($request->has('attributes')) {
-            foreach ($request->input('attributes') as $attributeId => $value) {
-                if (!empty($value)) {
-                    PropertyAttributeValue::create([
-                        'property_id' => $property->id,
-                        'attribute_id' => $attributeId,
-                        'value' => $value,
-                    ]);
-                }
-            }
-        }
-
-        // Save Features (as Attribute Values with value '1')
-        if ($request->has('features')) {
-            foreach ($request->input('features') as $featureId) {
-                PropertyAttributeValue::create([
-                    'property_id' => $property->id,
-                    'attribute_id' => $featureId,
-                    'value' => '1',
-                ]);
             }
         }
 
@@ -588,9 +535,6 @@ class PropertyController extends Controller
             !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
             abort(403);
         }
-
-        // Eager load building
-        $property->load('building');
 
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
         $owners = PropertyOwner::latest()->get();

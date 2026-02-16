@@ -6,13 +6,10 @@ use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Modules\Properties\Entities\PropertyStatus;
 use Modules\Properties\Entities\Property;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 #[Layout('layouts.user')]
 class PropertyStatusesManager extends Component
 {
-    use AuthorizesRequests;
-
     /** @var \Illuminate\Support\Collection */
     public $statuses;
 
@@ -29,7 +26,6 @@ class PropertyStatusesManager extends Component
 
     public function mount(): void
     {
-        $this->authorize('properties.settings.manage');
         $this->loadStatuses();
         $this->resetForm();
     }
@@ -55,13 +51,11 @@ class PropertyStatusesManager extends Component
 
     public function createNew(): void
     {
-        $this->authorize('properties.settings.manage');
         $this->resetForm();
     }
 
     public function edit(int $id): void
     {
-        $this->authorize('properties.settings.manage');
         $status = PropertyStatus::findOrFail($id);
 
         $this->editingId     = $status->id;
@@ -91,7 +85,6 @@ class PropertyStatusesManager extends Component
 
     public function save(): void
     {
-        $this->authorize('properties.settings.manage');
         $data = $this->validate();
 
         if ($this->editingId) {
@@ -115,7 +108,6 @@ class PropertyStatusesManager extends Component
 
     public function delete(int $id): void
     {
-        $this->authorize('properties.settings.manage');
         $status = PropertyStatus::findOrFail($id);
 
         if ($status->is_system) {

@@ -86,13 +86,6 @@ class Installer extends BaseModuleInstaller
             'properties.owners.edit',
             'properties.owners.delete',
             'properties.owners.manage',
-
-            // Buildings
-            'properties.buildings.view',
-            'properties.buildings.create',
-            'properties.buildings.edit',
-            'properties.buildings.delete',
-            'properties.buildings.manage',
         ];
 
         $tracker = $this->loadTracker();

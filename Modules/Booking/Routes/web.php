@@ -208,18 +208,6 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->name('statement.index')
             ->middleware('can:booking.appointments.view');
 
-        Route::post('statement', [StatementController::class, 'store'])
-            ->name('statement.store')
-            ->middleware('can:booking.appointments.view');
-
-        Route::put('statement/{statement}/status', [StatementController::class, 'updateStatus'])
-            ->name('statement.update-status')
-            ->middleware('can:booking.appointments.view');
-
-        Route::delete('statement/{statement}', [StatementController::class, 'destroy'])
-            ->name('statement.destroy')
-            ->middleware('can:booking.appointments.view');
-
         Route::get('statement/search-providers', [StatementController::class, 'searchProviders'])
             ->name('statement.search-providers')
             ->middleware('can:booking.appointments.view');

@@ -26,9 +26,6 @@
 
     $defaultAgentId = $isAgent ? $user->id : null; // If user is an agent, default to themselves
     $defaultAgentName = $isAgent ? $user->name : null;
-
-    // بررسی فعال بودن هوش مصنوعی
-    $aiEnabled = \Modules\Properties\Entities\PropertySetting::get('ai_property_completion', 0);
 @endphp
 
 @section('content')
@@ -117,17 +114,6 @@
             {{-- Inputs مخفی نقشه --}}
             <input type="hidden" name="latitude" x-model="lat">
             <input type="hidden" name="longitude" x-model="lng">
-
-            {{-- Inputs مخفی برای قیمت‌ها (تکمیل شده توسط AI) --}}
-            <input type="hidden" name="price" x-model="prices.price">
-            <input type="hidden" name="min_price" x-model="prices.min_price">
-            <input type="hidden" name="deposit_price" x-model="prices.deposit_price">
-            <input type="hidden" name="rent_price" x-model="prices.rent_price">
-            <input type="hidden" name="advance_price" x-model="prices.advance_price">
-
-            {{-- کانتینر برای ویژگی‌ها و امکانات (توسط JS پر می‌شود) --}}
-            <div id="ai-attributes-container"></div>
-            <div id="ai-features-container"></div>
 
             <div class="grid grid-cols-12 gap-6">
 
@@ -276,7 +262,7 @@
 
                             <div>
                                 <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="is_special" value="1" x-model="isSpecial" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600">
+                                    <input type="checkbox" name="is_special" value="1" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600">
                                     <span class="text-sm font-bold text-gray-700 dark:text-gray-300">آگهی ویژه / فوری</span>
                                 </label>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-7">با فعال کردن این گزینه، ملک با نشان ویژه نمایش داده می‌شود.</p>
@@ -284,7 +270,7 @@
 
                             <div>
                                 <label class="{{ $labelClass }}">یادداشت محرمانه</label>
-                                <textarea name="confidential_notes" x-model="confidentialNotes" rows="3" class="{{ $inputClass }} resize-none" placeholder="یادداشت خصوصی برای مدیران..."></textarea>
+                                <textarea name="confidential_notes" rows="3" class="{{ $inputClass }} resize-none" placeholder="یادداشت خصوصی برای مدیران..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -305,7 +291,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                                 <div class="md:col-span-3">
                                     <label class="{{ $labelClass }}">عنوان ملک <span class="text-red-500">*</span></label>
-                                    <input type="text" name="title" x-model="title" class="{{ $inputClass }}" required placeholder="مثلاً: آپارتمان ۱۲۰ متری نوساز در خیابان اصلی">
+                                    <input type="text" name="title" class="{{ $inputClass }}" required placeholder="مثلاً: آپارتمان ۱۲۰ متری نوساز در خیابان اصلی">
                                 </div>
                                 <div>
                                     <label class="{{ $labelClass }}">نوع فایل</label>
@@ -330,7 +316,7 @@
 
                                 <div>
                                     <label class="{{ $labelClass }}">نوع سند</label>
-                                    <select name="document_type" x-model="documentType" class="{{ $selectClass }}">
+                                    <select name="document_type" class="{{ $selectClass }}">
                                         <option value="">انتخاب کنید...</option>
                                         @foreach(\Modules\Properties\Entities\Property::DOCUMENT_TYPES as $key => $label)
                                             <option value="{{ $key }}">{{ $label }}</option>
@@ -340,49 +326,10 @@
 
                                 <div>
                                     <label class="{{ $labelClass }}">ساختمان / برج</label>
-                                    <div class="relative">
-                                        <input type="hidden" name="building_id" x-model="selectedBuildingId">
-                                        <input type="text"
-                                               x-model="searchBuildingQuery"
-                                               @input.debounce.300ms="searchBuildings()"
-                                               @focus="if(searchBuildingQuery.length >= 2) showBuildingResults = true"
-                                               @click.outside="showBuildingResults = false"
-                                               class="{{ $inputClass }} pr-10"
-                                               placeholder="جستجوی ساختمان..."
-                                               autocomplete="off">
-
-                                        {{-- Loading Indicator --}}
-                                        <div x-show="isSearchingBuilding" class="absolute left-3 top-2.5">
-                                            <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                        </div>
-
-                                        {{-- Results Dropdown --}}
-                                        <div x-show="showBuildingResults && searchBuildingResults.length > 0"
-                                             x-transition:enter="transition ease-out duration-100"
-                                             x-transition:enter-start="opacity-0 translate-y-2"
-                                             x-transition:enter-end="opacity-100 translate-y-0"
-                                             class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
-                                            <ul class="py-1">
-                                                <template x-for="building in searchBuildingResults" :key="building.id">
-                                                    <li @click="selectBuilding(building)" class="px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors group/item">
-                                                        <div class="flex items-center justify-between">
-                                                            <div class="flex flex-col">
-                                                                <span class="text-sm font-bold text-gray-800 dark:text-gray-200 group-hover/item:text-indigo-600 dark:group-hover/item:text-indigo-400" x-text="building.name"></span>
-                                                                <span class="text-xs text-gray-500 dark:text-gray-400 dir-ltr text-right mt-0.5" x-text="building.address"></span>
-                                                            </div>
-                                                            <svg class="w-4 h-4 text-gray-300 group-hover/item:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                                        </div>
-                                                    </li>
-                                                </template>
-                                            </ul>
-                                        </div>
-                                        <div x-show="showBuildingResults && searchBuildingResults.length === 0 && !isSearchingBuilding" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 text-center">
-                                            <p class="text-sm text-gray-500 dark:text-gray-400">ساختمانی با این مشخصات یافت نشد.</p>
-                                        </div>
-                                    </div>
+                                    <select name="building_id" class="{{ $selectClass }}">
+                                        <option value="">انتخاب کنید (اختیاری)</option>
+                                        {{-- Options loaded dynamically --}}
+                                    </select>
                                 </div>
                             </div>
 
@@ -390,7 +337,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6" x-show="propertyType === 'land' || listingType === 'presale'" x-transition>
                                 <div x-show="propertyType === 'land'">
                                     <label class="{{ $labelClass }}">نوع کاربری</label>
-                                    <select name="usage_type" x-model="usageType" class="{{ $selectClass }}">
+                                    <select name="usage_type" class="{{ $selectClass }}">
                                         <option value="">انتخاب کنید...</option>
                                         <option value="residential">مسکونی</option>
                                         <option value="industrial">صنعتی</option>
@@ -400,23 +347,13 @@
                                 </div>
                                 <div x-show="listingType === 'presale'">
                                     <label class="{{ $labelClass }}">تاریخ تحویل</label>
-                                    <input type="text" name="delivery_date" x-model="deliveryDate" data-jdp class="{{ $inputClass }} text-center" placeholder="1404/01/01">
+                                    <input type="text" name="delivery_date" data-jdp class="{{ $inputClass }} text-center" placeholder="1404/01/01">
                                 </div>
                             </div>
 
                             <div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <label class="{{ $labelClass }} mb-0">توضیحات تکمیلی</label>
-                                    @if($aiEnabled)
-                                        <button type="button" @click="completeWithAI" :disabled="isCompletingAI" class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                            <svg x-show="!isCompletingAI" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                            <svg x-show="isCompletingAI" class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                            تکمیل هوشمند
-                                        </button>
-                                    @endif
-                                </div>
-                                <textarea name="description" x-model="description" rows="4" class="{{ $inputClass }} resize-none leading-relaxed" placeholder="جزئیات بیشتر درباره امکانات، دسترسی‌ها و شرایط ملک..."></textarea>
-                                <p class="text-[10px] text-gray-500 mt-1">برای استفاده از هوش مصنوعی، ابتدا توضیحات را بنویسید و سپس دکمه تکمیل هوشمند را بزنید.</p>
+                                <label class="{{ $labelClass }}">توضیحات تکمیلی</label>
+                                <textarea name="description" rows="4" class="{{ $inputClass }} resize-none leading-relaxed" placeholder="جزئیات بیشتر درباره امکانات، دسترسی‌ها و شرایط ملک..."></textarea>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">
@@ -427,7 +364,7 @@
                                             <option value="auto">اتوماتیک</option>
                                             <option value="manual">دستی</option>
                                         </select>
-                                        <input type="text" name="code" x-model="code" x-show="codeType === 'manual'" class="{{ $inputClass }} rounded-r-none" placeholder="کد دلخواه">
+                                        <input type="text" name="code" x-show="codeType === 'manual'" class="{{ $inputClass }} rounded-r-none" placeholder="کد دلخواه">
                                         <div x-show="codeType === 'auto'" class="{{ $inputClass }} rounded-r-none bg-gray-100 text-gray-500 flex items-center justify-center cursor-not-allowed dark:bg-gray-800 dark:text-gray-500">
                                             تولید خودکار توسط سیستم
                                         </div>
@@ -735,25 +672,8 @@
             return {
                 listingType: 'sale',
                 propertyType: 'apartment',
-                documentType: '',
-                usageType: '',
-                deliveryDate: '',
                 codeType: 'auto',
-                code: '',
                 isSubmitting: false,
-                title: '',
-                description: '',
-                isSpecial: false,
-                confidentialNotes: '',
-
-                // قیمت‌ها
-                prices: {
-                    price: '',
-                    min_price: '',
-                    deposit_price: '',
-                    rent_price: '',
-                    advance_price: ''
-                },
 
                 // مدیا
                 coverPreview: null,
@@ -780,13 +700,6 @@
                 ownerErrors: {},
                 isSavingOwner: false,
 
-                // Building Search
-                searchBuildingQuery: '',
-                searchBuildingResults: [],
-                showBuildingResults: false,
-                selectedBuildingId: '',
-                isSearchingBuilding: false,
-
                 // Agent Search
                 searchAgentQuery: '{{ $canChangeAgent ? '' : $defaultAgentName }}',
                 searchAgentResults: [],
@@ -795,113 +708,11 @@
                 isSearchingAgent: false,
                 canChangeAgent: {{ $canChangeAgent ? 'true' : 'false' }}, // Pass PHP variable to Alpine.js
 
-                // AI
-                isCompletingAI: false,
-
                 init() {
                     this.initMap();
                     this.$watch('showOwnerModal', (value) => {
                         if (value) this.ownerErrors = {};
                     });
-                },
-
-                // --- AI Completion ---
-                async completeWithAI() {
-                    if (!this.description || this.description.length < 10) {
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'لطفاً حداقل ۱۰ کاراکتر در توضیحات بنویسید.' } }));
-                        return;
-                    }
-
-                    this.isCompletingAI = true;
-                    try {
-                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                        const response = await fetch('{{ route("user.properties.ai.complete") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrf,
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({ description: this.description })
-                        });
-                        const result = await response.json();
-
-                        if (response.ok && result.data) {
-                            const data = result.data;
-
-                            // پر کردن فیلدها
-                            if (data.title) this.title = data.title;
-                            if (data.type) this.propertyType = data.type;
-                            if (data.listing_type) this.listingType = data.listing_type;
-                            if (data.document_type) this.documentType = data.document_type;
-                            if (data.usage_type) this.usageType = data.usage_type;
-                            if (data.delivery_date) this.deliveryDate = data.delivery_date;
-                            if (data.description) this.description = data.description;
-                            if (data.code) {
-                                this.codeType = 'manual';
-                                this.code = data.code;
-                            }
-                            if (data.address) this.address = data.address;
-                            if (data.is_special !== undefined) this.isSpecial = data.is_special;
-                            if (data.confidential_notes) this.confidentialNotes = data.confidential_notes;
-
-                            // پر کردن قیمت‌ها
-                            if (data.prices) {
-                                this.prices = { ...this.prices, ...data.prices };
-                            }
-
-                            // ایجاد فیلدهای مخفی برای جزئیات (Details)
-                            const attrContainer = document.getElementById('ai-attributes-container');
-                            attrContainer.innerHTML = '';
-                            if (data.details) {
-                                for (const [id, value] of Object.entries(data.details)) {
-                                    const input = document.createElement('input');
-                                    input.type = 'hidden';
-                                    input.name = `attributes[${id}]`;
-                                    input.value = value;
-                                    attrContainer.appendChild(input);
-                                }
-                            }
-
-                            // ایجاد فیلدهای مخفی برای امکانات (Features)
-                            const featContainer = document.getElementById('ai-features-container');
-                            featContainer.innerHTML = '';
-                            if (data.features && Array.isArray(data.features)) {
-                                data.features.forEach(id => {
-                                    const input = document.createElement('input');
-                                    input.type = 'hidden';
-                                    input.name = `features[]`;
-                                    input.value = id;
-                                    featContainer.appendChild(input);
-                                });
-                            }
-
-                            // جستجوی خودکار مالک اگر نامش پیدا شد
-                            if (data.owner_name) {
-                                this.searchQuery = data.owner_name;
-                                this.searchOwners();
-                            }
-
-                            // جستجوی خودکار ساختمان اگر نامش پیدا شد
-                            if (data.building_name) {
-                                this.searchBuildingQuery = data.building_name;
-                                this.searchBuildings();
-                            }
-
-                            // نمایش پیام موفقیت
-                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'success', text: 'اطلاعات با موفقیت تکمیل شد.' } }));
-
-                        } else {
-                            // نمایش خطای دریافتی از سرور
-                            const errorMessage = result.error || result.message || 'خطا در دریافت اطلاعات.';
-                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: errorMessage } }));
-                        }
-                    } catch (error) {
-                        console.error('AI Error:', error);
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'خطا در ارتباط با هوش مصنوعی.' } }));
-                    } finally {
-                        this.isCompletingAI = false;
-                    }
                 },
 
                 // --- جستجو و ایجاد مالک ---
@@ -960,32 +771,6 @@
                     } finally {
                         this.isSavingOwner = false;
                     }
-                },
-
-                // --- Building Search ---
-                async searchBuildings() {
-                    if (this.searchBuildingQuery.length < 2) {
-                        this.searchBuildingResults = [];
-                        this.showBuildingResults = false;
-                        return;
-                    }
-                    this.isSearchingBuilding = true;
-                    try {
-                        const response = await fetch(`{{ route('user.properties.buildings.search') }}?q=${this.searchBuildingQuery}`);
-                        const data = await response.json();
-                        this.searchBuildingResults = data;
-                        this.showBuildingResults = true;
-                    } catch (error) {
-                        console.error('Building Search error:', error);
-                    } finally {
-                        this.isSearchingBuilding = false;
-                    }
-                },
-
-                selectBuilding(building) {
-                    this.selectedBuildingId = building.id;
-                    this.searchBuildingQuery = building.name;
-                    this.showBuildingResults = false;
                 },
 
                 // --- Agent Search ---

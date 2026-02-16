@@ -10,17 +10,9 @@ use Illuminate\Validation\Rule;
 
 class OwnerController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('permission:properties.owners.view|properties.owners.manage')->only(['index', 'search']);
-        $this->middleware('permission:properties.owners.create|properties.owners.manage')->only('store');
-        $this->middleware('permission:properties.owners.edit|properties.owners.manage')->only('update');
-        $this->middleware('permission:properties.owners.delete|properties.owners.manage')->only('destroy');
-    }
-
     public function index()
     {
-        $owners = PropertyOwner::with('creator')->withCount('properties')->latest()->paginate(20);
+        $owners = PropertyOwner::withCount('properties')->latest()->paginate(20);
         return view('properties::user.owners.index', compact('owners'));
     }
 
@@ -40,7 +32,6 @@ class OwnerController extends Controller
         $data['created_by'] = auth()->id();
 
         $owner = PropertyOwner::create($data);
-        $owner->load('creator');
         $owner->loadCount('properties');
 
         return response()->json([
@@ -68,7 +59,6 @@ class OwnerController extends Controller
         }
 
         $owner->update($validator->validated());
-        $owner->load('creator');
         $owner->loadCount('properties');
 
         return response()->json([
