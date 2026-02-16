@@ -1,0 +1,22 @@
+# General
+.git/
+.idea/
+.vscode/
+node_modules/
+vendor/
+
+# WordPress Specific
+wp-admin/
+wp-includes/
+wp-content/languages/
+wp-content/upgrade/
+*.log
+wp-config-sample.php
+
+# Laravel Specific
+storage/
+bootstrap/cache/
+public/build/
+public/storage/
+.env
+.env.backup

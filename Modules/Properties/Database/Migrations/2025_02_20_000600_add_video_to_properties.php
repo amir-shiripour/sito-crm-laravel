@@ -7,15 +7,19 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->string('video')->nullable()->after('cover_image');
-        });
+        if (Schema::hasTable('properties') && !Schema::hasColumn('properties', 'video')) {
+            Schema::table('properties', function (Blueprint $table) {
+                $table->string('video')->nullable()->after('cover_image');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->dropColumn('video');
-        });
+        if (Schema::hasTable('properties') && Schema::hasColumn('properties', 'video')) {
+            Schema::table('properties', function (Blueprint $table) {
+                $table->dropColumn('video');
+            });
+        }
     }
 };

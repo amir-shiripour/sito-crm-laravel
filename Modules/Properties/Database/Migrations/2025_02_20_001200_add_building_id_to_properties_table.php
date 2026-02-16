@@ -13,10 +13,12 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->unsignedBigInteger('building_id')->nullable()->after('document_type');
-            // فعلاً فارن کی نمی‌زنیم چون جدول buildings هنوز وجود ندارد
-        });
+        if (Schema::hasTable('properties') && !Schema::hasColumn('properties', 'building_id')) {
+            Schema::table('properties', function (Blueprint $table) {
+                $table->unsignedBigInteger('building_id')->nullable()->after('document_type');
+                // فعلاً فارن کی نمی‌زنیم چون جدول buildings هنوز وجود ندارد
+            });
+        }
     }
 
     /**
@@ -26,8 +28,10 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->dropColumn('building_id');
-        });
+        if (Schema::hasTable('properties') && Schema::hasColumn('properties', 'building_id')) {
+            Schema::table('properties', function (Blueprint $table) {
+                $table->dropColumn('building_id');
+            });
+        }
     }
 };

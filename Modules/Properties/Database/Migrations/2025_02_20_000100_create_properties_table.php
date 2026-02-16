@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Storage;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('properties')) {
+            return;
+        }
+
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
 
@@ -41,6 +45,11 @@ return new class extends Migration {
                 ->nullOnDelete();
 
             $table->foreignId('created_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            $table->foreignId('agent_id')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();

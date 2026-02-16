@@ -13,9 +13,11 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->foreignId('owner_id')->nullable()->after('category_id')->constrained('property_owners')->nullOnDelete();
-        });
+        if (Schema::hasTable('properties') && !Schema::hasColumn('properties', 'owner_id')) {
+            Schema::table('properties', function (Blueprint $table) {
+                $table->foreignId('owner_id')->nullable()->after('category_id')->constrained('property_owners')->nullOnDelete();
+            });
+        }
     }
 
     /**
@@ -25,9 +27,11 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->dropForeign(['owner_id']);
-            $table->dropColumn('owner_id');
-        });
+        if (Schema::hasTable('properties') && Schema::hasColumn('properties', 'owner_id')) {
+            Schema::table('properties', function (Blueprint $table) {
+                $table->dropForeign(['owner_id']);
+                $table->dropColumn('owner_id');
+            });
+        }
     }
 };

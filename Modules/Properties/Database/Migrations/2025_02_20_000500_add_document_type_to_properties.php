@@ -7,15 +7,19 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->string('document_type')->nullable()->after('property_type');
-        });
+        if (Schema::hasTable('properties') && !Schema::hasColumn('properties', 'document_type')) {
+            Schema::table('properties', function (Blueprint $table) {
+                $table->string('document_type')->nullable()->after('property_type');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->dropColumn('document_type');
-        });
+        if (Schema::hasTable('properties') && Schema::hasColumn('properties', 'document_type')) {
+            Schema::table('properties', function (Blueprint $table) {
+                $table->dropColumn('document_type');
+            });
+        }
     }
 };
