@@ -23,8 +23,10 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::table('property_attributes', function (Blueprint $table) {
-            $table->dropColumn(['is_filterable', 'is_range_filter']);
-        });
+        if (Schema::hasTable('property_attributes')) {
+            Schema::table('property_attributes', function (Blueprint $table) {
+                $table->dropColumn(['is_filterable', 'is_range_filter']);
+            });
+        }
     }
 };

@@ -13,11 +13,19 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->date('registered_at')->nullable()->after('building_id');
-            $table->string('publication_status')->default('published')->after('registered_at');
-            $table->text('confidential_notes')->nullable()->after('publication_status');
-        });
+        if (Schema::hasTable('properties')) {
+            Schema::table('properties', function (Blueprint $table) {
+                if (!Schema::hasColumn('properties', 'registered_at')) {
+                    $table->date('registered_at')->nullable()->after('building_id');
+                }
+                if (!Schema::hasColumn('properties', 'publication_status')) {
+                    $table->string('publication_status')->default('published')->after('registered_at');
+                }
+                if (!Schema::hasColumn('properties', 'confidential_notes')) {
+                    $table->text('confidential_notes')->nullable()->after('publication_status');
+                }
+            });
+        }
     }
 
     /**
@@ -27,8 +35,10 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->dropColumn(['registered_at', 'publication_status', 'confidential_notes']);
-        });
+        if (Schema::hasTable('properties')) {
+            Schema::table('properties', function (Blueprint $table) {
+                $table->dropColumn(['registered_at', 'publication_status', 'confidential_notes']);
+            });
+        }
     }
 };

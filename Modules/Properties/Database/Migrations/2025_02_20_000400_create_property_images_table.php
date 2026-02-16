@@ -7,13 +7,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('property_images', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('property_id')->constrained('properties')->cascadeOnDelete();
-            $table->string('path');
-            $table->integer('sort_order')->default(0);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('property_images')) {
+            Schema::create('property_images', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('property_id')->constrained('properties')->cascadeOnDelete();
+                $table->string('path');
+                $table->integer('sort_order')->default(0);
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void
