@@ -10,6 +10,11 @@ use Spatie\Permission\Models\Role;
 
 class SettingsController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:properties.settings.manage')->only(['index', 'update']);
+    }
+
     public function index()
     {
         $currency = PropertySetting::get('currency', 'toman');
@@ -28,6 +33,10 @@ class SettingsController extends Controller
 
         // Card Display Settings
         $show_features_in_card = PropertySetting::get('show_features_in_card', 1);
+
+        // AI Settings
+        $ai_property_completion = PropertySetting::get('ai_property_completion', 0);
+        $ai_property_search = PropertySetting::get('ai_property_search', 0);
 
         // Visibility Settings
         $roles = Role::all();
@@ -48,6 +57,11 @@ class SettingsController extends Controller
 
         // Agent Roles
         $agent_roles = $getSetting('agent_roles', []);
+
+        // Office Location Settings
+        $office_location_lat = PropertySetting::get('office_location_lat');
+        $office_location_lng = PropertySetting::get('office_location_lng');
+        $office_location_title = PropertySetting::get('office_location_title', 'دفتر مرکزی');
 
         // Storage Report
         $storagePath = 'properties';
@@ -75,6 +89,8 @@ class SettingsController extends Controller
             'property_code_separator',
             'property_code_include_year',
             'show_features_in_card',
+            'ai_property_completion',
+            'ai_property_search',
             'formattedSize',
             'fileCount',
             'roles',
@@ -82,7 +98,10 @@ class SettingsController extends Controller
             'visibility_confidential_notes',
             'visibility_price_info',
             'visibility_map_info',
-            'agent_roles'
+            'agent_roles',
+            'office_location_lat',
+            'office_location_lng',
+            'office_location_title'
         ));
     }
 
@@ -99,11 +118,16 @@ class SettingsController extends Controller
             'property_code_separator' => 'nullable|string|max:5',
             'property_code_include_year' => 'nullable|boolean',
             'show_features_in_card' => 'nullable|boolean',
+            'ai_property_completion' => 'nullable|boolean',
+            'ai_property_search' => 'nullable|boolean',
             'visibility_owner_info' => 'nullable|array',
             'visibility_confidential_notes' => 'nullable|array',
             'visibility_price_info' => 'nullable|array',
             'visibility_map_info' => 'nullable|array',
             'agent_roles' => 'nullable|array',
+            'office_location_lat' => 'nullable|numeric',
+            'office_location_lng' => 'nullable|numeric',
+            'office_location_title' => 'nullable|string|max:255',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -123,6 +147,10 @@ class SettingsController extends Controller
 
         PropertySetting::set('show_features_in_card', $request->has('show_features_in_card') ? 1 : 0);
 
+        // Save AI Settings
+        PropertySetting::set('ai_property_completion', $request->has('ai_property_completion') ? 1 : 0);
+        PropertySetting::set('ai_property_search', $request->has('ai_property_search') ? 1 : 0);
+
         // Save Visibility Settings
         PropertySetting::set('visibility_owner_info', json_encode($request->input('visibility_owner_info', [])));
         PropertySetting::set('visibility_confidential_notes', json_encode($request->input('visibility_confidential_notes', [])));
@@ -131,6 +159,11 @@ class SettingsController extends Controller
 
         // Save Agent Roles
         PropertySetting::set('agent_roles', json_encode($request->input('agent_roles', [])));
+
+        // Save Office Location
+        PropertySetting::set('office_location_lat', $request->office_location_lat);
+        PropertySetting::set('office_location_lng', $request->office_location_lng);
+        PropertySetting::set('office_location_title', $request->office_location_title);
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
     }

@@ -92,7 +92,7 @@
                  <input type="text" name="search" value="{{ request('search') }}" placeholder="جستجو در نقشه..." class="w-full max-w-md rounded-xl border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                  <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors">جستجو</button>
 
-                 @if(request()->anyFilled(['search', 'listing_type', 'property_type', 'min_price', 'max_price']))
+                 @if(request()->anyFilled(['search', 'listing_type', 'property_type', 'min_price', 'max_price', 'category_id', 'building_id']))
                     <a href="{{ route('properties.map') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-gray-300 transition-colors dark:bg-gray-700 dark:text-gray-300">پاک کردن</a>
                  @endif
              </form>
@@ -163,6 +163,32 @@
                         @foreach(\Modules\Properties\Entities\Property::DOCUMENT_TYPES as $key => $label)
                             <option value="{{ $key }}" {{ request('document_type') == $key ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
+                    </select>
+                </div>
+
+                <!-- Category (New) -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">دسته‌بندی</label>
+                    <select name="category_id" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                        <option value="">همه دسته‌بندی‌ها</option>
+                        @if(isset($categories))
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+                </div>
+
+                <!-- Building (New) -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">ساختمان</label>
+                    <select name="building_id" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                        <option value="">همه ساختمان‌ها</option>
+                        @if(isset($buildings))
+                            @foreach($buildings as $building)
+                                <option value="{{ $building->id }}" {{ request('building_id') == $building->id ? 'selected' : '' }}>{{ $building->name }}</option>
+                            @endforeach
+                        @endif
                     </select>
                 </div>
 
@@ -313,6 +339,32 @@
                         </select>
                     </div>
 
+                    <!-- Category (New Mobile) -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">دسته‌بندی</label>
+                        <select name="category_id" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                            <option value="">همه دسته‌بندی‌ها</option>
+                            @if(isset($categories))
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+
+                    <!-- Building (New Mobile) -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">ساختمان</label>
+                        <select name="building_id" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                            <option value="">همه ساختمان‌ها</option>
+                            @if(isset($buildings))
+                                @foreach($buildings as $building)
+                                    <option value="{{ $building->id }}" {{ request('building_id') == $building->id ? 'selected' : '' }}>{{ $building->name }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+
                     <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30">
                         اعمال فیلتر
                     </button>
@@ -333,6 +385,31 @@
 
         const markers = [];
         const bounds = L.latLngBounds();
+
+        // Office Location Marker
+        @if(isset($officeLocation['lat']) && isset($officeLocation['lng']) && $officeLocation['lat'] && $officeLocation['lng'])
+            (function() {
+                const lat = {{ $officeLocation['lat'] }};
+                const lng = {{ $officeLocation['lng'] }};
+                const title = "{{ $officeLocation['title'] }}";
+
+                // Custom Icon for Office
+                const officeIcon = L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+
+                const marker = L.marker([lat, lng], {icon: officeIcon}).addTo(map);
+                marker.bindPopup(`<div style="text-align:center; font-weight:bold;">${title}</div>`);
+
+                markers.push(marker);
+                bounds.extend([lat, lng]);
+            })();
+        @endif
 
         @foreach($properties as $property)
             @if($property->latitude && $property->longitude)

@@ -8,5 +8,6 @@
     "Workflows": true,
     "Sms": true,
     "Booking": true,
-    "Properties": true
+    "Properties": true,
+    "Settings": true
 }

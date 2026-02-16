@@ -480,6 +480,13 @@
                 showResults: false,
                 searchResults: [],
 
+                // Building Search
+                searchBuildingQuery: @json(optional($property->building)->name ?? ''),
+                searchBuildingResults: [],
+                showBuildingResults: false,
+                selectedBuildingId: @json($property->building_id),
+                isSearchingBuilding: false,
+
                 // Agent Search
                 searchAgentQuery: '{{ $currentAgentName ?? auth()->user()->name }}',
                 searchAgentResults: [],
@@ -494,6 +501,16 @@
                             this.errors = {};
                         }
                     });
+                    this.$watch('searchBuildingQuery', (value) => {
+                        if (!value) {
+                            this.selectedBuildingId = '';
+                        }
+                    });
+
+                    // Pre-load building results if value exists
+                    if (this.searchBuildingQuery.length >= 2) {
+                        this.searchBuildings(false);
+                    }
                 },
 
                 // --- Owner Management ---
@@ -558,6 +575,43 @@
                     this.selectedOwner = owner.id;
                     this.searchQuery = owner.first_name + ' ' + owner.last_name;
                     this.showResults = false;
+                },
+
+                // --- Building Search ---
+                async searchBuildings(showDropdown = true) {
+                    if (this.searchBuildingQuery.length < 2) {
+                        this.searchBuildingResults = [];
+                        this.showBuildingResults = false;
+                        return;
+                    }
+                    this.isSearchingBuilding = true;
+                    try {
+                        const response = await fetch(`{{ route('user.properties.buildings.search') }}?q=${this.searchBuildingQuery}`);
+                        const data = await response.json();
+                        this.searchBuildingResults = data;
+                        if (showDropdown) {
+                            this.showBuildingResults = true;
+                        }
+                    } catch (error) {
+                        console.error('Building Search error:', error);
+                    } finally {
+                        this.isSearchingBuilding = false;
+                    }
+                },
+
+                handleBuildingFocus() {
+                    if (this.searchBuildingQuery.length >= 2) {
+                        if (this.searchBuildingResults.length === 0) {
+                            this.searchBuildings();
+                        }
+                        this.showBuildingResults = true;
+                    }
+                },
+
+                selectBuilding(building) {
+                    this.selectedBuildingId = building.id;
+                    this.searchBuildingQuery = building.name;
+                    this.showBuildingResults = false;
                 },
 
                 // --- Agent Search ---

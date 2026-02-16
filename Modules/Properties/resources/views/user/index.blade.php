@@ -5,10 +5,11 @@
     // استایل‌های مشترک
     $badgeClass = "inline-flex items-center px-2 py-1 rounded-md text-xs font-medium";
     $canManageProperties = auth()->user()->can('properties.manage');
+    $aiSearchEnabled = \Modules\Properties\Entities\PropertySetting::get('ai_property_search', 0);
 @endphp
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 py-8 space-y-6">
+    <div class="max-w-7xl mx-auto px-4 py-8 space-y-6" x-data="propertyList()">
 
         {{-- هدر صفحه --}}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -25,6 +26,16 @@
             </div>
 
             <div class="flex items-center gap-3 self-end sm:self-auto">
+                @if($aiSearchEnabled)
+                    <button @click="showAiModal = true"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 hover:shadow-lg hover:shadow-purple-500/30 transition-all active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        جستجوی هوشمند
+                    </button>
+                @endif
+
                 <a href="{{ route('user.properties.create') }}"
                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all active:scale-95">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -45,7 +56,7 @@
                     فیلترهای پیشرفته
                 </h2>
 
-                @if(request()->anyFilled(['search', 'listing_type', 'property_type', 'status_id', 'publication_status', 'agent_id', 'show_all']))
+                @if(request()->anyFilled(['search', 'listing_type', 'property_type', 'status_id', 'publication_status', 'agent_id', 'category_id', 'building_id', 'show_all']))
                     <a href="{{ route('user.properties.index') }}" class="text-xs font-medium text-red-500 hover:text-red-700 flex items-center gap-1 transition-colors">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -128,6 +139,42 @@
                             </div>
                         </div>
 
+                        {{-- دسته‌بندی (جدید) --}}
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">دسته‌بندی</label>
+                            <div class="relative">
+                                <select name="category_id" class="w-full appearance-none pl-10 pr-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                                    <option value="">همه دسته‌بندی‌ها</option>
+                                    @foreach($categories as $category)
+                                        <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ساختمان (جدید) --}}
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">ساختمان</label>
+                            <div class="relative">
+                                <select name="building_id" class="w-full appearance-none pl-10 pr-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                                    <option value="">همه ساختمان‌ها</option>
+                                    @foreach($buildings as $building)
+                                        <option value="{{ $building->id }}" {{ request('building_id') == $building->id ? 'selected' : '' }}>{{ $building->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- وضعیت انتشار --}}
                         <div>
                             <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">وضعیت انتشار</label>
@@ -204,6 +251,7 @@
                         <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">قیمت</th>
                         <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">نوع</th>
                         <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">وضعیت</th>
+                        <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">دسته‌بندی</th>
                         @if($canManageProperties)
                             <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">مشاور</th>
                             <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">ایجاد کننده</th>
@@ -304,6 +352,17 @@
                                 @endif
                             </td>
 
+                            {{-- دسته‌بندی --}}
+                            <td class="px-6 py-4">
+                                @if($property->category)
+                                    <span class="{{ $badgeClass }}" style="background-color: {{ $property->category->color }}15; color: {{ $property->category->color }}; border: 1px solid {{ $property->category->color }}30;">
+                                        {{ $property->category->name }}
+                                    </span>
+                                @else
+                                    <span class="text-xs text-gray-400">—</span>
+                                @endif
+                            </td>
+
                             {{-- مشاور (Agent) - نمایش شرطی --}}
                             @if($canManageProperties)
                                 <td class="px-6 py-4 text-gray-600 dark:text-gray-400">
@@ -369,7 +428,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $canManageProperties ? '7' : '5' }}" class="py-12 text-center">
+                            <td colspan="{{ $canManageProperties ? '8' : '6' }}" class="py-12 text-center">
                                 <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
                                     <svg class="w-16 h-16 mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                                     <p class="text-base font-medium text-gray-900 dark:text-white">هیچ ملکی یافت نشد</p>
@@ -389,5 +448,104 @@
                 </div>
             @endif
         </div>
+
+        {{-- مدال جستجوی هوشمند --}}
+        <div x-show="showAiModal"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-[100] overflow-y-auto"
+             style="display: none;">
+
+            <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="showAiModal = false"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div x-show="showAiModal"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-right shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-gray-100 dark:border-gray-700">
+
+                    <div class="bg-purple-50/50 dark:bg-purple-900/20 px-6 py-4 border-b border-purple-100 dark:border-purple-800 flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-purple-900 dark:text-purple-100 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            جستجوی هوشمند ملک
+                        </h3>
+                        <button @click="showAiModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    <div class="px-6 py-6 space-y-4">
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                            توضیح دهید چه ملکی مد نظرتان است. هوش مصنوعی بهترین گزینه‌ها را برای شما پیدا می‌کند.
+                        </p>
+                        <textarea x-model="aiQuery" rows="4" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 resize-none" placeholder="مثلاً: یک آپارتمان دو خوابه در سعادت آباد با قیمت حدود ۵ میلیارد تومان..."></textarea>
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-gray-900/30 px-6 py-4 flex flex-row-reverse gap-3 border-t border-gray-100 dark:border-gray-700">
+                        <button type="button" @click="performAiSearch" :disabled="isAiSearching || aiQuery.length < 3"
+                                class="inline-flex w-full justify-center rounded-xl border border-transparent bg-purple-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 sm:ml-3 sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed">
+                            <span x-show="!isAiSearching">جستجو کن</span>
+                            <span x-show="isAiSearching" class="flex items-center gap-2">
+                                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                در حال تحلیل...
+                            </span>
+                        </button>
+                        <button type="button" @click="showAiModal = false"
+                                class="mt-3 inline-flex w-full justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
+                            انصراف
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
+
+    <script>
+        function propertyList() {
+            return {
+                showAiModal: false,
+                aiQuery: '',
+                isAiSearching: false,
+
+                async performAiSearch() {
+                    if (this.aiQuery.length < 3) return;
+                    this.isAiSearching = true;
+
+                    try {
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                        const response = await fetch('{{ route("user.properties.ai.search") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ query: this.aiQuery })
+                        });
+                        const result = await response.json();
+
+                        if (response.ok && result.redirect_url) {
+                            window.location.href = result.redirect_url;
+                        } else {
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: result.error || 'خطا در جستجو.' } }));
+                            this.isAiSearching = false;
+                        }
+                    } catch (error) {
+                        console.error('AI Search Error:', error);
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'خطا در ارتباط با سرور.' } }));
+                        this.isAiSearching = false;
+                    }
+                }
+            }
+        }
+    </script>
 @endsection

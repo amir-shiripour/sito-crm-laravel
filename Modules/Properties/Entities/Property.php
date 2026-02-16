@@ -111,6 +111,11 @@ class Property extends Model
         return $this->belongsTo(PropertyOwner::class, 'owner_id');
     }
 
+    public function building()
+    {
+        return $this->belongsTo(PropertyBuilding::class, 'building_id');
+    }
+
     public function images()
     {
         return $this->hasMany(PropertyImage::class)->orderBy('sort_order');

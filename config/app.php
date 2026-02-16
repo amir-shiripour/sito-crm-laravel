@@ -174,6 +174,7 @@ return [
         App\Providers\ThemeServiceProvider::class,
         Spatie\Permission\PermissionServiceProvider::class,
         App\Providers\WidgetServiceProvider::class,
+        App\Providers\GapGPTServiceProvider::class, // اضافه شد
     ])->toArray(),
 
     /*

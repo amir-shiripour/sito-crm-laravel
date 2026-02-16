@@ -7,6 +7,7 @@ use Illuminate\Routing\Controller;
 use Modules\Booking\Entities\Appointment;
 use Modules\Booking\Entities\BookingSetting;
 use Modules\Booking\Entities\BookingForm;
+use Modules\Booking\Entities\BookingStatement;
 use App\Models\User;
 use Carbon\Carbon;
 use Morilog\Jalali\CalendarUtils;
@@ -74,6 +75,11 @@ class StatementController extends Controller
             $lastAppointmentTime = $result['last'];
         }
 
+        // Fetch existing statements for the list
+        $statements = BookingStatement::with(['provider', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
         return view('booking::user.statement.index', compact(
             'statementRoles',
             'selectedUsers',
@@ -82,8 +88,75 @@ class StatementController extends Controller
             'startDateLocal',
             'endDateLocal',
             'firstAppointmentTime',
-            'lastAppointmentTime'
+            'lastAppointmentTime',
+            'statements'
         ));
+    }
+
+    public function store(Request $request)
+    {
+        $settings = BookingSetting::current();
+        $user = $request->user();
+
+        if (!$this->canViewStatement($user, $settings)) {
+            abort(403);
+        }
+
+        $request->validate([
+            'provider_id' => 'required|exists:users,id',
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'status' => 'required|in:' . implode(',', array_keys(BookingStatement::getStatuses())),
+        ]);
+
+        // Collect roles data
+        $statementRoleIds = array_values(array_filter(
+            array_map('intval', (array) ($settings->statement_roles ?? [])),
+            fn($v) => $v > 0
+        ));
+        $statementRoles = Role::whereIn('id', $statementRoleIds)->get();
+        $rolesData = [];
+        foreach ($statementRoles as $role) {
+            $inputName = 'role_' . $role->id;
+            $userId = $request->input($inputName);
+            if ($userId) {
+                $rolesData[$role->id] = $userId;
+            }
+        }
+
+        // Convert Jalali dates to Gregorian for storage if needed, but model casts to date so standard format Y-m-d is expected by Eloquent usually.
+        // However, the input is likely Jalali (Y/m/d). We should convert it to Gregorian Y-m-d.
+        $startDate = $this->convertJalaliToGregorian($request->input('start_date'));
+        $endDate = $this->convertJalaliToGregorian($request->input('end_date'));
+
+        BookingStatement::create([
+            'user_id' => $user->id,
+            'provider_id' => $request->input('provider_id'),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'status' => $request->input('status'),
+            'roles_data' => $rolesData,
+            'notes' => $request->input('notes'),
+        ]);
+
+        return redirect()->route('user.booking.statement.index')->with('success', 'صورت وضعیت با موفقیت ثبت شد.');
+    }
+
+    public function updateStatus(Request $request, BookingStatement $statement)
+    {
+        $request->validate([
+            'status' => 'required|in:' . implode(',', array_keys(BookingStatement::getStatuses())),
+        ]);
+
+        $statement->update(['status' => $request->input('status')]);
+
+        return redirect()->back()->with('success', 'وضعیت تغییر کرد.');
+    }
+
+    public function destroy(BookingStatement $statement)
+    {
+        $statement->delete();
+        return redirect()->back()->with('success', 'صورت وضعیت حذف شد.');
     }
 
     public function print(Request $request)
@@ -95,32 +168,63 @@ class StatementController extends Controller
             abort(403);
         }
 
-        // 1. Identify Required Roles from Settings
-        $statementRoleIds = array_values(array_filter(
-            array_map('intval', (array) ($settings->statement_roles ?? [])),
-            fn($v) => $v > 0
-        ));
+        // Check if printing from a saved statement
+        if ($request->has('statement_id')) {
+            $statement = BookingStatement::findOrFail($request->input('statement_id'));
+            $selectedProviderId = $statement->provider_id;
+            // Convert stored Y-m-d to Jalali Y/m/d for display/logic
+            $startDateLocal = Jalalian::fromCarbon(Carbon::parse($statement->start_date))->format('Y/m/d');
+            $endDateLocal = Jalalian::fromCarbon(Carbon::parse($statement->end_date))->format('Y/m/d');
 
-        // 2. Get selected users (Optional now)
-        $statementRoles = Role::whereIn('id', $statementRoleIds)->get();
-        $selectedUsers = [];
+            $rolesData = $statement->roles_data ?? [];
+            $selectedUsers = [];
 
-        foreach ($statementRoles as $role) {
-            $inputName = 'role_' . $role->id;
-            $userId = $request->input($inputName);
-
-            if ($userId) {
-                $userObj = User::find($userId);
-                if ($userObj) {
-                    $selectedUsers[$role->id] = $userObj;
+            // Reconstruct selectedUsers from roles_data
+            if ($rolesData) {
+                foreach ($rolesData as $roleId => $userId) {
+                    $u = User::find($userId);
+                    if ($u) {
+                        $selectedUsers[$roleId] = $u;
+                    }
                 }
             }
-        }
 
-        // 3. Prepare Data for PDF
-        $selectedProviderId = $request->input('provider_id');
-        $startDateLocal = $request->input('start_date');
-        $endDateLocal = $request->input('end_date');
+            // Need statementRoles to pass to view
+            $statementRoleIds = array_values(array_filter(
+                array_map('intval', (array) ($settings->statement_roles ?? [])),
+                fn($v) => $v > 0
+            ));
+            $statementRoles = Role::whereIn('id', $statementRoleIds)->get();
+
+        } else {
+            // Standard print logic (existing)
+            // 1. Identify Required Roles from Settings
+            $statementRoleIds = array_values(array_filter(
+                array_map('intval', (array) ($settings->statement_roles ?? [])),
+                fn($v) => $v > 0
+            ));
+
+            // 2. Get selected users (Optional now)
+            $statementRoles = Role::whereIn('id', $statementRoleIds)->get();
+            $selectedUsers = [];
+
+            foreach ($statementRoles as $role) {
+                $inputName = 'role_' . $role->id;
+                $userId = $request->input($inputName);
+
+                if ($userId) {
+                    $userObj = User::find($userId);
+                    if ($userObj) {
+                        $selectedUsers[$role->id] = $userObj;
+                    }
+                }
+            }
+
+            // 3. Prepare Data for PDF
+            $selectedProviderId = $request->input('provider_id');
+            $startDateLocal = $request->input('start_date');
+            $endDateLocal = $request->input('end_date');
+        }
 
         if (!$startDateLocal || !$endDateLocal) {
             return redirect()->back()->with('error', 'لطفاً بازه زمانی را انتخاب کنید.');
@@ -398,6 +502,21 @@ class StatementController extends Controller
             }
 
             return $carbon->timezone('UTC');
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    protected function convertJalaliToGregorian($jalaliDate)
+    {
+        try {
+            $datePieces = preg_split('/[^\d]+/', trim($jalaliDate));
+            if (count($datePieces) < 3) {
+                return null;
+            }
+            [$jy, $jm, $jd] = array_map('intval', array_slice($datePieces, 0, 3));
+            [$gy, $gm, $gd] = CalendarUtils::toGregorian($jy, $jm, $jd);
+            return sprintf('%04d-%02d-%02d', $gy, $gm, $gd);
         } catch (\Throwable $e) {
             return null;
         }
