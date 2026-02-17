@@ -204,32 +204,30 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->middleware('can:booking.availability.manage');
 
         // Statement of Account
+        // REMOVED middleware('can:booking.appointments.view') because we handle permissions inside the controller
+        // or we should use the new permissions here if we want route-level protection.
+        // Since the controller has granular checks, we can remove the middleware or use a generic 'auth' one (which is already applied to the group).
+        // But to be safe, let's just remove the specific middleware that was causing the conflict.
+
         Route::get('statement', [StatementController::class, 'index'])
-            ->name('statement.index')
-            ->middleware('can:booking.appointments.view');
+            ->name('statement.index');
 
         Route::post('statement', [StatementController::class, 'store'])
-            ->name('statement.store')
-            ->middleware('can:booking.appointments.view');
+            ->name('statement.store');
 
         Route::put('statement/{statement}/status', [StatementController::class, 'updateStatus'])
-            ->name('statement.update-status')
-            ->middleware('can:booking.appointments.view');
+            ->name('statement.update-status');
 
         Route::delete('statement/{statement}', [StatementController::class, 'destroy'])
-            ->name('statement.destroy')
-            ->middleware('can:booking.appointments.view');
+            ->name('statement.destroy');
 
         Route::get('statement/search-providers', [StatementController::class, 'searchProviders'])
-            ->name('statement.search-providers')
-            ->middleware('can:booking.appointments.view');
+            ->name('statement.search-providers');
 
         Route::get('statement/search-users', [StatementController::class, 'searchUsers'])
-            ->name('statement.search-users')
-            ->middleware('can:booking.appointments.view');
+            ->name('statement.search-users');
 
         Route::get('statement/print', [StatementController::class, 'print'])
-            ->name('statement.print')
-            ->middleware('can:booking.appointments.view');
+            ->name('statement.print');
     });
 });

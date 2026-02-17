@@ -10,12 +10,14 @@
 
             <div class="flex gap-2">
                 @if($appointments !== null && !$appointments->isEmpty())
-                    <button type="button" @click="openSaveModal()" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-700 dark:text-indigo-100 text-sm font-medium hover:bg-indigo-200 dark:hover:bg-indigo-600 transition">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                        ثبت صورت وضعیت
-                    </button>
+                    @can('booking.statement.create')
+                        <button type="button" @click="openSaveModal()" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-700 dark:text-indigo-100 text-sm font-medium hover:bg-indigo-200 dark:hover:bg-indigo-600 transition">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                            ثبت صورت وضعیت
+                        </button>
+                    @endcan
 
                     <button type="button" @click="openPrintModal()" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -116,6 +118,7 @@
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">شناسه</th>
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">پزشک</th>
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">بازه زمانی</th>
+                                <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ساعت نوبت‌ها</th>
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">وضعیت</th>
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ثبت کننده</th>
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تاریخ ثبت</th>
@@ -128,9 +131,20 @@
                                     <td class="px-4 py-3 font-mono text-gray-700 dark:text-gray-200">{{ $statement->id }}</td>
                                     <td class="px-4 py-3 text-gray-800 dark:text-gray-200">{{ $statement->provider->name ?? '-' }}</td>
                                     <td class="px-4 py-3 font-mono text-gray-700 dark:text-gray-200">
-                                        {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($statement->start_date))->format('Y/m/d') }}
-                                        تا
-                                        {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($statement->end_date))->format('Y/m/d') }}
+                                        @if($statement->start_date == $statement->end_date)
+                                            {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($statement->start_date))->format('Y/m/d') }}
+                                        @else
+                                            {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($statement->start_date))->format('Y/m/d') }}
+                                            تا
+                                            {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($statement->end_date))->format('Y/m/d') }}
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 font-mono text-gray-700 dark:text-gray-200">
+                                        @if($statement->live_first_time && $statement->live_last_time)
+                                            {{ $statement->live_first_time }} - {{ $statement->live_last_time }}
+                                        @else
+                                            -
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3">
                                         @php
@@ -149,44 +163,59 @@
                                     <td class="px-4 py-3 font-mono text-gray-700 dark:text-gray-200">{{ \Morilog\Jalali\Jalalian::fromCarbon($statement->created_at)->format('Y/m/d H:i') }}</td>
                                     <td class="px-4 py-3 text-left">
                                         <div class="flex items-center gap-2 justify-end">
-                                            {{-- Print Button --}}
-                                            <a href="{{ route('user.booking.statement.print', ['statement_id' => $statement->id]) }}" target="_blank" class="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition" title="چاپ PDF">
+                                            {{-- View Details Button --}}
+                                            @php
+                                                $viewParams = [
+                                                    'provider_id' => $statement->provider_id,
+                                                    'start_date' => \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($statement->start_date))->format('Y/m/d'),
+                                                    'end_date' => \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($statement->end_date))->format('Y/m/d'),
+                                                ];
+                                                if($statement->roles_data) {
+                                                    foreach($statement->roles_data as $rId => $uId) {
+                                                        $viewParams['role_' . $rId] = $uId;
+                                                    }
+                                                }
+                                            @endphp
+                                            <a href="{{ route('user.booking.statement.index', $viewParams) }}" class="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 transition" title="نمایش جزئیات">
                                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
                                             </a>
 
-                                            {{-- Status Update Dropdown (Simple implementation) --}}
-                                            <div x-data="{ open: false }" class="relative">
-                                                <button @click="open = !open" @click.outside="open = false" class="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30 transition" title="تغییر وضعیت">
+                                            {{-- Print Button --}}
+                                            @if($statement->status !== 'draft')
+                                                <a href="{{ route('user.booking.statement.print', ['statement_id' => $statement->id]) }}" target="_blank" class="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition" title="چاپ PDF">
+                                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                    </svg>
+                                                </a>
+                                            @endif
+
+                                            {{-- Status Update Button --}}
+                                            @can('booking.statement.edit')
+                                                <button type="button"
+                                                        @click="openStatusModal('{{ $statement->id }}', '{{ $statement->status }}', '{{ route('user.booking.statement.update-status', $statement->id) }}')"
+                                                        class="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30 transition"
+                                                        title="تغییر وضعیت">
                                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                                     </svg>
                                                 </button>
-                                                <div x-show="open" class="absolute left-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 py-1">
-                                                    @foreach($statusLabels as $key => $label)
-                                                        <form action="{{ route('user.booking.statement.update-status', $statement->id) }}" method="POST">
-                                                            @csrf
-                                                            @method('PUT')
-                                                            <input type="hidden" name="status" value="{{ $key }}">
-                                                            <button type="submit" class="block w-full text-right px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                                                {{ $label }}
-                                                            </button>
-                                                        </form>
-                                                    @endforeach
-                                                </div>
-                                            </div>
+                                            @endcan
 
                                             {{-- Delete Button --}}
-                                            <form action="{{ route('user.booking.statement.destroy', $statement->id) }}" method="POST" onsubmit="return confirm('آیا از حذف این صورت وضعیت اطمینان دارید؟');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/30 transition" title="حذف">
-                                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
-                                            </form>
+                                            @can('booking.statement.delete')
+                                                <form action="{{ route('user.booking.statement.destroy', $statement->id) }}" method="POST" onsubmit="return confirm('آیا از حذف این صورت وضعیت اطمینان دارید؟');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/30 transition" title="حذف">
+                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -556,6 +585,58 @@
                 </div>
             </div>
         </div>
+
+        {{-- Status Modal --}}
+        <div x-show="isStatusModalOpen"
+             class="fixed inset-0 z-50 overflow-y-auto"
+             style="display: none;"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="isStatusModalOpen = false"></div>
+
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-right shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                    <div class="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-right w-full">
+                                <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100" id="modal-title">تغییر وضعیت</h3>
+                                <div class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                                    <form id="statusForm" :action="editingStatementAction" method="POST">
+                                        @csrf
+                                        @method('PUT')
+
+                                        <div class="mb-4">
+                                            <label for="edit_status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">وضعیت جدید</label>
+                                            <select name="status" id="edit_status" x-model="editingStatementStatus" class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                @foreach(\Modules\Booking\Entities\BookingStatement::getStatuses() as $key => $label)
+                                                    <option value="{{ $key }}">{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 sm:flex sm:flex-row-reverse">
+                        <button type="button" @click="submitStatus()" class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto">ذخیره</button>
+                        <button type="button" @click="isStatusModalOpen = false" class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 sm:mt-0 sm:w-auto">انصراف</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -574,6 +655,10 @@
                 loading: {},
                 isPrintModalOpen: false,
                 isSaveModalOpen: false,
+                isStatusModalOpen: false,
+                editingStatementId: null,
+                editingStatementStatus: '',
+                editingStatementAction: '',
 
                 init() {
                     // Initialize provider search
@@ -684,6 +769,13 @@
                     this.isSaveModalOpen = true;
                 },
 
+                openStatusModal(id, status, action) {
+                    this.editingStatementId = id;
+                    this.editingStatementStatus = status;
+                    this.editingStatementAction = action;
+                    this.isStatusModalOpen = true;
+                },
+
                 submitPrint() {
                     document.getElementById('printForm').submit();
                     this.isPrintModalOpen = false;
@@ -692,6 +784,11 @@
                 submitSave() {
                     document.getElementById('saveForm').submit();
                     this.isSaveModalOpen = false;
+                },
+
+                submitStatus() {
+                    document.getElementById('statusForm').submit();
+                    this.isStatusModalOpen = false;
                 }
             }
         }

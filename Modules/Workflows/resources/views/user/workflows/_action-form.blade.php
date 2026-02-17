@@ -15,17 +15,33 @@
         \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_NOTIFICATION => 'نوتیفیکیشن سیستمی',
     ];
 
-    // Extended Token Options
-    $tokenOptions = [
-        'client_name' => 'نام مشتری',
-        'client_phone' => 'شماره مشتری',
-        'service_name' => 'نام سرویس',
-        'provider_name' => 'نام ارائه‌دهنده',
-        'appointment_date_jalali' => 'تاریخ نوبت (شمسی)',
-        'appointment_time_jalali' => 'ساعت نوبت',
-        'appointment_datetime_jalali' => 'تاریخ و ساعت کامل',
-        'payment_link' => 'لینک پرداخت (اگر باشد)',
+    // Default Tokens
+    $defaultTokens = [
+        'appointment' => [
+            'client_name' => 'نام مشتری',
+            'client_phone' => 'شماره مشتری',
+            'service_name' => 'نام سرویس',
+            'provider_name' => 'نام ارائه‌دهنده',
+            'appointment_date_jalali' => 'تاریخ نوبت (شمسی)',
+            'appointment_time_jalali' => 'ساعت نوبت',
+            'appointment_datetime_jalali' => 'تاریخ و ساعت کامل',
+            'payment_link' => 'لینک پرداخت (اگر باشد)',
+        ]
     ];
+
+    // Merge with tokens from config
+    $configTokens = config('workflows.tokens', []);
+
+    // Manual merge to ensure structure
+    $groupedTokens = $defaultTokens;
+    foreach ($configTokens as $group => $tokens) {
+        if (!isset($groupedTokens[$group])) {
+            $groupedTokens[$group] = [];
+        }
+        foreach ($tokens as $key => $label) {
+            $groupedTokens[$group][$key] = $label;
+        }
+    }
 @endphp
 
 <div x-data="{
@@ -151,6 +167,7 @@
                                 class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-white">
                             <option value="APPOINTMENT_CLIENT">مشتری نوبت</option>
                             <option value="APPOINTMENT_PROVIDER">ارائه‌دهنده نوبت</option>
+                            <option value="STATEMENT_PROVIDER">ارائه‌دهنده صورت وضعیت</option>
                             <option value="SPECIFIC_USER">کاربر خاص سیستم</option>
                             <option value="CUSTOM_PHONE">شماره دلخواه</option>
                         </select>
@@ -214,8 +231,12 @@
                                     <span class="text-xs text-gray-400 w-6 text-center param-index">{{ '{' . $idx . '}' }}</span>
                                     <select name="config[params][]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                                         <option value="">-- انتخاب مقدار --</option>
-                                        @foreach($tokenOptions as $k => $l)
-                                            <option value="{{ $k }}" @selected($val === $k)>{{ $l }}</option>
+                                        @foreach($groupedTokens as $group => $tokens)
+                                            <optgroup label="{{ ucfirst($group) }}">
+                                                @foreach($tokens as $k => $l)
+                                                    <option value="{{ $k }}" @selected($val === $k)>{{ $l }}</option>
+                                                @endforeach
+                                            </optgroup>
                                         @endforeach
                                     </select>
                                     <button type="button" onclick="removeParamRow(this, '{{ $alpineId }}')" class="text-red-500 hover:text-red-700 p-1" title="حذف پارامتر">
@@ -237,11 +258,16 @@
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">متن پیام (اگر الگو ندارید)</label>
-                        <div class="flex gap-1">
-                            @foreach($tokenOptions as $k => $l)
-                                <button type="button" @click="insertToken('{{ $k }}')" class="text-[10px] bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300 transition-colors" title="{{ $l }}">
-                                    {{ $l }}
-                                </button>
+                        <div class="flex flex-wrap gap-1">
+                            @foreach($groupedTokens as $group => $tokens)
+                                <div class="flex gap-1 items-center border-r border-gray-300 dark:border-gray-600 pr-1 mr-1 last:border-0">
+                                    <span class="text-[9px] text-gray-400">{{ ucfirst($group) }}:</span>
+                                    @foreach($tokens as $k => $l)
+                                        <button type="button" @click="insertToken('{{ $k }}')" class="text-[10px] bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300 transition-colors" title="{{ $l }}">
+                                            {{ $l }}
+                                        </button>
+                                    @endforeach
+                                </div>
                             @endforeach
                         </div>
                     </div>
@@ -363,8 +389,12 @@
                 <span class="text-xs text-gray-400 w-6 text-center param-index">{${count}}</span>
                 <select name="config[params][]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                     <option value="">-- انتخاب مقدار --</option>
-                    @foreach($tokenOptions as $k => $l)
-                        <option value="{{ $k }}">{{ $l }}</option>
+                    @foreach($groupedTokens as $group => $tokens)
+                        <optgroup label="{{ ucfirst($group) }}">
+                            @foreach($tokens as $k => $l)
+                                <option value="{{ $k }}">{{ $l }}</option>
+                            @endforeach
+                        </optgroup>
                     @endforeach
                 </select>
                 <button type="button" onclick="removeParamRow(this, '${containerId}')" class="text-red-500 hover:text-red-700 p-1" title="حذف پارامتر">

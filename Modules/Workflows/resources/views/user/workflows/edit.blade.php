@@ -3,14 +3,25 @@
 @section('title', 'ویرایش گردش کار')
 
 @section('content')
-    @php($tokenOptions = [
-        'client_name' => 'نام مشتری',
-        'appointment_date_jalali' => 'تاریخ (شمسی)',
-        'appointment_time_jalali' => 'ساعت',
-        'appointment_datetime_jalali' => 'تاریخ و ساعت کامل',
-        'service_name' => 'نام سرویس',
-        'provider_name' => 'نام ارائه‌دهنده',
-    ])
+    @php
+        $tokenOptions = [
+            'client_name' => 'نام مشتری',
+            'appointment_date_jalali' => 'تاریخ (شمسی)',
+            'appointment_time_jalali' => 'ساعت',
+            'appointment_datetime_jalali' => 'تاریخ و ساعت کامل',
+            'service_name' => 'نام سرویس',
+            'provider_name' => 'نام ارائه‌دهنده',
+        ];
+
+        // Merge with tokens from config if available
+        if(isset($tokens)) {
+            foreach($tokens as $group => $groupTokens) {
+                foreach($groupTokens as $key => $label) {
+                    $tokenOptions[$key] = $label;
+                }
+            }
+        }
+    @endphp
 
     <div class="max-w-5xl mx-auto space-y-8 pb-20">
         {{-- Header --}}
