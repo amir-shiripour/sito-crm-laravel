@@ -91,6 +91,15 @@ return [
                 'appointment_rescheduled'    => null,
                 'appointment_no_show'        => null,
 
+                // Statement workflows
+                'statement_created'          => null,
+                'statement_created_draft'    => null,
+                'statement_created_approved' => null,
+                'statement_created_completed'=> null,
+                'statement_status_changed'   => null,
+                'statement_approved'         => null,
+                'statement_completed'        => null,
+
                 // Time-based triggers (mapped automatically in code, but listed here for reference)
                 'appointment_reminder_1_hour_before'  => null,
                 'appointment_reminder_2_hours_before' => null,

@@ -82,6 +82,15 @@ class Installer extends BaseModuleInstaller
             'booking.appointments.manage',
 
             'booking.reports.view',
+
+            // Statement permissions
+            'booking.statement.view',
+            'booking.statement.view.all',
+            'booking.statement.view.own',
+            'booking.statement.create',
+            'booking.statement.edit',
+            'booking.statement.delete',
+            'booking.statement.manage',
         ];
 
         $tracker = $this->loadTracker();

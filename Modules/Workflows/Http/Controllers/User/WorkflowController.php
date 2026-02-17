@@ -132,7 +132,10 @@ class WorkflowController extends Controller
         $users = User::query()->select(['id', 'name'])->orderBy('name')->get();
         $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
 
-        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services'));
+        // Pass tokens to view
+        $tokens = config('workflows.tokens', []);
+
+        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens'));
     }
 
     public function update(Request $request, Workflow $workflow)

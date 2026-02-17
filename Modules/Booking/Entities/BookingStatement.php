@@ -15,6 +15,8 @@ class BookingStatement extends Model
         'provider_id',
         'start_date',
         'end_date',
+        'first_appointment_time',
+        'last_appointment_time',
         'status',
         'roles_data',
         'notes'

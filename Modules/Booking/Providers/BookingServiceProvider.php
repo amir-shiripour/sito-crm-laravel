@@ -40,6 +40,7 @@ class BookingServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \Modules\Booking\Console\Commands\BookingInstall::class,
+                \Modules\Booking\Console\Commands\BookingUpdatePermissions::class,
                 \Modules\Booking\Console\Commands\BookingCleanupHolds::class,
                 \Modules\Booking\Console\Commands\BookingHandlePaymentTimeouts::class,
                 \Modules\Booking\Console\Commands\BookingDispatchReminders::class,

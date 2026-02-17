@@ -13,10 +13,11 @@ use Modules\Workflows\Entities\WorkflowStage;
 use Modules\Workflows\Entities\WorkflowAction;
 use Modules\Workflows\Entities\WorkflowInstance;
 use Modules\Workflows\Entities\WorkflowLog;
+use Modules\Workflows\Entities\WorkflowTrigger;
 
 class WorkflowEngine
 {
-    public function startWorkflow(Workflow $workflow, ?string $relatedType = null, ?int $relatedId = null): ?WorkflowInstance
+    public function startWorkflow(Workflow $workflow, ?string $relatedType = null, ?int $relatedId = null, array $payload = []): ?WorkflowInstance
     {
         Log::info("[Workflows] Request to start workflow: '{$workflow->key}' for {$relatedType}:{$relatedId}");
 
@@ -33,7 +34,7 @@ class WorkflowEngine
             return null;
         }
 
-        return DB::transaction(function () use ($workflow, $initialStage, $relatedType, $relatedId) {
+        return DB::transaction(function () use ($workflow, $initialStage, $relatedType, $relatedId, $payload) {
             $instance = WorkflowInstance::create([
                 'workflow_id'      => $workflow->id,
                 'related_type'     => $relatedType ?? 'WORKFLOW_SCHEDULE',
@@ -42,23 +43,46 @@ class WorkflowEngine
                 'status'           => WorkflowInstance::STATUS_ACTIVE,
                 'started_at'       => now(),
                 'created_by'       => Auth::id(),
+                'payload'          => $payload, // Store payload if column exists, or handle it in context
             ]);
 
+            // If payload column doesn't exist in WorkflowInstance, we can't store it directly there.
+            // But we can pass it to runStageActions.
+            // For now, let's assume we pass it via context building.
+
             Log::info("[Workflows] Instance created: {$instance->id}. Running initial stage actions.");
-            $this->runStageActions($instance, $initialStage);
+            $this->runStageActions($instance, $initialStage, $payload);
 
             return $instance;
         });
     }
 
-    public function start(string $workflowKey, string $relatedType, int $relatedId): ?WorkflowInstance
+    public function start(string $workflowKey, string $relatedType, int $relatedId, array $payload = []): ?WorkflowInstance
     {
+        // 1. Try to find workflow by key (Legacy/Direct trigger)
         $workflow = Workflow::where('key', $workflowKey)->first();
-        if (!$workflow) {
-            Log::warning("[Workflows] Workflow not found: '{$workflowKey}'");
+        if ($workflow) {
+            return $this->startWorkflow($workflow, $relatedType, $relatedId, $payload);
+        }
+
+        // 2. Try to find workflows by EVENT trigger
+        // We look for workflows that have a trigger of type EVENT with config->event_key matching the workflowKey
+        $workflows = Workflow::whereHas('triggers', function ($q) use ($workflowKey) {
+            $q->where('type', WorkflowTrigger::TYPE_EVENT)
+              ->whereJsonContains('config->event_key', $workflowKey);
+        })->get();
+
+        if ($workflows->isEmpty()) {
+            Log::warning("[Workflows] No workflow found for key/event: '{$workflowKey}'");
             return null;
         }
-        return $this->startWorkflow($workflow, $relatedType, $relatedId);
+
+        $lastInstance = null;
+        foreach ($workflows as $wf) {
+            $lastInstance = $this->startWorkflow($wf, $relatedType, $relatedId, $payload);
+        }
+
+        return $lastInstance;
     }
 
     public function moveToStage(WorkflowInstance $instance, WorkflowStage $stage): void
@@ -71,12 +95,12 @@ class WorkflowEngine
         });
     }
 
-    protected function runStageActions(WorkflowInstance $instance, WorkflowStage $stage): void
+    protected function runStageActions(WorkflowInstance $instance, WorkflowStage $stage, array $payload = []): void
     {
         $actions = $stage->actions()->orderBy('sort_order')->get();
         Log::info("[Workflows] Found " . $actions->count() . " actions for stage: {$stage->name}");
 
-        $context = $this->buildContextData($instance);
+        $context = $this->buildContextData($instance, $payload);
 
         foreach ($actions as $action) {
             try {
@@ -235,9 +259,14 @@ class WorkflowEngine
         return $minutes ? $base->copy()->addMinutes($minutes) : $base;
     }
 
-    protected function buildContextData(WorkflowInstance $instance): array
+    protected function buildContextData(WorkflowInstance $instance, array $payload = []): array
     {
         $data = ['tokens' => []];
+
+        // Merge payload into tokens
+        if (!empty($payload)) {
+            $data['tokens'] = array_merge($data['tokens'], $payload);
+        }
 
         if ($instance->related_type === 'APPOINTMENT' && class_exists('Modules\\Booking\\Entities\\Appointment')) {
             $appt = \Modules\Booking\Entities\Appointment::query()
@@ -254,7 +283,7 @@ class WorkflowEngine
                     : '#';
 
                 $data['appointment'] = $appt;
-                $data['tokens'] = [
+                $data['tokens'] = array_merge($data['tokens'], [
                     'client_name' => $appt->client?->full_name,
                     'client_phone' => $appt->client?->phone,
                     'service_name' => $appt->service?->name,
@@ -263,7 +292,32 @@ class WorkflowEngine
                     'appointment_time_jalali' => $dateJalali?->format('H:i'),
                     'appointment_datetime_jalali' => $dateJalali?->format('Y/m/d H:i'),
                     'payment_link' => $paymentLink,
-                ];
+                ]);
+            }
+        }
+
+        // Handle STATEMENT context
+        if ($instance->related_type === 'STATEMENT' && class_exists('Modules\\Booking\\Entities\\BookingStatement')) {
+            $statement = \Modules\Booking\Entities\BookingStatement::with(['provider', 'user'])->find($instance->related_id);
+
+            if ($statement) {
+                $data['statement'] = $statement;
+
+                // Convert dates to Jalali for tokens
+                $startDateJalali = Jalalian::fromCarbon(\Carbon\Carbon::parse($statement->start_date))->format('Y/m/d');
+                $endDateJalali = Jalalian::fromCarbon(\Carbon\Carbon::parse($statement->end_date))->format('Y/m/d');
+
+                $data['tokens'] = array_merge($data['tokens'], [
+                    'statement_id' => $statement->id,
+                    'provider_name' => $statement->provider?->name,
+                    'provider_phone' => $statement->provider?->mobile ?? $statement->provider?->phone,
+                    'start_date' => $startDateJalali,
+                    'end_date' => $endDateJalali,
+                    'status' => $statement->status,
+                    'first_appointment_time' => $statement->first_appointment_time,
+                    'last_appointment_time' => $statement->last_appointment_time,
+                    'notes' => $statement->notes,
+                ]);
             }
         }
 
@@ -282,6 +336,11 @@ class WorkflowEngine
             // Assuming provider has a phone number in User model or profile
             $provider = $context['appointment']->provider ?? null;
             return $provider?->phone ?? $provider?->mobile ?? null;
+        }
+
+        // New target for Statement Provider
+        if ($target === 'STATEMENT_PROVIDER') {
+            return $context['tokens']['provider_phone'] ?? null;
         }
 
         if ($target === 'SPECIFIC_USER') {
