@@ -128,6 +128,8 @@
             {{-- کانتینر برای ویژگی‌ها و امکانات (توسط JS پر می‌شود) --}}
             <div id="ai-attributes-container"></div>
             <div id="ai-features-container"></div>
+            <div id="ai-custom-details-container"></div>
+            <div id="ai-custom-features-container"></div>
 
             <div class="grid grid-cols-12 gap-6">
 
@@ -873,6 +875,32 @@
                                     input.name = `features[]`;
                                     input.value = id;
                                     featContainer.appendChild(input);
+                                });
+                            }
+
+                            // ایجاد فیلدهای مخفی برای جزئیات سفارشی (Custom Details)
+                            const customDetailsContainer = document.getElementById('ai-custom-details-container');
+                            customDetailsContainer.innerHTML = '';
+                            if (data.custom_details) {
+                                for (const [key, value] of Object.entries(data.custom_details)) {
+                                    const inputKey = document.createElement('input');
+                                    inputKey.type = 'hidden';
+                                    inputKey.name = `meta[details][${key}]`;
+                                    inputKey.value = value;
+                                    customDetailsContainer.appendChild(inputKey);
+                                }
+                            }
+
+                            // ایجاد فیلدهای مخفی برای امکانات سفارشی (Custom Features)
+                            const customFeaturesContainer = document.getElementById('ai-custom-features-container');
+                            customFeaturesContainer.innerHTML = '';
+                            if (data.custom_features && Array.isArray(data.custom_features)) {
+                                data.custom_features.forEach(feature => {
+                                    const input = document.createElement('input');
+                                    input.type = 'hidden';
+                                    input.name = `meta[features][]`;
+                                    input.value = feature;
+                                    customFeaturesContainer.appendChild(input);
                                 });
                             }
 

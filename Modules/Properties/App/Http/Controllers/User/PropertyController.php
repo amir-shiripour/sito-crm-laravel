@@ -153,6 +153,16 @@ class PropertyController extends Controller
             $request->merge(['registered_at' => now()->format('Y-m-d')]);
         }
 
+        // Sanitize prices (remove commas)
+        $priceFields = ['price', 'min_price', 'deposit_price', 'rent_price', 'advance_price'];
+        foreach ($priceFields as $field) {
+            if ($request->has($field) && !is_null($request->input($field))) {
+                $request->merge([
+                    $field => str_replace(',', '', $request->input($field))
+                ]);
+            }
+        }
+
         $maxSize = PropertySetting::get('max_file_size', 10240);
         $allowedTypes = PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif');
         $allowedTypes = str_replace(' ', '', $allowedTypes);
@@ -180,18 +190,24 @@ class PropertyController extends Controller
             'is_special' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
 
-            // قیمت‌ها (اختیاری در این مرحله، اما اگر باشد ذخیره می‌شود)
+            // قیمت‌ها
             'price' => 'nullable|numeric|min:0',
             'min_price' => 'nullable|numeric|min:0',
             'deposit_price' => 'nullable|numeric|min:0',
             'rent_price' => 'nullable|numeric|min:0',
             'advance_price' => 'nullable|numeric|min:0',
 
-            // ویژگی‌ها و امکانات (از طریق AI)
+            // ویژگی‌ها و امکانات (استاندارد)
             'attributes' => 'nullable|array',
             'attributes.*' => 'nullable|string|max:255',
             'features' => 'nullable|array',
             'features.*' => 'exists:property_attributes,id',
+
+            // متای سفارشی (شامل جزئیات و امکانات سفارشی)
+            'meta' => 'nullable|array',
+            'meta.features' => 'nullable|array',
+            'meta.features.*' => 'string',
+            'meta.details' => 'nullable|array',
         ]);
 
         // Handle Property Code
@@ -262,15 +278,19 @@ class PropertyController extends Controller
             $data['agent_id'] = $user->id;
         }
 
+        // Prepare Meta Data
+        $meta = $request->input('meta', []);
+
         // Handle Special Property
         if ($request->has('is_special')) {
-            $data['meta']['is_special'] = true;
+            $meta['is_special'] = true;
         }
 
-        // Handle Features in Meta (for quick access)
-        if ($request->has('features')) {
-            $data['meta']['features'] = $request->input('features');
-        }
+        // Handle Features in Meta (for quick access if needed, though we use attribute values mostly)
+        // But here we want to store CUSTOM features in meta['features']
+        // The form sends meta[features][] for custom features.
+
+        $data['meta'] = $meta;
 
         $property = null;
         $retryCount = 0;
@@ -324,7 +344,7 @@ class PropertyController extends Controller
             }
         }
 
-        // Save Attributes (Details)
+        // Save Standard Attributes (Details)
         if ($request->has('attributes')) {
             foreach ($request->input('attributes') as $attributeId => $value) {
                 if (!empty($value)) {
@@ -337,7 +357,7 @@ class PropertyController extends Controller
             }
         }
 
-        // Save Features (as Attribute Values with value '1')
+        // Save Standard Features (as Attribute Values with value '1')
         if ($request->has('features')) {
             foreach ($request->input('features') as $featureId) {
                 PropertyAttributeValue::create([
