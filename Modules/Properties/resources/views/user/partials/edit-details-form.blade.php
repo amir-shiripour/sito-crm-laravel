@@ -24,6 +24,9 @@
     // If property has an agent, use that. If not, fallback to creator.
     $currentAgentId = $property->agent_id ?? $property->created_by;
     $currentAgentName = optional($property->agent)->name ?? optional($property->creator)->name;
+
+    // بررسی فعال بودن هوش مصنوعی
+    $aiEnabled = \Modules\Properties\Entities\PropertySetting::get('ai_property_completion', 0);
 @endphp
 
 <form id="edit-details-form" action="{{ route('user.properties.update', $property) }}" method="POST" enctype="multipart/form-data" class="space-y-6" @submit="isSubmitting = true">
@@ -33,6 +36,12 @@
     {{-- فیلدهای مخفی نقشه --}}
     <input type="hidden" name="latitude" x-model="lat">
     <input type="hidden" name="longitude" x-model="lng">
+
+    {{-- کانتینر برای ویژگی‌ها و امکانات (توسط JS پر می‌شود) --}}
+    <div id="ai-attributes-container"></div>
+    <div id="ai-features-container"></div>
+    <div id="ai-custom-details-container"></div>
+    <div id="ai-custom-features-container"></div>
 
     <div class="grid grid-cols-12 gap-6">
 
@@ -211,7 +220,7 @@
 
                     <div>
                         <label class="{{ $labelClass }}">یادداشت محرمانه</label>
-                        <textarea name="confidential_notes" rows="3" class="{{ $inputClass }} resize-none" placeholder="یادداشت خصوصی...">{{ old('confidential_notes', $property->confidential_notes) }}</textarea>
+                        <textarea name="confidential_notes" x-model="confidentialNotes" rows="3" class="{{ $inputClass }} resize-none" placeholder="یادداشت خصوصی...">{{ old('confidential_notes', $property->confidential_notes) }}</textarea>
                     </div>
                 </div>
             </div>
@@ -233,7 +242,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="md:col-span-2">
                             <label class="{{ $labelClass }}">عنوان ملک <span class="text-red-500">*</span></label>
-                            <input type="text" name="title" value="{{ old('title', $property->title) }}" class="{{ $inputClass }}" required>
+                            <input type="text" name="title" x-model="title" class="{{ $inputClass }}" required>
                         </div>
 
                         <div>
@@ -257,7 +266,7 @@
 
                         <div>
                             <label class="{{ $labelClass }}">نوع سند</label>
-                            <select name="document_type" class="{{ $selectClass }}">
+                            <select name="document_type" x-model="documentType" class="{{ $selectClass }}">
                                 <option value="">انتخاب کنید</option>
                                 @foreach(\Modules\Properties\Entities\Property::DOCUMENT_TYPES as $key => $label)
                                     <option value="{{ $key }}" {{ $property->document_type == $key ? 'selected' : '' }}>{{ $label }}</option>
@@ -318,7 +327,7 @@
                          x-show="propertyType === 'land' || listingType === 'presale'" x-transition>
                         <div x-show="propertyType === 'land'">
                             <label class="{{ $labelClass }}">نوع کاربری</label>
-                            <select name="usage_type" class="{{ $selectClass }}">
+                            <select name="usage_type" x-model="usageType" class="{{ $selectClass }}">
                                 <option value="">انتخاب کنید...</option>
                                 <option value="residential" {{ $property->usage_type == 'residential' ? 'selected' : '' }}>مسکونی</option>
                                 <option value="industrial" {{ $property->usage_type == 'industrial' ? 'selected' : '' }}>صنعتی</option>
@@ -328,19 +337,29 @@
                         </div>
                         <div x-show="listingType === 'presale'">
                             <label class="{{ $labelClass }}">تاریخ تحویل</label>
-                            <input type="text" name="delivery_date" data-jdp value="{{ $property->delivery_date_jalali }}" class="{{ $inputClass }} text-center">
+                            <input type="text" name="delivery_date" x-model="deliveryDate" data-jdp value="{{ $property->delivery_date_jalali }}" class="{{ $inputClass }} text-center">
                         </div>
                     </div>
 
                     <div>
-                        <label class="{{ $labelClass }}">توضیحات تکمیلی</label>
-                        <textarea name="description" rows="4" class="{{ $inputClass }} resize-none leading-relaxed">{{ old('description', $property->description) }}</textarea>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="{{ $labelClass }} mb-0">توضیحات تکمیلی</label>
+                            @if($aiEnabled)
+                                <button type="button" @click="completeWithAI" :disabled="isCompletingAI" class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <svg x-show="!isCompletingAI" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                    <svg x-show="isCompletingAI" class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    تکمیل هوشمند
+                                </button>
+                            @endif
+                        </div>
+                        <textarea name="description" x-model="description" rows="4" class="{{ $inputClass }} resize-none leading-relaxed">{{ old('description', $property->description) }}</textarea>
+                        <p class="text-[10px] text-gray-500 mt-1">برای استفاده از هوش مصنوعی، ابتدا توضیحات را بنویسید و سپس دکمه تکمیل هوشمند را بزنید.</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label class="{{ $labelClass }}">کد ملک</label>
-                            <input type="text" name="code" value="{{ old('code', $property->code) }}" class="{{ $inputClass }}">
+                            <input type="text" name="code" x-model="code" value="{{ old('code', $property->code) }}" class="{{ $inputClass }}">
                         </div>
 
                         <div>

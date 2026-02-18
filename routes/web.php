@@ -4,6 +4,7 @@ use App\Http\Controllers\InstallController;
 use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\User\DashboardController as UserDashboardController;
+use Modules\Properties\Entities\PropertyAttribute;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,6 +43,12 @@ Route::middleware([
 
     // روت صفحه اصلی سایت
     Route::get('/', [PageController::class, 'home'])->name('home');
+
+    Route::get('/debug-attributes', function() {
+        $details = PropertyAttribute::where('section', 'details')->get(['id', 'name']);
+        $features = PropertyAttribute::where('section', 'features')->get(['id', 'name']);
+        return response()->json(['details' => $details, 'features' => $features]);
+    });
 
     // روت‌های Jetstream (لاگین، پروفایل و ...)
     // Jetstream روت‌های خود را به صورت خودکار در 'boot' (در RouteServiceProvider) ثبت می‌کند

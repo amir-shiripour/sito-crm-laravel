@@ -440,8 +440,19 @@
         function editPropertyForm() {
             return {
                 activeTab: 'details',
+
+                // Data Properties
+                title: @json($property->title),
+                description: @json($property->description),
                 listingType: '{{ $property->listing_type }}',
                 propertyType: '{{ $property->property_type }}',
+                documentType: '{{ $property->document_type }}',
+                usageType: '{{ $property->usage_type }}',
+                deliveryDate: '{{ $property->delivery_date_jalali }}',
+                code: '{{ $property->code }}',
+                isSpecial: {{ isset($property->meta['is_special']) && $property->meta['is_special'] ? 'true' : 'false' }},
+                confidentialNotes: @json($property->confidential_notes),
+                isCompletingAI: false,
 
                 // Image Upload
                 coverPreview: null,
@@ -510,6 +521,101 @@
                     // Pre-load building results if value exists
                     if (this.searchBuildingQuery.length >= 2) {
                         this.searchBuildings(false);
+                    }
+                },
+
+                // --- AI Completion ---
+                async completeWithAI() {
+                    if (!this.description || this.description.length < 10) {
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'لطفاً حداقل ۱۰ کاراکتر در توضیحات بنویسید.' } }));
+                        return;
+                    }
+
+                    this.isCompletingAI = true;
+                    try {
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                        const response = await fetch('{{ route("user.properties.ai.complete") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ description: this.description })
+                        });
+                        const result = await response.json();
+
+                        if (response.ok && result.data) {
+                            const data = result.data;
+
+                            // پر کردن فیلدها
+                            if (data.title) this.title = data.title;
+                            if (data.type) this.propertyType = data.type;
+                            if (data.listing_type) this.listingType = data.listing_type;
+                            if (data.document_type) this.documentType = data.document_type;
+                            if (data.usage_type) this.usageType = data.usage_type;
+                            if (data.delivery_date) this.deliveryDate = data.delivery_date;
+                            if (data.description) this.description = data.description;
+                            // Code is usually not updated by AI in edit mode as it's unique/fixed, but if needed:
+                            // if (data.code) this.code = data.code;
+                            if (data.address) this.address = data.address;
+                            if (data.is_special !== undefined) this.isSpecial = data.is_special;
+                            if (data.confidential_notes) this.confidentialNotes = data.confidential_notes;
+
+                            // ایجاد فیلدهای مخفی برای جزئیات (Details)
+                            const attrContainer = document.getElementById('ai-attributes-container');
+                            if(attrContainer) {
+                                attrContainer.innerHTML = '';
+                                if (data.details) {
+                                    for (const [id, value] of Object.entries(data.details)) {
+                                        const input = document.createElement('input');
+                                        input.type = 'hidden';
+                                        input.name = `attributes[${id}]`;
+                                        input.value = value;
+                                        attrContainer.appendChild(input);
+                                    }
+                                }
+                            }
+
+                            // ایجاد فیلدهای مخفی برای امکانات (Features)
+                            const featContainer = document.getElementById('ai-features-container');
+                            if(featContainer) {
+                                featContainer.innerHTML = '';
+                                if (data.features && Array.isArray(data.features)) {
+                                    data.features.forEach(id => {
+                                        const input = document.createElement('input');
+                                        input.type = 'hidden';
+                                        input.name = `features[]`;
+                                        featContainer.appendChild(input);
+                                    });
+                                }
+                            }
+
+                            // جستجوی خودکار مالک اگر نامش پیدا شد
+                            if (data.owner_name) {
+                                this.searchQuery = data.owner_name;
+                                this.searchOwners();
+                            }
+
+                            // جستجوی خودکار ساختمان اگر نامش پیدا شد
+                            if (data.building_name) {
+                                this.searchBuildingQuery = data.building_name;
+                                this.searchBuildings();
+                            }
+
+                            // نمایش پیام موفقیت
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'success', text: 'اطلاعات پایه با موفقیت تکمیل شد. (ویژگی‌ها و امکانات در تب‌های مربوطه باید دستی وارد شوند)' } }));
+
+                        } else {
+                            // نمایش خطای دریافتی از سرور
+                            const errorMessage = result.error || result.message || 'خطا در دریافت اطلاعات.';
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: errorMessage } }));
+                        }
+                    } catch (error) {
+                        console.error('AI Error:', error);
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'خطا در ارتباط با هوش مصنوعی.' } }));
+                    } finally {
+                        this.isCompletingAI = false;
                     }
                 },
 

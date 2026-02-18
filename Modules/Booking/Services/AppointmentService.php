@@ -76,8 +76,8 @@ class AppointmentService
             throw new \RuntimeException('Online booking is disabled for this service/provider.');
         }
 
-        $startUtc = Carbon::parse($startAtUtcIso, 'UTC');
-        $endUtc   = Carbon::parse($endAtUtcIso, 'UTC');
+        $startUtc = Carbon::parse($startAtUtcIso);
+        $endUtc   = Carbon::parse($endAtUtcIso);
 
         if ($endUtc->lte($startUtc)) {
             throw new \InvalidArgumentException('Invalid slot time range.');
@@ -284,8 +284,8 @@ class AppointmentService
         ?string $notes = null,
         ?array $appointmentFormResponse = null
     ): Appointment {
-        $startUtc = Carbon::parse($startAtUtcIso, 'UTC');
-        $endUtc   = Carbon::parse($endAtUtcIso, 'UTC');
+        $startUtc = Carbon::parse($startAtUtcIso);
+        $endUtc   = Carbon::parse($endAtUtcIso);
 
         if ($endUtc->lte($startUtc)) {
             throw new \InvalidArgumentException('Invalid slot time range.');
@@ -410,8 +410,8 @@ class AppointmentService
         string $newEndAtUtcIso,
         ?int $authUserId
     ): Appointment {
-        $newStartUtc = Carbon::parse($newStartAtUtcIso, 'UTC');
-        $newEndUtc   = Carbon::parse($newEndAtUtcIso, 'UTC');
+        $newStartUtc = Carbon::parse($newStartAtUtcIso);
+        $newEndUtc   = Carbon::parse($newEndAtUtcIso);
 
         if ($newEndUtc->lte($newStartUtc)) {
             throw new \InvalidArgumentException('Invalid slot time range.');

@@ -9,6 +9,7 @@ use Modules\Properties\Entities\PropertySetting;
 use Modules\Properties\Entities\PropertyCategory;
 use Modules\Properties\Entities\Property;
 use Modules\Properties\Entities\PropertyAttribute;
+use Illuminate\Support\Facades\Log;
 
 class AIController extends Controller
 {
@@ -32,6 +33,8 @@ class AIController extends Controller
             ]);
 
             $description = $request->description;
+
+            Log::info("AI Completion Started for description: " . substr($description, 0, 50) . "...");
 
             // دریافت دسته‌بندی‌ها
             $categories = PropertyCategory::pluck('name', 'id')->toArray();
@@ -77,42 +80,61 @@ class AIController extends Controller
             14. prices: آبجکتی شامل قیمت‌ها (اعداد به تومان):
                 - price: قیمت کل (فروش/پیش‌فروش).
                 - min_price: حداقل قیمت.
-                - deposit_price: مبلغ رهن.
-                - rent_price: مبلغ اجاره.
+                - deposit_price: مبلغ رهن (ودیعه).
+                - rent_price: مبلغ اجاره ماهانه.
                 - advance_price: مبلغ پیش‌پرداخت (پیش‌فروش).
 
             15. details: آبجکتی که کلید آن ID ویژگی و مقدار آن مقدار استخراج شده است.
-                لیست ویژگی‌ها (ID:Name): [$detailAttributesList]
-                مثال: {\"5\": \"2\", \"8\": \"طبقه 3\"} (اگر ویژگی پیدا نشد، ننویس).
+                لیست ویژگی‌های موجود (ID:Name): [$detailAttributesList]
+                مثال: {\"5\": \"2\", \"8\": \"طبقه 3\"}
 
-            16. features: آرایه‌ای از ID امکانات موجود در متن.
-                لیست امکانات (ID:Name): [$featureAttributesList]
+            16. custom_details: آبجکتی شامل ویژگی‌هایی که در لیست بالا نبودند (کلید: نام ویژگی، مقدار: مقدار ویژگی).
+                مثال: {\"تعداد خواب\": \"3\", \"جهت ساختمان\": \"جنوبی\"}
+
+            17. features: آرایه‌ای از ID امکانات موجود در متن.
+                لیست امکانات موجود (ID:Name): [$featureAttributesList]
                 مثال: [1, 4, 12]
 
-            نکات:
+            18. custom_features: آرایه‌ای از نام امکاناتی که در لیست بالا نبودند.
+                مثال: [\"استخر\", \"روف گاردن\", \"مستر\"]
+
+            نکات مهم:
             - قیمت‌ها را به عدد کامل تبدیل کن (مثلاً '2 میلیارد' -> 2000000000).
             - اگر کلماتی مثل 'اجاره'، 'رهن' دیدی، listing_type را rent بگذار.
+            - اگر listing_type برابر rent است:
+                - قیمت‌های کلان (رهن/ودیعه) را در deposit_price قرار بده.
+                - قیمت‌های ماهانه (اجاره) را در rent_price قرار بده.
+                - فیلد price را 0 بگذار.
+            - فقط از ID های موجود در لیست details و features استفاده کن. اگر موردی در لیست نبود، حتماً در custom_details یا custom_features قرار بده.
+            - اگر قیمت به صورت '2 میلیارد و 300' بود، آن را به عدد کامل '2300000000' تبدیل کن.
+            - اگر امکاناتی مثل 'استخر'، 'سونا'، 'جکوزی' یا هر امکانات رفاهی دیگری در متن بود که در لیست features نبود، حتماً نام آن را در آرایه custom_features قرار بده.
             ";
 
-            $response = $this->gapGPT->ask($prompt, "تو یک دستیار هوشمند املاک هستی.");
+            // استفاده از تایم‌اوت پیش‌فرض سرویس (که از تنظیمات خوانده می‌شود)
+            // اما توکن را بالا نگه می‌داریم چون پاسخ طولانی است
+            $response = $this->gapGPT->ask($prompt, "تو یک دستیار هوشمند املاک هستی.", null, 4000);
 
             if (!$response) {
-                return response()->json(['error' => 'پاسخی از سرویس هوش مصنوعی دریافت نشد.'], 500);
+                Log::error("AI Completion Failed: No response received.");
+                return response()->json(['error' => 'پاسخی از سرویس هوش مصنوعی دریافت نشد. لطفاً لاگ‌ها را بررسی کنید.'], 500);
             }
 
             $jsonStr = $this->cleanJson($response);
             $data = json_decode($jsonStr, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error("AI Completion JSON Error: " . json_last_error_msg() . " | Raw: " . substr($response, 0, 100));
                 return response()->json([
                     'error' => 'فرمت پاسخ دریافتی معتبر نیست.',
                     'raw_response' => $response
                 ], 500);
             }
 
+            Log::info("AI Completion Successful. Data: " . json_encode($data, JSON_UNESCAPED_UNICODE));
             return response()->json(['data' => $data]);
 
         } catch (\Exception $e) {
+            Log::error("AI Completion Exception: " . $e->getMessage());
             return response()->json([
                 'error' => 'خطای سرور: ' . $e->getMessage()
             ], 500);
