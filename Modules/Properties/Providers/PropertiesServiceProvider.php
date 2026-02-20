@@ -29,5 +29,6 @@ class PropertiesServiceProvider extends ServiceProvider
         }
 
         Livewire::component('properties.statuses-manager', \Modules\Properties\App\Livewire\Settings\PropertyStatusesManager::class);
+        Livewire::component('properties.settings.csv-importer', \Modules\Properties\App\Livewire\Settings\CsvImporter::class);
     }
 }

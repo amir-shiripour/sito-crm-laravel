@@ -8,6 +8,7 @@
     $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5";
     $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-600";
     $selectClass = $inputClass . " appearance-none cursor-pointer";
+    $checkboxClass = "w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 cursor-pointer";
 @endphp
 
 @section('content')
@@ -74,6 +75,12 @@
                                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
                                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                                                 </div>
+                                            </div>
+                                        @elseif($attr->type === 'checkbox')
+                                            <div class="flex items-center gap-2 mt-2">
+                                                <input type="hidden" name="attributes[{{ $attr->id }}]" value="0">
+                                                <input type="checkbox" name="attributes[{{ $attr->id }}]" value="1" {{ $value == '1' ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                                                <span class="text-sm text-gray-600 dark:text-gray-400">دارد</span>
                                             </div>
                                         @endif
                                     </div>

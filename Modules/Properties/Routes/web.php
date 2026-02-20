@@ -10,6 +10,7 @@ use Modules\Properties\App\Http\Controllers\User\AttributesController;
 use Modules\Properties\App\Http\Controllers\User\CategoryController;
 use Modules\Properties\App\Http\Controllers\User\AIController;
 use Modules\Properties\App\Livewire\Settings\PropertyStatusesManager;
+use Modules\Properties\App\Http\Controllers\User\ImportController;
 
 // Public Routes
 Route::middleware(['web'])->group(function() {
@@ -94,5 +95,6 @@ Route::middleware(['web', 'auth'])
                 Route::post('/attributes', [AttributesController::class, 'store'])->name('attributes.store');
                 Route::put('/attributes/{attribute}', [AttributesController::class, 'update'])->name('attributes.update');
                 Route::delete('/attributes/{attribute}', [AttributesController::class, 'destroy'])->name('attributes.destroy');
+                Route::get('/import', [ImportController::class, 'index'])->name('import');
             });
     });

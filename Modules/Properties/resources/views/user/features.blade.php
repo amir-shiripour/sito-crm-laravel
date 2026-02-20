@@ -6,6 +6,7 @@
     // استایل‌های مشترک
     $cardClass = "bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-200";
     $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-600";
+    $selectClass = $inputClass . " appearance-none cursor-pointer";
 @endphp
 
 @section('content')
@@ -49,13 +50,42 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                 @foreach($propertyAttributes as $attr)
                                     @php
+                                        $value = $property->attributeValues->where('attribute_id', $attr->id)->first()->value ?? '';
                                         $hasValue = $property->attributeValues->where('attribute_id', $attr->id)->isNotEmpty();
                                     @endphp
-                                    <label class="group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white hover:border-indigo-200 cursor-pointer transition-all dark:bg-gray-700/30 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:border-indigo-700">
-                                        <input type="checkbox" name="attributes[]" value="{{ $attr->id }}" {{ $hasValue ? 'checked' : '' }}
-                                        class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600">
-                                        <span class="text-xs font-bold text-gray-700 group-hover:text-indigo-700 dark:text-gray-300 dark:group-hover:text-indigo-300 transition-colors">{{ $attr->name }}</span>
-                                    </label>
+
+                                    @if($attr->type === 'checkbox')
+                                        <label class="group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white hover:border-indigo-200 cursor-pointer transition-all dark:bg-gray-700/30 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:border-indigo-700">
+                                            <input type="checkbox" name="attributes[{{ $attr->id }}]" value="1" {{ $value == '1' ? 'checked' : '' }}
+                                            class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600">
+                                            <span class="text-xs font-bold text-gray-700 group-hover:text-indigo-700 dark:text-gray-300 dark:group-hover:text-indigo-300 transition-colors">{{ $attr->name }}</span>
+                                        </label>
+                                    @elseif($attr->type === 'text')
+                                        <div class="col-span-1 sm:col-span-2 md:col-span-3">
+                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">{{ $attr->name }}</label>
+                                            <input type="text" name="attributes[{{ $attr->id }}]" value="{{ $value }}" class="{{ $inputClass }}">
+                                        </div>
+                                    @elseif($attr->type === 'number')
+                                        <div class="col-span-1 sm:col-span-2 md:col-span-3">
+                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">{{ $attr->name }}</label>
+                                            <input type="number" name="attributes[{{ $attr->id }}]" value="{{ $value }}" class="{{ $inputClass }}">
+                                        </div>
+                                    @elseif($attr->type === 'select')
+                                        <div class="col-span-1 sm:col-span-2 md:col-span-3">
+                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">{{ $attr->name }}</label>
+                                            <div class="relative">
+                                                <select name="attributes[{{ $attr->id }}]" class="{{ $selectClass }}">
+                                                    <option value="">انتخاب کنید...</option>
+                                                    @foreach($attr->options ?? [] as $option)
+                                                        <option value="{{ $option }}" {{ $value == $option ? 'selected' : '' }}>{{ $option }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                 @endforeach
                             </div>
                         @else
