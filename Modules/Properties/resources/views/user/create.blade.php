@@ -840,70 +840,68 @@
                     this.initVoiceTyping();
                 },
 
-                // --- Voice Typing Methods ---
+                // --- Voice Typing Methods with Debug Log ---
                 initVoiceTyping() {
-                    // آیفون از SpeechRecognition استفاده نمی‌کند و فقط webkitSpeechRecognition را می‌شناسد
+                    console.log('Initializing Speech Recognition...');
                     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
                     if (SpeechRecognition) {
                         this.isVoiceTypingSupported = true;
                         this.recognition = new SpeechRecognition();
 
-                        // تنظیمات بهینه برای iOS
-                        this.recognition.continuous = true;
-                        this.recognition.interimResults = false; // در iOS حالت false پایداری بیشتری دارد
+                        // تنظیمات مخصوص آیفون برای پایداری بیشتر
+                        this.recognition.continuous = false; // در iOS حالت false معمولاً بهتر جواب می‌دهد
+                        this.recognition.interimResults = false;
                         this.recognition.lang = 'fa-IR';
 
-                        this.recognition.onresult = (event) => {
-                            let finalTranscript = '';
-                            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                                if (event.results[i].isFinal) {
-                                    finalTranscript += event.results[i][0].transcript;
-                                }
-                            }
-                            if (finalTranscript) {
-                                // آپدیت کردن مقدار توضیحات
-                                this.description = (this.description || '').trim() + ' ' + finalTranscript.trim();
-                            }
-                        };
-
                         this.recognition.onstart = () => {
+                            console.log('Microphone is now ACTIVE');
                             this.isVoiceTyping = true;
                         };
 
+                        this.recognition.onresult = (event) => {
+                            console.log('Result received:', event);
+                            const transcript = event.results[0][0].transcript;
+                            this.description = (this.description || '').trim() + ' ' + transcript.trim();
+                        };
+
                         this.recognition.onend = () => {
+                            console.log('Speech Recognition ended');
                             this.isVoiceTyping = false;
                         };
 
                         this.recognition.onerror = (event) => {
-                            console.error('Speech Recognition Error:', event.error);
+                            // این بخش بسیار مهم است، ارور دقیق را اینجا می‌گیریم
+                            const errorDetail = `Error: ${event.error}. Message: ${event.message || 'No message'}`;
+                            console.error('Detailed Error:', event);
+
                             this.isVoiceTyping = false;
 
-                            let msg = 'خطا در تایپ صوتی';
-                            if (event.error === 'not-allowed') msg = 'اجازه دسترسی به میکروفون داده نشده است.';
-                            if (event.error === 'network') msg = 'اتصال اینترنت را بررسی کنید.';
-
+                            // نمایش ارور دقیق برای شما
                             window.dispatchEvent(new CustomEvent('notify', {
-                                detail: { type: 'error', text: msg }
+                                detail: { type: 'error', text: `جزئیات خطا: ${event.error}` }
                             }));
                         };
+                    } else {
+                        console.error('SpeechRecognition NOT supported in this browser.');
                     }
                 },
 
                 toggleVoiceTyping() {
+                    console.log('Toggle Clicked. Current state:', this.isVoiceTyping);
                     if (!this.isVoiceTypingSupported) return;
 
                     if (this.isVoiceTyping) {
                         this.recognition.stop();
                     } else {
                         try {
-                            // در آیفون، این متد باید مستقیماً اینجا صدا زده شود
+                            // تلاش برای شروع
                             this.recognition.start();
                         } catch (e) {
-                            console.error("Failed to start recognition:", e);
-                            // اگر قبلاً در حال اجرا بود، ریستارتش کن
+                            console.error("Start Metod Exception:", e);
+                            // اگر خطای 'already started' داد، یکبار استاپ و دوباره استارت می‌کنیم
                             this.recognition.stop();
-                            setTimeout(() => this.recognition.start(), 200);
+                            setTimeout(() => this.recognition.start(), 300);
                         }
                     }
                 },
