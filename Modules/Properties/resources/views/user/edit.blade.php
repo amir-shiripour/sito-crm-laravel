@@ -247,13 +247,25 @@
                                     <div>
                                         <div class="flex justify-between items-center mb-2">
                                             <label class="{{ $labelClass }} mb-0">توضیحات تکمیلی</label>
-                                            @if($aiEnabled)
-                                                <button type="button" @click="completeWithAI" :disabled="isCompletingAI" class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                                    <svg x-show="!isCompletingAI" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                                    <svg x-show="isCompletingAI" class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                    تکمیل هوشمند
+                                            <div class="flex items-center gap-2">
+                                                <button type="button" @click="toggleVoiceTyping" :disabled="!isVoiceTypingSupported"
+                                                        class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        :class="{
+                                                            'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40': !isVoiceTyping,
+                                                            'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/40 animate-pulse': isVoiceTyping
+                                                        }">
+                                                    <svg x-show="!isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14a2 2 0 0 0 2-2V6a2 2 0 0 0-4 0v6a2 2 0 0 0 2 2Zm-2-8a2 2 0 0 1 4 0v6a2 2 0 0 1-4 0V6Zm8 5a1 1 0 0 0-1 1v1a5 5 0 0 1-10 0v-1a1 1 0 1 0-2 0v1a7 7 0 0 0 6 6.92V21a1 1 0 1 0 2 0v-2.08A7 7 0 0 0 20 12v-1a1 1 0 0 0-1-1Z"/></svg>
+                                                    <svg x-show="isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5.793 5.793a1 1 0 0 1 1.414 0L12 10.586l4.793-4.793a1 1 0 1 1 1.414 1.414L13.414 12l4.793 4.793a1 1 0 0 1-1.414 1.414L12 13.414l-4.793 4.793a1 1 0 0 1-1.414-1.414L10.586 12 5.793 7.207a1 1 0 0 1 0-1.414Z"/></svg>
+                                                    <span x-text="isVoiceTyping ? 'توقف' : 'صوتی'"></span>
                                                 </button>
-                                            @endif
+                                                @if($aiEnabled)
+                                                    <button type="button" @click="completeWithAI" :disabled="isCompletingAI" class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                                        <svg x-show="!isCompletingAI" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                        <svg x-show="isCompletingAI" class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                        تکمیل هوشمند
+                                                    </button>
+                                                @endif
+                                            </div>
                                         </div>
                                         <textarea name="description" x-model="description" rows="4" class="{{ $inputClass }} resize-none leading-relaxed">{{ old('description', $property->description) }}</textarea>
                                         <p class="text-[10px] text-gray-500 mt-1">برای استفاده از هوش مصنوعی، ابتدا توضیحات را بنویسید و سپس دکمه تکمیل هوشمند را بزنید.</p>
@@ -833,6 +845,11 @@
                 selectedAgentId: '{{ $currentAgentId }}',
                 isSearchingAgent: false,
 
+                // Voice Typing
+                isVoiceTyping: false,
+                isVoiceTypingSupported: false,
+                recognition: null,
+
                 init() {
                     this.initMap();
                     this.$watch('showOwnerModal', (value) => {
@@ -849,6 +866,70 @@
                     // Pre-load building results if value exists
                     if (this.searchBuildingQuery.length >= 2) {
                         this.searchBuildings(false);
+                    }
+                    this.initVoiceTyping();
+                },
+
+                // --- Voice Typing Methods ---
+                initVoiceTyping() {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (SpeechRecognition) {
+                        this.isVoiceTypingSupported = true;
+                        this.recognition = new SpeechRecognition();
+                        this.recognition.continuous = true;
+                        this.recognition.interimResults = true;
+                        this.recognition.lang = 'fa-IR';
+
+                        this.recognition.onresult = (event) => {
+                            let finalTranscript = '';
+                            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                                if (event.results[i].isFinal) {
+                                    finalTranscript += event.results[i][0].transcript;
+                                }
+                            }
+                            if (finalTranscript) {
+                                this.description = this.description ? this.description.trim() + ' ' + finalTranscript.trim() : finalTranscript.trim();
+                            }
+                        };
+
+                        this.recognition.onend = () => {
+                            this.isVoiceTyping = false;
+                        };
+
+                        this.recognition.onerror = (event) => {
+                            console.error('Speech recognition error', event.error);
+                            let errorMessage = 'خطا در تشخیص گفتار.';
+                            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                                errorMessage = 'دسترسی به میکروفون مجاز نیست. لطفاً دسترسی را فعال کنید.';
+                            } else if (event.error === 'no-speech') {
+                                errorMessage = 'هیچ صدایی شناسایی نشد.';
+                            }
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: errorMessage } }));
+                            this.isVoiceTyping = false;
+                        };
+                    } else {
+                        this.isVoiceTypingSupported = false;
+                        console.warn('Speech Recognition not supported by this browser.');
+                    }
+                },
+
+                toggleVoiceTyping() {
+                    if (!this.isVoiceTypingSupported) {
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'مرورگر شما از تایپ صوتی پشتیبانی نمی‌کند.' } }));
+                        return;
+                    }
+                    if (this.isVoiceTyping) {
+                        this.recognition.stop();
+                        this.isVoiceTyping = false;
+                    } else {
+                        try {
+                            this.recognition.start();
+                            this.isVoiceTyping = true;
+                        } catch(e) {
+                            console.error("Error starting recognition:", e);
+                            this.isVoiceTyping = false;
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'امکان شروع تایپ صوتی وجود ندارد.' } }));
+                        }
                     }
                 },
 
