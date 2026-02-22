@@ -36,71 +36,92 @@ class PropertyController extends Controller
         }
 
         // Visibility Logic:
-        // Default: Show only user's properties (created_by OR agent_id)
-        // If user has permission AND requests 'show_all', then show all.
-
         $canViewAll = $user->hasRole('super-admin') || $user->can('properties.view.all') || $user->can('properties.manage');
 
         if ($canViewAll) {
             if (!$request->has('show_all') || $request->show_all != '1') {
-                // Restrict to own properties by default
                 $query->where(function ($q) use ($user) {
                     $q->where('created_by', $user->id)
-                      ->orWhere('agent_id', $user->id);
+                        ->orWhere('agent_id', $user->id);
                 });
             }
-            // If show_all=1, no restriction applied (shows all)
         } else {
-            // Regular users always restricted
             $query->where(function ($q) use ($user) {
                 $q->where('created_by', $user->id)
-                  ->orWhere('agent_id', $user->id);
+                    ->orWhere('agent_id', $user->id);
             });
         }
 
-        // 1. Search (Title, Code, Address)
+        // Standard Filters
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%");
             });
         }
-
-        // 2. Listing Type
         if ($request->filled('listing_type')) {
             $query->where('listing_type', $request->listing_type);
         }
-
-        // 3. Property Type
         if ($request->filled('property_type')) {
             $query->where('property_type', $request->property_type);
         }
-
-        // 4. Status
         if ($request->filled('status_id')) {
             $query->where('status_id', $request->status_id);
         }
-
-        // 5. Publication Status
         if ($request->filled('publication_status')) {
             $query->where('publication_status', $request->publication_status);
         }
-
-        // 6. Agent (For Admins/Managers)
         if ($request->filled('agent_id') && $canViewAll) {
             $query->where('agent_id', $request->agent_id);
         }
-
-        // 7. Category
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
-
-        // 8. Building
         if ($request->filled('building_id')) {
             $query->where('building_id', $request->building_id);
+        }
+
+        // AI Search Filters
+        if ($request->has('ai_search')) {
+            // ** NEW: OR logic for ambiguous prices **
+            if ($request->filled('price_min') && $request->filled('deposit_min')) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('price', '>=', (float)$request->price_min)
+                        ->orWhere('deposit_price', '>=', (float)$request->deposit_min);
+                });
+            } else {
+                if ($request->filled('price_min')) $query->where('price', '>=', (float)$request->price_min);
+                if ($request->filled('deposit_min')) $query->where('deposit_price', '>=', (float)$request->deposit_min);
+            }
+
+            if ($request->filled('price_max')) $query->where('price', '<=', (float)$request->price_max);
+            if ($request->filled('deposit_max')) $query->where('deposit_price', '<=', (float)$request->deposit_max);
+            if ($request->filled('rent_min')) $query->where('rent_price', '>=', (float)$request->rent_min);
+            if ($request->filled('rent_max')) $query->where('rent_price', '<=', (float)$request->rent_max);
+
+            if ($request->has('details') && is_array($request->details)) {
+                foreach ($request->details as $attrId => $value) {
+                    $query->whereHas('attributeValues', function ($q) use ($attrId, $value) {
+                        $q->where('attribute_id', $attrId);
+                        if (is_array($value)) {
+                            if (isset($value['min'])) $q->whereRaw('CAST(value AS UNSIGNED) >= ?', [$value['min']]);
+                            if (isset($value['max'])) $q->whereRaw('CAST(value AS UNSIGNED) <= ?', [$value['max']]);
+                        } else {
+                            $q->where('value', $value);
+                        }
+                    });
+                }
+            }
+
+            if ($request->has('features') && is_array($request->features)) {
+                foreach ($request->features as $featureId) {
+                    $query->whereHas('attributeValues', function ($q) use ($featureId) {
+                        $q->where('attribute_id', $featureId)->where('value', '1');
+                    });
+                }
+            }
         }
 
         $properties = $query->latest()->paginate(10)->withQueryString();
@@ -108,26 +129,25 @@ class PropertyController extends Controller
         // Data for filters
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
         $categories = PropertyCategory::where('user_id', $user->id)->get();
-        $buildings = PropertyBuilding::latest()->get(); // Or filter by user if needed
+        $buildings = PropertyBuilding::latest()->get();
+        $propertyAttributes = PropertyAttribute::where('is_active', true)->get()->keyBy('id');
 
         // Agents list for filter
         $agents = [];
         if ($canViewAll) {
             $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
-            $agents = User::role($agentRoles)->get(['id', 'name']);
+            if (!empty($agentRoles)) {
+                $agents = User::role($agentRoles)->get(['id', 'name']);
+            }
         }
 
-        return view('properties::user.index', compact('properties', 'statuses', 'agents', 'categories', 'buildings'));
+        return view('properties::user.index', compact('properties', 'statuses', 'agents', 'categories', 'buildings', 'propertyAttributes'));
     }
 
     public function create()
     {
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
-
-        // Fetch Agents (Initial load, maybe limit or just pass empty if using search)
-        // For now, let's pass all if not too many, or just rely on search.
-        // But the view expects $agents to check if the section should be shown.
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         $agents = User::role($agentRoles)->get();
 
