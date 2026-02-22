@@ -248,9 +248,9 @@
                                         <div class="flex justify-between items-center mb-2">
                                             <label class="{{ $labelClass }} mb-0">توضیحات تکمیلی</label>
                                             <div class="flex items-center gap-2">
-                                                <div x-data="{ tooltip: 'برای تایپ صوتی به اتصال امن (HTTPS) نیاز است.' }">
+                                                <div x-data="{ tooltip: getVoiceSupportTooltip() }">
                                                     <button type="button" @click="toggleVoiceTyping" :disabled="!isVoiceTypingSupported"
-                                                            x-tooltip="!isVoiceTypingSupported ? tooltip : ''"
+                                                            x-tooltip="tooltip"
                                                             class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-help"
                                                             :class="{
                                                                 'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40': !isVoiceTyping,
@@ -771,6 +771,16 @@
             });
         });
 
+        function getVoiceSupportTooltip() {
+            if (!window.isSecureContext) {
+                return 'برای تایپ صوتی به اتصال امن (HTTPS) نیاز است.';
+            }
+            if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+                return 'مرورگر شما از تایپ صوتی پشتیبانی نمی‌کند.';
+            }
+            return ''; // No tooltip if supported
+        }
+
         function editPropertyForm() {
             return {
                 activeTab: 'details',
@@ -875,7 +885,7 @@
 
                 // --- Voice Typing Methods ---
                 initVoiceTyping() {
-                    const isSecureContext = window.isSecureContext; // Check for HTTPS
+                    const isSecureContext = window.isSecureContext;
                     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
                     if (isSecureContext && SpeechRecognition) {
@@ -916,17 +926,11 @@
                         };
                     } else {
                         this.isVoiceTypingSupported = false;
-                        if (!isSecureContext) {
-                            console.warn('Voice typing is disabled. It requires a secure context (HTTPS).');
-                        } else {
-                            console.warn('Speech Recognition not supported by this browser.');
-                        }
                     }
                 },
 
                 toggleVoiceTyping() {
                     if (!this.isVoiceTypingSupported) {
-                        // The button is already disabled and has a tooltip, so no extra notification is needed here.
                         return;
                     }
                     if (this.isVoiceTyping) {
