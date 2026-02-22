@@ -11,7 +11,6 @@ use Modules\Clients\App\Http\Controllers\Portal\ClientAuthController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientDashboardController;
 use Modules\Clients\App\Livewire\Settings\ClientAuthSettings;
 use Modules\Clients\App\Livewire\Settings\CsvImporter;
-use Modules\Clients\App\Http\Controllers\User\ImportController;
 
 Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
     ->prefix('user')
@@ -83,7 +82,6 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class, 'permission
         Route::get('/statuses', ClientStatusesManager::class)->name('statuses');
         Route::get('/auth', ClientAuthSettings::class)->name('auth');
         Route::get('/import', CsvImporter::class)->name('import');
-        Route::post('/import/upload', [ImportController::class, 'upload'])->name('import.upload');
     });
 
 Route::prefix('clients')
