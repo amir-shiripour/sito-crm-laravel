@@ -30,6 +30,7 @@ class SettingsController extends Controller
         $property_code_prefix = PropertySetting::get('property_code_prefix', 'P');
         $property_code_separator = PropertySetting::get('property_code_separator', '-');
         $property_code_include_year = PropertySetting::get('property_code_include_year', 1);
+        $property_code_use_category_slug = PropertySetting::get('property_code_use_category_slug', 0);
 
         // Card Display Settings
         $show_features_in_card = PropertySetting::get('show_features_in_card', 1);
@@ -88,6 +89,7 @@ class SettingsController extends Controller
             'property_code_prefix',
             'property_code_separator',
             'property_code_include_year',
+            'property_code_use_category_slug',
             'show_features_in_card',
             'ai_property_completion',
             'ai_property_search',
@@ -117,6 +119,7 @@ class SettingsController extends Controller
             'property_code_prefix' => 'nullable|string|max:10',
             'property_code_separator' => 'nullable|string|max:5',
             'property_code_include_year' => 'nullable|boolean',
+            'property_code_use_category_slug' => 'nullable|boolean',
             'show_features_in_card' => 'nullable|boolean',
             'ai_property_completion' => 'nullable|boolean',
             'ai_property_search' => 'nullable|boolean',
@@ -144,6 +147,7 @@ class SettingsController extends Controller
         PropertySetting::set('property_code_prefix', $request->property_code_prefix);
         PropertySetting::set('property_code_separator', $request->property_code_separator);
         PropertySetting::set('property_code_include_year', $request->has('property_code_include_year') ? 1 : 0);
+        PropertySetting::set('property_code_use_category_slug', $request->has('property_code_use_category_slug') ? 1 : 0);
 
         PropertySetting::set('show_features_in_card', $request->has('show_features_in_card') ? 1 : 0);
 

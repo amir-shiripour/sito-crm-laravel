@@ -58,7 +58,7 @@ class AttributesController extends Controller
 
         Log::info('Created Attribute:', $attr->toArray());
 
-        return back()->with('success', 'ویژگی با موفقیت اضافه شد.');
+        return back()->with('success', 'ویژگی با موفقیت اضافه شد.')->with('active_tab', $data['section']);
     }
 
     public function update(Request $request, PropertyAttribute $attribute)
@@ -83,12 +83,13 @@ class AttributesController extends Controller
 
         $attribute->update($data);
 
-        return back()->with('success', 'ویژگی با موفقیت ویرایش شد.');
+        return back()->with('success', 'ویژگی با موفقیت ویرایش شد.')->with('active_tab', $attribute->section);
     }
 
     public function destroy(PropertyAttribute $attribute)
     {
+        $section = $attribute->section;
         $attribute->delete();
-        return back()->with('success', 'ویژگی حذف شد.');
+        return back()->with('success', 'ویژگی حذف شد.')->with('active_tab', $section);
     }
 }

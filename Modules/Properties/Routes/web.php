@@ -33,6 +33,10 @@ Route::middleware(['web', 'auth'])
                 Route::get('/create', [UserPropertyController::class, 'create'])->name('create');
                 Route::post('/', [UserPropertyController::class, 'store'])->name('store');
 
+                // Trash Management
+                Route::post('/{id}/restore', [UserPropertyController::class, 'restore'])->name('restore');
+                Route::delete('/{id}/force-delete', [UserPropertyController::class, 'forceDelete'])->name('force-delete');
+
                 // Pricing Step
                 Route::get('/{property}/pricing', [UserPropertyController::class, 'pricing'])->name('pricing');
                 Route::put('/{property}/pricing', [UserPropertyController::class, 'updatePricing'])->name('pricing.update');
@@ -47,6 +51,10 @@ Route::middleware(['web', 'auth'])
 
                 Route::get('/{property}/edit', [UserPropertyController::class, 'edit'])->name('edit');
                 Route::put('/{property}', [UserPropertyController::class, 'update'])->name('update');
+
+                // Update All (New Route)
+                Route::put('/{property}/update-all', [UserPropertyController::class, 'updateAll'])->name('update-all');
+
                 Route::delete('/{property}', [UserPropertyController::class, 'destroy'])->name('destroy');
 
                 // Image Deletion

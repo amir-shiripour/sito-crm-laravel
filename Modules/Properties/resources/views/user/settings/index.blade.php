@@ -85,6 +85,14 @@
                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">درج سال شمسی در ابتدای کد</span>
                     </label>
 
+                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer transition-colors hover:bg-white dark:hover:bg-gray-800">
+                        <input type="checkbox" name="property_code_use_category_slug" value="1" {{ $property_code_use_category_slug ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">استفاده از نامک دسته‌بندی به عنوان پیش‌وند</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">در صورت انتخاب دسته‌بندی برای ملک، نامک (Slug) آن جایگزین پیش‌وند پیش‌فرض می‌شود.</span>
+                        </div>
+                    </label>
+
                     <div class="text-center py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-mono border border-indigo-100 dark:border-indigo-800 dir-ltr">
                         Sample: 1403{{ $property_code_separator ?: '-' }}{{ $property_code_prefix ?: 'P' }}{{ $property_code_separator ?: '-' }}1001
                     </div>

@@ -72,6 +72,11 @@
                                                 سیستمی
                                             </span>
                                         @endif
+                                        @if($status->is_default)
+                                            <span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                                پیش‌فرض
+                                            </span>
+                                        @endif
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
                                         <span class="inline-flex items-center gap-1">
@@ -198,7 +203,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <label class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-700/40">
                         <input
                             type="checkbox"
@@ -208,8 +213,17 @@
                         <span class="text-xs text-gray-700 dark:text-gray-300">فعال</span>
                     </label>
 
+                    <label class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-700/40">
+                        <input
+                            type="checkbox"
+                            class="{{ $checkboxClass }}"
+                            wire:model.defer="is_default"
+                        >
+                        <span class="text-xs text-gray-700 dark:text-gray-300">وضعیت پیش‌فرض</span>
+                    </label>
+
                     @if($is_system)
-                        <div class="flex items-center text-[11px] text-gray-500 dark:text-gray-400">
+                        <div class="col-span-2 flex items-center text-[11px] text-gray-500 dark:text-gray-400">
                             وضعیت سیستمی (غیرقابل حذف)
                         </div>
                     @endif

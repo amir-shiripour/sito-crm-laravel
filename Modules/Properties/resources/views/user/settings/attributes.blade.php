@@ -326,7 +326,7 @@
     <script>
         function attributeSettings() {
             return {
-                activeTab: 'details',
+                activeTab: '{{ session('active_tab', 'details') }}',
                 newType: 'text',
                 isFilterable: false
             }
