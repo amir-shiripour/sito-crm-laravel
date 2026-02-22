@@ -840,69 +840,60 @@
                     this.initVoiceTyping();
                 },
 
-                // --- Voice Typing Methods with Debug Log ---
+                // --- Voice Typing Methods Optimized for iOS ---
                 initVoiceTyping() {
-                    console.log('Initializing Speech Recognition...');
                     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
                     if (SpeechRecognition) {
                         this.isVoiceTypingSupported = true;
-                        this.recognition = new SpeechRecognition();
-
-                        // تنظیمات مخصوص آیفون برای پایداری بیشتر
-                        this.recognition.continuous = false; // در iOS حالت false معمولاً بهتر جواب می‌دهد
-                        this.recognition.interimResults = false;
-                        this.recognition.lang = 'fa-IR';
-
-                        this.recognition.onstart = () => {
-                            console.log('Microphone is now ACTIVE');
-                            this.isVoiceTyping = true;
-                        };
-
-                        this.recognition.onresult = (event) => {
-                            console.log('Result received:', event);
-                            const transcript = event.results[0][0].transcript;
-                            this.description = (this.description || '').trim() + ' ' + transcript.trim();
-                        };
-
-                        this.recognition.onend = () => {
-                            console.log('Speech Recognition ended');
-                            this.isVoiceTyping = false;
-                        };
-
-                        this.recognition.onerror = (event) => {
-                            // این بخش بسیار مهم است، ارور دقیق را اینجا می‌گیریم
-                            const errorDetail = `Error: ${event.error}. Message: ${event.message || 'No message'}`;
-                            console.error('Detailed Error:', event);
-
-                            this.isVoiceTyping = false;
-
-                            // نمایش ارور دقیق برای شما
-                            window.dispatchEvent(new CustomEvent('notify', {
-                                detail: { type: 'error', text: `جزئیات خطا: ${event.error}` }
-                            }));
-                        };
-                    } else {
-                        console.error('SpeechRecognition NOT supported in this browser.');
+                        // در آیفون نباید آبجکت را در ابتدا بسازیم، باید در لحظه کلیک ساخته شود.
                     }
                 },
 
                 toggleVoiceTyping() {
-                    console.log('Toggle Clicked. Current state:', this.isVoiceTyping);
                     if (!this.isVoiceTypingSupported) return;
 
                     if (this.isVoiceTyping) {
                         this.recognition.stop();
-                    } else {
-                        try {
-                            // تلاش برای شروع
-                            this.recognition.start();
-                        } catch (e) {
-                            console.error("Start Metod Exception:", e);
-                            // اگر خطای 'already started' داد، یکبار استاپ و دوباره استارت می‌کنیم
-                            this.recognition.stop();
-                            setTimeout(() => this.recognition.start(), 300);
+                        this.isVoiceTyping = false;
+                        return;
+                    }
+
+                    // ساخت آبجکت دقیقاً در لحظه کلیک کاربر (اجباری برای iOS)
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+
+                    this.recognition.lang = 'fa-IR';
+                    this.recognition.continuous = false; // برای آیفون حتما false بگذارید
+                    this.recognition.interimResults = false;
+
+                    this.recognition.onstart = () => {
+                        this.isVoiceTyping = true;
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        this.description = (this.description || '').trim() + ' ' + transcript.trim();
+                    };
+
+                    this.recognition.onerror = (event) => {
+                        console.error('Speech Error:', event.error);
+                        this.isVoiceTyping = false;
+
+                        if (event.error === 'service-not-allowed') {
+                            window.dispatchEvent(new CustomEvent('notify', {
+                                detail: { type: 'error', text: 'سرویس صوتی توسط اپل برای این سایت محدود شده است. لطفاً از کیبورد گوشی دکمه میکروفون را بزنید.' }
+                            }));
                         }
+                    };
+
+                    this.recognition.onend = () => {
+                        this.isVoiceTyping = false;
+                    };
+
+                    try {
+                        this.recognition.start();
+                    } catch (e) {
+                        console.error("Start Exception", e);
                     }
                 },
 
