@@ -248,16 +248,19 @@
                                         <div class="flex justify-between items-center mb-2">
                                             <label class="{{ $labelClass }} mb-0">توضیحات تکمیلی</label>
                                             <div class="flex items-center gap-2">
-                                                <button type="button" @click="toggleVoiceTyping" :disabled="!isVoiceTypingSupported"
-                                                        class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        :class="{
-                                                            'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40': !isVoiceTyping,
-                                                            'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/40 animate-pulse': isVoiceTyping
-                                                        }">
-                                                    <svg x-show="!isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14a2 2 0 0 0 2-2V6a2 2 0 0 0-4 0v6a2 2 0 0 0 2 2Zm-2-8a2 2 0 0 1 4 0v6a2 2 0 0 1-4 0V6Zm8 5a1 1 0 0 0-1 1v1a5 5 0 0 1-10 0v-1a1 1 0 1 0-2 0v1a7 7 0 0 0 6 6.92V21a1 1 0 1 0 2 0v-2.08A7 7 0 0 0 20 12v-1a1 1 0 0 0-1-1Z"/></svg>
-                                                    <svg x-show="isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5.793 5.793a1 1 0 0 1 1.414 0L12 10.586l4.793-4.793a1 1 0 1 1 1.414 1.414L13.414 12l4.793 4.793a1 1 0 0 1-1.414 1.414L12 13.414l-4.793 4.793a1 1 0 0 1-1.414-1.414L10.586 12 5.793 7.207a1 1 0 0 1 0-1.414Z"/></svg>
-                                                    <span x-text="isVoiceTyping ? 'توقف' : 'صوتی'"></span>
-                                                </button>
+                                                <div x-data="{ tooltip: 'برای تایپ صوتی به اتصال امن (HTTPS) نیاز است.' }">
+                                                    <button type="button" @click="toggleVoiceTyping" :disabled="!isVoiceTypingSupported"
+                                                            x-tooltip="!isVoiceTypingSupported ? tooltip : ''"
+                                                            class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-help"
+                                                            :class="{
+                                                                'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40': !isVoiceTyping,
+                                                                'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/40 animate-pulse': isVoiceTyping
+                                                            }">
+                                                        <svg x-show="!isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14a2 2 0 0 0 2-2V6a2 2 0 0 0-4 0v6a2 2 0 0 0 2 2Zm-2-8a2 2 0 0 1 4 0v6a2 2 0 0 1-4 0V6Zm8 5a1 1 0 0 0-1 1v1a5 5 0 0 1-10 0v-1a1 1 0 1 0-2 0v1a7 7 0 0 0 6 6.92V21a1 1 0 1 0 2 0v-2.08A7 7 0 0 0 20 12v-1a1 1 0 0 0-1-1Z"/></svg>
+                                                        <svg x-show="isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5.793 5.793a1 1 0 0 1 1.414 0L12 10.586l4.793-4.793a1 1 0 1 1 1.414 1.414L13.414 12l4.793 4.793a1 1 0 0 1-1.414 1.414L12 13.414l-4.793 4.793a1 1 0 0 1-1.414-1.414L10.586 12 5.793 7.207a1 1 0 0 1 0-1.414Z"/></svg>
+                                                        <span x-text="isVoiceTyping ? 'توقف' : 'صوتی'"></span>
+                                                    </button>
+                                                </div>
                                                 @if($aiEnabled)
                                                     <button type="button" @click="completeWithAI" :disabled="isCompletingAI" class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                                         <svg x-show="!isCompletingAI" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -872,8 +875,10 @@
 
                 // --- Voice Typing Methods ---
                 initVoiceTyping() {
+                    const isSecureContext = window.isSecureContext; // Check for HTTPS
                     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    if (SpeechRecognition) {
+
+                    if (isSecureContext && SpeechRecognition) {
                         this.isVoiceTypingSupported = true;
                         this.recognition = new SpeechRecognition();
                         this.recognition.continuous = true;
@@ -893,14 +898,16 @@
                         };
 
                         this.recognition.onend = () => {
-                            this.isVoiceTyping = false;
+                            if (this.isVoiceTyping) {
+                                this.isVoiceTyping = false;
+                            }
                         };
 
                         this.recognition.onerror = (event) => {
                             console.error('Speech recognition error', event.error);
                             let errorMessage = 'خطا در تشخیص گفتار.';
                             if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                                errorMessage = 'دسترسی به میکروفون مجاز نیست. لطفاً دسترسی را فعال کنید.';
+                                errorMessage = 'دسترسی به میکروفون مجاز نیست. لطفاً دسترسی را از تنظیمات مرورگر فعال کنید.';
                             } else if (event.error === 'no-speech') {
                                 errorMessage = 'هیچ صدایی شناسایی نشد.';
                             }
@@ -909,13 +916,17 @@
                         };
                     } else {
                         this.isVoiceTypingSupported = false;
-                        console.warn('Speech Recognition not supported by this browser.');
+                        if (!isSecureContext) {
+                            console.warn('Voice typing is disabled. It requires a secure context (HTTPS).');
+                        } else {
+                            console.warn('Speech Recognition not supported by this browser.');
+                        }
                     }
                 },
 
                 toggleVoiceTyping() {
                     if (!this.isVoiceTypingSupported) {
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'مرورگر شما از تایپ صوتی پشتیبانی نمی‌کند.' } }));
+                        // The button is already disabled and has a tooltip, so no extra notification is needed here.
                         return;
                     }
                     if (this.isVoiceTyping) {
