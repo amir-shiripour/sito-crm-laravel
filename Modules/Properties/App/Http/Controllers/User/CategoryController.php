@@ -6,6 +6,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use Modules\Properties\Entities\PropertyCategory;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
@@ -22,6 +23,7 @@ class CategoryController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:7',
         ]);
 
@@ -31,6 +33,7 @@ class CategoryController extends Controller
 
         PropertyCategory::create([
             'name' => $request->name,
+            'slug' => $request->slug ? Str::slug($request->slug) : Str::slug($request->name),
             'color' => $request->color ?? '#6366f1',
             'user_id' => auth()->id(),
         ]);
@@ -46,6 +49,7 @@ class CategoryController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:7',
         ]);
 
@@ -55,6 +59,7 @@ class CategoryController extends Controller
 
         $category->update([
             'name' => $request->name,
+            'slug' => $request->slug ? Str::slug($request->slug) : Str::slug($request->name),
             'color' => $request->color,
         ]);
 

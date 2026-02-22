@@ -78,6 +78,7 @@
                                             <option value="text">متن (Text)</option>
                                             <option value="number">عدد (Number)</option>
                                             <option value="select">لیست کشویی (Select)</option>
+                                            <option value="checkbox">چک‌باکس (Checkbox)</option>
                                         </select>
                                         <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
@@ -115,7 +116,7 @@
                     {{-- لیست ویژگی‌ها --}}
                     <div class="space-y-3">
                         @forelse($detailsAttributes as $attr)
-                            <div class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ $attr->name }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }}, isRangeFilter: {{ $attr->is_range_filter ? 'true' : 'false' }} }">
+                            <div class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ $attr->name }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }}, isRangeFilter: {{ $attr->is_range_filter ? 'true' : 'false' }} }">
                                 <div class="flex items-center gap-4 flex-1">
                                     <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
                                         <span class="text-xs font-mono font-bold">{{ $loop->iteration }}</span>
@@ -137,7 +138,7 @@
                                             </h4>
                                             <div class="flex items-center gap-2 mt-1">
                                             <span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                                {{ match($attr->type) { 'text' => 'متن', 'number' => 'عدد', 'select' => 'لیست', default => $attr->type } }}
+                                                {{ match($attr->type) { 'text' => 'متن', 'number' => 'عدد', 'select' => 'لیست', 'checkbox' => 'چک‌باکس', default => $attr->type } }}
                                             </span>
                                                 @if($attr->type === 'select')
                                                     <span class="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[200px]" title="{{ implode(', ', $attr->options ?? []) }}">
@@ -151,24 +152,29 @@
                                         <form x-show="editing" action="{{ route('user.settings.properties.attributes.update', $attr) }}" method="POST" class="flex flex-col gap-3 mt-2">
                                             @csrf
                                             @method('PUT')
-                                            <input type="hidden" name="type" value="{{ $attr->type }}">
+
                                             <div class="flex gap-2">
                                                 <input type="text" name="name" x-model="name" class="{{ $inputClass }} py-1.5 text-xs" required>
-                                                @if($attr->type === 'select')
-                                                    <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1.5 text-xs" placeholder="گزینه‌ها">
-                                                @endif
+
+                                                <select name="type" x-model="type" class="{{ $selectClass }} py-1.5 text-xs w-32">
+                                                    <option value="text">متن</option>
+                                                    <option value="number">عدد</option>
+                                                    <option value="select">لیست</option>
+                                                    <option value="checkbox">چک‌باکس</option>
+                                                </select>
+
+                                                <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1.5 text-xs" placeholder="گزینه‌ها" x-show="type === 'select'">
                                             </div>
                                             <div class="flex gap-4">
                                                 <label class="flex items-center gap-2 cursor-pointer">
                                                     <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
                                                     <span class="text-xs text-gray-700 dark:text-gray-300">قابل فیلتر</span>
                                                 </label>
-                                                @if($attr->type === 'number')
-                                                    <label class="flex items-center gap-2 cursor-pointer" x-show="isFilterable">
-                                                        <input type="checkbox" name="is_range_filter" value="1" class="{{ $checkboxClass }}" x-model="isRangeFilter">
-                                                        <span class="text-xs text-gray-700 dark:text-gray-300">فیلتر بازه‌ای</span>
-                                                    </label>
-                                                @endif
+
+                                                <label class="flex items-center gap-2 cursor-pointer" x-show="isFilterable && type === 'number'">
+                                                    <input type="checkbox" name="is_range_filter" value="1" class="{{ $checkboxClass }}" x-model="isRangeFilter">
+                                                    <span class="text-xs text-gray-700 dark:text-gray-300">فیلتر بازه‌ای</span>
+                                                </label>
                                             </div>
                                             <div class="flex gap-2">
                                                 <button type="submit" class="px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700">ذخیره</button>
@@ -241,7 +247,7 @@
                     {{-- لیست امکانات --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         @forelse($featuresAttributes as $attr)
-                            <div class="group flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ $attr->name }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }} }">
+                            <div class="group flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ $attr->name }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }} }">
                                 <div class="flex items-center gap-3 flex-1">
                                     <div class="w-2 h-2 rounded-full bg-emerald-400" x-show="!editing"></div>
                                     <div class="flex-1">
@@ -252,16 +258,31 @@
                                                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                                                 </span>
                                             @endif
+                                            <span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                                {{ match($attr->type) { 'text' => 'متن', 'number' => 'عدد', 'select' => 'لیست', 'checkbox' => 'چک‌باکس', default => $attr->type } }}
+                                            </span>
                                         </div>
 
                                         {{-- فرم ویرایش --}}
                                         <form x-show="editing" action="{{ route('user.settings.properties.attributes.update', $attr) }}" method="POST" class="flex flex-col gap-3 mt-2 w-full">
                                             @csrf
                                             @method('PUT')
-                                            <input type="hidden" name="type" value="checkbox">
+
                                             <div class="flex gap-2 w-full">
-                                                <input type="text" name="name" x-model="name" class="{{ $inputClass }} py-1.5 text-xs w-full" required>
+                                                <input type="text" name="name" x-model="name" class="{{ $inputClass }} py-1.5 text-xs flex-1" required>
+
+                                                <select name="type" x-model="type" class="{{ $selectClass }} py-1.5 text-xs w-28">
+                                                    <option value="checkbox">چک‌باکس</option>
+                                                    <option value="text">متن</option>
+                                                    <option value="number">عدد</option>
+                                                    <option value="select">لیست</option>
+                                                </select>
                                             </div>
+
+                                            <div x-show="type === 'select'" class="w-full">
+                                                <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1.5 text-xs w-full" placeholder="گزینه‌ها (با کاما جدا کنید)">
+                                            </div>
+
                                             <div class="flex gap-4">
                                                 <label class="flex items-center gap-2 cursor-pointer">
                                                     <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
@@ -305,7 +326,7 @@
     <script>
         function attributeSettings() {
             return {
-                activeTab: 'details',
+                activeTab: '{{ session('active_tab', 'details') }}',
                 newType: 'text',
                 isFilterable: false
             }

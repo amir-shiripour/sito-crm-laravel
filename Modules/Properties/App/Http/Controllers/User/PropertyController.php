@@ -30,6 +30,11 @@ class PropertyController extends Controller
         $query = Property::query()
             ->with('status', 'creator', 'agent', 'category', 'building');
 
+        // Check for trash view
+        if ($request->has('trashed') && $request->trashed == '1') {
+            $query->onlyTrashed();
+        }
+
         // Visibility Logic:
         // Default: Show only user's properties (created_by OR agent_id)
         // If user has permission AND requests 'show_all', then show all.
@@ -212,9 +217,9 @@ class PropertyController extends Controller
 
         // Handle Property Code
         if ($request->input('code_type') === 'auto' || empty($data['code'])) {
-            $data['code'] = $this->generateUniquePropertyCode();
+            $data['code'] = $this->generateUniquePropertyCode($data['category_id'] ?? null);
         } else {
-            $prefix = $this->getPropertyCodePrefix();
+            $prefix = $this->getPropertyCodePrefix($data['category_id'] ?? null);
             $data['code'] = $prefix . $data['code'];
 
             if (Property::withTrashed()->where('code', $data['code'])->exists()) {
@@ -278,6 +283,18 @@ class PropertyController extends Controller
             $data['agent_id'] = $user->id;
         }
 
+        // Set Default Status if not provided
+        if (empty($data['status_id'])) {
+            $defaultStatus = PropertyStatus::where('is_default', true)->first();
+            if ($defaultStatus) {
+                $data['status_id'] = $defaultStatus->id;
+            } else {
+                // Fallback to first active status if no default is set
+                $firstStatus = PropertyStatus::where('is_active', true)->orderBy('sort_order')->first();
+                $data['status_id'] = $firstStatus?->id;
+            }
+        }
+
         // Prepare Meta Data
         $meta = $request->input('meta', []);
 
@@ -303,7 +320,7 @@ class PropertyController extends Controller
             } catch (\Illuminate\Database\QueryException $e) {
                 if ($e->errorInfo[1] == 1062 && strpos($e->getMessage(), 'properties_code_unique') !== false) {
                     if ($request->input('code_type') === 'auto' || empty($request->input('code'))) {
-                        $data['code'] = $this->generateUniquePropertyCode();
+                        $data['code'] = $this->generateUniquePropertyCode($data['category_id'] ?? null);
                         $retryCount++;
                         continue;
                     } else {
@@ -679,6 +696,16 @@ class PropertyController extends Controller
         $allowedTypes = PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif');
         $allowedTypes = str_replace(' ', '', $allowedTypes);
 
+        // Sanitize prices
+        $priceFields = ['price', 'min_price', 'deposit_price', 'rent_price', 'advance_price'];
+        foreach ($priceFields as $field) {
+            if ($request->has($field) && !is_null($request->input($field))) {
+                $request->merge([
+                    $field => str_replace(',', '', $request->input($field))
+                ]);
+            }
+        }
+
         $data = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -701,7 +728,30 @@ class PropertyController extends Controller
             'cover_image' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'is_special' => 'nullable|boolean',
-            'agent_id' => 'nullable|exists:users,id', // Explicitly validate agent_id
+            'agent_id' => 'nullable|exists:users,id',
+
+            // Pricing
+            'price' => 'nullable|numeric|min:0',
+            'min_price' => 'nullable|numeric|min:0',
+            'deposit_price' => 'nullable|numeric|min:0',
+            'rent_price' => 'nullable|numeric|min:0',
+            'advance_price' => 'nullable|numeric|min:0',
+            'is_convertible' => 'nullable|boolean',
+            'convertible_with' => 'nullable|string|max:255',
+
+            // Attributes
+            'attributes' => 'nullable|array',
+            'attributes.*' => 'nullable|string|max:255',
+
+            // Features (System)
+            'features' => 'nullable|array',
+            'features.*' => 'exists:property_attributes,id',
+
+            // Meta (Custom Details & Features)
+            'meta' => 'nullable|array',
+            'meta.features' => 'nullable|array',
+            'meta.features.*' => 'string',
+            'meta.details' => 'nullable|array',
         ]);
 
         if ($request->hasFile('cover_image')) {
@@ -735,13 +785,36 @@ class PropertyController extends Controller
             }
         }
 
-        // Handle Special Property
+        // Handle Special Property & Meta
         $meta = $property->meta ?? [];
+
+        // Update is_special
         if ($request->has('is_special')) {
             $meta['is_special'] = true;
         } else {
             $meta['is_special'] = false;
         }
+
+        // Update Custom Details
+        if (isset($data['meta']['details'])) {
+            $meta['details'] = []; // Reset to overwrite or merge carefully
+            foreach ($data['meta']['details'] as $item) {
+                if (!empty($item['key'])) {
+                    $meta['details'][$item['key']] = $item['value'];
+                }
+            }
+        }
+
+        // Update Custom Features
+        if (isset($data['meta']['features'])) {
+            $meta['features'] = []; // Reset
+            foreach ($data['meta']['features'] as $item) {
+                if (!empty($item['value'])) {
+                    $meta['features'][] = $item['value'];
+                }
+            }
+        }
+
         $property->meta = $meta;
         $property->save();
 
@@ -752,11 +825,44 @@ class PropertyController extends Controller
         $isAdmin = $user->hasRole(['super-admin', 'admin']);
 
         if (!$isAdmin && $isAgent) {
-            // If user is agent and not admin, they cannot change the agent_id
             unset($data['agent_id']);
         }
 
         $property->update($data);
+
+        // Update Attributes (Details)
+        if (isset($data['attributes'])) {
+            foreach ($data['attributes'] as $attributeId => $value) {
+                if (!empty($value)) {
+                    PropertyAttributeValue::updateOrCreate(
+                        ['property_id' => $property->id, 'attribute_id' => $attributeId],
+                        ['value' => $value]
+                    );
+                } else {
+                    PropertyAttributeValue::where('property_id', $property->id)
+                        ->where('attribute_id', $attributeId)
+                        ->delete();
+                }
+            }
+        }
+
+        // Update Features (System)
+        // First, remove all existing system features for this property
+        $featureAttributeIds = PropertyAttribute::where('section', 'features')->pluck('id');
+        PropertyAttributeValue::where('property_id', $property->id)
+            ->whereIn('attribute_id', $featureAttributeIds)
+            ->delete();
+
+        // Then add selected ones
+        if (isset($data['features'])) {
+            foreach ($data['features'] as $featureId) {
+                PropertyAttributeValue::create([
+                    'property_id' => $property->id,
+                    'attribute_id' => $featureId,
+                    'value' => '1',
+                ]);
+            }
+        }
 
         if ($request->hasFile('gallery_images')) {
             $currentCount = $property->images()->count();
@@ -875,11 +981,19 @@ class PropertyController extends Controller
         return response()->json($agents);
     }
 
-    private function getPropertyCodePrefix(): string
+    private function getPropertyCodePrefix($categoryId = null): string
     {
+        $useCategorySlug = PropertySetting::get('property_code_use_category_slug', 0);
         $prefix = PropertySetting::get('property_code_prefix', 'P');
         $separator = PropertySetting::get('property_code_separator', '-');
         $includeYear = PropertySetting::get('property_code_include_year', 1);
+
+        if ($useCategorySlug && $categoryId) {
+            $category = PropertyCategory::find($categoryId);
+            if ($category && !empty($category->slug)) {
+                $prefix = $category->slug;
+            }
+        }
 
         $code = '';
 
@@ -895,9 +1009,9 @@ class PropertyController extends Controller
         return $code;
     }
 
-    private function generateUniquePropertyCode(): string
+    private function generateUniquePropertyCode($categoryId = null): string
     {
-        $prefixPart = $this->getPropertyCodePrefix();
+        $prefixPart = $this->getPropertyCodePrefix($categoryId);
 
         $lastProperty = Property::withTrashed()
             ->where('code', 'like', "{$prefixPart}%")

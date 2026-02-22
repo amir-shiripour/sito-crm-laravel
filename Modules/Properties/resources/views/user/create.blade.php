@@ -20,15 +20,17 @@
     $isAdmin = $user->hasRole(['super-admin', 'admin']);
 
     // تعیین اینکه آیا کاربر می‌تواند مشاور را تغییر دهد
-    // اگر ادمین باشد یا نقش مشاور نداشته باشد (مثلا کال سنتر)، می‌تواند تغییر دهد.
-    // اگر نقش مشاور داشته باشد (و ادمین نباشد)، نمی‌تواند.
     $canChangeAgent = $isAdmin || !$isAgent;
 
-    $defaultAgentId = $isAgent ? $user->id : null; // If user is an agent, default to themselves
+    $defaultAgentId = $isAgent ? $user->id : null;
     $defaultAgentName = $isAgent ? $user->name : null;
 
     // بررسی فعال بودن هوش مصنوعی
     $aiEnabled = \Modules\Properties\Entities\PropertySetting::get('ai_property_completion', 0);
+
+    // پیدا کردن وضعیت پیش‌فرض
+    $defaultStatus = $statuses->firstWhere('is_default', true) ?? $statuses->firstWhere('is_active', true);
+    $defaultStatusId = $defaultStatus ? $defaultStatus->id : '';
 @endphp
 
 @section('content')
@@ -249,7 +251,7 @@
                                     <select name="status_id" class="{{ $selectClass }}">
                                         <option value="">انتخاب کنید...</option>
                                         @foreach($statuses as $status)
-                                            <option value="{{ $status->id }}">{{ $status->label }}</option>
+                                            <option value="{{ $status->id }}" {{ $status->id == $defaultStatusId ? 'selected' : '' }}>{{ $status->label }}</option>
                                         @endforeach
                                     </select>
                                     <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">

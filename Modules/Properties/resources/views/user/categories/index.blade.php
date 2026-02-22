@@ -30,6 +30,7 @@
                         <thead class="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
                             <tr>
                                 <th class="px-6 py-4 font-bold">نام دسته‌بندی</th>
+                                <th class="px-6 py-4 font-bold">نامک (Slug)</th>
                                 <th class="px-6 py-4 font-bold">رنگ</th>
                                 <th class="px-6 py-4 font-bold">تعداد املاک</th>
                                 <th class="px-6 py-4 font-bold text-left">عملیات</th>
@@ -39,6 +40,7 @@
                             @foreach($categories as $category)
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
                                     <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ $category->name }}</td>
+                                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400 font-mono text-xs">{{ $category->slug }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-2">
                                             <span class="w-6 h-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600" style="background-color: {{ $category->color }}"></span>
@@ -48,7 +50,7 @@
                                     <td class="px-6 py-4 text-gray-500">{{ $category->properties()->count() }} ملک</td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onclick="openEditModal({{ $category->id }}, '{{ $category->name }}', '{{ $category->color }}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg dark:text-indigo-400 dark:hover:bg-indigo-900/30 transition-colors" title="ویرایش">
+                                            <button onclick="openEditModal({{ $category->id }}, '{{ $category->name }}', '{{ $category->slug }}', '{{ $category->color }}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg dark:text-indigo-400 dark:hover:bg-indigo-900/30 transition-colors" title="ویرایش">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                             </button>
                                             <form action="{{ route('user.properties.categories.destroy', $category) }}" method="POST" onsubmit="return confirm('آیا از حذف این دسته‌بندی اطمینان دارید؟ املاک متصل به این دسته‌بندی بدون دسته خواهند شد.');">
@@ -105,6 +107,11 @@
                                         <input type="text" name="name" id="categoryName" class="w-full rounded-xl border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                                     </div>
                                     <div>
+                                        <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">نامک (Slug) - اختیاری</label>
+                                        <input type="text" name="slug" id="categorySlug" class="w-full rounded-xl border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="اگر خالی بماند، از نام دسته‌بندی ساخته می‌شود">
+                                        <p class="text-xs text-gray-500 mt-1">فقط حروف انگلیسی، اعداد و خط تیره مجاز است.</p>
+                                    </div>
+                                    <div>
                                         <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">رنگ</label>
                                         <div class="flex items-center gap-4">
                                             <input type="color" name="color" id="categoryColor" class="h-10 w-20 rounded cursor-pointer" value="#6366f1">
@@ -133,18 +140,20 @@
             document.getElementById('categoryForm').action = "{{ route('user.properties.categories.store') }}";
             document.getElementById('formMethod').value = "POST";
             document.getElementById('categoryName').value = "";
+            document.getElementById('categorySlug').value = "";
             document.getElementById('categoryColor').value = "#6366f1";
             document.getElementById('modal-title').innerText = "افزودن دسته‌بندی جدید";
             document.getElementById('categoryModal').classList.remove('hidden');
         }
 
-        function openEditModal(id, name, color) {
+        function openEditModal(id, name, slug, color) {
             let url = "{{ route('user.properties.categories.update', ':id') }}";
             url = url.replace(':id', id);
 
             document.getElementById('categoryForm').action = url;
             document.getElementById('formMethod').value = "PUT";
             document.getElementById('categoryName').value = name;
+            document.getElementById('categorySlug').value = slug;
             document.getElementById('categoryColor').value = color;
             document.getElementById('modal-title').innerText = "ویرایش دسته‌بندی";
             document.getElementById('categoryModal').classList.remove('hidden');

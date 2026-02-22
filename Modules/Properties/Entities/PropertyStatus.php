@@ -17,11 +17,13 @@ class PropertyStatus extends Model
         'color',
         'is_system',
         'is_active',
+        'is_default',
         'sort_order',
     ];
 
     protected $casts = [
         'is_system' => 'boolean',
         'is_active' => 'boolean',
+        'is_default' => 'boolean',
     ];
 }
