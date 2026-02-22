@@ -434,7 +434,7 @@
                                         @endif
                                     </div>
                                 </div>
-                                <textarea name="description" x-model="description" rows="4" class="{{ $inputClass }} resize-none leading-relaxed" placeholder="جزئیات بیشتر درباره امکانات، دسترسی‌ها و شرایط ملک..."></textarea>
+                                <textarea name="description" x-model="description" spellcheck="true" lang="fa" rows="4" class="{{ $inputClass }} resize-none leading-relaxed" placeholder="جزئیات بیشتر درباره امکانات، دسترسی‌ها و شرایط ملک..."></textarea>
                                 <p class="text-[10px] text-gray-500 mt-1">برای استفاده از هوش مصنوعی، ابتدا توضیحات را بنویسید و سپس دکمه تکمیل هوشمند را بزنید.</p>
                             </div>
 
@@ -842,15 +842,16 @@
 
                 // --- Voice Typing Methods ---
                 initVoiceTyping() {
-                    // در iOS حتما باید از webkit استفاده شود
+                    // آیفون از SpeechRecognition استفاده نمی‌کند و فقط webkitSpeechRecognition را می‌شناسد
                     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
                     if (SpeechRecognition) {
                         this.isVoiceTypingSupported = true;
                         this.recognition = new SpeechRecognition();
+
+                        // تنظیمات بهینه برای iOS
                         this.recognition.continuous = true;
-                        // برای پایداری بیشتر در آیفون، این مورد را false کنید یا فقط برای نمایش موقت استفاده کنید
-                        this.recognition.interimResults = true;
+                        this.recognition.interimResults = false; // در iOS حالت false پایداری بیشتری دارد
                         this.recognition.lang = 'fa-IR';
 
                         this.recognition.onresult = (event) => {
@@ -861,9 +862,13 @@
                                 }
                             }
                             if (finalTranscript) {
-                                // اطمینان از آپدیت شدن فیلد در Alpine
+                                // آپدیت کردن مقدار توضیحات
                                 this.description = (this.description || '').trim() + ' ' + finalTranscript.trim();
                             }
+                        };
+
+                        this.recognition.onstart = () => {
+                            this.isVoiceTyping = true;
                         };
 
                         this.recognition.onend = () => {
@@ -871,9 +876,16 @@
                         };
 
                         this.recognition.onerror = (event) => {
-                            console.error('Speech error:', event.error);
+                            console.error('Speech Recognition Error:', event.error);
                             this.isVoiceTyping = false;
-                            // در iOS خطای 'not-allowed' رایج است اگر اجازه میکروفون قبلاً رد شده باشد
+
+                            let msg = 'خطا در تایپ صوتی';
+                            if (event.error === 'not-allowed') msg = 'اجازه دسترسی به میکروفون داده نشده است.';
+                            if (event.error === 'network') msg = 'اتصال اینترنت را بررسی کنید.';
+
+                            window.dispatchEvent(new CustomEvent('notify', {
+                                detail: { type: 'error', text: msg }
+                            }));
                         };
                     }
                 },
@@ -883,20 +895,15 @@
 
                     if (this.isVoiceTyping) {
                         this.recognition.stop();
-                        this.isVoiceTyping = false;
                     } else {
-                        // در iOS گاهی اوقات نیاز است که قبل از شروع، یک صوت کوچک پخش شود یا مستقیماً متد فراخوانی شود
                         try {
+                            // در آیفون، این متد باید مستقیماً اینجا صدا زده شود
                             this.recognition.start();
-                            this.isVoiceTyping = true;
-                        } catch(e) {
-                            console.error("Start error:", e);
-                            // اگر قبلاً ساخته شده باشد و متوقف نشده باشد، خطا می‌دهد
+                        } catch (e) {
+                            console.error("Failed to start recognition:", e);
+                            // اگر قبلاً در حال اجرا بود، ریستارتش کن
                             this.recognition.stop();
-                            setTimeout(() => {
-                                this.recognition.start();
-                                this.isVoiceTyping = true;
-                            }, 100);
+                            setTimeout(() => this.recognition.start(), 200);
                         }
                     }
                 },
