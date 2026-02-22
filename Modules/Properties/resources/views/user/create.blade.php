@@ -842,13 +842,14 @@
 
                 // --- Voice Typing Methods ---
                 initVoiceTyping() {
-                    const isSecureContext = window.isSecureContext;
+                    // در iOS حتما باید از webkit استفاده شود
                     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-                    if (isSecureContext && SpeechRecognition) {
+                    if (SpeechRecognition) {
                         this.isVoiceTypingSupported = true;
                         this.recognition = new SpeechRecognition();
                         this.recognition.continuous = true;
+                        // برای پایداری بیشتر در آیفون، این مورد را false کنید یا فقط برای نمایش موقت استفاده کنید
                         this.recognition.interimResults = true;
                         this.recognition.lang = 'fa-IR';
 
@@ -860,47 +861,42 @@
                                 }
                             }
                             if (finalTranscript) {
-                                this.description = this.description ? this.description.trim() + ' ' + finalTranscript.trim() : finalTranscript.trim();
+                                // اطمینان از آپدیت شدن فیلد در Alpine
+                                this.description = (this.description || '').trim() + ' ' + finalTranscript.trim();
                             }
                         };
 
                         this.recognition.onend = () => {
-                            if (this.isVoiceTyping) {
-                                this.isVoiceTyping = false;
-                            }
+                            this.isVoiceTyping = false;
                         };
 
                         this.recognition.onerror = (event) => {
-                            console.error('Speech recognition error', event.error);
-                            let errorMessage = 'خطا در تشخیص گفتار.';
-                            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                                errorMessage = 'دسترسی به میکروفون مجاز نیست. لطفاً دسترسی را از تنظیمات مرورگر فعال کنید.';
-                            } else if (event.error === 'no-speech') {
-                                errorMessage = 'هیچ صدایی شناسایی نشد.';
-                            }
-                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: errorMessage } }));
+                            console.error('Speech error:', event.error);
                             this.isVoiceTyping = false;
+                            // در iOS خطای 'not-allowed' رایج است اگر اجازه میکروفون قبلاً رد شده باشد
                         };
-                    } else {
-                        this.isVoiceTypingSupported = false;
                     }
                 },
 
                 toggleVoiceTyping() {
-                    if (!this.isVoiceTypingSupported) {
-                        return;
-                    }
+                    if (!this.isVoiceTypingSupported) return;
+
                     if (this.isVoiceTyping) {
                         this.recognition.stop();
                         this.isVoiceTyping = false;
                     } else {
+                        // در iOS گاهی اوقات نیاز است که قبل از شروع، یک صوت کوچک پخش شود یا مستقیماً متد فراخوانی شود
                         try {
                             this.recognition.start();
                             this.isVoiceTyping = true;
                         } catch(e) {
-                            console.error("Error starting recognition:", e);
-                            this.isVoiceTyping = false;
-                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'امکان شروع تایپ صوتی وجود ندارد.' } }));
+                            console.error("Start error:", e);
+                            // اگر قبلاً ساخته شده باشد و متوقف نشده باشد، خطا می‌دهد
+                            this.recognition.stop();
+                            setTimeout(() => {
+                                this.recognition.start();
+                                this.isVoiceTyping = true;
+                            }, 100);
                         }
                     }
                 },
