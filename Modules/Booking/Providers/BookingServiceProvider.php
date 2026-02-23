@@ -16,6 +16,7 @@ class BookingServiceProvider extends ServiceProvider
     {
         $this->registerConfig();
         $this->registerViews();
+        $this->registerTranslations();
 
         // Load migrations unconditionally
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
@@ -75,5 +76,18 @@ class BookingServiceProvider extends ServiceProvider
         ], 'views');
 
         $this->loadViewsFrom($sourcePath, $this->moduleNameLower);
+    }
+
+    protected function registerTranslations(): void
+    {
+        $langPath = resource_path('lang/modules/' . $this->moduleNameLower);
+
+        if (is_dir($langPath)) {
+            $this->loadTranslationsFrom($langPath, $this->moduleNameLower);
+            $this->loadJsonTranslationsFrom($langPath);
+        } else {
+            $this->loadTranslationsFrom(module_path($this->moduleName, 'lang'), $this->moduleNameLower);
+            $this->loadJsonTranslationsFrom(module_path($this->moduleName, 'lang'));
+        }
     }
 }

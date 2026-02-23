@@ -100,7 +100,7 @@
         <div x-data="{ open: isMenuOpen('{{ $group['module'] }}') }" class="mt-1">
             <button @click="toggleMenu('{{ $group['module'] }}'); open = !open"
                     class="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-                    :title="sidebarCollapsed ? '{{ $group['module_name'] }}' : null">
+                    :title="sidebarCollapsed ? '{{ __($group['module'] . '::menu.group_title') }}' : null">
                 @php
                     // استفاده از آیکون اولین آیتم گروه به عنوان آیکون گروه
                     $firstItem = $group['items'][0] ?? null;
@@ -116,7 +116,7 @@
                     </svg>';
                     }
                 @endphp
-                <span x-show="!sidebarCollapsed" class="flex-1 text-start">{{ $group['module_name'] }}</span>
+                <span x-show="!sidebarCollapsed" class="flex-1 text-start">{{ __($group['module'] . '::menu.group_title') }}</span>
                 <svg x-show="!sidebarCollapsed" :class="open ? 'rotate-180' : ''" xmlns="http://www.w3.org/2000/svg"
                      width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform shrink-0">
