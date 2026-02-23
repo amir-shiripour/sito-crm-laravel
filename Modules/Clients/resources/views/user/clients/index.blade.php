@@ -130,7 +130,7 @@
                             @if($clientCallsModule && $clientCallsModule->installed && $clientCallsModule->active)
                                 @can('client-calls.create')
                                     <td class="px-4 py-3 align-top text-xs text-gray-600 dark:text-gray-300">
-                                        <x-client-call-manager :client="$client"/>
+                                        @include('clientcalls::components.client-call-manager', ['client' => $client])
                                     </td>
                                 @endcan
                             @endif
@@ -139,7 +139,7 @@
                             @if($followUpsModule && $followUpsModule->installed && $followUpsModule->active)
                                 @can('followups.create')
                                     <td class="px-4 py-3 align-top text-xs text-gray-600 dark:text-gray-300">
-                                        <x-followups::client-followup-manager :client="$client" />
+                                        @include('followups::components.client-followup-manager', ['client' => $client])
                                     </td>
                                 @endcan
                             @endif
