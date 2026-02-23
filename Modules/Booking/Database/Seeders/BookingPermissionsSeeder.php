@@ -3,23 +3,42 @@
 namespace Modules\Booking\Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class BookingPermissionsSeeder extends Seeder
 {
-    public function run(): void
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
+    public function run()
     {
-        if (!class_exists('Spatie\\Permission\\Models\\Permission')) {
-            $this->command?->warn('Spatie Permission not installed; skipping BookingPermissionsSeeder.');
-            return;
-        }
+        $guard = config('auth.defaults.guard', 'web');
 
-        $permissionClass = \Spatie\Permission\Models\Permission::class;
-        $roleClass = \Spatie\Permission\Models\Role::class;
-
-        $permissions = [
+        // The single source of truth for this module's permissions.
+        $definedPermissions = [
             'booking.view',
             'booking.manage',
+
             'booking.settings.manage',
+
+            'booking.categories.view',
+            'booking.categories.create',
+            'booking.categories.edit',
+            'booking.categories.delete',
+            'booking.categories.manage',
+
+            'booking.forms.view',
+            'booking.forms.create',
+            'booking.forms.edit',
+            'booking.forms.delete',
+            'booking.forms.manage',
 
             'booking.services.view',
             'booking.services.create',
@@ -27,56 +46,74 @@ class BookingPermissionsSeeder extends Seeder
             'booking.services.delete',
             'booking.services.manage',
 
+            'booking.availability.manage',
+
             'booking.appointments.view',
+            'booking.appointments.view.all',
+            'booking.appointments.view.own',
             'booking.appointments.create',
             'booking.appointments.edit',
+            'booking.appointments.cancel',
+            'booking.appointments.manage',
 
-            'booking.categories.view',
-            'booking.categories.create',
-            'booking.categories.edit',
-            'booking.categories.delete',
-            'booking.categories.manage',
-            'booking.forms.manage',
+            'booking.reports.view',
+
+            // Statement permissions
+            'booking.statement.view',
+            'booking.statement.view.all',
+            'booking.statement.view.own',
+            'booking.statement.create',
+            'booking.statement.edit',
+            'booking.statement.delete',
+            'booking.statement.manage',
         ];
 
-        foreach ($permissions as $p) {
-            $permissionClass::findOrCreate($p);
+        // Using a simple file-based tracker to detect changes without relying on the installer class
+        $trackerPath = storage_path('app/module-install-trackers/booking_perms_seeder.json');
+        $trackedPermissions = [];
+        if (File::exists($trackerPath)) {
+            $trackedPermissions = json_decode(File::get($trackerPath), true) ?: [];
         }
 
-        // Optional role assignments (adjust role names to match your project)
-        $roles = [
-            'SUPER_ADMIN' => $permissions,
-            'CRM_ADMIN' => [
-                'booking.view',
-                'booking.manage',
-                'booking.settings.manage',
-                'booking.services.view','booking.services.create','booking.services.edit','booking.services.delete','booking.services.manage',
-                'booking.appointments.view','booking.appointments.create','booking.appointments.edit',
-                'booking.categories.view','booking.categories.create','booking.categories.edit','booking.categories.delete',
-                'booking.categories.manage','booking.forms.manage',
-            ],
-            'OPERATOR' => [
-                'booking.view',
-                'booking.services.view',
-                'booking.appointments.view',
-                'booking.appointments.create',
-            ],
-            'PROVIDER_ROLE' => [
-                'booking.view',
-                'booking.services.view',
-                'booking.services.create',
-                'booking.services.edit',
-                'booking.appointments.view',
-                'booking.appointments.create',
-                'booking.categories.view',
-                'booking.categories.create',
-                'booking.categories.edit',
-            ],
-        ];
+        $permissionsToCreate = array_diff($definedPermissions, $trackedPermissions);
+        $permissionsToRemove = array_diff($trackedPermissions, $definedPermissions);
 
-        foreach ($roles as $roleName => $perms) {
-            $role = $roleClass::findOrCreate($roleName);
-            $role->syncPermissions($perms);
+        // Create newly defined permissions
+        foreach ($permissionsToCreate as $name) {
+            Permission::firstOrCreate([
+                'name'       => $name,
+                'guard_name' => $guard,
+            ]);
         }
+
+        // Remove permissions that are no longer defined
+        if (!empty($permissionsToRemove)) {
+            DB::beginTransaction();
+            try {
+                $perms = Permission::whereIn('name', $permissionsToRemove)->where('guard_name', $guard)->get();
+                foreach ($perms as $perm) {
+                    $perm->roles()->detach();
+                    $perm->delete();
+                }
+                DB::commit();
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                Log::error('BookingPermissionsSeeder: Failed to remove obsolete permissions: ' . $e->getMessage());
+                throw $e;
+            }
+        }
+
+        // Always grant all defined permissions to system roles
+        foreach (['super-admin', 'admin'] as $sysRole) {
+            $role = Role::firstOrCreate(['name' => $sysRole, 'guard_name' => $guard]);
+            $role->givePermissionTo($definedPermissions);
+        }
+
+        // Update tracker to match the new state
+        File::put($trackerPath, json_encode($definedPermissions, JSON_PRETTY_PRINT));
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        Log::info('BookingPermissionsSeeder: Permissions have been synced.');
     }
 }
