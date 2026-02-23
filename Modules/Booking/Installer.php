@@ -14,31 +14,35 @@ class Installer extends BaseModuleInstaller
 {
     protected string $moduleName = 'Booking';
 
-    protected function trackerPath(): string
-    {
-        // This main tracker can be used for general module state if needed.
-        return storage_path('app/module-install-trackers/booking.json');
-    }
-
-    protected function permissionsTrackerPath(): string
-    {
-        // A dedicated tracker for permissions managed by this installer.
-        return storage_path('app/module-install-trackers/booking_permissions.json');
-    }
-
     public function __construct()
     {
         parent::__construct($this->moduleName);
     }
 
+    /**
+     * Overriding the reset method to hook our permission sync logic
+     * after the parent's reset (which includes migrate-refresh).
+     */
+    public function reset(): void
+    {
+        Log::info('Booking Installer: Starting custom reset process...');
+
+        // 1. Execute the parent reset method (handles migrate-refresh, seed, etc.)
+        parent::reset();
+        Log::info('Booking Installer: Parent reset completed.');
+
+        // 2. Now, sync the permissions
+        $this->syncPermissions();
+
+        Log::info('Booking Installer: Custom reset process finished.');
+    }
+
     public function install(): void
     {
         parent::install();
-        Log::info('Booking Installer: Starting install/reset process...');
-
+        Log::info('Booking Installer: Starting install process...');
         $this->syncPermissions();
-
-        Log::info('Booking Installer: Install/reset process finished.');
+        Log::info('Booking Installer: Install process finished.');
     }
 
     private function syncPermissions(): void
@@ -153,5 +157,16 @@ class Installer extends BaseModuleInstaller
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Log::info('Booking Installer: Uninstall process finished.');
+    }
+
+    // Helper methods for tracker paths
+    private function trackerPath(): string
+    {
+        return storage_path('app/module-install-trackers/booking.json');
+    }
+
+    private function permissionsTrackerPath(): string
+    {
+        return storage_path('app/module-install-trackers/booking_permissions.json');
     }
 }

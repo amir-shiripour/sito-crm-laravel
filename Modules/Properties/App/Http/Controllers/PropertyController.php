@@ -10,6 +10,7 @@ use Modules\Properties\Entities\PropertyAttribute;
 use Modules\Properties\Entities\PropertySetting;
 use Modules\Properties\Entities\PropertyCategory;
 use Modules\Properties\Entities\PropertyBuilding;
+use App\Services\GapGPTService;
 
 class PropertyController extends Controller
 {
@@ -293,5 +294,140 @@ class PropertyController extends Controller
         ];
 
         return view('properties::show', compact('property', 'visibilitySettings'));
+    }
+
+    public function aiSearch(Request $request, GapGPTService $gapGPT)
+    {
+        try {
+            if (!PropertySetting::get('ai_property_search', 0)) {
+                return response()->json(['error' => 'قابلیت جستجوی هوشمند غیرفعال است.'], 403);
+            }
+
+            $request->validate([
+                'query' => 'required|string|min:3',
+            ]);
+
+            $query = $request->input('query');
+            Log::info("Public AI Search Started for query: " . $query);
+
+            // Fetch dynamic data for the prompt
+            $categories = PropertyCategory::pluck('name', 'id')->toArray();
+            $categoriesList = implode(', ', array_map(fn($k, $v) => "$k:$v", array_keys($categories), $categories));
+
+            $detailAttributes = PropertyAttribute::where('section', 'details')->where('is_active', true)->get(['id', 'name', 'type']);
+            $detailAttributesList = $detailAttributes->map(fn($a) => "{$a->id}:{$a->name}:{$a->type}")->implode('; ');
+
+            $featureAttributes = PropertyAttribute::where('section', 'features')->where('is_active', true)->get(['id', 'name']);
+            $featureAttributesList = $featureAttributes->map(fn($a) => "{$a->id}:{$a->name}")->implode('; ');
+
+            $prompt = "
+            You are an intelligent real estate search assistant. A user has provided a text description of a property they are looking for in Persian. Your task is to extract all possible search parameters from this text and return them as a valid JSON object.
+
+            User's query:
+            \"$query\"
+
+            Please extract the following fields. The output must be ONLY a valid JSON object, with no extra text or markdown formatting.
+
+            1.  `search`: Specific keywords ONLY. This should include locations (e.g., \"سعادت آباد\", \"فرشته\"), building names, or unique features. **Do NOT put generic terms like 'آپارتمان' or 'فروشی' in this field if you have already identified `property_type` or `listing_type`.**
+            2.  `listing_type`: The type of listing. Possible values: `sale`, `rent`, `presale`. If not specified, leave it null.
+            3.  `property_type`: The type of property. Possible values: `apartment`, `villa`, `land`, `office`.
+            4.  `category_id`: If the user mentions a category, provide its ID from this list (ID:Name): [$categoriesList].
+            5.  `prices`: An object containing price information in Toman. Convert all values to numbers.
+                -   `price_min`: Minimum total price (for sale/presale).
+                -   `price_max`: Maximum total price (for sale/presale).
+                -   `deposit_min`: Minimum deposit/mortgage price (for rent).
+                -   `deposit_max`: Maximum deposit/mortgage price (for rent).
+                -   `rent_min`: Minimum monthly rent.
+                -   `rent_max`: Maximum monthly rent.
+            6.  `details`: An object where the key is the attribute ID and the value is the desired value. Extract values for the following attributes if mentioned.
+                List of available detail attributes (ID:Name:Type): [$detailAttributesList]
+                - For numeric types (like area, bedrooms, age), the value should be an object like `{\"min\": 100, \"max\": 120}` or `{\"min\": 3}`.
+                - For boolean types, use `true` or `false`.
+                - For select types, use the string value mentioned.
+                Example: `{\"5\": {\"min\": 2, \"max\": 3}, \"8\": \"شمالی\"}` (e.g., 5 is bedrooms, 8 is direction).
+            7.  `features`: An array of IDs for required features from the list below.
+                List of available features (ID:Name): [$featureAttributesList]
+                Example: `[1, 4, 12]`
+
+            Important Notes:
+            - Convert prices like '2.5 میلیارد' to `2500000000`.
+            - If a range is mentioned (e.g., \"بین 100 تا 120 متر\"), extract `min` and `max`. If a single value is given (e.g., \"حدود 100 متر\"), you can set `min` to that value.
+            - **CRITICAL LOGIC FOR AMBIGUOUS PRICES:**
+                - If the user mentions a price but **does not** specify 'فروش', 'خرید', 'اجاره', or 'رهن', you must consider both possibilities.
+                - **Example:** For a query 'آپارتمان از 30 میلیون', the user's intent is unclear. It could be a sale OR a rent.
+                - In this case, populate **both** the sale and rent price fields. Set `prices.price_min` to `30000000` AND `prices.deposit_min` to `30000000`.
+                - If the user explicitly says 'فروش' or 'خرید', only populate the `price_min`/`price_max` fields.
+                - If the user explicitly says 'رهن' or 'اجاره', only populate the `deposit_min`/`deposit_max` and `rent_min`/`rent_max` fields.
+            - The final output must be only the JSON object. Do not include any explanation.
+            ";
+
+            $response = $gapGPT->ask($prompt, "You are an expert real estate search query parser.", null, 2000);
+
+            if (!$response) {
+                Log::error("AI Search Failed: No response from service.");
+                return response()->json(['error' => 'پاسخی از سرویس هوش مصنوعی دریافت نشد.'], 500);
+            }
+
+            $jsonStr = $this->cleanJson($response);
+            $data = json_decode($jsonStr, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error("AI Search JSON Error: " . json_last_error_msg() . " | Raw: " . substr($response, 0, 100));
+                return response()->json(['error' => 'پاسخ نامعتبر از سرویس هوش مصنوعی.', 'raw' => $response], 500);
+            }
+
+            Log::info("AI Search Parsed Data: " . json_encode($data, JSON_UNESCAPED_UNICODE));
+
+            $queryParams = [];
+            if (!empty($data['search'])) $queryParams['search'] = $data['search'];
+            if (!empty($data['listing_type'])) $queryParams['listing_type'] = $data['listing_type'];
+            if (!empty($data['property_type'])) $queryParams['property_type'] = $data['property_type'];
+            if (!empty($data['category_id'])) $queryParams['category_id'] = $data['category_id'];
+
+            // Flatten prices, details, and features for query string
+            if (!empty($data['prices'])) {
+                $priceMapping = [
+                    'price_min' => 'min_price',
+                    'price_max' => 'max_price',
+                    'deposit_min' => 'min_deposit_price',
+                    'deposit_max' => 'max_deposit_price',
+                    'rent_min' => 'min_rent_price',
+                    'rent_max' => 'max_rent_price',
+                ];
+                foreach ($data['prices'] as $key => $value) {
+                    if (!empty($value) && isset($priceMapping[$key])) {
+                        $queryParams[$priceMapping[$key]] = $value;
+                    }
+                }
+            }
+            if (!empty($data['details'])) {
+                $queryParams['details'] = $data['details'];
+            }
+            if (!empty($data['features'])) {
+                $queryParams['features'] = $data['features'];
+            }
+
+            // Add a flag to indicate this is an AI search
+            $queryParams['ai_search'] = 1;
+
+            $redirectUrl = route('properties.index', $queryParams);
+
+            return response()->json([
+                'data' => $data,
+                'redirect_url' => $redirectUrl
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("AI Search Exception: " . $e->getMessage() . ' (SQL: ' . (method_exists($e, 'getSql') ? $e->getSql() : 'N/A') . ')');
+            return response()->json(['error' => 'خطای سرور: ' . $e->getMessage()], 500);
+        }
+    }
+
+    private function cleanJson($string)
+    {
+        $string = preg_replace('/^```json\s*/i', '', $string);
+        $string = preg_replace('/^```\s*/i', '', $string);
+        $string = preg_replace('/\s*```$/', '', $string);
+        return trim($string);
     }
 }
