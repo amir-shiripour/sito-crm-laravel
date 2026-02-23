@@ -4,7 +4,7 @@ return [
 
     // داشبورد نوبت‌دهی
     [
-        'title'      => 'نوبت‌دهی (Booking)',
+        'title'      => __('booking::menu.dashboard'),
         'route'      => 'user.booking.dashboard',
         'permission' => 'booking.view',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -21,7 +21,7 @@ return [
 
     // لیست سرویس‌ها
     [
-        'title'      => 'سرویس‌ها',
+        'title'      => __('booking::menu.services'),
         'route'      => 'user.booking.services.index',
         'permission' => 'booking.services.view',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -36,7 +36,7 @@ return [
     ],
 
     [
-        'title'      => 'دسته‌بندی‌ها',
+        'title'      => __('booking::menu.categories'),
         'route'      => 'user.booking.categories.index',
         'permission' => 'booking.categories.view',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -51,7 +51,7 @@ return [
     ],
 
     [
-        'title'      => 'فرم‌ها',
+        'title'      => __('booking::menu.forms'),
         'route'      => 'user.booking.forms.index',
         'permission' => 'booking.forms.view',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -66,7 +66,7 @@ return [
     ],
 
     [
-        'title' => 'برنامه زمانی ارائه‌دهندگان',
+        'title' => __('booking::menu.providers_schedule'),
         'route' => 'user.booking.providers.index',
         'permission' => 'booking.availability.manage',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -82,7 +82,7 @@ return [
 
     // لیست نوبت‌ها
     [
-        'title'      => 'نوبت‌ها',
+        'title'      => __('booking::menu.appointments'),
         'route'      => 'user.booking.appointments.index',
         'permission' => 'booking.appointments.view',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -99,7 +99,7 @@ return [
 
     // صورت وضعیت
     [
-        'title'      => 'صورت وضعیت',
+        'title'      => __('booking::menu.statement'),
         'route'      => 'user.booking.statement.index',
         'permission' => 'booking.reports.view',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -115,7 +115,7 @@ return [
 
     // تنظیمات نوبت‌دهی
     [
-        'title'      => 'تنظیمات نوبت‌دهی',
+        'title'      => __('booking::menu.settings'),
         'route'      => 'user.booking.settings.edit',
         'permission' => 'booking.settings.manage',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
