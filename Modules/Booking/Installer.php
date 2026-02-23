@@ -47,7 +47,8 @@ class Installer extends BaseModuleInstaller
 
         $guard = config('auth.defaults.guard', 'web');
 
-        $perms = [
+        // The single source of truth for this module's permissions.
+        $definedPermissions = [
             'booking.view',
             'booking.manage',
 
@@ -94,50 +95,61 @@ class Installer extends BaseModuleInstaller
         ];
 
         $tracker = $this->loadTracker();
+        $trackedPermissions = $tracker['permissions'] ?? [];
 
-        foreach ($perms as $name) {
-            $perm = Permission::firstOrCreate([
+        $permissionsToCreate = array_diff($definedPermissions, $trackedPermissions);
+        $permissionsToRemove = array_diff($trackedPermissions, $definedPermissions);
+
+        // Create newly defined permissions
+        foreach ($permissionsToCreate as $name) {
+            Permission::firstOrCreate([
                 'name'       => $name,
                 'guard_name' => $guard,
             ]);
+        }
 
-            if ($perm->wasRecentlyCreated) {
-                $tracker['permissions'][] = $perm->name;
+        // Remove permissions that are no longer defined in this module
+        if (!empty($permissionsToRemove)) {
+            DB::beginTransaction();
+            try {
+                $perms = Permission::whereIn('name', $permissionsToRemove)->where('guard_name', $guard)->get();
+                foreach ($perms as $perm) {
+                    $perm->roles()->detach();
+                    $perm->delete();
+                }
+                DB::commit();
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                Log::error('Booking Installer: Failed to remove obsolete permissions: ' . $e->getMessage());
+                throw $e;
             }
         }
 
-        // Optional module-owned roles (leave empty to avoid role-name conflicts)
+        // Optional module-owned roles (logic remains the same)
         $moduleRoles = [];
-
+        $newlyCreatedRoles = [];
         foreach ($moduleRoles as $roleName) {
-            $role = Role::firstOrCreate([
-                'name'       => $roleName,
-                'guard_name' => $guard,
-            ]);
-
+            $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => $guard]);
             if ($role->wasRecentlyCreated) {
-                $tracker['roles'][] = $role->name;
+                $newlyCreatedRoles[] = $role->name;
             }
         }
+        $tracker['roles'] = array_values(array_unique(array_merge($tracker['roles'] ?? [], $newlyCreatedRoles)));
 
-        // Always grant to super-admin (same pattern as other modules)
-        foreach (['super-admin','admin'] as $sysRole) {
-            $role = Role::firstOrCreate([
-                'name'       => $sysRole,
-                'guard_name' => $guard,
-            ]);
 
-            $role->givePermissionTo($perms);
+        // Always grant all defined permissions to system roles
+        foreach (['super-admin', 'admin'] as $sysRole) {
+            $role = Role::firstOrCreate(['name' => $sysRole, 'guard_name' => $guard]);
+            $role->givePermissionTo($definedPermissions);
         }
 
-        $tracker['permissions'] = array_values(array_unique($tracker['permissions']));
-        $tracker['roles']       = array_values(array_unique($tracker['roles']));
-
+        // Update tracker to match the new state
+        $tracker['permissions'] = $definedPermissions;
         $this->saveTracker($tracker);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        Log::info('Booking Installer: permissions created / roles updated.');
+        Log::info('Booking Installer: permissions synced.');
     }
 
     public function uninstall(): void
