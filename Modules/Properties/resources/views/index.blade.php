@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 
     <style>
         body {
@@ -660,38 +661,52 @@
 @endif
 
 <script>
+    console.log("Script tag is executing.");
     function propertyList() {
+        console.log("propertyList function is being defined.");
         return {
             showAiModal: false,
             aiQuery: '',
             isAiSearching: false,
+            init() {
+                console.log("Alpine component is initialized.");
+            },
             async performAiSearch() {
+                console.log("performAiSearch called.");
                 if (this.aiQuery.length < 3) return;
                 this.isAiSearching = true;
                 try {
                     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
-                    const response = await fetch('{{ auth()->check() ? route("user.properties.ai.search") : "" }}', {
+                    console.log("CSRF Token:", csrf);
+                    const url = '{{ route("properties.ai.search.public") }}';
+                    console.log("Fetch URL:", url);
+
+                    const response = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                         body: JSON.stringify({ query: this.aiQuery })
                     });
+
+                    console.log("Response Status:", response.status);
                     const result = await response.json();
+                    console.log("Response JSON:", result);
+
                     if (response.ok && result.redirect_url) {
                         window.location.href = result.redirect_url;
                     } else {
-                        // You might want to add a notification system here
                         alert(result.error || 'خطا در جستجو.');
                         this.isAiSearching = false;
                     }
                 } catch (error) {
                     console.error('AI Search Error:', error);
-                    alert('خطا در ارتباط با سرور.');
+                    alert('خطا در ارتباط با سرور. لطفاً کنسول را برای جزئیات بیشتر بررسی کنید.');
                     this.isAiSearching = false;
                 }
             }
         }
     }
 </script>
+@livewireScripts
 
 </body>
 

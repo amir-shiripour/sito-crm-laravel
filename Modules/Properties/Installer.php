@@ -12,44 +12,36 @@ use Spatie\Permission\PermissionRegistrar;
 
 class Installer extends BaseModuleInstaller
 {
-    protected function trackerPath(): string
-    {
-        return storage_path('app/module-installer/'.$this->moduleSlug.'/created.json');
-    }
-
-    protected function loadTracker(): array
-    {
-        $path = $this->trackerPath();
-        if (File::exists($path)) {
-            return json_decode(File::get($path), true) ?: [];
-        }
-        return ['permissions' => [], 'roles' => []];
-    }
-
-    protected function saveTracker(array $data): void
-    {
-        $path = $this->trackerPath();
-        File::ensureDirectoryExists(dirname($path));
-        File::put($path, json_encode($data, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
-    }
+    protected string $moduleName = 'Properties';
 
     public function __construct()
     {
-        parent::__construct('Properties');
+        parent::__construct($this->moduleName);
+    }
+
+    public function reset(): void
+    {
+        Log::info('Properties Installer: Starting custom reset process...');
+        parent::reset();
+        Log::info('Properties Installer: Parent reset completed.');
+        $this->syncPermissions();
+        Log::info('Properties Installer: Custom reset process finished.');
     }
 
     public function install(): void
     {
         parent::install();
-        $this->createPermissions();
+        Log::info('Properties Installer: Starting install process...');
+        $this->syncPermissions();
+        Log::info('Properties Installer: Install process finished.');
     }
 
-    public function createPermissions(): void
+    private function syncPermissions(): void
     {
+        Log::info('Properties Installer: Starting permission sync...');
         $guard = config('auth.defaults.guard', 'web');
 
-        // لیست کامل پرمیژن‌های ماژول املاک
-        $perms = [
+        $definedPermissions = [
             // Properties (Main)
             'properties.view',
             'properties.view.all',
@@ -95,92 +87,86 @@ class Installer extends BaseModuleInstaller
             'properties.buildings.manage',
         ];
 
-        $tracker = $this->loadTracker();
+        $trackerPath = $this->permissionsTrackerPath();
+        $trackedPermissions = File::exists($trackerPath) ? json_decode(File::get($trackerPath), true) ?: [] : [];
 
-        foreach ($perms as $name) {
-            $perm = Permission::firstOrCreate(
-                ['name' => $name, 'guard_name' => $guard]
-            );
+        $permissionsToCreate = array_diff($definedPermissions, $trackedPermissions);
+        $permissionsToRemove = array_diff($trackedPermissions, $definedPermissions);
 
-            // اگر تازه ساخته شده یا در ترکر نیست، اضافه کن
-            if ($perm->wasRecentlyCreated || !in_array($perm->name, $tracker['permissions'] ?? [])) {
-                $tracker['permissions'][] = $perm->name;
+        if (!empty($permissionsToCreate)) {
+            Log::info('Properties Installer: Creating permissions: ' . implode(', ', $permissionsToCreate));
+            foreach ($permissionsToCreate as $name) {
+                Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
             }
         }
 
-        // اگر ماژول نقش‌های اختصاصی دارد اینجا اضافه کنید
-        $moduleRoles = [];
-
-        foreach ($moduleRoles as $rname) {
-            $role = Role::firstOrCreate(['name' => $rname, 'guard_name' => $guard]);
-            if ($role->wasRecentlyCreated || !in_array($role->name, $tracker['roles'] ?? [])) {
-                $tracker['roles'][] = $role->name;
-            }
+        if (!empty($permissionsToRemove)) {
+            Log::info('Properties Installer: Removing permissions: ' . implode(', ', $permissionsToRemove));
+            DB::transaction(function () use ($permissionsToRemove, $guard) {
+                $perms = Permission::whereIn('name', $permissionsToRemove)->where('guard_name', $guard)->get();
+                foreach ($perms as $perm) {
+                    $perm->roles()->detach();
+                    $perm->delete();
+                }
+            });
         }
 
-        // اختصاص پرمیژن‌ها به super-admin
-        foreach (['super-admin'] as $sysRole) {
+        if (empty($permissionsToCreate) && empty($permissionsToRemove)) {
+            Log::info('Properties Installer: Permissions are already up to date.');
+        }
+
+        Log::info('Properties Installer: Syncing permissions with admin roles...');
+        foreach (['super-admin', 'admin'] as $sysRole) {
             $role = Role::firstOrCreate(['name' => $sysRole, 'guard_name' => $guard]);
-            $role->givePermissionTo($perms);
+            $role->givePermissionTo($definedPermissions);
         }
 
-        $tracker['permissions'] = array_values(array_unique($tracker['permissions']));
-        $tracker['roles']       = array_values(array_unique($tracker['roles']));
-        $this->saveTracker($tracker);
-
+        File::put($trackerPath, json_encode($definedPermissions, JSON_PRETTY_PRINT));
         app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        Log::info("Properties Installer: permissions created / roles updated.");
+        Log::info('Properties Installer: Permission sync finished.');
     }
 
     public function uninstall(): void
     {
-        $this->removeModuleOwnedPermissionsAndRoles();
         parent::uninstall();
-        Log::info("Properties Installer: uninstalled and permissions removed.");
-    }
+        Log::info('Properties Installer: Starting uninstall process...');
 
-    protected function removeModuleOwnedPermissionsAndRoles(): void
-    {
-        $guard = config('auth.defaults.guard', 'web');
-        $tracker = $this->loadTracker();
+        $trackerPath = $this->permissionsTrackerPath();
+        if (!File::exists($trackerPath)) {
+            Log::warning('Properties Installer: Permission tracker not found on uninstall. Nothing to remove.');
+            return;
+        }
+
+        $permissions = json_decode(File::get($trackerPath), true) ?: [];
+        if (empty($permissions)) {
+            return;
+        }
+
+        Log::info('Properties Installer: Removing all module permissions...');
+        DB::transaction(function () use ($permissions) {
+            $guard = config('auth.defaults.guard', 'web');
+            $perms = Permission::whereIn('name', $permissions)->where('guard_name', $guard)->get();
+            foreach ($perms as $perm) {
+                $perm->roles()->detach();
+                $perm->delete();
+            }
+        });
+
+        File::delete($this->trackerPath());
+        File::delete($trackerPath);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Log::info('Properties Installer: Uninstall process finished.');
+    }
 
-        DB::beginTransaction();
-        try {
-            // 1. حذف نقش‌های ساخته شده توسط ماژول
-            foreach ($tracker['roles'] ?? [] as $roleName) {
-                if (! $roleName) continue;
-                $role = Role::where('name', $roleName)->where('guard_name', $guard)->first();
-                if ($role) {
-                    $role->permissions()->detach();
-                    $role->delete();
-                }
-            }
+    // Helper methods for tracker paths
+    private function trackerPath(): string
+    {
+        return storage_path('app/module-install-trackers/properties.json');
+    }
 
-            // 2. حذف پرمیژن‌های ساخته شده توسط ماژول
-            foreach ($tracker['permissions'] ?? [] as $permName) {
-                if (! $permName) continue;
-                $perm = Permission::where('name', $permName)->where('guard_name', $guard)->first();
-                if ($perm) {
-                    $perm->roles()->detach();
-                    $perm->delete();
-                }
-            }
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error("Properties Installer: removeModuleOwnedPermissionsAndRoles failed: ".$e->getMessage());
-            throw $e;
-        } finally {
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-        }
-
-        $path = $this->trackerPath();
-        if (File::exists($path)) {
-            File::delete($path);
-        }
+    private function permissionsTrackerPath(): string
+    {
+        return storage_path('app/module-install-trackers/properties_permissions.json');
     }
 }

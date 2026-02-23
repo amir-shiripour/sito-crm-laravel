@@ -17,6 +17,7 @@ Route::middleware(['web'])->group(function() {
     Route::group(['prefix' => 'properties', 'as' => 'properties.'], function() {
         Route::get('/', [PublicPropertyController::class, 'index'])->name('index');
         Route::get('/map', [PublicPropertyController::class, 'map'])->name('map');
+        Route::post('/ai-search', [PublicPropertyController::class, 'aiSearch'])->name('ai.search.public');
         Route::get('/{slug}', [PublicPropertyController::class, 'show'])->name('show');
     });
 });

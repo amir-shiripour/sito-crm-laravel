@@ -3,6 +3,7 @@
     $fixedProviderPayload = (isset($fixedProvider) && $fixedProvider)
     ? ['id' => $fixedProvider->id, 'name' => $fixedProvider->name]
     : null;
+    $clientLabel = config('clients.labels.singular', 'مشتری');
 @endphp
 
 @section('content')
@@ -150,8 +151,8 @@
                             <span class="text-xl">👤</span>
                         </div>
                         <div>
-                            <div class="font-semibold text-base text-gray-800 dark:text-gray-100">انتخاب مشتری</div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">مشتری مورد نظر را انتخاب کنید</div>
+                            <div class="font-semibold text-base text-gray-800 dark:text-gray-100">انتخاب {{ $clientLabel }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ $clientLabel }} مورد نظر را انتخاب کنید</div>
                         </div>
                     </div>
                 </div>
@@ -167,7 +168,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
-                                جستجو مشتری
+                                جستجو {{ $clientLabel }}
                             </span>
                             </label>
                             <div class="relative">
@@ -227,7 +228,7 @@
                             <div class="mt-3" x-show="clientSearch && clients.length === 0 && !clientLoading">
                                 <div
                                     class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4 text-center">
-                                    <div class="text-sm text-amber-800 dark:text-amber-200">مشتری یافت نشد</div>
+                                    <div class="text-sm text-amber-800 dark:text-amber-200">{{ $clientLabel }} یافت نشد</div>
                                 </div>
                             </div>
 
@@ -280,7 +281,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
                                 </path>
                             </svg>
-                            مشتری جدید
+                            {{ $clientLabel }} جدید
                         </div>
                         <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
                             @includeIf('clients::widgets.client-quick-create')
@@ -296,7 +297,7 @@
                               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <div class="text-xs text-blue-800 dark:text-blue-200">
-                        بعد از انتخاب مشتری، می‌توانید با دکمه "بعدی" به مرحله بعد بروید.
+                        بعد از انتخاب {{ $clientLabel }}، می‌توانید با دکمه "بعدی" به مرحله بعد بروید.
                     </div>
                 </div>
             </div>
@@ -1199,7 +1200,7 @@
                 get stepLabels() {
                     const labels = [{
                         num: 1,
-                        title: 'انتخاب مشتری',
+                        title: 'انتخاب {{ $clientLabel }}',
                         icon: '👤'
                     },
                         {
@@ -1879,7 +1880,7 @@
 
                 async next() {
                     if (this.step === 1) {
-                        if (!this.clientId) return alert('لطفاً مشتری را انتخاب کنید.');
+                        if (!this.clientId) return alert('لطفاً {{ $clientLabel }} را انتخاب کنید.');
                         // Load providers/services when moving to step 2
                         if (this.flow === 'PROVIDER_FIRST' && !this.fixedProvider) {
                             await this.fetchProviders();
@@ -1986,7 +1987,7 @@
                         }
                     }
                     if (!this.clientId) {
-                        alert('لطفاً مشتری را انتخاب کنید.');
+                        alert('لطفاً {{ $clientLabel }} را انتخاب کنید.');
                         return false;
                     }
 
