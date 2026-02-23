@@ -10,9 +10,6 @@ class BookingSeeder extends Seeder
 {
     public function run(): void
     {
-        // Call the permissions seeder
-        $this->call(BookingPermissionsSeeder::class);
-
         // Ensure a settings row exists
         $settings = BookingSetting::current();
 
