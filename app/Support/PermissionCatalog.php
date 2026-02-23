@@ -98,7 +98,7 @@ class PermissionCatalog
                 'matchers' => ['booking.reports.'],
             ],
             'booking_statements' => [
-                'title'    => 'نوبت‌دهی: صورتحساب',
+                'title'    => 'نوبت‌دهی: صورت وضعیت',
                 'matchers' => ['booking.statement.'],
             ],
 
@@ -268,13 +268,13 @@ class PermissionCatalog
 
             'booking.reports.view'          => 'مشاهده گزارش‌های نوبت‌دهی',
 
-            'booking.statement.view'        => 'مشاهده صورتحساب‌ها',
-            'booking.statement.view.all'    => 'مشاهده همه صورتحساب‌ها',
-            'booking.statement.view.own'    => 'مشاهده صورتحساب‌های خود',
-            'booking.statement.create'      => 'ایجاد صورتحساب',
-            'booking.statement.edit'        => 'ویرایش صورتحساب',
-            'booking.statement.delete'      => 'حذف صورتحساب',
-            'booking.statement.manage'      => 'مدیریت کامل صورتحساب‌ها',
+            'booking.statement.view'        => 'مشاهده صورت وضعیت‌ها',
+            'booking.statement.view.all'    => 'مشاهده همه صورت وضعیت‌ها',
+            'booking.statement.view.own'    => 'مشاهده صورت وضعیت‌های خود',
+            'booking.statement.create'      => 'ایجاد صورت وضعیت',
+            'booking.statement.edit'        => 'ویرایش صورت وضعیت',
+            'booking.statement.delete'      => 'حذف صورت وضعیت',
+            'booking.statement.manage'      => 'مدیریت کامل صورت وضعیت‌ها',
 
             // Properties
             'properties.view'               => 'مشاهده املاک',
