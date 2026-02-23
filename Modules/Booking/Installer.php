@@ -16,24 +16,14 @@ class Installer extends BaseModuleInstaller
 
     protected function trackerPath(): string
     {
+        // This main tracker can be used for general module state if needed.
         return storage_path('app/module-install-trackers/booking.json');
     }
 
-    protected function loadTracker(): array
+    protected function permissionsTrackerPath(): string
     {
-        $path = $this->trackerPath();
-        if (File::exists($path)) {
-            return json_decode(File::get($path), true) ?: [];
-        }
-
-        return ['permissions' => [], 'roles' => []];
-    }
-
-    protected function saveTracker(array $data): void
-    {
-        $path = $this->trackerPath();
-        File::ensureDirectoryExists(dirname($path));
-        File::put($path, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        // A dedicated tracker for permissions managed by this installer.
+        return storage_path('app/module-install-trackers/booking_permissions.json');
     }
 
     public function __construct()
@@ -44,61 +34,124 @@ class Installer extends BaseModuleInstaller
     public function install(): void
     {
         parent::install();
+        Log::info('Booking Installer: Starting install/reset process...');
 
-        // Permission seeding is now handled by BookingPermissionsSeeder.
-        // This method is kept for other installation tasks.
+        $this->syncPermissions();
 
-        Log::info('Booking Installer: install command executed.');
+        Log::info('Booking Installer: Install/reset process finished.');
+    }
+
+    private function syncPermissions(): void
+    {
+        Log::info('Booking Installer: Starting permission sync...');
+        $guard = config('auth.defaults.guard', 'web');
+
+        $definedPermissions = [
+            'booking.view',
+            'booking.manage',
+            'booking.settings.manage',
+            'booking.categories.view',
+            'booking.categories.create',
+            'booking.categories.edit',
+            'booking.categories.delete',
+            'booking.categories.manage',
+            'booking.forms.view',
+            'booking.forms.create',
+            'booking.forms.edit',
+            'booking.forms.delete',
+            'booking.forms.manage',
+            'booking.services.view',
+            'booking.services.create',
+            'booking.services.edit',
+            'booking.services.delete',
+            'booking.services.manage',
+            'booking.availability.manage',
+            'booking.appointments.view',
+            'booking.appointments.view.all',
+            'booking.appointments.view.own',
+            'booking.appointments.create',
+            'booking.appointments.edit',
+            'booking.appointments.cancel',
+            'booking.appointments.manage',
+            'booking.reports.view',
+            'booking.statement.view',
+            'booking.statement.view.all',
+            'booking.statement.view.own',
+            'booking.statement.create',
+            'booking.statement.edit',
+            'booking.statement.delete',
+            'booking.statement.manage',
+        ];
+
+        $trackerPath = $this->permissionsTrackerPath();
+        $trackedPermissions = File::exists($trackerPath) ? json_decode(File::get($trackerPath), true) ?: [] : [];
+
+        $permissionsToCreate = array_diff($definedPermissions, $trackedPermissions);
+        $permissionsToRemove = array_diff($trackedPermissions, $definedPermissions);
+
+        if (!empty($permissionsToCreate)) {
+            Log::info('Booking Installer: Creating permissions: ' . implode(', ', $permissionsToCreate));
+            foreach ($permissionsToCreate as $name) {
+                Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
+            }
+        }
+
+        if (!empty($permissionsToRemove)) {
+            Log::info('Booking Installer: Removing permissions: ' . implode(', ', $permissionsToRemove));
+            DB::transaction(function () use ($permissionsToRemove, $guard) {
+                $perms = Permission::whereIn('name', $permissionsToRemove)->where('guard_name', $guard)->get();
+                foreach ($perms as $perm) {
+                    $perm->roles()->detach();
+                    $perm->delete();
+                }
+            });
+        }
+
+        if (empty($permissionsToCreate) && empty($permissionsToRemove)) {
+            Log::info('Booking Installer: Permissions are already up to date.');
+        }
+
+        Log::info('Booking Installer: Syncing permissions with admin roles...');
+        foreach (['super-admin', 'admin'] as $sysRole) {
+            $role = Role::firstOrCreate(['name' => $sysRole, 'guard_name' => $guard]);
+            $role->givePermissionTo($definedPermissions);
+        }
+
+        File::put($trackerPath, json_encode($definedPermissions, JSON_PRETTY_PRINT));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Log::info('Booking Installer: Permission sync finished.');
     }
 
     public function uninstall(): void
     {
-        $this->removeModuleOwnedPermissionsAndRoles();
-
         parent::uninstall();
+        Log::info('Booking Installer: Starting uninstall process...');
 
-        Log::info('Booking Installer: uninstalled and permissions removed.');
-    }
-
-    protected function removeModuleOwnedPermissionsAndRoles(): void
-    {
-        // This logic is now mostly managed by the seeder's tracker.
-        // However, we can keep a simplified version for full cleanup on uninstall.
-        $guard   = config('auth.defaults.guard', 'web');
-        $seederTrackerPath = storage_path('app/module-install-trackers/booking_perms_seeder.json');
-
-        if (!File::exists($seederTrackerPath)) {
-            Log::warning('Booking Installer: Permission seeder tracker not found on uninstall.');
+        $trackerPath = $this->permissionsTrackerPath();
+        if (!File::exists($trackerPath)) {
+            Log::warning('Booking Installer: Permission tracker not found on uninstall. Nothing to remove.');
             return;
         }
 
-        $permissions = json_decode(File::get($seederTrackerPath), true) ?: [];
-
+        $permissions = json_decode(File::get($trackerPath), true) ?: [];
         if (empty($permissions)) {
             return;
         }
 
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        DB::beginTransaction();
-        try {
+        Log::info('Booking Installer: Removing all module permissions...');
+        DB::transaction(function () use ($permissions) {
+            $guard = config('auth.defaults.guard', 'web');
             $perms = Permission::whereIn('name', $permissions)->where('guard_name', $guard)->get();
             foreach ($perms as $perm) {
                 $perm->roles()->detach();
                 $perm->delete();
             }
-            DB::commit();
-            Log::info('Booking Installer: Successfully removed module permissions.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Booking Installer: Failed to remove permissions on uninstall: ' . $e->getMessage());
-            throw $e;
-        } finally {
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-        }
+        });
 
-        // Clean up trackers
         File::delete($this->trackerPath());
-        File::delete($seederTrackerPath);
+        File::delete($trackerPath);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Log::info('Booking Installer: Uninstall process finished.');
     }
 }
