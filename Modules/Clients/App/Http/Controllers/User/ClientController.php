@@ -3,8 +3,10 @@
 namespace Modules\Clients\App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Modules\Clients\Entities\Client;
+use Modules\Clients\Entities\ClientStatus;
 use Modules\Clients\App\Http\Requests\StoreClientRequest;
 use Modules\Clients\App\Http\Requests\UpdateClientRequest;
 
@@ -22,20 +24,44 @@ class ClientController extends Controller
     /**
      * لیست کلاینت‌ها، فیلتر شده بر اساس قوانین visibility
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
+        $query = Client::visibleForUser($user)
+            ->with(['creator', 'status', 'calls.user']);
 
-        $clients = Client::visibleForUser($user)
-            ->with([
-                'creator',
-                'status',
-                'calls.user',
-            ])
-            ->orderBy('created_at', 'desc')
-            ->paginate(12);
+        // فیلتر بر اساس جستجوی متنی
+        if ($request->filled('search')) {
+            $searchTerm = $request->input('search');
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('full_name', 'like', "%{$searchTerm}%")
+                    ->orWhere('username', 'like', "%{$searchTerm}%")
+                    ->orWhere('email', 'like', "%{$searchTerm}%")
+                    ->orWhere('phone', 'like', "%{$searchTerm}%")
+                    ->orWhere('case_number', 'like', "%{$searchTerm}%")
+                    ->orWhere('national_code', 'like', "%{$searchTerm}%");
+            });
+        }
 
-        return view('clients::user.clients.index', compact('clients'));
+        // فیلتر بر اساس ایجاد کننده
+        if ($request->filled('created_by')) {
+            $query->where('created_by', $request->input('created_by'));
+        }
+
+        // فیلتر بر اساس وضعیت
+        if ($request->filled('status_id')) {
+            $query->where('status_id', $request->input('status_id'));
+        }
+
+        $clients = $query->orderBy('created_at', 'desc')
+            ->paginate(12)
+            ->appends($request->query());
+
+        // لیست کاربران و وضعیت‌ها برای دراپ‌داون‌های فیلتر
+        $users = User::all();
+        $statuses = ClientStatus::all();
+
+        return view('clients::user.clients.index', compact('clients', 'users', 'statuses'));
     }
 
     public function create()

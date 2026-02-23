@@ -1,10 +1,16 @@
 <header
-    class="h-16 sticky top-0 z-40 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700">
+    class="h-16 sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700">
     <div class="h-full px-4 flex items-center justify-between gap-3">
+        {{-- Hamburger button for mobile --}}
         <button class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" @click="mobileOpen = true"
                 aria-label="Open sidebar">
-            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3 6h18M3 12h18M3 18h18" />
+            <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" width="24"
+                 height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M4 6l16 0" />
+                <path d="M4 12l16 0" />
+                <path d="M4 18l16 0" />
             </svg>
         </button>
 
