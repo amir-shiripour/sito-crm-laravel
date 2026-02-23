@@ -97,6 +97,10 @@ class PermissionCatalog
                 'title'    => 'نوبت‌دهی: گزارش‌ها',
                 'matchers' => ['booking.reports.'],
             ],
+            'booking_statements' => [
+                'title'    => 'نوبت‌دهی: صورتحساب',
+                'matchers' => ['booking.statement.'],
+            ],
 
             // Properties module
             'properties' => [
@@ -263,6 +267,14 @@ class PermissionCatalog
             'booking.appointments.manage'   => 'مدیریت نوبت‌ها',
 
             'booking.reports.view'          => 'مشاهده گزارش‌های نوبت‌دهی',
+
+            'booking.statement.view'        => 'مشاهده صورتحساب‌ها',
+            'booking.statement.view.all'    => 'مشاهده همه صورتحساب‌ها',
+            'booking.statement.view.own'    => 'مشاهده صورتحساب‌های خود',
+            'booking.statement.create'      => 'ایجاد صورتحساب',
+            'booking.statement.edit'        => 'ویرایش صورتحساب',
+            'booking.statement.delete'      => 'حذف صورتحساب',
+            'booking.statement.manage'      => 'مدیریت کامل صورتحساب‌ها',
 
             // Properties
             'properties.view'               => 'مشاهده املاک',
