@@ -11,6 +11,9 @@ use App\Services\Modules\BaseModuleInstaller;
 
 class SmsServiceProvider extends ServiceProvider
 {
+    protected string $moduleName = 'Sms';
+    protected string $moduleNameLower = 'sms';
+
     /**
      * Register services.
      */
@@ -35,6 +38,8 @@ class SmsServiceProvider extends ServiceProvider
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sms');
 
+        $this->registerTranslations();
+
         $this->mapRoutes();
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -56,6 +61,19 @@ class SmsServiceProvider extends ServiceProvider
                 ->prefix('api')
                 ->name('api.')
                 ->group(__DIR__.'/../Routes/api.php');
+        }
+    }
+
+    protected function registerTranslations(): void
+    {
+        $langPath = resource_path('lang/modules/' . $this->moduleNameLower);
+
+        if (is_dir($langPath)) {
+            $this->loadTranslationsFrom($langPath, $this->moduleNameLower);
+            $this->loadJsonTranslationsFrom($langPath);
+        } else {
+            $this->loadTranslationsFrom(module_path($this->moduleName, 'lang'), $this->moduleNameLower);
+            $this->loadJsonTranslationsFrom(module_path($this->moduleName, 'lang'));
         }
     }
 }

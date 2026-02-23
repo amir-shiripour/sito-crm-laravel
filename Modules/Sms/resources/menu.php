@@ -3,7 +3,7 @@
 return [
     // لیست / گزارش پیامک‌ها
     [
-        'title'      => 'گزارش پیامک‌ها',
+        'title'      => __('sms::menu.reports'),
         'route'      => 'user.sms.logs.index',       // ✅ موجود در routes/user.php
         'permission' => 'sms.messages.view',         // باید در permissions ماژول تعریف شده باشد
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -20,7 +20,7 @@ return [
 
     // ارسال دستی پیامک
     [
-        'title'      => 'ارسال پیامک',
+        'title'      => __('sms::menu.send_sms'),
         'route'      => 'user.sms.send.create',      // ✅ صفحه ارسال
         'permission' => 'sms.messages.send',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -37,7 +37,7 @@ return [
 
     // تنظیمات پیامک
     [
-        'title'      => 'تنظیمات پیامک',
+        'title'      => __('sms::menu.settings'),
         'route'      => 'user.sms.settings.index',   // ✅ صفحه تنظیمات
         'permission' => 'sms.settings.view',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"

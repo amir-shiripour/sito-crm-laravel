@@ -62,6 +62,85 @@
             </div>
         </div>
 
+        {{-- پنل فیلتر پیشرفته --}}
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
+            <div class="p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between">
+                <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                    فیلترهای پیشرفته
+                </h2>
+                @if(request()->except('page'))
+                    <a href="{{ route('user.clients.index') }}" class="text-xs font-medium text-red-500 hover:text-red-700 flex items-center gap-1 transition-colors">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        حذف فیلترها
+                    </a>
+                @endif
+            </div>
+            <div class="p-5">
+                <form action="{{ route('user.clients.index') }}" method="GET">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                        {{-- جستجوی متنی --}}
+                        <div>
+                            <label for="search" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">جستجو</label>
+                            <div class="relative">
+                                <input type="text" name="search" id="search" value="{{ request('search') }}"
+                                       placeholder="نام، ایمیل، تلفن، کد ملی و..."
+                                       class="w-full pl-10 pr-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- فیلتر بر اساس ایجاد کننده --}}
+                        <div>
+                            <label for="created_by" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">ایجاد کننده</label>
+                            <div class="relative">
+                                <select name="created_by" id="created_by"
+                                        class="w-full appearance-none pl-10 pr-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                                    <option value="">همه</option>
+                                    @foreach($users as $user)
+                                        <option value="{{ $user->id }}" @selected(request('created_by') == $user->id)>
+                                            {{ $user->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- فیلتر بر اساس وضعیت --}}
+                        <div>
+                            <label for="status_id" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">وضعیت</label>
+                            <div class="relative">
+                                <select name="status_id" id="status_id"
+                                        class="w-full appearance-none pl-10 pr-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                                    <option value="">همه</option>
+                                    @foreach($statuses as $status)
+                                        <option value="{{ $status->id }}" @selected(request('status_id') == $status->id)>
+                                            {{ $status->label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-1 sm:col-span-2 md:col-span-3 flex items-center justify-end gap-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-5">
+                        <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-900 transition-all shadow-lg shadow-indigo-500/30 active:scale-95">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                            اعمال فیلتر
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         {{-- جدول --}}
         <div
             class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -82,6 +161,7 @@
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">پیگیری‌ها</th>
                             @endcan
                         @endif
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">وضعیت</th> {{-- New Status Header --}}
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ایجاد کننده</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-left pl-6">عملیات</th>
                     </tr>
@@ -143,6 +223,18 @@
                                     </td>
                                 @endcan
                             @endif
+
+                            {{-- Status --}}
+                            <td class="px-4 py-3">
+                                @if($client->status)
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                          style="background-color: {{ $client->status->color }}20; color: {{ $client->status->color }};">
+                                        {{ $client->status->label }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
 
                             {{-- Creator --}}
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
@@ -206,7 +298,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="py-10 text-center">
+                            <td colspan="6" class="py-10 text-center"> {{-- Updated colspan to 6 --}}
                                 <div class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
                                     <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24"
                                          stroke="currentColor">

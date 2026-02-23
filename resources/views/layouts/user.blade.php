@@ -25,8 +25,8 @@
     @livewireStyles
     <style>
         body { font-size: 14px;}
-        /* Jalali Datepicker Z-Index Fix */
         jdp-container { z-index: 9999 !important; }
+        [x-cloak] { display: none !important; }
     </style>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -98,12 +98,49 @@
         </div>
     </template>
 </div>
+
 <div x-data="dashboardLayout()" x-init="init()" class="min-h-dvh flex">
 
-    {{-- Sidebar --}}
-    <aside :class="sidebarCollapsed ? 'w-20' : 'w-72'" class="transition-all duration-200 ease-in-out bg-white/90 dark:bg-gray-800/90 border-l lg:border-l-0 lg:border-r border-gray-200/70 dark:border-gray-700/60 min-h-dvh sticky top-0 z-30">
+    {{-- Desktop Sidebar --}}
+    <aside :class="sidebarCollapsed ? 'w-20' : 'w-72'" class="transition-all duration-200 ease-in-out bg-white/90 dark:bg-gray-800/90 border-l lg:border-l-0 lg:border-r border-gray-200/70 dark:border-gray-700/60 min-h-dvh sticky top-0 z-30 hidden lg:flex flex-col">
         @include('user.partials.sidebar')
     </aside>
+
+    {{-- Mobile Sidebar --}}
+    <div x-show="mobileOpen" x-cloak class="lg:hidden" x-ref="dialog" aria-modal="true">
+        {{-- Overlay --}}
+        <div x-show="mobileOpen" x-transition:enter="transition-opacity ease-linear duration-300"
+             x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-gray-900/80 z-40"></div>
+
+        {{-- Sidebar Content --}}
+        <div class="fixed inset-0 flex z-50">
+            <div x-show="mobileOpen" @click.outside="mobileOpen = false"
+                 x-transition:enter="transition ease-in-out duration-300 transform"
+                 x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+                 x-transition:leave="transition ease-in-out duration-300 transform"
+                 x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+                 class="relative ml-auto flex h-full w-full max-w-xs flex-col overflow-y-auto bg-white dark:bg-gray-800 pb-12 shadow-xl">
+
+                {{-- Close button for mobile sidebar --}}
+                <div class="absolute top-0 left-0 -ml-12 pt-2">
+                    <button type="button" class="flex h-10 w-10 items-center justify-center p-2 text-gray-400" @click="mobileOpen = false">
+                        <span class="sr-only">بستن منو</span>
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- By setting sidebarCollapsed to false, we ensure the mobile menu is always expanded --}}
+                <div x-data="{ sidebarCollapsed: false }" class="flex flex-col h-full">
+                    @include('user.partials.sidebar')
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{-- Main column --}}
     <div class="flex-1 min-w-0 flex flex-col">
@@ -119,58 +156,40 @@
             @endif
         </main>
     </div>
-
-    {{-- Drawer برای موبایل --}}
-    <div class="fixed inset-0 bg-black/40 z-40 lg:hidden" x-show="mobileOpen" x-transition.opacity @click="mobileOpen=false"></div>
-
 </div>
 
 
-{{-- Alpine helpers (در صورت نبود Alpine در app.js) --}}
+{{-- Alpine helpers --}}
 <script>
     function dashboardLayout() {
         return {
             mobileOpen: false,
-            sidebarCollapsed: false, // پیش‌فرض باز باشد
+            sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
+            openMenus: JSON.parse(localStorage.getItem('openMenus') || '{}'),
             theme: localStorage.getItem('theme') || 'system',
             themeIcon: 'system',
 
             init() {
-                // بازیابی حالت سایدبار (اگر قبلاً ذخیره شده باشد)
-                // اگر ذخیره نشده باشد (null)، پیش‌فرض false (باز) می‌ماند
-                const storedState = localStorage.getItem('sidebarCollapsed');
-                if (storedState !== null) {
-                    this.sidebarCollapsed = storedState === '1';
-                }
-
-                // آیکن تم
-                this.updateThemeIcon();
-                // واکنش به تغییر سیستم
+                this.applyTheme();
+                this.$watch('theme', () => this.applyTheme());
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
                     if (this.theme === 'system') this.applyTheme();
                 });
             },
 
-            isActive(name) {
-                // اگر نام روت فعلی به دسترس نیست، ساده برگردون
-                return false;
-            },
-
             toggleSidebar() {
                 this.sidebarCollapsed = !this.sidebarCollapsed;
-                localStorage.setItem('sidebarCollapsed', this.sidebarCollapsed ? '1' : '0');
+                localStorage.setItem('sidebarCollapsed', this.sidebarCollapsed);
             },
 
             isMenuOpen(key) {
-                // اگر سایدبار بسته است، هیچ منویی باز نیست
                 if (this.sidebarCollapsed) return false;
-                return localStorage.getItem('menu:'+key) === '1';
+                return this.openMenus[key] || false;
             },
             toggleMenu(key) {
-                // اگر سایدبار بسته است، این تابع کار نمی‌کند
                 if (this.sidebarCollapsed) return;
-                const val = this.isMenuOpen(key) ? '0' : '1';
-                localStorage.setItem('menu:'+key, val);
+                this.openMenus[key] = !this.openMenus[key];
+                localStorage.setItem('openMenus', JSON.stringify(this.openMenus));
             },
 
             themeTitle() {
@@ -190,7 +209,6 @@
                 this.updateThemeIcon();
             },
             cycleTheme() {
-                // ترتیب: system -> dark -> light -> system
                 this.theme = this.theme === 'system' ? 'dark' : this.theme === 'dark' ? 'light' : 'system';
                 localStorage.setItem('theme', this.theme);
                 this.applyTheme();
@@ -200,5 +218,6 @@
 </script>
 @livewireScripts
 @livewireScriptConfig
+@stack('scripts')
 </body>
 </html>
