@@ -25,11 +25,6 @@ class ClientController extends Controller
     public function index()
     {
         $user = auth()->user();
-        /*$clients = Client::query()
-            ->with(['creator', 'status'])
-            ->visibleForUser($user)
-            ->latest()
-            ->paginate(12);*/
 
         $clients = Client::visibleForUser($user)
             ->with([
@@ -37,8 +32,7 @@ class ClientController extends Controller
                 'status',
                 'calls.user',
             ])
-            ->visibleForUser($user)
-            ->latest()
+            ->orderBy('created_at', 'desc')
             ->paginate(12);
 
         return view('clients::user.clients.index', compact('clients'));
