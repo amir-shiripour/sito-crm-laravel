@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ModuleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\CustomFieldController;
+use App\Http\Controllers\Admin\VersionControlController; // اضافه شدن کنترلر جدید برای مدیریت نسخه‌ها
 
 /*
 |--------------------------------------------------------------------------
@@ -95,4 +96,19 @@ Route::prefix('custom-fields')->name('custom-fields.')->middleware(['permission:
 
     // عملیات حذف برای کاربرانی که permission دارند
     Route::delete('/{field}', [CustomFieldController::class, 'destroy'])->name('destroy')->middleware('permission:custom-fields.delete');
+});
+
+// --- مدیریت نسخه‌ها (Version Control) => /admin/version-control و name: admin.version-control.* ---
+// دسترسی به این بخش حساس هسته‌ای فقط برای سوپر ادمین تعریف شده است
+Route::prefix('version-control')->name('version-control.')->middleware(['role:super-admin'])->group(function () {
+    Route::get('/', [VersionControlController::class, 'index'])->name('index');
+    Route::get('/create', [VersionControlController::class, 'create'])->name('create');
+    Route::post('/', [VersionControlController::class, 'store'])->name('store');
+    Route::get('/{versionControl}/edit', [VersionControlController::class, 'edit'])->name('edit');
+    Route::put('/{versionControl}', [VersionControlController::class, 'update'])->name('update');
+    Route::delete('/{versionControl}', [VersionControlController::class, 'destroy'])->name('destroy');
+
+    // مسیرهای جدید برای گیت‌هاب (Advanced)
+    Route::get('/check-remote', [VersionControlController::class, 'checkRemote'])->name('check-remote');
+    Route::post('/deploy-update', [VersionControlController::class, 'deployUpdate'])->name('deploy');
 });
