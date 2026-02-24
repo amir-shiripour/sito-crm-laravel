@@ -123,6 +123,10 @@ class PermissionCatalog
                 'title'    => 'املاک: مالکین',
                 'matchers' => ['properties.owners.'],
             ],
+            'properties_buildings' => [
+                'title'    => 'املاک: ساختمان‌ها',
+                'matchers' => ['properties.buildings.'],
+            ],
 
             'other' => [
                 'title'    => 'سایر',
@@ -308,6 +312,12 @@ class PermissionCatalog
             'properties.owners.edit'        => 'ویرایش مالک',
             'properties.owners.delete'      => 'حذف مالک',
             'properties.owners.manage'      => 'مدیریت مالکین',
+
+            'properties.buildings.view'     => 'مشاهده ساختمان‌ها',
+            'properties.buildings.create'   => 'ایجاد ساختمان',
+            'properties.buildings.edit'     => 'ویرایش ساختمان',
+            'properties.buildings.delete'   => 'حذف ساختمان',
+            'properties.buildings.manage'   => 'مدیریت ساختمان‌ها',
         ];
 
         // اگر ترجمه صریح نداریم، یک تبدیل خوانا بساز:
@@ -336,7 +346,7 @@ class PermissionCatalog
 
     /**
      * خروجی نهایی برای ویو: [
-     *   groupKey => ['title' => ..., 'items' => [ ['name'=>'users.view','label'=>'مشاهده کاربران'], ... ] ]
+     * groupKey => ['title' => ..., 'items' => [ ['name'=>'users.view','label'=>'مشاهده کاربران'], ... ] ]
      * ]
      */
     public static function groupAndTranslate(Collection $permissions): array
