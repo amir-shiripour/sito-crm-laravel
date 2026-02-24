@@ -111,6 +111,22 @@
                     </li>
                 @endcan
 
+                {{-- Version Control menu item - Restricted to super-admin based on routes --}}
+                @if(auth()->user()->hasRole('super-admin'))
+                    <li>
+                        <a href="{{ route('admin.version-control.index') }}"
+                           class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
+{{ request()->routeIs('admin.version-control.*') ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700' }}">
+                            {{-- Version Control (History/Clock) icon --}}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="1.5" class="w-5 h-5 opacity-80">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>کنترل نسخه‌ها</span>
+                        </a>
+                    </li>
+                @endif
+
                 <li>
                     <a href="{{ route('settings.index') }}"
                        class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition
@@ -131,6 +147,9 @@
 
     <div
         class="px-4 py-3 text-[11px] text-gray-500 dark:text-gray-400 border-t border-gray-200/70 dark:border-gray-700/60">
-        نسخه {{ app()->version() }}
+        @php
+            $currentVersion = \App\Models\VersionLog::current();
+        @endphp
+        نسخه {{ $currentVersion ? $currentVersion->version_number : app()->version() }}
     </div>
 </div>
