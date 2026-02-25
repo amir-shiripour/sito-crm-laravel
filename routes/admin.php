@@ -46,7 +46,7 @@ Route::prefix('modules')->name('modules.')->group(function () {
 
     // Toggle قدیمی — برای سازگاری نگه داشته شده
     Route::post('/toggle', [ModuleController::class, 'toggle'])->name('toggle');
-
+    Route::post('/update-package', [ModuleController::class, 'updatePackage'])->name('update-package');
     // عملیات جدید ماژول‌ها — دسترسی فقط برای super-admin
     Route::middleware(['role:super-admin'])->group(function () {
         Route::post('/install', [ModuleController::class, 'install'])->name('install');
