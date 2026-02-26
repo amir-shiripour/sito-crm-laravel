@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * اجرای مایگریشن برای اضافه کردن ستون نسخه به جدول ماژول‌ها
+     */
     public function up(): void
     {
         Schema::table('modules', function (Blueprint $table) {
@@ -15,6 +18,9 @@ return new class extends Migration
         });
     }
 
+    /**
+     * بازگشت مایگریشن
+     */
     public function down(): void
     {
         Schema::table('modules', function (Blueprint $table) {

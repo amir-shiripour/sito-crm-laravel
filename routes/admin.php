@@ -46,7 +46,6 @@ Route::prefix('modules')->name('modules.')->group(function () {
 
     // Toggle قدیمی — برای سازگاری نگه داشته شده
     Route::post('/toggle', [ModuleController::class, 'toggle'])->name('toggle');
-    Route::post('/update-package', [ModuleController::class, 'updatePackage'])->name('update-package');
     // عملیات جدید ماژول‌ها — دسترسی فقط برای super-admin
     Route::middleware(['role:super-admin'])->group(function () {
         Route::post('/install', [ModuleController::class, 'install'])->name('install');
@@ -54,6 +53,7 @@ Route::prefix('modules')->name('modules.')->group(function () {
         Route::post('/disable', [ModuleController::class, 'disableModule'])->name('disable');
         Route::post('/reset', [ModuleController::class, 'resetModule'])->name('reset');
         Route::post('/uninstall', [ModuleController::class, 'uninstallModule'])->name('uninstall');
+        Route::post('/update-package', [ModuleController::class, 'updatePackage'])->name('update-package');
     });
 });
 
