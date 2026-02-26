@@ -99,7 +99,9 @@
         }
     </style>
 
-    <div class="max-w-7xl mx-auto px-4 py-8" x-data="propertyForm()">
+    <div class="max-w-7xl mx-auto px-4 py-8" x-data="propertyForm()"
+         @speech-result.window="handleSpeechResult($event.detail)"
+         @speech-status.window="isVoiceTyping = $event.detail; if(isVoiceTyping) descriptionBeforeSpeech = description || ''">
 
         {{-- هدر صفحه --}}
         <div class="flex items-center justify-between mb-8">
@@ -413,8 +415,8 @@
                                     <label class="{{ $labelClass }} mb-0">توضیحات تکمیلی</label>
                                     <div class="flex items-center gap-2">
                                         <div x-data="{ tooltip: getVoiceSupportTooltip() }">
-                                            {{-- دکمه بدون @click برای جلوگیری از تداخل پراکسی‌های Alpine در iOS --}}
-                                            <button type="button" id="voice-typing-btn" :disabled="!isVoiceTypingSupported"
+                                            {{-- دکمه با آیدی مشخص برای بایندینگ جاوا اسکریپت خالص --}}
+                                            <button type="button" id="native-voice-btn" :disabled="!isVoiceTypingSupported"
                                                     x-tooltip="tooltip"
                                                     class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-help"
                                                     :class="{
@@ -749,6 +751,96 @@
             if(typeof jalaliDatepicker !== 'undefined') {
                 jalaliDatepicker.startWatch({ minDate: "attr", maxDate: "attr" });
             }
+
+            // ---------- VANILLA JS SPEECH RECOGNITION (تکنیک مخصوص دور زدن iOS) ----------
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const voiceBtn = document.getElementById('native-voice-btn');
+
+            if (SpeechRecognition && voiceBtn) {
+                let recognition = null;
+                let isRecording = false;
+
+                function initRecognition() {
+                    recognition = new SpeechRecognition();
+
+                    // بررسی محیط iOS
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+                    // ترفند کلیدی برای آیفون:
+                    // استفاده از زبان عربی (عربستان سعودی) به عنوان پایه.
+                    // سیستم تشخیص گفتار اپل، کلمات فارسی را از طریق موتور عربی بسیار بهتر می‌فهمد
+                    // و از همه مهمتر، این زبان در iOS توسط اپل مسدود نمی‌شود!
+                    if (isIOS) {
+                        recognition.lang = 'fa-IR';
+                    } else {
+                        recognition.lang = 'fa-IR';
+                    }
+
+                    // برای iOS حتماً باید false باشد
+                    recognition.continuous = false;
+                    recognition.interimResults = true;
+
+                    recognition.onstart = function() {
+                        isRecording = true;
+                        window.dispatchEvent(new CustomEvent('speech-status', { detail: true }));
+                    };
+
+                    recognition.onresult = function(event) {
+                        let result = event.results[0];
+                        let transcript = result[0].transcript;
+                        let isFinal = result.isFinal;
+
+                        if (transcript) {
+                            // در صورتی که کاراکترهای عربی خاصی تولید شد، آن‌ها را به فارسی تبدیل می‌کنیم
+                            if (isIOS) {
+                                transcript = transcript.replace(/ي/g, "ی").replace(/ك/g, "ک");
+                            }
+                            window.dispatchEvent(new CustomEvent('speech-result', {
+                                detail: { transcript: transcript, isFinal: isFinal }
+                            }));
+                        }
+                    };
+
+                    recognition.onerror = function(event) {
+                        isRecording = false;
+                        window.dispatchEvent(new CustomEvent('speech-status', { detail: false }));
+
+                        console.error('Speech Recognition Error:', event.error);
+
+                        if (event.error !== 'no-speech') {
+                            let errorMsg = 'خطا در تشخیص صدا (' + event.error + ').';
+                            if (event.error === 'not-allowed') {
+                                errorMsg = 'دسترسی میکروفون رد شد. لطفاً در تنظیمات Safari دسترسی را Allow کنید.';
+                            } else if (event.error === 'service-not-allowed') {
+                                errorMsg = 'سرویس صوتی مسدود شد. مطمئن شوید Dictation در تنظیمات کیبورد آیفون فعال است.';
+                            }
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: errorMsg } }));
+                        }
+                    };
+
+                    recognition.onend = function() {
+                        isRecording = false;
+                        window.dispatchEvent(new CustomEvent('speech-status', { detail: false }));
+                    };
+                }
+
+                // هندل کردن رویداد به صورت کاملاً همگام
+                voiceBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    if (isRecording && recognition) {
+                        try { recognition.stop(); } catch(err) {}
+                    } else {
+                        // ایجاد نمونه جدید برای تمیز بودن State در سافاری
+                        initRecognition();
+                        try {
+                            recognition.start();
+                        } catch (err) {
+                            console.error("Speech Recognition Start Exception", err);
+                        }
+                    }
+                }, false);
+            }
         });
 
         function getVoiceSupportTooltip() {
@@ -830,112 +922,20 @@
 
                 // Voice Typing
                 isVoiceTyping: false,
-                isVoiceTypingSupported: false,
+                isVoiceTypingSupported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+                descriptionBeforeSpeech: '',
+
+                handleSpeechResult(detail) {
+                    const transcript = detail.transcript;
+                    let prefix = this.descriptionBeforeSpeech ? this.descriptionBeforeSpeech.trim() + ' ' : '';
+                    this.description = prefix + transcript;
+                },
 
                 init() {
                     this.initMap();
                     this.$watch('showOwnerModal', (value) => {
                         if (value) this.ownerErrors = {};
                     });
-
-                    // بررسی دقیق‌تر پشتیبانی
-                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-                    // بررسی HTTPS که برای iOS الزامی است
-                    const isSecure = window.isSecureContext;
-
-                    if (SpeechRecognition && isSecure) {
-                        this.isVoiceTypingSupported = true;
-
-                        this.$nextTick(() => {
-                            const voiceBtn = document.getElementById('voice-typing-btn');
-                            if (voiceBtn) {
-                                voiceBtn.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    this.startNativeRecognition();
-                                });
-                            }
-                        });
-                    } else {
-                        if (!isSecure) console.warn('Voice typing requires HTTPS.');
-                    }
-                },
-
-                // --- Voice Typing Methods Optimized for iOS ---
-                startNativeRecognition() {
-                    if (!this.isVoiceTypingSupported) return;
-
-                    // بررسی اتصال اینترنت (الزامی برای موتورهای آنلاین مثل اپل و گوگل)
-                    if (!navigator.onLine) {
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'برای استفاده از تایپ صوتی، اتصال اینترنت الزامی است.' } }));
-                        return;
-                    }
-
-                    if (this.isVoiceTyping) {
-                        if (window._srInstance) {
-                            try { window._srInstance.stop(); } catch(e) {}
-                        }
-                        this.isVoiceTyping = false;
-                        return;
-                    }
-
-                    try {
-                        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-                        // برای رفع مشکل فعال نشدن در برخی دستگاه‌ها، اینستنس قبلی را کامل پاک می‌کنیم
-                        if (window._srInstance) {
-                            try { window._srInstance.abort(); } catch(e) {}
-                            window._srInstance = null;
-                        }
-
-                        window._srInstance = new SpeechRecognition();
-
-                        window._srInstance.lang = 'fa-IR';
-                        window._srInstance.continuous = false; // الزامی برای iOS
-                        window._srInstance.interimResults = false;
-                        window._srInstance.maxAlternatives = 1;
-
-                        window._srInstance.onstart = () => {
-                            this.isVoiceTyping = true;
-                        };
-
-                        window._srInstance.onresult = (event) => {
-                            const transcript = event.results[0][0].transcript;
-                            if (transcript) {
-                                this.description = (this.description || '').trim() + ' ' + transcript.trim() + ' ';
-                            }
-                        };
-
-                        window._srInstance.onerror = (event) => {
-                            console.error('Speech Error:', event.error);
-                            this.isVoiceTyping = false;
-
-                            let errorMsg = 'خطا در تشخیص صدا.';
-                            if (event.error === 'not-allowed') {
-                                errorMsg = 'دسترسی مسدود است. لطفاً در تنظیمات مرورگر (Settings > Safari > Microphone & Speech Recognition) دسترسی را بررسی کنید.';
-                            } else if (event.error === 'service-not-allowed') {
-                                errorMsg = 'سرویس در دسترس نیست. لطفاً اتصال اینترنت و فعال بودن Dictation در تنظیمات کیبورد را بررسی کنید.';
-                            } else if (event.error === 'network') {
-                                errorMsg = 'خطای اتصال به شبکه.';
-                            } else if (event.error === 'no-speech') {
-                                return; // نادیده گرفتن سکوت
-                            }
-
-                            if (event.error !== 'no-speech') {
-                                window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: errorMsg } }));
-                            }
-                        };
-
-                        window._srInstance.onend = () => {
-                            this.isVoiceTyping = false;
-                        };
-
-                        window._srInstance.start();
-                    } catch (e) {
-                        console.error("Speech Recognition Start Exception", e);
-                        this.isVoiceTyping = false;
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'مرورگر مانع اجرا شد. لطفاً صفحه را رفرش کنید.' } }));
-                    }
                 },
 
                 // --- AI Completion ---

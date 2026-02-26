@@ -31,9 +31,24 @@
             </div>
 
             <div class="px-6 py-6 space-y-4">
-                <p class="text-sm text-gray-600 dark:text-gray-300">
-                    توضیح دهید چه ملکی مد نظرتان است. هوش مصنوعی بهترین گزینه‌ها را برای شما پیدا می‌کند.
-                </p>
+                <div class="flex justify-between items-center">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                        توضیح دهید چه ملکی مد نظرتان است.
+                    </p>
+                    <div x-data="{ tooltip: getVoiceSupportTooltip() }">
+                        <button type="button" id="ai-voice-btn" :disabled="!isVoiceTypingSupported"
+                                x-tooltip="tooltip"
+                                class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-help"
+                                :class="{
+                                    'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40': !isVoiceTyping,
+                                    'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/40 animate-pulse': isVoiceTyping
+                                }">
+                            <svg x-show="!isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14a2 2 0 0 0 2-2V6a2 2 0 0 0-4 0v6a2 2 0 0 0 2 2Zm-2-8a2 2 0 0 1 4 0v6a2 2 0 0 1-4 0V6Zm8 5a1 1 0 0 0-1 1v1a5 5 0 0 1-10 0v-1a1 1 0 1 0-2 0v1a7 7 0 0 0 6 6.92V21a1 1 0 1 0 2 0v-2.08A7 7 0 0 0 20 12v-1a1 1 0 0 0-1-1Z"/></svg>
+                            <svg x-show="isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5.793 5.793a1 1 0 0 1 1.414 0L12 10.586l4.793-4.793a1 1 0 1 1 1.414 1.414L13.414 12l4.793 4.793a1 1 0 0 1-1.414 1.414L12 13.414l-4.793 4.793a1 1 0 0 1-1.414-1.414L10.586 12 5.793 7.207a1 1 0 0 1 0-1.414Z"/></svg>
+                            <span x-text="isVoiceTyping ? 'توقف' : 'صوتی'"></span>
+                        </button>
+                    </div>
+                </div>
                 <textarea x-model="aiQuery" rows="4" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 resize-none" placeholder="مثلاً: یک آپارتمان دو خوابه در سعادت آباد با قیمت حدود ۵ میلیارد تومان..."></textarea>
             </div>
 
