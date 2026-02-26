@@ -10,7 +10,9 @@
 @endphp
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 py-8 space-y-6" x-data="propertyList()">
+    <div class="max-w-7xl mx-auto px-4 py-8 space-y-6" x-data="propertyList()"
+         @speech-result.window="handleSpeechResult($event.detail)"
+         @speech-status.window="isVoiceTyping = $event.detail; if(isVoiceTyping) aiQueryBeforeSpeech = aiQuery || ''">
 
         {{-- Page Header --}}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -200,11 +202,104 @@
     </div>
 
     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // ---------- VANILLA JS SPEECH RECOGNITION ----------
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const voiceBtn = document.getElementById('ai-voice-btn');
+
+            if (SpeechRecognition && voiceBtn) {
+                let recognition = null;
+                let isRecording = false;
+
+                function initRecognition() {
+                    recognition = new SpeechRecognition();
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                    recognition.lang = 'fa-IR';
+                    recognition.continuous = false;
+                    recognition.interimResults = true;
+
+                    recognition.onstart = function() {
+                        isRecording = true;
+                        window.dispatchEvent(new CustomEvent('speech-status', { detail: true }));
+                    };
+
+                    recognition.onresult = function(event) {
+                        let result = event.results[0];
+                        let transcript = result[0].transcript;
+                        let isFinal = result.isFinal;
+
+                        if (transcript) {
+                            if (isIOS) {
+                                transcript = transcript.replace(/ي/g, "ی").replace(/ك/g, "ک");
+                            }
+                            window.dispatchEvent(new CustomEvent('speech-result', {
+                                detail: { transcript: transcript, isFinal: isFinal }
+                            }));
+                        }
+                    };
+
+                    recognition.onerror = function(event) {
+                        isRecording = false;
+                        window.dispatchEvent(new CustomEvent('speech-status', { detail: false }));
+                        console.error('Speech Recognition Error:', event.error);
+                        if (event.error !== 'no-speech') {
+                            let errorMsg = 'خطا در تشخیص صدا (' + event.error + ').';
+                            if (event.error === 'not-allowed') {
+                                errorMsg = 'دسترسی میکروفون رد شد.';
+                            } else if (event.error === 'service-not-allowed') {
+                                errorMsg = 'سرویس صوتی مسدود شد.';
+                            }
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: errorMsg } }));
+                        }
+                    };
+
+                    recognition.onend = function() {
+                        isRecording = false;
+                        window.dispatchEvent(new CustomEvent('speech-status', { detail: false }));
+                    };
+                }
+
+                voiceBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (isRecording && recognition) {
+                        try { recognition.stop(); } catch(err) {}
+                    } else {
+                        initRecognition();
+                        try {
+                            recognition.start();
+                        } catch (err) {
+                            console.error("Speech Recognition Start Exception", err);
+                        }
+                    }
+                }, false);
+            }
+        });
+
+        function getVoiceSupportTooltip() {
+            if (!window.isSecureContext) {
+                return 'برای تایپ صوتی به اتصال امن (HTTPS) نیاز است.';
+            }
+            if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+                return 'مرورگر شما از تایپ صوتی پشتیبانی نمی‌کند.';
+            }
+            return '';
+        }
+
         function propertyList() {
             return {
                 showAiModal: false,
                 aiQuery: '',
                 isAiSearching: false,
+                isVoiceTyping: false,
+                isVoiceTypingSupported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+                aiQueryBeforeSpeech: '',
+
+                handleSpeechResult(detail) {
+                    const transcript = detail.transcript;
+                    let prefix = this.aiQueryBeforeSpeech ? this.aiQueryBeforeSpeech.trim() + ' ' : '';
+                    this.aiQuery = prefix + transcript;
+                },
+
                 async performAiSearch() {
                     if (this.aiQuery.length < 3) return;
                     this.isAiSearching = true;
