@@ -18,16 +18,13 @@ class ModuleController extends Controller
     protected $installerCache = [];
     protected $updater;
 
-    /**
-     * تزریق سرویس آپدیت در کانستراکتور
-     */
     public function __construct(ModuleUpdaterService $updater)
     {
         $this->updater = $updater;
     }
 
     /**
-     * نمایش لیست با قابلیت همگام‌سازی ورژن
+     * نمایش لیست ماژول‌ها با همگام‌سازی ورژن فیزیکی و دیتابیس
      */
     public function index()
     {
@@ -36,8 +33,8 @@ class ModuleController extends Controller
         foreach ($packageModules as $pModule) {
             $name = $pModule->getName();
             $slug = Str::lower($name);
-            // خواندن ورژن فیزیکی از فایل module.json
-            $versionInFile = $pModule->get('version') ?? '1.0.0';
+            // دریافت ورژن دستی از فایل module.json
+            $versionFromFile = $pModule->get('version') ?? '1.0.0';
 
             $existing = ModuleModel::where('slug', $slug)->first();
             if (! $existing) {
@@ -45,16 +42,16 @@ class ModuleController extends Controller
                     'name' => $name,
                     'slug' => $slug,
                     'description' => $pModule->get('description') ?? null,
-                    'version' => $versionInFile,
+                    'version' => $versionFromFile,
                     'is_core' => false,
                     'active' => false,
                     'installed' => false,
                 ]);
             } else {
-                // اگر ورژن در فایل تغییر کرده بود، دیتابیس را آپدیت کن
-                if ($existing->version !== $versionInFile || $existing->active != $pModule->isEnabled()) {
+                // آپدیت خودکار دیتابیس اگر ورژن فیزیکی تغییر کرده باشد
+                if ($existing->version !== $versionFromFile || $existing->active != $pModule->isEnabled()) {
                     $existing->update([
-                        'version' => $versionInFile,
+                        'version' => $versionFromFile,
                         'active' => $pModule->isEnabled()
                     ]);
                 }
@@ -72,7 +69,7 @@ class ModuleController extends Controller
     }
 
     /**
-     * متد جدید: آپدیت پکیج از طریق ZIP
+     * متد جدید: آپدیت پکیج ماژول از طریق ZIP
      */
     public function updatePackage(Request $request)
     {
@@ -82,15 +79,14 @@ class ModuleController extends Controller
         ]);
 
         $dbModule = ModuleModel::where('slug', $request->slug)->firstOrFail();
-        $file = $request->file('module_zip');
 
-        // ذخیره موقت فایل
-        $tempPath = $file->storeAs('temp_updates', 'mod_upd_' . Str::random(5) . '.zip');
+        // ذخیره موقت فایل جهت پردازش
+        $path = $request->file('module_zip')->storeAs('temp_updates', 'mod_' . Str::random(8) . '.zip');
 
-        $result = $this->updater->updateFromZip($dbModule->name, storage_path('app/' . $tempPath));
+        $result = $this->updater->updateFromZip($dbModule->name, storage_path('app/' . $path));
 
-        // حذف فایل زیپ آپلود شده
-        File::delete(storage_path('app/' . $tempPath));
+        // پاکسازی فایل زیپ آپلود شده بعد از اتمام
+        File::delete(storage_path('app/' . $path));
 
         if ($result['success']) {
             $dbModule->update(['version' => $result['version']]);
@@ -101,7 +97,7 @@ class ModuleController extends Controller
     }
 
     /**
-     * Toggle the status of a module (legacy toggle kept for compatibility).
+     * Toggle the status of a module.
      */
     public function toggle(Request $request)
     {
@@ -116,7 +112,7 @@ class ModuleController extends Controller
         $dbModule = ModuleModel::where('slug', $slug)->where('is_core', false)->first();
 
         if (!$dbModule) {
-            return back()->with('error', 'ماژول مورد نظر یافت نشد یا هسته‌ای است.');
+            return back()->with('error', 'ماژول مورد نظر یافت نشد.');
         }
 
         try {
@@ -124,37 +120,41 @@ class ModuleController extends Controller
             Artisan::call($command, ['module' => $dbModule->name]);
 
             $dbModule->update(['active' => ($action === 'enable')]);
-
             Artisan::call('optimize:clear');
 
-            return back()->with('success', "ماژول '{$dbModule->name}' با موفقیت " . ($action === 'enable' ? 'فعال' : 'غیرفعال') . " شد.");
+            return back()->with('success', "ماژول '{$dbModule->name}' تغییر وضعیت داد.");
         } catch (\Exception $e) {
             return back()->with('error', 'خطای سیستمی: ' . $e->getMessage());
         }
     }
 
     /**
-     * بقیه متدها (install, enableModule, disableModule, resetModule, uninstallModule, resolveInstaller)
-     * دقیقاً با همان جزئیات فایل اصلی شما حفظ شده‌اند.
+     * Install a module.
      */
     public function install(Request $request)
     {
         $request->validate(['slug' => 'required|string']);
         $dbModule = ModuleModel::where('slug', $request->slug)->where('is_core', false)->firstOrFail();
-        if ($dbModule->installed) return back()->with('info', 'ماژول قبلاً نصب شده است.');
+
+        if ($dbModule->installed) return back()->with('info', 'قبلاً نصب شده است.');
+
         try {
             $this->resolveInstaller($dbModule->name)->install();
             $dbModule->update(['installed' => true, 'installed_at' => now(), 'active' => true]);
-            return back()->with('success', "ماژول '{$dbModule->name}' نصب و فعال شد.");
+            return back()->with('success', "ماژول '{$dbModule->name}' با موفقیت نصب شد.");
         } catch (\Throwable $e) {
-            return back()->with('error', 'خطا در نصب ماژول: ' . $e->getMessage());
+            return back()->with('error', 'خطا در نصب: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Enable module.
+     */
     public function enableModule(Request $request)
     {
         $request->validate(['slug' => 'required|string']);
         $dbModule = ModuleModel::where('slug', $request->slug)->firstOrFail();
+
         try {
             if (!$dbModule->installed) {
                 $this->resolveInstaller($dbModule->name)->install();
@@ -163,37 +163,47 @@ class ModuleController extends Controller
                 $this->resolveInstaller($dbModule->name)->enable();
             }
             $dbModule->update(['active' => true]);
-            return back()->with('success', "ماژول '{$dbModule->name}' فعال شد.");
+            return back()->with('success', "ماژول فعال شد.");
         } catch (\Throwable $e) {
-            return back()->with('error', 'خطا در فعال‌سازی: ' . $e->getMessage());
+            return back()->with('error', 'خطا: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Disable module.
+     */
     public function disableModule(Request $request)
     {
         $request->validate(['slug' => 'required|string']);
         $dbModule = ModuleModel::where('slug', $request->slug)->firstOrFail();
+
         try {
             $this->resolveInstaller($dbModule->name)->disable();
             $dbModule->update(['active' => false]);
-            return back()->with('success', "ماژول '{$dbModule->name}' غیرفعال شد.");
+            return back()->with('success', "ماژول غیرفعال شد.");
         } catch (\Throwable $e) {
-            return back()->with('error', 'خطا در غیرفعال‌سازی: ' . $e->getMessage());
+            return back()->with('error', 'خطا: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Reset module.
+     */
     public function resetModule(Request $request)
     {
         $request->validate(['slug' => 'required|string']);
         $dbModule = ModuleModel::where('slug', $request->slug)->firstOrFail();
         try {
             $this->resolveInstaller($dbModule->name)->reset();
-            return back()->with('success', "ماژول '{$dbModule->name}' به‌حالت اولیه بازگردانده شد.");
+            return back()->with('success', "ماژول ریست شد.");
         } catch (\Throwable $e) {
             return back()->with('error', 'خطا در ریست: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Uninstall module.
+     */
     public function uninstallModule(Request $request)
     {
         $request->validate(['slug' => 'required|string']);
@@ -203,9 +213,9 @@ class ModuleController extends Controller
             $installer->disable();
             $installer->uninstall();
             $dbModule->delete();
-            return back()->with('success', "ماژول با موفقیت حذف شد.");
+            return back()->with('success', "ماژول و اطلاعات آن حذف شد.");
         } catch (\Throwable $e) {
-            return back()->with('error', 'خطا در حذف ماژول: ' . $e->getMessage());
+            return back()->with('error', 'خطا در حذف: ' . $e->getMessage());
         }
     }
 

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-    <div class="py-10 bg-[#f8fafc] dark:bg-[#070a13] min-h-screen transition-colors duration-500 font-iranYekan">
+    <div class="py-10 bg-[#f8fafc] dark:bg-[#070a13] min-h-screen transition-colors duration-500 font-iranYekan text-right">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {{-- هدر و دکمه‌ها --}}
@@ -35,10 +35,15 @@
                         </div>
                         <h3 class="font-bold text-slate-800 dark:text-slate-200">نسخه نصب شده</h3>
                     </div>
-                    <div class="text-3xl font-black text-slate-900 dark:text-white font-mono">
+                    <div class="text-3xl font-black text-slate-900 dark:text-white font-mono leading-none">
                         v{{ $currentLocal ? $currentLocal->version_number : '1.0.0' }}
                     </div>
-                    <p class="mt-2 text-xs text-slate-500">آخرین ثبت داخلی: {{ $currentLocal ? verta($currentLocal->release_date)->format('Y/m/d') : 'نامشخص' }}</p>
+                    <p class="mt-4 text-xs text-slate-500 font-bold">
+                        آخرین ثبت داخلی:
+                        <span dir="ltr">
+                        {{ $currentLocal ? (function_exists('verta') ? verta($currentLocal->release_date)->format('Y/m/d') : $currentLocal->release_date->format('Y/m/d')) : 'نامشخص' }}
+                    </span>
+                    </p>
                 </div>
 
                 {{-- کارت وضعیت گیت‌هاب --}}
@@ -49,29 +54,30 @@
 
                     <div class="relative z-10 flex flex-col md:flex-row justify-between gap-6">
                         <div>
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                                <span class="text-xs font-bold uppercase tracking-widest text-indigo-300">GitHub Repository Status</span>
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">GitHub Remote Status</span>
                             </div>
                             @if($remote)
-                                <h2 class="text-2xl font-black">نسخه موجود در Branch: <span class="text-emerald-400">main</span></h2>
-                                <p class="mt-2 text-sm text-slate-300 leading-relaxed max-w-md">
-                                    آخرین تغییر: <span class="font-mono text-white">{{ Str::limit($remote['commit']['commit']['message'], 60) }}</span>
-                                </p>
+                                <h2 class="text-2xl font-black">برنچ عملیاتی: <span class="text-emerald-400">main</span></h2>
+                                <div class="mt-4 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                                    <p class="text-xs text-slate-300 font-bold mb-1 italic">آخرین کامیت آنلاین:</p>
+                                    <p class="text-sm text-white font-medium leading-relaxed">{{ Str::limit($remote['commit']['commit']['message'], 80) }}</p>
+                                </div>
                             @else
-                                <h2 class="text-2xl font-black">عدم اتصال به مخزن آنلاین</h2>
-                                <p class="mt-2 text-sm text-slate-300">برای بررسی وجود آپدیت‌های جدید، روی دکمه بررسی کلیک کنید.</p>
+                                <h2 class="text-2xl font-black">وضعیت مخزن آنلاین نامشخص</h2>
+                                <p class="mt-2 text-sm text-slate-300 leading-relaxed font-medium">برای بررسی هماهنگی با گیت‌هاب، از دکمه بررسی مخزن در منوی بالا استفاده کنید.</p>
                             @endif
                         </div>
 
                         @if($remote)
-                            <div class="flex items-center">
+                            <div class="flex items-center justify-center">
                                 <form action="{{ route('admin.version-control.deploy') }}" method="POST">
                                     @csrf
-                                    <button type="submit" onclick="return confirm('هشدار: سیستم برای دقایقی در حالت تعمیرات قرار می‌گیرد. ادامه می‌دهید؟')"
-                                            class="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl shadow-2xl shadow-emerald-500/40 transition-all active:scale-95 flex items-center gap-2">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16.5V21m0 0l-3-3m3 3l3-3M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        نصب و بروزرسانی هوشمند
+                                    <button type="submit" onclick="return confirm('هشدار: سیستم برای دقایقی در حالت تعمیرات قرار می‌گیرد و کدهای جدید جایگزین می‌شوند. ادامه می‌دهید؟')"
+                                            class="px-8 py-5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-[1.5rem] shadow-2xl shadow-emerald-500/40 transition-all active:scale-95 flex items-center gap-3">
+                                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16.5V21m0 0l-3-3m3 3l3-3M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        نصب و استقرار هوشمند
                                     </button>
                                 </form>
                             </div>
@@ -82,67 +88,88 @@
 
             {{-- لیست نسخه‌ها --}}
             <div class="bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl border border-white dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none">
-                <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                    <thead class="bg-slate-50/50 dark:bg-slate-950/50">
-                    <tr>
-                        <th class="px-8 py-5 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">اطلاعات انتشار</th>
-                        <th class="px-8 py-5 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">تاریخ</th>
-                        <th class="px-8 py-5 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">وضعیت</th>
-                        <th class="px-8 py-5 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">مدیریت</th>
-                    </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                    @forelse($versions as $version)
-                        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-all group">
-                            <td class="px-8 py-6">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono font-black text-sm border border-indigo-100 dark:border-indigo-500/20">
-                                        v{{ $version->version_number }}
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-black text-slate-900 dark:text-white">{{ $version->title ?? 'نسخه سیستمی' }}</div>
-                                        <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 max-w-md">{{ $version->summary }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-8 py-6 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                                {{ verta($version->release_date)->format('Y/m/d') }}
-                            </td>
-                            <td class="px-8 py-6">
-                                @if($version->is_current)
-                                    <span class="inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-2 animate-pulse"></span>
-                                        LIVE ON PRODUCTION
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                                        ARCHIVED
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="px-8 py-6 text-center">
-                                <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <a href="{{ route('admin.version-control.edit', $version) }}" class="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </a>
-                                    <form action="{{ route('admin.version-control.destroy', $version) }}" method="POST" class="inline">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="p-2 text-slate-400 hover:text-red-500 transition-colors" onclick="return confirm('حذف شود؟')">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                        <thead class="bg-slate-50/50 dark:bg-slate-950/50">
+                        <tr>
+                            <th class="px-8 py-5 text-right text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">اطلاعات انتشار</th>
+                            <th class="px-8 py-5 text-right text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">تاریخ</th>
+                            <th class="px-8 py-5 text-right text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">وضعیت</th>
+                            <th class="px-8 py-5 text-center text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">مدیریت</th>
                         </tr>
-                    @empty
-                        {{-- ردیف خالی --}}
-                    @endforelse
-                    </tbody>
-                </table>
-                <div class="px-8 py-5 bg-slate-50/30 dark:bg-slate-950/30">
-                    {{ $versions->links() }}
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        @forelse($versions as $version)
+                            <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-all group">
+                                <td class="px-8 py-6">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono font-black text-sm border border-indigo-100 dark:border-indigo-500/20 shadow-sm">
+                                            v{{ $version->version_number }}
+                                        </div>
+                                        <div>
+                                            <div class="text-sm font-black text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">{{ $version->title ?? 'نسخه سیستمی' }}</div>
+                                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 max-w-md font-medium">{{ $version->summary }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6 text-sm text-slate-600 dark:text-slate-300 font-bold">
+                                    <span dir="ltr">{{ function_exists('verta') ? verta($version->release_date)->format('Y/m/d') : $version->release_date->format('Y-m-d') }}</span>
+                                </td>
+                                <td class="px-8 py-6">
+                                    @if($version->is_current)
+                                        <span class="inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 shadow-sm">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-2 animate-pulse"></span>
+                                            LIVE ON PRODUCTION
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                            ARCHIVED
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-8 py-6 text-center">
+                                    <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <a href="{{ route('admin.version-control.edit', $version) }}" class="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        </a>
+                                        <form action="{{ route('admin.version-control.destroy', $version) }}" method="POST" class="inline">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="p-2.5 bg-rose-50 dark:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded-xl transition-all" onclick="return confirm('آیا از حذف این نسخه از تاریخچه اطمینان دارید؟')">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="py-20 text-center">
+                                    <svg class="w-16 h-16 mx-auto text-slate-200 dark:text-slate-800 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <p class="text-slate-400 dark:text-slate-600 font-bold">هیچ نسخه‌ای در تاریخچه سیستم ثبت نشده است.</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
                 </div>
+                @if($versions->hasPages())
+                    <div class="px-8 py-5 bg-slate-50/30 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800">
+                        {{ $versions->links() }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>
+
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
 @endsection
