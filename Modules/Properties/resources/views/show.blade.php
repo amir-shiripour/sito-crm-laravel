@@ -27,9 +27,9 @@
                 }
             }
 
-            // If user is not logged in, they can only see public items
+            // If user is not logged in, check if 'guest' is allowed
             if (!auth()->check()) {
-                return !$isRestrictedByDefault && empty($visibilitySettings[$key] ?? []);
+                return in_array('guest', $allowedRoles);
             }
 
             $user = auth()->user();
@@ -52,6 +52,8 @@
         $canViewNotes = $checkVisibility('confidential_notes', true);
         $canViewPrice = $checkVisibility('price_info', false);
         $canViewMap   = $checkVisibility('map_info', false);
+        $canViewCover = $checkVisibility('cover_image', false);
+        $canViewGallery = $checkVisibility('gallery_images', false);
 
         // Determine the agent to display
         $displayAgent = $property->agent ?? $property->creator;
@@ -76,7 +78,10 @@
                 <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-800" id="gallery-container">
                     @php
                         $images = $property->images;
-                        $mainImage = $images->first() ? asset('storage/' . $images->first()->path) : ($property->cover_image ? asset('storage/' . $property->cover_image) : null);
+                        $mainImage = null;
+                        if ($canViewCover) {
+                            $mainImage = $images->first() ? asset('storage/' . $images->first()->path) : ($property->cover_image ? asset('storage/' . $property->cover_image) : null);
+                        }
                     @endphp
 
                     @if($mainImage)
@@ -95,14 +100,14 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
                                 </svg>
                             </div>
-                            @if($images->count() > 0)
+                            @if($canViewGallery && $images->count() > 0)
                                 <div class="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm backdrop-blur-sm">
                                     {{ $images->count() }} تصویر
                                 </div>
                             @endif
                         </div>
 
-                        @if($images->count() > 1)
+                        @if($canViewGallery && $images->count() > 1)
                             <div class="relative group/thumbs px-8 py-4">
                                 <button onclick="scrollThumbnails('right')" class="absolute right-1 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 p-2 rounded-full shadow-md hover:bg-white dark:hover:bg-gray-800 z-10 hidden md:flex items-center justify-center text-gray-700 dark:text-gray-200 transition opacity-0 group-hover/thumbs:opacity-100">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,7 +139,16 @@
                                     <span class="bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-md">ویژه</span>
                                 @endif
                             </div>
-                            بدون تصویر
+                            @if(!$canViewCover)
+                                <div class="flex flex-col items-center gap-2">
+                                    <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                    </svg>
+                                    <span>تصویر محدود شده است</span>
+                                </div>
+                            @else
+                                بدون تصویر
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -510,99 +524,68 @@
     </div>
 
     <script>
-        // Gallery Logic
+        // توابع گالری (بدون module برای دسترسی عمومی)
+        const images = [
+            @if($canViewGallery && $images->count() > 0)
+                @foreach($images as $image) "{{ asset('storage/' . $image->path) }}", @endforeach
+                @elseif($canViewCover && $property->cover_image)
+                "{{ asset('storage/' . $property->cover_image) }}"
+            @endif
+        ];
+        let currentImageIndex = 0;
+
         function changeMainImage(src) {
-            const mainImage = document.getElementById('main-image');
-            mainImage.style.opacity = '0';
-            setTimeout(() => {
-                mainImage.src = src;
-                mainImage.style.opacity = '1';
-            }, 200);
+            const main = document.getElementById('main-image');
+            main.style.opacity = '0';
+            setTimeout(() => { main.src = src; main.style.opacity = '1'; }, 200);
         }
 
         function scrollThumbnails(direction) {
             const container = document.getElementById('thumbnails-scroll');
-            const scrollAmount = 200;
-            if (direction === 'left') {
-                container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-            } else {
-                container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-            }
+            container.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
         }
-
-        // Lightbox Logic
-        const images = [
-            @if($property->images->count() > 0)
-                @foreach($property->images as $image)
-                    "{{ asset('storage/' . $image->path) }}",
-                @endforeach
-            @elseif($property->cover_image)
-                "{{ asset('storage/' . $property->cover_image) }}"
-            @endif
-        ];
-
-        let currentImageIndex = 0;
-        const lightbox = document.getElementById('lightbox');
-        const lightboxImage = document.getElementById('lightbox-image');
 
         function openLightbox() {
             if (images.length === 0) return;
-
-            // Find current image index based on main image src
             const currentSrc = document.getElementById('main-image').src;
-            currentImageIndex = images.findIndex(img => img === currentSrc);
+            currentImageIndex = images.indexOf(currentSrc);
             if (currentImageIndex === -1) currentImageIndex = 0;
-
-            lightboxImage.src = images[currentImageIndex];
-            lightbox.classList.remove('hidden');
-            // Small delay to allow display:block to apply before opacity transition
-            setTimeout(() => {
-                lightbox.classList.remove('opacity-0');
-            }, 10);
+            document.getElementById('lightbox-image').src = images[currentImageIndex];
+            const lb = document.getElementById('lightbox');
+            lb.classList.remove('hidden');
+            setTimeout(() => lb.classList.remove('opacity-0'), 10);
             document.body.style.overflow = 'hidden';
         }
 
         function closeLightbox() {
-            lightbox.classList.add('opacity-0');
-            setTimeout(() => {
-                lightbox.classList.add('hidden');
-                document.body.style.overflow = 'auto';
-            }, 300);
+            const lb = document.getElementById('lightbox');
+            lb.classList.add('opacity-0');
+            setTimeout(() => { lb.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300);
         }
 
         function nextImage() {
             currentImageIndex = (currentImageIndex + 1) % images.length;
-            lightboxImage.src = images[currentImageIndex];
+            document.getElementById('lightbox-image').src = images[currentImageIndex];
         }
 
         function prevImage() {
             currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
-            lightboxImage.src = images[currentImageIndex];
+            document.getElementById('lightbox-image').src = images[currentImageIndex];
         }
 
-        // Close lightbox on escape key
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeLightbox();
             if (e.key === 'ArrowRight') nextImage();
             if (e.key === 'ArrowLeft') prevImage();
         });
 
-        // Map Logic
         document.addEventListener('DOMContentLoaded', function() {
             @if($canViewMap && $property->latitude && $property->longitude)
-                if (typeof L !== 'undefined') {
-                    const map = L.map('map').setView([{{ $property->latitude }}, {{ $property->longitude }}], 15);
-
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    }).addTo(map);
-
-                    L.marker([{{ $property->latitude }}, {{ $property->longitude }}]).addTo(map)
-                        .bindPopup('{{ $property->title }}')
-                        .openPopup();
-                } else {
-                    console.error('Leaflet is not loaded');
-                }
+            if (typeof L !== 'undefined') {
+                const map = L.map('map').setView([{{ $property->latitude }}, {{ $property->longitude }}], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                L.marker([{{ $property->latitude }}, {{ $property->longitude }}]).addTo(map).bindPopup('{{ $property->title }}').openPopup();
+            }
             @endif
         });
     </script>

@@ -11,8 +11,7 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
 
     <style>
         body {
@@ -374,15 +373,22 @@
     </div>
 </main>
 
-<script>
+<script type="module">
     document.addEventListener('DOMContentLoaded', function() {
+        if (typeof window.L === 'undefined') {
+             console.error('Leaflet library (L) is not defined. Make sure app.js is loaded correctly.');
+             return;
+        }
+
         // Initialize Map
         const map = L.map('map').setView([35.6892, 51.3890], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
-
+        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        // }).addTo(map);
         const markers = [];
         const bounds = L.latLngBounds();
 
@@ -394,9 +400,11 @@
                 const title = "{{ $officeLocation['title'] }}";
 
                 // Custom Icon for Office
+            // iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+//     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
                 const officeIcon = L.icon({
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconUrl: L.Icon.Default.prototype.options.iconUrl, // Use default icon from app.js
+                    shadowUrl: L.Icon.Default.prototype.options.shadowUrl, // Use default shadow from app.js
                     iconSize: [25, 41],
                     iconAnchor: [12, 41],
                     popupAnchor: [1, -34],
@@ -417,8 +425,42 @@
                     const lat = {{ $property->latitude }};
                     const lng = {{ $property->longitude }};
                     const title = "{{ $property->title }}";
-                    const image = "{{ $property->cover_image ? asset('storage/' . $property->cover_image) : '' }}";
-                    const price = "{{ $property->listing_type == 'rent' ? 'رهن: ' . number_format($property->deposit_price) : number_format($property->price) . ' تومان' }}";
+
+                    @php
+                         $canViewPrice = false;
+                         $priceRoles = $visibilitySettings['price_info'] ?? [];
+                         if (empty($priceRoles)) {
+                             $canViewPrice = true;
+                         } elseif (auth()->check()) {
+                             $user = auth()->user();
+                             if ($user->id == $property->created_by || $user->id == $property->agent_id || $user->hasRole('super-admin') || $user->hasAnyRole($priceRoles)) {
+                                 $canViewPrice = true;
+                             }
+                         } else {
+                             if (in_array('guest', $priceRoles)) {
+                                 $canViewPrice = true;
+                             }
+                         }
+
+                         // Check Cover Image Visibility
+                         $canViewCover = false;
+                         $coverRoles = $visibilitySettings['cover_image'] ?? [];
+                         if (empty($coverRoles)) {
+                             $canViewCover = true;
+                         } elseif (auth()->check()) {
+                             $user = auth()->user();
+                             if ($user->id == $property->created_by || $user->id == $property->agent_id || $user->hasRole('super-admin') || $user->hasAnyRole($coverRoles)) {
+                                 $canViewCover = true;
+                             }
+                         } else {
+                             if (in_array('guest', $coverRoles)) {
+                                 $canViewCover = true;
+                             }
+                         }
+                    @endphp
+
+                    const image = "{{ $canViewCover && $property->cover_image ? asset('storage/' . $property->cover_image) : '' }}";
+                    const price = "{{ $canViewPrice ? ($property->listing_type == 'rent' ? 'رهن: ' . number_format($property->deposit_price) : number_format($property->price) . ' تومان') : 'تماس بگیرید' }}";
                     const link = "{{ route('properties.show', $property->slug) }}";
                     const type = "{{ match($property->listing_type) { 'sale' => 'فروش', 'rent' => 'اجاره', 'presale' => 'پیش‌فروش', default => '' } }}";
                     const area = "{{ $property->area ? number_format($property->area) . ' متر' : '' }}";

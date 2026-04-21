@@ -45,16 +45,21 @@ class SettingsController extends Controller
         // Helper to get setting or default
         $getSetting = function($key, $default = []) {
             $val = PropertySetting::get($key);
-            return $val ? json_decode($val, true) : $default;
+            $decoded = $val ? json_decode($val, true) : [];
+            // If decoded is empty (e.g. "[]" or null), use default.
+            // This ensures that if the setting was saved as empty previously (or never set), defaults are applied.
+            return !empty($decoded) ? $decoded : $default;
         };
 
         // For sensitive data, default to admin/super-admin if not set
-        $visibility_owner_info = $getSetting('visibility_owner_info', ['super-admin', 'admin']);
-        $visibility_confidential_notes = $getSetting('visibility_confidential_notes', ['super-admin', 'admin']);
+        $visibility_owner_info = $getSetting('visibility_owner_info', ['super-admin', 'admin', 'guest']);
+        $visibility_confidential_notes = $getSetting('visibility_confidential_notes', ['super-admin', 'admin', 'guest']);
 
         // For public data, default to empty (public)
-        $visibility_price_info = $getSetting('visibility_price_info', []);
-        $visibility_map_info = $getSetting('visibility_map_info', []);
+        $visibility_price_info = $getSetting('visibility_price_info', ['super-admin', 'admin', 'guest']);
+        $visibility_map_info = $getSetting('visibility_map_info', ['super-admin', 'admin', 'guest']);
+        $visibility_cover_image = $getSetting('visibility_cover_image', ['super-admin', 'admin', 'guest']);
+        $visibility_gallery_images = $getSetting('visibility_gallery_images', ['super-admin', 'admin', 'guest']);
 
         // Agent Roles
         $agent_roles = $getSetting('agent_roles', []);
@@ -100,6 +105,8 @@ class SettingsController extends Controller
             'visibility_confidential_notes',
             'visibility_price_info',
             'visibility_map_info',
+            'visibility_cover_image',
+            'visibility_gallery_images',
             'agent_roles',
             'office_location_lat',
             'office_location_lng',
@@ -127,6 +134,8 @@ class SettingsController extends Controller
             'visibility_confidential_notes' => 'nullable|array',
             'visibility_price_info' => 'nullable|array',
             'visibility_map_info' => 'nullable|array',
+            'visibility_cover_image' => 'nullable|array',
+            'visibility_gallery_images' => 'nullable|array',
             'agent_roles' => 'nullable|array',
             'office_location_lat' => 'nullable|numeric',
             'office_location_lng' => 'nullable|numeric',
@@ -160,6 +169,8 @@ class SettingsController extends Controller
         PropertySetting::set('visibility_confidential_notes', json_encode($request->input('visibility_confidential_notes', [])));
         PropertySetting::set('visibility_price_info', json_encode($request->input('visibility_price_info', [])));
         PropertySetting::set('visibility_map_info', json_encode($request->input('visibility_map_info', [])));
+        PropertySetting::set('visibility_cover_image', json_encode($request->input('visibility_cover_image', [])));
+        PropertySetting::set('visibility_gallery_images', json_encode($request->input('visibility_gallery_images', [])));
 
         // Save Agent Roles
         PropertySetting::set('agent_roles', json_encode($request->input('agent_roles', [])));

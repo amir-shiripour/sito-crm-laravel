@@ -147,8 +147,8 @@ class Property extends Model
         $user = auth()->user();
 
         if (!$user) {
-            // For guests (public view), only show published properties
-            return $query->where('publication_status', 'published');
+            // For guests (public view), show all properties
+            return $query;
         }
 
         // Super Admin or users with 'properties.view.all' permission can see everything

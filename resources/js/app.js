@@ -1,4 +1,5 @@
 import './bootstrap';
+import './sortable.min';
 import '@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js';
 import '@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css';
 
@@ -13,10 +14,14 @@ import 'leaflet-geosearch/dist/geosearch.css';
 // Fix Leaflet's default icon path issues with Webpack/Vite
 delete L.Icon.Default.prototype._getIconUrl;
 
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
 L.Icon.Default.mergeOptions({
-    iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
-    iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
-    shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
+    iconRetinaUrl: markerIcon2x,
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
 });
 
 // Make Leaflet and Geosearch available globally

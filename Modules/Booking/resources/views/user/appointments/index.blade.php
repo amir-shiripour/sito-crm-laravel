@@ -1,5 +1,7 @@
 @extends('layouts.user')
-
+@php
+    $clientLabel = config('clients.labels.singular', 'مشتری');
+@endphp
 @section('content')
     <div class="space-y-6">
         {{-- Header & Stats --}}
@@ -67,7 +69,7 @@
                             \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'در انتظار تایید',
                             \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'در انتظار پرداخت',
                             \Modules\Booking\Entities\Appointment::STATUS_DONE => 'انجام شده',
-                            \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => 'لغو (مشتری)',
+                            \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT =>  "لغو ($clientLabel)",
                             \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN => 'لغو (ادمین)',
                             \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW => 'عدم حضور',
                             \Modules\Booking\Entities\Appointment::STATUS_RESCHEDULED => 'جابجا شده',
@@ -141,7 +143,7 @@
                     <thead class="bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
                     <tr>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">#</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">مشتری</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">{{ $clientLabel }}</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">سرویس / {{ config('booking.labels.provider') }}</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تاریخ نوبت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ساعت نوبت</th>
@@ -174,7 +176,7 @@
                                 \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => ['label' => 'در انتظار پرداخت', 'class' => 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-200'],
                                 \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => ['label' => 'تایید شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
                                 \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN => ['label' => 'لغو شده (ادمین)', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
-                                \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => ['label' => 'لغو شده (مشتری)', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
+                                \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => ['label' => "لغو شده ($clientLabel)", 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
                                 \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW => ['label' => 'عدم حضور', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
                                 \Modules\Booking\Entities\Appointment::STATUS_DONE => ['label' => 'انجام شده', 'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'],
                                 \Modules\Booking\Entities\Appointment::STATUS_RESCHEDULED => ['label' => 'جابجا شده', 'class' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200'],

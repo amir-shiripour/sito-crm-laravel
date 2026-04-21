@@ -150,55 +150,41 @@ class PropertyController extends Controller
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         $agents = User::role($agentRoles)->get();
-
-        return view('properties::user.create', compact('maxGalleryImages', 'statuses', 'agents'));
+        $owners = PropertyOwner::latest()->get(); // اضافه شد جهت نمایش در لیست انتخاب مالک
+        return view('properties::user.create', compact('maxGalleryImages', 'statuses', 'agents', 'owners'));
     }
 
     public function store(Request $request)
     {
-        // Convert Jalali Date to Gregorian before validation
+        // تبدیل تاریخ جلالی
         if ($request->has('delivery_date') && !empty($request->delivery_date)) {
-            try {
-                $date = Jalalian::fromFormat('Y/m/d', $request->delivery_date)->toCarbon();
-                $request->merge(['delivery_date' => $date->format('Y-m-d')]);
-            } catch (\Exception $e) {
-                $request->merge(['delivery_date' => null]);
-            }
+            try { $request->merge(['delivery_date' => Jalalian::fromFormat('Y/m/d', $request->delivery_date)->toCarbon()->format('Y-m-d')]); } catch (\Exception $e) { $request->merge(['delivery_date' => null]); }
         }
-
         if ($request->has('registered_at') && !empty($request->registered_at)) {
-            try {
-                $date = Jalalian::fromFormat('Y/m/d', $request->registered_at)->toCarbon();
-                $request->merge(['registered_at' => $date->format('Y-m-d')]);
-            } catch (\Exception $e) {
-                $request->merge(['registered_at' => null]);
-            }
-        } else {
-            // Default to today if not provided
-            $request->merge(['registered_at' => now()->format('Y-m-d')]);
-        }
+            try { $request->merge(['registered_at' => Jalalian::fromFormat('Y/m/d', $request->registered_at)->toCarbon()->format('Y-m-d')]); } catch (\Exception $e) { $request->merge(['registered_at' => null]); }
+        } else { $request->merge(['registered_at' => now()->format('Y-m-d')]); }
 
-        // Sanitize prices (remove commas)
+        // اصلاح مبالغ عددی (جلوگیری از خطای SQL 1366)
         $priceFields = ['price', 'min_price', 'deposit_price', 'rent_price', 'advance_price'];
         foreach ($priceFields as $field) {
-            if ($request->has($field) && !is_null($request->input($field))) {
-                $request->merge([
-                    $field => str_replace(',', '', $request->input($field))
-                ]);
+            if ($request->has($field)) {
+                $rawPrice = str_replace(',', '', $request->input($field));
+                // اگر مقدار خالی بود، نال قرار می‌دهیم نه رشته خالی
+                $request->merge([$field => ($rawPrice === '' ? null : $rawPrice)]);
             }
         }
 
         $maxSize = PropertySetting::get('max_file_size', 10240);
-        $allowedTypes = PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif');
-        $allowedTypes = str_replace(' ', '', $allowedTypes);
+        $allowedTypes = str_replace(' ', '', PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif'));
 
-        $data = $request->validate([
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'listing_type' => 'required|in:sale,presale,rent',
             'property_type' => 'required|in:apartment,villa,land,office',
             'document_type' => 'nullable|string',
             'building_id' => 'nullable|integer',
+            'owner_id' => 'nullable|exists:property_owners,id',
             'registered_at' => 'nullable|date',
             'status_id' => 'nullable|exists:property_statuses,id',
             'publication_status' => 'required|in:draft,published',
@@ -214,196 +200,84 @@ class PropertyController extends Controller
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'is_special' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
-
-            // قیمت‌ها
             'price' => 'nullable|numeric|min:0',
             'min_price' => 'nullable|numeric|min:0',
             'deposit_price' => 'nullable|numeric|min:0',
             'rent_price' => 'nullable|numeric|min:0',
             'advance_price' => 'nullable|numeric|min:0',
-
-            // ویژگی‌ها و امکانات (استاندارد)
             'attributes' => 'nullable|array',
-            'attributes.*' => 'nullable|string|max:255',
             'features' => 'nullable|array',
-            'features.*' => 'exists:property_attributes,id',
-
-            // متای سفارشی (شامل جزئیات و امکانات سفارشی)
             'meta' => 'nullable|array',
-            'meta.features' => 'nullable|array',
-            'meta.features.*' => 'string',
-            'meta.details' => 'nullable|array',
         ]);
 
-        // Handle Property Code
+        // جدا کردن داده‌های رابطه‌ای (مانند متد Update)
+        $attributesData = $request->input('attributes', []);
+        $featuresData = $request->input('features', []);
+
+        $data = $validated;
+        unset($data['attributes'], $data['features']);
+
+        // مدیریت کد ملک
         if ($request->input('code_type') === 'auto' || empty($data['code'])) {
             $data['code'] = $this->generateUniquePropertyCode($data['category_id'] ?? null);
         } else {
             $prefix = $this->getPropertyCodePrefix($data['category_id'] ?? null);
             $data['code'] = $prefix . $data['code'];
-
-            if (Property::withTrashed()->where('code', $data['code'])->exists()) {
-                $errorMsg = 'کد ملک وارد شده (با احتساب پیش‌وند) تکراری است.';
-                if ($request->wantsJson()) {
-                    return response()->json(['errors' => ['code' => [$errorMsg]]], 422);
-                }
-                return back()->withInput()->with('error', $errorMsg);
-            }
+            if (Property::withTrashed()->where('code', $data['code'])->exists()) return back()->withInput()->with('error', 'کد ملک تکراری است.');
         }
 
-        // Handle Cover Image Upload
+        // آپلود تصویر شاخص
         if ($request->hasFile('cover_image')) {
-            $file = $request->file('cover_image');
-            if ($file->isValid()) {
-                try {
-                    $path = $this->uploadFile($file, 'properties/covers');
-                    $data['cover_image'] = $path;
-                } catch (\Exception $e) {
-                    Log::error('Cover Image Store Failed: ' . $e->getMessage());
-                    $errorMsg = 'خطا در ذخیره تصویر شاخص: ' . $e->getMessage();
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $errorMsg], 500);
-                    }
-                    return back()->withInput()->with('error', $errorMsg);
-                }
-            } else {
-                $errorMsg = 'فایل تصویر شاخص نامعتبر است (کد خطا: ' . $file->getError() . ')';
-                if ($request->wantsJson()) {
-                    return response()->json(['errors' => ['cover_image' => [$errorMsg]]], 422);
-                }
-                return back()->withInput()->with('error', $errorMsg);
-            }
+            $data['cover_image'] = $this->uploadFile($request->file('cover_image'), 'properties/covers');
         }
 
-        // Handle Video Upload
+        // آپلود ویدیو
         if ($request->hasFile('video')) {
-            $file = $request->file('video');
-            if ($file->isValid()) {
-                try {
-                    $path = $this->uploadFile($file, 'properties/videos');
-                    $data['video'] = $path;
-                } catch (\Exception $e) {
-                    Log::error('Video Store Failed: ' . $e->getMessage());
-                }
-            }
+            $data['video'] = $this->uploadFile($request->file('video'), 'properties/videos');
         }
 
-        // Set created_by to current user
         $data['created_by'] = auth()->id();
-
-        // Handle agent_id logic
-        $user = auth()->user();
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
-        $isAgent = $user->hasAnyRole($agentRoles);
-        $isAdmin = $user->hasRole(['super-admin', 'admin']);
+        if (auth()->user()->hasRole(['super-admin', 'admin']) || !auth()->user()->hasAnyRole($agentRoles)) {
+            $data['agent_id'] = $request->input('agent_id') ?: auth()->id();
+        } else { $data['agent_id'] = auth()->id(); }
 
-        if ($isAdmin || !$isAgent) {
-            $data['agent_id'] = $request->input('agent_id') ?: $user->id;
-        } else {
-            $data['agent_id'] = $user->id;
-        }
-
-        // Set Default Status if not provided
         if (empty($data['status_id'])) {
-            $defaultStatus = PropertyStatus::where('is_default', true)->first();
-            if ($defaultStatus) {
-                $data['status_id'] = $defaultStatus->id;
-            } else {
-                // Fallback to first active status if no default is set
-                $firstStatus = PropertyStatus::where('is_active', true)->orderBy('sort_order')->first();
-                $data['status_id'] = $firstStatus?->id;
-            }
+            $data['status_id'] = PropertyStatus::where('is_default', true)->first()?->id ?? PropertyStatus::where('is_active', true)->orderBy('sort_order')->first()?->id;
         }
 
-        // Prepare Meta Data
-        $meta = $request->input('meta', []);
-
-        // Handle Special Property
-        if ($request->has('is_special')) {
-            $meta['is_special'] = true;
+        // پردازش Meta (جلوگیری از [object Object])
+        $metaRequest = $request->input('meta', []);
+        $processedMeta = ['is_special' => $request->has('is_special')];
+        if (isset($metaRequest['details'])) foreach ($metaRequest['details'] as $k => $v) if (!empty($k)) $processedMeta['details'][$k] = $v;
+        if (isset($metaRequest['features'])) foreach ($metaRequest['features'] as $f) {
+            if (is_array($f) && !empty($f['value'])) $processedMeta['features'][] = $f['value'];
+            elseif (is_string($f)) $processedMeta['features'][] = $f;
         }
+        $data['meta'] = $processedMeta;
 
-        // Handle Features in Meta (for quick access if needed, though we use attribute values mostly)
-        // But here we want to store CUSTOM features in meta['features']
-        // The form sends meta[features][] for custom features.
+        // ایجاد ملک
+        $property = Property::create($data);
 
-        $data['meta'] = $meta;
-
-        $property = null;
-        $retryCount = 0;
-        $maxRetries = 3;
-
-        while ($retryCount < $maxRetries) {
-            try {
-                $property = Property::create($data);
-                break;
-            } catch (\Illuminate\Database\QueryException $e) {
-                if ($e->errorInfo[1] == 1062 && strpos($e->getMessage(), 'properties_code_unique') !== false) {
-                    if ($request->input('code_type') === 'auto' || empty($request->input('code'))) {
-                        $data['code'] = $this->generateUniquePropertyCode($data['category_id'] ?? null);
-                        $retryCount++;
-                        continue;
-                    } else {
-                        $errorMsg = 'کد ملک وارد شده تکراری است.';
-                        if ($request->wantsJson()) {
-                            return response()->json(['errors' => ['code' => [$errorMsg]]], 422);
-                        }
-                        return back()->withInput()->with('error', $errorMsg);
-                    }
-                }
-                throw $e;
-            }
-        }
-
-        if (!$property) {
-            $errorMsg = 'خطا در ثبت ملک (کد تکراری). لطفا مجددا تلاش کنید.';
-            if ($request->wantsJson()) {
-                return response()->json(['message' => $errorMsg], 500);
-            }
-            return back()->withInput()->with('error', $errorMsg);
-        }
-
-        // Handle Gallery Images
+        // ذخیره گالری
         if ($request->hasFile('gallery_images')) {
-            foreach ($request->file('gallery_images') as $index => $image) {
-                if ($image->isValid()) {
-                    try {
-                        $path = $this->uploadFile($image, 'properties/gallery');
-                        PropertyImage::create([
-                            'property_id' => $property->id,
-                            'path' => $path,
-                            'sort_order' => $index,
-                        ]);
-                    } catch (\Exception $e) {
-                        Log::error('Gallery Image Store Failed: ' . $e->getMessage());
-                    }
+            foreach ($request->file('gallery_images') as $idx => $img) {
+                if ($idx < PropertySetting::get('max_gallery_images', 10) && $img->isValid()) {
+                    PropertyImage::create(['property_id' => $property->id, 'path' => $this->uploadFile($img, 'properties/gallery'), 'sort_order' => $idx]);
                 }
             }
         }
 
-        // Save Standard Attributes (Details)
-        if ($request->has('attributes')) {
-            foreach ($request->input('attributes') as $attributeId => $value) {
-                if (!empty($value)) {
-                    PropertyAttributeValue::create([
-                        'property_id' => $property->id,
-                        'attribute_id' => $attributeId,
-                        'value' => $value,
-                    ]);
-                }
-            }
+        // ذخیره ویژگی‌های استاندارد
+        foreach ($attributesData as $id => $val) {
+            if (!empty($val)) PropertyAttributeValue::create(['property_id' => $property->id, 'attribute_id' => $id, 'value' => $val]);
         }
 
-        // Save Standard Features (as Attribute Values with value '1')
-        if ($request->has('features')) {
-            foreach ($request->input('features') as $featureId) {
-                PropertyAttributeValue::create([
-                    'property_id' => $property->id,
-                    'attribute_id' => $featureId,
-                    'value' => '1',
-                ]);
-            }
+        // ذخیره امکانات رفاهی انتخابی
+        foreach ($featuresData as $fid) {
+            PropertyAttributeValue::create(['property_id' => $property->id, 'attribute_id' => $fid, 'value' => '1']);
         }
+
 
         $redirectUrl = route('user.properties.pricing', $property);
         $successMsg = 'مشخصات اولیه ثبت شد. لطفا قیمت‌گذاری را انجام دهید.';
@@ -564,7 +438,6 @@ class PropertyController extends Controller
 
     public function features(Property $property)
     {
-        // Check visibility
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -588,7 +461,6 @@ class PropertyController extends Controller
 
     public function updateFeatures(Request $request, Property $property)
     {
-        // Check permission
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -598,34 +470,45 @@ class PropertyController extends Controller
             abort(403);
         }
 
+        // اصلاح اعتبارسنجی:
+        // attributes.* نباید exists باشد چون مقدار ارسال می شود (مثل 1)، نه ID.
         $data = $request->validate([
-            'attributes' => 'array',
-            'attributes.*' => 'exists:property_attributes,id',
-            'meta' => 'array',
+            'attributes' => 'nullable|array',
+            'meta' => 'nullable|array',
             'meta.*.value' => 'nullable|string|max:255',
         ]);
 
-        $featureAttributeIds = PropertyAttribute::where('section', 'features')->pluck('id');
+        // ۱. مدیریت امکانات عمومی (سیستمی)
+        // دریافت آی‌دی تمام ویژگی‌هایی که مربوط به بخش features هستند
+        $featureAttributeIds = PropertyAttribute::where('section', 'features')->pluck('id')->toArray();
 
+        // حذف مقادیر قبلی فقط برای این بخش
         PropertyAttributeValue::where('property_id', $property->id)
             ->whereIn('attribute_id', $featureAttributeIds)
             ->delete();
 
         if (isset($data['attributes'])) {
-            foreach ($data['attributes'] as $attributeId) {
-                PropertyAttributeValue::create([
-                    'property_id' => $property->id,
-                    'attribute_id' => $attributeId,
-                    'value' => '1',
-                ]);
+            foreach ($data['attributes'] as $attributeId => $value) {
+                if (!empty($value)) {
+                    PropertyAttributeValue::create([
+                        'property_id' => $property->id,
+                        'attribute_id' => $attributeId,
+                        'value' => $value,
+                    ]);
+                }
             }
         }
 
+        // ۲. مدیریت امکانات سفارشی (Meta)
         $meta = $property->meta ?? [];
-        $meta['features'] = [];
+        $meta['features'] = []; // ریست کردن امکانات سفارشی قبلی
 
-        if (isset($data['meta'])) {
-            $meta['features'] = collect($data['meta'])->pluck('value')->filter()->values()->all();
+        if (isset($request->meta) && is_array($request->meta)) {
+            foreach ($request->meta as $item) {
+                if (is_array($item) && !empty($item['value'])) {
+                    $meta['features'][] = $item['value'];
+                }
+            }
         }
 
         $property->meta = $meta;
@@ -684,7 +567,7 @@ class PropertyController extends Controller
 
     public function update(Request $request, Property $property)
     {
-        // Check permission
+        // بررسی دسترسی کاربر
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -694,6 +577,7 @@ class PropertyController extends Controller
             abort(403);
         }
 
+        // تبدیل تاریخ‌های جلالی به میلادی قبل از اعتبارسنجی
         if ($request->has('delivery_date') && !empty($request->delivery_date)) {
             try {
                 $date = Jalalian::fromFormat('Y/m/d', $request->delivery_date)->toCarbon();
@@ -716,7 +600,7 @@ class PropertyController extends Controller
         $allowedTypes = PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif');
         $allowedTypes = str_replace(' ', '', $allowedTypes);
 
-        // Sanitize prices
+        // تمیز کردن فیلدهای قیمت (حذف جداکننده هزارگان)
         $priceFields = ['price', 'min_price', 'deposit_price', 'rent_price', 'advance_price'];
         foreach ($priceFields as $field) {
             if ($request->has($field) && !is_null($request->input($field))) {
@@ -749,8 +633,6 @@ class PropertyController extends Controller
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'is_special' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
-
-            // Pricing
             'price' => 'nullable|numeric|min:0',
             'min_price' => 'nullable|numeric|min:0',
             'deposit_price' => 'nullable|numeric|min:0',
@@ -758,99 +640,80 @@ class PropertyController extends Controller
             'advance_price' => 'nullable|numeric|min:0',
             'is_convertible' => 'nullable|boolean',
             'convertible_with' => 'nullable|string|max:255',
-
-            // Attributes
             'attributes' => 'nullable|array',
             'attributes.*' => 'nullable|string|max:255',
-
-            // Features (System)
             'features' => 'nullable|array',
             'features.*' => 'exists:property_attributes,id',
-
-            // Meta (Custom Details & Features)
             'meta' => 'nullable|array',
             'meta.features' => 'nullable|array',
-            'meta.features.*' => 'string',
+            'meta.features.*.value' => 'nullable|string|max:255',
             'meta.details' => 'nullable|array',
+            'meta.details.*.key' => 'required_with:meta.details.*.value|string|max:255',
+            'meta.details.*.value' => 'nullable|string|max:255',
         ]);
 
+        // آپلود تصویر اصلی
         if ($request->hasFile('cover_image')) {
             $file = $request->file('cover_image');
             if ($file->isValid()) {
-                try {
-                    if ($property->cover_image) {
-                        Storage::disk('public')->delete($property->cover_image);
-                    }
-                    $path = $this->uploadFile($file, 'properties/covers');
-                    $data['cover_image'] = $path;
-                } catch (\Exception $e) {
-                    Log::error('Cover Image Update Failed: ' . $e->getMessage());
-                    return back()->withInput()->with('error', 'خطا در آپلود تصویر جدید: ' . $e->getMessage());
+                if ($property->cover_image) {
+                    Storage::disk('public')->delete($property->cover_image);
                 }
+                $data['cover_image'] = $this->uploadFile($file, 'properties/covers');
             }
         }
 
+        // آپلود ویدیو
         if ($request->hasFile('video')) {
             $file = $request->file('video');
             if ($file->isValid()) {
-                try {
-                    if ($property->video) {
-                        Storage::disk('public')->delete($property->video);
-                    }
-                    $path = $this->uploadFile($file, 'properties/videos');
-                    $data['video'] = $path;
-                } catch (\Exception $e) {
-                    Log::error('Video Update Failed: ' . $e->getMessage());
+                if ($property->video) {
+                    Storage::disk('public')->delete($property->video);
                 }
+                $data['video'] = $this->uploadFile($file, 'properties/videos');
             }
         }
 
-        // Handle Special Property & Meta
-        $meta = $property->meta ?? [];
+        // --- مدیریت داده‌های متا (Meta) ---
+        $processedMeta = $property->meta ?? [];
+        $processedMeta['is_special'] = $request->has('is_special');
 
-        // Update is_special
-        if ($request->has('is_special')) {
-            $meta['is_special'] = true;
-        } else {
-            $meta['is_special'] = false;
-        }
+        // ابتدا آرایه‌ها را خالی می‌کنیم تا اگر در درخواست نبودند (حذف کامل)، در دیتابیس هم پاک شوند
+        $processedMeta['details'] = [];
+        $processedMeta['features'] = [];
 
-        // Update Custom Details
-        if (isset($data['meta']['details'])) {
-            $meta['details'] = []; // Reset to overwrite or merge carefully
-            foreach ($data['meta']['details'] as $item) {
+        // پردازش جزئیات سفارشی در صورت وجود در درخواست
+        if (isset($request->meta['details']) && is_array($request->meta['details'])) {
+            foreach ($request->meta['details'] as $item) {
                 if (!empty($item['key'])) {
-                    $meta['details'][$item['key']] = $item['value'];
+                    $processedMeta['details'][$item['key']] = $item['value'] ?? '';
                 }
             }
         }
 
-        // Update Custom Features
-        if (isset($data['meta']['features'])) {
-            $meta['features'] = []; // Reset
-            foreach ($data['meta']['features'] as $item) {
-                if (!empty($item['value'])) {
-                    $meta['features'][] = $item['value'];
+        // پردازش امکانات سفارشی در صورت وجود در درخواست
+        if (isset($request->meta['features']) && is_array($request->meta['features'])) {
+            foreach ($request->meta['features'] as $item) {
+                if (is_array($item) && !empty($item['value'])) {
+                    $processedMeta['features'][] = $item['value'];
                 }
             }
         }
 
-        $property->meta = $meta;
-        $property->save();
+        // جایگزینی متای نهایی در آرایه داده‌ها
+        $data['meta'] = $processedMeta;
 
-        // Enforce agent logic on update as well
-        $user = auth()->user();
-        $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
-        $isAgent = $user->hasAnyRole($agentRoles);
+        // محدودیت تغییر مشاور برای غیر ادمین‌ها
         $isAdmin = $user->hasRole(['super-admin', 'admin']);
-
-        if (!$isAdmin && $isAgent) {
+        $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
+        if (!$isAdmin && $user->hasAnyRole($agentRoles)) {
             unset($data['agent_id']);
         }
 
+        // بروزرسانی مدل ملک
         $property->update($data);
 
-        // Update Attributes (Details)
+        // بروزرسانی ویژگی‌های سیستمی (Attributes)
         if (isset($data['attributes'])) {
             foreach ($data['attributes'] as $attributeId => $value) {
                 if (!empty($value)) {
@@ -866,49 +729,38 @@ class PropertyController extends Controller
             }
         }
 
-        // Update Features (System)
-        // First, remove all existing system features for this property
-        $featureAttributeIds = PropertyAttribute::where('section', 'features')->pluck('id');
-        PropertyAttributeValue::where('property_id', $property->id)
-            ->whereIn('attribute_id', $featureAttributeIds)
-            ->delete();
+        // بروزرسانی امکانات سیستمی (System Features)
+        $featureIds = PropertyAttribute::where('section', 'features')->pluck('id');
+        PropertyAttributeValue::where('property_id', $property->id)->whereIn('attribute_id', $featureIds)->delete();
 
-        // Then add selected ones
         if (isset($data['features'])) {
-            foreach ($data['features'] as $featureId) {
+            foreach ($data['features'] as $fId) {
                 PropertyAttributeValue::create([
                     'property_id' => $property->id,
-                    'attribute_id' => $featureId,
+                    'attribute_id' => $fId,
                     'value' => '1',
                 ]);
             }
         }
 
+        // مدیریت گالری تصاویر
         if ($request->hasFile('gallery_images')) {
             $currentCount = $property->images()->count();
-            $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
-
-            if ($currentCount + count($request->file('gallery_images')) > $maxGalleryImages) {
-                return back()->with('error', "تعداد تصاویر گالری نمی‌تواند بیشتر از {$maxGalleryImages} باشد.");
-            }
-
-            foreach ($request->file('gallery_images') as $index => $image) {
-                if ($image->isValid()) {
-                    try {
-                        $path = $this->uploadFile($image, 'properties/gallery');
+            $maxGallery = PropertySetting::get('max_gallery_images', 10);
+            if ($currentCount + count($request->file('gallery_images')) <= $maxGallery) {
+                foreach ($request->file('gallery_images') as $idx => $img) {
+                    if ($img->isValid()) {
                         PropertyImage::create([
                             'property_id' => $property->id,
-                            'path' => $path,
-                            'sort_order' => $currentCount + $index,
+                            'path' => $this->uploadFile($img, 'properties/gallery'),
+                            'sort_order' => $currentCount + $idx,
                         ]);
-                    } catch (\Exception $e) {
-                        Log::error('Gallery Image Update Failed: ' . $e->getMessage());
                     }
                 }
             }
         }
 
-        return back()->with('success', 'مشخصات ملک با موفقیت ویرایش شد.');
+        return back()->with('success', 'تغییرات ملک با موفقیت ذخیره شد.');
     }
 
     public function destroy(Property $property)
@@ -992,8 +844,8 @@ class PropertyController extends Controller
         $agents = User::role($agentRoles)
             ->where(function($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('mobile', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%");
+                    ->orWhere('mobile', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%");
             })
             ->limit(10)
             ->get(['id', 'name', 'mobile', 'email']);

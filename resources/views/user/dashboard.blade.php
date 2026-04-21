@@ -189,9 +189,6 @@
 
     </div>
 
-    {{-- اسکریپت SortableJS --}}
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-
     <script>
         function dashboardManager(allWidgets, initialHidden) {
             return {
