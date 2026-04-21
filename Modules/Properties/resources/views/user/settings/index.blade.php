@@ -158,6 +158,12 @@
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                <input type="checkbox" name="visibility_owner_info[]" value="guest"
+                                    {{ in_array('guest', $visibility_owner_info) ? 'checked' : '' }}
+                                    class="{{ $checkboxClass }}">
+                                <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
+                            </label>
                         </div>
                     </div>
 
@@ -173,6 +179,12 @@
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
+                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                <input type="checkbox" name="visibility_confidential_notes[]" value="guest"
+                                    {{ in_array('guest', $visibility_confidential_notes) ? 'checked' : '' }}
+                                    class="{{ $checkboxClass }}">
+                                <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
+                            </label>
                         </div>
                     </div>
 
@@ -188,6 +200,12 @@
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
+                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                <input type="checkbox" name="visibility_price_info[]" value="guest"
+                                    {{ in_array('guest', $visibility_price_info) ? 'checked' : '' }}
+                                    class="{{ $checkboxClass }}">
+                                <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
+                            </label>
                         </div>
                     </div>
 
@@ -203,6 +221,54 @@
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
+                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                <input type="checkbox" name="visibility_map_info[]" value="guest"
+                                    {{ in_array('guest', $visibility_map_info) ? 'checked' : '' }}
+                                    class="{{ $checkboxClass }}">
+                                <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- مشاهده تصویر کاور --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">مشاهده تصویر کاور</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="visibility_cover_image[]" value="{{ $role->name }}"
+                                        {{ in_array($role->name, $visibility_cover_image ?? []) ? 'checked' : '' }}
+                                        class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                <input type="checkbox" name="visibility_cover_image[]" value="guest"
+                                    {{ in_array('guest', $visibility_cover_image ?? []) ? 'checked' : '' }}
+                                    class="{{ $checkboxClass }}">
+                                <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- مشاهده گالری تصاویر --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">مشاهده گالری تصاویر</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="visibility_gallery_images[]" value="{{ $role->name }}"
+                                        {{ in_array($role->name, $visibility_gallery_images ?? []) ? 'checked' : '' }}
+                                        class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                <input type="checkbox" name="visibility_gallery_images[]" value="guest"
+                                    {{ in_array('guest', $visibility_gallery_images ?? []) ? 'checked' : '' }}
+                                    class="{{ $checkboxClass }}">
+                                <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
+                            </label>
                         </div>
                     </div>
 

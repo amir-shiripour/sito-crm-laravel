@@ -289,6 +289,7 @@
             return {
                 showAiModal: false,
                 aiQuery: '',
+                aiShowAll: {{ request('show_all') == '1' ? 'true' : 'false' }},
                 isAiSearching: false,
                 isVoiceTyping: false,
                 isVoiceTypingSupported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
@@ -308,11 +309,20 @@
                         const response = await fetch('{{ route("user.properties.ai.search") }}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                            body: JSON.stringify({ query: this.aiQuery })
+                            body: JSON.stringify({
+                                query: this.aiQuery,
+                                show_all: this.aiShowAll
+                            })
                         });
                         const result = await response.json();
                         if (response.ok && result.redirect_url) {
-                            window.location.href = result.redirect_url;
+                            let finalUrl = result.redirect_url;
+                            if (this.aiShowAll) {
+                                const urlObj = new URL(finalUrl, window.location.origin);
+                                urlObj.searchParams.set('show_all', '1');
+                                finalUrl = urlObj.toString();
+                            }
+                            window.location.href = finalUrl;
                         } else {
                             window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: result.error || 'خطا در جستجو.' } }));
                             this.isAiSearching = false;

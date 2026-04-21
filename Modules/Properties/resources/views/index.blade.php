@@ -78,7 +78,9 @@
 
 <body
     class="antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col relative overflow-x-hidden"
-    x-data="propertyList()">
+    x-data="propertyList()"
+    @speech-result.window="handleSpeechResult($event.detail)"
+    @speech-status.window="isVoiceTyping = $event.detail; if(isVoiceTyping) aiQueryBeforeSpeech = aiQuery || ''">
 
 @php
     $aiSearchEnabled = \Modules\Properties\Entities\PropertySetting::get('ai_property_search', 0);
@@ -402,19 +404,58 @@
                         $cardClass = $isMyProperty
                             ? 'bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-500 dark:border-indigo-400 shadow-xl shadow-indigo-200/50 dark:shadow-indigo-900/30 ring-2 ring-indigo-200 dark:ring-indigo-800 ring-offset-2 dark:ring-offset-gray-900'
                             : 'bg-white dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-200/40 dark:shadow-none';
+
+                        // Check Price Visibility
+                        $canViewPrice = false;
+                        $priceRoles = $visibilitySettings['price_info'] ?? [];
+                        if (empty($priceRoles)) {
+                             $canViewPrice = true;
+                        } elseif (auth()->check()) {
+                             $user = auth()->user();
+                             if ($user->id == $property->created_by || $user->id == $property->agent_id || $user->hasRole('super-admin') || $user->hasAnyRole($priceRoles)) {
+                                 $canViewPrice = true;
+                             }
+                        } else {
+                             if (in_array('guest', $priceRoles)) {
+                                 $canViewPrice = true;
+                             }
+                        }
+
+                        // Check Cover Image Visibility
+                        $canViewCover = false;
+                        $coverRoles = $visibilitySettings['cover_image'] ?? [];
+                        if (empty($coverRoles)) {
+                             $canViewCover = true;
+                        } elseif (auth()->check()) {
+                             $user = auth()->user();
+                             if ($user->id == $property->created_by || $user->id == $property->agent_id || $user->hasRole('super-admin') || $user->hasAnyRole($coverRoles)) {
+                                 $canViewCover = true;
+                             }
+                        } else {
+                             if (in_array('guest', $coverRoles)) {
+                                 $canViewCover = true;
+                             }
+                        }
                     @endphp
                     <a href="{{ route('properties.show', $property->slug) }}"
                        class="group relative flex flex-col backdrop-blur-sm rounded-2xl border shadow-lg hover:border-indigo-500/30 transition-all duration-300 overflow-hidden hover:-translate-y-1 h-full {{ $cardClass }}">
 
                         {{-- Image Section --}}
                         <div class="relative h-56 w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
-                            @if($property->cover_image)
+                            @if($canViewCover && $property->cover_image)
                                 <img src="{{ asset('storage/' . $property->cover_image) }}" alt="{{ $property->title }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
                             @else
                                 <div class="w-full h-full flex items-center justify-center text-gray-400">
-                                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                                    </svg>
+                                    @if(!$canViewCover)
+                                        <div class="flex flex-col items-center gap-1">
+                                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                            <span class="text-xs">تصویر محدود</span>
+                                        </div>
+                                    @else
+                                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                        </svg>
+                                    @endif
                                 </div>
                             @endif
 
@@ -512,37 +553,43 @@
 
                             {{-- Price Section --}}
                             <div class="flex flex-col gap-1">
-                                @if($property->listing_type == 'rent')
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">رهن:</span>
-                                        <span class="text-sm font-bold text-gray-900 dark:text-white">
-                                            @if($property->deposit_price == 0)
-                                                توافقی
-                                            @else
-                                                {{ number_format($property->deposit_price) }} <span class="text-xs font-normal text-gray-500">تومان</span>
-                                            @endif
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">اجاره:</span>
-                                        <span class="text-sm font-bold text-gray-900 dark:text-white">
-                                            @if($property->rent_price == 0)
-                                                توافقی
-                                            @else
-                                                {{ number_format($property->rent_price) }} <span class="text-xs font-normal text-gray-500">تومان</span>
-                                            @endif
-                                        </span>
-                                    </div>
+                                @if($canViewPrice)
+                                    @if($property->listing_type == 'rent')
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">رهن:</span>
+                                            <span class="text-sm font-bold text-gray-900 dark:text-white">
+                                                @if($property->deposit_price == 0)
+                                                    توافقی
+                                                @else
+                                                    {{ number_format($property->deposit_price) }} <span class="text-xs font-normal text-gray-500">تومان</span>
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">اجاره:</span>
+                                            <span class="text-sm font-bold text-gray-900 dark:text-white">
+                                                @if($property->rent_price == 0)
+                                                    توافقی
+                                                @else
+                                                    {{ number_format($property->rent_price) }} <span class="text-xs font-normal text-gray-500">تومان</span>
+                                                @endif
+                                            </span>
+                                        </div>
+                                    @else
+                                        <div class="flex justify-between items-center mt-auto">
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">قیمت کل:</span>
+                                            <span class="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                                                @if($property->price == 0)
+                                                    توافقی
+                                                @else
+                                                    {{ number_format($property->price) }} <span class="text-xs font-normal text-gray-500 dark:text-gray-400">تومان</span>
+                                                @endif
+                                            </span>
+                                        </div>
+                                    @endif
                                 @else
-                                    <div class="flex justify-between items-center mt-auto">
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">قیمت کل:</span>
-                                        <span class="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                                            @if($property->price == 0)
-                                                توافقی
-                                            @else
-                                                {{ number_format($property->price) }} <span class="text-xs font-normal text-gray-500 dark:text-gray-400">تومان</span>
-                                            @endif
-                                        </span>
+                                    <div class="flex justify-center items-center mt-auto h-12">
+                                        <span class="text-sm font-bold text-indigo-600 dark:text-indigo-400">برای مشاهده قیمت تماس بگیرید</span>
                                     </div>
                                 @endif
                             </div>
@@ -635,10 +682,35 @@
             </div>
 
             <div class="px-6 py-6 space-y-4">
-                <p class="text-sm text-gray-600 dark:text-gray-300">
-                    توضیح دهید چه ملکی مد نظرتان است. هوش مصنوعی بهترین گزینه‌ها را برای شما پیدا می‌کند.
-                </p>
+                <div class="flex justify-between items-center">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                        توضیح دهید چه ملکی مد نظرتان است.
+                    </p>
+                    <div x-data="{ tooltip: getVoiceSupportTooltip() }">
+                        <button type="button" id="ai-voice-btn" :disabled="!isVoiceTypingSupported"
+                                x-tooltip="tooltip"
+                                class="text-xs flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-help"
+                                :class="{
+                                    'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40': !isVoiceTyping,
+                                    'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/40 animate-pulse': isVoiceTyping
+                                }">
+                            <svg x-show="!isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14a2 2 0 0 0 2-2V6a2 2 0 0 0-4 0v6a2 2 0 0 0 2 2Zm-2-8a2 2 0 0 1 4 0v6a2 2 0 0 1-4 0V6Zm8 5a1 1 0 0 0-1 1v1a5 5 0 0 1-10 0v-1a1 1 0 1 0-2 0v1a7 7 0 0 0 6 6.92V21a1 1 0 1 0 2 0v-2.08A7 7 0 0 0 20 12v-1a1 1 0 0 0-1-1Z"/></svg>
+                            <svg x-show="isVoiceTyping" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5.793 5.793a1 1 0 0 1 1.414 0L12 10.586l4.793-4.793a1 1 0 1 1 1.414 1.414L13.414 12l4.793 4.793a1 1 0 0 1-1.414 1.414L12 13.414l-4.793 4.793a1 1 0 0 1-1.414-1.414L10.586 12 5.793 7.207a1 1 0 0 1 0-1.414Z"/></svg>
+                            <span x-text="isVoiceTyping ? 'توقف' : 'صوتی'"></span>
+                        </button>
+                    </div>
+                </div>
                 <textarea x-model="aiQuery" rows="4" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 resize-none" placeholder="مثلاً: یک آپارتمان دو خوابه در سعادت آباد با قیمت حدود ۵ میلیارد تومان..."></textarea>
+
+                @auth
+                    <div class="flex items-center justify-end">
+                        <label class="inline-flex items-center cursor-pointer group">
+                            <input type="checkbox" x-model="aiShowAll" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                            <span class="ms-3 text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-purple-600 transition-colors">نمایش همه املاک</span>
+                        </label>
+                    </div>
+                @endauth
             </div>
 
             <div class="bg-gray-50 dark:bg-gray-900/30 px-6 py-4 flex flex-row-reverse gap-3 border-t border-gray-100 dark:border-gray-700">
@@ -661,38 +733,131 @@
 @endif
 
 <script>
-    console.log("Script tag is executing.");
+    document.addEventListener("DOMContentLoaded", function() {
+        // ---------- VANILLA JS SPEECH RECOGNITION ----------
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const voiceBtn = document.getElementById('ai-voice-btn');
+
+        if (SpeechRecognition && voiceBtn) {
+            let recognition = null;
+            let isRecording = false;
+
+            function initRecognition() {
+                recognition = new SpeechRecognition();
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                recognition.lang = 'fa-IR';
+                recognition.continuous = false;
+                recognition.interimResults = true;
+
+                recognition.onstart = function() {
+                    isRecording = true;
+                    window.dispatchEvent(new CustomEvent('speech-status', { detail: true }));
+                };
+
+                recognition.onresult = function(event) {
+                    let result = event.results[0];
+                    let transcript = result[0].transcript;
+                    let isFinal = result.isFinal;
+
+                    if (transcript) {
+                        if (isIOS) {
+                            transcript = transcript.replace(/ي/g, "ی").replace(/ك/g, "ک");
+                        }
+                        window.dispatchEvent(new CustomEvent('speech-result', {
+                            detail: { transcript: transcript, isFinal: isFinal }
+                        }));
+                    }
+                };
+
+                recognition.onerror = function(event) {
+                    isRecording = false;
+                    window.dispatchEvent(new CustomEvent('speech-status', { detail: false }));
+                    console.error('Speech Recognition Error:', event.error);
+                    if (event.error !== 'no-speech') {
+                        let errorMsg = 'خطا در تشخیص صدا (' + event.error + ').';
+                        if (event.error === 'not-allowed') {
+                            errorMsg = 'دسترسی میکروفون رد شد.';
+                        } else if (event.error === 'service-not-allowed') {
+                            errorMsg = 'سرویس صوتی مسدود شد.';
+                        }
+                        alert(errorMsg);
+                    }
+                };
+
+                recognition.onend = function() {
+                    isRecording = false;
+                    window.dispatchEvent(new CustomEvent('speech-status', { detail: false }));
+                };
+            }
+
+            voiceBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (isRecording && recognition) {
+                    try { recognition.stop(); } catch(err) {}
+                } else {
+                    initRecognition();
+                    try {
+                        recognition.start();
+                    } catch (err) {
+                        console.error("Speech Recognition Start Exception", err);
+                    }
+                }
+            }, false);
+        }
+    });
+
+    function getVoiceSupportTooltip() {
+        if (!window.isSecureContext) {
+            return 'برای تایپ صوتی به اتصال امن (HTTPS) نیاز است.';
+        }
+        if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+            return 'مرورگر شما از تایپ صوتی پشتیبانی نمی‌کند.';
+        }
+        return '';
+    }
+
     function propertyList() {
-        console.log("propertyList function is being defined.");
         return {
             showAiModal: false,
             aiQuery: '',
+            aiShowAll: {{ request('show_all') == '1' ? 'true' : 'false' }},
             isAiSearching: false,
-            init() {
-                console.log("Alpine component is initialized.");
+            isVoiceTyping: false,
+            isVoiceTypingSupported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+            aiQueryBeforeSpeech: '',
+
+            handleSpeechResult(detail) {
+                const transcript = detail.transcript;
+                let prefix = this.aiQueryBeforeSpeech ? this.aiQueryBeforeSpeech.trim() + ' ' : '';
+                this.aiQuery = prefix + transcript;
             },
+
             async performAiSearch() {
-                console.log("performAiSearch called.");
                 if (this.aiQuery.length < 3) return;
                 this.isAiSearching = true;
                 try {
                     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
-                    console.log("CSRF Token:", csrf);
                     const url = '{{ route("properties.ai.search.public") }}';
-                    console.log("Fetch URL:", url);
 
                     const response = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                        body: JSON.stringify({ query: this.aiQuery })
+                        body: JSON.stringify({
+                            query: this.aiQuery,
+                            show_all: this.aiShowAll
+                        })
                     });
 
-                    console.log("Response Status:", response.status);
                     const result = await response.json();
-                    console.log("Response JSON:", result);
 
                     if (response.ok && result.redirect_url) {
-                        window.location.href = result.redirect_url;
+                        let finalUrl = result.redirect_url;
+                        if (this.aiShowAll) {
+                            const urlObj = new URL(finalUrl, window.location.origin);
+                            urlObj.searchParams.set('show_all', '1');
+                            finalUrl = urlObj.toString();
+                        }
+                        window.location.href = finalUrl;
                     } else {
                         alert(result.error || 'خطا در جستجو.');
                         this.isAiSearching = false;

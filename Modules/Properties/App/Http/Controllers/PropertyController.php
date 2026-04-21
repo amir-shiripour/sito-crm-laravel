@@ -35,10 +35,7 @@ class PropertyController extends Controller
         } else {
             // Guest user or restricted user (Agent)
             // visibleToUser() handles the restriction for Agents.
-            // For Guests, we need to ensure only published properties are shown.
-            if (!$user) {
-                 $query->where('publication_status', 'published');
-            }
+            // For Guests, we show all properties (as per request).
         }
 
         $this->applyFilters($query, $request);
@@ -62,7 +59,13 @@ class PropertyController extends Controller
         $categories = PropertyCategory::all();
         $buildings = PropertyBuilding::latest()->get();
 
-        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings'));
+        // Visibility Settings for View
+        $visibilitySettings = [
+            'price_info' => json_decode(PropertySetting::get('visibility_price_info', '[]'), true),
+            'cover_image' => json_decode(PropertySetting::get('visibility_cover_image', '[]'), true),
+        ];
+
+        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings', 'visibilitySettings'));
     }
 
     public function map(Request $request)
@@ -91,17 +94,39 @@ class PropertyController extends Controller
                       ->orWhere('agent_id', $user->id);
                 });
             } else {
-                // Guest user
-                $query->where('publication_status', 'published');
+                // Guest user: Show all
             }
         }
 
-        // Only properties with coordinates
-        $query->whereNotNull('latitude')->whereNotNull('longitude');
+        // Check Map Visibility
+        $visibilityMapInfo = json_decode(PropertySetting::get('visibility_map_info', '[]'), true);
+        $canViewMap = false;
 
-        $this->applyFilters($query, $request);
+        if (empty($visibilityMapInfo)) {
+             // If empty, it's public (default for map info)
+             $canViewMap = true;
+        } else {
+            if ($user) {
+                if ($user->hasRole('super-admin') || $user->hasAnyRole($visibilityMapInfo)) {
+                    $canViewMap = true;
+                }
+            } else {
+                // Guest
+                if (in_array('guest', $visibilityMapInfo)) {
+                    $canViewMap = true;
+                }
+            }
+        }
 
-        $properties = $query->get(); // Get all for map (or limit if too many)
+        if (!$canViewMap) {
+            // If user cannot view map, return empty properties
+            $properties = collect([]);
+        } else {
+            // Only properties with coordinates
+            $query->whereNotNull('latitude')->whereNotNull('longitude');
+            $this->applyFilters($query, $request);
+            $properties = $query->get(); // Get all for map (or limit if too many)
+        }
 
         $filterableAttributes = PropertyAttribute::where('is_filterable', true)
             ->where('section', 'details')
@@ -122,7 +147,13 @@ class PropertyController extends Controller
             'title' => PropertySetting::get('office_location_title', 'دفتر مرکزی'),
         ];
 
-        return view('properties::map', compact('properties', 'filterableAttributes', 'features', 'officeLocation'));
+        // Visibility Settings for View
+        $visibilitySettings = [
+            'price_info' => json_decode(PropertySetting::get('visibility_price_info', '[]'), true),
+            'cover_image' => json_decode(PropertySetting::get('visibility_cover_image', '[]'), true),
+        ];
+
+        return view('properties::map', compact('properties', 'filterableAttributes', 'features', 'officeLocation', 'visibilitySettings'));
     }
 
     private function applyFilters($query, Request $request)
@@ -291,6 +322,8 @@ class PropertyController extends Controller
             'confidential_notes' => json_decode(PropertySetting::get('visibility_confidential_notes', '[]'), true),
             'price_info' => json_decode(PropertySetting::get('visibility_price_info', '[]'), true),
             'map_info' => json_decode(PropertySetting::get('visibility_map_info', '[]'), true),
+            'cover_image' => json_decode(PropertySetting::get('visibility_cover_image', '[]'), true),
+            'gallery_images' => json_decode(PropertySetting::get('visibility_gallery_images', '[]'), true),
         ];
 
         return view('properties::show', compact('property', 'visibilitySettings'));
