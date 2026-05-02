@@ -1,0 +1,13 @@
+{
+    "name": "Market",
+    "alias": "market",
+    "description": "Market module for store and multi-vendor capabilities",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Market\\App\\Providers\\RouteServiceProvider",
+        "Modules\\Market\\App\\Providers\\MarketServiceProvider",
+        "Modules\\Market\\Providers\\MarketServiceProvider"
+    ],
+    "files": []
+}

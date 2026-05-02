@@ -13,6 +13,7 @@
 
     <!-- Styles & Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 
     <style>
         body { font-family: 'IRANYekanX', sans-serif; }
@@ -24,5 +25,7 @@
 @else
     {{ $slot ?? '' }}
 @endif
+@livewireScripts
+@livewireScriptConfig
 </body>
 </html>

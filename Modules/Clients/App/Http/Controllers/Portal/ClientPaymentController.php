@@ -1,0 +1,94 @@
+<?php
+
+namespace Modules\Clients\App\Http\Controllers\Portal;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+class ClientPaymentController extends Controller
+{
+    public function index()
+    {
+        $client = auth('client')->user();
+        $allPayments = collect();
+
+        // 1. Fetch Booking Payments
+        if (class_exists(\Modules\Booking\Entities\BookingPayment::class)) {
+            $bookingPayments = \Modules\Booking\Entities\BookingPayment::whereHas('appointment', function($q) use ($client) {
+                $q->where('client_id', $client->id);
+            })->with('appointment.service')->get()->map(function($payment) {
+                return (object)[
+                    'id' => $payment->id,
+                    'ref_id' => $payment->id,
+                    'type' => 'booking',
+                    'type_label' => 'نوبت‌دهی (رزرو)',
+                    'title' => 'پرداخت برای رزرو ' . optional(optional($payment->appointment)->service)->name,
+                    'amount' => $payment->amount,
+                    'status' => $payment->status,
+                    'date' => $payment->created_at,
+                    'payment_record' => $payment
+                ];
+            });
+            $allPayments = $allPayments->merge($bookingPayments);
+        }
+
+        // 2. Fetch Market Orders (as invoices/payments)
+        if (class_exists(\Modules\Market\Entities\Order::class)) {
+            $marketOrders = \Modules\Market\Entities\Order::where('client_id', $client->id)->get()->map(function($order) {
+                $statusMap = [
+                    'pending' => 'PENDING',
+                    'paid' => 'PAID',
+                    'failed' => 'FAILED',
+                    'refunded' => 'REFUNDED',
+                    'canceled' => 'CANCELED'
+                ];
+                $normalizedStatus = $statusMap[strtolower($order->payment_status)] ?? strtoupper($order->payment_status);
+
+                return (object)[
+                    'id' => $order->id,
+                    'ref_id' => $order->id,
+                    'type' => 'market',
+                    'type_label' => 'سفارش فروشگاه',
+                    'title' => 'سفارش خرید #' . $order->id,
+                    'amount' => $order->grand_total,
+                    'status' => $normalizedStatus,
+                    'date' => $order->created_at,
+                    'payment_record' => $order
+                ];
+            });
+            $allPayments = $allPayments->merge($marketOrders);
+        }
+
+        // Sort by date descending
+        $allPayments = $allPayments->sortByDesc('date')->values();
+
+        return view('clients::portal.payments.index', compact('allPayments'));
+    }
+
+    public function show($type, $id)
+    {
+        $client = auth('client')->user();
+
+        if ($type === 'booking') {
+            if (!class_exists(\Modules\Booking\Entities\BookingPayment::class)) abort(404);
+
+            $payment = \Modules\Booking\Entities\BookingPayment::whereHas('appointment', function($q) use ($client) {
+                $q->where('client_id', $client->id);
+            })->with(['appointment.service', 'appointment.provider'])->findOrFail($id);
+
+            return view('clients::portal.payments.show_booking', compact('payment'));
+        }
+
+        if ($type === 'market') {
+            if (!class_exists(\Modules\Market\Entities\Order::class)) abort(404);
+
+            $order = \Modules\Market\Entities\Order::where('client_id', $client->id)
+                ->with(['items'])
+                ->findOrFail($id);
+
+            return view('clients::portal.payments.show_market', compact('order'));
+        }
+
+        abort(404);
+    }
+}

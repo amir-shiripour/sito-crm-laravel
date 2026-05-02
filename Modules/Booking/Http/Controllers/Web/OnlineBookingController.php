@@ -8,11 +8,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Controller;
 use Modules\Booking\Entities\BookingService;
 use Modules\Booking\Entities\BookingSetting;
+use Modules\Booking\Entities\BookingPayment;
 use Modules\Booking\Services\AppointmentService;
 use Modules\Booking\Services\BookingEngine;
 use Modules\Clients\Entities\ClientSetting;
 use Morilog\Jalali\CalendarUtils;
 use Carbon\Carbon;
+use App\Services\PaymentService as GlobalPaymentService;
 
 class OnlineBookingController extends Controller
 {
@@ -419,6 +421,59 @@ class OnlineBookingController extends Controller
         return redirect()
             ->route('booking.public.service', $service)
             ->with('success', 'نوبت شما با موفقیت ثبت شد.');
+    }
+
+    public function verifyPayment(Request $request, $gateway, BookingPayment $payment)
+    {
+        $authority = $request->query('Authority');
+        $status = $request->query('Status');
+
+        if (!$authority || !$payment) {
+            return redirect()->route('booking.public.index')->with('error', 'اطلاعات پرداخت معتبر نیست.');
+        }
+
+        if ($payment->gateway_ref !== $authority) {
+            return redirect()->route('booking.public.index')->with('error', 'تراکنش نامعتبر است.');
+        }
+
+        if ($status === 'NOK') {
+            $payment->update(['status' => BookingPayment::STATUS_CANCELLED]);
+            return redirect()->route('booking.public.service', $payment->appointment->service_id)
+                ->with('error', 'پرداخت توسط کاربر لغو شد.');
+        }
+
+        try {
+            $globalPaymentService = new GlobalPaymentService($gateway);
+
+            $dataToVerify = [
+                'Authority' => $authority,
+                'Status'    => $status,
+                'Amount'    => $payment->amount,
+            ];
+
+            $result = $globalPaymentService->verifyPayment($dataToVerify);
+
+            if ($result['success']) {
+                $payment->update([
+                    'status' => BookingPayment::STATUS_PAID,
+                    'transaction_ref' => $result['ref_id']
+                ]);
+
+                // Update appointment status
+                $payment->appointment->update(['status' => \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED]);
+
+                return redirect()->route('booking.public.service', $payment->appointment->service_id)
+                    ->with('success', 'پرداخت با موفقیت انجام شد و نوبت شما تایید شد. کد پیگیری: ' . $result['ref_id']);
+            } else {
+                $payment->update(['status' => BookingPayment::STATUS_FAILED]);
+                return redirect()->route('booking.public.service', $payment->appointment->service_id)
+                    ->with('error', 'خطا در تایید پرداخت: ' . $result['message']);
+            }
+        } catch (\Exception $e) {
+            Log::error('Payment verification failed for booking', ['exception' => $e->getMessage()]);
+            return redirect()->route('booking.public.service', $payment->appointment->service_id)
+                ->with('error', 'خطا در سیستم تایید پرداخت.');
+        }
     }
 
     /**

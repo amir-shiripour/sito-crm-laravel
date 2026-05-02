@@ -22,6 +22,7 @@ class BookingPayment extends Model
         'currency_unit',
         'status',
         'gateway_ref',
+        'transaction_ref',
         'paid_at',
     ];
 

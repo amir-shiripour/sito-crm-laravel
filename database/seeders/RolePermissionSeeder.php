@@ -44,7 +44,13 @@ class RolePermissionSeeder extends Seeder
             'custom-fields.update',
             'custom-fields.delete',
 
-            'modules.manage'
+            'modules.manage',
+
+            // Registration Requests
+            'registration-requests.view',
+            'registration-requests.approve',
+            'registration-requests.reject',
+            'menu.see.registration-requests',
         ];
 
         // ایجاد مجوزها

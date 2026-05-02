@@ -9,5 +9,6 @@
     "Sms": true,
     "Booking": true,
     "Properties": true,
-    "Settings": true
+    "Settings": true,
+    "Market": true
 }
