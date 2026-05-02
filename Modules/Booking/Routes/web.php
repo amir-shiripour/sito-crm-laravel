@@ -13,6 +13,7 @@ use Modules\Booking\Http\Controllers\User\ProviderExceptionController;
 use Modules\Booking\Http\Controllers\User\CategoryController as UserCategoryController;
 use Modules\Booking\Http\Controllers\User\FormController as UserFormController;
 use Modules\Booking\Http\Controllers\User\StatementController;
+use Modules\Settings\Http\Controllers\PaymentController;
 
 
 // Public minimal pages (optional)
@@ -23,26 +24,8 @@ Route::prefix('booking')->name('booking.')->group(function () {
     Route::get('/service/{service}/slots', [OnlineBookingController::class, 'slots'])->name('public.slots');
     Route::post('/service/{service}/book', [OnlineBookingController::class, 'book'])->name('public.book');
 
-    /*Route::get('services/{service}/availability', [UserServiceAvailabilityController::class, 'edit'])
-        ->name('services.availability.edit')
-        ->middleware('can:booking.availability.manage');
-
-    Route::post('services/{service}/availability', [UserServiceAvailabilityController::class, 'update'])
-        ->name('services.availability.update')
-        ->middleware('can:booking.availability.manage');
-
-    // برنامه زمانی «ارائه‌دهندگان»
-    Route::get('providers', [ProviderAvailabilityController::class, 'index'])
-        ->name('providers.index')
-        ->middleware('can:booking.availability.manage');
-
-    Route::get('providers/{provider}/availability', [ProviderAvailabilityController::class, 'edit'])
-        ->name('providers.availability.edit')
-        ->middleware('can:booking.availability.manage');
-
-    Route::post('providers/{provider}/availability', [ProviderAvailabilityController::class, 'update'])
-        ->name('providers.availability.update')
-        ->middleware('can:booking.availability.manage');*/
+    // Payment callback for booking
+    Route::get('/payment/verify/{gateway}/{payment}', [OnlineBookingController::class, 'verifyPayment'])->name('payment.verify');
 });
 
 // User area
@@ -202,12 +185,6 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::delete('providers/{provider}/exceptions/{exception}', [ProviderExceptionController::class, 'destroy'])
             ->name('providers.exceptions.destroy')
             ->middleware('can:booking.availability.manage');
-
-        // Statement of Account
-        // REMOVED middleware('can:booking.appointments.view') because we handle permissions inside the controller
-        // or we should use the new permissions here if we want route-level protection.
-        // Since the controller has granular checks, we can remove the middleware or use a generic 'auth' one (which is already applied to the group).
-        // But to be safe, let's just remove the specific middleware that was causing the conflict.
 
         Route::get('statement', [StatementController::class, 'index'])
             ->name('statement.index');

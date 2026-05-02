@@ -5,6 +5,9 @@ namespace Modules\Booking\Services;
 use Modules\Booking\Entities\BookingPayment;
 use Modules\Booking\Entities\BookingService;
 use Modules\Booking\Entities\BookingServiceProvider;
+use App\Services\PaymentService as GlobalPaymentService;
+use Illuminate\Support\Facades\Log;
+use Modules\Settings\Entities\Setting;
 
 class PaymentService
 {
@@ -55,15 +58,56 @@ class PaymentService
     }
 
     /**
-     * Stub for gateway integration.
+     * Integrate with the global payment gateway.
      * Return array {payment_url?:string, gateway_ref?:string}
      */
     public function startGateway(BookingPayment $payment): array
     {
-        // You can integrate with your gateway here and update gateway_ref.
-        return [
-            'payment_url' => null,
-            'gateway_ref' => null,
-        ];
+        $settings = Setting::all()->pluck('value', 'key');
+        $defaultGateway = $settings['default_payment_gateway'] ?? null;
+
+        if (!$defaultGateway) {
+            Log::error('No default payment gateway is configured.');
+            return ['payment_url' => null, 'gateway_ref' => null];
+        }
+
+        try {
+            $globalPaymentService = new GlobalPaymentService($defaultGateway);
+
+            $appointment = $payment->appointment;
+            $service = $appointment->service;
+            $client = $appointment->client;
+
+            $description = "پرداخت برای رزرو سرویس: " . $service->name;
+
+            $callbackUrl = route('booking.payment.verify', [
+                'gateway' => $defaultGateway,
+                'payment' => $payment->id
+            ]);
+
+            $result = $globalPaymentService->requestPayment(
+                $payment->amount,
+                $description,
+                $client->email,
+                $client->phone,
+                $callbackUrl
+            );
+
+            if ($result['success']) {
+                // Update the local booking payment record with the authority from the gateway
+                $payment->update(['gateway_ref' => $result['authority']]);
+
+                return [
+                    'payment_url' => $result['payment_url'],
+                    'gateway_ref' => $result['authority'],
+                ];
+            } else {
+                Log::error('Gateway request failed', ['result' => $result]);
+                return ['payment_url' => null, 'gateway_ref' => null];
+            }
+        } catch (\Exception $e) {
+            Log::error('Error starting gateway payment', ['exception' => $e->getMessage()]);
+            return ['payment_url' => null, 'gateway_ref' => null];
+        }
     }
 }

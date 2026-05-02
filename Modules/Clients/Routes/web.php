@@ -9,6 +9,8 @@ use Modules\Clients\App\Livewire\Settings\ClientUsernameSettings;
 use Modules\Clients\App\Livewire\Settings\ClientStatusesManager;
 use Modules\Clients\App\Http\Controllers\Portal\ClientAuthController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientDashboardController;
+use Modules\Clients\App\Http\Controllers\Portal\ClientAppointmentController;
+use Modules\Clients\App\Http\Controllers\Portal\ClientPaymentController;
 use Modules\Clients\App\Livewire\Settings\ClientAuthSettings;
 use Modules\Clients\App\Livewire\Settings\CsvImporter;
 
@@ -108,6 +110,16 @@ Route::prefix('clients')
         Route::middleware('auth:client')->group(function () {
             Route::get('dashboard', [ClientDashboardController::class, 'index'])
                 ->name('dashboard');
+
+            Route::get('appointments/{appointment}', [ClientAppointmentController::class, 'show'])
+                ->name('appointments.show');
+            Route::post('appointments/{appointment}/cancel', [ClientAppointmentController::class, 'cancel'])
+                ->name('appointments.cancel');
+
+            Route::get('payments', [ClientPaymentController::class, 'index'])
+                ->name('payments.index');
+            Route::get('payments/{type}/{id}', [ClientPaymentController::class, 'show'])
+                ->name('payments.show');
 
             Route::post('logout', [ClientAuthController::class, 'logout'])
                 ->name('logout');

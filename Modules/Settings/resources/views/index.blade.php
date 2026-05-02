@@ -39,8 +39,16 @@
                 {{ session('success') }}
             </div>
         @endif
+        @if(session('error'))
+            <div class="rounded-2xl bg-red-50 p-4 border border-red-100 dark:bg-red-900/10 dark:border-red-800/30 text-red-700 dark:text-red-400 text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-2 shadow-sm">
+                <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-800/30 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                {{ session('error') }}
+            </div>
+        @endif
 
-        <form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data" class="space-y-8 pb-24">
+        <form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data" class="space-y-8 pb-24" id="main-settings-form">
             @csrf
 
             {{-- کارت ۱: اطلاعات پایه --}}
@@ -118,6 +126,57 @@
                 </div>
             </div>
 
+            {{-- کارت جدید: تنظیمات ثبت نام --}}
+            <div class="{{ $cardClass }}">
+                <div class="{{ $headerClass }}">
+                    <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/20 flex items-center justify-center text-sky-600 dark:text-sky-400">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات ثبت نام</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی فرم‌های ثبت‌نام برای نقش‌های مختلف</p>
+                    </div>
+                </div>
+                <div class="p-6 space-y-6">
+                    @php
+                        $roles = \Spatie\Permission\Models\Role::all();
+                        $registrationSettings = $settings['registration'] ?? [];
+                    @endphp
+                    @foreach($roles as $role)
+                        <div class="p-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                            <h3 class="font-bold text-gray-800 dark:text-gray-200 mb-4">{{ $role->name }}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label for="registration_{{ $role->id }}_enabled" class="{{ $labelClass }}">وضعیت ثبت نام</label>
+                                    <select name="registration[{{ $role->id }}][enabled]" id="registration_{{ $role->id }}_enabled" class="{{ $inputClass }}">
+                                        <option value="0" @if(!($registrationSettings[$role->id]['enabled'] ?? false)) selected @endif>غیرفعال</option>
+                                        <option value="1" @if($registrationSettings[$role->id]['enabled'] ?? false) selected @endif>فعال</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="registration_{{ $role->id }}_approval" class="{{ $labelClass }}">نوع تایید</label>
+                                    <select name="registration[{{ $role->id }}][approval]" id="registration_{{ $role->id }}_approval" class="{{ $inputClass }}">
+                                        <option value="manual" @if(($registrationSettings[$role->id]['approval'] ?? 'manual') == 'manual') selected @endif>تایید دستی</option>
+                                        <option value="automatic" @if(($registrationSettings[$role->id]['approval'] ?? 'manual') == 'automatic') selected @endif>تایید خودکار</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="registration_{{ $role->id }}_approvers" class="{{ $labelClass }}">نقش‌های تایید کننده</label>
+                                     <select multiple name="registration[{{ $role->id }}][approvers][]" id="registration_{{ $role->id }}_approvers" class="{{ $inputClass }}">
+                                        @foreach($roles as $approverRole)
+                                            <option value="{{ $approverRole->id }}" @if(in_array($approverRole->id, $registrationSettings[$role->id]['approvers'] ?? [])) selected @endif>
+                                                {{ $approverRole->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+
             {{-- کارت ۳: تنظیمات هوش مصنوعی (GapGPT) --}}
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
@@ -175,6 +234,79 @@
                 </div>
             </div>
 
+            {{-- کارت ۴: تنظیمات درگاه‌های پرداخت --}}
+            <div class="{{ $cardClass }}">
+                <div class="{{ $headerClass }}">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-gray-900 dark:text-white">درگاه‌های پرداخت</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">مدیریت درگاه‌های پرداخت آنلاین سیستم</p>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-8">
+                    {{-- تنظیمات کلی درگاه‌ها --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-gray-100 dark:border-gray-700">
+                        <div>
+                            <label for="payment_currency" class="{{ $labelClass }}">واحد پول سیستم</label>
+                            <select class="{{ $inputClass }}" id="payment_currency" name="payment_currency">
+                                <option value="toman" {{ ($settings['payment_currency'] ?? 'toman') == 'toman' ? 'selected' : '' }}>تومان</option>
+                                <option value="rial" {{ ($settings['payment_currency'] ?? '') == 'rial' ? 'selected' : '' }}>ریال</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">واحد پولی که مبالغ در سیستم شما با آن ثبت می‌شوند.</p>
+                        </div>
+                        <div>
+                            <label for="default_payment_gateway" class="{{ $labelClass }}">درگاه پیش‌فرض سیستم</label>
+                            <select class="{{ $inputClass }}" id="default_payment_gateway" name="default_payment_gateway">
+                                <option value="">انتخاب کنید...</option>
+                                <option value="zarinpal" {{ ($settings['default_payment_gateway'] ?? '') == 'zarinpal' ? 'selected' : '' }}>زرین‌پال</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">درگاهی که به صورت پیش‌فرض برای پرداخت‌ها انتخاب می‌شود.</p>
+                        </div>
+                    </div>
+
+                    {{-- زرین‌پال --}}
+                    <div>
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-2 h-2 rounded-full {{ ($settings['zarinpal_status'] ?? '') == 'active' ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600' }}"></div>
+                            <h3 class="text-sm font-bold text-gray-900 dark:text-white">درگاه زرین‌پال</h3>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                            <div>
+                                <label for="zarinpal_status" class="{{ $labelClass }}">وضعیت درگاه</label>
+                                <select class="{{ $inputClass }}" id="zarinpal_status" name="zarinpal_status">
+                                    <option value="inactive" {{ ($settings['zarinpal_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>غیرفعال</option>
+                                    <option value="active" {{ ($settings['zarinpal_status'] ?? '') == 'active' ? 'selected' : '' }}>فعال</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="zarinpal_merchant_id" class="{{ $labelClass }}">کد مرچنت (Merchant ID)</label>
+                                <input type="text" class="{{ $inputClass }} dir-ltr text-left" id="zarinpal_merchant_id" name="zarinpal_merchant_id" value="{{ $settings['zarinpal_merchant_id'] ?? '' }}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                            </div>
+
+                            <div>
+                                <label for="zarinpal_sandbox" class="{{ $labelClass }}">حالت آزمایشی (Sandbox)</label>
+                                <select class="{{ $inputClass }}" id="zarinpal_sandbox" name="zarinpal_sandbox">
+                                    <option value="0" {{ ($settings['zarinpal_sandbox'] ?? '0') == '0' ? 'selected' : '' }}>خیر (محیط عملیاتی)</option>
+                                    <option value="1" {{ ($settings['zarinpal_sandbox'] ?? '') == '1' ? 'selected' : '' }}>بله (محیط تست)</option>
+                                </select>
+                            </div>
+
+                            <div class="md:col-span-2 flex items-center justify-end pt-2">
+                                <button type="button" onclick="submitTestPayment()" class="px-4 py-2 rounded-xl bg-blue-100 text-blue-700 font-medium hover:bg-blue-200 transition-colors flex items-center gap-2 text-sm">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                    تست پرداخت زرین‌پال
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
             {{-- دکمه ذخیره --}}
             <div class="sticky bottom-4 z-40 flex justify-end">
                 <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-2 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
@@ -186,9 +318,27 @@
                 </div>
             </div>
         </form>
+
+        {{-- فرم مجزا برای تست پرداخت --}}
+        <form id="test-payment-form" action="{{ route('settings.payment.request') }}" method="POST" class="hidden">
+            @csrf
+            <input type="hidden" name="gateway" value="zarinpal">
+            <input type="hidden" name="amount" value="1000"> {{-- Example amount in Toman --}}
+            <input type="hidden" name="description" value="تست پرداخت زرین‌پال">
+        </form>
     </div>
 
     <script>
+        function submitTestPayment() {
+            // Check if user has saved merchant ID before testing
+            const merchantId = document.getElementById('zarinpal_merchant_id').value;
+            if (!merchantId) {
+                alert('لطفاً ابتدا کد مرچنت زرین‌پال را وارد کرده و تنظیمات را ذخیره کنید.');
+                return;
+            }
+            document.getElementById('test-payment-form').submit();
+        }
+
         function testConnection() {
             const btn = document.getElementById('test-btn');
             const resultDiv = document.getElementById('test-result');

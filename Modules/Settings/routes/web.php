@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Settings\Http\Controllers\SettingsController;
 use Modules\Settings\Http\Controllers\GapGPTLogController;
+use Modules\Settings\Http\Controllers\PaymentController;
 
 Route::prefix('settings')->middleware(['auth'])->group(function () {
     Route::get('/', [SettingsController::class, 'index'])->name('settings.index');
@@ -12,4 +13,8 @@ Route::prefix('settings')->middleware(['auth'])->group(function () {
     // روت‌های لاگ هوش مصنوعی
     Route::get('/gapgpt-logs', [GapGPTLogController::class, 'index'])->name('settings.gapgpt-logs.index');
     Route::get('/gapgpt-logs/{log}', [GapGPTLogController::class, 'show'])->name('settings.gapgpt-logs.show');
+
+    // روت‌های درگاه پرداخت
+    Route::post('/payment/request', [PaymentController::class, 'request'])->name('settings.payment.request');
+    Route::get('/payment/verify/{gateway}', [PaymentController::class, 'verify'])->name('settings.payment.verify');
 });

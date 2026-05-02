@@ -111,6 +111,6 @@ class Appointment extends Model
 
     public function payments(): HasMany
     {
-        return $this->hasMany(Payment::class, 'appointment_id');
+        return $this->hasMany(BookingPayment::class, 'appointment_id');
     }
 }

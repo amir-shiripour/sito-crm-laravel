@@ -31,6 +31,7 @@
         $exitValue = $exitLocal ? $exitLocal->format('H:i') : '—';
 
         $formResponses = $appointment->appointment_form_response_json ?? [];
+        $payments = $appointment->payments ?? collect();
     @endphp
 
     <div class="space-y-6">
@@ -67,7 +68,7 @@
                     <div class="font-semibold text-gray-900 dark:text-gray-100">{{ optional($appointment->service)->name ?? '—' }}</div>
                 </div>
                 <div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ config('booking.labels.provider') }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ config('booking.labels.provider', 'ارائه‌دهنده') }}</div>
                     <div class="font-semibold text-gray-900 dark:text-gray-100">{{ optional($appointment->provider)->name ?? '—' }}</div>
                 </div>
                 <div>
@@ -76,7 +77,7 @@
                 </div>
                 <div>
                     <div class="text-xs text-gray-500 dark:text-gray-400">وضعیت</div>
-                    <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold {{ $statusMeta['class'] }}">
+                    <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold mt-1 {{ $statusMeta['class'] }}">
                         {{ $statusMeta['label'] }}
                     </span>
                 </div>
@@ -108,6 +109,70 @@
                 </div>
             </div>
         </div>
+
+        @if($payments->isNotEmpty())
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">اطلاعات پرداخت</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-right text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 bg-gray-50 dark:bg-gray-700/50 dark:text-gray-300">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 rounded-r-xl">مبلغ</th>
+                                <th scope="col" class="px-6 py-3">واحد پول</th>
+                                <th scope="col" class="px-6 py-3">نوع پرداخت</th>
+                                <th scope="col" class="px-6 py-3">وضعیت</th>
+                                <th scope="col" class="px-6 py-3">کد پیگیری</th>
+                                <th scope="col" class="px-6 py-3 rounded-l-xl">تاریخ پرداخت</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($payments as $payment)
+                                @php
+                                    $paymentStatusMap = [
+                                        \Modules\Booking\Entities\BookingPayment::STATUS_PENDING => ['label' => 'در انتظار پرداخت', 'class' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'],
+                                        \Modules\Booking\Entities\BookingPayment::STATUS_PAID => ['label' => 'پرداخت شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
+                                        \Modules\Booking\Entities\BookingPayment::STATUS_FAILED => ['label' => 'ناموفق', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
+                                        \Modules\Booking\Entities\BookingPayment::STATUS_REFUNDED => ['label' => 'برگشت داده شده', 'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'],
+                                        \Modules\Booking\Entities\BookingPayment::STATUS_CANCELED => ['label' => 'لغو شده', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
+                                    ];
+                                    $pStatusMeta = $paymentStatusMap[$payment->status] ?? ['label' => $payment->status, 'class' => 'bg-gray-100 text-gray-700'];
+
+                                    $paymentModeMap = [
+                                        \Modules\Booking\Entities\BookingService::PAYMENT_MODE_OPTIONAL => 'اختیاری',
+                                        \Modules\Booking\Entities\BookingService::PAYMENT_MODE_REQUIRED => 'اجباری',
+                                    ];
+                                    $pModeLabel = $paymentModeMap[$payment->mode] ?? $payment->mode;
+                                @endphp
+                                <tr class="border-b border-gray-100 dark:border-gray-700/60 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
+                                        {{ number_format($payment->amount) }}
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        {{ $payment->currency_unit === 'toman' ? 'تومان' : ($payment->currency_unit === 'rial' ? 'ریال' : $payment->currency_unit) }}
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        {{ $pModeLabel }}
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold {{ $pStatusMeta['class'] }}">
+                                            {{ $pStatusMeta['label'] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 font-mono text-xs">
+                                        {{ $payment->transaction_ref ?: '—' }}
+                                    </td>
+                                    <td class="px-6 py-4 text-xs" dir="ltr">
+                                        {{ $payment->updated_at && $payment->status === \Modules\Booking\Entities\BookingPayment::STATUS_PAID ? \Morilog\Jalali\Jalalian::fromDateTime($payment->updated_at)->format('Y/m/d H:i') : '—' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
 
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
             <div class="flex items-center justify-between mb-4">

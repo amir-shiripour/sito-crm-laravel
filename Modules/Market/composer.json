@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/market",
+    "description": "Market module for store and multi-vendor capabilities",
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your-email@example.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Market\\": "app/",
+            "Modules\\Market\\Database\\Factories\\": "database/factories/",
+            "Modules\\Market\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Market\\Tests\\": "tests/"
+        }
+    }
+}

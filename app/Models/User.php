@@ -63,6 +63,14 @@ class User extends Authenticatable
         'profile_photo_url',
     ];
 
-    public function customValues() { return $this->hasMany(\App\Models\UserCustomValue::class); }
+    public function customValues()
+    {
+        return $this->hasMany(\App\Models\UserCustomValue::class);
+    }
+
+    public function marketVendor()
+    {
+        return $this->hasOne(\Modules\Market\Entities\Vendor::class, 'user_id');
+    }
 
 }

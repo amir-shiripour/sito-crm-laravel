@@ -12,6 +12,10 @@ class SettingsController extends Controller
     public function index()
     {
         $settings = Setting::all()->pluck('value', 'key');
+        // Decode registration settings if it's a string
+        if (isset($settings['registration']) && is_string($settings['registration'])) {
+            $settings['registration'] = json_decode($settings['registration'], true);
+        }
         return view('settings::index', compact('settings'));
     }
 
@@ -25,6 +29,11 @@ class SettingsController extends Controller
                 $filename = time() . '_' . $file->getClientOriginalName();
                 $file->move(public_path('uploads/settings'), $filename);
                 $value = 'uploads/settings/' . $filename;
+            }
+
+            // Convert array to JSON string for database storage
+            if (is_array($value)) {
+                $value = json_encode($value);
             }
 
             Setting::updateOrCreate(

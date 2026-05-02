@@ -6,7 +6,8 @@ use App\Http\Controllers\Admin\ModuleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\CustomFieldController;
-use App\Http\Controllers\Admin\VersionControlController; // اضافه شدن کنترلر جدید برای مدیریت نسخه‌ها
+use App\Http\Controllers\Admin\VersionControlController;
+use App\Http\Controllers\Admin\RegistrationRequestController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,39 +15,95 @@ use App\Http\Controllers\Admin\VersionControlController; // اضافه شدن ک
 |--------------------------------------------------------------------------
 |
 | این فایل از RouteServiceProvider با prefix('admin') و name('admin.')
-| و middleware(['web','auth']) لود می‌شود. پس اینجا دوباره prefix/name
-| برای 'admin' نمی‌گذاریم تا آدرس‌ها ثابت بمانند.
+| و middleware(['web','auth']) لود می‌شود.
+| تمامی روت‌های بخش مدیریت در اینجا سازماندهی شده‌اند.
 |
 */
 
-// داشبورد اصلی ادمین  =>  GET /admin/dashboard   name: admin.dashboard
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->name('dashboard')
-    ->middleware(['role:super-admin']); // محدودیت دسترسی فقط برای سوپر ادمین
+// --- داشبورد اصلی ادمین ---
+// نکته: مسیر به حالت قدیمی '/dashboard' برگشت تا لینک‌های فعلی شما خراب نشود.
+// متد جدید layout هم به آن اضافه شد.
+Route::middleware(['role:super-admin'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/dashboard/layout', [DashboardController::class, 'updateLayout'])->name('dashboard.update-layout');
+});
 
-// --- مدیریت کاربران (هسته) => همه زیر: /admin/users  و name: admin.users.* ---
+// --- مدیریت کاربران ---
 Route::prefix('users')->name('users.')->middleware(['permission:users.view'])->group(function () {
-    // لیست کاربران - برای همه کاربرانی که permission دارند
     Route::get('/', [UserController::class, 'index'])->name('index');
     Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit')->middleware('permission:users.update');
     Route::put('/{user}', [UserController::class, 'update'])->name('update')->middleware('permission:users.update');
 
-    // عملیات ایجاد و حذف برای کاربرانی که permission دارند
     Route::middleware(['permission:users.create'])->group(function () {
-        Route::get('/create', [UserController::class, 'create'])->name('create');   // GET  /admin/users/create
-        Route::post('/', [UserController::class, 'store'])->name('store');          // POST /admin/users
+        Route::get('/create', [UserController::class, 'create'])->name('create');
+        Route::post('/', [UserController::class, 'store'])->name('store');
     });
 
-    Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy')->middleware('permission:users.delete'); // DELETE /admin/users/{user}
+    Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy')->middleware('permission:users.delete');
+
+    // امکان جدید: انتساب نقش‌ها به کاربر
+    Route::post('/{user}/roles', [UserController::class, 'assignRoles'])
+        ->name('assign-roles')
+        ->middleware('permission:users.assign-roles');
 });
 
-// --- مدیریت ماژول‌ها (هسته) => /admin/modules  و name: admin.modules.* ---
+// --- مدیریت نقش‌ها ---
+/*
+ * توجه: ما دسترسی‌ها (Permissions) را مستقیماً ویرایش نمی‌کنیم و فقط نقش‌ها (Roles) را مدیریت می‌کنیم.
+ * دسترسی‌ها توسط توسعه‌دهنده در کدهای سیستم تعریف شده و ثابت می‌مانند.
+ */
+Route::prefix('roles')->name('roles.')->middleware(['permission:roles.view'])->group(function () {
+    Route::get('/', [RoleController::class, 'index'])->name('index');
+
+    Route::middleware(['permission:roles.create'])->group(function () {
+        Route::get('/create', [RoleController::class, 'create'])->name('create');
+        Route::post('/', [RoleController::class, 'store'])->name('store');
+    });
+
+    Route::middleware(['permission:roles.update'])->group(function () {
+        Route::get('/{role}/edit', [RoleController::class, 'edit'])->name('edit');
+        Route::put('/{role}', [RoleController::class, 'update'])->name('update');
+    });
+
+    Route::delete('/{role}', [RoleController::class, 'destroy'])->name('destroy')->middleware('permission:roles.delete');
+});
+
+// --- مدیریت فیلدهای سفارشی ---
+Route::prefix('custom-fields')->name('custom-fields.')->middleware(['permission:custom-fields.view'])->group(function () {
+    Route::get('/', [CustomFieldController::class, 'index'])->name('index');
+
+    Route::middleware(['permission:custom-fields.create'])->group(function () {
+        Route::get('/create', [CustomFieldController::class, 'create'])->name('create');
+        Route::post('/', [CustomFieldController::class, 'store'])->name('store');
+    });
+
+    Route::middleware(['permission:custom-fields.update'])->group(function () {
+        Route::get('/{field}/edit', [CustomFieldController::class, 'edit'])->name('edit');
+        Route::put('/{field}', [CustomFieldController::class, 'update'])->name('update');
+    });
+
+    Route::delete('/{field}', [CustomFieldController::class, 'destroy'])->name('destroy')->middleware('permission:custom-fields.delete');
+});
+
+// --- مدیریت درخواست‌های ثبت نام (امکان جدید) ---
+Route::prefix('registration-requests')->name('registration-requests.')->middleware(['permission:registration-requests.view'])->group(function () {
+    Route::get('/', [RegistrationRequestController::class, 'index'])->name('index');
+    Route::post('/{registrationRequest}/approve', [RegistrationRequestController::class, 'approve'])->name('approve')->middleware('permission:registration-requests.approve');
+    Route::post('/{registrationRequest}/reject', [RegistrationRequestController::class, 'reject'])->name('reject')->middleware('permission:registration-requests.reject');
+});
+
+// --- مدیریت ماژول‌ها ---
 Route::prefix('modules')->name('modules.')->group(function () {
     Route::get('/', [ModuleController::class, 'index'])->name('index');
 
-    // Toggle قدیمی — برای سازگاری نگه داشته شده
-    Route::post('/toggle', [ModuleController::class, 'toggle'])->name('toggle');
-    // عملیات جدید ماژول‌ها — دسترسی فقط برای super-admin
+    // روت‌های عمومی‌تر
+    Route::post('/toggle', [ModuleController::class, 'toggle'])->name('toggle'); // متد قدیمی حفظ شد
+
+    // امکانات جدید اضافه شده در فایل دوم (با احتیاط)
+    Route::post('/upload', [ModuleController::class, 'upload'])->name('upload')->middleware('role:super-admin');
+    Route::delete('/{module}', [ModuleController::class, 'destroy'])->name('destroy')->middleware('role:super-admin');
+
+    // عملیات حیاتی ماژول‌ها — برگردانده شد (دسترسی فقط برای super-admin)
     Route::middleware(['role:super-admin'])->group(function () {
         Route::post('/install', [ModuleController::class, 'install'])->name('install');
         Route::post('/enable', [ModuleController::class, 'enableModule'])->name('enable');
@@ -57,50 +114,10 @@ Route::prefix('modules')->name('modules.')->group(function () {
     });
 });
 
-// --- مدیریت نقش‌ها => /admin/roles  و name: admin.roles.* ---
-Route::prefix('roles')->name('roles.')->middleware(['permission:roles.view'])->group(function () {
-    Route::get('/', [RoleController::class, 'index'])->name('index');           // فهرست نقش‌ها
-
-    // عملیات ایجاد برای کاربرانی که permission دارند
-    Route::middleware(['permission:roles.create'])->group(function () {
-        Route::get('/create', [RoleController::class, 'create'])->name('create');   // فرم ایجاد
-        Route::post('/', [RoleController::class, 'store'])->name('store');          // ذخیره نقش
-    });
-
-    // عملیات ویرایش برای کاربرانی که permission دارند
-    Route::middleware(['permission:roles.update'])->group(function () {
-        Route::get('/{role}/edit', [RoleController::class, 'edit'])->name('edit');  // فرم ویرایش
-        Route::put('/{role}', [RoleController::class, 'update'])->name('update');   // بروزرسانی نقش
-    });
-
-    // عملیات حذف برای کاربرانی که permission دارند
-    Route::delete('/{role}', [RoleController::class, 'destroy'])->name('destroy')->middleware('permission:roles.delete'); // حذف نقش
-});
-
-// --- مدیریت فیلدهای سفارشی => /admin/custom-fields  و name: admin.custom-fields.* ---
-Route::prefix('custom-fields')->name('custom-fields.')->middleware(['permission:custom-fields.view'])->group(function () {
-    // لیست فیلدهای سفارشی
-    Route::get('/', [CustomFieldController::class, 'index'])->name('index');
-
-    // عملیات ایجاد برای کاربرانی که permission دارند
-    Route::middleware(['permission:custom-fields.create'])->group(function () {
-        Route::get('/create', [CustomFieldController::class, 'create'])->name('create');
-        Route::post('/', [CustomFieldController::class, 'store'])->name('store');
-    });
-
-    // عملیات ویرایش برای کاربرانی که permission دارند
-    Route::middleware(['permission:custom-fields.update'])->group(function () {
-        Route::get('/{field}/edit', [CustomFieldController::class, 'edit'])->name('edit');
-        Route::put('/{field}', [CustomFieldController::class, 'update'])->name('update');
-    });
-
-    // عملیات حذف برای کاربرانی که permission دارند
-    Route::delete('/{field}', [CustomFieldController::class, 'destroy'])->name('destroy')->middleware('permission:custom-fields.delete');
-});
-
-// --- مدیریت نسخه‌ها (Version Control) => /admin/version-control و name: admin.version-control.* ---
+// --- مدیریت نسخه‌ها (Version Control) ---
 // دسترسی به این بخش حساس هسته‌ای فقط برای سوپر ادمین تعریف شده است
 Route::prefix('version-control')->name('version-control.')->middleware(['role:super-admin'])->group(function () {
+    // مسیرهای CRUD قدیمی (برگردانده شد)
     Route::get('/', [VersionControlController::class, 'index'])->name('index');
     Route::get('/create', [VersionControlController::class, 'create'])->name('create');
     Route::post('/', [VersionControlController::class, 'store'])->name('store');
@@ -108,7 +125,13 @@ Route::prefix('version-control')->name('version-control.')->middleware(['role:su
     Route::put('/{versionControl}', [VersionControlController::class, 'update'])->name('update');
     Route::delete('/{versionControl}', [VersionControlController::class, 'destroy'])->name('destroy');
 
-    // مسیرهای جدید برای گیت‌هاب (Advanced)
+    // مسیرهای قدیمی برای گیت‌هاب
     Route::get('/check-remote', [VersionControlController::class, 'checkRemote'])->name('check-remote');
     Route::post('/deploy-update', [VersionControlController::class, 'deployUpdate'])->name('deploy');
+
+    // امکانات جدید مربوط به آپدیت سیستم
+    // نکته: نام متد update در کدهای جدید با متد PUT (برای ویرایش فرم) تداخل داشت!
+    // برای جلوگیری از خطا، نام روت جدید را به system-update تغییر دادیم.
+    Route::post('/check-updates', [VersionControlController::class, 'checkUpdates'])->name('check-updates');
+    Route::post('/run-system-update', [VersionControlController::class, 'update'])->name('system-update');
 });

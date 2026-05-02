@@ -5,6 +5,7 @@ use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\User\DashboardController as UserDashboardController;
 use Modules\Properties\Entities\PropertyAttribute;
+use App\Http\Controllers\Auth\RegisteredUserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -69,4 +70,10 @@ Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(functio
     Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/layout', [UserDashboardController::class, 'updateLayout'])->name('dashboard.update-layout');
     // سایر روت‌های مربوط به Jetstream / profile اینجا هستند
+});
+
+// Override Fortify's default register routes
+Route::middleware(['web', 'guest'])->group(function () {
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [RegisteredUserController::class, 'store']);
 });
