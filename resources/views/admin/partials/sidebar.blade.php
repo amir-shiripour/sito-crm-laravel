@@ -82,6 +82,14 @@
                             <span>کنترل نسخه‌ها (Git)</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('admin.optimizer-report') }}"
+                           class="group flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all
+{{ request()->routeIs('admin.optimizer-report') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white' }}">
+                            <svg class="w-5 h-5 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            <span>گزارش بهینه‌ساز</span>
+                        </a>
+                    </li>
                 @endif
             </ul>
         </div>

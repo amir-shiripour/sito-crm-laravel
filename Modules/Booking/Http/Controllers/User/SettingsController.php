@@ -152,12 +152,28 @@ class SettingsController extends Controller
             'service_category_selection_scope' => ['required', Rule::in(['ALL', 'OWN'])],
             'service_form_selection_scope' => ['required', Rule::in(['ALL', 'OWN'])],
             'operator_appointment_flow' => ['required', Rule::in(['PROVIDER_FIRST', 'SERVICE_FIRST'])],
+            'user_appointment_flow' => ['required', Rule::in(['PROVIDER_FIRST', 'SERVICE_FIRST'])],
             'allow_appointment_entry_exit_times' => ['required'],
+
+            'tax_enabled' => ['required', Rule::in(['0', '1', true, false])],
+            'tax_type' => ['nullable', Rule::in(['PERCENT', 'FIXED'])],
+            'tax_amount' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                function ($attribute, $value, $fail) use ($request) {
+                    $type = $request->input('tax_type');
+                    if ($type === 'PERCENT' && $value > 100) {
+                        $fail('درصد ارزش افزوده نمی‌تواند بیشتر از 100 باشد.');
+                    }
+                },
+            ],
         ]);
 
         $data['global_online_booking_enabled'] = (bool) $data['global_online_booking_enabled'];
         $data['allow_role_service_creation']   = (bool) $data['allow_role_service_creation'];
         $data['allow_appointment_entry_exit_times'] = (bool) $data['allow_appointment_entry_exit_times'];
+        $data['tax_enabled'] = $request->boolean('tax_enabled');
 
         // پر کردن فیلدهای ساده
         $settings->fill($data);

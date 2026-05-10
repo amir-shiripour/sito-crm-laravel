@@ -161,14 +161,21 @@ class AppointmentService
             $settings = BookingSetting::current();
 
             $amount = $this->paymentService->calculateAmount($service, $sp);
-            $needsPayment = ($service->payment_mode !== BookingService::PAYMENT_MODE_NONE) && $amount > 0;
+
+            $needsPayment = false;
+
+            if ($settings->tax_enabled && $amount > 0) {
+                $needsPayment = true;
+            } elseif ($service->payment_mode !== BookingService::PAYMENT_MODE_NONE && $amount > 0) {
+                $needsPayment = true;
+            }
 
             // Check auto-confirm setting
             $autoConfirm = $sp->effectiveAutoConfirm();
 
             $status = $autoConfirm ? Appointment::STATUS_CONFIRMED : Appointment::STATUS_PENDING;
 
-            if ($needsPayment && $service->payment_mode === BookingService::PAYMENT_MODE_REQUIRED) {
+            if ($needsPayment && ($settings->tax_enabled || $service->payment_mode === BookingService::PAYMENT_MODE_REQUIRED)) {
                 $status = Appointment::STATUS_PENDING_PAYMENT;
             }
 
@@ -188,10 +195,11 @@ class AppointmentService
             $payment = null;
             $gateway = [];
 
-            if ($needsPayment && ($service->payment_mode === BookingService::PAYMENT_MODE_REQUIRED || $payNow)) {
+            if ($needsPayment && ($settings->tax_enabled || $service->payment_mode === BookingService::PAYMENT_MODE_REQUIRED || $payNow)) {
+                $paymentMode = $settings->tax_enabled ? BookingService::PAYMENT_MODE_REQUIRED : $service->payment_mode;
                 $payment = $this->paymentService->createPendingPayment(
                     $appointment->id,
-                    $service->payment_mode,
+                    $paymentMode,
                     $amount,
                     $settings->currency_unit ?? config('booking.defaults.currency_unit', 'IRR')
                 );
@@ -250,14 +258,22 @@ class AppointmentService
 
             $appt = Appointment::query()->whereKey($payment->appointment_id)->lockForUpdate()->first();
             if ($appt && $appt->status === Appointment::STATUS_PENDING_PAYMENT) {
-                $appt->status = Appointment::STATUS_CONFIRMED;
+
+                // Check auto-confirm setting
+                $sp = $this->engine->getServiceProvider($appt->service_id, $appt->provider_user_id);
+                $autoConfirm = $sp ? $sp->effectiveAutoConfirm() : false;
+
+                $appt->status = $autoConfirm ? Appointment::STATUS_CONFIRMED : Appointment::STATUS_PENDING;
                 $appt->save();
 
                 $this->triggerStatusWorkflows($appt, Appointment::STATUS_PENDING_PAYMENT);
-                $this->onAppointmentConfirmed($appt);
+
+                if ($appt->status === Appointment::STATUS_CONFIRMED) {
+                    $this->onAppointmentConfirmed($appt);
+                }
 
                 $this->audit->log(
-                    action: 'PAYMENT_PAID_AND_APPOINTMENT_CONFIRMED',
+                    action: 'PAYMENT_PAID_AND_APPOINTMENT_STATUS_UPDATED',
                     entityType: 'APPOINTMENT',
                     entityId: $appt->id,
                     userId: null,

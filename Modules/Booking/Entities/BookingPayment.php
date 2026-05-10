@@ -13,7 +13,8 @@ class BookingPayment extends Model
     public const STATUS_PAID = 'PAID';
     public const STATUS_FAILED = 'FAILED';
     public const STATUS_REFUNDED = 'REFUNDED';
-    public const STATUS_CANCELED = 'CANCELED';
+    // مشکل ارور در اینجا بود. املای این ثابت برای هماهنگی با کنترلر و ویو اصلاح شد (دو حرف L)
+    public const STATUS_CANCELLED = 'CANCELLED';
 
     protected $fillable = [
         'appointment_id',

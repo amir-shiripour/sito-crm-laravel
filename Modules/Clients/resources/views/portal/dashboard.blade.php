@@ -12,9 +12,11 @@
     $statusConfig = match ($statusKey) {
         'active'   => ['bg' => 'bg-emerald-500', 'text' => 'text-emerald-50', 'icon' => 'path/to/check', 'ring' => 'ring-emerald-400'],
         'pending'  => ['bg' => 'bg-amber-500',   'text' => 'text-amber-50',   'icon' => 'path/to/clock', 'ring' => 'ring-amber-400'],
-        'blocked', 'cancelled' => ['bg' => 'bg-red-500', 'text' => 'text-red-50', 'icon' => 'path/to/x', 'ring' => 'ring-red-400'],
+        'blocked', 'cancelled', 'CANCELLED' => ['bg' => 'bg-red-500', 'text' => 'text-red-50', 'icon' => 'path/to/x', 'ring' => 'ring-red-400'],
         default    => ['bg' => 'bg-gray-500',    'text' => 'text-gray-50',    'icon' => 'path/to/q', 'ring' => 'ring-gray-400'],
     };
+
+    // کدهای چک کردن ماژول از اینجا حذف شد و جای آن متغیر $showMarketFeatures از کنترلر دریافت می‌شود (طبق معماری استاندارد)
 @endphp
 
 @section('content')
@@ -56,7 +58,7 @@
         </div>
 
         {{-- کارت‌های آمار و اطلاعات --}}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 {{ $showMarketFeatures ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-6">
 
             {{-- کارت نوبت ها --}}
             <div class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
@@ -93,6 +95,21 @@
                 <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ number_format($unpaidInvoicesSum ?? 0) }} <span class="text-xs font-normal text-gray-400">تومان</span></div>
                 <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-emerald-600 transition-colors">لیست صورت‌حساب‌ها &larr;</div>
             </a>
+
+            {{-- کارت سفارشات فروشگاه (نمایش مشروط) --}}
+            @if($showMarketFeatures)
+                <a href="{{ Route::has('client.market.orders.index') ? route('client.market.orders.index') : '#' }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-md transition-all cursor-pointer block">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                        </div>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">در حال پردازش</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ $activeMarketOrdersCount ?? 0 }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-purple-600 transition-colors">سفارشات فروشگاه &larr;</div>
+                </a>
+            @endif
+
         </div>
 
         {{-- بخش دسترسی سریع --}}
@@ -123,154 +140,216 @@
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600">ثبت نوبت جدید</span>
                 </a>
 
-                {{-- آیتم‌های غیرفعال (Placeholder) --}}
-                <div class="flex items-center justify-center p-6 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 text-gray-400 dark:text-gray-500 text-sm">
-                    سایر بخش‌ها...
-                </div>
+                {{-- دکمه فروشگاه (نمایش مشروط) --}}
+                @if($showMarketFeatures)
+                    <a href="{{ Route::has('client.market.index') ? route('client.market.index') : '#' }}" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-md transition-all group">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:bg-purple-50 group-hover:text-purple-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-600">محصولات فروشگاه</span>
+                    </a>
+                @else
+                    {{-- آیتم‌های غیرفعال (Placeholder) --}}
+                    <div class="flex items-center justify-center p-6 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 text-gray-400 dark:text-gray-500 text-sm">
+                        سایر بخش‌ها...
+                    </div>
+                @endif
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
             {{-- بخش نوبت های اخیر --}}
             @if(isset($recentAppointments) && $recentAppointments->isNotEmpty())
-            <div>
-                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                    آخرین نوبت های شما
-                </h2>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-right">
-                            <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        آخرین نوبت های شما
+                    </h2>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-right">
+                                <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
                                 <tr>
                                     <th class="px-6 py-4 font-medium">سرویس</th>
                                     <th class="px-6 py-4 font-medium">تاریخ و زمان</th>
                                     <th class="px-6 py-4 font-medium">وضعیت</th>
                                     <th class="px-6 py-4 font-medium"></th>
                                 </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach($recentAppointments as $appointment)
-                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.appointments.show', $appointment->id) }}'">
-                                    <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
-                                        <div class="flex flex-col">
-                                            <span class="font-medium text-gray-900 dark:text-white">{{ $appointment->service->name ?? '---' }}</span>
-                                            <span class="text-xs text-gray-500">{{ $appointment->provider->full_name ?? $appointment->provider->name ?? '---' }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
-                                        <div class="flex flex-col">
-                                            <span>{{ $appointment->start_at_utc ? jdate($appointment->start_at_utc)->format('Y/m/d') : '---' }}</span>
-                                            <span class="text-xs text-gray-500">{{ $appointment->start_at_utc ? jdate($appointment->start_at_utc)->format('H:i') : '---' }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        @php
-                                            $appStatusColor = match($appointment->status) {
-                                                'CONFIRMED' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-                                                'PENDING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                                                'PENDING_PAYMENT' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-                                                'CANCELED_BY_CLIENT', 'CANCELED_BY_ADMIN' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                                                'DONE' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-                                                default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                                            };
+                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.appointments.show', $appointment->id) }}'">
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                            <div class="flex flex-col">
+                                                <span class="font-medium text-gray-900 dark:text-white">{{ $appointment->service->name ?? '---' }}</span>
+                                                <span class="text-xs text-gray-500">{{ $appointment->provider->full_name ?? $appointment->provider->name ?? '---' }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                            <div class="flex flex-col">
+                                                <span>{{ $appointment->start_at_utc ? jdate($appointment->start_at_utc)->format('Y/m/d') : '---' }}</span>
+                                                <span class="text-xs text-gray-500">{{ $appointment->start_at_utc ? jdate($appointment->start_at_utc)->format('H:i') : '---' }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            @php
+                                                $appStatusColor = match($appointment->status) {
+                                                    'CONFIRMED' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                                    'PENDING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                                                    'PENDING_PAYMENT' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                                                    'CANCELED_BY_CLIENT', 'CANCELED_BY_ADMIN' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                                    'DONE' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                                                    default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                                };
 
-                                            $appStatusLabel = match($appointment->status) {
-                                                'CONFIRMED' => 'تایید شده',
-                                                'PENDING' => 'در انتظار بررسی',
-                                                'PENDING_PAYMENT' => 'در انتظار پرداخت',
-                                                'CANCELED_BY_CLIENT' => 'لغو توسط شما',
-                                                'CANCELED_BY_ADMIN' => 'لغو توسط سیستم',
-                                                'DONE' => 'انجام شده',
-                                                'RESCHEDULED' => 'تغییر زمان',
-                                                'NO_SHOW' => 'عدم حضور',
-                                                'DRAFT' => 'پیش‌نویس',
-                                                default => $appointment->status
-                                            };
-                                        @endphp
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $appStatusColor }}">
+                                                $appStatusLabel = match($appointment->status) {
+                                                    'CONFIRMED' => 'تایید شده',
+                                                    'PENDING' => 'در انتظار بررسی',
+                                                    'PENDING_PAYMENT' => 'در انتظار پرداخت',
+                                                    'CANCELED_BY_CLIENT' => 'لغو توسط شما',
+                                                    'CANCELED_BY_ADMIN' => 'لغو توسط سیستم',
+                                                    'DONE' => 'انجام شده',
+                                                    'RESCHEDULED' => 'تغییر زمان',
+                                                    'NO_SHOW' => 'عدم حضور',
+                                                    'DRAFT' => 'پیش‌نویس',
+                                                    default => $appointment->status
+                                                };
+                                            @endphp
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $appStatusColor }}">
                                             {{ $appStatusLabel }}
                                         </span>
-                                    </td>
-                                    <td class="px-6 py-4 text-left">
-                                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                                    </td>
-                                </tr>
+                                        </td>
+                                        <td class="px-6 py-4 text-left">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                        </td>
+                                    </tr>
                                 @endforeach
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
             @endif
 
             {{-- بخش صورتحساب های اخیر --}}
             @if(isset($recentPayments) && $recentPayments->isNotEmpty())
-            <div>
-                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    آخرین پرداخت‌ها
-                </h2>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-right">
-                            <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        آخرین پرداخت‌ها
+                    </h2>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-right">
+                                <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
                                 <tr>
                                     <th class="px-6 py-4 font-medium">مبلغ و نوع</th>
                                     <th class="px-6 py-4 font-medium">تاریخ</th>
                                     <th class="px-6 py-4 font-medium">وضعیت</th>
                                     <th class="px-6 py-4 font-medium"></th>
                                 </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach($recentPayments as $payment)
-                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.payments.show', ['type' => $payment->type, 'id' => $payment->id]) }}'">
-                                    <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
-                                        <div class="flex flex-col">
-                                            <span>{{ number_format($payment->amount) }} <span class="text-xs font-normal text-gray-500">تومان</span></span>
-                                            <span class="text-xs text-gray-400 font-normal mt-1">{{ $payment->type_label }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
-                                        <div class="flex flex-col">
-                                            <span>{{ $payment->date ? jdate($payment->date)->format('Y/m/d') : '---' }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        @php
-                                            $payStatusColor = match($payment->status) {
-                                                'PAID' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-                                                'PENDING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                                                'FAILED' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                                                'REFUNDED' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
-                                                'CANCELED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-                                                default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                                            };
+                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.payments.show', ['type' => $payment->type, 'id' => $payment->id]) }}'">
+                                        <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
+                                            <div class="flex flex-col">
+                                                <span>{{ number_format($payment->amount) }} <span class="text-xs font-normal text-gray-500">تومان</span></span>
+                                                <span class="text-xs text-gray-400 font-normal mt-1">{{ $payment->type_label }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                            <div class="flex flex-col">
+                                                <span>{{ $payment->date ? jdate($payment->date)->format('Y/m/d') : '---' }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            @php
+                                                $payStatusColor = match($payment->status) {
+                                                    'PAID' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                                    'PENDING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                                                    'FAILED' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                                    'REFUNDED' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+                                                    'CANCELED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                                                    'CANCELLED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                                                    default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                                };
 
-                                            $payStatusLabel = match($payment->status) {
-                                                'PAID' => 'پرداخت شده',
-                                                'PENDING' => 'در انتظار پرداخت',
-                                                'FAILED' => 'ناموفق',
-                                                'REFUNDED' => 'استرداد شده',
-                                                'CANCELED' => 'لغو شده',
-                                                default => $payment->status
-                                            };
-                                        @endphp
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $payStatusColor }}">
+                                                $payStatusLabel = match($payment->status) {
+                                                    'PAID' => 'پرداخت شده',
+                                                    'PENDING' => 'در انتظار پرداخت',
+                                                    'FAILED' => 'ناموفق',
+                                                    'REFUNDED' => 'استرداد شده',
+                                                    'CANCELED' => 'لغو شده',
+                                                    'CANCELLED' => 'لغو شده',
+                                                    default => $payment->status
+                                                };
+                                            @endphp
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $payStatusColor }}">
                                             {{ $payStatusLabel }}
                                         </span>
-                                    </td>
-                                    <td class="px-6 py-4 text-left">
-                                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                                    </td>
-                                </tr>
+                                        </td>
+                                        <td class="px-6 py-4 text-left">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                        </td>
+                                    </tr>
                                 @endforeach
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
             @endif
+
+            {{-- بخش سفارشات اخیر فروشگاه (نمایش مشروط) --}}
+            @if($showMarketFeatures && isset($recentMarketOrders) && $recentMarketOrders->isNotEmpty())
+                <div class="lg:col-span-2">
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                        آخرین سفارشات فروشگاه
+                    </h2>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-right">
+                                <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4 font-medium">شماره سفارش</th>
+                                    <th class="px-6 py-4 font-medium">مبلغ کل</th>
+                                    <th class="px-6 py-4 font-medium">تاریخ</th>
+                                    <th class="px-6 py-4 font-medium">وضعیت</th>
+                                    <th class="px-6 py-4 font-medium"></th>
+                                </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                @foreach($recentMarketOrders as $order)
+                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ Route::has('client.market.orders.show') ? route('client.market.orders.show', $order->id) : '#' }}'">
+                                        <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
+                                            #{{ $order->tracking_code ?? $order->id }}
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                            {{ number_format($order->total_price ?? 0) }} تومان
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                            {{ $order->created_at ? jdate($order->created_at)->format('Y/m/d') : '---' }}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                            {{ $order->status_label ?? 'نامشخص' }}
+                                        </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-left">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
         </div>
 
     </div>

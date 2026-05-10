@@ -11,6 +11,7 @@ use Modules\Booking\Entities\BookingSetting;
 use Modules\Booking\Entities\BookingSlotHold;
 use Modules\Booking\Entities\BookingServiceProvider;
 use Modules\Booking\Entities\BookingForm;
+use Modules\Booking\Entities\BookingPayment; // اضافه شده برای استفاده در show
 use Modules\Booking\Services\AppointmentService;
 use App\Models\User;
 use Modules\Clients\Entities\Client;
@@ -400,7 +401,56 @@ class AppointmentController extends Controller
         $settings = BookingSetting::current();
         $this->ensureAppointmentViewAccess($request->user(), $appointment, $settings);
 
-        return view('booking::user.appointments.show', compact('appointment', 'settings'));
+        // --- پردازش لاجیک View به Controllers منتقل شد (طبق اصول معماری MVC) ---
+        $tz = config('booking.timezones.display_default', 'Asia/Tehran');
+        $startLocal = $appointment->start_at_utc?->copy()->timezone($tz);
+        $endLocal = $appointment->end_at_utc?->copy()->timezone($tz);
+        $entryLocal = $appointment->entry_at_utc?->copy()->timezone($tz);
+        $exitLocal = $appointment->exit_at_utc?->copy()->timezone($tz);
+
+        $dateJalali = $startLocal
+            ? \Morilog\Jalali\Jalalian::fromDateTime($startLocal)->format('Y/m/d')
+            : '—';
+        $startTime = $startLocal ? $startLocal->format('H:i') : '—';
+        $endTime = $endLocal ? $endLocal->format('H:i') : '—';
+
+        $statusMap = [
+            Appointment::STATUS_DRAFT => ['label' => 'پیش‌نویس', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
+            Appointment::STATUS_PENDING_PAYMENT => ['label' => 'در انتظار پرداخت', 'class' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'],
+            Appointment::STATUS_CONFIRMED => ['label' => 'تایید شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
+            Appointment::STATUS_CANCELED_BY_ADMIN => ['label' => 'لغو شده (ادمین)', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
+            Appointment::STATUS_CANCELED_BY_CLIENT => ['label' => 'لغو شده (مشتری)', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
+            Appointment::STATUS_NO_SHOW => ['label' => 'عدم حضور', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
+            Appointment::STATUS_DONE => ['label' => 'انجام شده', 'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'],
+            Appointment::STATUS_RESCHEDULED => ['label' => 'جابجا شده', 'class' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200'],
+        ];
+        $statusMeta = $statusMap[$appointment->status] ?? ['label' => $appointment->status, 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'];
+
+        $entryValue = $entryLocal ? $entryLocal->format('H:i') : '—';
+        $exitValue = $exitLocal ? $exitLocal->format('H:i') : '—';
+
+        $formResponses = $appointment->appointment_form_response_json ?? [];
+        $payments = $appointment->payments ?? collect();
+
+        // حل ارور املای CANCELLED در اینجا
+        $paymentStatusMap = [
+            BookingPayment::STATUS_PENDING => ['label' => 'در انتظار پرداخت', 'class' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'],
+            BookingPayment::STATUS_PAID => ['label' => 'پرداخت شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
+            BookingPayment::STATUS_FAILED => ['label' => 'ناموفق', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
+            BookingPayment::STATUS_REFUNDED => ['label' => 'برگشت داده شده', 'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'],
+            BookingPayment::STATUS_CANCELLED => ['label' => 'لغو شده', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
+        ];
+
+        $paymentModeMap = [
+            BookingService::PAYMENT_MODE_OPTIONAL => 'اختیاری',
+            BookingService::PAYMENT_MODE_REQUIRED => 'اجباری',
+        ];
+
+        return view('booking::user.appointments.show', compact(
+            'appointment', 'settings', 'dateJalali', 'startTime', 'endTime',
+            'statusMeta', 'entryValue', 'exitValue', 'formResponses',
+            'payments', 'paymentStatusMap', 'paymentModeMap'
+        ));
     }
 
     public function edit(Request $request, Appointment $appointment)

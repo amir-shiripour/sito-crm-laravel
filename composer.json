@@ -11,6 +11,7 @@
         "php": "^8.2",
         "blade-ui-kit/blade-heroicons": "2.4",
         "guzzlehttp/guzzle": "^7.2",
+        "intervention/image": "*",
         "laravel/fortify": "^1.31",
         "laravel/framework": "^10.10",
         "laravel/jetstream": "^4.3",
@@ -37,7 +38,10 @@
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/",
             "Modules\\": "Modules/"
-        }
+        },
+        "files": [
+            "app/Helpers/FileSizeHelper.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

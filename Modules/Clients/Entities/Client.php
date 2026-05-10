@@ -70,24 +70,30 @@ class Client extends Authenticatable
             return $query;
         }
 
+        // دریافت لیست ID سرپرستان/پزشکان متصل به این کاربر
+        $superiorIds = $user->superiors()->pluck('users.id')->toArray();
+        $userIds = array_merge([$user->id], $superiorIds);
+
         // 3) اگر اجازه‌ی دیدن کلاینت‌های assign‌شده دارد
         if ($user->can('clients.view.assigned')) {
-            return $query->where(function (Builder $q) use ($user) {
-                $q->where('created_by', $user->id)
-                    ->orWhereHas('users', function (Builder $sub) use ($user) {
-                        $sub->where('users.id', $user->id);
+            return $query->where(function (Builder $q) use ($userIds) {
+                // کلاینت‌هایی که خودش یا سرپرستانش ساخته‌اند
+                $q->whereIn('created_by', $userIds)
+                    // کلاینت‌هایی که به خودش یا سرپرستانش assign شده‌اند
+                    ->orWhereHas('users', function (Builder $sub) use ($userIds) {
+                        $sub->whereIn('users.id', $userIds);
                     });
             });
         }
 
         // 4) اگر اجازه‌ی دیدن کلاینت‌های خودش را دارد
         if ($user->can('clients.view.own')) {
-            return $query->where('created_by', $user->id);
+            return $query->whereIn('created_by', $userIds);
         }
 
         // 5) اگر فقط clients.view ساده را دارد و هیچ‌کدام از بالا فعال نیست
-        // رفتار محافظه‌کارانه: فقط کلاینت‌هایی که خودش ایجاد کرده
-        return $query->where('created_by', $user->id);
+        // رفتار محافظه‌کارانه: فقط کلاینت‌هایی که خودش یا سرپرستانش ایجاد کرده‌اند
+        return $query->whereIn('created_by', $userIds);
     }
 
     public function isVisibleFor(User $user): bool

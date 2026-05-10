@@ -26,6 +26,8 @@ use App\Http\Controllers\Admin\RegistrationRequestController;
 Route::middleware(['role:super-admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/layout', [DashboardController::class, 'updateLayout'])->name('dashboard.update-layout');
+    Route::get('/optimizer-report', [DashboardController::class, 'optimizerReport'])->name('optimizer-report');
+    Route::post('/optimizer-run', [DashboardController::class, 'runManualOptimization'])->name('optimizer.run');
 });
 
 // --- مدیریت کاربران ---

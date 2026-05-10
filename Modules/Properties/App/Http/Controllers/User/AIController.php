@@ -67,7 +67,7 @@ class AIController extends Controller
             2. listing_type: نوع معامله (sale, rent, presale).
             3. property_type: نوع ملک (apartment, villa, land, office).
             4. document_type: نوع سند [$documentTypesStr].
-            5. usage_type: کاربری (residential, commercial, industrial, agricultural).
+            5. usage_type: کاربری (residential, commercial, industrial, agricultural, garden, outsideTheTissue).
             6. delivery_date: تاریخ تحویل (YYYY/MM/DD).
             7. description: توضیحات تکمیلی مرتب شده.
             8. code: کد ملک.

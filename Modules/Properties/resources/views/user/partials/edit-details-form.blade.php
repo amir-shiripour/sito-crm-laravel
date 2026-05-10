@@ -10,7 +10,7 @@
 
     {{-- تصویر شاخص --}}
     <div class="{{ $cardClass }} p-5">
-        <label class="{{ $labelClass }}">تصویر شاخص</label>
+        <label class="{{ $labelClass }}">تصویر شاخص (اختیاری)</label>
         <div class="relative w-full aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden group"
              :class="coverPreview ? 'border-indigo-500 bg-white dark:bg-gray-800' : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 hover:border-indigo-400'"
              @dragover.prevent="dragOver = true"
@@ -22,11 +22,14 @@
                     @if($property->cover_image)
                         <img src="{{ asset('storage/' . $property->cover_image) }}"
                              class="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"
-                             onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
+                             onerror="this.style.display='none'">
                         <div class="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
                             <svg class="w-8 h-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                             <span class="text-xs font-bold">تغییر تصویر</span>
                         </div>
+                        <button type="button" @click.prevent="removeExistingCover" class="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 shadow-lg transition-transform hover:scale-110 z-10" title="حذف تصویر شاخص">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
                     @else
                         <div class="flex flex-col items-center justify-center h-full text-gray-400">
                             <svg class="w-10 h-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -39,15 +42,16 @@
             <template x-if="coverPreview">
                 <div class="absolute inset-0 w-full h-full">
                     <img :src="coverPreview" class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-black/20"></div>
-                    <button type="button" @click="removeCover" class="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 shadow-lg transition-transform hover:scale-110 z-10">
+                    <div class="absolute inset-0 bg-black/20 z-[5]"></div>
+                    <button type="button" @click.prevent="removeCover" class="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 shadow-lg transition-transform hover:scale-110 z-10">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
-                    <div class="absolute bottom-2 right-2 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded shadow">جدید</div>
+                    <div class="absolute bottom-2 right-2 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded shadow z-10">جدید</div>
                 </div>
             </template>
 
-            <input type="file" name="cover_image" id="cover_image" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-0" @change="handleCoverSelect" accept="image/*">
+            <input type="hidden" name="remove_cover_image" id="remove_cover_image_input" value="0">
+            <input type="file" name="cover_image" id="cover_image" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-0" @change="handleCoverSelect" accept="{{ '.' . str_replace(',', ',.', $allowedFileTypes ?? 'jpeg,png,jpg,gif') }}">
         </div>
     </div>
 
@@ -73,7 +77,7 @@
         @endif
 
         <div>
-            <p class="text-[10px] text-gray-500 dark:text-gray-400 mb-2" x-show="galleryPreviews.length > 0">تصاویر جدید برای آپلود:</p>
+            <p class="text-[10px] text-gray-500 dark:text-gray-400 mb-2">حداکثر {{ $maxGalleryImages ?? 10 }} تصویر (هر تصویر تا {{ round(($maxFileSize ?? 10240) / 1024, 1) }} مگابایت)</p>
             <div class="grid grid-cols-3 gap-2">
                 <template x-for="(img, index) in galleryPreviews" :key="index">
                     <div class="relative aspect-square rounded-lg overflow-hidden border border-indigo-200 dark:border-indigo-800 group">
@@ -87,7 +91,7 @@
                 <label class="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-colors text-gray-400 hover:text-indigo-500">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                     <span class="text-[10px]">افزودن</span>
-                    <input type="file" name="gallery_images[]" multiple class="hidden" @change="handleGallerySelect" accept="image/*">
+                    <input type="file" name="gallery_images[]" multiple class="hidden" @change="handleGallerySelect" accept="{{ '.' . str_replace(',', ',.', $allowedFileTypes ?? 'jpeg,png,jpg,gif') }}">
                 </label>
             </div>
         </div>
@@ -110,6 +114,7 @@
                     @else
                         <svg class="w-8 h-8 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                         <p class="text-[10px] text-gray-500">انتخاب ویدیو</p>
+                        <p class="text-[10px] text-gray-500">Max {{ round(($maxVideoSize ?? 20480) / 1024, 1) }}MB</p>
                     @endif
                 </div>
             </template>
@@ -123,7 +128,7 @@
                 </div>
             </template>
 
-            <input type="file" name="video" id="video" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleVideoSelect" accept="video/*" x-show="!videoPreview || (videoPreview && !'{{ $property->video }}')">
+            <input type="file" name="video" id="video" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleVideoSelect" accept="{{ '.' . str_replace(',', ',.', $allowedVideoTypes ?? 'mp4,mov,avi') }}" x-show="!videoPreview || (videoPreview && !'{{ $property->video }}')">
         </div>
     </div>
 

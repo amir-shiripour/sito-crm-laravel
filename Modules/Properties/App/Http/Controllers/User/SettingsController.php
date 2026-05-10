@@ -69,6 +69,10 @@ class SettingsController extends Controller
         $office_location_lng = PropertySetting::get('office_location_lng');
         $office_location_title = PropertySetting::get('office_location_title', 'دفتر مرکزی');
 
+        // Map Service Settings
+        $map_service = PropertySetting::get('map_service', 'leaflet');
+        $map_ir_api_key = PropertySetting::get('map_ir_api_key');
+
         // Storage Report
         $storagePath = 'properties';
         $totalSize = 0;
@@ -110,7 +114,9 @@ class SettingsController extends Controller
             'agent_roles',
             'office_location_lat',
             'office_location_lng',
-            'office_location_title'
+            'office_location_title',
+            'map_service',
+            'map_ir_api_key'
         ));
     }
 
@@ -140,6 +146,8 @@ class SettingsController extends Controller
             'office_location_lat' => 'nullable|numeric',
             'office_location_lng' => 'nullable|numeric',
             'office_location_title' => 'nullable|string|max:255',
+            'map_service' => 'required|in:leaflet,map_ir',
+            'map_ir_api_key' => 'nullable|string',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -179,6 +187,10 @@ class SettingsController extends Controller
         PropertySetting::set('office_location_lat', $request->office_location_lat);
         PropertySetting::set('office_location_lng', $request->office_location_lng);
         PropertySetting::set('office_location_title', $request->office_location_title);
+
+        // Save Map Service Settings
+        PropertySetting::set('map_service', $request->map_service);
+        PropertySetting::set('map_ir_api_key', $request->map_ir_api_key);
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
     }

@@ -32,7 +32,7 @@
             </div>
 
             <div class="flex items-center gap-3">
-                 <a href="{{ route('user.booking.dashboard') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium">
+                <a href="{{ route('user.booking.dashboard') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
@@ -131,6 +131,23 @@
                             </div>
 
                             <div>
+                                <label class="{{ $labelClass }}">جریان ثبت نوبت (توسط کاربر)</label>
+                                <div class="relative">
+                                    <select name="user_appointment_flow" class="{{ $selectClass }}">
+                                        <option value="PROVIDER_FIRST" @selected(old('user_appointment_flow', $settings->user_appointment_flow ?? 'SERVICE_FIRST')==='PROVIDER_FIRST')>
+                                            ابتدا انتخاب {{ config('booking.labels.provider') }}
+                                        </option>
+                                        <option value="SERVICE_FIRST" @selected(old('user_appointment_flow', $settings->user_appointment_flow ?? 'SERVICE_FIRST')==='SERVICE_FIRST')>
+                                            ابتدا انتخاب سرویس
+                                        </option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
                                 <label class="{{ $labelClass }}">ثبت زمان ورود/خروج</label>
                                 <div class="relative">
                                     <select name="allow_appointment_entry_exit_times" class="{{ $selectClass }}">
@@ -144,6 +161,67 @@
                                 <p class="text-[11px] text-gray-400 mt-2">
                                     امکان ثبت ساعت دقیق ورود و خروج مشتری در جزئیات نوبت.
                                 </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- کارت ۱.۵: ارزش افزوده (مالیات) --}}
+                    <div class="{{ $cardClass }}" x-data="taxSettings">
+                        <div class="{{ $headerClass }}">
+                            <div class="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">ارزش افزوده (مالیات)</h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">تنظیمات محاسبه مالیات بر روی مبلغ نوبت‌ها</p>
+                            </div>
+                        </div>
+                        <div class="p-6 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="{{ $labelClass }}">وضعیت ارزش افزوده</label>
+                                    <div class="relative">
+                                        <select name="tax_enabled" x-model="taxEnabled" class="{{ $selectClass }}">
+                                            {{-- 👈 تغییر: مقایسه با boolean --}}
+                                            <option value="1" @selected(old('tax_enabled', $settings->tax_enabled ?? false) == true)>فعال (محاسبه روی مبلغ)</option>
+                                            <option value="0" @selected(old('tax_enabled', $settings->tax_enabled ?? false) == false)>غیرفعال</option>
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
+                                    </div>
+                                    <p class="text-[11px] text-gray-400 mt-2">در صورت فعال بودن، مبلغ ارزش افزوده به هزینه نهایی افزوده می‌شود.</p>
+                                </div>
+                            </div>
+
+                            <div x-show="taxEnabled == '1'" x-collapse class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                <div>
+                                    <label class="{{ $labelClass }}">نوع محاسبه</label>
+                                    <div class="relative">
+                                        <select name="tax_type" x-model="taxType" class="{{ $selectClass }}" onchange="setTimeout(() => { document.querySelector('[name=tax_amount_display]').dispatchEvent(new Event('input')) }, 50)">
+                                            <option value="PERCENT" @selected(old('tax_type', $settings->tax_type ?? 'PERCENT') === 'PERCENT')>درصدی (%)</option>
+                                            <option value="FIXED" @selected(old('tax_type', $settings->tax_type ?? 'PERCENT') === 'FIXED')>مبلغ ثابت</option>
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="{{ $labelClass }}">مقدار ارزش افزوده</label>
+                                    <div class="relative">
+                                        <input type="hidden" name="tax_amount" id="tax_amount" value="{{ old('tax_amount', $settings->tax_amount ?? '') }}">
+                                        <input type="text" name="tax_amount_display" class="{{ $inputClass }} text-center dir-ltr pl-14"
+                                               value="{{ old('tax_amount', $settings->tax_amount ?? '') ? (old('tax_type', $settings->tax_type ?? 'PERCENT') === 'FIXED' ? number_format(old('tax_amount', $settings->tax_amount ?? '')) : old('tax_amount', $settings->tax_amount ?? '')) : '' }}"
+                                               @input="formatPriceOrPercent($event)">
+                                        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-500 text-xs font-bold">
+                                            <span x-show="taxType === 'PERCENT'">%</span>
+                                            <span x-show="taxType === 'FIXED'" x-cloak>مبلغ</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-[11px] text-gray-400 mt-2" x-show="taxType === 'FIXED'" x-cloak>بر اساس واحد پول سیستم محاسبه می‌شود.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -507,6 +585,33 @@
 
     {{-- اسکریپت‌ها --}}
     <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('taxSettings', () => ({
+                // 👈 تغییر: تبدیل به رشته تمیز
+                taxEnabled: '{{ (string)(old('tax_enabled', $settings->tax_enabled ?? false) ? '1' : '0') }}',
+                taxType: '{{ old('tax_type', $settings->tax_type ?? 'PERCENT') }}',
+
+                formatPriceOrPercent(event) {
+                    let value = event.target.value;
+                    let hiddenInput = document.getElementById('tax_amount');
+
+                    if (this.taxType === 'FIXED') {
+                        // Remove non-digits
+                        value = value.replace(/[^0-9]/g, '');
+                        if (value !== '') {
+                            hiddenInput.value = value;
+                            event.target.value = parseInt(value).toLocaleString('en-US');
+                        } else {
+                            hiddenInput.value = '';
+                            event.target.value = '';
+                        }
+                    } else {
+                        // For percent, just pass the value directly (can be decimal)
+                        hiddenInput.value = value;
+                    }
+                }
+            }))
+        })
         function addBreak(day) {
             const container = document.getElementById('breaks-' + day);
             // حذف پیام "بدون زمان استراحت" اگر وجود دارد

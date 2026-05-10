@@ -1,4 +1,9 @@
-<!DOCTYPE html>
+@php
+    // دریافت تنظیمات نقشه
+    $mapService = \Modules\Properties\Entities\PropertySetting::get('map_service', 'leaflet');
+    $mapIrApiKey = \Modules\Properties\Entities\PropertySetting::get('map_ir_api_key', '');
+@endphp
+    <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="rtl">
 
 <head>
@@ -6,12 +11,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'CRM هوشمند') }} - نقشه املاک</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    {{--    <link rel="preconnect" href="https://fonts.googleapis.com">--}}
+    {{--    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>--}}
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-
-
 
     <style>
         body {
@@ -87,14 +90,14 @@
         </div>
 
         <div class="flex-1 mx-4 hidden md:block">
-             <form action="{{ route('properties.map') }}" method="GET" class="flex gap-2">
-                 <input type="text" name="search" value="{{ request('search') }}" placeholder="جستجو در نقشه..." class="w-full max-w-md rounded-xl border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                 <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors">جستجو</button>
+            <form action="{{ route('properties.map') }}" method="GET" class="flex gap-2">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="جستجو در نقشه..." class="w-full max-w-md rounded-xl border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors">جستجو</button>
 
-                 @if(request()->anyFilled(['search', 'listing_type', 'property_type', 'min_price', 'max_price', 'category_id', 'building_id']))
+                @if(request()->anyFilled(['search', 'listing_type', 'property_type', 'min_price', 'max_price', 'category_id', 'building_id']))
                     <a href="{{ route('properties.map') }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-gray-300 transition-colors dark:bg-gray-700 dark:text-gray-300">پاک کردن</a>
-                 @endif
-             </form>
+                @endif
+            </form>
         </div>
 
         <nav class="flex items-center gap-4">
@@ -375,138 +378,210 @@
 
 <script type="module">
     document.addEventListener('DOMContentLoaded', function() {
-        if (typeof window.L === 'undefined') {
-             console.error('Leaflet library (L) is not defined. Make sure app.js is loaded correctly.');
-             return;
+        const mapService = '{{ $mapService }}';
+        const mapIrApiKey = '{{ $mapIrApiKey }}';
+        const baseUrl = '{{ asset("modules/properties/dist") }}';
+
+        // تابع کمکی برای لود کردن داینامیک اسکریپت‌ها (دقیقاً مشابه صفحه create)
+        function loadScript(src, type, callback) {
+            const existing = (type === 'js') ? document.querySelector(`script[src="${src}"]`) : document.querySelector(`link[href="${src}"]`);
+            if (existing) {
+                if (callback) callback();
+                return;
+            }
+            let tag;
+            if (type === 'js') {
+                tag = document.createElement('script');
+                tag.src = src;
+                tag.onload = callback;
+                tag.onerror = () => console.error(`Failed to load script: ${src}`);
+            } else {
+                tag = document.createElement('link');
+                tag.href = src;
+                tag.rel = 'stylesheet';
+            }
+            document.head.appendChild(tag);
         }
 
-        // Initialize Map
-        const map = L.map('map').setView([35.6892, 51.3890], 12);
+        // تابعی که بعد از آماده شدن نقشه (هر نوعی که باشه) مارکرها رو اضافه می‌کنه
+        function populateMarkers(mapInstance) {
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        // }).addTo(map);
-        const markers = [];
-        const bounds = L.latLngBounds();
+            // ---> [تغییر جدید: رفع مشکل پیدا نشدن عکس‌های نشانگر پیش‌فرض] <---
+            if (typeof L !== 'undefined' && L.Icon && L.Icon.Default) {
+                delete L.Icon.Default.prototype._getIconUrl;
+                L.Icon.Default.mergeOptions({
+                    iconRetinaUrl: baseUrl + '/assets/images/marker-icon-2x.png',
+                    iconUrl: baseUrl + '/assets/images/marker-icon.png',
+                    shadowUrl: baseUrl + '/assets/images/marker-shadow.png',
+                });
+            }
 
-        // Office Location Marker
-        @if(isset($officeLocation['lat']) && isset($officeLocation['lng']) && $officeLocation['lat'] && $officeLocation['lng'])
+            const markers = [];
+            const bounds = L.latLngBounds();
+
+            // Office Location Marker
+            @if(isset($officeLocation['lat']) && isset($officeLocation['lng']) && $officeLocation['lat'] && $officeLocation['lng'])
             (function() {
                 const lat = {{ $officeLocation['lat'] }};
                 const lng = {{ $officeLocation['lng'] }};
                 const title = "{{ $officeLocation['title'] }}";
 
-                // Custom Icon for Office
-            // iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-//     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                // ---> [تغییر جدید: معرفی دقیق مسیر عکس برای آیکون دفتر مرکزی] <---
                 const officeIcon = L.icon({
-                    iconUrl: L.Icon.Default.prototype.options.iconUrl, // Use default icon from app.js
-                    shadowUrl: L.Icon.Default.prototype.options.shadowUrl, // Use default shadow from app.js
+                    iconUrl: baseUrl + '/assets/images/marker-icon.png', // مسیر مستقیم به عکس شما
+                    shadowUrl: baseUrl + '/assets/images/marker-shadow.png', // مسیر مستقیم سایه نشانگر
                     iconSize: [25, 41],
                     iconAnchor: [12, 41],
                     popupAnchor: [1, -34],
                     shadowSize: [41, 41]
                 });
 
-                const marker = L.marker([lat, lng], {icon: officeIcon}).addTo(map);
+                const marker = L.marker([lat, lng], {icon: officeIcon}).addTo(mapInstance);
                 marker.bindPopup(`<div style="text-align:center; font-weight:bold;">${title}</div>`);
 
                 markers.push(marker);
                 bounds.extend([lat, lng]);
             })();
-        @endif
-
-        @foreach($properties as $property)
-            @if($property->latitude && $property->longitude)
-                (function() {
-                    const lat = {{ $property->latitude }};
-                    const lng = {{ $property->longitude }};
-                    const title = "{{ $property->title }}";
-
-                    @php
-                         $canViewPrice = false;
-                         $priceRoles = $visibilitySettings['price_info'] ?? [];
-                         if (empty($priceRoles)) {
-                             $canViewPrice = true;
-                         } elseif (auth()->check()) {
-                             $user = auth()->user();
-                             if ($user->id == $property->created_by || $user->id == $property->agent_id || $user->hasRole('super-admin') || $user->hasAnyRole($priceRoles)) {
-                                 $canViewPrice = true;
-                             }
-                         } else {
-                             if (in_array('guest', $priceRoles)) {
-                                 $canViewPrice = true;
-                             }
-                         }
-
-                         // Check Cover Image Visibility
-                         $canViewCover = false;
-                         $coverRoles = $visibilitySettings['cover_image'] ?? [];
-                         if (empty($coverRoles)) {
-                             $canViewCover = true;
-                         } elseif (auth()->check()) {
-                             $user = auth()->user();
-                             if ($user->id == $property->created_by || $user->id == $property->agent_id || $user->hasRole('super-admin') || $user->hasAnyRole($coverRoles)) {
-                                 $canViewCover = true;
-                             }
-                         } else {
-                             if (in_array('guest', $coverRoles)) {
-                                 $canViewCover = true;
-                             }
-                         }
-                    @endphp
-
-                    const image = "{{ $canViewCover && $property->cover_image ? asset('storage/' . $property->cover_image) : '' }}";
-                    const price = "{{ $canViewPrice ? ($property->listing_type == 'rent' ? 'رهن: ' . number_format($property->deposit_price) : number_format($property->price) . ' تومان') : 'تماس بگیرید' }}";
-                    const link = "{{ route('properties.show', $property->slug) }}";
-                    const type = "{{ match($property->listing_type) { 'sale' => 'فروش', 'rent' => 'اجاره', 'presale' => 'پیش‌فروش', default => '' } }}";
-                    const area = "{{ $property->area ? number_format($property->area) . ' متر' : '' }}";
-                    const code = "{{ $property->code }}";
-
-                    const popupContent = `
-                        <div class="property-popup group relative overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-                            <div class="relative h-40 overflow-hidden">
-                                ${image ? `<img src="${image}" alt="${title}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">` : '<div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>'}
-                                <div class="absolute top-3 right-3">
-                                    <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/90 text-gray-800 shadow-sm backdrop-blur-sm">
-                                        ${type}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="p-4">
-                                <h3 class="font-bold text-gray-900 dark:text-white text-sm mb-2 line-clamp-1 group-hover:text-indigo-600 transition-colors" title="${title}">${title}</h3>
-
-                                <div class="flex items-center justify-between mb-3">
-                                    <span class="text-indigo-600 dark:text-indigo-400 font-bold text-sm">${price}</span>
-                                    ${area ? `<span class="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 px-2 py-0.5 rounded-md">${area}</span>` : ''}
-                                </div>
-
-                                <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700/50">
-                                    <span class="text-[10px] text-gray-400 font-mono">Code: ${code}</span>
-                                    <a href="${link}" target="_blank" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-                                        مشاهده
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
-                    const marker = L.marker([lat, lng]).addTo(map);
-                    marker.bindPopup(popupContent);
-
-                    markers.push(marker);
-                    bounds.extend([lat, lng]);
-                })();
             @endif
-        @endforeach
 
-        if (markers.length > 0) {
-            map.fitBounds(bounds, { padding: [50, 50] });
+                @foreach($properties as $property)
+                @if($property->latitude && $property->longitude)
+            (function() {
+                const lat = {{ $property->latitude }};
+                const lng = {{ $property->longitude }};
+                const title = "{{ $property->title }}";
+
+                @php
+                    $canViewPrice = false;
+                    $priceRoles = $visibilitySettings['price_info'] ?? [];
+                    if (empty($priceRoles)) {
+                        $canViewPrice = true;
+                    } elseif (auth()->check()) {
+                        $user = auth()->user();
+                        if ($user->id == $property->created_by || $user->id == $property->agent_id || $user->hasRole('super-admin') || $user->hasAnyRole($priceRoles)) {
+                            $canViewPrice = true;
+                        }
+                    } else {
+                        if (in_array('guest', $priceRoles)) {
+                            $canViewPrice = true;
+                        }
+                    }
+
+                    $canViewCover = false;
+                    $coverRoles = $visibilitySettings['cover_image'] ?? [];
+                    if (empty($coverRoles)) {
+                        $canViewCover = true;
+                    } elseif (auth()->check()) {
+                        $user = auth()->user();
+                        if ($user->id == $property->created_by || $user->id == $property->agent_id || $user->hasRole('super-admin') || $user->hasAnyRole($coverRoles)) {
+                            $canViewCover = true;
+                        }
+                    } else {
+                        if (in_array('guest', $coverRoles)) {
+                            $canViewCover = true;
+                        }
+                    }
+                @endphp
+
+                const image = "{{ $canViewCover && $property->cover_image ? asset('storage/' . $property->cover_image) : '' }}";
+                const price = "{{ $canViewPrice ? ($property->listing_type == 'rent' ? 'رهن: ' . number_format($property->deposit_price) : number_format($property->price) . ' تومان') : 'تماس بگیرید' }}";
+                const link = "{{ route('properties.show', $property->slug) }}";
+                const type = "{{ match($property->listing_type) { 'sale' => 'فروش', 'rent' => 'اجاره', 'presale' => 'پیش‌فروش', default => '' } }}";
+                const area = "{{ $property->area ? number_format($property->area) . ' متر' : '' }}";
+                const code = "{{ $property->code }}";
+
+                const popupContent = `
+                            <div class="property-popup group relative overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+                                <div class="relative h-40 overflow-hidden">
+                                    ${image ? `<img src="${image}" alt="${title}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">` : '<div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>'}
+                                    <div class="absolute top-3 right-3">
+                                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/90 text-gray-800 shadow-sm backdrop-blur-sm">
+                                            ${type}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="p-4">
+                                    <h3 class="font-bold text-gray-900 dark:text-white text-sm mb-2 line-clamp-1 group-hover:text-indigo-600 transition-colors" title="${title}">${title}</h3>
+
+                                    <div class="flex items-center justify-between mb-3">
+                                        <span class="text-indigo-600 dark:text-indigo-400 font-bold text-sm">${price}</span>
+                                        ${area ? `<span class="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 px-2 py-0.5 rounded-md">${area}</span>` : ''}
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                                        <span class="text-[10px] text-gray-400 font-mono">Code: ${code}</span>
+                                        <a href="${link}" target="_blank" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                                            مشاهده
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                const marker = L.marker([lat, lng]).addTo(mapInstance);
+                marker.bindPopup(popupContent);
+
+                markers.push(marker);
+                bounds.extend([lat, lng]);
+            })();
+            @endif
+                @endforeach
+
+            if (markers.length > 0) {
+                mapInstance.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        // منطق لود و اجرای نقشه‌ها
+        if (mapService === 'map_ir') {
+            if (!mapIrApiKey) {
+                document.getElementById('map').innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-800 text-gray-500 text-sm p-4 text-center">برای نمایش نقشه، لطفاً کلید API سرویس Map.ir را در تنظیمات وارد کنید.</div>`;
+                return;
+            }
+
+            // لود استایل‌ها
+            loadScript(baseUrl + '/css/mapp.min.css', 'css');
+            loadScript(baseUrl + '/css/fa/style.css', 'css');
+
+            // تابع نصب نقشه مپ آی آر
+            const setupMapIr = () => {
+                const mapp = new Mapp({
+                    element: '#map',
+                    presets: {
+                        latlng: { lat: 35.6892, lng: 51.3890 },
+                        zoom: 12
+                    },
+                    apiKey: mapIrApiKey
+                });
+                mapp.addLayers();
+                populateMarkers(mapp.map); // mapp.map در واقع همون آبجکت Leaflet داخلیشه
+            };
+
+            const loadMapp = () => loadScript(baseUrl + '/js/mapp.min.js', 'js', () => setTimeout(setupMapIr, 0));
+            const loadEnv = () => loadScript(baseUrl + '/js/mapp.env.js', 'js', loadMapp);
+
+            // اطمینان از اینکه جی‌کوئری حتماً بعد از Vite لود و آماده بشه
+            if (typeof jQuery === 'undefined' || !jQuery.fn) {
+                loadScript(baseUrl + '/js/jquery-3.2.1.min.js', 'js', loadEnv);
+            } else {
+                loadEnv();
+            }
+
+        } else {
+            // حالت پیش‌فرض (Leaflet)
+            if (typeof window.L === 'undefined') {
+                console.error('Leaflet library (L) is not defined. Make sure app.js is loaded correctly.');
+                return;
+            }
+
+            const mapInstance = L.map('map').setView([35.6892, 51.3890], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mapInstance);
+
+            populateMarkers(mapInstance);
         }
     });
 </script>

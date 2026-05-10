@@ -31,6 +31,10 @@
     // پیدا کردن وضعیت پیش‌فرض
     $defaultStatus = $statuses->firstWhere('is_default', true) ?? $statuses->firstWhere('is_active', true);
     $defaultStatusId = $defaultStatus ? $defaultStatus->id : '';
+
+    // تنظیمات نقشه
+    $mapService = \Modules\Properties\Entities\PropertySetting::get('map_service', 'leaflet');
+    $mapIrApiKey = \Modules\Properties\Entities\PropertySetting::get('map_ir_api_key', '');
 @endphp
 
 @section('content')
@@ -143,7 +147,7 @@
                     {{-- کارت تصویر شاخص --}}
                     <div class="{{ $cardClass }} p-5">
                         <div class="flex items-center justify-between mb-4">
-                            <label class="{{ $labelClass }} mb-0">تصویر شاخص <span class="text-red-500">*</span></label>
+                            <label class="{{ $labelClass }} mb-0">تصویر شاخص (اختیاری)</label>
                             <span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded dark:bg-indigo-900/30 dark:text-indigo-300">Cover</span>
                         </div>
 
@@ -165,15 +169,15 @@
                             <template x-if="coverPreview">
                                 <div class="absolute inset-0 w-full h-full group-hover:scale-105 transition-transform duration-500">
                                     <img :src="coverPreview" class="w-full h-full object-cover">
-                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <button type="button" @click="removeCover" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-lg transform hover:scale-110 transition-all">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-[5]">
+                                        <button type="button" @click.prevent="removeCover" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-lg transform hover:scale-110 transition-all z-10 relative">
+                                            <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>
                                 </div>
                             </template>
 
-                            <input type="file" name="cover_image" id="cover_image" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleCoverSelect" accept="image/*">
+                            <input type="file" name="cover_image" id="cover_image" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleCoverSelect" accept="{{ '.' . str_replace(',', ',.', $allowedFileTypes ?? 'jpeg,png,jpg,gif') }}" x-show="!coverPreview">
                         </div>
                     </div>
 
@@ -201,10 +205,10 @@
                                 <label class="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-colors text-gray-400 hover:text-indigo-500">
                                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                                     <span class="text-[10px]">افزودن</span>
-                                    <input type="file" name="gallery_images[]" multiple class="hidden" @change="handleGallerySelect" accept="image/*">
+                                    <input type="file" name="gallery_images[]" multiple class="hidden" @change="handleGallerySelect" accept="{{ '.' . str_replace(',', ',.', $allowedFileTypes ?? 'jpeg,png,jpg,gif') }}">
                                 </label>
                             </div>
-                            <p class="text-[10px] text-gray-400 text-center">حداکثر ۱۰ تصویر قابل بارگذاری است.</p>
+                            <p class="text-[10px] text-gray-400 text-center">حداکثر {{ $maxGalleryImages ?? 10 }} تصویر (هر تصویر تا {{ round(($maxFileSize ?? 10240) / 1024, 1) }} مگابایت) قابل بارگذاری است.</p>
                         </div>
                     </div>
 
@@ -216,7 +220,7 @@
                             <template x-if="!videoPreview">
                                 <div class="text-center pointer-events-none">
                                     <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                    <p class="mt-1 text-[10px] text-gray-500">MP4, MKV (Max 20MB)</p>
+                                    <p class="mt-1 text-[10px] text-gray-500">Max {{ round(($maxVideoSize ?? 20480) / 1024, 1) }}MB</p>
                                 </div>
                             </template>
 
@@ -224,14 +228,14 @@
                                 <div class="w-full h-full relative group">
                                     <video :src="videoPreview" class="w-full h-full object-cover"></video>
                                     <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button type="button" @click="removeVideo" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-sm">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        <button type="button" @click.prevent="removeVideo" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-sm z-10 relative">
+                                            <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>
                                 </div>
                             </template>
 
-                            <input type="file" name="video" id="video" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleVideoSelect" accept="video/*" x-show="!videoPreview">
+                            <input type="file" name="video" id="video" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleVideoSelect" accept="{{ '.' . str_replace(',', ',.', $allowedVideoTypes ?? 'mp4,mov,avi') }}" x-show="!videoPreview">
                         </div>
                     </div>
 
@@ -401,7 +405,9 @@
                                         <option value="residential">مسکونی</option>
                                         <option value="industrial">صنعتی</option>
                                         <option value="commercial">اداری / تجاری</option>
-                                        <option value="agricultural">کشاورزی</option>
+                                        <option value="agricultural">کشاورزی / زراعی</option>
+                                        <option value="garden">باغ</option>
+                                        <option value="outsideTheTissue">خارج از بافت</option>
                                     </select>
                                 </div>
                                 <div x-show="listingType === 'presale'">
@@ -623,6 +629,50 @@
                         </div>
 
                         <div class="space-y-4">
+
+                            {{-- باکس جستجوی آدرس روی نقشه --}}
+                            <div class="relative mb-2">
+                                <div class="relative group z-10">
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    </div>
+                                    <input type="text"
+                                           x-model="mapSearchQuery"
+                                           @input.debounce.500ms="searchMapLocation()"
+                                           @focus="if(mapSearchQuery.length >= 2) showMapResults = true"
+                                           @click.outside="showMapResults = false"
+                                           class="{{ $inputClass }} pr-10"
+                                           placeholder="جستجوی محله، خیابان، شهر و..."
+                                           autocomplete="off">
+
+                                    <div x-show="isSearchingMap" class="absolute left-3 top-2.5">
+                                        <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+
+                                    {{-- دراپ‌داون نتایج نقشه --}}
+                                    <div x-show="showMapResults && mapSearchResults.length > 0"
+                                         x-transition
+                                         class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                        <ul class="py-1">
+                                            <template x-for="result in mapSearchResults" :key="result.lat + ',' + result.lng">
+                                                <li @click="selectMapLocation(result)" class="px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors group/item">
+                                                    <div class="flex items-center gap-2">
+                                                        <svg class="w-4 h-4 text-gray-400 group-hover/item:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                        <span class="text-sm font-bold text-gray-800 dark:text-gray-200 group-hover/item:text-indigo-600 dark:group-hover/item:text-indigo-400 line-clamp-1" x-text="result.title"></span>
+                                                    </div>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                    <div x-show="showMapResults && mapSearchResults.length === 0 && !isSearchingMap" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 text-center">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">مکانی یافت نشد.</p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div id="map" class="w-full h-80 rounded-2xl z-0 border border-gray-200 dark:border-gray-600 shadow-inner"></div>
 
                             <div>
@@ -766,17 +816,12 @@
                     // بررسی محیط iOS
                     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-                    // ترفند کلیدی برای آیفون:
-                    // استفاده از زبان عربی (عربستان سعودی) به عنوان پایه.
-                    // سیستم تشخیص گفتار اپل، کلمات فارسی را از طریق موتور عربی بسیار بهتر می‌فهمد
-                    // و از همه مهمتر، این زبان در iOS توسط اپل مسدود نمی‌شود!
                     if (isIOS) {
                         recognition.lang = 'fa-IR';
                     } else {
                         recognition.lang = 'fa-IR';
                     }
 
-                    // برای iOS حتماً باید false باشد
                     recognition.continuous = false;
                     recognition.interimResults = true;
 
@@ -791,7 +836,6 @@
                         let isFinal = result.isFinal;
 
                         if (transcript) {
-                            // در صورتی که کاراکترهای عربی خاصی تولید شد، آن‌ها را به فارسی تبدیل می‌کنیم
                             if (isIOS) {
                                 transcript = transcript.replace(/ي/g, "ی").replace(/ك/g, "ک");
                             }
@@ -824,14 +868,12 @@
                     };
                 }
 
-                // هندل کردن رویداد به صورت کاملاً همگام
                 voiceBtn.addEventListener('click', function(e) {
                     e.preventDefault();
 
                     if (isRecording && recognition) {
                         try { recognition.stop(); } catch(err) {}
                     } else {
-                        // ایجاد نمونه جدید برای تمیز بودن State در سافاری
                         initRecognition();
                         try {
                             recognition.start();
@@ -850,7 +892,7 @@
             if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
                 return 'مرورگر شما از تایپ صوتی پشتیبانی نمی‌کند.';
             }
-            return ''; // No tooltip if supported
+            return '';
         }
 
         function propertyForm() {
@@ -868,6 +910,11 @@
                 isSpecial: false,
                 confidentialNotes: '',
 
+                // مقادیر تنظیمات از سرور
+                maxGalleryImages: {{ $maxGalleryImages ?? 10 }},
+                maxFileSize: {{ $maxFileSize ?? 10240 }} * 1024,
+                maxVideoSize: {{ $maxVideoSize ?? 20480 }} * 1024,
+
                 // قیمت‌ها
                 prices: {
                     price: '',
@@ -884,12 +931,22 @@
                 galleryFiles: [],
                 videoPreview: null,
 
+                // تنظیمات نقشه
+                mapService: '{{ $mapService }}',
+                mapIrApiKey: '{{ $mapIrApiKey }}',
+
                 // نقشه
                 map: null,
                 marker: null,
                 lat: 35.6892,
                 lng: 51.3890,
                 address: '',
+
+                // جستجوی نقشه
+                mapSearchQuery: '',
+                mapSearchResults: [],
+                showMapResults: false,
+                isSearchingMap: false,
 
                 // مالک
                 searchQuery: '',
@@ -1074,7 +1131,7 @@
                     try {
                         const response = await fetch(`{{ route('user.properties.owners.search') }}?q=${this.searchQuery}`);
                         const data = await response.json();
-                        this.searchResults = data.data || data; // هندل کردن ساختار ریسپانس
+                        this.searchResults = data.data || data;
                         this.showResults = true;
                     } catch (error) {
                         console.error('Search error:', error);
@@ -1149,7 +1206,7 @@
 
                 // --- Agent Search ---
                 async searchAgents() {
-                    if (!this.canChangeAgent || this.searchAgentQuery.length < 2) { // Only search if canChangeAgent is true
+                    if (!this.canChangeAgent || this.searchAgentQuery.length < 2) {
                         this.searchAgentResults = [];
                         this.showAgentResults = false;
                         return;
@@ -1168,7 +1225,7 @@
                 },
 
                 selectAgent(agent) {
-                    if (!this.canChangeAgent) return; // Prevent selection if not allowed
+                    if (!this.canChangeAgent) return;
 
                     this.selectedAgentId = agent.id;
                     this.searchAgentQuery = agent.name;
@@ -1178,36 +1235,64 @@
                 // --- هندلینگ تصاویر ---
                 handleCoverSelect(e) {
                     const file = e.target.files[0];
-                    if (file) this.previewFile(file, (url) => this.coverPreview = url);
+                    if (file) {
+                        if (file.size > this.maxFileSize) {
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'حجم تصویر شاخص بیشتر از حد مجاز است.' } }));
+                            e.target.value = '';
+                            return;
+                        }
+                        this.previewFile(file, (url) => {
+                            this.coverPreview = url;
+                            document.getElementById('cover_image').style.pointerEvents = 'none';
+                        });
+                    }
                 },
                 handleCoverDrop(e) {
                     const file = e.dataTransfer.files[0];
                     if (file && file.type.startsWith('image/')) {
+                        if (file.size > this.maxFileSize) {
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'حجم تصویر شاخص بیشتر از حد مجاز است.' } }));
+                            return;
+                        }
                         const input = document.getElementById('cover_image');
                         const dt = new DataTransfer();
                         dt.items.add(file);
                         input.files = dt.files;
-                        this.previewFile(file, (url) => this.coverPreview = url);
+                        this.previewFile(file, (url) => {
+                            this.coverPreview = url;
+                            document.getElementById('cover_image').style.pointerEvents = 'none';
+                        });
                     }
                 },
-                removeCover() {
+                removeCover(e) {
+                    if(e) e.preventDefault();
                     this.coverPreview = null;
-                    document.getElementById('cover_image').value = '';
+                    const input = document.getElementById('cover_image');
+                    input.value = '';
+                    input.style.pointerEvents = 'auto';
                 },
                 handleGallerySelect(e) {
                     const files = Array.from(e.target.files);
                     this.processGalleryFiles(files);
                 },
                 processGalleryFiles(files) {
-                    if (this.galleryPreviews.length + files.length > 10) {
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'حداکثر ۱۰ تصویر مجاز است.' } }));
+                    if (this.galleryPreviews.length + files.length > this.maxGalleryImages) {
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: `حداکثر ${this.maxGalleryImages} تصویر مجاز است.` } }));
                         return;
                     }
+                    let hasError = false;
                     files.forEach(file => {
+                        if (file.size > this.maxFileSize) {
+                            hasError = true;
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'حجم یکی از تصاویر بیشتر از حد مجاز است.' } }));
+                            return;
+                        }
                         this.galleryFiles.push(file);
                         this.previewFile(file, (url) => this.galleryPreviews.push(url));
                     });
-                    this.updateGalleryInput();
+                    if (!hasError) {
+                        this.updateGalleryInput();
+                    }
                 },
                 updateGalleryInput() {
                     const input = document.querySelector('input[name="gallery_images[]"]');
@@ -1230,6 +1315,11 @@
                 handleVideoSelect(e) {
                     const file = e.target.files[0];
                     if (file) {
+                        if (file.size > this.maxVideoSize) {
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'حجم ویدیو بیشتر از حد مجاز است.' } }));
+                            e.target.value = '';
+                            return;
+                        }
                         this.videoPreview = URL.createObjectURL(file);
                     }
                 },
@@ -1238,9 +1328,50 @@
                     document.getElementById('video').value = '';
                 },
 
+                // --- Helper لود کننده اسکریپت ---
+                loadScript(src, type, callback) {
+                    const existing = (type === 'js') ? document.querySelector(`script[src="${src}"]`) : document.querySelector(`link[href="${src}"]`);
+                    if (existing) {
+                        if (callback) callback();
+                        return;
+                    }
+                    let tag;
+                    if (type === 'js') {
+                        tag = document.createElement('script');
+                        tag.src = src;
+                        tag.onload = callback;
+                        tag.onerror = () => console.error(`Failed to load script: ${src}`);
+                    } else {
+                        tag = document.createElement('link');
+                        tag.href = src;
+                        tag.rel = 'stylesheet';
+                    }
+                    document.head.appendChild(tag);
+                },
+
                 // --- نقشه ---
+                getCustomMarkerIcon() {
+                    const baseUrl = '{{ asset("modules/properties/dist") }}';
+                    return L.icon({
+                        iconUrl: baseUrl + '/assets/images/marker-icon.png',
+                        iconRetinaUrl: baseUrl + '/assets/images/marker-icon.png',
+                        shadowUrl: baseUrl + '/assets/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    });
+                },
+
                 initMap() {
-                    // اطمینان از لود شدن کتابخانه لیفلت
+                    if (this.mapService === 'map_ir') {
+                        this.initMapIr();
+                    } else {
+                        this.initLeaflet();
+                    }
+                },
+
+                initLeaflet() {
                     if (typeof L === 'undefined') return;
 
                     this.map = L.map('map').setView([this.lat, this.lng], 13);
@@ -1248,74 +1379,198 @@
                         attribution: '© OpenStreetMap contributors'
                     }).addTo(this.map);
 
-                    // جستجوگر آدرس
-                    if (typeof GeoSearchControl !== 'undefined' && typeof OpenStreetMapProvider !== 'undefined') {
-                        const provider = new OpenStreetMapProvider();
-                        const searchControl = new GeoSearchControl({
-                            provider: provider,
-                            style: 'bar',
-                            searchLabel: 'جستجوی آدرس...',
-                            notFoundMessage: 'یافت نشد',
-                            showMarker: false,
-                            retainZoomLevel: false,
-                            animateZoom: true,
-                            autoClose: true,
-                        });
-                        this.map.addControl(searchControl);
-                    }
-
-                    this.map.on('geosearch/showlocation', (result) => {
-                        const { x, y } = result.location;
-                        this.updateLocation(y, x);
-                    });
-
                     this.map.on('click', (e) => {
                         this.updateLocation(e.latlng.lat, e.latlng.lng);
                     });
 
-                    // مارکر اولیه
                     this.updateLocation(this.lat, this.lng);
                 },
+
+                initMapIr() {
+                    const baseUrl = '{{ asset("modules/properties/dist") }}';
+
+                    const loadAndSetup = () => {
+                        this.loadScript(baseUrl + '/css/mapp.min.css', 'css');
+                        this.loadScript(baseUrl + '/css/fa/style.css', 'css');
+
+                        const loadMapp = () => this.loadScript(baseUrl + '/js/mapp.min.js', 'js', () => setTimeout(() => this.setupMapIr(), 0));
+                        const loadEnv = () => this.loadScript(baseUrl + '/js/mapp.env.js', 'js', loadMapp);
+
+                        if (typeof jQuery === 'undefined') {
+                            this.loadScript(baseUrl + '/js/jquery-3.2.1.min.js', 'js', loadEnv);
+                        } else {
+                            loadEnv();
+                        }
+                    };
+
+                    if (typeof Mapp === 'undefined') {
+                        loadAndSetup();
+                    } else {
+                        this.setupMapIr();
+                    }
+                },
+
+                setupMapIr() {
+                    if (typeof Mapp === 'undefined') return;
+
+                    if (!this.mapIrApiKey) {
+                        document.getElementById('map').innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-800 text-gray-500 text-sm p-4 text-center">برای نمایش نقشه، لطفاً کلید API سرویس Map.ir را در تنظیمات وارد کنید.</div>`;
+                        return;
+                    }
+
+                    this.map = new Mapp({
+                        element: '#map',
+                        presets: {
+                            latlng: {
+                                lat: parseFloat(this.lat),
+                                lng: parseFloat(this.lng)
+                            },
+                            zoom: 13
+                        },
+                        apiKey: this.mapIrApiKey
+                    });
+
+                    this.map.addLayers();
+
+                    const leafletMapInstance = this.map.map;
+
+                    leafletMapInstance.on('click', (e) => {
+                        this.updateLocation(e.latlng.lat.toFixed(6), e.latlng.lng.toFixed(6));
+                    });
+
+                    this.updateLocation(this.lat, this.lng);
+                },
+
                 updateLocation(lat, lng) {
                     this.lat = lat;
                     this.lng = lng;
-                    if (this.marker) {
-                        this.marker.setLatLng([lat, lng]);
-                    } else {
-                        this.marker = L.marker([lat, lng]).addTo(this.map);
+
+                    const mapInstance = this.mapService === 'map_ir' ? (this.map ? this.map.map : null) : this.map;
+
+                    if (mapInstance) {
+                        if (this.marker) {
+                            this.marker.setLatLng([lat, lng]);
+                        } else {
+                            this.marker = L.marker([lat, lng], {
+                                draggable: true,
+                                icon: this.getCustomMarkerIcon()
+                            }).addTo(mapInstance);
+
+                            this.marker.on('dragend', (e) => {
+                                const pos = e.target.getLatLng();
+                                this.updateLocation(pos.lat.toFixed(6), pos.lng.toFixed(6));
+                            });
+                        }
                     }
+
                     this.getAddress(lat, lng);
                 },
+
+                // جستجو در نقشه
+                async searchMapLocation() {
+                    if (this.mapSearchQuery.length < 2) {
+                        this.mapSearchResults = [];
+                        this.showMapResults = false;
+                        return;
+                    }
+                    this.isSearchingMap = true;
+                    try {
+                        if (this.mapService === 'map_ir' && this.mapIrApiKey) {
+                            const res = await fetch(`https://map.ir/search/v2/autocomplete?text=${encodeURIComponent(this.mapSearchQuery)}`, {
+                                headers: { 'x-api-key': this.mapIrApiKey }
+                            });
+                            const data = await res.json();
+                            if (data && data.value) {
+                                this.mapSearchResults = data.value.map(item => ({
+                                    title: item.title + (item.address ? ' - ' + item.address : ''),
+                                    lat: item.geom.coordinates[1],
+                                    lng: item.geom.coordinates[0]
+                                }));
+                            } else {
+                                this.mapSearchResults = [];
+                            }
+                        } else {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(this.mapSearchQuery)}&countrycodes=ir`);
+                            const data = await res.json();
+                            this.mapSearchResults = data.map(item => ({
+                                title: item.display_name,
+                                lat: parseFloat(item.lat),
+                                lng: parseFloat(item.lon)
+                            }));
+                        }
+                        this.showMapResults = true;
+                    } catch (error) {
+                        console.error("Map search error:", error);
+                    } finally {
+                        this.isSearchingMap = false;
+                    }
+                },
+
+                selectMapLocation(result) {
+                    this.mapSearchQuery = result.title;
+                    this.showMapResults = false;
+
+                    const mapInstance = this.mapService === 'map_ir' ? (this.map ? this.map.map : null) : this.map;
+                    if (mapInstance) {
+                        mapInstance.setView([result.lat, result.lng], 15);
+                    }
+
+                    this.updateLocation(result.lat, result.lng);
+                },
+
                 getCurrentLocation() {
                     if (navigator.geolocation) {
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'info', text: 'در حال دریافت موقعیت مکانی...' } }));
                         navigator.geolocation.getCurrentPosition((pos) => {
                             const lat = pos.coords.latitude;
                             const lng = pos.coords.longitude;
-                            this.map.setView([lat, lng], 15);
+
+                            const mapInstance = this.mapService === 'map_ir' ? (this.map ? this.map.map : null) : this.map;
+                            if (mapInstance) {
+                                mapInstance.setView([lat, lng], 15);
+                            }
+
                             this.updateLocation(lat, lng);
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'success', text: 'موقعیت شما با موفقیت ثبت شد.' } }));
                         }, (err) => {
-                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'خطا در دریافت موقعیت' } }));
+                            let msg = 'خطا در دریافت موقعیت.';
+                            if (err.code === 1) msg = 'شما اجازه دسترسی به موقعیت مکانی را رد کرده‌اید.';
+                            else if (!window.isSecureContext) msg = 'دریافت موقعیت مکانی نیازمند ارتباط امن (HTTPS) است.';
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: msg } }));
                         });
                     } else {
-                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'مرورگر پشتیبانی نمی‌کند' } }));
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'مرورگر شما از این قابلیت پشتیبانی نمی‌کند.' } }));
                     }
                 },
+
                 async getAddress(lat, lng) {
                     this.address = 'در حال دریافت آدرس...';
                     try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fa`);
-                        const data = await res.json();
-                        if (data && data.address) {
-                            const a = data.address;
-                            const parts = [
-                                a.state,
-                                a.city || a.town || a.village || a.county,
-                                a.road,
-                                a.house_number ? 'پلاک ' + a.house_number : ''
-                            ].filter(Boolean);
-                            this.address = parts.join('، ');
-                        } else if (data.display_name) {
-                            this.address = data.display_name;
+                        if (this.mapService === 'map_ir' && this.mapIrApiKey) {
+                            const res = await fetch(`https://map.ir/reverse?lat=${lat}&lon=${lng}`, {
+                                headers: { 'x-api-key': this.mapIrApiKey }
+                            });
+                            const data = await res.json();
+                            if (data && data.address_compact) {
+                                this.address = data.address_compact;
+                            } else {
+                                this.address = 'آدرس یافت نشد';
+                            }
+                        } else {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fa`);
+                            const data = await res.json();
+                            if (data && data.address) {
+                                const a = data.address;
+                                const parts = [
+                                    a.state,
+                                    a.city || a.town || a.village || a.county,
+                                    a.road,
+                                    a.house_number ? 'پلاک ' + a.house_number : ''
+                                ].filter(Boolean);
+                                this.address = parts.join('، ');
+                            } else if (data.display_name) {
+                                this.address = data.display_name;
+                            }
                         }
                     } catch (e) {
                         this.address = 'خطا در دریافت آدرس';

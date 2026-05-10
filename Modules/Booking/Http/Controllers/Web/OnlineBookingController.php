@@ -4,29 +4,49 @@ namespace Modules\Booking\Http\Controllers\Web;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Controller;
+use Modules\Booking\Entities\Appointment;
 use Modules\Booking\Entities\BookingService;
 use Modules\Booking\Entities\BookingSetting;
 use Modules\Booking\Entities\BookingPayment;
 use Modules\Booking\Services\AppointmentService;
 use Modules\Booking\Services\BookingEngine;
+use Modules\Booking\Services\PaymentService;
 use Modules\Clients\Entities\ClientSetting;
+use Modules\Clients\Entities\Client;
+use Modules\Sms\Entities\SmsOtp;
+use Modules\Sms\Services\SmsManager;
+use Modules\Sms\Entities\SmsGatewaySetting;
+use Modules\Sms\Entities\SmsMessage;
 use Morilog\Jalali\CalendarUtils;
 use Carbon\Carbon;
-use App\Services\PaymentService as GlobalPaymentService;
 
 class OnlineBookingController extends Controller
 {
+    private function applyTax($price, $settings)
+    {
+        if (!$settings->tax_enabled || empty($price)) {
+            return $price;
+        }
+        $amount = (float) $settings->tax_amount;
+        if ($settings->tax_type === 'PERCENT') {
+            return $price + ($price * $amount / 100);
+        }
+        return $price + $amount;
+    }
+
     public function index(BookingEngine $engine)
     {
         $settings = BookingSetting::current();
+        $flow = $settings->user_appointment_flow ?? 'SERVICE_FIRST';
 
         // فقط سرویس‌های فعال را بگیر
         $services = BookingService::query()
             ->where('status', BookingService::STATUS_ACTIVE)
             ->with(['serviceProviders' => function ($query) {
-                $query->where('is_active', true);
+                $query->where('is_active', true)->with('provider');
             }])
             ->orderBy('name')
             ->get();
@@ -48,13 +68,51 @@ class OnlineBookingController extends Controller
             return false;
         });
 
-        return view('booking::web.index', ['services' => $availableServices]);
+        // محاسبه و اعمال ارزش افزوده (مالیات) روی تمام سرویس‌ها
+        $availableServices->transform(function ($service) use ($settings) {
+            $service->final_price = $this->applyTax($service->base_price, $settings);
+            return $service;
+        });
+
+        // اگر جریان روی "ارائه‌دهنده اول" بود، لیست پزشکان را استخراج و نمایش می‌دهیم
+        if ($flow === 'PROVIDER_FIRST') {
+            $providers = collect();
+            foreach ($availableServices as $service) {
+                foreach ($service->serviceProviders as $sp) {
+                    if ($sp->is_active && $engine->isOnlineBookingEnabled($service->id, $sp->provider_user_id)) {
+                        $prov = $sp->provider;
+                        if ($prov && !$providers->contains('id', $prov->id)) {
+                            // ذخیره حداقل قیمت سرویس‌ها برای این پزشک (جهت نمایش شروع قیمت از...)
+                            $prov->min_price = $service->final_price;
+                            $providers->push($prov);
+                        } else if ($prov) {
+                            $existingProv = $providers->firstWhere('id', $prov->id);
+                            $existingProv->min_price = min($existingProv->min_price, $service->final_price);
+                        }
+                    }
+                }
+            }
+            return view('booking::web.index', [
+                'items' => $providers,
+                'flow' => $flow,
+                'settings' => $settings
+            ]);
+        }
+
+        return view('booking::web.index', [
+            'items' => $availableServices,
+            'flow' => $flow,
+            'settings' => $settings
+        ]);
     }
 
     public function service(BookingService $service)
     {
         $service->load(['serviceProviders.provider', 'appointmentForm']);
         $settings = BookingSetting::current();
+
+        // اعمال مالیات برای نمایش نهایی
+        $service->final_price = $this->applyTax($service->base_price, $settings);
 
         $now = Carbon::now();
         $jDate = CalendarUtils::toJalali($now->year, $now->month, $now->day);
@@ -64,20 +122,168 @@ class OnlineBookingController extends Controller
             'day' => $jDate[2],
         ];
 
-        return view('booking::web.service', compact('service', 'settings', 'currentJalali'));
+        $clientMode = ClientSetting::getValue('auth.mode', 'password');
+        $defaultLogin = ClientSetting::getValue('auth.default', 'password');
+
+        $otpTtl = (int) ClientSetting::getValue('auth.otp_ttl', 5);
+        $otpResendInterval = (int) ClientSetting::getValue('auth.otp_resend_interval', 60);
+
+        return view('booking::web.service', compact('service', 'settings', 'currentJalali', 'otpTtl', 'otpResendInterval', 'clientMode', 'defaultLogin'));
     }
 
-    /**
-     * Public Calendar endpoint:
-     * Returns month days in format expected by frontend:
-     * [
-     *   { local_date: "YYYY-MM-DD", is_closed: bool, has_available_slots: bool }
-     * ]
-     *
-     * IMPORTANT:
-     * - local_date is returned in Gregorian ISO (Y-m-d) so JS Date parsing works.
-     * - input "year/month" can be Gregorian or Jalali. We auto-detect by year.
-     */
+    public function provider($providerId, BookingEngine $engine)
+    {
+        $settings = BookingSetting::current();
+
+        $services = BookingService::query()
+            ->where('status', BookingService::STATUS_ACTIVE)
+            ->whereHas('serviceProviders', function ($query) use ($providerId) {
+                $query->where('is_active', true)->where('provider_user_id', $providerId);
+            })
+            ->with(['serviceProviders' => function($q) use ($providerId) {
+                $q->where('provider_user_id', $providerId)->with('provider');
+            }, 'appointmentForm'])
+            ->get();
+
+        $availableServices = $services->filter(function ($service) use ($engine, $providerId, $settings) {
+            return $settings->global_online_booking_enabled && $engine->isOnlineBookingEnabled($service->id, $providerId);
+        });
+
+        if ($availableServices->isEmpty()) {
+            return redirect()->route('booking.public.index')->with('error', 'هیچ سرویس فعالی برای این ارائه‌دهنده یافت نشد.');
+        }
+
+        $provider = $availableServices->first()->serviceProviders->first()->provider;
+
+        $availableServices->transform(function ($service) use ($settings) {
+            $service->final_price = $this->applyTax($service->base_price, $settings);
+            return $service;
+        });
+
+        $now = Carbon::now();
+        $jDate = CalendarUtils::toJalali($now->year, $now->month, $now->day);
+        $currentJalali = [
+            'year' => $jDate[0],
+            'month' => $jDate[1],
+            'day' => $jDate[2],
+        ];
+
+        $clientMode = ClientSetting::getValue('auth.mode', 'password');
+        $defaultLogin = ClientSetting::getValue('auth.default', 'password');
+        $otpTtl = (int) ClientSetting::getValue('auth.otp_ttl', 5);
+        $otpResendInterval = (int) ClientSetting::getValue('auth.otp_resend_interval', 60);
+
+        return view('booking::web.provider', compact('provider', 'providerId', 'availableServices', 'settings', 'currentJalali', 'otpTtl', 'otpResendInterval', 'clientMode', 'defaultLogin'));
+    }
+
+    public function sendBookingOtp(Request $request, SmsManager $sms)
+    {
+        $data = $request->validate([
+            'phone' => ['required', 'string'],
+            'full_name' => ['required', 'string'],
+        ]);
+
+        $phone = $data['phone'];
+        $fullName = $data['full_name'];
+
+        // [Architecture Note]: Logic related to find/create client and managing OTP limits
+        // really belongs in an AuthService or SmsManager, not the Controller.
+        // Find or create client
+        $client = Client::firstOrCreate(
+            ['phone' => $phone],
+            ['username' => $phone, 'full_name' => $fullName]
+        );
+
+        $otpLength         = (int) ClientSetting::getValue('auth.otp_length', 5);
+        $otpTtl            = (int) ClientSetting::getValue('auth.otp_ttl', 5);
+        $otpResendInterval = (int) ClientSetting::getValue('auth.otp_resend_interval', 60);
+        $otpMaxRequests    = (int) ClientSetting::getValue('auth.otp_max_requests', 3);
+
+        $otpLength = max(3, min(10, $otpLength));
+        $otpTtl = max(1, min(60, $otpTtl));
+        $otpResendInterval = max(10, min(600, $otpResendInterval));
+        $otpMaxRequests = max(1, min(10, $otpMaxRequests));
+
+        $context = 'booking_client';
+
+        // 1) محدودیت ارسال مجدد (cooldown)
+        $last = SmsOtp::query()
+            ->where('phone', $phone)
+            ->where('context', $context)
+            ->latest()
+            ->first();
+
+        if ($last && $last->created_at && now()->diffInSeconds($last->created_at) < $otpResendInterval) {
+            $remain = $otpResendInterval - now()->diffInSeconds($last->created_at);
+            return response()->json([
+                'success' => false,
+                'message' => "برای ارسال مجدد، {$remain} ثانیه صبر کنید.",
+                'resend_in' => $remain,
+            ], 429);
+        }
+
+        // 2) محدودیت تعداد درخواست‌ها (در یک بازه کوتاه)
+        $windowMinutes = max(5, $otpTtl);
+        $recentCount = SmsOtp::query()
+            ->where('phone', $phone)
+            ->where('context', $context)
+            ->where('created_at', '>=', now()->subMinutes($windowMinutes))
+            ->count();
+
+        if ($recentCount >= $otpMaxRequests) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تعداد درخواست‌های ارسال کد بیش از حد مجاز است. کمی بعد دوباره تلاش کنید.',
+            ], 429);
+        }
+
+        // تولید کد
+        $code = (string) random_int(10 ** ($otpLength - 1), (10 ** $otpLength) - 1);
+
+        // پترن OTP کلاینت از تنظیمات SMS (آخرین رکورد)
+        $patternId = null;
+        if (class_exists(SmsGatewaySetting::class)) {
+            $globalSetting = SmsGatewaySetting::query()->orderByDesc('id')->first();
+            $patternId = data_get($globalSetting, 'config.client_otp_pattern');
+        }
+
+        $options = [
+            'type'        => SmsMessage::TYPE_OTP,
+            'related_type'=> 'CLIENT',
+            'related_id'  => $client->id,
+            'meta'        => [
+                'context' => $context,
+                'otp'     => $code,
+            ],
+        ];
+
+        // اگر پترن ست شده → ارسال پترنی (ReplaceToken = [code])
+        if (!empty($patternId)) {
+            $sms->sendPattern($phone, (string) $patternId, [$code], $options);
+        } else {
+            // بدون پترن → متن ساده
+            $sms->sendText($phone, "کد ورود شما: {$code}", $options);
+        }
+
+        SmsOtp::create([
+            'phone'      => $phone,
+            'code'       => $code,
+            'context'    => $context,
+            'client_id'  => $client->id,
+            'expires_at' => now()->addMinutes($otpTtl),
+            'meta'       => [
+                'username' => $client->username,
+            ],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'expires_in' => $otpTtl * 60,
+            'resend_in'  => $otpResendInterval,
+            'message' => 'کد تایید ارسال شد.',
+        ]);
+    }
+
     public function calendar(Request $request, BookingService $service, BookingEngine $engine)
     {
         $settings = BookingSetting::current();
@@ -104,6 +310,9 @@ class OnlineBookingController extends Controller
         $year = (int) $data['year'];
         $month = (int) $data['month'];
 
+        // [Architecture Note]: This entire manual loop and calendar logic should ideally be
+        // delegated to something like `$engine->getMonthlyAvailability($year, $month, ...)`
+
         // تشخیص خودکار نوع تقویم:
         // - اگر سال بزرگ (>=1700) بود => میلادی
         // - اگر سال کوچک‌تر بود => جلالی (معمولاً 13xx/14xx)
@@ -124,7 +333,6 @@ class OnlineBookingController extends Controller
             }
 
             // طول ماه جلالی را محاسبه می‌کنیم با تبدیل روز 1..31 تا وقتی ماه عوض شود
-            // (این روش مطمئن است حتی اگر متد طول ماه در لایبرری شما متفاوت باشد)
             $end = null;
             for ($d = 1; $d <= 31; $d++) {
                 $tmp = $this->parseFlexibleLocalDate(sprintf('%04d-%02d-%02d', $year, $month, $d), $scheduleTz);
@@ -148,16 +356,14 @@ class OnlineBookingController extends Controller
             'range_end' => $end->toDateString(),
         ]);
 
-        // روز به روز بررسی می‌کنیم که اسلات دارد یا نه
         $days = [];
         $cursor = $start->copy()->startOfDay();
         $endDay = $end->copy()->startOfDay();
 
-        // برای جلوگیری از لوپ بی‌نهایت
         $safety = 0;
 
         while ($cursor->lte($endDay) && $safety < 40) {
-            $dateStr = $cursor->toDateString(); // Gregorian ISO Y-m-d (برای JS عالی)
+            $dateStr = $cursor->toDateString(); // Gregorian ISO Y-m-d
 
             try {
                 $slots = $engine->generateSlots(
@@ -213,7 +419,6 @@ class OnlineBookingController extends Controller
 
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
 
-        // ✅ حالا هم جلالی رو قبول می‌کنه هم میلادی
         $localDate = $this->parseFlexibleLocalDate($data['date_local'], $scheduleTz);
         if (! $localDate) {
             return response()->json(['data' => []], 200);
@@ -246,7 +451,6 @@ class OnlineBookingController extends Controller
             return back()->withErrors(['service_id' => 'رزرو آنلاین در حال حاضر غیرفعال است.']);
         }
 
-        $clientMode = ClientSetting::getValue('auth.mode', 'password');
         $client = Auth::guard('client')->user();
 
         $rules = [
@@ -256,15 +460,92 @@ class OnlineBookingController extends Controller
             'end_at_utc' => ['required', 'date'],
         ];
 
+        $messages = [
+            'provider_user_id.required' => 'انتخاب ارائه‌دهنده الزامی است.',
+            'date_local.required' => 'انتخاب تاریخ الزامی است.',
+            'start_at_utc.required' => 'انتخاب زمان الزامی است.',
+            'end_at_utc.required' => 'انتخاب زمان الزامی است.',
+            'full_name.required' => 'نام و نام خانوادگی الزامی است.',
+            'phone.required' => 'شماره تماس الزامی است.',
+            'password.required' => 'رمز عبور الزامی است.',
+            'password.min' => 'رمز عبور باید حداقل ۶ کاراکتر باشد.',
+            'otp_code.required' => 'کد تایید الزامی است.',
+        ];
+
+        $loginType = null;
         if (! $client) {
+            $clientMode = ClientSetting::getValue('auth.mode', 'password');
+            $loginType = $request->input('login_type', $clientMode === 'both' ? ClientSetting::getValue('auth.default', 'password') : $clientMode);
+
             $rules['full_name'] = ['required', 'string', 'max:255'];
             $rules['phone'] = ['required', 'string', 'max:50'];
-            if ($clientMode === 'password') {
+
+            if ($loginType === 'password') {
                 $rules['password'] = ['required', 'string', 'min:6'];
+            } else {
+                $rules['otp_code'] = ['required', 'string'];
             }
         }
 
-        $data = $request->validate($rules);
+        $data = $request->validate($rules, $messages);
+
+        // [Architecture Note]: Authentication for guest logic (Checking hash, dealing with Otp validation)
+        // is better placed inside an AuthService (e.g. `$client = $authService->authenticateOrRegisterGuest(...)`).
+        if (!$client) {
+            $phone = $data['phone'];
+            $fullName = $data['full_name'];
+
+            if ($loginType === 'otp') {
+                $code = $data['otp_code'];
+                $context = 'booking_client';
+
+                $clientRecord = Client::where('phone', $phone)->first();
+                if (!$clientRecord) {
+                    return back()->withErrors(['otp_code' => 'کاربری با این شماره یافت نشد. ابتدا درخواست کد دهید.'])->withInput();
+                }
+
+                $otp = SmsOtp::query()
+                    ->where('phone', $phone)
+                    ->where('client_id', $clientRecord->id)
+                    ->where('context', $context)
+                    ->where('code', $code)
+                    ->latest()
+                    ->first();
+
+                if (! $otp || $otp->isExpired() || $otp->isUsed()) {
+                    return back()->withErrors(['otp_code' => 'کد تایید نامعتبر است یا منقضی شده است.'])->withInput();
+                }
+
+                $otp->update(['used_at' => now()]);
+
+                // Login the client
+                Auth::guard('client')->login($clientRecord);
+                $request->session()->regenerate();
+                $client = Auth::guard('client')->user();
+            } else {
+                // Password Login / Register
+                $clientRecord = Client::where('phone', $phone)->first();
+
+                if ($clientRecord) {
+                    // Login
+                    if (! Hash::check($data['password'], $clientRecord->password)) {
+                        return back()->withErrors(['password' => 'رمز عبور اشتباه است. اگر رمز را فراموش کرده‌اید، از ورود با پیامک استفاده کنید.'])->withInput();
+                    }
+                } else {
+                    // Register
+                    $clientRecord = Client::create([
+                        'phone' => $phone,
+                        'username' => $phone,
+                        'full_name' => $fullName,
+                        'password' => Hash::make($data['password']),
+                    ]);
+                }
+
+                Auth::guard('client')->login($clientRecord);
+                $request->session()->regenerate();
+                $client = Auth::guard('client')->user();
+            }
+        }
 
         $providerId = (int) $data['provider_user_id'];
         if (! $engine->isOnlineBookingEnabled($service->id, $providerId)) {
@@ -273,7 +554,6 @@ class OnlineBookingController extends Controller
 
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
 
-        // ✅ حالا هم جلالی رو قبول می‌کنه هم میلادی
         $localDate = $this->parseFlexibleLocalDate($data['date_local'], $scheduleTz);
         if (! $localDate) {
             return back()->withErrors(['date_local' => 'تاریخ وارد شده معتبر نیست.'])->withInput();
@@ -296,15 +576,6 @@ class OnlineBookingController extends Controller
         });
 
         if (! $slotMatched) {
-            Log::warning('[Booking][OnlineBooking] slot mismatch', [
-                'service_id' => $service->id,
-                'provider_user_id' => $providerId,
-                'date_local' => $data['date_local'],
-                'date_gregorian' => $localDate->toDateString(),
-                'start_at_utc' => $startUtc->toIso8601String(),
-                'end_at_utc' => $endUtc->toIso8601String(),
-            ]);
-
             return back()
                 ->withErrors(['start_at_utc' => 'اسلات انتخاب‌شده معتبر نیست یا ظرفیت ندارد.'])
                 ->withInput();
@@ -318,12 +589,10 @@ class OnlineBookingController extends Controller
             $errors = [];
             $fields = $service->appointmentForm->schema_json['fields'] ?? [];
 
-            // فقط فیلدهایی که collect_from_online دارند را بررسی می‌کنیم
             foreach ($fields as $field) {
                 $name = $field['name'] ?? null;
                 $collectFromOnline = !empty($field['collect_from_online']);
 
-                // اگر فیلد collect_from_online ندارد، از validation رد می‌شود
                 if (!$collectFromOnline) {
                     continue;
                 }
@@ -361,30 +630,10 @@ class OnlineBookingController extends Controller
                 default => 'امکان رزرو در این بازه وجود ندارد.',
             };
 
-            Log::warning('[Booking][OnlineBooking] hold failed', [
-                'service_id' => $service->id,
-                'provider_user_id' => $providerId,
-                'date_local' => $data['date_local'],
-                'date_gregorian' => $localDate->toDateString(),
-                'start_at_utc' => $startUtc->toIso8601String(),
-                'end_at_utc' => $endUtc->toIso8601String(),
-                'error' => $e->getMessage(),
-            ]);
-
             return back()->withErrors(['start_at_utc' => $message])->withInput();
         }
 
-        $clientInput = ['notes' => null];
-
-        if ($client) {
-            $clientInput['client_id'] = $client->id;
-        } else {
-            $clientInput['full_name'] = $data['full_name'];
-            $clientInput['phone'] = $data['phone'];
-            if (! empty($data['password'])) {
-                $clientInput['password'] = $data['password'];
-            }
-        }
+        $clientInput = ['notes' => null, 'client_id' => $client->id];
 
         try {
             $result = $appointmentService->confirmOnlineHold(
@@ -419,61 +668,32 @@ class OnlineBookingController extends Controller
         ]);
 
         return redirect()
-            ->route('booking.public.service', $service)
+            ->route('booking.public.result', $result['appointment']->id)
             ->with('success', 'نوبت شما با موفقیت ثبت شد.');
     }
 
-    public function verifyPayment(Request $request, $gateway, BookingPayment $payment)
+    public function verifyPayment(Request $request, $gateway, BookingPayment $payment, AppointmentService $appointmentService, PaymentService $paymentService)
     {
-        $authority = $request->query('Authority');
-        $status = $request->query('Status');
+        // کدهای پردازشی از کنترلر به سرویس منتقل شد تا کنترلر تمیز و قابل نگهداری باشد
+        $result = $paymentService->verifyGatewayPayment($payment, $gateway, $request->query(), $appointmentService);
 
-        if (!$authority || !$payment) {
-            return redirect()->route('booking.public.index')->with('error', 'اطلاعات پرداخت معتبر نیست.');
+        if (!$result['valid']) {
+            return redirect()->route('booking.public.index')->with('error', $result['message']);
         }
 
-        if ($payment->gateway_ref !== $authority) {
-            return redirect()->route('booking.public.index')->with('error', 'تراکنش نامعتبر است.');
+        if ($result['success']) {
+            return redirect()->route('booking.public.result', $payment->appointment_id)
+                ->with('success', $result['message']);
         }
 
-        if ($status === 'NOK') {
-            $payment->update(['status' => BookingPayment::STATUS_CANCELLED]);
-            return redirect()->route('booking.public.service', $payment->appointment->service_id)
-                ->with('error', 'پرداخت توسط کاربر لغو شد.');
-        }
+        return redirect()->route('booking.public.result', $payment->appointment_id)
+            ->with('error', $result['message']);
+    }
 
-        try {
-            $globalPaymentService = new GlobalPaymentService($gateway);
-
-            $dataToVerify = [
-                'Authority' => $authority,
-                'Status'    => $status,
-                'Amount'    => $payment->amount,
-            ];
-
-            $result = $globalPaymentService->verifyPayment($dataToVerify);
-
-            if ($result['success']) {
-                $payment->update([
-                    'status' => BookingPayment::STATUS_PAID,
-                    'transaction_ref' => $result['ref_id']
-                ]);
-
-                // Update appointment status
-                $payment->appointment->update(['status' => \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED]);
-
-                return redirect()->route('booking.public.service', $payment->appointment->service_id)
-                    ->with('success', 'پرداخت با موفقیت انجام شد و نوبت شما تایید شد. کد پیگیری: ' . $result['ref_id']);
-            } else {
-                $payment->update(['status' => BookingPayment::STATUS_FAILED]);
-                return redirect()->route('booking.public.service', $payment->appointment->service_id)
-                    ->with('error', 'خطا در تایید پرداخت: ' . $result['message']);
-            }
-        } catch (\Exception $e) {
-            Log::error('Payment verification failed for booking', ['exception' => $e->getMessage()]);
-            return redirect()->route('booking.public.service', $payment->appointment->service_id)
-                ->with('error', 'خطا در سیستم تایید پرداخت.');
-        }
+    public function result(Appointment $appointment)
+    {
+        $appointment->load(['service', 'provider', 'payments']);
+        return view('booking::web.result', compact('appointment'));
     }
 
     /**
