@@ -98,6 +98,11 @@ class BookingService extends Model
         return $this->hasMany(BookingServiceProvider::class, 'service_id');
     }
 
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'service_id');
+    }
+
     public function providers(): BelongsToMany
     {
         return $this->belongsToMany(\App\Models\User::class, 'booking_service_providers', 'service_id', 'provider_user_id')

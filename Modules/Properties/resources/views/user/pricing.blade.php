@@ -59,17 +59,19 @@
                         <div>
                             <label class="{{ $labelClass }}">قیمت کل اعلامی</label>
                             <div class="relative">
-                                <input type="text" name="price" @input="formatPrice" class="{{ $inputClass }}" required value="{{ old('price', number_format($property->price)) }}" placeholder="0">
+                                <input type="text" name="price" x-model="price" @input="formatInput('price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
+                            <p x-show="price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(price) + ' تومان'"></p>
                         </div>
                         <div>
                             <label class="{{ $labelClass }}">قیمت کف (حداقل)</label>
                             <div class="relative">
-                                <input type="text" name="min_price" @input="formatPrice" class="{{ $inputClass }}" value="{{ old('min_price', number_format($property->min_price)) }}" placeholder="0">
+                                <input type="text" name="min_price" x-model="min_price" @input="formatInput('min_price')" class="{{ $inputClass }}" placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1.5 text-right">این قیمت محرمانه است و فقط برای شما نمایش داده می‌شود.</p>
+                            <p x-show="min_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(min_price) + ' تومان'"></p>
+                            <p class="text-[10px] text-gray-400 mt-1 text-right">این قیمت محرمانه است و فقط برای شما نمایش داده می‌شود.</p>
                         </div>
 
                     @elseif($property->listing_type == 'rent')
@@ -77,16 +79,18 @@
                         <div>
                             <label class="{{ $labelClass }}">مبلغ رهن (و یا ودیعه)</label>
                             <div class="relative">
-                                <input type="text" name="deposit_price" @input="formatPrice" class="{{ $inputClass }}" required value="{{ old('deposit_price', number_format($property->deposit_price)) }}" placeholder="0">
+                                <input type="text" name="deposit_price" x-model="deposit_price" @input="formatInput('deposit_price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
+                            <p x-show="deposit_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(deposit_price) + ' تومان'"></p>
                         </div>
                         <div>
                             <label class="{{ $labelClass }}">اجاره ماهیانه</label>
                             <div class="relative">
-                                <input type="text" name="rent_price" @input="formatPrice" class="{{ $inputClass }}" required value="{{ old('rent_price', number_format($property->rent_price)) }}" placeholder="0">
+                                <input type="text" name="rent_price" x-model="rent_price" @input="formatInput('rent_price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
+                            <p x-show="rent_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(rent_price) + ' تومان'"></p>
                         </div>
 
                     @elseif($property->listing_type == 'presale')
@@ -94,23 +98,27 @@
                         <div class="md:col-span-2">
                             <label class="{{ $labelClass }}">قیمت کل اعلامی</label>
                             <div class="relative">
-                                <input type="text" name="price" @input="formatPrice" class="{{ $inputClass }}" required value="{{ old('price', number_format($property->price)) }}" placeholder="0">
+                                <input type="text" name="price" x-model="price" @input="formatInput('price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
+                            <p x-show="price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(price) + ' تومان'"></p>
                         </div>
                         <div>
                             <label class="{{ $labelClass }}">مبلغ پیش‌پرداخت</label>
                             <div class="relative">
-                                <input type="text" name="advance_price" @input="formatPrice" class="{{ $inputClass }}" required value="{{ old('advance_price', number_format($property->advance_price)) }}" placeholder="0">
+                                <input type="text" name="advance_price" x-model="advance_price" @input="formatInput('advance_price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
+                            <p x-show="advance_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(advance_price) + ' تومان'"></p>
                         </div>
                         <div>
                             <label class="{{ $labelClass }}">قیمت کف (حداقل)</label>
                             <div class="relative">
-                                <input type="text" name="min_price" @input="formatPrice" class="{{ $inputClass }}" value="{{ old('min_price', number_format($property->min_price)) }}" placeholder="0">
+                                <input type="text" name="min_price" x-model="min_price" @input="formatInput('min_price')" class="{{ $inputClass }}" placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
+                            <p x-show="min_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(min_price) + ' تومان'"></p>
+                            <p class="text-[10px] text-gray-400 mt-1 text-right">این قیمت محرمانه است و فقط برای شما نمایش داده می‌شود.</p>
                         </div>
                     @endif
 
@@ -164,17 +172,72 @@
         function priceFormatter() {
             return {
                 isConvertible: {{ old('is_convertible', $property->is_convertible) ? 'true' : 'false' }},
+                currency: '{{ $currency }}',
 
-                formatPrice(event) {
+                // مقادیر اولیه برای x-model که به صورت فرمت‌شده تنظیم می‌شوند
+                price: '{{ old('price', $property->price ? number_format($property->price) : '') }}',
+                min_price: '{{ old('min_price', $property->min_price ? number_format($property->min_price) : '') }}',
+                deposit_price: '{{ old('deposit_price', $property->deposit_price ? number_format($property->deposit_price) : '') }}',
+                rent_price: '{{ old('rent_price', $property->rent_price ? number_format($property->rent_price) : '') }}',
+                advance_price: '{{ old('advance_price', $property->advance_price ? number_format($property->advance_price) : '') }}',
+
+                formatInput(field) {
                     // حذف کاراکترهای غیر عددی
-                    let value = event.target.value.replace(/,/g, '').replace(/[^\d]/g, '');
+                    let value = String(this[field]).replace(/,/g, '').replace(/[^\d]/g, '');
 
                     if (value !== '') {
                         // فرمت سه رقم سه رقم
-                        event.target.value = parseInt(value).toLocaleString('en-US');
+                        this[field] = parseInt(value).toLocaleString('en-US');
                     } else {
-                        event.target.value = '';
+                        this[field] = '';
                     }
+                },
+
+                numberToWords(value) {
+                    if (!value) return '';
+                    let num = String(value).replace(/,/g, '');
+                    if (num === '' || isNaN(num) || parseInt(num) === 0) return '';
+
+                    // اگر واحد سیستم ریال باشد، برای تبدیل به حروف (که می‌خواهیم تومان باشد)، یک صفر حذف می‌کنیم
+                    if (this.currency === 'rial') {
+                        num = Math.floor(parseInt(num) / 10).toString();
+                        if (num === '0' || num === 'NaN') return '';
+                    }
+
+                    const ones = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه'];
+                    const tens = ['', 'ده', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود'];
+                    const hundreds = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', 'پانصد', 'ششصد', 'هفتصد', 'هشتصد', 'نهصد'];
+                    const teens = ['ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده'];
+                    const classes = ['', 'هزار', 'میلیون', 'میلیارد', 'هزار میلیارد', 'میلیون میلیارد'];
+
+                    let str = num.split('').reverse().join('');
+                    let result = [];
+
+                    for (let i = 0; i < str.length; i += 3) {
+                        let group = str.substr(i, 3).split('').reverse().join('');
+                        if (parseInt(group) === 0) continue;
+
+                        let groupWords = [];
+                        let h = parseInt(group.length === 3 ? group[0] : 0);
+                        let t = parseInt(group.length >= 2 ? group[group.length - 2] : 0);
+                        let o = parseInt(group[group.length - 1]);
+
+                        if (h > 0) groupWords.push(hundreds[h]);
+
+                        if (t === 1 && o >= 0) {
+                            groupWords.push(teens[o]);
+                        } else {
+                            if (t > 1) groupWords.push(tens[t]);
+                            if (o > 0) groupWords.push(ones[o]);
+                        }
+
+                        // فیلتر کردن مقادیر خالی برای جلوگیری از فاصله یا «و» اضافی
+                        let groupText = groupWords.filter(Boolean).join(' و ');
+                        if (classes[i / 3]) groupText += ' ' + classes[i / 3];
+                        result.push(groupText);
+                    }
+
+                    return result.reverse().join(' و ');
                 }
             }
         }

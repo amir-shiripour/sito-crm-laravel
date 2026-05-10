@@ -10,4 +10,5 @@ return [
     'property_settings' => 'تنظیمات املاک',
     'manage_attributes' => 'مدیریت ویژگی‌ها',
     'property_statuses' => 'وضعیت‌های ملک',
+    'property_import' => 'ایمپورت املاک',
 ];

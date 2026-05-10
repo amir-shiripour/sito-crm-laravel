@@ -73,4 +73,23 @@ class User extends Authenticatable
         return $this->hasOne(\Modules\Market\Entities\Vendor::class, 'user_id');
     }
 
+    /**
+     * کاربرانی که این کاربر به آن‌ها متصل است (مثلاً پزشکانی که پذیرش به آن‌ها وصل است)
+     */
+    public function superiors()
+    {
+        return $this->belongsToMany(User::class, 'user_relationships', 'user_id', 'related_user_id')
+                    ->withPivot('relation_type')
+                    ->withTimestamps();
+    }
+
+    /**
+     * کاربرانی که به این کاربر متصل هستند (مثلاً پذیرش‌هایی که به این پزشک وصل هستند)
+     */
+    public function subordinates()
+    {
+        return $this->belongsToMany(User::class, 'user_relationships', 'related_user_id', 'user_id')
+                    ->withPivot('relation_type')
+                    ->withTimestamps();
+    }
 }

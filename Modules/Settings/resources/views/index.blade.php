@@ -69,6 +69,27 @@
                     </div>
 
                     <div>
+                        <label for="app_theme" class="{{ $labelClass }}">قالب اصلی سایت (Theme)</label>
+                        <select class="{{ $inputClass }}" id="app_theme" name="app_theme">
+                            <option value="default" {{ ($settings['app_theme'] ?? 'default') == 'default' ? 'selected' : '' }}>پیش‌فرض (شرکتی/خدماتی)</option>
+                            <option value="booking" {{ ($settings['app_theme'] ?? '') == 'booking' ? 'selected' : '' }}>کلینیک درمانی و پزشکی (Booking)</option>
+                            <option value="market" {{ ($settings['app_theme'] ?? '') == 'market' ? 'selected' : '' }}>فروشگاهی (Market)</option>
+                            <option value="properties" {{ ($settings['app_theme'] ?? '') == 'properties' ? 'selected' : '' }}>املاک (Properties)</option>
+                        </select>
+                        <p class="text-[11px] text-gray-400 mt-1">با تغییر این گزینه، صفحه اصلی سایت تغییر خواهد کرد.</p>
+                    </div>
+
+                    <div>
+                        <label for="site_display_type" class="{{ $labelClass }}">قالب نمایش سایت</label>
+                        <select class="{{ $inputClass }}" id="site_display_type" name="site_display_type">
+                            <option value="landing" {{ ($settings['site_display_type'] ?? 'landing') == 'landing' ? 'selected' : '' }}>لندینگ پیج</option>
+                            <option value="theme" {{ ($settings['site_display_type'] ?? '') == 'theme' ? 'selected' : '' }}>صفحه اصلی تم</option>
+                            <option value="admin" {{ ($settings['site_display_type'] ?? '') == 'admin' ? 'selected' : '' }}>پنل مدیران</option>
+                        </select>
+                        <p class="text-[11px] text-gray-400 mt-1">نحوه نمایش صفحه اول سایت را انتخاب کنید.</p>
+                    </div>
+
+                    <div>
                         <label for="app_logo" class="{{ $labelClass }}">لوگو</label>
                         <div class="flex items-center gap-4">
                             <div class="relative flex-1">

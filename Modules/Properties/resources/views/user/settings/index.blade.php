@@ -153,15 +153,15 @@
                             @foreach($roles as $role)
                                 <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                     <input type="checkbox" name="visibility_owner_info[]" value="{{ $role->name }}"
-                                        {{ in_array($role->name, $visibility_owner_info) ? 'checked' : '' }}
-                                        class="{{ $checkboxClass }}">
+                                           {{ in_array($role->name, $visibility_owner_info) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                 <input type="checkbox" name="visibility_owner_info[]" value="guest"
-                                    {{ in_array('guest', $visibility_owner_info) ? 'checked' : '' }}
-                                    class="{{ $checkboxClass }}">
+                                       {{ in_array('guest', $visibility_owner_info) ? 'checked' : '' }}
+                                       class="{{ $checkboxClass }}">
                                 <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
                             </label>
                         </div>
@@ -174,15 +174,15 @@
                             @foreach($roles as $role)
                                 <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                     <input type="checkbox" name="visibility_confidential_notes[]" value="{{ $role->name }}"
-                                        {{ in_array($role->name, $visibility_confidential_notes) ? 'checked' : '' }}
-                                        class="{{ $checkboxClass }}">
+                                           {{ in_array($role->name, $visibility_confidential_notes) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
-                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                 <input type="checkbox" name="visibility_confidential_notes[]" value="guest"
-                                    {{ in_array('guest', $visibility_confidential_notes) ? 'checked' : '' }}
-                                    class="{{ $checkboxClass }}">
+                                       {{ in_array('guest', $visibility_confidential_notes) ? 'checked' : '' }}
+                                       class="{{ $checkboxClass }}">
                                 <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
                             </label>
                         </div>
@@ -195,15 +195,15 @@
                             @foreach($roles as $role)
                                 <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                     <input type="checkbox" name="visibility_price_info[]" value="{{ $role->name }}"
-                                        {{ in_array($role->name, $visibility_price_info) ? 'checked' : '' }}
-                                        class="{{ $checkboxClass }}">
+                                           {{ in_array($role->name, $visibility_price_info) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
-                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                 <input type="checkbox" name="visibility_price_info[]" value="guest"
-                                    {{ in_array('guest', $visibility_price_info) ? 'checked' : '' }}
-                                    class="{{ $checkboxClass }}">
+                                       {{ in_array('guest', $visibility_price_info) ? 'checked' : '' }}
+                                       class="{{ $checkboxClass }}">
                                 <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
                             </label>
                         </div>
@@ -216,15 +216,15 @@
                             @foreach($roles as $role)
                                 <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                     <input type="checkbox" name="visibility_map_info[]" value="{{ $role->name }}"
-                                        {{ in_array($role->name, $visibility_map_info) ? 'checked' : '' }}
-                                        class="{{ $checkboxClass }}">
+                                           {{ in_array($role->name, $visibility_map_info) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
-                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                 <input type="checkbox" name="visibility_map_info[]" value="guest"
-                                    {{ in_array('guest', $visibility_map_info) ? 'checked' : '' }}
-                                    class="{{ $checkboxClass }}">
+                                       {{ in_array('guest', $visibility_map_info) ? 'checked' : '' }}
+                                       class="{{ $checkboxClass }}">
                                 <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
                             </label>
                         </div>
@@ -237,15 +237,15 @@
                             @foreach($roles as $role)
                                 <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                     <input type="checkbox" name="visibility_cover_image[]" value="{{ $role->name }}"
-                                        {{ in_array($role->name, $visibility_cover_image ?? []) ? 'checked' : '' }}
-                                        class="{{ $checkboxClass }}">
+                                           {{ in_array($role->name, $visibility_cover_image ?? []) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
-                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                 <input type="checkbox" name="visibility_cover_image[]" value="guest"
-                                    {{ in_array('guest', $visibility_cover_image ?? []) ? 'checked' : '' }}
-                                    class="{{ $checkboxClass }}">
+                                       {{ in_array('guest', $visibility_cover_image ?? []) ? 'checked' : '' }}
+                                       class="{{ $checkboxClass }}">
                                 <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
                             </label>
                         </div>
@@ -258,15 +258,15 @@
                             @foreach($roles as $role)
                                 <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                     <input type="checkbox" name="visibility_gallery_images[]" value="{{ $role->name }}"
-                                        {{ in_array($role->name, $visibility_gallery_images ?? []) ? 'checked' : '' }}
-                                        class="{{ $checkboxClass }}">
+                                           {{ in_array($role->name, $visibility_gallery_images ?? []) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
-                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                 <input type="checkbox" name="visibility_gallery_images[]" value="guest"
-                                    {{ in_array('guest', $visibility_gallery_images ?? []) ? 'checked' : '' }}
-                                    class="{{ $checkboxClass }}">
+                                       {{ in_array('guest', $visibility_gallery_images ?? []) ? 'checked' : '' }}
+                                       class="{{ $checkboxClass }}">
                                 <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
                             </label>
                         </div>
@@ -279,12 +279,53 @@
                             @foreach($roles as $role)
                                 <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                     <input type="checkbox" name="agent_roles[]" value="{{ $role->name }}"
-                                        {{ in_array($role->name, $agent_roles) ? 'checked' : '' }}
-                                        class="{{ $checkboxClass }}">
+                                           {{ in_array($role->name, $agent_roles) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
                                     <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
                                 </label>
                             @endforeach
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- کارت جدید: سرویس نقشه --}}
+            <div class="{{ $cardClass }} p-6" x-data="{ mapService: '{{ $map_service ?? 'leaflet' }}' }">
+                <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                    سرویس نقشه
+                </h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                    سرویس‌دهنده نقشه را برای نمایش موقعیت املاک و دفتر مرکزی انتخاب کنید.
+                </p>
+                <div class="space-y-4">
+                    <div class="bg-gray-50 dark:bg-gray-900/30 rounded-xl p-4 border border-gray-100 dark:border-gray-700/50">
+                        <div class="flex items-center gap-6">
+                            <label class="flex items-center gap-3 cursor-pointer group">
+                                <div class="relative flex items-center">
+                                    <input type="radio" name="map_service" value="leaflet" x-model="mapService" {{ ($map_service ?? 'leaflet') == 'leaflet' ? 'checked' : '' }} class="peer sr-only">
+                                    <div class="w-5 h-5 border-2 border-gray-300 rounded-full peer-checked:border-indigo-600 peer-checked:bg-indigo-600 transition-all dark:border-gray-600"></div>
+                                    <div class="absolute inset-0 m-auto w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Leaflet (OpenStreetMap)</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer group">
+                                <div class="relative flex items-center">
+                                    <input type="radio" name="map_service" value="map_ir" x-model="mapService" {{ ($map_service ?? '') == 'map_ir' ? 'checked' : '' }} class="peer sr-only">
+                                    <div class="w-5 h-5 border-2 border-gray-300 rounded-full peer-checked:border-indigo-600 peer-checked:bg-indigo-600 transition-all dark:border-gray-600"></div>
+                                    <div class="absolute inset-0 m-auto w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Map.ir</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div x-show="mapService === 'map_ir'" x-transition class="pt-2">
+                        <label for="map_ir_api_key" class="{{ $labelClass }}">کلید API سرویس Map.ir</label>
+                        <input type="text" id="map_ir_api_key" name="map_ir_api_key" value="{{ $map_ir_api_key ?? '' }}" class="{{ $inputClass }} dir-ltr text-left" placeholder="کلید API خود را وارد کنید">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                            برای دریافت کلید API رایگان به وب‌سایت <a href="https://corp.map.ir/" target="_blank" class="text-indigo-500 hover:underline">map.ir</a> مراجعه کنید.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -404,29 +445,175 @@
             return {
                 lat: {{ $office_location_lat ?? 35.6892 }},
                 lng: {{ $office_location_lng ?? 51.3890 }},
+                mapService: '{{ $map_service ?? 'leaflet' }}',
                 map: null,
                 marker: null,
+
                 init() {
-                    if (typeof L === 'undefined') return;
+                    console.log('officeMap Alpine component initialized.');
 
-                    this.map = L.map('office-map').setView([this.lat, this.lng], 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '© OpenStreetMap contributors'
-                    }).addTo(this.map);
+                    document.querySelectorAll('input[name="map_service"]').forEach(radio => {
+                        radio.addEventListener('change', (e) => {
+                            this.mapService = e.target.value;
+                            this.destroyMap();
+                            this.initializeMap();
+                        });
+                    });
 
-                    this.marker = L.marker([this.lat, this.lng], {draggable: true}).addTo(this.map);
+                    const apiKeyInput = document.querySelector('input[name="map_ir_api_key"]');
+                    if (apiKeyInput) {
+                        apiKeyInput.addEventListener('input', () => {
+                            if (this.mapService === 'map_ir') {
+                                this.destroyMap();
+                                this.initializeMap();
+                            }
+                        });
+                    }
+
+                    this.initializeMap();
+                },
+
+                initializeMap() {
+                    if (this.mapService === 'leaflet') {
+                        this.initLeaflet();
+                    } else if (this.mapService === 'map_ir') {
+                        this.initMapIr();
+                    }
+                },
+
+                destroyMap() {
+                    if (this.map) {
+                        if (this.mapService === 'leaflet' && typeof this.map.remove === 'function') {
+                            this.map.remove();
+                        } else if (this.mapService === 'map_ir' && this.map.map && typeof this.map.map.remove === 'function') {
+                            this.map.map.remove(); // Remove the underlying Leaflet instance for Map.ir
+                        }
+                        this.map = null;
+                        this.marker = null;
+                        document.getElementById('office-map').innerHTML = '';
+                    }
+                },
+
+                initLeaflet() {
+                    const loadLeafletMap = () => {
+                        this.map = L.map('office-map').setView([parseFloat(this.lat), parseFloat(this.lng)], 13);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
+
+                        this.marker = L.marker([parseFloat(this.lat), parseFloat(this.lng)], {draggable: true}).addTo(this.map);
+
+                        this.marker.on('dragend', (e) => {
+                            const pos = e.target.getLatLng();
+                            this.lat = pos.lat.toFixed(6);
+                            this.lng = pos.lng.toFixed(6);
+                        });
+
+                        this.map.on('click', (e) => {
+                            this.lat = e.latlng.lat.toFixed(6);
+                            this.lng = e.latlng.lng.toFixed(6);
+                            this.marker.setLatLng([parseFloat(this.lat), parseFloat(this.lng)]);
+                        });
+                    };
+
+                    // در صورتی که کتابخانه لود نشده بود (مثل حالت دیفالت صفحه) اسکریپت‌ها اضافه شوند
+                    if (typeof L === 'undefined') {
+                        this.loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'css');
+                        this.loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', 'js', loadLeafletMap);
+                    } else {
+                        loadLeafletMap();
+                    }
+                },
+
+                initMapIr() {
+                    const baseUrl = '{{ asset("modules/properties/dist") }}'; // تنظیم مسیر فایل‌های داخلی
+
+                    const loadAndSetup = () => {
+                        this.loadScript(baseUrl + '/css/mapp.min.css', 'css');
+                        this.loadScript(baseUrl + '/css/fa/style.css', 'css');
+
+                        const loadMapp = () => this.loadScript(baseUrl + '/js/mapp.min.js', 'js', () => setTimeout(() => this.setupMapIr(), 0));
+                        const loadEnv = () => this.loadScript(baseUrl + '/js/mapp.env.js', 'js', loadMapp);
+
+                        if (typeof jQuery === 'undefined') {
+                            this.loadScript(baseUrl + '/js/jquery-3.2.1.min.js', 'js', loadEnv);
+                        } else {
+                            loadEnv();
+                        }
+                    };
+
+                    if (typeof Mapp === 'undefined') { // Mapp is capital in the SDK
+                        loadAndSetup();
+                    } else {
+                        this.setupMapIr();
+                    }
+                },
+
+                setupMapIr() {
+                    if (typeof Mapp === 'undefined') {
+                        console.error('Mapp is still undefined.');
+                        return;
+                    }
+
+                    const currentApiKey = document.querySelector('input[name="map_ir_api_key"]').value;
+                    if (!currentApiKey) {
+                        document.getElementById('office-map').innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-800 text-gray-500 text-sm p-4 text-center">برای نمایش نقشه، لطفاً کلید API سرویس Map.ir را وارد کنید.</div>`;
+                        return;
+                    }
+
+                    // Map.ir initialization (Capital M, and latlng object instead of direct lat/lng)
+                    this.map = new Mapp({
+                        element: '#office-map',
+                        presets: {
+                            latlng: {
+                                lat: parseFloat(this.lat),
+                                lng: parseFloat(this.lng)
+                            },
+                            zoom: 13
+                        },
+                        apiKey: currentApiKey
+                    });
+
+                    // این خط برای لود شدن تصاویر (کاشی‌های نقشه) ضروری است
+                    this.map.addLayers();
+
+                    // SDK Mapp is essentially a wrapper around Leaflet.
+                    // Instead of struggling with Map.ir's limited wrapper events, we extract the underlying Leaflet instance!
+                    const leafletMapInstance = this.map.map;
+
+                    // Use standard Leaflet Marker for easy Drag and Drop handling
+                    this.marker = L.marker([parseFloat(this.lat), parseFloat(this.lng)], {draggable: true}).addTo(leafletMapInstance);
 
                     this.marker.on('dragend', (e) => {
                         const pos = e.target.getLatLng();
-                        this.lat = pos.lat;
-                        this.lng = pos.lng;
+                        this.lat = pos.lat.toFixed(6);
+                        this.lng = pos.lng.toFixed(6);
                     });
 
-                    this.map.on('click', (e) => {
-                        this.lat = e.latlng.lat;
-                        this.lng = e.latlng.lng;
-                        this.marker.setLatLng([this.lat, this.lng]);
+                    leafletMapInstance.on('click', (e) => {
+                        this.lat = e.latlng.lat.toFixed(6);
+                        this.lng = e.latlng.lng.toFixed(6);
+                        this.marker.setLatLng([parseFloat(this.lat), parseFloat(this.lng)]);
                     });
+                },
+
+                loadScript(src, type, callback) {
+                    const existing = (type === 'js') ? document.querySelector(`script[src="${src}"]`) : document.querySelector(`link[href="${src}"]`);
+                    if (existing) {
+                        if (callback) callback();
+                        return;
+                    }
+
+                    let tag;
+                    if (type === 'js') {
+                        tag = document.createElement('script');
+                        tag.src = src;
+                        tag.onload = callback;
+                        tag.onerror = () => console.error(`Failed to load script: ${src}`);
+                    } else {
+                        tag = document.createElement('link');
+                        tag.href = src;
+                        tag.rel = 'stylesheet';
+                    }
+                    document.head.appendChild(tag);
                 }
             }
         }

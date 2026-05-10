@@ -51,6 +51,7 @@
                                     'FAILED' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
                                     'REFUNDED' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
                                     'CANCELED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                                    'CANCELLED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
                                     default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                                 };
 
@@ -60,6 +61,7 @@
                                     'FAILED' => 'ناموفق',
                                     'REFUNDED' => 'استرداد شده',
                                     'CANCELED' => 'لغو شده',
+                                    'CANCELLED' => 'لغو شده',
                                     default => $payment->status
                                 };
                             @endphp

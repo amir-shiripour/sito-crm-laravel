@@ -19,10 +19,17 @@ use Modules\Settings\Http\Controllers\PaymentController;
 // Public minimal pages (optional)
 Route::prefix('booking')->name('booking.')->group(function () {
     Route::get('/', [OnlineBookingController::class, 'index'])->name('public.index');
+    Route::post('/send-otp', [OnlineBookingController::class, 'sendBookingOtp'])->name('public.send_otp');
+
+    // 👈 روت جدید برای صفحه اختصاصی ارائه‌دهنده/پزشک اضافه شد
+    Route::get('/provider/{provider}', [OnlineBookingController::class, 'provider'])->name('public.provider');
+
     Route::get('/service/{service}', [OnlineBookingController::class, 'service'])->name('public.service');
     Route::get('/service/{service}/calendar', [OnlineBookingController::class, 'calendar'])->name('public.calendar');
     Route::get('/service/{service}/slots', [OnlineBookingController::class, 'slots'])->name('public.slots');
     Route::post('/service/{service}/book', [OnlineBookingController::class, 'book'])->name('public.book');
+
+    Route::get('/result/{appointment}', [OnlineBookingController::class, 'result'])->name('public.result');
 
     // Payment callback for booking
     Route::get('/payment/verify/{gateway}/{payment}', [OnlineBookingController::class, 'verifyPayment'])->name('payment.verify');

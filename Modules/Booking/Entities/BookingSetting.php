@@ -24,7 +24,12 @@ class BookingSetting extends Model
         'service_form_selection_scope',
 
         'operator_appointment_flow',
+        'user_appointment_flow',
         'allow_appointment_entry_exit_times',
+
+        'tax_enabled',
+        'tax_type',
+        'tax_amount',
 
         // Key-Value store for labels and other dynamic settings
         'key',
@@ -37,6 +42,7 @@ class BookingSetting extends Model
         'allowed_roles' => 'array',
         'statement_roles' => 'array',
         'allow_appointment_entry_exit_times' => 'boolean',
+        'tax_enabled' => 'boolean',
     ];
 
     public static function current(): self
@@ -60,7 +66,11 @@ class BookingSetting extends Model
             'service_category_selection_scope' => 'ALL',
             'service_form_selection_scope' => 'ALL',
             'operator_appointment_flow' => 'PROVIDER_FIRST',
+            'user_appointment_flow' => 'SERVICE_FIRST',
             'allow_appointment_entry_exit_times' => false,
+            'tax_enabled' => false,
+            'tax_type' => 'PERCENT',
+            'tax_amount' => null,
         ]);
     }
 

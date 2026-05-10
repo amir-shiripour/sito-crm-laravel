@@ -44,10 +44,13 @@ class UserController extends Controller
             $roles = $allRoles->except('super-admin');
         }
 
-        $selectedRole = ''; // جلوگیری از null
+        // کاربران برای انتخاب اتصال (مانند پزشکان)
+        $allUsers = User::where('id', '!=', $user->id)->get(['id', 'name']);
+
+        $selectedRoles = []; // جلوگیری از null
         $customFieldsByRole = CustomUserField::orderBy('role_name')->get()->groupBy('role_name');
 
-        return view('admin.users.edit', compact('user', 'roles', 'selectedRole', 'customFieldsByRole'));
+        return view('admin.users.edit', compact('user', 'roles', 'selectedRoles', 'customFieldsByRole', 'allUsers'));
     }
 
     public function store(Request $request)
@@ -57,20 +60,23 @@ class UserController extends Controller
             'email'    => ['required', 'email', 'max:255', 'unique:users,email'],
             'mobile'   => ['nullable', 'string', 'max:30', 'unique:users,mobile'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role'     => ['required', 'string', 'exists:roles,name'],
+            'roles'    => ['required', 'array'],
+            'roles.*'  => ['string', 'exists:roles,name'],
+            'superior_ids'   => ['nullable', 'array'],
+            'superior_ids.*' => ['exists:users,id'],
         ]);
 
         // جلوگیری از ایجاد کاربر با نقش super-admin توسط ادمین عادی
-        if (!auth()->user()->hasRole('super-admin') && $validated['role'] === 'super-admin') {
-            return back()->withErrors(['role' => 'شما نمی‌توانید کاربر با نقش super-admin ایجاد کنید.'])->withInput();
+        if (!auth()->user()->hasRole('super-admin') && in_array('super-admin', $validated['roles'])) {
+            return back()->withErrors(['roles' => 'شما نمی‌توانید کاربر با نقش super-admin ایجاد کنید.'])->withInput();
         }
 
-        $roleName = $validated['role'];
-        $fields   = $this->fieldsForRole($roleName);
+        $roleNames = $validated['roles'];
+        $fields   = $this->fieldsForRoles($roleNames);
 
         $request->validate($this->dynamicRules($fields)); // ولیدیشن داینامیک
 
-        DB::transaction(function () use ($validated, $request, $fields, $roleName, &$user) {
+        DB::transaction(function () use ($validated, $request, $fields, $roleNames, &$user) {
             $user = User::create([
                 'name'     => $validated['name'],
                 'email'    => $validated['email'],
@@ -78,7 +84,11 @@ class UserController extends Controller
                 'password' => Hash::make($validated['password']),
             ]);
 
-            $user->syncRoles([$roleName]);
+            $user->syncRoles($roleNames);
+
+            if (isset($validated['superior_ids'])) {
+                $user->superiors()->sync($validated['superior_ids']);
+            }
 
             // مقادیر سفارشی (با پشتیبانی فایل)
             $this->persistCustomValues($user, $fields, $request);
@@ -89,7 +99,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        $user->loadMissing(['roles', 'customValues']);
+        $user->loadMissing(['roles', 'customValues', 'superiors']);
 
         // جلوگیری از ویرایش کاربر super-admin توسط ادمین عادی
         if (!auth()->user()->hasRole('super-admin') && $user->hasRole('super-admin')) {
@@ -104,10 +114,13 @@ class UserController extends Controller
             $roles = $allRoles->except('super-admin');
         }
 
-        $selectedRole = optional($user->roles->first())->name ?? '';
+        // کاربران برای انتخاب اتصال (مانند پزشکان)
+        $allUsers = User::where('id', '!=', $user->id)->get(['id', 'name']);
+
+        $selectedRoles = $user->roles->pluck('name')->toArray();
         $customFieldsByRole = CustomUserField::orderBy('role_name')->get()->groupBy('role_name');
 
-        return view('admin.users.edit', compact('user', 'roles', 'customFieldsByRole', 'selectedRole'));
+        return view('admin.users.edit', compact('user', 'roles', 'customFieldsByRole', 'selectedRoles', 'allUsers'));
     }
 
 
@@ -123,31 +136,34 @@ class UserController extends Controller
             'email'    => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'mobile'   => ['nullable', 'string', 'max:30', Rule::unique('users', 'mobile')->ignore($user->id)],
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
-            'role'     => ['required', 'string', 'exists:roles,name'],
+            'roles'    => ['required', 'array'],
+            'roles.*'  => ['string', 'exists:roles,name'],
+            'superior_ids'   => ['nullable', 'array'],
+            'superior_ids.*' => ['exists:users,id'],
         ]);
 
         // جلوگیری از اختصاص نقش super-admin به کاربر توسط ادمین عادی
-        if (!auth()->user()->hasRole('super-admin') && $validated['role'] === 'super-admin') {
-            return back()->withErrors(['role' => 'شما نمی‌توانید نقش super-admin را به کاربر اختصاص دهید.'])->withInput();
+        if (!auth()->user()->hasRole('super-admin') && in_array('super-admin', $validated['roles'])) {
+            return back()->withErrors(['roles' => 'شما نمی‌توانید نقش super-admin را به کاربر اختصاص دهید.'])->withInput();
         }
 
         // جلوگیری از حذف آخرین سوپرادمین
-        if ($user->hasRole('super-admin') && $validated['role'] !== 'super-admin') {
+        if ($user->hasRole('super-admin') && !in_array('super-admin', $validated['roles'])) {
             $superCount = DB::table('model_has_roles')
                 ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
                 ->where('roles.name', 'super-admin')
                 ->count();
             if ($superCount <= 1) {
-                return back()->withErrors(['role' => 'نمی‌توان نقش super-admin آخر را حذف کرد.'])->withInput();
+                return back()->withErrors(['roles' => 'نمی‌توان نقش super-admin آخر را حذف کرد.'])->withInput();
             }
         }
 
-        $roleName = $validated['role'];
-        $fields   = $this->fieldsForRole($roleName);
+        $roleNames = $validated['roles'];
+        $fields   = $this->fieldsForRoles($roleNames);
 
         $request->validate($this->dynamicRules($fields)); // ولیدیشن داینامیک
 
-        DB::transaction(function () use ($user, $validated, $fields, $request, $roleName) {
+        DB::transaction(function () use ($user, $validated, $fields, $request, $roleNames) {
             $user->update([
                 'name'   => $validated['name'],
                 'email'  => $validated['email'],
@@ -158,7 +174,13 @@ class UserController extends Controller
                 $user->update(['password' => Hash::make($validated['password'])]);
             }
 
-            $user->syncRoles([$roleName]);
+            $user->syncRoles($roleNames);
+
+            if (isset($validated['superior_ids'])) {
+                $user->superiors()->sync($validated['superior_ids']);
+            } else {
+                $user->superiors()->detach();
+            }
 
             // upsert مقادیر سفارشی (با فایل)
             $this->persistCustomValues($user, $fields, $request);
@@ -196,9 +218,9 @@ class UserController extends Controller
 
     /* ===================== Private helpers ===================== */
 
-    private function fieldsForRole(string $roleName): Collection
+    private function fieldsForRoles(array $roleNames): Collection
     {
-        return CustomUserField::where('role_name', $roleName)->orderBy('id')->get();
+        return CustomUserField::whereIn('role_name', $roleNames)->orderBy('id')->get()->unique('field_name');
     }
 
     private function dynamicRules(Collection $fields): array

@@ -19,9 +19,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Morilog\Jalali\Jalalian;
 use App\Models\User;
+use App\Traits\FileUploadTrait;
 
 class PropertyController extends Controller
 {
+    use FileUploadTrait;
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -85,7 +88,6 @@ class PropertyController extends Controller
 
         // AI Search Filters
         if ($request->has('ai_search')) {
-            // ** NEW: OR logic for ambiguous prices **
             if ($request->filled('price_min') && $request->filled('deposit_min')) {
                 $query->where(function ($q) use ($request) {
                     $q->where('price', '>=', (float)$request->price_min)
@@ -147,11 +149,17 @@ class PropertyController extends Controller
     public function create()
     {
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
+        $maxFileSize = PropertySetting::get('max_file_size', 10240);
+        $allowedFileTypes = PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif');
+        $maxVideoSize = PropertySetting::get('max_video_size', 20480);
+        $allowedVideoTypes = PropertySetting::get('allowed_video_types', 'mp4,mov,avi');
+
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         $agents = User::role($agentRoles)->get();
-        $owners = PropertyOwner::latest()->get(); // اضافه شد جهت نمایش در لیست انتخاب مالک
-        return view('properties::user.create', compact('maxGalleryImages', 'statuses', 'agents', 'owners'));
+        $owners = PropertyOwner::latest()->get();
+
+        return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners'));
     }
 
     public function store(Request $request)
@@ -164,18 +172,22 @@ class PropertyController extends Controller
             try { $request->merge(['registered_at' => Jalalian::fromFormat('Y/m/d', $request->registered_at)->toCarbon()->format('Y-m-d')]); } catch (\Exception $e) { $request->merge(['registered_at' => null]); }
         } else { $request->merge(['registered_at' => now()->format('Y-m-d')]); }
 
-        // اصلاح مبالغ عددی (جلوگیری از خطای SQL 1366)
+        // اصلاح مبالغ عددی و مدیریت رشته‌های خالی برای جلوگیری از ارور دیتابیس
         $priceFields = ['price', 'min_price', 'deposit_price', 'rent_price', 'advance_price'];
         foreach ($priceFields as $field) {
             if ($request->has($field)) {
-                $rawPrice = str_replace(',', '', $request->input($field));
-                // اگر مقدار خالی بود، نال قرار می‌دهیم نه رشته خالی
-                $request->merge([$field => ($rawPrice === '' ? null : $rawPrice)]);
+                $val = $request->input($field);
+                $request->merge([
+                    $field => (is_null($val) || $val === '') ? null : str_replace(',', '', $val)
+                ]);
             }
         }
 
         $maxSize = PropertySetting::get('max_file_size', 10240);
         $allowedTypes = str_replace(' ', '', PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif'));
+        $maxVideoSize = PropertySetting::get('max_video_size', 20480);
+        $allowedVideoTypes = str_replace(' ', '', PropertySetting::get('allowed_video_types', 'mp4,mov,avi'));
+        $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -189,15 +201,17 @@ class PropertyController extends Controller
             'status_id' => 'nullable|exists:property_statuses,id',
             'publication_status' => 'required|in:draft,published',
             'confidential_notes' => 'nullable|string',
-            'usage_type' => 'nullable|required_if:property_type,land|in:residential,industrial,commercial,agricultural',
+            'usage_type' => 'nullable|required_if:property_type,land|in:residential,industrial,commercial,agricultural,garden,outsideTheTissue',
             'delivery_date' => 'nullable|required_if:listing_type,presale|date',
             'code' => 'nullable|string|max:255',
             'category_id' => 'nullable|exists:property_categories,id',
             'address' => 'nullable|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
-            'cover_image' => "required|image|mimes:{$allowedTypes}|max:{$maxSize}",
+            'cover_image' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
+            'gallery_images' => "nullable|array|max:{$maxGalleryImages}",
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
+            'video' => "nullable|file|mimes:{$allowedVideoTypes}|max:{$maxVideoSize}",
             'is_special' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
             'price' => 'nullable|numeric|min:0',
@@ -210,14 +224,12 @@ class PropertyController extends Controller
             'meta' => 'nullable|array',
         ]);
 
-        // جدا کردن داده‌های رابطه‌ای (مانند متد Update)
         $attributesData = $request->input('attributes', []);
         $featuresData = $request->input('features', []);
 
         $data = $validated;
         unset($data['attributes'], $data['features']);
 
-        // مدیریت کد ملک
         if ($request->input('code_type') === 'auto' || empty($data['code'])) {
             $data['code'] = $this->generateUniquePropertyCode($data['category_id'] ?? null);
         } else {
@@ -226,12 +238,10 @@ class PropertyController extends Controller
             if (Property::withTrashed()->where('code', $data['code'])->exists()) return back()->withInput()->with('error', 'کد ملک تکراری است.');
         }
 
-        // آپلود تصویر شاخص
         if ($request->hasFile('cover_image')) {
             $data['cover_image'] = $this->uploadFile($request->file('cover_image'), 'properties/covers');
         }
 
-        // آپلود ویدیو
         if ($request->hasFile('video')) {
             $data['video'] = $this->uploadFile($request->file('video'), 'properties/videos');
         }
@@ -246,7 +256,6 @@ class PropertyController extends Controller
             $data['status_id'] = PropertyStatus::where('is_default', true)->first()?->id ?? PropertyStatus::where('is_active', true)->orderBy('sort_order')->first()?->id;
         }
 
-        // پردازش Meta (جلوگیری از [object Object])
         $metaRequest = $request->input('meta', []);
         $processedMeta = ['is_special' => $request->has('is_special')];
         if (isset($metaRequest['details'])) foreach ($metaRequest['details'] as $k => $v) if (!empty($k)) $processedMeta['details'][$k] = $v;
@@ -256,10 +265,8 @@ class PropertyController extends Controller
         }
         $data['meta'] = $processedMeta;
 
-        // ایجاد ملک
         $property = Property::create($data);
 
-        // ذخیره گالری
         if ($request->hasFile('gallery_images')) {
             foreach ($request->file('gallery_images') as $idx => $img) {
                 if ($idx < PropertySetting::get('max_gallery_images', 10) && $img->isValid()) {
@@ -268,12 +275,10 @@ class PropertyController extends Controller
             }
         }
 
-        // ذخیره ویژگی‌های استاندارد
         foreach ($attributesData as $id => $val) {
             if (!empty($val)) PropertyAttributeValue::create(['property_id' => $property->id, 'attribute_id' => $id, 'value' => $val]);
         }
 
-        // ذخیره امکانات رفاهی انتخابی
         foreach ($featuresData as $fid) {
             PropertyAttributeValue::create(['property_id' => $property->id, 'attribute_id' => $fid, 'value' => '1']);
         }
@@ -295,7 +300,6 @@ class PropertyController extends Controller
 
     public function pricing(Property $property)
     {
-        // Check visibility
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -311,7 +315,6 @@ class PropertyController extends Controller
 
     public function updatePricing(Request $request, Property $property)
     {
-        // Check permission
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -321,12 +324,18 @@ class PropertyController extends Controller
             abort(403);
         }
 
+        // تمیز کردن فیلدهای قیمت و جلوگیری از خطای Unable to cast value to a decimal
+        $priceFields = ['price', 'min_price', 'deposit_price', 'rent_price', 'advance_price'];
+        foreach ($priceFields as $field) {
+            if ($request->has($field)) {
+                $val = $request->input($field);
+                $request->merge([
+                    $field => (is_null($val) || $val === '') ? null : str_replace(',', '', $val)
+                ]);
+            }
+        }
+
         $request->merge([
-            'price' => str_replace(',', '', $request->input('price')),
-            'min_price' => str_replace(',', '', $request->input('min_price')),
-            'deposit_price' => str_replace(',', '', $request->input('deposit_price')),
-            'rent_price' => str_replace(',', '', $request->input('rent_price')),
-            'advance_price' => str_replace(',', '', $request->input('advance_price')),
             'is_convertible' => $request->has('is_convertible') ? 1 : 0,
         ]);
 
@@ -356,13 +365,11 @@ class PropertyController extends Controller
         $data = $request->validate($rules);
         $property->update($data);
 
-        // Redirect to Details Step
         return redirect()->route('user.properties.details', $property)->with('success', 'قیمت‌گذاری ثبت شد. لطفا اطلاعات تکمیلی را وارد کنید.');
     }
 
     public function details(Property $property)
     {
-        // Check visibility
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -386,7 +393,6 @@ class PropertyController extends Controller
 
     public function updateDetails(Request $request, Property $property)
     {
-        // Check permission
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -470,19 +476,14 @@ class PropertyController extends Controller
             abort(403);
         }
 
-        // اصلاح اعتبارسنجی:
-        // attributes.* نباید exists باشد چون مقدار ارسال می شود (مثل 1)، نه ID.
         $data = $request->validate([
             'attributes' => 'nullable|array',
             'meta' => 'nullable|array',
             'meta.*.value' => 'nullable|string|max:255',
         ]);
 
-        // ۱. مدیریت امکانات عمومی (سیستمی)
-        // دریافت آی‌دی تمام ویژگی‌هایی که مربوط به بخش features هستند
         $featureAttributeIds = PropertyAttribute::where('section', 'features')->pluck('id')->toArray();
 
-        // حذف مقادیر قبلی فقط برای این بخش
         PropertyAttributeValue::where('property_id', $property->id)
             ->whereIn('attribute_id', $featureAttributeIds)
             ->delete();
@@ -499,9 +500,8 @@ class PropertyController extends Controller
             }
         }
 
-        // ۲. مدیریت امکانات سفارشی (Meta)
         $meta = $property->meta ?? [];
-        $meta['features'] = []; // ریست کردن امکانات سفارشی قبلی
+        $meta['features'] = [];
 
         if (isset($request->meta) && is_array($request->meta)) {
             foreach ($request->meta as $item) {
@@ -519,7 +519,6 @@ class PropertyController extends Controller
 
     public function edit(Property $property)
     {
-        // Check visibility/permission
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -529,10 +528,13 @@ class PropertyController extends Controller
             abort(403);
         }
 
-        // Eager load building
         $property->load('building');
 
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
+        $maxFileSize = PropertySetting::get('max_file_size', 10240);
+        $allowedFileTypes = PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif');
+        $maxVideoSize = PropertySetting::get('max_video_size', 20480);
+        $allowedVideoTypes = PropertySetting::get('allowed_video_types', 'mp4,mov,avi');
         $owners = PropertyOwner::latest()->get();
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
 
@@ -558,16 +560,14 @@ class PropertyController extends Controller
             }
         }
 
-        // Fetch Agents
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         $agents = User::role($agentRoles)->get();
 
-        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents'));
+        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents'));
     }
 
     public function update(Request $request, Property $property)
     {
-        // بررسی دسترسی کاربر
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -577,7 +577,6 @@ class PropertyController extends Controller
             abort(403);
         }
 
-        // تبدیل تاریخ‌های جلالی به میلادی قبل از اعتبارسنجی
         if ($request->has('delivery_date') && !empty($request->delivery_date)) {
             try {
                 $date = Jalalian::fromFormat('Y/m/d', $request->delivery_date)->toCarbon();
@@ -599,13 +598,16 @@ class PropertyController extends Controller
         $maxSize = PropertySetting::get('max_file_size', 10240);
         $allowedTypes = PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif');
         $allowedTypes = str_replace(' ', '', $allowedTypes);
+        $maxVideoSize = PropertySetting::get('max_video_size', 20480);
+        $allowedVideoTypes = str_replace(' ', '', PropertySetting::get('allowed_video_types', 'mp4,mov,avi'));
 
-        // تمیز کردن فیلدهای قیمت (حذف جداکننده هزارگان)
+        // تمیز کردن فیلدهای قیمت و مدیریت رشته‌های خالی
         $priceFields = ['price', 'min_price', 'deposit_price', 'rent_price', 'advance_price'];
         foreach ($priceFields as $field) {
-            if ($request->has($field) && !is_null($request->input($field))) {
+            if ($request->has($field)) {
+                $val = $request->input($field);
                 $request->merge([
-                    $field => str_replace(',', '', $request->input($field))
+                    $field => (is_null($val) || $val === '') ? null : str_replace(',', '', $val)
                 ]);
             }
         }
@@ -621,7 +623,7 @@ class PropertyController extends Controller
             'status_id' => 'nullable|exists:property_statuses,id',
             'publication_status' => 'required|in:draft,published',
             'confidential_notes' => 'nullable|string',
-            'usage_type' => 'nullable|required_if:property_type,land|in:residential,industrial,commercial,agricultural',
+            'usage_type' => 'nullable|required_if:property_type,land|in:residential,industrial,commercial,agricultural,garden,outsideTheTissue',
             'delivery_date' => 'nullable|required_if:listing_type,presale|date',
             'code' => 'nullable|string|max:255|unique:properties,code,' . $property->id,
             'category_id' => 'nullable|exists:property_categories,id',
@@ -630,7 +632,10 @@ class PropertyController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'cover_image' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
+            'remove_cover_image' => 'nullable|boolean',
+            'gallery_images' => "nullable|array",
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
+            'video' => "nullable|file|mimes:{$allowedVideoTypes}|max:{$maxVideoSize}",
             'is_special' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
             'price' => 'nullable|numeric|min:0',
@@ -652,8 +657,12 @@ class PropertyController extends Controller
             'meta.details.*.value' => 'nullable|string|max:255',
         ]);
 
-        // آپلود تصویر اصلی
-        if ($request->hasFile('cover_image')) {
+        if ($request->input('remove_cover_image') == '1') {
+            if ($property->cover_image) {
+                Storage::disk('public')->delete($property->cover_image);
+            }
+            $data['cover_image'] = null;
+        } elseif ($request->hasFile('cover_image')) {
             $file = $request->file('cover_image');
             if ($file->isValid()) {
                 if ($property->cover_image) {
@@ -663,7 +672,6 @@ class PropertyController extends Controller
             }
         }
 
-        // آپلود ویدیو
         if ($request->hasFile('video')) {
             $file = $request->file('video');
             if ($file->isValid()) {
@@ -674,15 +682,11 @@ class PropertyController extends Controller
             }
         }
 
-        // --- مدیریت داده‌های متا (Meta) ---
         $processedMeta = $property->meta ?? [];
         $processedMeta['is_special'] = $request->has('is_special');
-
-        // ابتدا آرایه‌ها را خالی می‌کنیم تا اگر در درخواست نبودند (حذف کامل)، در دیتابیس هم پاک شوند
         $processedMeta['details'] = [];
         $processedMeta['features'] = [];
 
-        // پردازش جزئیات سفارشی در صورت وجود در درخواست
         if (isset($request->meta['details']) && is_array($request->meta['details'])) {
             foreach ($request->meta['details'] as $item) {
                 if (!empty($item['key'])) {
@@ -691,7 +695,6 @@ class PropertyController extends Controller
             }
         }
 
-        // پردازش امکانات سفارشی در صورت وجود در درخواست
         if (isset($request->meta['features']) && is_array($request->meta['features'])) {
             foreach ($request->meta['features'] as $item) {
                 if (is_array($item) && !empty($item['value'])) {
@@ -700,20 +703,16 @@ class PropertyController extends Controller
             }
         }
 
-        // جایگزینی متای نهایی در آرایه داده‌ها
         $data['meta'] = $processedMeta;
 
-        // محدودیت تغییر مشاور برای غیر ادمین‌ها
         $isAdmin = $user->hasRole(['super-admin', 'admin']);
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         if (!$isAdmin && $user->hasAnyRole($agentRoles)) {
             unset($data['agent_id']);
         }
 
-        // بروزرسانی مدل ملک
         $property->update($data);
 
-        // بروزرسانی ویژگی‌های سیستمی (Attributes)
         if (isset($data['attributes'])) {
             foreach ($data['attributes'] as $attributeId => $value) {
                 if (!empty($value)) {
@@ -729,7 +728,6 @@ class PropertyController extends Controller
             }
         }
 
-        // بروزرسانی امکانات سیستمی (System Features)
         $featureIds = PropertyAttribute::where('section', 'features')->pluck('id');
         PropertyAttributeValue::where('property_id', $property->id)->whereIn('attribute_id', $featureIds)->delete();
 
@@ -743,7 +741,6 @@ class PropertyController extends Controller
             }
         }
 
-        // مدیریت گالری تصاویر
         if ($request->hasFile('gallery_images')) {
             $currentCount = $property->images()->count();
             $maxGallery = PropertySetting::get('max_gallery_images', 10);
@@ -757,6 +754,8 @@ class PropertyController extends Controller
                         ]);
                     }
                 }
+            } else {
+                return back()->with('error', "حداکثر تعداد مجاز برای گالری تصاویر {$maxGallery} عدد می‌باشد.");
             }
         }
 
@@ -765,7 +764,6 @@ class PropertyController extends Controller
 
     public function destroy(Property $property)
     {
-        // Check permission
         $user = auth()->user();
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
 
@@ -773,6 +771,36 @@ class PropertyController extends Controller
             !$user->can('properties.delete.all') &&
             !($user->can('properties.delete') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
             abort(403);
+        }
+
+        $property->delete();
+        return redirect()->route('user.properties.index')->with('success', 'ملک به سطل زباله منتقل شد.');
+    }
+
+    public function restore($id)
+    {
+        $property = Property::withTrashed()->findOrFail($id);
+        $user = auth()->user();
+        $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
+
+        if (!$user->hasRole('super-admin') &&
+            !$user->can('properties.delete.all') &&
+            !($user->can('properties.delete') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
+            abort(403, 'شما اجازه بازیابی این ملک را ندارید.');
+        }
+
+        $property->restore();
+
+        return redirect()->route('user.properties.index', ['trashed' => 1])->with('success', 'ملک با موفقیت بازیابی شد.');
+    }
+
+    public function forceDelete($id)
+    {
+        $property = Property::withTrashed()->findOrFail($id);
+        $user = auth()->user();
+
+        if (!$user->hasRole('super-admin') && !$user->can('properties.delete.all')) {
+            abort(403, 'شما اجازه حذف دائم این ملک را ندارید.');
         }
 
         if ($property->cover_image) {
@@ -786,13 +814,14 @@ class PropertyController extends Controller
             $image->delete();
         }
 
-        $property->delete();
-        return redirect()->route('user.properties.index')->with('success', 'ملک حذف شد.');
+        $property->attributeValues()->delete();
+        $property->forceDelete();
+
+        return redirect()->route('user.properties.index', ['trashed' => 1])->with('success', 'ملک برای همیشه حذف شد.');
     }
 
     public function destroyImage(PropertyImage $image)
     {
-        // Check permission via property relation
         $user = auth()->user();
         $property = $image->property;
         $isOwnerOrAgent = $property->created_by === $user->id || $property->agent_id === $user->id;
@@ -911,25 +940,5 @@ class PropertyController extends Controller
         }
 
         return $newCode;
-    }
-
-    private function uploadFile($file, $directory)
-    {
-        $sourcePath = $file->getRealPath();
-        if (empty($sourcePath)) {
-            $sourcePath = $file->getPathname();
-        }
-
-        if (empty($sourcePath) || !file_exists($sourcePath)) {
-            throw new \Exception('فایل آپلود شده در مسیر موقت یافت نشد.');
-        }
-
-        $extension = $file->getClientOriginalExtension();
-        $fileName = Str::random(40) . '.' . $extension;
-        $path = $directory . '/' . $fileName;
-
-        Storage::disk('public')->put($path, file_get_contents($sourcePath));
-
-        return $path;
     }
 }

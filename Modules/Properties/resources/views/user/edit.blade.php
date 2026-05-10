@@ -33,6 +33,10 @@
 
     // بررسی فعال بودن هوش مصنوعی
     $aiEnabled = \Modules\Properties\Entities\PropertySetting::get('ai_property_completion', 0);
+
+    // تنظیمات نقشه
+    $mapService = \Modules\Properties\Entities\PropertySetting::get('map_service', 'leaflet');
+    $mapIrApiKey = \Modules\Properties\Entities\PropertySetting::get('map_ir_api_key', '');
 @endphp
 
 @section('content')
@@ -74,7 +78,7 @@
             </a>
         </div>
 
-            <form id="property-form" action="{{ route('user.properties.update', $property) }}" method="POST" enctype="multipart/form-data">
+        <form id="property-form" action="{{ route('user.properties.update', $property) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
@@ -107,7 +111,7 @@
                     <div class="{{ $cardClass }}">
                         {{-- نوار تب‌ها --}}
                         <div class="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide bg-gray-50/50 dark:bg-gray-900/30">
-                            <button type="button" @click="activeTab = 'details'; setTimeout(() => map?.invalidateSize(), 200)"
+                            <button type="button" @click="activeTab = 'details'; setTimeout(() => { if(map && map.map) { map.map.invalidateSize() } else if(map) { map.invalidateSize() } }, 200)"
                                     class="flex-1 py-4 px-6 text-center border-b-2 font-bold text-sm transition-all whitespace-nowrap outline-none focus:outline-none flex items-center justify-center gap-2"
                                     :class="activeTab === 'details' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -117,7 +121,7 @@
                             <button type="button" @click="activeTab = 'pricing'"
                                     class="flex-1 py-4 px-6 text-center border-b-2 font-bold text-sm transition-all whitespace-nowrap outline-none focus:outline-none flex items-center justify-center gap-2"
                                     :class="activeTab === 'pricing' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 1v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 قیمت‌گذاری
                             </button>
 
@@ -235,7 +239,9 @@
                                                 <option value="residential" {{ $property->usage_type == 'residential' ? 'selected' : '' }}>مسکونی</option>
                                                 <option value="industrial" {{ $property->usage_type == 'industrial' ? 'selected' : '' }}>صنعتی</option>
                                                 <option value="commercial" {{ $property->usage_type == 'commercial' ? 'selected' : '' }}>اداری / تجاری</option>
-                                                <option value="agricultural" {{ $property->usage_type == 'agricultural' ? 'selected' : '' }}>کشاورزی</option>
+                                                <option value="agricultural" {{ $property->usage_type == 'agricultural' ? 'selected' : '' }}>کشاورزی / زراعی</option>
+                                                <option value="garden" {{ $property->usage_type == 'garden' ? 'selected' : '' }}>باغ</option>
+                                                <option value="outsideTheTissue" {{ $property->usage_type == 'outsideTheTissue' ? 'selected' : '' }}>خارج از بافت</option>
                                             </select>
                                         </div>
                                         <div x-show="listingType === 'presale'">
@@ -295,7 +301,7 @@
 
                             {{-- Tab 2: Pricing --}}
                             <div x-show="activeTab === 'pricing'" x-transition:enter.duration.300ms x-transition:enter.opacity style="display: none;">
-                                <div class="max-w-3xl mx-auto space-y-8" x-data="priceFormatter()">
+                                <div class="max-w-3xl mx-auto space-y-8">
                                     {{-- پیام نوع فایل --}}
                                     <div class="flex items-center gap-3 p-4 rounded-xl bg-blue-50 text-blue-800 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
                                         <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -308,38 +314,66 @@
                                         @if($property->listing_type == 'sale')
                                             {{-- فروش --}}
                                             <div>
-                                                <label class="{{ $labelClass }}">قیمت اعلامی ({{ $currencyLabel }})</label>
-                                                <input type="text" name="price" x-model="prices.price" @input="formatPrice" class="{{ $inputClass }}" required>
+                                                <label class="{{ $labelClass }}">قیمت اعلامی</label>
+                                                <div class="relative">
+                                                    <input type="text" name="price" x-model="prices.price" @input="formatPriceInput('price')" class="{{ $inputClass }}" required placeholder="0">
+                                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
+                                                </div>
+                                                <p x-show="prices.price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(prices.price) + ' تومان'"></p>
                                             </div>
                                             <div>
-                                                <label class="{{ $labelClass }}">قیمت کف / حداقل ({{ $currencyLabel }})</label>
-                                                <input type="text" name="min_price" x-model="prices.min_price" @input="formatPrice" class="{{ $inputClass }}">
+                                                <label class="{{ $labelClass }}">قیمت کف / حداقل</label>
+                                                <div class="relative">
+                                                    <input type="text" name="min_price" x-model="prices.min_price" @input="formatPriceInput('min_price')" class="{{ $inputClass }}" placeholder="0">
+                                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
+                                                </div>
+                                                <p x-show="prices.min_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(prices.min_price) + ' تومان'"></p>
                                             </div>
 
                                         @elseif($property->listing_type == 'rent')
                                             {{-- رهن و اجاره --}}
                                             <div>
-                                                <label class="{{ $labelClass }}">مبلغ رهن ({{ $currencyLabel }})</label>
-                                                <input type="text" name="deposit_price" x-model="prices.deposit_price" @input="formatPrice" class="{{ $inputClass }}" required>
+                                                <label class="{{ $labelClass }}">مبلغ رهن</label>
+                                                <div class="relative">
+                                                    <input type="text" name="deposit_price" x-model="prices.deposit_price" @input="formatPriceInput('deposit_price')" class="{{ $inputClass }}" required placeholder="0">
+                                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
+                                                </div>
+                                                <p x-show="prices.deposit_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(prices.deposit_price) + ' تومان'"></p>
                                             </div>
                                             <div>
-                                                <label class="{{ $labelClass }}">اجاره ماهیانه ({{ $currencyLabel }})</label>
-                                                <input type="text" name="rent_price" x-model="prices.rent_price" @input="formatPrice" class="{{ $inputClass }}" required>
+                                                <label class="{{ $labelClass }}">اجاره ماهیانه</label>
+                                                <div class="relative">
+                                                    <input type="text" name="rent_price" x-model="prices.rent_price" @input="formatPriceInput('rent_price')" class="{{ $inputClass }}" required placeholder="0">
+                                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
+                                                </div>
+                                                <p x-show="prices.rent_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(prices.rent_price) + ' تومان'"></p>
                                             </div>
 
                                         @elseif($property->listing_type == 'presale')
                                             {{-- پیش‌فروش --}}
                                             <div>
-                                                <label class="{{ $labelClass }}">مبلغ پیش‌پرداخت ({{ $currencyLabel }})</label>
-                                                <input type="text" name="advance_price" x-model="prices.advance_price" @input="formatPrice" class="{{ $inputClass }}" required>
+                                                <label class="{{ $labelClass }}">مبلغ پیش‌پرداخت</label>
+                                                <div class="relative">
+                                                    <input type="text" name="advance_price" x-model="prices.advance_price" @input="formatPriceInput('advance_price')" class="{{ $inputClass }}" required placeholder="0">
+                                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
+                                                </div>
+                                                <p x-show="prices.advance_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(prices.advance_price) + ' تومان'"></p>
                                             </div>
                                             <div>
-                                                <label class="{{ $labelClass }}">قیمت کل اعلامی ({{ $currencyLabel }})</label>
-                                                <input type="text" name="price" x-model="prices.price" @input="formatPrice" class="{{ $inputClass }}" required>
+                                                <label class="{{ $labelClass }}">قیمت کل اعلامی</label>
+                                                <div class="relative">
+                                                    <input type="text" name="price" x-model="prices.price" @input="formatPriceInput('price')" class="{{ $inputClass }}" required placeholder="0">
+                                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
+                                                </div>
+                                                <p x-show="prices.price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(prices.price) + ' تومان'"></p>
                                             </div>
                                             <div>
-                                                <label class="{{ $labelClass }}">قیمت کف ({{ $currencyLabel }})</label>
-                                                <input type="text" name="min_price" x-model="prices.min_price" @input="formatPrice" class="{{ $inputClass }}">
+                                                <label class="{{ $labelClass }}">قیمت کف</label>
+                                                <div class="relative">
+                                                    <input type="text" name="min_price" x-model="prices.min_price" @input="formatPriceInput('min_price')" class="{{ $inputClass }}" placeholder="0">
+                                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
+                                                </div>
+                                                <p x-show="prices.min_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(prices.min_price) + ' تومان'"></p>
                                             </div>
                                         @endif
                                     </div>
@@ -643,6 +677,50 @@
                         </div>
 
                         <div class="space-y-4">
+
+                            {{-- باکس جستجوی آدرس روی نقشه --}}
+                            <div class="relative mb-2">
+                                <div class="relative group z-10">
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    </div>
+                                    <input type="text"
+                                           x-model="mapSearchQuery"
+                                           @input.debounce.500ms="searchMapLocation()"
+                                           @focus="if(mapSearchQuery.length >= 2) showMapResults = true"
+                                           @click.outside="showMapResults = false"
+                                           class="{{ $inputClass }} pr-10"
+                                           placeholder="جستجوی محله، خیابان، شهر و..."
+                                           autocomplete="off">
+
+                                    <div x-show="isSearchingMap" class="absolute left-3 top-2.5">
+                                        <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+
+                                    {{-- دراپ‌داون نتایج نقشه --}}
+                                    <div x-show="showMapResults && mapSearchResults.length > 0"
+                                         x-transition
+                                         class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                        <ul class="py-1">
+                                            <template x-for="result in mapSearchResults" :key="result.lat + ',' + result.lng">
+                                                <li @click="selectMapLocation(result)" class="px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors group/item">
+                                                    <div class="flex items-center gap-2">
+                                                        <svg class="w-4 h-4 text-gray-400 group-hover/item:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                        <span class="text-sm font-bold text-gray-800 dark:text-gray-200 group-hover/item:text-indigo-600 dark:group-hover/item:text-indigo-400 line-clamp-1" x-text="result.title"></span>
+                                                    </div>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                    <div x-show="showMapResults && mapSearchResults.length === 0 && !isSearchingMap" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 text-center">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">مکانی یافت نشد.</p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div id="map" class="w-full h-80 rounded-2xl z-0 border border-gray-200 dark:border-gray-600 shadow-inner"></div>
 
                             <div>
@@ -785,6 +863,10 @@
             return {
                 activeTab: 'details',
 
+                // انتقال متغیرهای بخش قیمت‌گذاری به این قسمت برای ساختار صحیح
+                isConvertible: {{ old('is_convertible', $property->is_convertible) ? 'true' : 'false' }},
+                currency: '{{ $currency }}',
+
                 // Data Properties
                 title: @json($property->title),
                 description: @json($property->description),
@@ -819,12 +901,22 @@
                 customDetails: @json($customDetails),
                 customFeatures: @json($customFeatures),
 
+                // تنظیمات نقشه
+                mapService: '{{ $mapService }}',
+                mapIrApiKey: '{{ $mapIrApiKey }}',
+
                 // Map
                 map: null,
                 marker: null,
                 lat: {{ $property->latitude ?? 35.6892 }},
                 lng: {{ $property->longitude ?? 51.3890 }},
                 address: '{{ $property->address }}',
+
+                // جستجوی نقشه
+                mapSearchQuery: '',
+                mapSearchResults: [],
+                showMapResults: false,
+                isSearchingMap: false,
 
                 // Owner Management
                 owners: @json($owners),
@@ -881,6 +973,61 @@
                         this.searchBuildings(false);
                     }
                     this.initVoiceTyping();
+                },
+
+                // --- متدهای مربوط به فرمت قیمت و تبدیل به حروف ---
+                formatPriceInput(field) {
+                    let value = String(this.prices[field]).replace(/,/g, '').replace(/[^\d]/g, '');
+                    if (value !== '') {
+                        this.prices[field] = parseInt(value).toLocaleString('en-US');
+                    } else {
+                        this.prices[field] = '';
+                    }
+                },
+
+                numberToWords(value) {
+                    if (!value) return '';
+                    let num = String(value).replace(/,/g, '');
+                    if (num === '' || isNaN(num) || parseInt(num) === 0) return '';
+
+                    if (this.currency === 'rial') {
+                        num = Math.floor(parseInt(num) / 10).toString();
+                        if (num === '0' || num === 'NaN') return '';
+                    }
+
+                    const ones = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه'];
+                    const tens = ['', 'ده', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود'];
+                    const hundreds = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', 'پانصد', 'ششصد', 'هفتصد', 'هشتصد', 'نهصد'];
+                    const teens = ['ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده'];
+                    const classes = ['', 'هزار', 'میلیون', 'میلیارد', 'هزار میلیارد', 'میلیون میلیارد'];
+
+                    let str = num.split('').reverse().join('');
+                    let result = [];
+
+                    for (let i = 0; i < str.length; i += 3) {
+                        let group = str.substr(i, 3).split('').reverse().join('');
+                        if (parseInt(group) === 0) continue;
+
+                        let groupWords = [];
+                        let h = parseInt(group.length === 3 ? group[0] : 0);
+                        let t = parseInt(group.length >= 2 ? group[group.length - 2] : 0);
+                        let o = parseInt(group[group.length - 1]);
+
+                        if (h > 0) groupWords.push(hundreds[h]);
+
+                        if (t === 1 && o >= 0) {
+                            groupWords.push(teens[o]);
+                        } else {
+                            if (t > 1) groupWords.push(tens[t]);
+                            if (o > 0) groupWords.push(ones[o]);
+                        }
+
+                        let groupText = groupWords.filter(Boolean).join(' و ');
+                        if (classes[i / 3]) groupText += ' ' + classes[i / 3];
+                        result.push(groupText);
+                    }
+
+                    return result.reverse().join(' و ');
                 },
 
                 // --- Voice Typing Methods ---
@@ -979,29 +1126,25 @@
                             if (data.document_type && !this.documentType) this.documentType = data.document_type;
                             if (data.usage_type && !this.usageType) this.usageType = data.usage_type;
                             if (data.delivery_date && !this.deliveryDate) this.deliveryDate = data.delivery_date;
-                            // توضیحات را همیشه به‌روزرسانی نکن مگر اینکه کاربر بخواهد (اینجا فرض بر این است که توضیحات منبع است)
-                            // if (data.description) this.description = data.description;
                             if (data.address && !this.address) this.address = data.address;
                             if (data.is_special !== undefined && !this.isSpecial) this.isSpecial = data.is_special;
                             if (data.confidential_notes && !this.confidentialNotes) this.confidentialNotes = data.confidential_notes;
 
                             // به‌روزرسانی قیمت‌ها
                             if (data.prices) {
-                                if (data.prices.price && !this.prices.price) this.prices.price = data.prices.price;
-                                if (data.prices.min_price && !this.prices.min_price) this.prices.min_price = data.prices.min_price;
-                                if (data.prices.deposit_price && !this.prices.deposit_price) this.prices.deposit_price = data.prices.deposit_price;
-                                if (data.prices.rent_price && !this.prices.rent_price) this.prices.rent_price = data.prices.rent_price;
-                                if (data.prices.advance_price && !this.prices.advance_price) this.prices.advance_price = data.prices.advance_price;
+                                if (data.prices.price && !this.prices.price) { this.prices.price = data.prices.price; this.formatPriceInput('price'); }
+                                if (data.prices.min_price && !this.prices.min_price) { this.prices.min_price = data.prices.min_price; this.formatPriceInput('min_price'); }
+                                if (data.prices.deposit_price && !this.prices.deposit_price) { this.prices.deposit_price = data.prices.deposit_price; this.formatPriceInput('deposit_price'); }
+                                if (data.prices.rent_price && !this.prices.rent_price) { this.prices.rent_price = data.prices.rent_price; this.formatPriceInput('rent_price'); }
+                                if (data.prices.advance_price && !this.prices.advance_price) { this.prices.advance_price = data.prices.advance_price; this.formatPriceInput('advance_price'); }
                             }
 
                             // به‌روزرسانی ویژگی‌های سیستمی (Attributes)
                             if (data.details) {
                                 for (const [id, value] of Object.entries(data.details)) {
-                                    // پیدا کردن اینپوت مربوطه در DOM
                                     const input = document.querySelector(`.ai-attribute[data-attr-id="${id}"]`);
-                                    if (input && !input.value) { // فقط اگر خالی است پر کن
+                                    if (input && !input.value) {
                                         input.value = value;
-                                        // تریگر کردن رویداد input برای اطمینان از ذخیره شدن تغییرات اگر از فریم‌ورک‌های دیگر استفاده می‌شود
                                         input.dispatchEvent(new Event('input'));
                                     }
                                 }
@@ -1011,7 +1154,7 @@
                             if (data.features && Array.isArray(data.features)) {
                                 data.features.forEach(id => {
                                     const checkbox = document.querySelector(`.ai-feature[data-attr-id="${id}"]`);
-                                    if (checkbox && !checkbox.checked) { // فقط اگر تیک نخورده است تیک بزن
+                                    if (checkbox && !checkbox.checked) {
                                         checkbox.checked = true;
                                         checkbox.dispatchEvent(new Event('change'));
                                     }
@@ -1021,7 +1164,6 @@
                             // به‌روزرسانی ویژگی‌های سفارشی (Custom Details)
                             if (data.custom_details) {
                                 for (const [key, value] of Object.entries(data.custom_details)) {
-                                    // بررسی تکراری نبودن
                                     const exists = this.customDetails.some(d => d.key === key);
                                     if (!exists) {
                                         this.customDetails.push({ key: key, value: value });
@@ -1039,23 +1181,19 @@
                                 });
                             }
 
-                            // جستجوی خودکار مالک اگر نامش پیدا شد و مالک انتخاب نشده بود
                             if (data.owner_name && !this.selectedOwner) {
                                 this.searchQuery = data.owner_name;
                                 this.searchOwners();
                             }
 
-                            // جستجوی خودکار ساختمان اگر نامش پیدا شد و ساختمان انتخاب نشده بود
                             if (data.building_name && !this.selectedBuildingId) {
                                 this.searchBuildingQuery = data.building_name;
                                 this.searchBuildings();
                             }
 
-                            // نمایش پیام موفقیت
                             window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'success', text: 'اطلاعات با موفقیت تکمیل شد. (فقط موارد جدید اضافه شدند)' } }));
 
                         } else {
-                            // نمایش خطای دریافتی از سرور
                             const errorMessage = result.error || result.message || 'خطا در دریافت اطلاعات.';
                             window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: errorMessage } }));
                         }
@@ -1212,12 +1350,30 @@
                 handleCoverSelect(e) {
                     const file = e.target.files[0];
                     if (file) {
-                        this.previewFile(file, (url) => this.coverPreview = url);
+                        this.previewFile(file, (url) => {
+                            this.coverPreview = url;
+                            document.getElementById('remove_cover_image_input').value = '0';
+                        });
                     }
                 },
                 removeCover() {
                     this.coverPreview = null;
                     document.getElementById('cover_image').value = '';
+                },
+                removeExistingCover() {
+                    if (confirm('آیا از حذف تصویر شاخص اطمینان دارید؟')) {
+                        document.getElementById('remove_cover_image_input').value = '1';
+                        const imgContainer = document.querySelector('.group\\/img');
+                        if(imgContainer) {
+                             imgContainer.style.display = 'none';
+                             // Add placeholder visual
+                             const parent = imgContainer.parentElement;
+                             const placeholder = document.createElement('div');
+                             placeholder.className = 'flex flex-col items-center justify-center h-full text-gray-400 w-full';
+                             placeholder.innerHTML = '<svg class="w-10 h-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span class="text-xs text-red-500">تصویر حذف خواهد شد (برای لغو، تصویر جدید انتخاب کنید یا صفحه را رفرش کنید)</span>';
+                             parent.appendChild(placeholder);
+                        }
+                    }
                 },
 
                 handleGallerySelect(e) {
@@ -1285,109 +1441,319 @@
                     }
                 },
 
-                // --- Map Handling ---
-                initMap() {
-                    // Initialize map using global L object
-                    this.map = L.map('map').setView([this.lat, this.lng], 13);
+                // --- Helper لود کننده اسکریپت ---
+                loadScript(src, type, callback) {
+                    const existing = (type === 'js') ? document.querySelector(`script[src="${src}"]`) : document.querySelector(`link[href="${src}"]`);
+                    if (existing) {
+                        if (callback) callback();
+                        return;
+                    }
+                    let tag;
+                    if (type === 'js') {
+                        tag = document.createElement('script');
+                        tag.src = src;
+                        tag.onload = callback;
+                        tag.onerror = () => console.error(`Failed to load script: ${src}`);
+                    } else {
+                        tag = document.createElement('link');
+                        tag.href = src;
+                        tag.rel = 'stylesheet';
+                    }
+                    document.head.appendChild(tag);
+                },
 
+                // --- Map Handling ---
+
+                // ---> [اضافه شدن تابع آیکون سفارشی برای رفع مشکل دستگاه‌های رتینا / موبایل] <---
+                getCustomMarkerIcon() {
+                    const baseUrl = '{{ asset("modules/properties/dist") }}';
+                    return L.icon({
+                        iconUrl: baseUrl + '/assets/images/marker-icon.png',
+                        iconRetinaUrl: baseUrl + '/assets/images/marker-icon.png', // اجبار به استفاده از همین آیکون در موبایل
+                        shadowUrl: baseUrl + '/assets/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    });
+                },
+
+                initMap() {
+                    if (this.mapService === 'map_ir') {
+                        this.initMapIr();
+                    } else {
+                        this.initLeaflet();
+                    }
+                },
+
+                initLeaflet() {
+                    if (typeof L === 'undefined') return;
+
+                    this.map = L.map('map').setView([this.lat, this.lng], 13);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         attribution: '© OpenStreetMap contributors'
                     }).addTo(this.map);
 
-                    // Add initial marker if exists
+                    // اضافه کردن مارکر اولیه با آیکون سفارشی
                     if ({{ $property->latitude ? 'true' : 'false' }}) {
-                        this.marker = L.marker([this.lat, this.lng]).addTo(this.map);
+                        this.marker = L.marker([this.lat, this.lng], {
+                            draggable: true,
+                            icon: this.getCustomMarkerIcon() // اعمال آیکون
+                        }).addTo(this.map);
+
+                        this.marker.on('dragend', (e) => {
+                            const pos = e.target.getLatLng();
+                            this.updateLocation(pos.lat.toFixed(6), pos.lng.toFixed(6));
+                        });
                     }
 
-                    // Add Search Control
-                    const provider = new OpenStreetMapProvider();
-                    const searchControl = new GeoSearchControl({
-                        provider: provider,
-                        style: 'bar',
-                        searchLabel: 'جستجوی آدرس...',
-                        notFoundMessage: 'آدرس یافت نشد',
-                        showMarker: false,
-                        retainZoomLevel: false,
-                        animateZoom: true,
-                        autoClose: true,
-                    });
-                    this.map.addControl(searchControl);
+                    // ابزار جستجوی لیفلت (در صورت وجود کتابخانه geosearch)
+                    if (typeof GeoSearchControl !== 'undefined' && typeof OpenStreetMapProvider !== 'undefined') {
+                        const provider = new OpenStreetMapProvider();
+                        const searchControl = new GeoSearchControl({
+                            provider: provider,
+                            style: 'bar',
+                            searchLabel: 'جستجوی آدرس...',
+                            notFoundMessage: 'آدرس یافت نشد',
+                            showMarker: false,
+                            retainZoomLevel: false,
+                            animateZoom: true,
+                            autoClose: true,
+                        });
+                        this.map.addControl(searchControl);
+                    }
 
                     this.map.on('geosearch/showlocation', (result) => {
                         const { x, y } = result.location;
                         this.updateLocation(y, x);
                     });
 
-                    // Add marker on click
+                    // افزودن مارکر با کلیک
                     this.map.on('click', (e) => {
-                        this.updateLocation(e.latlng.lat, e.latlng.lng);
+                        this.updateLocation(e.latlng.lat.toFixed(6), e.latlng.lng.toFixed(6));
                     });
                 },
+
+                initMapIr() {
+                    const baseUrl = '{{ asset("modules/properties/dist") }}';
+
+                    const loadAndSetup = () => {
+                        this.loadScript(baseUrl + '/css/mapp.min.css', 'css');
+                        this.loadScript(baseUrl + '/css/fa/style.css', 'css');
+
+                        const loadMapp = () => this.loadScript(baseUrl + '/js/mapp.min.js', 'js', () => setTimeout(() => this.setupMapIr(), 0));
+                        const loadEnv = () => this.loadScript(baseUrl + '/js/mapp.env.js', 'js', () => {
+                            // ذخیره جی‌کوئری مپ‌آی‌آر برای استفاده‌های بعدی (برای جلوگیری از تداخل با app.js)
+                            window.mapIrJQuery = window.jQuery;
+                            loadMapp();
+                        });
+
+                        if (typeof jQuery === 'undefined') {
+                            this.loadScript(baseUrl + '/js/jquery-3.2.1.min.js', 'js', loadEnv);
+                        } else {
+                            loadEnv();
+                        }
+                    };
+
+                    if (typeof Mapp === 'undefined') {
+                        loadAndSetup();
+                    } else {
+                        this.setupMapIr();
+                    }
+                },
+
+                setupMapIr() {
+                    // بازیابی محیط env برای jQuery بعد از جایگزین شدن آن با فایل app.js پروژه
+                    if (typeof $ !== 'undefined' && typeof $.env === 'undefined' && window.mapIrJQuery && window.mapIrJQuery.env) {
+                        $.env = window.mapIrJQuery.env;
+                        if (typeof jQuery !== 'undefined') jQuery.env = window.mapIrJQuery.env;
+                    }
+
+                    if (typeof Mapp === 'undefined') return;
+
+                    if (!this.mapIrApiKey) {
+                        document.getElementById('map').innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-800 text-gray-500 text-sm p-4 text-center">برای نمایش نقشه، لطفاً کلید API سرویس Map.ir را در تنظیمات وارد کنید.</div>`;
+                        return;
+                    }
+
+                    this.map = new Mapp({
+                        element: '#map',
+                        presets: {
+                            latlng: {
+                                lat: parseFloat(this.lat),
+                                lng: parseFloat(this.lng)
+                            },
+                            zoom: 13
+                        },
+                        apiKey: this.mapIrApiKey
+                    });
+
+                    this.map.addLayers();
+
+                    const leafletMapInstance = this.map.map;
+
+                    if ({{ $property->latitude ? 'true' : 'false' }}) {
+                        // اعمال آیکون صریح برای مارکر اولیه در مپ آی آر
+                        this.marker = L.marker([parseFloat(this.lat), parseFloat(this.lng)], {
+                            draggable: true,
+                            icon: this.getCustomMarkerIcon()
+                        }).addTo(leafletMapInstance);
+
+                        this.marker.on('dragend', (e) => {
+                            const pos = e.target.getLatLng();
+                            this.updateLocation(pos.lat.toFixed(6), pos.lng.toFixed(6));
+                        });
+                    }
+
+                    leafletMapInstance.on('click', (e) => {
+                        this.updateLocation(e.latlng.lat.toFixed(6), e.latlng.lng.toFixed(6));
+                    });
+                },
+
                 updateLocation(lat, lng) {
                     this.lat = lat;
                     this.lng = lng;
-                    if (this.marker) {
-                        this.marker.setLatLng([lat, lng]);
-                    } else {
-                        this.marker = L.marker([lat, lng]).addTo(this.map);
+
+                    const mapInstance = this.mapService === 'map_ir' ? (this.map ? this.map.map : null) : this.map;
+
+                    if (mapInstance) {
+                        if (this.marker) {
+                            this.marker.setLatLng([lat, lng]);
+                        } else {
+                            // اعمال آیکون صریح هنگام ساخته شدن مارکر جدید
+                            this.marker = L.marker([lat, lng], {
+                                draggable: true,
+                                icon: this.getCustomMarkerIcon()
+                            }).addTo(mapInstance);
+
+                            this.marker.on('dragend', (e) => {
+                                const pos = e.target.getLatLng();
+                                this.updateLocation(pos.lat.toFixed(6), pos.lng.toFixed(6));
+                            });
+                        }
                     }
+
                     this.getAddress(lat, lng);
                 },
+
+                // --- جستجو در نقشه ---
+                async searchMapLocation() {
+                    if (this.mapSearchQuery.length < 2) {
+                        this.mapSearchResults = [];
+                        this.showMapResults = false;
+                        return;
+                    }
+                    this.isSearchingMap = true;
+                    try {
+                        if (this.mapService === 'map_ir' && this.mapIrApiKey) {
+                            const res = await fetch(`https://map.ir/search/v2/autocomplete?text=${encodeURIComponent(this.mapSearchQuery)}`, {
+                                headers: { 'x-api-key': this.mapIrApiKey }
+                            });
+                            const data = await res.json();
+                            if (data && data.value) {
+                                this.mapSearchResults = data.value.map(item => ({
+                                    title: item.title + (item.address ? ' - ' + item.address : ''),
+                                    lat: item.geom.coordinates[1],
+                                    lng: item.geom.coordinates[0]
+                                }));
+                            } else {
+                                this.mapSearchResults = [];
+                            }
+                        } else {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(this.mapSearchQuery)}&countrycodes=ir`);
+                            const data = await res.json();
+                            this.mapSearchResults = data.map(item => ({
+                                title: item.display_name,
+                                lat: parseFloat(item.lat),
+                                lng: parseFloat(item.lon)
+                            }));
+                        }
+                        this.showMapResults = true;
+                    } catch (error) {
+                        console.error("Map search error:", error);
+                    } finally {
+                        this.isSearchingMap = false;
+                    }
+                },
+
+                selectMapLocation(result) {
+                    this.mapSearchQuery = result.title;
+                    this.showMapResults = false;
+
+                    const mapInstance = this.mapService === 'map_ir' ? (this.map ? this.map.map : null) : this.map;
+                    if (mapInstance) {
+                        mapInstance.setView([result.lat, result.lng], 15);
+                    }
+
+                    this.updateLocation(result.lat, result.lng);
+                },
+
+                // --- دریافت موقعیت فعلی ---
                 getCurrentLocation() {
                     if (navigator.geolocation) {
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'info', text: 'در حال دریافت موقعیت مکانی...' } }));
                         navigator.geolocation.getCurrentPosition((position) => {
                             const lat = position.coords.latitude;
                             const lng = position.coords.longitude;
-                            this.map.setView([lat, lng], 15);
+
+                            const mapInstance = this.mapService === 'map_ir' ? (this.map ? this.map.map : null) : this.map;
+                            if (mapInstance) {
+                                mapInstance.setView([lat, lng], 15);
+                            }
+
                             this.updateLocation(lat, lng);
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'success', text: 'موقعیت شما با موفقیت ثبت شد.' } }));
                         }, (error) => {
-                            alert('خطا در دریافت موقعیت: ' + error.message);
+                            let msg = 'خطا در دریافت موقعیت.';
+                            if (error.code === 1) msg = 'شما اجازه دسترسی به موقعیت مکانی را رد کرده‌اید.';
+                            else if (!window.isSecureContext) msg = 'دریافت موقعیت مکانی نیازمند ارتباط امن (HTTPS) است.';
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: msg } }));
                         });
                     } else {
-                        alert('مرورگر شما از موقعیت مکانی پشتیبانی نمی‌کند.');
+                        window.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', text: 'مرورگر شما از موقعیت مکانی پشتیبانی نمی‌کند.' } }));
                     }
                 },
+
                 async getAddress(lat, lng) {
-                    // Only fetch if user clicked, not on init unless empty
                     this.address = 'در حال دریافت آدرس...';
                     try {
-                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fa`);
-                        const data = await res.json();
-                        if (data && data.address) {
-                            const addr = data.address;
-                            const state = addr.state || '';
-                            const city = addr.city || addr.town || addr.village || addr.county || '';
-                            const details = [];
-                            if (addr.suburb) details.push(addr.suburb);
-                            if (addr.neighbourhood) details.push(addr.neighbourhood);
-                            if (addr.district) details.push(addr.district);
-                            if (addr.road) details.push(addr.road);
-                            if (addr.pedestrian) details.push(addr.pedestrian);
-                            if (addr.house_number) details.push('پلاک ' + addr.house_number);
-                            const uniqueDetails = [...new Set(details)].filter(Boolean);
-                            const exactAddress = uniqueDetails.join('، ');
-                            const parts = [state, city, exactAddress].filter(Boolean);
-                            this.address = parts.join('، ');
-                        } else if (data && data.display_name) {
-                            this.address = data.display_name;
+                        if (this.mapService === 'map_ir' && this.mapIrApiKey) {
+                            const res = await fetch(`https://map.ir/reverse?lat=${lat}&lon=${lng}`, {
+                                headers: { 'x-api-key': this.mapIrApiKey }
+                            });
+                            const data = await res.json();
+                            if (data && data.address_compact) {
+                                this.address = data.address_compact;
+                            } else {
+                                this.address = 'آدرس یافت نشد';
+                            }
                         } else {
-                            this.address = 'آدرس یافت نشد';
+                            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fa`);
+                            const data = await response.json();
+                            if (data && data.address) {
+                                const addr = data.address;
+                                const state = addr.state || '';
+                                const city = addr.city || addr.town || addr.village || addr.county || '';
+                                const details = [];
+                                if (addr.suburb) details.push(addr.suburb);
+                                if (addr.neighbourhood) details.push(addr.neighbourhood);
+                                if (addr.district) details.push(addr.district);
+                                if (addr.road) details.push(addr.road);
+                                if (addr.pedestrian) details.push(addr.pedestrian);
+                                if (addr.house_number) details.push('پلاک ' + addr.house_number);
+                                const uniqueDetails = [...new Set(details)].filter(Boolean);
+                                const exactAddress = uniqueDetails.join('، ');
+                                const parts = [state, city, exactAddress].filter(Boolean);
+                                this.address = parts.join('، ');
+                            } else if (data && data.display_name) {
+                                this.address = data.display_name;
+                            } else {
+                                this.address = 'آدرس یافت نشد';
+                            }
                         }
                     } catch (error) {
                         console.error('Error fetching address:', error);
                         this.address = 'خطا در دریافت آدرس';
-                    }
-                }
-            }
-        }
-
-        function priceFormatter() {
-            return {
-                isConvertible: {{ old('is_convertible', $property->is_convertible) ? 'true' : 'false' }},
-                formatPrice(event) {
-                    let value = event.target.value.replace(/,/g, '');
-                    if (!isNaN(value) && value !== '') {
-                        event.target.value = parseInt(value).toLocaleString('en-US');
                     }
                 }
             }

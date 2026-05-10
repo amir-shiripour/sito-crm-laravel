@@ -23,6 +23,7 @@ class PaymentService
     protected function loadGatewaySettings()
     {
         // Load settings from the database
+        // نکته برای آینده: بهتر است این قسمت Cache شود تا پرفورمنس دیتابیس افت نکند
         $settings = Setting::all()->pluck('value', 'key');
 
         $this->currency = $settings['payment_currency'] ?? 'toman';
@@ -98,10 +99,13 @@ class PaymentService
         Log::info('Zarinpal Request Data:', $data);
 
         try {
-            $response = Http::withHeaders([
-                'accept' => 'application/json',
-                'content-type' => 'application/json'
-            ])->post($url, $data);
+            // اضافه شدن timeout(30) و connectTimeout(15) برای جلوگیری از ارور تایم‌اوت زودرس
+            $response = Http::timeout(30)
+                ->connectTimeout(15)
+                ->withHeaders([
+                    'accept' => 'application/json',
+                    'content-type' => 'application/json'
+                ])->post($url, $data);
 
             Log::info('Zarinpal Response Status: ' . $response->status());
             Log::info('Zarinpal Response Body: ' . $response->body());
@@ -183,10 +187,13 @@ class PaymentService
         Log::info('Zarinpal Verify Data:', $verifyData);
 
         try {
-            $response = Http::withHeaders([
-                'accept' => 'application/json',
-                'content-type' => 'application/json'
-            ])->post($url, $verifyData);
+            // اضافه شدن timeout(30) و connectTimeout(15)
+            $response = Http::timeout(30)
+                ->connectTimeout(15)
+                ->withHeaders([
+                    'accept' => 'application/json',
+                    'content-type' => 'application/json'
+                ])->post($url, $verifyData);
 
             Log::info('Zarinpal Verify Response Status: ' . $response->status());
             Log::info('Zarinpal Verify Response Body: ' . $response->body());
