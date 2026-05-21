@@ -76,7 +76,7 @@
                         <div class="text-sm font-bold text-gray-500 dark:text-gray-400 mb-1">هزینه نهایی رزرو</div>
                         <div class="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                             <span id="dynamic-price-value">--</span>
-                            <span class="text-base font-normal text-gray-500 dark:text-gray-400" id="dynamic-price-currency">تومان</span>
+                            <span class="text-base font-normal text-gray-500 dark:text-gray-400" id="dynamic-price-currency">{{ ($settings->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان' }}</span>
                         </div>
                         <div id="dynamic-tax-info" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 hidden">
                             <!-- JS will populate tax amount here -->
@@ -216,7 +216,7 @@
                                                 <div class="flex justify-between items-start mb-2">
                                                     <h4 class="font-bold text-lg text-gray-900 dark:text-white">{{ $srv->name }}</h4>
                                                     <span class="bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold px-2.5 py-1 rounded-lg shrink-0">
-                                                        {{ number_format($srv->final_price) }} تومان
+                                                        {{ number_format($srv->final_price) }} {{ ($settings->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان' }}
                                                     </span>
                                                 </div>
                                                 @if($srv->description)
@@ -521,7 +521,7 @@
                 if (selectedService.tax_amount > 0) {
                     const formattedTax = toPersianDigits(parseInt(selectedService.tax_amount).toLocaleString('en-US'));
                     // taxInfo.textContent = `(شامل ${formattedTax} تومان مالیات بر ارزش افزوده)`;
-                    taxInfo.textContent = `مبلغ ${formattedTax} تومان هزینه ارائه خدمات آنلاین`;
+                    taxInfo.textContent = `مبلغ ${formattedTax} {{ ($settings->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان' }} هزینه ارائه خدمات آنلاین`;
                     taxInfo.classList.remove('hidden');
                 } else {
                     taxInfo.classList.add('hidden');

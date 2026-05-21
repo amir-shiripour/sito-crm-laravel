@@ -8,13 +8,14 @@
     $user = auth()->user();
     $now  = now();
 
-    $startOfDay = $now->copy()->startOfDay();
-    $endOfDay   = $now->copy()->endOfDay();
+    $endOfDay = $now->copy()->endOfDay();
 
+    // برای ویجت "یادآوری‌های من"، باید فقط یادآوری‌های شخص کاربر فیلتر شود
+    // و همچنین یادآوری‌های گذشته که هنوز باز هستند هم نمایش داده شوند
     $reminders = Reminder::query()
-        ->visibleForUser($user)
+        ->where('user_id', $user->id)
         ->open()
-        ->whereBetween('remind_at', [$startOfDay, $endOfDay])
+        ->where('remind_at', '<=', $endOfDay)
         ->with('task')
         ->get()
         ->sortByDesc(fn(Reminder $r) => $r->relatedPriorityWeight())
@@ -44,7 +45,7 @@
                     یادآوری‌های امروز من
                 </h2>
                 <p class="text-[11px] text-gray-500 dark:text-gray-400">
-                    فقط یادآوری‌های باز امروز نمایش داده می‌شوند.
+                    یادآوری‌های باز امروز و روزهای قبل نمایش داده می‌شوند.
                 </p>
             </div>
         </div>
@@ -69,7 +70,7 @@
         <div class="space-y-3 max-h-72 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
             @foreach($reminders as $reminder)
                 @php
-                    $task    = $reminder->task;
+                    $task    = $reminder->related_type === 'TASK' ? $reminder->task : null;
                     $isFu    = $task && $task->task_type === Task::TYPE_FOLLOW_UP;
                     $dateJal = $reminder->remind_at ? Jalalian::fromCarbon($reminder->remind_at)->format('Y/m/d H:i') : '—';
                     $priority = $task->priority ?? null;

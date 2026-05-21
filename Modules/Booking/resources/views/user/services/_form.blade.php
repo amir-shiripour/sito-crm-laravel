@@ -106,200 +106,249 @@
     ? ($serviceProvider->override_payment_amount_value ?? null)
     : ($service->payment_amount_value ?? null);
     }
-    $inputClass = 'w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/60 px-3 py-2
-    text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition';
+    $inputClass = 'w-full rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/60 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition';
     $selectClass = $inputClass . ' appearance-none cursor-pointer';
     $labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1';
     $helpClass = 'text-xs text-gray-500 dark:text-gray-400 mt-1';
     $errorClass = 'text-xs text-rose-600 dark:text-rose-400 mt-1';
+
+    $currencyMap = ['IRR' => 'ریال', 'IRT' => 'تومان'];
+    $currencyLabel = $currencyMap[$settings->currency_unit] ?? $settings->currency_unit;
 @endphp
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-6">
+    {{-- بخش اطلاعات اصلی --}}
+    <div class="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">اطلاعات اصلی</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {{-- نام سرویس (برای Provider روی سرویس عمومی مخفی) --}}
+            @if(! $editingPublicAsProvider)
+                <div>
+                    <label class="{{ $labelClass }}">نام سرویس</label>
+                    <input type="text" name="name" class="{{ $inputClass }}" value="{{ old('name', $service->name ?? '') }}" required>
+                    @error('name')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+                </div>
 
-    {{-- نام سرویس (برای Provider روی سرویس عمومی مخفی) --}}
-    @if(! $editingPublicAsProvider)
-        <div>
-            <label class="{{ $labelClass }}">نام سرویس</label>
-            <input type="text" name="name" class="{{ $inputClass }}" value="{{ old('name', $service->name ?? '') }}"
-                   required>
-            @error('name')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-        </div>
+                <div>
+                    <label class="{{ $labelClass }}">وضعیت سرویس</label>
+                    @php $v = old('status', $service->status ?? \Modules\Booking\Entities\BookingService::STATUS_ACTIVE); @endphp
+                    <select name="status" class="{{ $selectClass }}" required>
+                        <option value="ACTIVE" @selected($v==='ACTIVE' )>فعال</option>
+                        <option value="INACTIVE" @selected($v==='INACTIVE' )>غیرفعال</option>
+                    </select>
+                    @error('status')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+                </div>
+            @endif
 
-        <div>
-            <label class="{{ $labelClass }}">وضعیت سرویس</label>
-            @php $v = old('status', $service->status ?? \Modules\Booking\Entities\BookingService::STATUS_ACTIVE); @endphp
-            <select name="status" class="{{ $selectClass }}" required>
-                <option value="ACTIVE" @selected($v==='ACTIVE' )>فعال</option>
-                <option value="INACTIVE" @selected($v==='INACTIVE' )>غیرفعال</option>
-            </select>
-            @error('status')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-        </div>
-    @endif
-
-    {{-- قیمت‌ها --}}
-    <div>
-        <label class="{{ $labelClass }}">قیمت پایه ({{ config('booking.defaults.currency_unit', 'IRR') }})</label>
-        <input type="number" step="0.01" name="base_price" class="{{ $inputClass }}" value="{{ $effectiveBasePrice }}"
-               required>
-        @error('base_price')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
-
-    <div>
-        <label class="{{ $labelClass }}">قیمت تخفیفی</label>
-        <input type="number" step="0.01" name="discount_price" class="{{ $inputClass }}"
-               value="{{ $effectiveDiscountPrice }}">
-        @error('discount_price')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
-
-    <div>
-        <label class="{{ $labelClass }}">شروع تخفیف</label>
-        <input type="text" name="discount_from" class="{{ $inputClass }} jalali-datetime" data-jdp data-jdp-time="true"
-               value="{{ $discountFromValue }}">
-        <div class="{{ $helpClass }}">تاریخ و ساعت به صورت شمسی (jalalidatepicker)</div>
-        @error('discount_from')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
-
-    <div>
-        <label class="{{ $labelClass }}">پایان تخفیف</label>
-        <input type="text" name="discount_to" class="{{ $inputClass }} jalali-datetime" data-jdp data-jdp-time="true"
-               value="{{ $discountToValue }}">
-        @error('discount_to')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
-
-    {{-- دسته و فرم --}}
-    <div>
-        <label class="{{ $labelClass }}">دسته سرویس</label>
-        <select name="category_id" class="{{ $selectClass }}">
-            <option value="">بدون دسته</option>
-            @foreach($categories as $cat)
-                <option value="{{ $cat->id }}" @selected((string)$effectiveCategoryId===(string)$cat->id)>{{ $cat->name }}
-                </option>
-            @endforeach
-        </select>
-        @error('category_id')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
-
-    <div>
-        <label class="{{ $labelClass }}">فرم اختصاصی نوبت</label>
-        <select name="appointment_form_id" class="{{ $selectClass }}">
-            <option value="">بدون فرم اختصاصی</option>
-            @foreach($forms as $f)
-                <option value="{{ $f->id }}" @selected((string)$effectiveFormId===(string)$f->id)>{{ $f->name }}</option>
-            @endforeach
-        </select>
-        @error('appointment_form_id')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
-
-    {{-- رزرو آنلاین --}}
-    <div>
-        <label class="{{ $labelClass }}">وضعیت رزرو آنلاین</label>
-        <select name="online_booking_mode" class="{{ $selectClass }}" required>
-            <option value="INHERIT" @selected($effectiveOnlineMode==='INHERIT' )>مطابق تنظیمات کلی (INHERIT)</option>
-            <option value="FORCE_ON" @selected($effectiveOnlineMode==='FORCE_ON' )>اجباری فعال (فقط آنلاین)</option>
-            <option value="FORCE_OFF" @selected($effectiveOnlineMode==='FORCE_OFF' )>غیرفعال برای رزرو آنلاین</option>
-        </select>
-        @error('online_booking_mode')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
-
-    <div>
-        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 mt-6">
-            <input type="checkbox" name="auto_confirm_online_booking" value="1" @checked($effectiveAutoConfirm)>
-            <span>تایید خودکار رزروهای آنلاین</span>
-        </label>
-        <div class="{{ $helpClass }}">
-            در صورت فعال بودن، نوبت‌های ثبت شده به صورت آنلاین بلافاصله تایید می‌شوند و نیازی به تایید دستی ندارند.
-        </div>
-        @error('auto_confirm_online_booking')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
-
-    {{-- زمان‌بندی سفارشی --}}
-    @if(!($editingPublicAsProvider ?? false))
-        <div class="md:col-span-2">
-            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                <input type="checkbox" name="custom_schedule_enabled" value="1" @checked(old('custom_schedule_enabled',
-                $service->custom_schedule_enabled ?? false))>
-                <span>فعال‌سازی زمان‌بندی سفارشی برای ثبت دستی ساعت شروع/پایان</span>
-            </label>
-            <div class="{{ $helpClass }}">
-                در صورت فعال بودن، در مرحله انتخاب اسلات می‌توانید ساعت شروع و پایان را دستی وارد کنید.
+            {{-- دسته و فرم --}}
+            <div>
+                <label class="{{ $labelClass }}">دسته سرویس</label>
+                <select name="category_id" class="{{ $selectClass }}">
+                    <option value="">بدون دسته</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}" @selected((string)$effectiveCategoryId===(string)$cat->id)>{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+                @error('category_id')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
             </div>
-            @error('custom_schedule_enabled')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+
+            <div>
+                <label class="{{ $labelClass }}">فرم اختصاصی نوبت</label>
+                <select name="appointment_form_id" class="{{ $selectClass }}">
+                    <option value="">بدون فرم اختصاصی</option>
+                    @foreach($forms as $f)
+                        <option value="{{ $f->id }}" @selected((string)$effectiveFormId===(string)$f->id)>{{ $f->name }}</option>
+                    @endforeach
+                </select>
+                @error('appointment_form_id')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
         </div>
-    @endif
-
-    {{-- پرداخت --}}
-    <div>
-        <label class="{{ $labelClass }}">سیاست پرداخت آنلاین</label>
-        <select name="payment_mode" id="payment_mode" class="{{ $selectClass }}" required>
-            <option value="NONE" @selected($effectivePaymentMode==='NONE' )>بدون پرداخت آنلاین</option>
-            <option value="OPTIONAL" @selected($effectivePaymentMode==='OPTIONAL' )>اختیاری (مشتری می‌تواند پرداخت کند)
-            </option>
-            <option value="REQUIRED" @selected($effectivePaymentMode==='REQUIRED' )>الزامی قبل از تایید نوبت</option>
-        </select>
-        @error('payment_mode')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
     </div>
 
-    <div>
-        <label class="{{ $labelClass }}">نوع مبلغ پرداخت</label>
-        <select name="payment_amount_type" id="payment_amount_type" class="{{ $selectClass }}">
-            <option value="">-</option>
-            <option value="FULL" @selected($effectivePaymentAmountType==='FULL' )>کل مبلغ سرویس</option>
-            <option value="DEPOSIT" @selected($effectivePaymentAmountType==='DEPOSIT' )>بیعانه (درصدی)</option>
-            <option value="FIXED_AMOUNT" @selected($effectivePaymentAmountType==='FIXED_AMOUNT' )>مبلغ ثابت</option>
-        </select>
-        @error('payment_amount_type')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
+    {{-- بخش قیمت‌گذاری --}}
+    <div class="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">قیمت‌گذاری</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {{-- قیمت‌ها --}}
+            <div>
+                <label class="{{ $labelClass }}">قیمت پایه ({{ $currencyLabel }})</label>
+                <input type="text" name="base_price" class="{{ $inputClass }} price-format" value="{{ $effectiveBasePrice }}" required>
+                @error('base_price')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
 
-    <div>
-        <label class="{{ $labelClass }}">
-            مقدار پرداخت
-            <span class="text-xs text-gray-500 dark:text-gray-400">(برای بیعانه: درصد، برای مبلغ ثابت: عدد کامل)</span>
-        </label>
-        <input type="number" step="0.01" name="payment_amount_value" id="payment_amount_value" class="{{ $inputClass }}"
-               value="{{ $effectivePaymentAmountValue }}">
-        @error('payment_amount_value')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
-    </div>
+            <div>
+                <label class="{{ $labelClass }}">قیمت تخفیفی ({{ $currencyLabel }})</label>
+                <input type="text" name="discount_price" class="{{ $inputClass }} price-format" value="{{ $effectiveDiscountPrice }}">
+                @error('discount_price')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
 
-    {{-- provider_can_customize فقط برای ادمین --}}
-    @if($isAdminUser)
-        <div class="md:col-span-2">
-            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                <input type="checkbox" name="provider_can_customize" value="1" @checked(old('provider_can_customize',
-                $service->provider_can_customize ?? false))>
-                <span>اجازهٔ شخصی‌سازی قیمت/وضعیت توسط ارائه‌دهنده (Provider)</span>
-            </label>
+            <div>
+                <label class="{{ $labelClass }}">شروع تخفیف</label>
+                <input type="text" name="discount_from" class="{{ $inputClass }} jalali-datetime" data-jdp data-jdp-time="true" value="{{ $discountFromValue }}">
+                <div class="{{ $helpClass }}">تاریخ و ساعت به صورت شمسی (jalalidatepicker)</div>
+                @error('discount_from')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
+
+            <div>
+                <label class="{{ $labelClass }}">پایان تخفیف</label>
+                <input type="text" name="discount_to" class="{{ $inputClass }} jalali-datetime" data-jdp data-jdp-time="true" value="{{ $discountToValue }}">
+                @error('discount_to')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
         </div>
-    @endif
+    </div>
+
+    {{-- بخش رزرو آنلاین و پرداخت --}}
+    <div class="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">رزرو آنلاین و پرداخت</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {{-- رزرو آنلاین --}}
+            <div>
+                <label class="{{ $labelClass }}">وضعیت رزرو آنلاین</label>
+                <select name="online_booking_mode" class="{{ $selectClass }}" required>
+                    <option value="INHERIT" @selected($effectiveOnlineMode==='INHERIT' )>مطابق تنظیمات کلی (INHERIT)</option>
+                    <option value="FORCE_ON" @selected($effectiveOnlineMode==='FORCE_ON' )>اجباری فعال (فقط آنلاین)</option>
+                    <option value="FORCE_OFF" @selected($effectiveOnlineMode==='FORCE_OFF' )>غیرفعال برای رزرو آنلاین</option>
+                </select>
+                @error('online_booking_mode')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="flex items-center mt-6">
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                    <input type="checkbox" name="auto_confirm_online_booking" value="1" @checked($effectiveAutoConfirm)>
+                    <span>تایید خودکار رزروهای آنلاین</span>
+                </label>
+                @error('auto_confirm_online_booking')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
+
+            {{-- پرداخت --}}
+            <div>
+                <label class="{{ $labelClass }}">سیاست پرداخت آنلاین</label>
+                <select name="payment_mode" id="payment_mode" class="{{ $selectClass }}" required>
+                    <option value="NONE" @selected($effectivePaymentMode==='NONE' )>بدون پرداخت آنلاین</option>
+                    <option value="OPTIONAL" @selected($effectivePaymentMode==='OPTIONAL' )>اختیاری (مشتری می‌تواند پرداخت کند)</option>
+                    <option value="REQUIRED" @selected($effectivePaymentMode==='REQUIRED' )>الزامی قبل از تایید نوبت</option>
+                </select>
+                @error('payment_mode')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
+
+            <div>
+                <label class="{{ $labelClass }}">نوع مبلغ پرداخت</label>
+                <select name="payment_amount_type" id="payment_amount_type" class="{{ $selectClass }}">
+                    <option value="">-</option>
+                    <option value="FULL" @selected($effectivePaymentAmountType==='FULL' )>کل مبلغ سرویس</option>
+                    <option value="DEPOSIT" @selected($effectivePaymentAmountType==='DEPOSIT' )>بیعانه (درصدی)</option>
+                    <option value="FIXED_AMOUNT" @selected($effectivePaymentAmountType==='FIXED_AMOUNT' )>مبلغ ثابت ({{ $currencyLabel }})</option>
+                </select>
+                @error('payment_amount_type')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
+
+            <div>
+                <label class="{{ $labelClass }}">مقدار پرداخت</label>
+                <input type="text" name="payment_amount_value" id="payment_amount_value" class="{{ $inputClass }} price-format" value="{{ $effectivePaymentAmountValue }}">
+                <div class="{{ $helpClass }}">برای بیعانه درصد (مثلا 20) و برای مبلغ ثابت، قیمت را وارد کنید.</div>
+                @error('payment_amount_value')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+            </div>
+        </div>
+    </div>
+
+    {{-- بخش تنظیمات پیشرفته --}}
+    <div class="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">تنظیمات پیشرفته</h3>
+        <div class="space-y-4">
+            {{-- زمان‌بندی سفارشی --}}
+            @if(!($editingPublicAsProvider ?? false))
+                <div>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                        <input type="checkbox" name="custom_schedule_enabled" value="1" @checked(old('custom_schedule_enabled', $service->custom_schedule_enabled ?? false))>
+                        <span>فعال‌سازی زمان‌بندی سفارشی برای ثبت دستی ساعت شروع/پایان</span>
+                    </label>
+                    <div class="{{ $helpClass }}">در صورت فعال بودن، در مرحله انتخاب اسلات می‌توانید ساعت شروع و پایان را دستی وارد کنید.</div>
+                    @error('custom_schedule_enabled')<div class="{{ $errorClass }}">{{ $message }}</div>@enderror
+                </div>
+            @endif
+
+            {{-- provider_can_customize فقط برای ادمین --}}
+            @if($isAdminUser)
+                <div>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                        <input type="checkbox" name="provider_can_customize" value="1" @checked(old('provider_can_customize', $service->provider_can_customize ?? false))>
+                        <span>اجازهٔ شخصی‌سازی قیمت/وضعیت توسط ارائه‌دهنده (Provider)</span>
+                    </label>
+                </div>
+            @endif
+        </div>
+    </div>
 </div>
 
 @push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const modeEl = document.getElementById('payment_mode');
-            const typeEl = document.getElementById('payment_amount_type');
-            const valueEl = document.getElementById('payment_amount_value');
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Payment UI logic
+        const modeEl = document.getElementById('payment_mode');
+        const typeEl = document.getElementById('payment_amount_type');
+        const valueEl = document.getElementById('payment_amount_value');
 
-            function refreshPaymentUi() {
-                const mode = modeEl.value;
-                const disabled = (mode === 'NONE');
+        function refreshPaymentUi() {
+            const mode = modeEl.value;
+            const disabled = (mode === 'NONE');
 
-                typeEl.disabled = disabled;
-                valueEl.disabled = disabled;
+            typeEl.disabled = disabled;
+            valueEl.disabled = disabled;
 
-                if (disabled) {
-                    typeEl.value = '';
-                    valueEl.value = '';
-                }
+            if (disabled) {
+                typeEl.value = '';
+                valueEl.value = '';
             }
+        }
 
-            if (modeEl) {
-                modeEl.addEventListener('change', refreshPaymentUi);
-                refreshPaymentUi();
-            }
+        if (modeEl) {
+            modeEl.addEventListener('change', refreshPaymentUi);
+            refreshPaymentUi();
+        }
 
-            if (window.jalaliDatepicker && typeof window.jalaliDatepicker.startWatch === 'function') {
-                window.jalaliDatepicker.startWatch();
+        // Jalali Datepicker
+        if (window.jalaliDatepicker && typeof window.jalaliDatepicker.startWatch === 'function') {
+            window.jalaliDatepicker.startWatch();
+        }
+
+        // --- Price Formatting ---
+        function formatPrice(input) {
+            if (!input) return;
+            // 1. Unformat the value and remove non-numeric characters
+            let value = input.value.replace(/,/g, '').replace(/[^0-9]/g, '');
+
+            // 2. If value is not empty, format it with commas
+            if (value) {
+                input.value = parseInt(value, 10).toLocaleString('en-US');
+            } else {
+                input.value = '';
             }
+        }
+
+        function unformatPrice(input) {
+            if (input) {
+                input.value = input.value.replace(/,/g, '');
+            }
+        }
+
+        const priceInputs = document.querySelectorAll('.price-format');
+
+        priceInputs.forEach(input => {
+            // Format on initial load
+            formatPrice(input);
+            // Format in real-time as user types
+            input.addEventListener('input', () => formatPrice(input));
         });
-    </script>
+
+        // Find the form and add a submit listener to unformat prices before submission
+        const form = document.querySelector('form[action*="services"]');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                priceInputs.forEach(input => {
+                    unformatPrice(input);
+                });
+            });
+        }
+    });
+</script>
 @endpush

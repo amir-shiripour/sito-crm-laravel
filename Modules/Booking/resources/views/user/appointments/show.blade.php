@@ -135,10 +135,11 @@
             </div>
             @if(!empty($formResponses))
                 <div class="space-y-2">
-                    @foreach($formResponses as $key => $value)
+                    @foreach($formResponses as $response)
                         <div class="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-2">
-                            <div class="text-xs text-gray-500 dark:text-gray-400 w-40">{{ $key }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 w-40">{{ $response['label'] }}</div>
                             <div class="text-sm text-gray-900 dark:text-gray-100">
+                                @php $value = $response['value']; @endphp
                                 @if(is_array($value))
                                     {{ implode('، ', array_filter(array_map('strval', $value))) ?: '—' }}
                                 @else

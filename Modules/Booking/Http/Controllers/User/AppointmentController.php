@@ -190,6 +190,17 @@ class AppointmentController extends Controller
             'end_time_local'    => ['nullable', 'date_format:H:i'],
 
             'notes'             => ['nullable', 'string'],
+            'status'            => ['required', Rule::in([
+                Appointment::STATUS_DRAFT,
+                Appointment::STATUS_PENDING,
+                Appointment::STATUS_PENDING_PAYMENT,
+                Appointment::STATUS_CONFIRMED,
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+                Appointment::STATUS_NO_SHOW,
+                Appointment::STATUS_DONE,
+                Appointment::STATUS_RESCHEDULED,
+            ])],
 
             // اگر فرم داشت
             'appointment_form_response_json' => ['nullable', 'string'],
@@ -355,7 +366,8 @@ class AppointmentController extends Controller
                 $endUtc->toIso8601String(),
                 createdByUserId: $request->user()->id,
                 notes: $data['notes'] ?? null,
-                appointmentFormResponse: $formJson
+                appointmentFormResponse: $formJson,
+                status: $data['status']
             );
         } catch (\InvalidArgumentException | \RuntimeException $e) {
             Log::error('[Booking][Appointments][Store] Failed to create appointment', [
@@ -401,6 +413,8 @@ class AppointmentController extends Controller
         $settings = BookingSetting::current();
         $this->ensureAppointmentViewAccess($request->user(), $appointment, $settings);
 
+        $appointment->load(['service.appointmentForm', 'payments']);
+
         // --- پردازش لاجیک View به Controllers منتقل شد (طبق اصول معماری MVC) ---
         $tz = config('booking.timezones.display_default', 'Asia/Tehran');
         $startLocal = $appointment->start_at_utc?->copy()->timezone($tz);
@@ -429,7 +443,41 @@ class AppointmentController extends Controller
         $entryValue = $entryLocal ? $entryLocal->format('H:i') : '—';
         $exitValue = $exitLocal ? $exitLocal->format('H:i') : '—';
 
-        $formResponses = $appointment->appointment_form_response_json ?? [];
+        $rawFormResponses = $appointment->appointment_form_response_json ?? [];
+        $formResponses = [];
+
+        if (!empty($rawFormResponses) && $appointment->service && $appointment->service->appointmentForm) {
+            $form = $appointment->service->appointmentForm;
+            $formSchema = $form->schema_json;
+            $fieldMeta = [];
+
+            if (isset($formSchema['fields']) && is_array($formSchema['fields'])) {
+                foreach ($formSchema['fields'] as $field) {
+                    if (isset($field['name'])) {
+                        $fieldMeta[$field['name']] = [
+                            'label' => $field['label'] ?? $field['name'],
+                        ];
+                    }
+                }
+            }
+
+            foreach ($rawFormResponses as $key => $value) {
+                $meta = $fieldMeta[$key] ?? ['label' => $key];
+                $formResponses[] = [
+                    'label' => $meta['label'],
+                    'value' => $value,
+                ];
+            }
+        } else if (!empty($rawFormResponses)) {
+            // Fallback if form is not available, just use keys
+            foreach ($rawFormResponses as $key => $value) {
+                $formResponses[] = [
+                    'label' => $key,
+                    'value' => $value,
+                ];
+            }
+        }
+
         $payments = $appointment->payments ?? collect();
 
         // حل ارور املای CANCELLED در اینجا

@@ -8,9 +8,12 @@ use Modules\Market\Entities\Brand;
 use Modules\Market\Entities\Category;
 use Modules\Market\Entities\MasterProduct;
 use Modules\Market\Entities\ProductVariant;
+use Modules\Market\Entities\MarketAttribute;
+use Modules\Market\Entities\MarketSetting;
 use Modules\Market\App\Services\ProductService;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class MasterProductForm extends Component
 {
@@ -18,83 +21,241 @@ class MasterProductForm extends Component
 
     public ?MasterProduct $product = null;
 
-    public $title = '', $slug = '', $brand_id = '', $category_id = '', $description = '', $status = 'draft';
-    public $crm_code = 'اتوماتیک';
+    public $storeType;
+    public $vendorCanCreateVariants;
+    public $currentStep = 1;
 
-    // فیلدهای داینامیک
+    // فیلدهای محصول
+    public $title = '', $slug = '', $brand_id = '', $category_id = '', $status = 'active';
+    public $crm_code = 'اتوماتیک';
+    public $gtin = '';
+    public $short_description = '';
+    public $description = '';
+    public $single_sell = false;
+    public $enable_reviews = true;
+    public $weight = '';
+    public $length = '';
+    public $width = '';
+    public $height = '';
+    public $shipping_class = 'standard';
+
     public $categoryFields = [];
     public $dynamicAttributes = [];
 
-    // فایل‌ها
     public $main_image;
     public $existing_main_image;
     public $gallery_images = [];
     public $existing_gallery = [];
 
-    // تنوع‌ها (Variants)
+    // تنوع‌ها
     public $variants = [];
     public $variantAxes = [];
+    public $selectedAxisValues = [];
 
     public function mount(?MasterProduct $product = null)
     {
         $this->product = $product ?? new MasterProduct();
+        $this->storeType = MarketSetting::getValue('system.store_type', 'multi');
+        $this->vendorCanCreateVariants = (bool) MarketSetting::getValue('vendors.vendor_can_create_variants', false);
 
         if ($this->product->exists) {
+            // 💡 FIX 1: Explicitly assign properties to avoid filling image properties with strings
             $this->title = $this->product->title;
+            $this->slug = $this->product->slug;
             $this->brand_id = $this->product->brand_id;
             $this->category_id = $this->product->category_id;
-            $this->description = $this->product->description;
             $this->status = $this->product->status;
             $this->crm_code = $this->product->crm_code;
+            $this->gtin = $this->product->gtin;
+            $this->short_description = $this->product->short_description;
+            $this->description = $this->product->description;
+            $this->single_sell = (bool) $this->product->single_sell;
+            $this->enable_reviews = (bool) $this->product->enable_reviews;
+            $this->weight = $this->product->weight;
+            $this->length = $this->product->length;
+            $this->width = $this->product->width;
+            $this->height = $this->product->height;
+            $this->shipping_class = $this->product->shipping_class ?? 'standard';
 
             $this->dynamicAttributes = $this->product->attributes ?? [];
-            $this->loadCategoryFields($this->category_id);
-
             $this->existing_main_image = $this->product->main_image;
             $this->existing_gallery = $this->product->gallery_images ?? [];
 
-            // 💡 اصلاح لود تنوع‌ها برای ساختار جدید (Values)
+            $this->loadCategoryFields($this->category_id);
+
             foreach ($this->product->variants as $var) {
                 $this->variants[] = [
                     'id' => $var->id,
                     'values' => $var->variant_attributes ?? [],
-                    'is_active' => $var->is_active
+                    'is_active' => (bool)$var->is_active,
                 ];
             }
+
+            $this->selectedAxisValues = $this->product->variant_axes_permissions ?? [];
+            if (empty($this->selectedAxisValues)) {
+                $this->parseExistingVariantsToSelectedAxes();
+            }
         } else {
-            // ساختار خام برای محصول جدید
-            $this->variants[] = ['id' => null, 'values' => [], 'is_active' => true];
+            $this->clearAllVariants();
+        }
+    }
+
+    public function updatedCategoryId($id) {
+        $this->loadCategoryFields($id);
+        $this->generateCode();
+        if (!$this->product->exists) {
+            $this->clearAllVariants();
         }
     }
 
     public function updatedBrandId() { $this->generateCode(); }
 
-    public function updatedCategoryId($id) {
-        $this->loadCategoryFields($id);
-        $this->generateCode();
+    public function setStep($step)
+    {
+        if ($step < $this->currentStep) {
+            $this->currentStep = $step;
+        } elseif ($step > $this->currentStep) {
+            $this->validateStep($this->currentStep);
+            $this->currentStep = $step;
+        }
+    }
+
+    public function nextStep()
+    {
+        $this->validateStep($this->currentStep);
+        if ($this->currentStep < 4) {
+            $this->currentStep++;
+        }
+    }
+
+    public function prevStep()
+    {
+        if ($this->currentStep > 1) {
+            $this->currentStep--;
+        }
+    }
+
+    private function validateStep($step)
+    {
+        $rules = [
+            1 => [
+                'title' => 'required|string|max:255',
+                'slug' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'slug')->ignore($this->product->id)],
+                'brand_id' => 'required',
+                'category_id' => 'required',
+            ],
+            2 => ['status' => 'required|in:draft,active,archived'],
+            3 => [
+                'weight' => 'nullable|numeric|min:0',
+                'length' => 'nullable|numeric|min:0',
+                'width' => 'nullable|numeric|min:0',
+                'height' => 'nullable|numeric|min:0',
+            ],
+        ];
+        if (isset($rules[$step])) {
+            $this->validate($rules[$step]);
+        }
     }
 
     private function loadCategoryFields($categoryId) {
         if (!$categoryId) return;
         $category = Category::find($categoryId);
         $this->categoryFields = $category->target_attributes ?? [];
-        $this->variantAxes = $category->variant_fields ?? [];
+        $variantFieldIds = $category->variant_fields ?? [];
+
+        $this->variantAxes = [];
+        $this->selectedAxisValues = [];
+
+        if (!empty($variantFieldIds)) {
+            $attributes = MarketAttribute::with('values')->whereIn('id', $variantFieldIds)->get();
+            foreach ($attributes as $attr) {
+                $vals = $attr->values->toArray();
+                array_unshift($vals, ['id' => 'any', 'value' => 'هر ' . $attr->name, 'meta_value' => 'any']);
+                $this->variantAxes[] = ['id' => $attr->id, 'name' => $attr->name, 'type' => $attr->type, 'values' => $vals];
+                $this->selectedAxisValues[$attr->name] = [];
+            }
+        }
     }
 
     private function generateCode() {
         if ($this->brand_id && $this->category_id && !$this->product->exists) {
-            $service = new ProductService();
-            $this->crm_code = $service->generateCrmCode($this->brand_id, $this->category_id);
+            $this->crm_code = (new ProductService())->generateCrmCode($this->brand_id, $this->category_id);
         }
-    }
-
-    public function addVariant() {
-        $this->variants[] = ['id' => null, 'values' => [], 'is_active' => true];
     }
 
     public function removeVariant($index) {
         unset($this->variants[$index]);
         $this->variants = array_values($this->variants);
+    }
+
+    private function parseExistingVariantsToSelectedAxes() {
+        if (empty($this->variantAxes) || empty($this->variants)) return;
+        foreach ($this->variantAxes as $axis) {
+            $axisName = $axis['name'];
+            $foundValues = array_unique(array_column(array_column($this->variants, 'values'), $axisName));
+            if (empty($foundValues) || in_array('هر ' . $axisName, $foundValues)) {
+                $this->selectedAxisValues[$axisName] = ['هر ' . $axisName];
+            } else {
+                $this->selectedAxisValues[$axisName] = array_values($foundValues);
+            }
+        }
+    }
+
+    public function clearAllVariants() {
+        $this->variants = [];
+        if(!empty($this->variantAxes)) {
+            foreach ($this->variantAxes as $axis) {
+                $this->selectedAxisValues[$axis['name']] = [];
+            }
+        }
+    }
+
+    public function generateAllCombinations()
+    {
+        if (empty($this->variantAxes)) return;
+
+        $axesValuesToCombine = [];
+        foreach ($this->variantAxes as $axis) {
+            $axisName = $axis['name'];
+            $selectedForAxis = $this->selectedAxisValues[$axisName] ?? [];
+
+            if (empty($selectedForAxis)) {
+                $this->dispatch('notify', type: 'error', text: "برای ساخت ترکیب، باید برای محور '{$axisName}' حداقل یک مقدار انتخاب کنید.");
+                return;
+            }
+
+            // 💡 FIX 2: Removed the block that was preventing the use of "Any X"
+            $axesValuesToCombine[$axisName] = $selectedForAxis;
+        }
+
+        // اگر به فروشنده اجازه داده شده، ترکیبی نساز، فقط انتخاب‌ها را نگه دار
+        if ($this->storeType === 'multi' && $this->vendorCanCreateVariants) {
+            $this->dispatch('notify', type: 'info', text: 'گزینه‌های مجاز برای فروشنده مشخص شد. نیازی به ساخت ترکیب در این مرحله نیست.');
+            return;
+        }
+
+        $combinations = [[]];
+        foreach ($axesValuesToCombine as $key => $values) {
+            $append = [];
+            foreach ($combinations as $product) {
+                foreach ($values as $item) {
+                    $product[$key] = $item;
+                    $append[] = $product;
+                }
+            }
+            $combinations = $append;
+        }
+
+        $existingDbVariants = collect($this->variants)->filter(fn($v) => !empty($v['id']))->values()->toArray();
+        $this->variants = $existingDbVariants;
+
+        foreach ($combinations as $combo) {
+            $exists = collect($this->variants)->contains(fn($v) => $v['values'] == $combo);
+            if (!$exists) {
+                $this->variants[] = ['id' => null, 'values' => $combo, 'is_active' => true];
+            }
+        }
+        $this->dispatch('notify', type: 'success', text: 'ترکیبات بر اساس انتخاب‌های شما با موفقیت ایجاد شدند.');
     }
 
     public function removeExistingGalleryImage($index) {
@@ -112,25 +273,27 @@ class MasterProductForm extends Component
         $this->gallery_images = array_values($this->gallery_images);
     }
 
-
     public function save()
     {
-        // 💡 اصلاح اعتبارسنجی (برداشتن گیر اضافی روی نام)
-        $this->validate([
+        // 💡 FIX 1: Make image validation rules conditional
+        $rules = [
             'title' => 'required|string|max:255',
-            'brand_id' => 'required',
-            'category_id' => 'required',
-            'status' => 'required|in:draft,active,archived',
-            'main_image' => 'nullable|image|max:5120',
-            'gallery_images.*' => 'nullable|image|max:5120',
-        ]);
-
-        if (!$this->product->exists) {
-            $this->generateCode();
+            'slug' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'slug')->ignore($this->product->id)],
+            'brand_id' => 'required', 'category_id' => 'required', 'status' => 'required|in:draft,active,archived',
+        ];
+        if ($this->main_image && !is_string($this->main_image)) {
+            $rules['main_image'] = 'image|max:5120';
         }
+        if ($this->gallery_images) {
+            $rules['gallery_images.*'] = 'image|max:5120';
+        }
+        $this->validate($rules);
+
+
+        if (!$this->product->exists) $this->generateCode();
 
         $imagePath = $this->existing_main_image;
-        if ($this->main_image) {
+        if ($this->main_image && !is_string($this->main_image)) {
             if ($this->existing_main_image) Storage::disk('public')->delete($this->existing_main_image);
             $imagePath = $this->main_image->store('products/masters', 'public');
         }
@@ -138,62 +301,49 @@ class MasterProductForm extends Component
         $finalGallery = $this->existing_gallery;
         if (!empty($this->gallery_images)) {
             foreach ($this->gallery_images as $img) {
-                $finalGallery[] = $img->store('products/gallery', 'public');
-            }
-        }
-
-        $this->product->fill([
-            'title' => $this->title,
-            'slug' => $this->product->exists ? $this->product->slug : Str::slug($this->title) . '-' . rand(1000,9999),
-            'brand_id' => $this->brand_id,
-            'category_id' => $this->category_id,
-            'crm_code' => $this->crm_code,
-            'description' => $this->description,
-            'main_image' => $imagePath,
-            'gallery_images' => $finalGallery,
-            'attributes' => $this->dynamicAttributes,
-            'status' => $this->status,
-        ])->save();
-
-        $maxVariantSerial = 0;
-        if ($this->product->exists) {
-            $existingVariants = ProductVariant::where('master_product_id', $this->product->id)->get();
-            foreach ($existingVariants as $ev) {
-                $parts = explode('-', $ev->variant_code);
-                $lastPart = end($parts);
-                if (is_numeric($lastPart) && (int)$lastPart > $maxVariantSerial) {
-                    $maxVariantSerial = (int)$lastPart;
+                if ($img && !is_string($img)) {
+                    $finalGallery[] = $img->store('products/gallery', 'public');
                 }
             }
         }
 
-        // ذخیره تنوع‌ها
-        foreach ($this->variants as $var) {
-            if (empty($var['id'])) {
-                $maxVariantSerial++;
-                $vCode = $this->product->crm_code . '-' . str_pad($maxVariantSerial, 2, '0', STR_PAD_LEFT);
-            } else {
-                $vCode = ProductVariant::find($var['id'])->variant_code;
-            }
+        $this->product->fill([
+            'title' => $this->title, 'slug' => $this->slug, 'brand_id' => $this->brand_id, 'category_id' => $this->category_id,
+            'crm_code' => $this->crm_code, 'gtin' => $this->gtin, 'short_description' => $this->short_description,
+            'description' => $this->description, 'single_sell' => $this->single_sell, 'enable_reviews' => $this->enable_reviews,
+            'weight' => empty($this->weight) ? null : $this->weight, 'length' => empty($this->length) ? null : $this->length,
+            'width' => empty($this->width) ? null : $this->width, 'height' => empty($this->height) ? null : $this->height,
+            'shipping_class' => $this->shipping_class, 'main_image' => $imagePath, 'gallery_images' => $finalGallery,
+            'attributes' => $this->dynamicAttributes, 'status' => $this->status,
+            'variant_axes_permissions' => ($this->storeType === 'multi' && $this->vendorCanCreateVariants && !empty($this->selectedAxisValues)) ? $this->selectedAxisValues : null,
+        ])->save();
 
-            // 💡 هندل کردن کالاهای بدون تنوع (مثلاً یک کتاب که سایز و رنگ نداره)
-            $variantValues = $var['values'] ?? [];
-            if (empty($this->variantAxes)) {
-                $variantValues = ['name' => 'استاندارد'];
-            }
+        $maxVariantSerial = ProductVariant::where('master_product_id', $this->product->id)->count();
+        $keptVariantIds = [];
 
-            ProductVariant::updateOrCreate(
-                ['id' => $var['id']],
-                [
-                    'master_product_id' => $this->product->id,
-                    'variant_code' => $vCode,
-                    'variant_attributes' => $variantValues,
-                    'is_active' => $var['is_active'] ?? true
-                ]
-            );
+        if (empty($this->variantAxes) && empty($this->variants)) {
+            $this->variants[] = ['id' => null, 'values' => ['name' => 'استاندارد'], 'is_active' => true];
         }
 
-        $this->dispatch('notify', type: 'success', text: 'محصول با موفقیت در کاتالوگ ثبت شد.');
+        // اگر به فروشنده اجازه داده شده، هیچ تنوعی در این مرحله نساز
+        if (!($this->storeType === 'multi' && $this->vendorCanCreateVariants)) {
+            foreach ($this->variants as $var) {
+                $vCode = $var['id'] ? ProductVariant::find($var['id'])->variant_code : $this->product->crm_code . '-' . str_pad(++$maxVariantSerial, 2, '0', STR_PAD_LEFT);
+                $variantValues = $var['values'] ?? (empty($this->variantAxes) ? ['name' => 'استاندارد'] : []);
+
+                $savedVariant = ProductVariant::updateOrCreate(
+                    ['id' => $var['id']],
+                    ['master_product_id' => $this->product->id, 'variant_code' => $vCode, 'variant_attributes' => $variantValues, 'is_active' => $var['is_active'] ?? true]
+                );
+                $keptVariantIds[] = $savedVariant->id;
+            }
+        }
+
+        if ($this->product->exists) {
+            ProductVariant::where('master_product_id', $this->product->id)->whereNotIn('id', $keptVariantIds)->delete();
+        }
+
+        $this->dispatch('notify', type: 'success', text: 'محصول و تنوع‌های انتخابی با موفقیت در کاتالوگ ثبت شد.');
         return redirect()->route('user.market.master-products.index');
     }
 

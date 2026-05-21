@@ -11,6 +11,18 @@ import 'leaflet/dist/leaflet.css';
 import { GeoSearchControl, OpenStreetMapProvider } from 'leaflet-geosearch';
 import 'leaflet-geosearch/dist/geosearch.css';
 
+// Quill.js Editor
+import Quill from 'quill';
+import 'quill/dist/quill.core.css';
+import 'quill/dist/quill.snow.css';
+
+// 💡 ثبت افزونه‌های استاندارد Quill برای ذخیره اصولی استایل‌های راست‌چین در HTML خروجی
+const DirectionAttribute = Quill.import('attributors/attribute/direction');
+Quill.register(DirectionAttribute, true);
+
+const AlignClass = Quill.import('attributors/class/align');
+Quill.register(AlignClass, true);
+
 // Fix Leaflet's default icon path issues with Webpack/Vite
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -28,6 +40,7 @@ L.Icon.Default.mergeOptions({
 window.L = L;
 window.GeoSearchControl = GeoSearchControl;
 window.OpenStreetMapProvider = OpenStreetMapProvider;
+window.Quill = Quill;
 
 // import Alpine from 'alpinejs'
 // window.Alpine = Alpine

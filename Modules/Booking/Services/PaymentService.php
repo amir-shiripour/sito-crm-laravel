@@ -59,13 +59,19 @@ class PaymentService
         return $baseAmount + $taxAmount;
     }
 
-    public function createPendingPayment(int $appointmentId, string $mode, float $amount, string $currencyUnit): BookingPayment
+    public function createPendingPayment(int $appointmentId, int $clientId, float $amount, string $currencyUnit): BookingPayment
     {
+        $amountInRial = $amount;
+        if ($currencyUnit === 'IRT') {
+            $amountInRial = $amount * 10;
+        }
+
         return BookingPayment::query()->create([
             'appointment_id' => $appointmentId,
-            'mode' => $mode,
-            'amount' => $amount,
-            'currency_unit' => $currencyUnit,
+            'client_id' => $clientId,
+            'type' => 'booking',
+            'amount' => $amountInRial,
+            'currency_unit' => 'IRR', // Always store in IRR
             'status' => BookingPayment::STATUS_PENDING,
         ]);
     }

@@ -23,9 +23,10 @@ class BrandManager extends Component
             $this->name = $brand->name;
             $this->slug = $brand->slug;
             $this->code_prefix = $brand->code_prefix;
-            $this->is_active = $brand->is_active;
+            $this->is_active = (bool) $brand->is_active;
         } else {
-            $this->reset(['brand_id', 'name', 'slug', 'is_active']);
+            $this->reset(['brand_id', 'name', 'slug']);
+            $this->is_active = true;
             // تولید خودکار کد برند (از 3000 شروع می‌شود و یکی یکی بالا می‌رود)
             $lastPrefix = Brand::max('code_prefix') ?? 2999;
             $this->code_prefix = $lastPrefix + 1;

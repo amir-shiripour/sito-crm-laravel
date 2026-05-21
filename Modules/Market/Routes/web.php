@@ -2,11 +2,13 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Market\App\Http\Middleware\CheckVendorStatus;
+use Modules\Market\App\Http\Middleware\CheckMultiVendorMode;
 use Modules\Market\App\Http\Controllers\User\CheckoutController;
 use Modules\Market\App\Http\Controllers\User\VendorProductController;
 use Modules\Market\App\Http\Controllers\Admin\VendorController;
 use Modules\Market\App\Http\Controllers\User\MarketDashboardController;
 use Modules\Market\App\Http\Controllers\Admin\MasterProductController;
+use Modules\Market\App\Http\Controllers\MarketController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,66 +16,69 @@ use Modules\Market\App\Http\Controllers\Admin\MasterProductController;
 |--------------------------------------------------------------------------
 */
 
+// Public Market Routes
+Route::middleware(['web'])->group(function() {
+    Route::group(['prefix' => 'shop', 'as' => 'market.public.'], function() {
+        Route::get('/', [MarketController::class, 'index'])->name('index');
+        Route::get('/category', [MarketController::class, 'category'])->name('category');
+        Route::get('/category/{slug}', [MarketController::class, 'category'])->name('category.show');
+        Route::get('/product/{slug}', [MarketController::class, 'show'])->name('product.show');
+    });
+});
+
+
+// User & Admin Routes
 Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth']], function () {
 
     Route::prefix('market')->name('market.')->group(function () {
 
-        // داشبورد اصلی مارکت (بررسی وضعیت فروشنده)
-        Route::get('dashboard', [MarketDashboardController::class, 'index'])
-            ->name('dashboard');
+        Route::get('dashboard', [MarketDashboardController::class, 'index'])->name('dashboard');
 
-        // ==========================================
-        // بخش خریداران
-        // ==========================================
+        // Checkout
         Route::post('checkout', [CheckoutController::class, 'store'])->name('checkout.store');
 
-        // ==========================================
-        // بخش فروشندگان (Vendors)
-        // ==========================================
+        // Vendor Section
         Route::prefix('vendor')
             ->name('vendor.')
-            ->middleware(['permission:market.products.view', CheckVendorStatus::class]) // کنترل وضعیت KYC
+            ->middleware(['permission:market.products.view', CheckVendorStatus::class])
             ->group(function () {
-                // مدیریت تنوع محصولات توسط فروشنده
                 Route::resource('products', VendorProductController::class);
             });
 
-        // ==========================================
-        // مدیریت سیستم توسط پرسنل / ادمین
-        // ==========================================
-        // مدیریت فروشندگان
-        Route::resource('vendors', VendorController::class);
-
-        // مدیریت کاتالوگ اصلی محصولات (Master Products)
-        Route::resource('master-products', MasterProductController::class);
-
-        // 💡 بررسی و تایید محصولات ثبت شده توسط فروشندگان (اضافه شد)
-        Route::view('vendor-products/review', 'market::admin.vendor-products.review')
-            ->name('vendor-products.review')
-            ->middleware(['permission:market.manage']);
-
-        // ==========================================
-        // سایر بخش‌ها
-        // ==========================================
-        Route::get('orders', function() { return 'لیست سفارشات (به زودی...)'; })->name('orders.index');
-
-        // مدیریت برندها
-        Route::view('brands', 'market::admin.brands.index')->name('brands.index');
-
-        // مدیریت دسته‌بندی‌ها
-        Route::view('categories', 'market::admin.categories.index')->name('categories.index');
-
-    });
-
-    // ==========================================
-    // تنظیمات فروشگاه
-    // ==========================================
-    Route::prefix('settings/market')
-        ->name('settings.market.')
-        ->middleware(['permission:market.manage']) // اعمال دسترسی برای تنظیمات
-        ->group(function () {
-            // اتصال مستقیم روت general به فایل Blade که کامپوننت Livewire در آن فراخوانی شده است
-            Route::view('general', 'market::admin.settings.general')->name('general');
+        // Admin Section
+        Route::middleware([CheckMultiVendorMode::class])->group(function () {
+            Route::resource('vendors', VendorController::class);
+            Route::view('vendor-products/review', 'market::admin.vendor-products.review')
+                ->name('vendor-products.review')
+                ->middleware(['permission:market.manage']);
         });
 
+        // Catalog Management
+        Route::resource('master-products', MasterProductController::class);
+
+        // Warehouse Management (WMS)
+        Route::view('warehouses', 'market::admin.warehouse.index') // 💡 تغییر به view
+            ->name('warehouses.index')
+            ->middleware('permission:market.warehouses.view');
+
+        Route::view('warehouse-stock/{warehouseId}', 'market::admin.warehouse.stock') // 💡 تغییر به view
+            ->name('warehouse-stock.index')
+            ->middleware('permission:market.warehouses.manage');
+
+        // Other Sections
+        Route::get('orders', function() { return 'لیست سفارشات (به زودی...)'; })->name('orders.index');
+        Route::view('brands', 'market::admin.brands.index')->name('brands.index');
+        Route::view('categories', 'market::admin.categories.index')->name('categories.index');
+        Route::view('attributes', 'market::admin.attributes.index')
+            ->name('attributes.index')
+            ->middleware(['permission:market.manage']);
+    });
+
+    // Settings
+    Route::prefix('settings/market')
+        ->name('settings.market.')
+        ->middleware(['permission:market.manage'])
+        ->group(function () {
+            Route::view('general', 'market::admin.settings.general')->name('general');
+        });
 });

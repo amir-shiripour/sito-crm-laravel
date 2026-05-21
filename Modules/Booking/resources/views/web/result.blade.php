@@ -3,6 +3,12 @@
 @section('title', 'نتیجه رزرو نوبت')
 
 @section('content')
+    @php
+        $currencyMap = ['IRR' => 'ریال', 'IRT' => 'تومان'];
+        // واحد پولی از تنظیمات کلی خوانده می‌شود، چون ممکن است $appointment->payments خالی باشد
+        $settings = \Modules\Booking\Entities\BookingSetting::current();
+        $currencyLabel = $currencyMap[$settings->currency_unit ?? 'IRR'] ?? ($settings->currency_unit ?? 'ریال');
+    @endphp
     <div class="max-w-3xl mx-auto w-full px-6 md:px-0 pt-8 pb-16">
         <div
             class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-2xl shadow-gray-200/20 dark:shadow-none overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -186,14 +192,14 @@
                                     <div class="pr-2">
                                         <div class="flex items-baseline gap-1.5 mb-2">
                                             <span
-                                                class="font-black text-3xl text-gray-900 dark:text-white">{{ number_format($payment->amount) }}</span>
+                                                class="font-black text-3xl text-gray-900 dark:text-white">{{ number_format((float)$payment->amount) }}</span>
                                             <span
-                                                class="text-sm font-bold text-gray-500 dark:text-gray-400">{{ $payment->currency_unit === 'IRT' ? 'تومان' : 'ریال' }}</span>
+                                                class="text-sm font-bold text-gray-500 dark:text-gray-400">{{ $currencyMap[$payment->currency_unit] ?? $payment->currency_unit }}</span>
                                         </div>
                                         <div
                                             class="text-sm text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-5 gap-y-2">
                                             <span>نوع پرداخت: <span
-                                                    class="font-bold text-gray-700 dark:text-gray-300">{{ $payment->mode === 'REQUIRED' ? 'درگاه آنلاین' : 'پرداخت اختیاری/پیش‌پرداخت' }}</span></span>
+                                                    class="font-bold text-gray-700 dark:text-gray-300">{{ ($payment->mode ?? '') === 'REQUIRED' ? 'درگاه آنلاین' : 'پرداخت اختیاری/پیش‌پرداخت' }}</span></span>
                                             @if($payment->transaction_ref)
                                                 <span class="flex items-center gap-1.5">کد پیگیری: <span
                                                         class="font-mono bg-white dark:bg-gray-800 px-2.5 py-1 rounded-md text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 shadow-sm">{{ $payment->transaction_ref }}</span></span>

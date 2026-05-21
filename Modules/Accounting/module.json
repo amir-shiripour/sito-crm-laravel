@@ -1,0 +1,11 @@
+{
+    "name": "Accounting",
+    "alias": "accounting",
+    "description": "A modern and standard accounting module for the CRM.",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Accounting\\App\\Providers\\AccountingServiceProvider"
+    ],
+    "files": []
+}

@@ -35,7 +35,7 @@
                         @if($master->main_image)
                             <img src="{{ Storage::url($master->main_image) }}" class="w-full h-full object-cover">
                         @else
-                            <svg class="w-6 h-6 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <svg class="w-6 h-6 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         @endif
                     </div>
                     <div>
@@ -65,6 +65,8 @@
                     @foreach($master->variants as $variant)
                         @php
                             $vp = $variant->vendorProducts->first();
+                            if(!$vp) continue; // در صورت نداشتن دیتای فروشنده (نباید اتفاق بیفته طبق کدهای قبلی ولی برای امنیت بیشتر)
+
                             $attrs = $variant->variant_attributes ?? [];
                             $varName = empty($attrs) ? 'استاندارد' : implode(' | ', (array)$attrs);
                         @endphp
@@ -134,9 +136,10 @@
                                     <div class="mb-3 border-b border-indigo-100 dark:border-indigo-800 pb-2">
                                         <span class="text-sm font-bold text-indigo-900 dark:text-indigo-300">ویرایش سریع: {{ $varName }}</span>
                                     </div>
-                                    <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
 
-                                        <div class="col-span-2" x-data="{
+                                    {{-- 💡 آپدیت: محاسبه درصد و مدیریت زمان تخفیف در ویرایش سریع --}}
+                                    <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
+                                        <div class="col-span-2 lg:col-span-1" x-data="{
                                             raw: @entangle('editForm.price'),
                                             formatted: '',
                                             init() { this.format(this.raw); this.$watch('raw', val => this.format(val)); },
@@ -148,24 +151,89 @@
                                             @error('editForm.price') <span class="text-[10px] text-red-500">{{ $message }}</span> @enderror
                                         </div>
 
-                                        <div class="col-span-2" x-data="{
-                                            raw: @entangle('editForm.discount_price'),
-                                            formatted: '',
-                                            init() { this.format(this.raw); this.$watch('raw', val => this.format(val)); },
-                                            format(val) { this.formatted = val ? val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''; },
-                                            update() { this.raw = this.formatted.replace(/,/g, ''); }
+                                        <div class="col-span-2 lg:col-span-3 grid grid-cols-2 gap-2 bg-rose-50/50 dark:bg-rose-900/10 p-2 rounded-xl border border-rose-100 dark:border-rose-800" x-data="{
+                                            rawPrice: @entangle('editForm.price'),
+                                            rawDiscount: @entangle('editForm.discount_price'),
+                                            formattedDiscount: '',
+                                            percent: '',
+                                            init() {
+                                                this.formatDiscount(this.rawDiscount);
+                                                this.calcPercent();
+                                                this.$watch('rawDiscount', val => {
+                                                    this.formatDiscount(val);
+                                                    this.calcPercent();
+                                                });
+                                                this.$watch('rawPrice', () => this.calcPercent());
+                                            },
+                                            formatDiscount(val) {
+                                                this.formattedDiscount = val ? val.toString().replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                                            },
+                                            updateFromPrice() {
+                                                this.rawDiscount = this.formattedDiscount.replace(/,/g, '');
+                                                this.calcPercent();
+                                            },
+                                            updateFromPercent() {
+                                                let p = parseFloat(this.percent);
+                                                let pr = parseFloat(this.rawPrice);
+                                                if (p > 0 && p <= 100 && pr > 0) {
+                                                    let d = pr - (pr * (p / 100));
+                                                    this.rawDiscount = d.toString();
+                                                } else {
+                                                    this.rawDiscount = '';
+                                                }
+                                            },
+                                            calcPercent() {
+                                                let pr = parseFloat(this.rawPrice);
+                                                let d = parseFloat(this.rawDiscount);
+                                                if (pr > 0 && d > 0 && d < pr) {
+                                                    this.percent = Math.round(((pr - d) / pr) * 100);
+                                                } else {
+                                                    this.percent = '';
+                                                }
+                                            }
                                         }">
-                                            <label class="{{ $labelClass }}">قیمت با تخفیف</label>
-                                            <input type="text" x-model="formatted" @input="update()" class="{{ $inputClass }} font-mono dir-ltr text-center text-rose-600 dark:text-rose-400" placeholder="اختیاری">
+                                            <div>
+                                                <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">درصد تخفیف</label>
+                                                <div class="relative">
+                                                    <input type="number" x-model="percent" @input="updateFromPercent()" class="{{ $inputClass }} dir-ltr text-center !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800" placeholder="%">
+                                                    <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-rose-400">٪</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">قیمت با تخفیف</label>
+                                                <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-mono dir-ltr text-center text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800" placeholder="بدون تخفیف">
+                                            </div>
                                         </div>
 
-                                        <div>
+                                        <div class="lg:col-span-1">
                                             <label class="{{ $labelClass }}">موجودی</label>
                                             <input type="number" wire:model="editForm.stock" class="{{ $inputClass }} text-center font-bold">
                                         </div>
-                                        <div>
+                                        <div class="lg:col-span-1">
                                             <label class="{{ $labelClass }}">حداقل سفارش</label>
                                             <input type="number" wire:model="editForm.min_purchase_qty" class="{{ $inputClass }} text-center">
+                                        </div>
+                                    </div>
+
+                                    {{-- تنظیمات پیشرفته زمان و موجودی تخفیف در ویرایش سریع --}}
+                                    <div x-data="{ hasDiscount: @entangle('editForm.discount_price') }" x-show="hasDiscount" x-collapse>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 bg-rose-50/30 dark:bg-rose-900/5 p-3 rounded-xl border border-rose-100 dark:border-rose-800/50" wire:ignore x-data="{ initJalaliDatePicker() { new JalaliDatePicker(); } }" x-init="initJalaliDatePicker()">
+                                            <div>
+                                                <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">شروع تخفیف</label>
+                                                <input type="text" data-jdp-with-time wire:model.defer="editForm.discount_start_date" class="{{ $inputClass }} !border-rose-200 dark:!border-rose-800">
+                                            </div>
+                                            <div>
+                                                <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">پایان تخفیف</label>
+                                                <input type="text" data-jdp-with-time wire:model.defer="editForm.discount_end_date" class="{{ $inputClass }} !border-rose-200 dark:!border-rose-800">
+                                            </div>
+                                            <div>
+                                                <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">موجودی تخفیف</label>
+                                                <input type="number" wire:model.defer="editForm.discount_stock" class="{{ $inputClass }} !border-rose-200 dark:!border-rose-800" placeholder="همه موجودی">
+                                            </div>
+                                            <div>
+                                                <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">محدودیت خرید</label>
+                                                <input type="number" wire:model.defer="editForm.max_discount_purchase_qty" class="{{ $inputClass }} !border-rose-200 dark:!border-rose-800" placeholder="نامحدود">
+                                            </div>
                                         </div>
                                     </div>
 
@@ -195,4 +263,7 @@
     @if($masters->hasPages())
         <div class="mt-4">{{ $masters->links() }}</div>
     @endif
+
+    {{-- 💡 FIX: include به داخل div اصلی منتقل شد --}}
+    @includeIf('partials.jalali-date-picker')
 </div>

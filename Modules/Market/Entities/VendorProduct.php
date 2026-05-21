@@ -14,12 +14,21 @@ class VendorProduct extends Model {
         'sku_extension',
         'price',
         'discount_price',
+        'discount_start_date', // 💡 NEW
+        'discount_end_date', // 💡 NEW
+        'discount_stock', // 💡 NEW
+        'max_discount_purchase_qty', // 💡 NEW
         'stock',
         'reorder_point',
         'min_purchase_qty',
         'max_purchase_qty',
         'status',
-        'rejection_reason' // 💡 فیلد جدید اضافه شد
+        'rejection_reason'
+    ];
+
+    protected $casts = [
+        'discount_start_date' => 'datetime',
+        'discount_end_date' => 'datetime',
     ];
 
     public function masterProduct() {

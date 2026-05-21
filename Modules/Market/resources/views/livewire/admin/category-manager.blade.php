@@ -39,30 +39,75 @@
                     <input type="text" wire:model.defer="name" class="{{ $inputClass }}" placeholder="مثلاً: لپ‌تاپ">
                     @error('name') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                 </div>
-                <div>
+
+                {{-- 💡 پردازش آرایه دسته‌ها برای جلوگیری از شکستن HTML --}}
+                @php
+                    $parentOptions = [];
+                    $parentOptions[] = ['value' => '', 'label' => '-- دسته اصلی (بدون والد) --', 'isSub' => false];
+                    foreach($parentCategories->whereNull('parent_id') as $mainCat) {
+                        if($mainCat->id !== $category_id) {
+                            $parentOptions[] = ['value' => (string)$mainCat->id, 'label' => $mainCat->name, 'isSub' => false];
+                            foreach($mainCat->children as $subCat) {
+                                if($subCat->id !== $category_id) {
+                                    $parentOptions[] = ['value' => (string)$subCat->id, 'label' => $subCat->name, 'isSub' => true];
+                                }
+                            }
+                        }
+                    }
+                @endphp
+
+                {{-- دراپ‌داون کاستوم و حرفه‌ای برای دسته والد --}}
+                <div class="relative" x-data="{
+                    open: false,
+                    selected: @entangle('parent_id'),
+                    options: {{ json_encode($parentOptions) }},
+                    get selectedLabel() {
+                        let opt = this.options.find(o => o.value == this.selected);
+                        return opt ? opt.label : '-- دسته اصلی (بدون والد) --';
+                    }
+                }" @click.away="open = false">
                     <label class="{{ $labelClass }}">دسته والد (زیرمجموعهِ...)</label>
-                    <select wire:model.defer="parent_id" class="{{ $inputClass }}">
-                        <option value="">-- دسته اصلی (بدون والد) --</option>
-                        {{-- 💡 برای تمیزی دراپ‌داون، فاصله‌های بصری اعمال شد --}}
-                        @foreach($parentCategories->whereNull('parent_id') as $mainCat)
-                            @if($mainCat->id !== $category_id)
-                                <option value="{{ $mainCat->id }}" class="font-bold">{{ $mainCat->name }}</option>
-                                @foreach($mainCat->children as $subCat)
-                                    @if($subCat->id !== $category_id)
-                                        <option value="{{ $subCat->id }}">&nbsp;&nbsp;↳ {{ $subCat->name }}</option>
-                                    @endif
-                                @endforeach
-                            @endif
-                        @endforeach
-                    </select>
+
+                    {{-- دکمه تریگر --}}
+                    <div @click="open = !open" class="{{ $inputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-900': open, 'bg-gray-50 dark:bg-gray-900/50': !open}">
+                        <span x-text="selectedLabel" class="block truncate font-bold text-gray-800 dark:text-gray-200" :class="{'!text-gray-500 dark:!text-gray-400 font-normal': selected === '' || selected == null}"></span>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+
+                    {{-- لیست کشویی --}}
+                    <div x-show="open"
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2"
+                         style="display: none;">
+                        <template x-for="option in options" :key="option.value">
+                            <div @click="selected = option.value; open = false"
+                                 class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group"
+                                 :class="{
+                                    'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value,
+                                    'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value,
+                                    'rtl:pr-8 text-sm border-r-2 border-transparent': option.isSub,
+                                    'border-indigo-500 dark:border-indigo-400': option.isSub && selected == option.value
+                                 }">
+                                <span x-show="option.isSub" class="text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 transition-colors">↳</span>
+                                <span x-text="option.label"></span>
+                                <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            </div>
+                        </template>
+                    </div>
                 </div>
+
                 <div>
                     <label class="{{ $labelClass }}">آفست سیستمی (Offset Code) <span class="text-red-500">*</span></label>
                     <input type="number" wire:model.defer="code_offset" class="{{ $inputClass }} bg-gray-100 dark:bg-gray-900 text-center font-mono font-bold text-gray-500 cursor-not-allowed" readonly>
                 </div>
             </div>
 
-            {{-- فرم‌ساز داینامیک ویژگی‌ها (بدون تغییر) --}}
+            {{-- فرم‌ساز داینامیک ویژگی‌ها --}}
             <div class="bg-gray-50 dark:bg-gray-900/30 p-6 rounded-2xl border border-gray-200 dark:border-gray-700">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
                     <div>
@@ -90,24 +135,129 @@
                 </div>
             </div>
 
-            {{-- بخش جدید: محورهای تنوع (Variant Axes) --}}
-            <div class="bg-fuchsia-50 dark:bg-fuchsia-900/10 p-6 rounded-2xl border border-fuchsia-100 dark:border-fuchsia-800/30 mt-6">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-fuchsia-200 dark:border-fuchsia-700">
+            {{-- 💡 پردازش ویژگی‌های سراسری --}}
+            @php
+                $globalAttrOptions = [];
+                $globalAttrOptions[] = ['value' => '', 'label' => 'انتخاب ویژگی سراسری...'];
+                foreach($globalAttributes as $gAttr) {
+                    $label = $gAttr->name . ($gAttr->unit ? " ({$gAttr->unit})" : "");
+                    $globalAttrOptions[] = ['value' => (string)$gAttr->id, 'label' => $label];
+                }
+            @endphp
+
+            {{-- بخش آپدیت شده: محورهای تنوع (Variant Axes) --}}
+            <div class="bg-fuchsia-50 dark:bg-fuchsia-900/10 p-6 rounded-2xl border border-fuchsia-100 dark:border-fuchsia-800/30 mt-6"
+                 x-data="{
+                    // همه انتخاب‌های فعلی را برای دسترسی کلی ذخیره می‌کنیم
+                    variantFields: @entangle('variant_fields'),
+                    // متدی برای بررسی اینکه آیا یک گزینه قبلاً انتخاب شده یا نه
+                    isOptionSelected(value, currentIndex) {
+                        if(value === '') return false;
+                        for(let i in this.variantFields) {
+                             if(i != currentIndex && String(this.variantFields[i]) === String(value)) {
+                                 return true;
+                             }
+                        }
+                        return false;
+                    }
+                 }">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-fuchsia-200 dark:border-fuchsia-800/50">
                     <div>
                         <h3 class="text-sm font-bold text-fuchsia-800 dark:text-fuchsia-300 flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                             ویژگی‌های تنوع‌ساز (Variant Axes)
                         </h3>
-                        <p class="text-xs text-gray-500 mt-1">ویژگی‌هایی که باعث اختلاف قیمت می‌شوند (مثلاً: رنگ، سایز، گارانتی).</p>
+                        <p class="text-xs text-fuchsia-600/70 dark:text-fuchsia-400/70 mt-1">ویژگی‌هایی که باعث اختلاف قیمت می‌شوند. هر ویژگی را فقط یک بار می‌توانید انتخاب کنید.</p>
                     </div>
-                    <button wire:click="addVariantField" class="text-xs bg-white dark:bg-gray-800 border border-fuchsia-200 text-fuchsia-600 px-4 py-2 rounded-xl font-bold shadow-sm">+ افزودن محور تنوع</button>
+                    <button wire:click="addVariantField" class="inline-flex items-center gap-1.5 text-xs bg-white dark:bg-gray-800 border border-fuchsia-200 dark:border-fuchsia-700/50 text-fuchsia-600 dark:text-fuchsia-400 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-900/30 px-4 py-2 rounded-xl font-bold shadow-sm transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        افزودن محور تنوع
+                    </button>
                 </div>
 
                 <div class="space-y-3">
                     @foreach($variant_fields as $index => $vField)
-                        <div class="flex items-center gap-3 bg-white dark:bg-gray-800 p-2 rounded-xl border border-fuchsia-100 dark:border-fuchsia-800 shadow-sm">
-                            <input type="text" wire:model.defer="variant_fields.{{ $index }}" placeholder="مثلاً: رنگ یا ظرفیت حافظه" class="flex-1 border-0 focus:ring-0 text-sm bg-transparent dark:text-white">
-                            <button wire:click="removeVariantField({{ $index }})" class="p-2 text-red-400 hover:text-red-500 transition-colors"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                        <div class="flex items-center bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-fuchsia-100 dark:border-fuchsia-800/60 shadow-sm focus-within:ring-2 focus-within:ring-fuchsia-500/20 focus-within:border-fuchsia-300 dark:focus-within:border-fuchsia-600 transition-all group">
+
+                            {{-- آیکون تزئینی کنار انتخابگر --}}
+                            <div class="w-9 h-9 rounded-lg bg-fuchsia-50 dark:bg-fuchsia-900/20 flex items-center justify-center text-fuchsia-500 dark:text-fuchsia-400 flex-shrink-0 ml-1">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                            </div>
+
+                            {{-- دراپ‌داون کاستوم برای ویژگی‌های سراسری --}}
+                            <div x-data="{
+                                open: false,
+                                selected: @entangle('variant_fields.'.$index),
+                                options: {{ json_encode($globalAttrOptions) }},
+                                currentIndex: {{ $index }},
+                                showWarning: false,
+                                get selectedLabel() {
+                                    let opt = this.options.find(o => o.value == this.selected);
+                                    return opt ? opt.label : 'انتخاب ویژگی سراسری...';
+                                },
+                                // متد جدید برای انتخاب ویژگی با جلوگیری از تکرار
+                                selectOption(val) {
+                                    if(val === '') {
+                                        this.selected = val;
+                                        this.open = false;
+                                        return;
+                                    }
+
+                                    // بررسی تکراری بودن با استفاده از متد کانتینر والد
+                                    if(this.isOptionSelected(val, this.currentIndex)) {
+                                        this.showWarning = true;
+                                        setTimeout(() => {
+                                            this.showWarning = false;
+                                        }, 2000);
+                                        return; // اگر تکراری بود انتخاب انجام نمیشه
+                                    }
+
+                                    this.selected = val;
+                                    this.open = false;
+                                }
+                            }" @click.away="open = false" class="relative flex-1">
+
+                                {{-- دکمه تریگر --}}
+                                <div @click="open = !open" class="w-full border-0 focus:ring-0 text-sm bg-transparent dark:text-gray-200 cursor-pointer flex justify-between items-center py-2 px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors select-none" :class="{'bg-gray-50 dark:bg-gray-700/50': open}">
+                                    <div class="flex items-center gap-2 overflow-hidden">
+                                        <span x-text="selectedLabel" class="font-bold truncate text-gray-800 dark:text-gray-200" :class="{'font-normal text-gray-400 dark:text-gray-500': selected === '' || selected == null}"></span>
+                                        <span x-show="showWarning" x-transition class="text-xs text-red-500 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded animate-pulse whitespace-nowrap">این ویژگی قبلاً انتخاب شده!</span>
+                                    </div>
+                                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-fuchsia-500': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+
+                                {{-- لیست کشویی --}}
+                                <div x-show="open"
+                                     x-transition:enter="transition ease-out duration-100"
+                                     x-transition:enter-start="transform opacity-0 scale-95"
+                                     x-transition:enter-end="transform opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-75"
+                                     x-transition:leave-start="transform opacity-100 scale-100"
+                                     x-transition:leave-end="transform opacity-0 scale-95"
+                                     class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-fuchsia-100 dark:border-fuchsia-800/60 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2 right-0"
+                                     style="display: none;">
+                                    <template x-for="option in options" :key="option.value">
+                                        <div @click="selectOption(option.value)"
+                                             class="px-4 py-2.5 transition-all flex items-center justify-between group"
+                                             :class="{
+                                                'bg-fuchsia-50 dark:bg-fuchsia-900/40 text-fuchsia-700 dark:text-fuchsia-300 font-bold': selected == option.value,
+                                                'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer': selected != option.value && !isOptionSelected(option.value, currentIndex),
+                                                'opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800': selected != option.value && isOptionSelected(option.value, currentIndex)
+                                             }">
+                                            <div class="flex items-center gap-2">
+                                                <span x-text="option.label"></span>
+                                                {{-- نشانگر برای مواردی که در ردیف دیگری انتخاب شده‌اند --}}
+                                                <span x-show="selected != option.value && isOptionSelected(option.value, currentIndex)" class="text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 rounded">انتخاب شده</span>
+                                            </div>
+                                            <svg x-show="selected == option.value" class="w-4 h-4 text-fuchsia-600 dark:text-fuchsia-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <button wire:click="removeVariantField({{ $index }})" class="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-900/20 rounded-lg transition-colors flex-shrink-0" title="حذف این محور">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
                         </div>
                     @endforeach
                 </div>

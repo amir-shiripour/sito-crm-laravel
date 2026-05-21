@@ -11,6 +11,7 @@ use Modules\Clients\App\Http\Controllers\Portal\ClientAuthController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientDashboardController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientAppointmentController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientPaymentController;
+use Modules\Clients\App\Http\Controllers\Portal\ClientProfileController;
 use Modules\Clients\App\Livewire\Settings\ClientAuthSettings;
 use Modules\Clients\App\Livewire\Settings\CsvImporter;
 
@@ -65,10 +66,6 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
                     ->name('search')
                     ->middleware('permission:clients.view');
             });
-
-        Route::get('/clients/profile', [UserClientController::class, 'profile'])
-            ->name('clients.profile')
-            ->middleware('permission:clients.view');
     });
 
 Route::post('user/clients/quick-store', [UserClientController::class, 'quickStore'])
@@ -110,6 +107,11 @@ Route::prefix('clients')
         Route::middleware('auth:client')->group(function () {
             Route::get('dashboard', [ClientDashboardController::class, 'index'])
                 ->name('dashboard');
+
+            Route::get('profile', [ClientProfileController::class, 'show'])
+                ->name('profile.show');
+            Route::put('profile', [ClientProfileController::class, 'update'])
+                ->name('profile.update');
 
             Route::get('appointments/{appointment}', [ClientAppointmentController::class, 'show'])
                 ->name('appointments.show');

@@ -4,9 +4,28 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductVariant extends Model {
     protected $table = 'market_product_variants';
-    protected $fillable = ['master_product_id', 'variant_code', 'variant_attributes', 'is_active'];
+    // 💡 اضافه کردن فیلدهای جدید
+    protected $fillable = ['master_product_id', 'variant_code', 'variant_attributes', 'price', 'stock', 'is_active'];
     protected $casts = ['variant_attributes' => 'array'];
 
     public function masterProduct() { return $this->belongsTo(MasterProduct::class, 'master_product_id'); }
     public function vendorProducts() { return $this->hasMany(VendorProduct::class, 'product_variant_id'); }
+
+    /**
+     * 💡 FINAL: Accessor برای تولید نام واریانت از روی ساختار صحیح variant_attributes
+     * مثال: رنگ: مشکی, حافظه داخلی: 256
+     */
+    public function getNameAttribute(): string
+    {
+        if (empty($this->variant_attributes) || !is_array($this->variant_attributes)) {
+            return '';
+        }
+
+        $attributes = [];
+        foreach ($this->variant_attributes as $key => $value) {
+            $attributes[] = "{$key}: {$value}";
+        }
+
+        return implode(', ', $attributes);
+    }
 }

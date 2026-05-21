@@ -1,5 +1,5 @@
-<footer class="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 pt-10 md:pt-12 pb-8 z-10 relative mt-auto">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 md:gap-8 mb-10 md:mb-12 text-center sm:text-right">
+<footer class="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 pt-10 md:pt-12 pb-8 relative mt-auto md:mb-0 mb-16">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 md:gap-8 mb-10 md:mb-12 text-center sm:text-right">
 
         {{-- توضیحات و لوگو --}}
         <div class="sm:col-span-2 space-y-5 flex flex-col items-center sm:items-start">
@@ -7,7 +7,7 @@
                 @if($appLogo)
                     <img src="{{ $appLogo }}" alt="{{ $appName }}" class="h-10 w-auto">
                 @endif
-                <span class="font-black text-2xl text-orange-600">{{ $appName }}</span>
+                <span class="font-black text-2xl {{ $t['text'] ?? 'text-orange-600' }}">{{ $appName }}</span>
             </a>
             <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-md">
                 ما با ارائه بهترین کالاها از معتبرترین برندها، همراه با ضمانت اصالت و بازگشت وجه، تجربه یک خرید اینترنتی لذت‌بخش و مطمئن را برای شما فراهم می‌کنیم.
@@ -22,10 +22,10 @@
         <div>
             <h4 class="font-bold text-gray-900 dark:text-white mb-4 text-lg">خدمات مشتریان</h4>
             <ul class="space-y-3 text-sm text-gray-500 dark:text-gray-400">
-                <li><a href="#" class="hover:text-orange-600 transition-colors inline-block">پاسخ به پرسش‌های متداول</a></li>
-                <li><a href="#" class="hover:text-orange-600 transition-colors inline-block">رویه بازگرداندن کالا</a></li>
-                <li><a href="#" class="hover:text-orange-600 transition-colors inline-block">شرایط استفاده</a></li>
-                <li><a href="#" class="hover:text-orange-600 transition-colors inline-block">حریم خصوصی</a></li>
+                <li><a href="#" class="{{ $t['hover_text'] ?? 'hover:text-orange-600' }} transition-colors inline-block">پاسخ به پرسش‌های متداول</a></li>
+                <li><a href="#" class="{{ $t['hover_text'] ?? 'hover:text-orange-600' }} transition-colors inline-block">رویه بازگرداندن کالا</a></li>
+                <li><a href="#" class="{{ $t['hover_text'] ?? 'hover:text-orange-600' }} transition-colors inline-block">شرایط استفاده</a></li>
+                <li><a href="#" class="{{ $t['hover_text'] ?? 'hover:text-orange-600' }} transition-colors inline-block">حریم خصوصی</a></li>
             </ul>
         </div>
 
@@ -40,7 +40,7 @@
     </div>
 
     {{-- بخش انتهایی (کپی رایت و دانلود اپلیکیشن) --}}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 border-t border-gray-100 dark:border-gray-800/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 border-t border-gray-100 dark:border-gray-800/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <p class="text-sm text-gray-500 dark:text-gray-400 text-center md:text-right w-full md:w-auto">
             &copy; {{ date('Y') }} {{ $footerText }}
         </p>

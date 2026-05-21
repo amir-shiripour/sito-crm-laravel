@@ -15,20 +15,13 @@ class ImageOptimizerService
     public function __construct()
     {
         // در صورت عدم نصب پکیج intervention/image این سرویس با خطا مواجه نشود و بتواند آپلود عادی را انجام دهد
-        if (class_exists(ImageManager::class)) {
+        if (class_exists(ImageManager::class) && extension_loaded('gd')) {
             $this->manager = new ImageManager(new Driver());
         }
     }
 
     /**
-     * بهینه‌سازی و آپلود تصویر
-     *
-     * @param UploadedFile|string $file فایل آپلودی یا مسیر فایل
-     * @param string $directory مسیر ذخیره‌سازی
-     * @param string $disk دیسک ذخیره‌سازی (پیش‌فرض: public)
-     * @param int $maxWidth حداکثر عرض مجاز (پیکسل)
-     * @param int $quality کیفیت نهایی (درصد)
-     * @return string مسیر ذخیره شده
+     * بهینه‌سازی و آپلود تصویر (مخصوص آپلودهای جدید از فرم)
      */
     public function uploadAndOptimize($file, string $directory, string $disk = 'public', int $maxWidth = 1200, int $quality = 80): string
     {
@@ -52,41 +45,86 @@ class ImageOptimizerService
         }
 
         try {
-            // خواندن تصویر
             $image = $this->manager->read($sourcePath);
 
-            // تغییر اندازه هوشمند: حفظ تناسب (Aspect Ratio) و فقط در صورت بزرگتر بودن
             if ($image->width() > $maxWidth) {
                 $image->scale(width: $maxWidth);
             }
 
-            // تبدیل به فرمت مدرن WebP با کیفیت تعیین شده برای کاهش حداکثری حجم
             $fileName = Str::random(40) . '.webp';
             $path = $directory . '/' . $fileName;
 
             $encodedImage = $image->toWebp($quality);
-
-            // ذخیره فایل بهینه شده
             Storage::disk($disk)->put($path, $encodedImage->toString());
 
             return $path;
 
         } catch (\Exception $e) {
-            // در صورت بروز خطا در پردازش (مثلا فرمت نامعتبر تصویر)، آپلود به صورت عادی ادامه یابد
             return $this->normalUpload($sourcePath, $extension, $directory, $disk);
         }
     }
 
     /**
-     * آپلود معمولی بدون تغییرات (Fall-back)
+     * بهینه‌سازی فایل‌های قدیمی سرور (مخصوص عملیات دسته‌ای - Batch Processing)
+     * این متد هرگز فایل را به صورت مخفیانه دور نمی‌زند. یا درست کار می‌کند یا خطا می‌دهد.
+     */
+    public function optimizeExistingImage(string $filePath, string $disk = 'public', int $maxWidth = 1200, int $quality = 80): array
+    {
+        if (!$this->manager) {
+            throw new \Exception('پکیج Intervention Image نصب نیست یا اکستنشن GD روی سرور فعال نیست.');
+        }
+
+        $fullPath = Storage::disk($disk)->path($filePath);
+
+        if (!file_exists($fullPath)) {
+            throw new \Exception('فایل در مسیر یافت نشد.');
+        }
+
+        $mimeType = mime_content_type($fullPath) ?: 'application/octet-stream';
+        if (!str_starts_with($mimeType, 'image/')) {
+            throw new \Exception('فایل انتخابی تصویر نیست.');
+        }
+
+        // اگر از قبل WebP است نیازی به پردازش ندارد
+        if (strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) === 'webp') {
+            return ['status' => 'skipped'];
+        }
+
+        // در عملیات اصلی ما خطا را مخفی نمی‌کنیم تا دلیل اصلی در لاگ سرور ثبت شود
+        $image = $this->manager->read($fullPath);
+
+        if ($image->width() > $maxWidth) {
+            $image->scale(width: $maxWidth);
+        }
+
+        $encodedImage = $image->toWebp($quality);
+
+        $directory = dirname($filePath);
+        $filenameWithoutExt = pathinfo($filePath, PATHINFO_FILENAME);
+        $newFilePath = ($directory === '.' ? '' : $directory . '/') . $filenameWithoutExt . '.webp';
+
+        // ذخیره فایل جدید
+        Storage::disk($disk)->put($newFilePath, $encodedImage->toString());
+
+        // پاک کردن فایل قدیمی در صورت متفاوت بودن نام
+        if ($filePath !== $newFilePath) {
+            Storage::disk($disk)->delete($filePath);
+        }
+
+        return [
+            'status' => 'success',
+            'new_path' => $newFilePath
+        ];
+    }
+
+    /**
+     * آپلود معمولی بدون تغییرات
      */
     private function normalUpload(string $sourcePath, string $extension, string $directory, string $disk): string
     {
         $fileName = Str::random(40) . ($extension ? '.' . $extension : '');
         $path = $directory . '/' . $fileName;
-
         Storage::disk($disk)->put($path, file_get_contents($sourcePath));
-
         return $path;
     }
 }

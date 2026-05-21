@@ -53,6 +53,7 @@ class ClientForm extends Model
                 'width'        => '1/2',
                 'required'     => true,
                 'quick_create' => true,
+                'client_auth'  => true, // احراز هویت کاربری (آیا در پروفایل کاربر قابل ویرایش است)
                 'is_system'    => true,
                 'required_status_keys' => [], // الزامی براساس وضعیت (درصورت نیاز)
             ],
@@ -65,6 +66,7 @@ class ClientForm extends Model
                 'width'        => '1/2',
                 'required'     => true,
                 'quick_create' => true,
+                'client_auth'  => true,
                 'is_system'    => true,
                 'required_status_keys' => [],
             ],
@@ -77,6 +79,7 @@ class ClientForm extends Model
                 'width'        => '1/2',
                 'required'     => false,
                 'quick_create' => true,
+                'client_auth'  => true,
                 'is_system'    => true,
                 'required_status_keys' => [],
             ],
@@ -89,6 +92,7 @@ class ClientForm extends Model
                 'width'        => '1/2',
                 'required'     => false,
                 'quick_create' => false,
+                'client_auth'  => true,
                 'is_system'    => true,
                 'required_status_keys' => [],
             ],
@@ -101,6 +105,7 @@ class ClientForm extends Model
                 'width'        => '1/2',
                 'required'     => false,
                 'quick_create' => false,
+                'client_auth'  => false,
                 'is_system'    => true,
                 'required_status_keys' => [],
             ],
@@ -110,6 +115,7 @@ class ClientForm extends Model
                 'label'        => 'وضعیت پرونده',
                 'required'     => true,
                 'quick_create' => true,
+                'client_auth'  => false,
                 'width'        => 'full',
                 'group'        => 'وضعیت',
                 'is_system'    => true,
@@ -124,6 +130,7 @@ class ClientForm extends Model
                 'width'        => '1/2',
                 'required'     => true,      // ← الزامی (در فرم‌ساز هم قابل تغییر است)
                 'quick_create' => false,     // در ایجاد سریع نمی‌خواهیم
+                'client_auth'  => true,
                 'is_system'    => true,
                 'required_status_keys' => [], // اگر بعداً خواستی شرطی براساس وضعیت بزاری
             ],
@@ -136,6 +143,7 @@ class ClientForm extends Model
                 'width'        => 'full',
                 'required'     => false,
                 'quick_create' => true,
+                'client_auth'  => false,
                 'is_system'    => true,
                 'required_status_keys' => [],
             ],
@@ -181,6 +189,11 @@ class ClientForm extends Model
 
             $fid = $f['id'];
 
+            // تنظیم مقدار پیش‌فرض برای client_auth در فیلدهای سفارشی
+            if (!array_key_exists('client_auth', $f)) {
+                $f['client_auth'] = false;
+            }
+
             // اگر فیلد سیستمی است → روی تعریف سیستمی قفل کن (ولی overrideهای کاربر رو نگه می‌داریم)
             if (isset($systemDefaults[$fid])) {
                 $canon = $systemDefaults[$fid];
@@ -193,7 +206,7 @@ class ClientForm extends Model
                     $f['label'] = $canon['label'];
                 }
 
-                foreach (['group', 'width', 'placeholder', 'quick_create', 'required'] as $k) {
+                foreach (['group', 'width', 'placeholder', 'quick_create', 'client_auth', 'required'] as $k) {
                     if (!array_key_exists($k, $f) && array_key_exists($k, $canon)) {
                         $f[$k] = $canon[$k];
                     }

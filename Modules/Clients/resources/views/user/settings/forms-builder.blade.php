@@ -367,7 +367,7 @@
                                                placeholder="مثلاً: اطلاعات هویتی" wire:model="schema.fields.{{ $i }}.group">
                                     </div>
 
-                                    {{-- Required / Quick --}}
+                                    {{-- Required / Quick / Auth --}}
                                     <div class="flex flex-col gap-2 pt-1">
                                         <label
                                             class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
@@ -380,6 +380,12 @@
                                             <input type="checkbox" class="{{ $checkboxClass }}"
                                                    wire:model="schema.fields.{{ $i }}.quick_create">
                                             <span class="text-xs text-gray-700 dark:text-gray-300">نمایش در ایجاد سریع</span>
+                                        </label>
+                                        <label
+                                            class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                            <input type="checkbox" class="{{ $checkboxClass }}"
+                                                   wire:model="schema.fields.{{ $i }}.client_auth">
+                                            <span class="text-xs text-gray-700 dark:text-gray-300">احراز هویت کاربر (ویرایش در پروفایل)</span>
                                         </label>
                                     </div>
                                 </div>
@@ -555,6 +561,12 @@
                                         <input type="checkbox" class="{{ $checkboxClass }}"
                                                wire:model="schema.fields.{{ $i }}.quick_create">
                                         <span class="text-sm text-gray-700 dark:text-gray-300">نمایش در ایجاد سریع</span>
+                                    </label>
+                                    <label
+                                        class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30 md:col-span-2">
+                                        <input type="checkbox" class="{{ $checkboxClass }}"
+                                               wire:model="schema.fields.{{ $i }}.client_auth">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">احراز هویت کاربر (ویرایش در پروفایل کاربری)</span>
                                     </label>
 
                                     {{-- عرض فیلد --}}

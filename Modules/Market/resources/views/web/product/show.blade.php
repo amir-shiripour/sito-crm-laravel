@@ -1,0 +1,930 @@
+@extends('layouts.web')
+
+@section('title', $product->title)
+
+@section('content')
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 w-full py-6 lg:py-10">
+
+        {{-- Breadcrumb --}}
+        <div class="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <nav class="flex text-xs sm:text-sm text-gray-500 dark:text-gray-400 overflow-x-auto whitespace-nowrap custom-scrollbar pb-2 font-medium">
+                <ol class="flex items-center space-x-2 space-x-reverse">
+                    <li><a href="{{ url('/') }}" class="hover:text-{{ $t['name'] ?? 'indigo' }}-600 dark:hover:text-{{ $t['name'] ?? 'indigo' }}-400 transition-colors cursor-pointer">خانه</a></li>
+                    <li><span class="mx-1.5 opacity-50">/</span></li>
+                    <li><a href="{{ route('market.public.index') }}" class="hover:text-{{ $t['name'] ?? 'indigo' }}-600 dark:hover:text-{{ $t['name'] ?? 'indigo' }}-400 transition-colors cursor-pointer">فروشگاه</a></li>
+                    @if($product->category)
+                        <li><span class="mx-1.5 opacity-50">/</span></li>
+                        <li><a href="{{ route('market.public.category.show', $product->category->slug) }}" class="hover:text-{{ $t['name'] ?? 'indigo' }}-600 dark:hover:text-{{ $t['name'] ?? 'indigo' }}-400 transition-colors cursor-pointer">{{ $product->category->name }}</a></li>
+                    @endif
+                    <li><span class="mx-1.5 opacity-50">/</span></li>
+                    <li class="font-bold text-gray-800 dark:text-gray-200 truncate max-w-[200px] sm:max-w-xs" title="{{ $product->title }}">{{ $product->title }}</li>
+                </ol>
+            </nav>
+        </div>
+
+        {{-- پردازش داده‌ها برای جاوااسکریپت و منطق انتخاب هوشمند --}}
+        @php
+            $btnActiveClasses = 'cursor-pointer ' .
+                                ($t['border'] ?? 'border-indigo-600') . ' ' .
+                                ($t['bg_light'] ?? 'bg-indigo-50') . ' ' .
+                                ($t['text'] ?? 'text-indigo-600') . ' ' .
+                                ($t['bg_light_dark'] ?? 'dark:bg-gray-800') . ' ' .
+                                ($t['text_dark'] ?? 'dark:text-white');
+
+            $btnInactiveClasses = 'cursor-pointer border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 ' .
+                                  ($t['border_hover'] ?? 'hover:border-indigo-500/50') . ' ' .
+                                  'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400';
+
+            $requestedVariantId = request()->query('variant');
+            $jsVariants = [];
+            $availableAttributes = [];
+            $selectedVariant = null;
+            $lowestPrice = null;
+
+            foreach ($product->variants as $variant) {
+                $variantStock = 0;
+                $variantMinPrice = null;
+                $variantOriginalPrice = null;
+                $activeVp = null;
+
+                foreach ($variant->vendorProducts as $vp) {
+                    if ($vp->status === 'published' && $vp->stock > 0) {
+                        $variantStock += $vp->stock;
+                        $price = $vp->discount_price > 0 ? $vp->discount_price : $vp->price;
+
+                        if ($variantMinPrice === null || $price < $variantMinPrice) {
+                            $variantMinPrice = $price;
+                            $variantOriginalPrice = $vp->price;
+                            $activeVp = $vp;
+                        }
+                    }
+                }
+
+                $variant->calculated_stock = $variantStock;
+                $variant->calculated_min_price = $variantMinPrice;
+                $variant->best_vendor_product = $activeVp;
+                $attrs = is_array($variant->variant_attributes) ? $variant->variant_attributes : [];
+
+                foreach ($attrs as $key => $val) {
+                    if (!isset($availableAttributes[$key])) $availableAttributes[$key] = [];
+
+                    if (str_starts_with($val, 'هر ')) {
+                        $dictAttr = $attributeDictionary->firstWhere('name', $key);
+                        if ($dictAttr) {
+                            foreach ($dictAttr->values as $dictVal) {
+                                if (!in_array($dictVal->value, $availableAttributes[$key])) {
+                                    $availableAttributes[$key][] = $dictVal->value;
+                                }
+                            }
+                        }
+                    } else {
+                        if (!in_array($val, $availableAttributes[$key])) {
+                             $availableAttributes[$key][] = $val;
+                        }
+                    }
+                }
+
+                // 💡 FIX: ارسال صحیح تاریخ پایان تخفیف
+                $jsVariants[] = [
+                    'id' => $variant->id,
+                    'attributes' => $attrs,
+                    'stock' => $variantStock,
+                    'price' => $variantOriginalPrice ?? 0,
+                    'discount_price' => $activeVp ? $activeVp->discount_price : 0,
+                    'final_price' => $variantMinPrice ?? 0,
+                    'vendor_name' => $activeVp->vendor->store_name ?? 'نامشخص',
+                    'vendor_logo' => ($activeVp && $activeVp->vendor->logo) ? asset('storage/' . $activeVp->vendor->logo) : null,
+                    'discount_end_date' => ($activeVp && $activeVp->discount_price > 0 && $activeVp->discount_end_date) ? $activeVp->discount_end_date->toIso8601String() : null,
+                    'discount_stock' => $activeVp ? $activeVp->discount_stock : null,
+                    'max_discount_purchase_qty' => $activeVp ? $activeVp->max_discount_purchase_qty : null,
+                ];
+
+                if ($requestedVariantId && $variant->id == $requestedVariantId) {
+                    $selectedVariant = $variant;
+                }
+
+                if (!$requestedVariantId && $variantStock > 0) {
+                    if ($lowestPrice === null || $variantMinPrice < $lowestPrice) {
+                        $lowestPrice = $variantMinPrice;
+                        $selectedVariant = $variant;
+                    }
+                }
+            }
+
+            if (!$selectedVariant && $product->variants->count() > 0) {
+                $selectedVariant = $product->variants->first();
+            }
+
+            $initialSelectedAttributes = [];
+            if($selectedVariant && is_array($selectedVariant->variant_attributes)) {
+                 foreach($selectedVariant->variant_attributes as $k => $v) {
+                      if(str_starts_with($v, 'هر ') && isset($availableAttributes[$k][0])) {
+                           $initialSelectedAttributes[$k] = $availableAttributes[$k][0];
+                      } else {
+                           $initialSelectedAttributes[$k] = $v;
+                      }
+                 }
+            }
+        @endphp
+
+        {{-- افکت پس‌زمینه محو --}}
+        <div class="absolute top-0 right-0 w-full h-[500px] overflow-hidden pointer-events-none z-[-1]">
+            <div class="absolute -top-32 -right-32 w-96 h-96 {{ $t['blob_1'] ?? 'bg-indigo-500/10' }} blur-3xl rounded-full opacity-40"></div>
+        </div>
+
+        {{-- ساختار اصلی صفحه --}}
+        <div class="flex flex-col lg:flex-row gap-8 xl:gap-12 animate-in fade-in slide-in-from-bottom-8 duration-700 relative z-10 mb-16">
+
+            {{-- 1. Image Gallery --}}
+            <div class="w-full lg:w-5/12 xl:w-4/12 flex-shrink-0 flex flex-col gap-4">
+                <div class="sticky top-24">
+                    <div onclick="openLightbox(document.getElementById('main-product-image').src)" class="relative w-full aspect-square bg-gray-50 dark:bg-gray-800/40 rounded-3xl border border-gray-100 dark:border-gray-800 flex items-center justify-center p-8 group overflow-hidden cursor-zoom-in transition-all hover:shadow-lg dark:hover:shadow-none hover:shadow-gray-200/50">
+                        @if($product->main_image)
+                            <img src="{{ asset('storage/' . $product->main_image) }}" alt="{{ $product->title }}" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal transition-transform duration-700 group-hover:scale-105" id="main-product-image">
+                        @else
+                            <svg class="w-32 h-32 opacity-20 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        @endif
+
+                        <div class="absolute bottom-4 left-4 w-10 h-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                        </div>
+                    </div>
+
+                    @if(!empty($product->gallery_images) && is_array($product->gallery_images))
+                        <div class="flex gap-3 overflow-x-auto custom-scrollbar pb-2 mt-4">
+                            @if($product->main_image)
+                                <button type="button" onclick="changeMainImage('{{ asset('storage/' . $product->main_image) }}', this)" class="gallery-thumb cursor-pointer w-20 h-20 flex-shrink-0 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border-2 {{ $t['border'] ?? 'border-indigo-600' }} p-2 overflow-hidden transition-all opacity-100">
+                                    <img src="{{ asset('storage/' . $product->main_image) }}" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal">
+                                </button>
+                            @endif
+                            @foreach($product->gallery_images as $img)
+                                <button type="button" onclick="changeMainImage('{{ asset('storage/' . $img) }}', this)" class="gallery-thumb cursor-pointer w-20 h-20 flex-shrink-0 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-200 dark:border-gray-700 {{ $t['border_hover'] ?? 'hover:border-indigo-500/50' }} p-2 overflow-hidden transition-all opacity-70 hover:opacity-100">
+                                    <img src="{{ asset('storage/' . $img) }}" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal">
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- بخش میانی و سمت چپ: دربرگیرنده کل محتوا --}}
+            <div class="w-full lg:w-7/12 xl:w-8/12 flex flex-col">
+
+                {{-- هدر محصول --}}
+                <div class="mb-6 w-full">
+                    <div class="flex items-center gap-3 mb-4">
+                        @if($product->brand)
+                            <a href="#" class="inline-flex items-center gap-1.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-{{ $t['name'] ?? 'indigo' }}-600 dark:hover:text-{{ $t['name'] ?? 'indigo' }}-400 transition-colors cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                {{ $product->brand->name }}
+                            </a>
+                            <span class="text-gray-300 dark:text-gray-700">•</span>
+                        @endif
+
+                        <div class="flex items-center gap-1 text-sm font-bold text-amber-500">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                            <span class="pt-0.5">۴.۸</span>
+                            <span class="text-gray-400 font-normal pr-1 text-xs">(۱۲۴ نظر)</span>
+                        </div>
+                    </div>
+
+                    <h1 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white leading-relaxed">
+                        {{ $product->title }}
+                    </h1>
+                </div>
+
+                <div class="w-full h-px bg-gray-100 dark:bg-gray-800 mb-8"></div>
+
+                {{-- اسپلیت شدن محتوا --}}
+                <div class="flex flex-col xl:flex-row gap-8 xl:gap-10">
+
+                    {{-- 2. Content Box (Center / Info) --}}
+                    <div class="w-full xl:w-7/12 flex flex-col">
+
+                        {{-- انتخابگر ویژگی‌های پویا --}}
+                        @if(!empty($availableAttributes))
+                            <div class="mb-10">
+                                <div class="space-y-6">
+                                    @foreach($availableAttributes as $attrKey => $attrValues)
+                                        @php
+                                            $safeGroupKey = md5($attrKey);
+                                            // پیدا کردن مدل دیکشنری برای این گروه כדי ببینیم نوعش چیه
+                                            $dictAttr = $attributeDictionary->firstWhere('name', $attrKey);
+                                            $type = $dictAttr ? $dictAttr->type : 'select';
+                                            $unit = $dictAttr ? $dictAttr->unit : ''; // استخراج واحد اندازه‌گیری
+                                        @endphp
+                                        <div>
+                                            <div class="flex items-center gap-2 mb-3">
+                                                <span class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $attrKey }}:</span>
+                                                <span id="selected-label-{{ $safeGroupKey }}" class="text-sm font-bold {{ $t['text'] ?? 'text-indigo-600' }} {{ $t['text_dark'] ?? 'dark:text-indigo-400' }}">
+                                                    {{ $initialSelectedAttributes[$attrKey] ?? '' }} @if($unit)<span class="text-xs opacity-75">{{ $unit }}</span>@endif
+                                                </span>
+                                            </div>
+
+                                            <div class="flex flex-wrap gap-3">
+                                                @foreach($attrValues as $val)
+                                                    @php
+                                                        $isActive = isset($initialSelectedAttributes[$attrKey]) && $initialSelectedAttributes[$attrKey] == $val;
+                                                        // پیدا کردن گرافیک مربوطه در مقادیر دیکشنری
+                                                        $metaValue = null;
+                                                        if($dictAttr) {
+                                                            $dictVal = $dictAttr->values->firstWhere('value', $val);
+                                                            if($dictVal) {
+                                                                $metaValue = $dictVal->meta_value;
+                                                            }
+                                                        }
+                                                    @endphp
+
+                                                    <div class="relative group flex-shrink-0">
+                                                        <button
+                                                            type="button"
+                                                            onclick="updateVariantSelection(this)"
+                                                            class="relative transition-all flex items-center justify-center overflow-hidden outline-none border-2
+                                                            {{ $isActive ? $btnActiveClasses : $btnInactiveClasses }}
+                                                            {{ $type === 'color' ? 'w-10 h-10 p-1 rounded-full' : ($type === 'image' ? 'w-14 h-14 p-1 rounded-xl' : 'px-5 py-2.5 text-sm font-bold rounded-xl') }}"
+                                                            data-key="{{ $attrKey }}"
+                                                            data-val="{{ $val }}"
+                                                            data-group="{{ $safeGroupKey }}"
+                                                            data-unit="{{ $unit }}">
+
+                                                            {{-- ساختار گرافیکی بر اساس نوع --}}
+                                                            @if($type === 'color' || $type === 'image')
+                                                                @if($metaValue && str_starts_with($metaValue, 'attributes/'))
+                                                                    {{-- نمایش عکس برای کالر (پترن) یا تصویر --}}
+                                                                    <img src="{{ Storage::url($metaValue) }}" class="w-full h-full object-cover {{ $type === 'color' ? 'rounded-full' : 'rounded-lg' }}">
+                                                                @else
+                                                                    @if($type === 'color')
+                                                                        <span class="w-full h-full rounded-full shadow-inner" style="background-color: {{ $metaValue ?? '#ccc' }}"></span>
+                                                                    @else
+                                                                        <span class="text-[10px] leading-tight text-center">{{ $val }}</span>
+                                                                    @endif
+                                                                @endif
+                                                            @else
+                                                                {{ $val }}
+                                                            @endif
+
+                                                            {{-- تیک انتخاب برای حالت رنگی --}}
+                                                            @if($type === 'color')
+                                                                <div class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity pointer-events-none" style="opacity: {{ $isActive ? '1' : '0' }}">
+                                                                    <div class="bg-white/80 dark:bg-black/50 rounded-full w-full h-full flex items-center justify-center">
+                                                                        <svg class="w-5 h-5 {{ $t['text'] ?? 'text-indigo-600' }} {{ $t['text_dark'] ?? 'dark:text-indigo-400' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                                    </div>
+                                                                </div>
+                                                            @endif
+                                                        </button>
+
+                                                        @if($type === 'color' || $type === 'image')
+                                                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none whitespace-nowrap transform translate-y-1 group-hover:translate-y-0">
+                                                                {{ $val }}
+                                                                <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-white"></div>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Features List --}}
+                        @if(!empty($product->attributes) && is_array($product->attributes))
+                            <div class="space-y-4 mb-8 relative">
+                                <div class="flex items-center justify-between mb-5">
+                                    <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <svg class="w-5 h-5 {{ $t['text'] ?? 'text-indigo-600' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        ویژگی‌های کلیدی
+                                    </h3>
+                                    <button type="button" onclick="document.getElementById('product-description-section').scrollIntoView({behavior: 'smooth'})" class="cursor-pointer text-xs font-bold {{ $t['text'] ?? 'text-indigo-600' }} {{ $t['text_dark'] ?? 'dark:text-indigo-400' }} flex items-center gap-1 hover:opacity-80 transition-opacity">
+                                        مشاهده همه
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4">
+                                    @foreach(array_slice($product->attributes, 0, 6) as $key => $val)
+                                        <div class="bg-gray-50/80 dark:bg-gray-800/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 flex flex-col gap-1.5 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors cursor-default">
+                                            <span class="text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400">{{ is_string($key) ? $key : 'ویژگی' }}</span>
+                                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $val }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                    </div>
+
+                    {{-- 3. باکس خرید (Buy Box) - فقط نمایش در دسکتاپ --}}
+                    <div class="hidden md:flex w-full xl:w-5/12 flex-shrink-0 flex-col">
+                        <div class="sticky top-24 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] p-6 xl:p-8 flex flex-col relative overflow-hidden">
+
+                            <div id="buybox-available" class="block">
+
+                                {{-- تگ جشنواره --}}
+                                <div id="buybox-discount-banner" class="hidden absolute top-0 left-0 right-0 {{ $t['bg'] ?? 'bg-indigo-600' }} text-white text-[11px] sm:text-xs font-bold py-2 flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    پیشنهاد شگفت‌انگیز
+                                    <div id="countdown-timer-desktop" class="mr-4 flex items-center gap-1 tracking-wider" style="direction: ltr;"></div>
+                                </div>
+                                <div id="buybox-discount-spacer" class="hidden pt-8"></div>
+
+                                {{-- نمایش فروشنده --}}
+                                @if($showVendorInProductPage)
+                                    <div id="buybox-vendor-section" class="flex items-center gap-3 pb-5 border-b border-gray-50 dark:border-gray-800/50 mb-5">
+                                        <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                            <img id="buybox-vendor-logo" src="" alt="Logo" class="w-full h-full object-cover hidden">
+                                            <svg id="buybox-vendor-icon" class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-[11px] text-gray-400">فروشنده کالا</span>
+                                            <span id="buybox-vendor-name" class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">فروشگاه</span>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <div class="mt-auto">
+                                    <div id="buybox-discount-section" class="hidden flex-col items-end mb-1">
+                                        <div class="flex items-center gap-2">
+                                            <span id="buybox-discount-badge" class="px-2 py-0.5 bg-rose-500 text-white text-[11px] font-bold rounded-md">٪0</span>
+                                            <span id="buybox-old-price" class="text-sm text-gray-400 line-through decoration-gray-300 dark:decoration-gray-600 font-medium">0</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-end justify-between mb-5">
+                                        <span class="text-sm font-medium text-gray-500 pb-1">قیمت نهایی</span>
+                                        <div class="text-gray-900 dark:text-white font-black text-3xl tracking-tight flex items-center gap-1.5">
+                                            <span id="buybox-final-price">0</span>
+                                            <span class="text-sm font-medium text-gray-500">تومان</span>
+                                        </div>
+                                    </div>
+
+                                    {{-- هشدار موجودی --}}
+                                    @if($showStockWarning)
+                                        <div id="buybox-stock-warning" class="hidden items-center justify-between bg-rose-50 dark:bg-rose-900/10 px-4 py-3 rounded-xl border border-rose-100 dark:border-rose-800/20 mb-4">
+                                            <span id="buybox-stock-text" class="text-xs font-bold text-rose-600 dark:text-rose-400">فقط X عدد در انبار باقیست</span>
+                                            <span class="flex h-2.5 w-2.5 relative">
+                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                                        </span>
+                                        </div>
+                                    @endif
+
+                                    {{-- 💡 NEW: نوار پیشرفت موجودی تخفیف --}}
+                                    <div id="buybox-discount-stock-progress" class="hidden my-4 space-y-2">
+                                        <div class="flex justify-between items-center text-xs">
+                                            <span class="font-bold text-rose-600 dark:text-rose-400">موجودی شگفت‌انگیز</span>
+                                            <span id="discount-stock-label" class="font-bold"></span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                                            <div id="discount-stock-bar" class="bg-rose-500 h-2.5 rounded-full transition-all" style="width: 50%"></div>
+                                        </div>
+                                    </div>
+
+                                    <form id="add-to-cart-form" action="#" method="POST" class="mb-5">
+                                        @csrf
+                                        <input type="hidden" name="variant_id" id="buybox-variant-id" value="">
+                                        <button type="submit" id="buybox-add-btn" class="cursor-pointer w-full h-14 rounded-2xl {{ $t['bg'] ?? 'bg-indigo-600' }} {{ $t['bg_hover'] ?? 'hover:bg-indigo-700' }} text-white font-bold text-base flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow-lg {{ $t['shadow'] ?? 'shadow-indigo-500/30' }}">
+                                            افزودن به سبد خرید
+                                        </button>
+                                    </form>
+
+                                    {{-- مزایای خرید --}}
+                                    <div class="space-y-3 pt-4 border-t border-gray-50 dark:border-gray-800/50">
+                                        <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                                            <svg class="w-5 h-5 text-teal-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            موجود در انبار
+                                        </div>
+                                        <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                                            <svg class="w-5 h-5 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                            تضمین اصالت و سلامت
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            {{-- حالت ناموجود --}}
+                            <div id="buybox-out-of-stock" class="hidden text-center py-6">
+                                <div class="w-14 h-14 rounded-full bg-gray-50 dark:bg-gray-800 mx-auto flex items-center justify-center text-gray-400 mb-4">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                </div>
+                                <h4 class="font-bold text-gray-900 dark:text-white mb-2">ناموجود</h4>
+                                <p class="text-xs text-gray-500 mb-6 leading-relaxed">این ترکیب از محصول در حال حاضر در انبار هیچ فروشنده‌ای موجود نیست.</p>
+                                <button class="cursor-pointer w-full h-12 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    موجود شد خبرم کن
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Description --}}
+        <div id="product-description-section" class="mt-8 border-t border-gray-100 dark:border-gray-800 pt-12 pb-8 scroll-mt-24">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-8">معرفی و مشخصات کامل</h2>
+            <div class="prose prose-sm sm:prose-base prose-gray dark:prose-invert max-w-none leading-loose text-justify text-gray-600 dark:text-gray-300">
+                {!! $product->description ?? 'توضیحاتی برای این محصول ثبت نشده است.' !!}
+            </div>
+        </div>
+
+    </div>
+
+    {{-- 💡 نوار خرید شناور موبایل (Mobile Sticky Action Bar) --}}
+    {{-- z-[999] تا کاملاً روی فوتر بیفتد --}}
+    <div id="mobile-buy-bar" class="md:hidden fixed bottom-0 left-0 right-0 z-[999] bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] transition-transform duration-300 pb-safe">
+
+        {{-- هشدار موجودی موبایل با انیمیشن اسلاید ارتفاع و اوپاسیتی --}}
+        @if($showStockWarning)
+            <div id="mobile-buybox-stock-warning" data-show="false" class="h-0 opacity-0 bg-rose-50 dark:bg-rose-900/10 flex items-center justify-center transition-all duration-300 overflow-hidden">
+                <span id="mobile-buybox-stock-text" class="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 whitespace-nowrap">
+                    <span class="flex h-2 w-2 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                    </span>
+                    فقط X عدد در انبار باقیست
+                </span>
+            </div>
+        @endif
+
+        <div class="p-4 flex items-center justify-between gap-4">
+
+            {{-- 💡 بخش دکمه (سمت راست) --}}
+            <div class="flex-1 flex gap-2 w-full">
+                {{-- دکمه افزودن موبایل --}}
+                <button type="button" onclick="document.getElementById('add-to-cart-form').submit()" id="mobile-buybox-add-btn" class="w-full h-11 rounded-xl {{ $t['bg'] ?? 'bg-indigo-600' }} text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg {{ $t['shadow'] ?? 'shadow-indigo-500/30' }}">
+                    افزودن به سبد
+                </button>
+
+                {{-- دکمه موجود شد خبرم کن موبایل --}}
+                <button type="button" id="mobile-buybox-notify-btn" class="hidden w-full h-11 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs items-center justify-center gap-2 active:scale-95 transition-transform">
+                    موجود شد خبرم کن
+                </button>
+            </div>
+
+            {{-- 💡 بخش قیمت (سمت چپ) --}}
+            <div id="mobile-buybox-available" class="flex flex-col items-end min-w-[120px] text-left">
+                <div id="mobile-buybox-discount-section" class="hidden items-center gap-2 mb-0.5 justify-end w-full">
+                    <span id="mobile-buybox-discount-badge" class="px-1.5 py-px bg-rose-500 text-white text-[10px] font-bold rounded">٪0</span>
+                    <span id="mobile-buybox-old-price" class="text-xs text-gray-400 line-through decoration-gray-300 dark:decoration-gray-600 font-medium">0</span>
+                </div>
+                <div class="text-gray-900 dark:text-white font-black text-xl tracking-tight flex items-center justify-end gap-1 w-full">
+                    <span id="mobile-buybox-final-price">0</span>
+                    <span class="text-[10px] font-medium text-gray-500 pb-0.5">تومان</span>
+                </div>
+            </div>
+
+            {{-- بخش ناموجود موبایل (سمت چپ) --}}
+            <div id="mobile-buybox-out-of-stock" class="hidden flex-col items-end min-w-[120px] text-left">
+                <span class="text-sm font-bold text-gray-900 dark:text-white w-full text-left ml-2">ناموجود</span>
+            </div>
+
+        </div>
+    </div>
+
+    {{-- Lightbox Container --}}
+    <div id="image-lightbox" class="fixed inset-0 z-[9999] bg-gray-900/95 backdrop-blur-md hidden flex-col w-full h-[100dvh] opacity-0 transition-opacity duration-300">
+
+        {{-- Close Button --}}
+        <button onclick="closeLightbox()" class="cursor-pointer absolute top-4 right-4 md:top-6 md:right-6 text-white bg-white/10 hover:bg-white/20 p-2.5 md:p-3 rounded-full backdrop-blur-md transition-colors z-50">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+
+        {{-- Main Image in Lightbox --}}
+        <div class="flex-1 w-full flex items-center justify-center p-4 pt-16 pb-4 min-h-0 relative z-10">
+            <img id="lightbox-img" src="" class="max-w-full max-h-full object-contain rounded-2xl scale-95 transition-transform duration-300">
+        </div>
+
+        {{-- Thumbnails in Lightbox --}}
+        @if(!empty($product->gallery_images) && is_array($product->gallery_images) || $product->main_image)
+            <div class="w-full bg-black/50 backdrop-blur-md p-4 sm:p-6 shrink-0 relative z-20 pb-safe border-t border-white/10">
+                <div class="flex flex-wrap gap-3 justify-center items-center max-w-4xl mx-auto">
+                    @if($product->main_image)
+                        <button onclick="changeLightboxImage('{{ asset('storage/' . $product->main_image) }}', this)" class="cursor-pointer lightbox-thumb w-14 h-14 md:w-20 md:h-20 flex-shrink-0 bg-white/5 rounded-xl border-2 border-transparent hover:border-white p-2 overflow-hidden transition-all opacity-50 hover:opacity-100">
+                            <img src="{{ asset('storage/' . $product->main_image) }}" class="w-full h-full object-contain">
+                        </button>
+                    @endif
+                    @if(!empty($product->gallery_images) && is_array($product->gallery_images))
+                        @foreach($product->gallery_images as $img)
+                            <button onclick="changeLightboxImage('{{ asset('storage/' . $img) }}', this)" class="cursor-pointer lightbox-thumb w-14 h-14 md:w-20 md:h-20 flex-shrink-0 bg-white/5 rounded-xl border-2 border-transparent hover:border-white p-2 overflow-hidden transition-all opacity-50 hover:opacity-100">
+                                <img src="{{ asset('storage/' . $img) }}" class="w-full h-full object-contain">
+                            </button>
+                        @endforeach
+                    @endif
+                </div>
+            </div>
+        @endif
+    </div>
+
+@endsection
+
+@push('styles')
+    <style>
+        body.lightbox-open header,
+        body.lightbox-open .md\:hidden.fixed.bottom-4 {
+            display: none !important;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        @media (max-width: 767px) {
+            /* مخفی کردن منوی شناور عمومی در این صفحه */
+            div.md\:hidden.fixed.bottom-4.left-4.right-4.z-\[60\] {
+                display: none !important;
+            }
+
+            /* تضمین روی فوتر ماندن */
+            #mobile-buy-bar {
+                z-index: 9999 !important;
+            }
+
+            /* تنظیم فاصله تا زیر نوار خرید موبایل نره */
+            main { padding-bottom: 6rem !important; }
+        }
+    </style>
+@endpush
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const lightbox = document.getElementById('image-lightbox');
+            if(lightbox && lightbox.parentElement !== document.body) {
+                document.body.appendChild(lightbox);
+            }
+
+            // فراخوانی اولیه برای چک کردن اسکرول
+            updateMobileWarningVisibility();
+        });
+
+        // منطق اسکرول با استفاده از requestAnimationFrame برای پرفورمنس بهتر
+        let isScrolled = false;
+        let ticking = false;
+
+        window.addEventListener('scroll', () => {
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    const currentScroll = window.scrollY > 150;
+                    if(isScrolled !== currentScroll) {
+                        isScrolled = currentScroll;
+                        updateMobileWarningVisibility();
+                    }
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        });
+
+        // 💡 انیمیشن نرم با استفاده از ارتفاع ثابت و اوپاسیتی
+        function updateMobileWarningVisibility() {
+            const warningEl = document.getElementById('mobile-buybox-stock-warning');
+            if(!warningEl) return;
+
+            if(warningEl.dataset.show === 'true' && isScrolled) {
+                warningEl.classList.remove('h-0', 'opacity-0');
+                warningEl.classList.add('h-10', 'opacity-100');
+            } else {
+                warningEl.classList.remove('h-10', 'opacity-100');
+                warningEl.classList.add('h-0', 'opacity-0');
+            }
+        }
+
+        const productVariants = @json($jsVariants);
+        let selectedAttributes = @json($initialSelectedAttributes);
+
+        const uiSettings = {
+            showStockWarning: @json($showStockWarning ?? true),
+            showVendor: @json($showVendorInProductPage ?? true)
+        };
+
+        const activeClasses = "{{ $btnActiveClasses }}".trim().split(/\s+/).filter(Boolean);
+        const inactiveClasses = "{{ $btnInactiveClasses }}".trim().split(/\s+/).filter(Boolean);
+
+        function updateVariantSelection(btnElement) {
+            const attrKey = btnElement.dataset.key;
+            const attrValue = btnElement.dataset.val;
+            const groupKey = btnElement.dataset.group;
+            const unit = btnElement.dataset.unit || '';
+
+            selectedAttributes[attrKey] = attrValue;
+
+            const labelEl = document.getElementById('selected-label-' + groupKey);
+            if(labelEl) {
+                labelEl.innerHTML = attrValue + (unit ? ` <span class="text-xs opacity-75">${unit}</span>` : '');
+            }
+
+            const buttons = document.querySelectorAll(`button[data-group="${groupKey}"]`);
+            buttons.forEach(btn => {
+                const isColorBtn = btn.classList.contains('w-10');
+
+                if(btn.dataset.val === attrValue) {
+                    btn.classList.remove(...inactiveClasses);
+                    btn.classList.add(...activeClasses);
+                    if(isColorBtn) {
+                        btn.querySelector('.absolute.inset-0').style.opacity = '1';
+                    }
+                } else {
+                    btn.classList.remove(...activeClasses);
+                    btn.classList.add(...inactiveClasses);
+                    if(isColorBtn) {
+                        btn.querySelector('.absolute.inset-0').style.opacity = '0';
+                    }
+                }
+            });
+
+            const matchedVariant = productVariants.find(v => {
+                for (const key in selectedAttributes) {
+                    const selectedVal = selectedAttributes[key];
+                    const variantVal = v.attributes[key];
+
+                    if (variantVal === selectedVal) continue;
+                    if (variantVal && typeof variantVal === 'string' && variantVal.startsWith('هر ')) continue;
+                    return false;
+                }
+                return true;
+            });
+
+            updateBuyBoxDOM(matchedVariant);
+        }
+
+        function updateBuyBoxDOM(variant) {
+            // المان‌های دسکتاپ
+            const availableBox = document.getElementById('buybox-available');
+            const outOfStockBox = document.getElementById('buybox-out-of-stock');
+
+            // المان‌های موبایل
+            const mobileAvailableBox = document.getElementById('mobile-buybox-available');
+            const mobileOutOfStockBox = document.getElementById('mobile-buybox-out-of-stock');
+            const mobileAddBtn = document.getElementById('mobile-buybox-add-btn');
+            const mobileNotifyBtn = document.getElementById('mobile-buybox-notify-btn');
+
+            if (!variant || variant.stock === 0) {
+                availableBox.classList.add('hidden');
+                availableBox.classList.remove('block');
+                outOfStockBox.classList.remove('hidden');
+
+                mobileAvailableBox.classList.add('hidden');
+                mobileAvailableBox.classList.remove('flex');
+                mobileOutOfStockBox.classList.remove('hidden');
+                mobileOutOfStockBox.classList.add('flex');
+                mobileAddBtn.classList.add('hidden');
+                mobileNotifyBtn.classList.remove('hidden');
+                mobileNotifyBtn.classList.add('flex');
+
+                if (variant && history.pushState) {
+                    const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?variant=' + variant.id;
+                    window.history.pushState({path:newurl}, '', newurl);
+                }
+
+                const mobileStockWarning = document.getElementById('mobile-buybox-stock-warning');
+                if (mobileStockWarning) {
+                    mobileStockWarning.dataset.show = 'false';
+                    updateMobileWarningVisibility();
+                }
+
+                return;
+            }
+
+            outOfStockBox.classList.add('hidden');
+            availableBox.classList.remove('hidden');
+            availableBox.classList.add('block');
+
+            mobileOutOfStockBox.classList.add('hidden');
+            mobileOutOfStockBox.classList.remove('flex');
+            mobileAvailableBox.classList.remove('hidden');
+            mobileAvailableBox.classList.add('flex');
+            mobileNotifyBtn.classList.add('hidden');
+            mobileNotifyBtn.classList.remove('flex');
+            mobileAddBtn.classList.remove('hidden');
+
+            const vendorSection = document.getElementById('buybox-vendor-section');
+            if (vendorSection && uiSettings.showVendor) {
+                document.getElementById('buybox-vendor-name').innerText = variant.vendor_name;
+                if (variant.vendor_logo) {
+                    document.getElementById('buybox-vendor-logo').src = variant.vendor_logo;
+                    document.getElementById('buybox-vendor-logo').classList.remove('hidden');
+                    document.getElementById('buybox-vendor-icon').classList.add('hidden');
+                } else {
+                    document.getElementById('buybox-vendor-logo').classList.add('hidden');
+                    document.getElementById('buybox-vendor-icon').classList.remove('hidden');
+                }
+            }
+
+            const stockWarning = document.getElementById('buybox-stock-warning');
+            const mobileStockWarning = document.getElementById('mobile-buybox-stock-warning');
+
+            const isLowStock = uiSettings.showStockWarning && variant.stock > 0 && variant.stock <= 3;
+
+            if (stockWarning) {
+                if (isLowStock) {
+                    document.getElementById('buybox-stock-text').innerText = `فقط ${variant.stock} عدد در انبار باقیست`;
+                    stockWarning.classList.remove('hidden');
+                    stockWarning.classList.add('flex');
+                } else {
+                    stockWarning.classList.add('hidden');
+                    stockWarning.classList.remove('flex');
+                }
+            }
+
+            if (mobileStockWarning) {
+                if (isLowStock) {
+                    const mobileTextNode = document.getElementById('mobile-buybox-stock-text');
+                    mobileTextNode.innerHTML = `<span class="flex h-2 w-2 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></span>فقط ${variant.stock} عدد در انبار باقیست`;
+                    mobileStockWarning.dataset.show = 'true';
+                } else {
+                    mobileStockWarning.dataset.show = 'false';
+                }
+                updateMobileWarningVisibility();
+            }
+
+            const discountSection = document.getElementById('buybox-discount-section');
+            const mobileDiscountSection = document.getElementById('mobile-buybox-discount-section');
+            const discountStockProgress = document.getElementById('buybox-discount-stock-progress');
+
+            if (variant.discount_price > 0 && variant.discount_price < variant.price) {
+                const percent = Math.round(((variant.price - variant.discount_price) / variant.price) * 100);
+                const formattedPrice = new Intl.NumberFormat('fa-IR').format(variant.price);
+
+                document.getElementById('buybox-old-price').innerText = formattedPrice;
+                document.getElementById('buybox-discount-badge').innerText = `٪${percent}`;
+                discountSection.classList.remove('hidden');
+                discountSection.classList.add('flex');
+
+                document.getElementById('mobile-buybox-old-price').innerText = formattedPrice;
+                document.getElementById('mobile-buybox-discount-badge').innerText = `٪${percent}`;
+                mobileDiscountSection.classList.remove('hidden');
+                mobileDiscountSection.classList.add('flex');
+
+                const banner = document.getElementById('buybox-discount-banner');
+                const spacer = document.getElementById('buybox-discount-spacer');
+                const countdownSpan = document.getElementById('countdown-timer-desktop');
+
+                if(variant.discount_end_date) {
+                    banner.classList.remove('hidden');
+                    spacer.classList.remove('hidden');
+                    startCountdown(countdownSpan, variant.discount_end_date);
+                } else {
+                    banner.classList.add('hidden');
+                    spacer.classList.add('hidden');
+                }
+
+                // 💡 FIX: منطق نوار پیشرفت موجودی
+                if (discountStockProgress && variant.discount_stock > 0) {
+                    const totalDiscountStock = variant.discount_stock;
+                    const currentStock = Math.min(variant.stock, totalDiscountStock); // موجودی فعلی نمی‌تواند از موجودی تخفیف بیشتر باشد
+                    const remainingPercent = Math.max(0, Math.min(100, (currentStock / totalDiscountStock) * 100));
+
+                    document.getElementById('discount-stock-bar').style.width = `${remainingPercent}%`;
+                    document.getElementById('discount-stock-label').innerText = `${currentStock} از ${totalDiscountStock}`;
+                    discountStockProgress.classList.remove('hidden');
+                } else if (discountStockProgress) {
+                    discountStockProgress.classList.add('hidden');
+                }
+
+            } else {
+                discountSection.classList.add('hidden');
+                discountSection.classList.remove('flex');
+                document.getElementById('buybox-discount-banner').classList.add('hidden');
+                document.getElementById('buybox-discount-spacer').classList.add('hidden');
+
+                mobileDiscountSection.classList.add('hidden');
+                mobileDiscountSection.classList.remove('flex');
+                if (discountStockProgress) {
+                    discountStockProgress.classList.add('hidden');
+                }
+            }
+
+            const formattedFinalPrice = new Intl.NumberFormat('fa-IR').format(variant.final_price);
+            document.getElementById('buybox-final-price').innerText = formattedFinalPrice;
+            document.getElementById('mobile-buybox-final-price').innerText = formattedFinalPrice;
+
+            document.getElementById('buybox-variant-id').value = variant.id;
+
+            if (history.pushState) {
+                const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?variant=' + variant.id;
+                window.history.pushState({path:newurl}, '', newurl);
+            }
+        }
+
+        let currentTimer = null;
+        function startCountdown(element, endDateIso) {
+            if(currentTimer) clearInterval(currentTimer);
+            const targetDate = new Date(endDateIso).getTime();
+
+            currentTimer = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = targetDate - now;
+
+                if (distance < 0) {
+                    clearInterval(currentTimer);
+                    element.innerHTML = "<span class='text-xs'>پایان یافته</span>";
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                /*let html = '';
+                if (days > 0) {
+                    html += `<span class="inline-flex flex-col items-center mx-1"><span class="font-bold text-base">${String(days).padStart(2, '0')}</span><span class="text-[8px] opacity-70">روز</span></span>`;
+                }
+                html += `<span class="inline-flex flex-col items-center mx-1"><span class="font-bold text-base">${String(hours).padStart(2, '0')}</span><span class="text-[8px] opacity-70">ساعت</span></span>`;
+                html += `<span class="inline-flex flex-col items-center mx-1"><span class="font-bold text-base">${String(minutes).padStart(2, '0')}</span><span class="text-[8px] opacity-70">دقیقه</span></span>`;
+                html += `<span class="inline-flex flex-col items-center mx-1"><span class="font-bold text-base">${String(seconds).padStart(2, '0')}</span><span class="text-[8px] opacity-70">ثانیه</span></span>`;
+
+                element.innerHTML = html;
+            }, 1000);*/
+
+                let html = '';
+                if (days > 0) {
+                    html += `<span class="flex flex-col items-center"><span class="font-bold text-base">${String(days).padStart(2, '0')}</span><span class="text-[8px] opacity-70">روز</span></span><span class="font-bold text-base">:</span>`;
+                }
+                html += `<span class="flex flex-col items-center"><span class="font-bold text-base">${String(hours).padStart(2, '0')}</span><span class="text-[8px] opacity-70">ساعت</span></span><span class="font-bold text-base">:</span>`;
+                html += `<span class="flex flex-col items-center"><span class="font-bold text-base">${String(minutes).padStart(2, '0')}</span><span class="text-[8px] opacity-70">دقیقه</span></span><span class="font-bold text-base">:</span>`;
+                html += `<span class="flex flex-col items-center"><span class="font-bold text-base">${String(seconds).padStart(2, '0')}</span><span class="text-[8px] opacity-70">ثانیه</span></span>`;
+
+                element.innerHTML = html;
+            }, 1000);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialVariant = productVariants.find(v => {
+                for (const key in selectedAttributes) {
+                    const selectedVal = selectedAttributes[key];
+                    const variantVal = v.attributes[key];
+                    if (variantVal === selectedVal) continue;
+                    if (variantVal && typeof variantVal === 'string' && variantVal.startsWith('هر ')) continue;
+                    return false;
+                }
+                return true;
+            });
+            updateBuyBoxDOM(initialVariant || productVariants[0]);
+        });
+
+        function changeMainImage(src, btnElement) {
+            document.getElementById('main-product-image').src = src;
+
+            const activeBorderClass = "{{ $t['border'] ?? 'border-indigo-600' }}";
+
+            const thumbs = document.querySelectorAll('.gallery-thumb');
+            thumbs.forEach(btn => {
+                btn.classList.remove('border-2', activeBorderClass, 'opacity-100');
+                btn.classList.add('border', 'border-gray-200', 'dark:border-gray-700', 'opacity-70');
+            });
+
+            if (btnElement) {
+                btnElement.classList.remove('border', 'border-gray-200', 'dark:border-gray-700', 'opacity-70');
+                btnElement.classList.add('border-2', activeBorderClass, 'opacity-100');
+            }
+        }
+
+        function openLightbox(src) {
+            const lb = document.getElementById('image-lightbox');
+            const img = document.getElementById('lightbox-img');
+
+            document.body.classList.add('lightbox-open');
+            changeLightboxImage(src);
+
+            lb.classList.remove('hidden');
+            lb.classList.add('flex');
+            void lb.offsetWidth;
+            lb.classList.remove('opacity-0');
+            img.classList.remove('scale-95');
+        }
+
+        function closeLightbox() {
+            const lb = document.getElementById('image-lightbox');
+            const img = document.getElementById('lightbox-img');
+            lb.classList.add('opacity-0');
+            img.classList.add('scale-95');
+            setTimeout(() => {
+                lb.classList.add('hidden');
+                lb.classList.remove('flex');
+                document.body.classList.remove('lightbox-open');
+            }, 300);
+        }
+
+        function changeLightboxImage(src, btnElement = null) {
+            const img = document.getElementById('lightbox-img');
+            img.src = src;
+
+            const thumbs = document.querySelectorAll('.lightbox-thumb');
+            thumbs.forEach(btn => {
+                btn.classList.remove('border-white', 'opacity-100');
+                btn.classList.add('border-transparent', 'opacity-50');
+                if (!btnElement) {
+                    const imgTag = btn.querySelector('img');
+                    if (imgTag && imgTag.src === src) btnElement = btn;
+                }
+            });
+
+            if (btnElement) {
+                btnElement.classList.remove('border-transparent', 'opacity-50');
+                btnElement.classList.add('border-white', 'opacity-100');
+            }
+        }
+    </script>
+@endpush

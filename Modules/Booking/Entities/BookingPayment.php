@@ -2,6 +2,7 @@
 
 namespace Modules\Booking\Entities;
 
+use App\Models\Client;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,12 +14,12 @@ class BookingPayment extends Model
     public const STATUS_PAID = 'PAID';
     public const STATUS_FAILED = 'FAILED';
     public const STATUS_REFUNDED = 'REFUNDED';
-    // مشکل ارور در اینجا بود. املای این ثابت برای هماهنگی با کنترلر و ویو اصلاح شد (دو حرف L)
     public const STATUS_CANCELLED = 'CANCELLED';
 
     protected $fillable = [
         'appointment_id',
-        'mode',
+        'client_id',
+        'type',
         'amount',
         'currency_unit',
         'status',
@@ -35,5 +36,10 @@ class BookingPayment extends Model
     public function appointment(): BelongsTo
     {
         return $this->belongsTo(Appointment::class, 'appointment_id');
+    }
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'client_id');
     }
 }

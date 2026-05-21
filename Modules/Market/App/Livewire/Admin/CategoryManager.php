@@ -4,6 +4,7 @@ namespace Modules\Market\App\Livewire\Admin;
 
 use Livewire\Component;
 use Modules\Market\Entities\Category;
+use Modules\Market\Entities\MarketAttribute; // 💡 NEW
 use Illuminate\Support\Str;
 
 class CategoryManager extends Component
@@ -12,7 +13,7 @@ class CategoryManager extends Component
 
     // آرایه‌های فرم‌ساز
     public $target_attributes = []; // فیلدهای عمومی (مثل وزن، ابعاد)
-    public $variant_fields = [];    // محورهای تنوع (مثل رنگ، حافظه، گارانتی)
+    public $variant_fields = [];    // محورهای تنوع (مثل رنگ، حافظه، گارانتی) - حالا ID ویژگی‌ها را ذخیره می‌کند
 
     public $isFormOpen = false;
 
@@ -75,7 +76,8 @@ class CategoryManager extends Component
             'code_offset' => 'required|integer|unique:market_categories,code_offset,' . $this->category_id,
             // بررسی مقادیر آرایه‌ها
             'target_attributes.*' => 'nullable|string|max:50',
-            'variant_fields.*' => 'nullable|string|max:50',
+            // 💡 NEW: حالا این فیلدها آیدی از دیتابیس هستند نه متن
+            'variant_fields.*' => 'nullable|integer',
         ]);
 
         // پاکسازی اینپوت‌های خالی از آرایه‌ها تا دیتابیس کثیف نشود
@@ -118,9 +120,13 @@ class CategoryManager extends Component
         // دریافت تمام دسته‌ها به صورت فلت برای لیست کشویی "دسته والد"
         $allCategories = Category::orderBy('code_offset')->get();
 
+        // 💡 NEW: دریافت تمام ویژگی‌های سراسری سیستم برای نمایش در سلکت‌باکس
+        $globalAttributes = MarketAttribute::all();
+
         return view('market::livewire.admin.category-manager', [
             'categoriesTree' => $categoriesTree,
-            'parentCategories' => $allCategories
+            'parentCategories' => $allCategories,
+            'globalAttributes' => $globalAttributes // ارسال به ویو
         ]);
     }
 }

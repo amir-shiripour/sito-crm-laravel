@@ -6,17 +6,34 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Modules\Settings\Entities\Setting;
 use App\Services\GapGPTService;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+use Nwidart\Modules\Facades\Module as NModule;
 
 class SettingsController extends Controller
 {
     public function index()
     {
         $settings = Setting::all()->pluck('value', 'key');
+
         // Decode registration settings if it's a string
         if (isset($settings['registration']) && is_string($settings['registration'])) {
             $settings['registration'] = json_decode($settings['registration'], true);
         }
-        return view('settings::index', compact('settings'));
+
+        // بررسی فعال بودن ماژول حسابداری از طریق پکیج مدیریت ماژول‌ها
+        $isAccountingActive = NModule::has('Accounting') && NModule::isEnabled('Accounting');
+
+        // فراخوانی امن لیست بانک‌ها از ماژول حسابداری در صورت وجود جدول و فعال بودن ماژول
+        $banks = collect([]);
+        if ($isAccountingActive && Schema::hasTable('accounting_fund_accounts')) {
+            $banks = DB::table('accounting_fund_accounts')
+                ->where('type', 'bank')
+                ->select('id', 'name')
+                ->get();
+        }
+
+        return view('settings::index', compact('settings', 'banks', 'isAccountingActive'));
     }
 
     public function update(Request $request)

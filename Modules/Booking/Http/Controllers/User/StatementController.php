@@ -12,11 +12,16 @@ use App\Models\User;
 use Carbon\Carbon;
 use Morilog\Jalali\CalendarUtils;
 use Morilog\Jalali\Jalalian;
+use Modules\Booking\Services\AppointmentService;
 use Spatie\Browsershot\Browsershot;
 use Spatie\Permission\Models\Role;
 
 class StatementController extends Controller
 {
+    public function __construct(protected AppointmentService $appointmentService)
+    {
+    }
+
     public function index(Request $request)
     {
         $settings = BookingSetting::current();
@@ -79,7 +84,7 @@ class StatementController extends Controller
             // UNLESS they have view.all permission
             if ($this->userIsProvider($user, $settings) && !$this->isAdminUser($user) && !$user->can('booking.statement.view.all')) {
                 if (!in_array($user->id, $allUserIds)) {
-                     // If provider is not in the list (which shouldn't happen due to forced ID above), force it
+                    // If provider is not in the list (which shouldn't happen due to forced ID above), force it
                 }
             }
 
@@ -179,7 +184,7 @@ class StatementController extends Controller
 
         // Security check: if user is provider and not admin, ensure they are saving for themselves
         if ($this->userIsProvider($user, $settings) && !$this->isAdminUser($user) && !$user->can('booking.statement.manage')) {
-             if ($request->input('provider_id') != $user->id) {
+            if ($request->input('provider_id') != $user->id) {
                 abort(403, 'شما مجاز به ثبت صورت وضعیت برای دیگران نیستید.');
             }
         }
@@ -245,7 +250,12 @@ class StatementController extends Controller
 
         // Also trigger the general status event if it's not draft (e.g. created as approved directly)
         if ($statement->status !== 'draft') {
-             $this->triggerWorkflows('statement_' . $statement->status, $statement);
+            $this->triggerWorkflows('statement_' . $statement->status, $statement);
+        }
+
+        // Change appointments status if created as approved
+        if ($statement->status === 'approved') {
+            $this->confirmAppointmentsForStatement($statement);
         }
 
         return redirect()->route('user.booking.statement.index')->with('success', 'صورت وضعیت با موفقیت ثبت شد.');
@@ -280,6 +290,11 @@ class StatementController extends Controller
         if ($oldStatus !== $newStatus) {
             $this->triggerWorkflows('statement_status_changed', $statement);
             $this->triggerWorkflows('statement_' . $newStatus, $statement);
+
+            // Change appointments status to CONFIRMED if statement is approved
+            if ($newStatus === 'approved') {
+                $this->confirmAppointmentsForStatement($statement);
+            }
         }
 
         return redirect()->back()->with('success', 'وضعیت تغییر کرد.');
@@ -380,11 +395,11 @@ class StatementController extends Controller
             // Security check for manual print
             if ($this->userIsProvider($user, $settings) && !$this->isAdminUser($user) && !$user->can('booking.statement.view.all')) {
                 if ($selectedProviderId != $user->id) {
-                     // Force to own ID or abort? Let's force to own ID to be safe, or check if they tried to access another
-                     if ($selectedProviderId && $selectedProviderId != $user->id) {
-                         abort(403);
-                     }
-                     $selectedProviderId = $user->id;
+                    // Force to own ID or abort? Let's force to own ID to be safe, or check if they tried to access another
+                    if ($selectedProviderId && $selectedProviderId != $user->id) {
+                        abort(403);
+                    }
+                    $selectedProviderId = $user->id;
                 }
             }
 
@@ -402,26 +417,26 @@ class StatementController extends Controller
             // Add provider to selectedUsers for display in PDF header if not already there
             $providerUser = User::find($selectedProviderId);
             if ($providerUser) {
-                 $alreadyIn = false;
-                 foreach($selectedUsers as $u) {
-                     if($u->id == $providerUser->id) $alreadyIn = true;
-                 }
-                 if(!$alreadyIn) {
-                     // Use a special key for provider to display it
-                     $selectedUsers['provider'] = $providerUser;
-                 }
+                $alreadyIn = false;
+                foreach($selectedUsers as $u) {
+                    if($u->id == $providerUser->id) $alreadyIn = true;
+                }
+                if(!$alreadyIn) {
+                    // Use a special key for provider to display it
+                    $selectedUsers['provider'] = $providerUser;
+                }
             }
         }
 
         foreach ($selectedUsers as $key => $u) {
             if ($key !== 'provider') {
-                 $allUserIds[] = $u->id;
+                $allUserIds[] = $u->id;
             }
         }
         $allUserIds = array_unique($allUserIds);
 
         if (empty($allUserIds)) {
-             return redirect()->back()->with('error', 'هیچ کاربری (پزشک یا نقش‌های دیگر) برای گزارش انتخاب نشده است.');
+            return redirect()->back()->with('error', 'هیچ کاربری (پزشک یا نقش‌های دیگر) برای گزارش انتخاب نشده است.');
         }
 
         $result = $this->getAppointments($allUserIds, $startDateLocal, $endDateLocal);
@@ -496,8 +511,8 @@ class StatementController extends Controller
 
         // If user is a provider and not admin, only show themselves if they have the role
         if ($this->userIsProvider($user, $settings) && !$this->isAdminUser($user) && !$user->can('booking.statement.view.all')) {
-             // Let's check if the requested roleId is one of the allowed provider roles
-             $providerRoleIds = array_values(array_filter(
+            // Let's check if the requested roleId is one of the allowed provider roles
+            $providerRoleIds = array_values(array_filter(
                 array_map('intval', (array) ($settings->allowed_roles ?? [])),
                 fn($v) => $v > 0
             ));
@@ -542,11 +557,11 @@ class StatementController extends Controller
         }
 
         if ($this->userIsProvider($user, $settings) && !$this->isAdminUser($user) && !$user->can('booking.statement.view.all')) {
-             $providersQuery->where('id', $user->id);
+            $providersQuery->where('id', $user->id);
         } else {
-             if (!empty($roleIds)) {
-                 $providersQuery->whereHas('roles', fn($r) => $r->whereIn('id', $roleIds));
-             }
+            if (!empty($roleIds)) {
+                $providersQuery->whereHas('roles', fn($r) => $r->whereIn('id', $roleIds));
+            }
         }
 
         if ($q !== '') {
@@ -731,7 +746,7 @@ class StatementController extends Controller
         }
 
         if ($this->userIsProvider($user, $settings) && !$this->isAdminUser($user)) {
-             $providersQuery->where('id', $user->id);
+            $providersQuery->where('id', $user->id);
         }
 
         return $providersQuery->orderBy('name')->get(['id', 'name']);
@@ -740,38 +755,38 @@ class StatementController extends Controller
     protected function canViewStatement($user, $settings)
     {
         return $user->can('booking.statement.view') ||
-               $user->can('booking.statement.view.own') ||
-               $this->isAdminUser($user);
-               // REMOVED: || $this->userIsProvider($user, $settings);
+            $user->can('booking.statement.view.own') ||
+            $this->isAdminUser($user);
+        // REMOVED: || $this->userIsProvider($user, $settings);
     }
 
     protected function canCreateStatement($user, $settings)
     {
         return $user->can('booking.statement.create') ||
-               $this->isAdminUser($user);
-               // REMOVED: || $this->userIsProvider($user, $settings);
+            $this->isAdminUser($user);
+        // REMOVED: || $this->userIsProvider($user, $settings);
     }
 
     protected function canEditStatement($user, $settings)
     {
         return $user->can('booking.statement.edit') ||
-               $this->isAdminUser($user);
-               // REMOVED: || $this->userIsProvider($user, $settings);
+            $this->isAdminUser($user);
+        // REMOVED: || $this->userIsProvider($user, $settings);
     }
 
     protected function canDeleteStatement($user, $settings)
     {
         return $user->can('booking.statement.delete') ||
-               $this->isAdminUser($user);
-               // REMOVED: || $this->userIsProvider($user, $settings);
+            $this->isAdminUser($user);
+        // REMOVED: || $this->userIsProvider($user, $settings);
     }
 
     protected function isAdminUser($user)
     {
         if (!$user) return false;
         return $user->hasAnyRole(['super-admin', 'admin']) ||
-               $user->can('booking.manage') ||
-               $user->can('booking.statement.manage');
+            $user->can('booking.manage') ||
+            $user->can('booking.statement.manage');
     }
 
     protected function userIsProvider($user, $settings)
@@ -808,6 +823,55 @@ class StatementController extends Controller
             ];
 
             $engine->start($key, 'STATEMENT', $statement->id, $payload);
+        }
+    }
+
+    /**
+     * Updates the related appointments' status to CONFIRMED when a statement is approved.
+     */
+    protected function confirmAppointmentsForStatement(BookingStatement $statement)
+    {
+        $statementUserIds = [];
+        if ($statement->provider_id) {
+            $statementUserIds[] = $statement->provider_id;
+        }
+        if ($statement->roles_data) {
+            foreach ($statement->roles_data as $uId) {
+                $statementUserIds[] = $uId;
+            }
+        }
+        $statementUserIds = array_unique($statementUserIds);
+
+        if (empty($statementUserIds)) {
+            return;
+        }
+
+        $sDate = $statement->start_date instanceof Carbon
+            ? $statement->start_date->format('Y-m-d')
+            : Carbon::parse($statement->start_date)->format('Y-m-d');
+
+        $eDate = $statement->end_date instanceof Carbon
+            ? $statement->end_date->format('Y-m-d')
+            : Carbon::parse($statement->end_date)->format('Y-m-d');
+
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+
+        $startUtc = Carbon::createFromFormat('Y-m-d H:i:s', $sDate . ' 00:00:00', $scheduleTz)->timezone('UTC');
+        $endUtc = Carbon::createFromFormat('Y-m-d H:i:s', $eDate . ' 23:59:59', $scheduleTz)->timezone('UTC');
+
+        if ($startUtc && $endUtc) {
+            $appointments = Appointment::query()
+                ->whereIn('provider_user_id', $statementUserIds)
+                ->where('start_at_utc', '>=', $startUtc)
+                ->where('start_at_utc', '<=', $endUtc)
+                ->where('status', '!=', 'CONFIRMED')
+                ->get();
+
+            foreach ($appointments as $appointment) {
+                $previousStatus = $appointment->status;
+                $appointment->update(['status' => 'CONFIRMED']);
+                $this->appointmentService->triggerStatusWorkflows($appointment, $previousStatus);
+            }
         }
     }
 }

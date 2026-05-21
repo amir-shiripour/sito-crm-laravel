@@ -56,11 +56,11 @@
                     <div class="flex-1">
                         <div class="text-sm font-bold text-gray-500 dark:text-gray-400 mb-1">هزینه نهایی رزرو</div>
                         <div class="text-3xl font-black text-gray-900 dark:text-white">
-                            {{ number_format($service->final_price ?? $service->base_price) }} <span class="text-base font-normal text-gray-500 dark:text-gray-400">تومان</span>
+                            {{ number_format($service->final_price ?? $service->base_price) }} <span class="text-base font-normal text-gray-500 dark:text-gray-400">{{ ($settings->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان' }}</span>
                         </div>
                         @if($settings->tax_enabled && ($service->final_price > $service->base_price))
                             <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1.5">
-                                (شامل {{ number_format($service->final_price - $service->base_price) }} تومان مالیات بر ارزش افزوده)
+                                (شامل {{ number_format($service->final_price - $service->base_price) }} {{ ($settings->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان' }} مالیات بر ارزش افزوده)
                             </div>
                         @endif
                     </div>

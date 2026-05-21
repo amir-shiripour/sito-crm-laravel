@@ -43,7 +43,7 @@
     $remainingBalance = max(0, $totalPrice - $totalPaid);
 
     if ($service?->payment_mode === 'NONE' || $totalPrice == 0) {
-        $financialStatusLabel = 'رایگان / بدون نیاز به پرداخت';
+        $financialStatusLabel = 'بدون نیاز به پرداخت آنلاین';
         $financialStatusColor = 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
     } elseif ($remainingBalance == 0) {
         $financialStatusLabel = 'تسویه شده';
@@ -187,23 +187,25 @@
             </div>
 
             {{-- اطلاعات فرم (پاسخ‌ها) --}}
-            @if(!empty($appointment->appointment_form_response_json))
+            @if(!empty($formResponses))
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">
                 <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                    اطلاعات تکمیلی (فرم ثبت‌نام)
+                    اطلاعات تکمیلی
                 </h2>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-4">
-                    @foreach($appointment->appointment_form_response_json as $key => $value)
-                        @php
-                            // Handle cases where the JSON is stored as [ ['label'=>'...', 'value'=>'...'] ]
-                            $displayKey = is_array($value) && isset($value['label']) ? $value['label'] : $key;
-                            $displayVal = is_array($value) && isset($value['value']) ? $value['value'] : (is_array($value) ? implode(', ', $value) : $value);
-                        @endphp
+                    @foreach($formResponses as $response)
                         <div class="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                            <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">{{ $displayKey }}</span>
-                            <span class="font-medium text-gray-900 dark:text-white">{{ $displayVal ?: '---' }}</span>
+                            <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">{{ $response['label'] }}</span>
+                            @php $value = $response['value']; @endphp
+                            <span class="font-medium text-gray-900 dark:text-white">
+                                @if(is_array($value))
+                                    {{ implode('، ', array_filter(array_map('strval', $value))) ?: '---' }}
+                                @else
+                                    {{ $value !== null && $value !== '' ? $value : '---' }}
+                                @endif
+                            </span>
                         </div>
                     @endforeach
                 </div>

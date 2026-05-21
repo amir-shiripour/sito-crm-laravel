@@ -127,6 +127,7 @@ class ClientFormBuilder extends Component
             'id'                  => $id,
             'label'               => 'بی‌نام',
             'quick_create'        => false,
+            'client_auth'         => false,
             'placeholder'         => '',
             'width'               => 'full',
             'group'               => '',
@@ -187,6 +188,9 @@ class ClientFormBuilder extends Component
         if (!isset($field['conditional_required']) || !is_array($field['conditional_required'])) {
             $field['conditional_required'] = [];
         }
+        if (!array_key_exists('client_auth', $field)) {
+            $field['client_auth'] = false;
+        }
 
         $this->schema['fields'][] = $field;
     }
@@ -224,6 +228,10 @@ class ClientFormBuilder extends Component
                 throw ValidationException::withMessages([
                     'schema' => "آیدی «{$fid}» برای فیلد سیستمی رزرو شده و نمی‌تواند برای فیلد سفارشی استفاده شود.",
                 ]);
+            }
+
+            if (!array_key_exists('client_auth', $f)) {
+                $f['client_auth'] = false;
             }
 
             if ($isReserved) {
