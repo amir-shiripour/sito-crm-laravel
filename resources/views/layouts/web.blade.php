@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <meta name="theme-color" content="#ffffff">
 
     @php
         $globalSettings = \Modules\Settings\Entities\Setting::pluck('value', 'key')->toArray();
@@ -38,32 +39,39 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     <style>
-        body { font-family: 'IRANYekanX', sans-serif; }
+        body { font-family: 'IRANYekanX', sans-serif; -webkit-tap-highlight-color: transparent; }
         .theme-dynamic-bg { background: {!! $activeStyle['gradient_bg'] !!}; }
+        /* کلاس کمکی برای safe-area در گوشی‌های آیفون و گوشی‌های جدید که Bottom Navigation دارند */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 
-    {{-- Dark Mode Initializer (اجرا قبل از رندر صفحه برای جلوگیری از پرش نور) --}}
+    {{-- Dark Mode Initializer --}}
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', '#030712'); // ست کردن رنگ بالای مرورگر برای موبایل
         } else {
             document.documentElement.classList.remove('dark');
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff');
         }
 
-        // تابع تغییر تم و ذخیره در LocalStorage
         function setAppThemeMode(mode) {
             if (mode === 'dark') {
                 document.documentElement.classList.add('dark');
                 localStorage.theme = 'dark';
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#030712');
             } else if (mode === 'light') {
                 document.documentElement.classList.remove('dark');
                 localStorage.theme = 'light';
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff');
             } else {
                 localStorage.removeItem('theme');
                 if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
                     document.documentElement.classList.add('dark');
+                    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#030712');
                 } else {
                     document.documentElement.classList.remove('dark');
+                    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff');
                 }
             }
             updateThemeUI();
@@ -77,21 +85,17 @@
 <div class="fixed inset-0 theme-dynamic-bg pointer-events-none z-0"></div>
 <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] {{ $activeStyle['glow'] }} blur-[100px] rounded-full pointer-events-none z-0"></div>
 
-{{--
-    [Architecture Note]:
-    لود کردن داینامیک هدر. اگر فایل themes/market/header.blade.php وجود نداشت،
-    به طور خودکار themes/default/header.blade.php لود می‌شود!
---}}
+{{-- Header --}}
 @includeFirst(["themes.{$appTheme}.header", 'themes.default.header'], ['appName' => $appName, 'appLogo' => $appLogo])
 
-<main class="flex-grow flex flex-col relative z-10 w-full" style="padding: 9rem 0">
+{{-- Main Content --}}
+<main class="flex-grow flex flex-col relative z-10 w-full pb-16 md:pb-0" style="padding-top: 5rem">
     @yield('content')
 </main>
 
-{{-- لود کردن داینامیک فوتر --}}
+{{-- Footer --}}
 @includeFirst(["themes.{$appTheme}.footer", 'themes.default.footer'], ['appName' => $appName, 'footerText' => $footerText])
 
-{{-- اسکریپت به‌روزرسانی UI دکمه‌های تغییر تم --}}
 <script>
     function updateThemeUI() {
         const currentTheme = localStorage.theme || 'system';
@@ -108,6 +112,11 @@
 </script>
 @stack('scripts')
 @livewireScripts
+
+{{-- استایل‌های Media Query در فایل Blade مستقیما روی تگ main اعمال شدند تا نیازی به style تگ در پایین نباشد --}}
+<style>
+    @media (min-width: 768px) { main { padding-top: 8rem !important; } }
+</style>
 </body>
 
 </html>

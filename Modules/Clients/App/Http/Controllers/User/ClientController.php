@@ -15,7 +15,7 @@ class ClientController extends Controller
     public function __construct()
     {
         // دسترسی‌ها بر اساس پرمیژن
-        $this->middleware('permission:clients.view')->only(['index', 'show', 'profile']);
+        $this->middleware('permission:clients.view')->only(['index', 'show']);
         $this->middleware('permission:clients.create')->only(['create', 'store']);
         $this->middleware('permission:clients.edit')->only(['edit', 'update']);
         $this->middleware('permission:clients.delete')->only(['destroy']);
@@ -156,25 +156,6 @@ class ClientController extends Controller
         $client->forceDelete();
 
         return back()->with('success', 'Client deleted.');
-    }
-
-    /**
-     * پروفایل کاربری client از دید پنل user (ادمین‌ها)
-     * این متد را اگر واقعاً استفاده نمی‌کنی، بعداً می‌تونیم تمیزترش کنیم
-     */
-    public function profile()
-    {
-        $user = auth()->user();
-
-        // اگر رابطه‌ای مثل user->client داری، همین را نگه می‌داریم
-        $client = $user->client ?? null;
-
-        // می‌توانی اینجا هم از isVisibleFor استفاده کنی اگر لازم شد
-        if ($client && ! $client->isVisibleFor($user)) {
-            abort(403, 'شما به این پرونده دسترسی ندارید.');
-        }
-
-        return view('clients::user.clients.profile', compact('client'));
     }
 
     /**

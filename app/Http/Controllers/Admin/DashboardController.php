@@ -85,6 +85,9 @@ class DashboardController extends Controller
      */
     public function runManualOptimization(Request $request, ImageOptimizerService $optimizer)
     {
+        // محدود کردن زمان اجرای اسکریپت برای جلوگیری از Timeout در سرور
+        set_time_limit(300);
+
         $modelsToProcess = [
             Property::class => 'cover_image',
             PropertyImage::class => 'path',
@@ -106,27 +109,30 @@ class DashboardController extends Controller
                 }
 
                 try {
-                    $fullOldPath = Storage::disk('public')->path($oldPath);
-                    $directory = dirname($oldPath);
+                    // استفاده از متد جدیدی که خطا را مخفی نمی‌کند و Fallback به آپلود عادی ندارد
+                    $result = $optimizer->optimizeExistingImage($oldPath, 'public');
 
-                    $newPath = $optimizer->uploadAndOptimize($fullOldPath, $directory);
-
-                    if ($newPath && $newPath !== $oldPath) {
-                        $item->$field = $newPath;
+                    if ($result['status'] === 'success') {
+                        $item->$field = $result['new_path'];
                         $item->save();
-
-                        // Delete the old file after successful optimization and DB update
-                        Storage::disk('public')->delete($oldPath);
-
                         $processedCount++;
                     }
+
                 } catch (\Exception $e) {
+                    // حالا خطاهای واقعی در لاگ سرور ثبت می‌شوند
                     Log::error("Image optimization failed for {$modelClass} ID {$item->id}: " . $e->getMessage());
                     $errorCount++;
                 }
             }
         }
 
-        return back()->with('success', "عملیات با موفقیت انجام شد. {$processedCount} تصویر بهینه و {$errorCount} تصویر با خطا مواجه شد.");
+        // اگر خطایی رخ داد، به کاربر هشدار می‌دهیم تا لاگ‌ها را چک کند
+        $message = "عملیات با پایان رسید. {$processedCount} تصویر بهینه شد.";
+        if ($errorCount > 0) {
+            $message .= " متاسفانه {$errorCount} تصویر با خطا مواجه شد. لطفاً فایل laravel.log را بررسی کنید.";
+            return back()->with('warning', $message); // پیشنهاد می‌شود یک Alert زرد/قرمز برای Warning داشته باشید
+        }
+
+        return back()->with('success', $message);
     }
 }

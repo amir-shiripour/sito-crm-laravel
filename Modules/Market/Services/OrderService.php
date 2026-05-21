@@ -8,14 +8,20 @@ use Modules\Market\Entities\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Exception;
+use Modules\Market\Entities\ProductVariant;
+use Modules\Market\Entities\Vendor;
+use Modules\Market\Entities\VendorProduct;
+use Modules\Market\Entities\Warehouse;
 
 class OrderService
 {
     protected $commissionService;
+    protected $warehouseStockService;
 
-    public function __construct(CommissionService $commissionService)
+    public function __construct(CommissionService $commissionService, WarehouseStockService $warehouseStockService)
     {
         $this->commissionService = $commissionService;
+        $this->warehouseStockService = $warehouseStockService;
     }
 
     /**
@@ -34,35 +40,41 @@ class OrderService
             $totalItemsPrice = 0;
             $totalTax = 0;
             $orderItemsData = [];
+            $wmsActive = $this->warehouseStockService->isWmsActive();
 
             // 1. بررسی و پردازش اقلام سبد خرید
             foreach ($cartItems as $item) {
-                // استفاده از قفل گذاری (lockForUpdate) برای جلوگیری از تداخل خرید همزمان دو نفر
-                $product = Product::where('id', $item['product_id'])->lockForUpdate()->first();
+                $variant = ProductVariant::with('product.vendor')->find($item['variant_id']);
+                $vendorProduct = isset($item['vendor_product_id']) ? VendorProduct::find($item['vendor_product_id']) : null;
 
-                if (!$product || $product->status !== 'published') {
-                    throw new Exception("محصول {$item['product_id']} در دسترس نیست.");
+                if (!$variant) {
+                    throw new Exception("Product variant {$item['variant_id']} not found.");
                 }
 
-                if ($product->stock < $item['quantity']) {
-                    throw new Exception("موجودی محصول '{$product->title}' کافی نیست.");
+                $product = $variant->product;
+                $vendor = $vendorProduct ? $vendorProduct->vendor : $product->vendor;
+
+                // موجودی را با سرویس جدید چک کن
+                $availableStock = $this->warehouseStockService->getAvailableStock($variant->id, $vendorProduct->id ?? null);
+                if ($availableStock < $item['quantity']) {
+                    throw new Exception("Not enough stock for product '{$product->title}'.");
                 }
 
-                // محاسبه قیمت (با احتساب تخفیف اگر دارد)
-                $unitPrice = $product->discount_price ?? $product->price;
-                $unitTax = ($unitPrice * $product->tax_percent) / 100;
-                $totalPrice = ($unitPrice + $unitTax) * $item['quantity'];
+                // محاسبه قیمت
+                $unitPrice = $vendorProduct->price ?? $variant->price;
+                $unitTax = 0; // You can add tax calculation logic here if needed
+                $totalPrice = $unitPrice * $item['quantity'];
 
-                $totalItemsPrice += ($unitPrice * $item['quantity']);
+                $totalItemsPrice += $totalPrice;
                 $totalTax += ($unitTax * $item['quantity']);
 
-                // دریافت درصد کمیسیون در لحظه خرید
-                $commissionData = $this->commissionService->calculate($product->vendor, $totalPrice);
+                $commissionData = $this->commissionService->calculate($vendor, $totalPrice);
 
                 $orderItemsData[] = [
-                    'product_id'             => $product->id,
-                    'vendor_id'              => $product->vendor_id,
-                    'product_title'          => $product->title,
+                    'product_variant_id'     => $variant->id,
+                    'vendor_product_id'      => $vendorProduct->id ?? null,
+                    'vendor_id'              => $vendor->id,
+                    'product_title'          => $product->title . ' (' . $variant->name . ')',
                     'quantity'               => $item['quantity'],
                     'unit_price'             => $unitPrice,
                     'unit_tax'               => $unitTax,
@@ -70,8 +82,17 @@ class OrderService
                     'vendor_commission_rate' => $commissionData['commission_rate']
                 ];
 
-                // کسر از موجودی انبار
-                $product->decrement('stock', $item['quantity']);
+                // اگر WMS فعال است، موجودی را رزرو کن، در غیر این صورت از انبار سنتی کم کن
+                if ($wmsActive) {
+                    $warehouse = $this->findWarehouseForReservation($vendor);
+                    $this->warehouseStockService->reserveStock($warehouse->id, $variant->id, $item['quantity'], $vendorProduct->id ?? null);
+                } else {
+                    if ($vendorProduct) {
+                        $vendorProduct->decrement('stock', $item['quantity']);
+                    } else {
+                        $variant->decrement('stock', $item['quantity']);
+                    }
+                }
             }
 
             // 2. محاسبه مبالغ کل
@@ -82,22 +103,97 @@ class OrderService
             // 3. ایجاد رکورد اصلی سفارش
             $order = Order::create([
                 'user_id'               => $user->id,
+                'status'                => 'pending', // وضعیت اولیه
                 'total_items_price'     => $totalItemsPrice,
                 'total_shipping_cost'   => $shippingCost,
                 'total_tax'             => $totalTax,
                 'total_discount'        => $totalDiscount,
                 'grand_total'           => $grandTotal,
-                'shipping_address_json' => $shippingData['address'] ?? null,
+                'shipping_address_json' => json_encode($shippingData['address'] ?? null),
                 'shipping_method'       => $shippingData['method'] ?? null,
             ]);
 
             // 4. ذخیره اقلام سفارش
             foreach ($orderItemsData as $itemData) {
-                $itemData['order_id'] = $order->id;
-                OrderItem::create($itemData);
+                $order->items()->create($itemData);
             }
 
             return $order;
         });
+    }
+
+    /**
+     * لغو سفارش و بازگرداندن موجودی
+     */
+    public function cancelOrder(Order $order)
+    {
+        if ($order->status !== 'pending' && $order->status !== 'processing') {
+            throw new Exception("Order cannot be canceled at its current state.");
+        }
+
+        return DB::transaction(function () use ($order) {
+            if ($this->warehouseStockService->isWmsActive()) {
+                foreach ($order->items as $item) {
+                    $vendor = $item->vendor;
+                    $warehouse = $this->findWarehouseForReservation($vendor);
+                    $this->warehouseStockService->releaseReservedStock($warehouse->id, $item->product_variant_id, $item->quantity, $item->vendor_product_id, $order);
+                }
+            } else {
+                // بازگرداندن موجودی به روش سنتی
+                foreach ($order->items as $item) {
+                    if ($item->vendor_product_id) {
+                        VendorProduct::find($item->vendor_product_id)->increment('stock', $item->quantity);
+                    } else {
+                        ProductVariant::find($item->product_variant_id)->increment('stock', $item->quantity);
+                    }
+                }
+            }
+
+            $order->update(['status' => 'canceled']);
+            return $order;
+        });
+    }
+
+    /**
+     * نهایی کردن ارسال و خروج قطعی از انبار
+     */
+    public function shipOrder(Order $order)
+    {
+        if ($order->status !== 'processing') {
+            throw new Exception("Order is not ready for shipping.");
+        }
+
+        return DB::transaction(function () use ($order) {
+            if ($this->warehouseStockService->isWmsActive()) {
+                foreach ($order->items as $item) {
+                    $vendor = $item->vendor;
+                    $warehouse = $this->findWarehouseForReservation($vendor);
+                    $this->warehouseStockService->finalizeShipment($warehouse->id, $item->product_variant_id, $item->quantity, $item->vendor_product_id, $order);
+                }
+            }
+            // در حالت سنتی، موجودی قبلا در زمان ثبت سفارش کم شده است و کار دیگری لازم نیست
+
+            $order->update(['status' => 'shipped']);
+            return $order;
+        });
+    }
+
+    /**
+     * انبار مناسب برای رزرو کالا را پیدا می‌کند (انبار فروشنده یا انبار مرکزی)
+     */
+    private function findWarehouseForReservation(Vendor $vendor): Warehouse
+    {
+        // اگر فروشنده انبار اختصاصی و فعال دارد
+        $vendorWarehouse = Warehouse::where('vendor_id', $vendor->id)->where('is_active', true)->first();
+        if ($vendorWarehouse) {
+            return $vendorWarehouse;
+        }
+
+        // در غیر این صورت، انبار مرکزی را برمی‌گرداند
+        $centralWarehouse = Warehouse::whereNull('vendor_id')->where('is_active', true)->first();
+        if (!$centralWarehouse) {
+            throw new Exception("No active central warehouse found.");
+        }
+        return $centralWarehouse;
     }
 }

@@ -16,9 +16,44 @@ class ClientAppointmentController extends Controller
         }
 
         // Load necessary relations
-        $appointment->load(['service', 'provider', 'payments']);
+        $appointment->load(['service.appointmentForm', 'provider', 'payments']);
 
-        return view('clients::portal.appointments.show', compact('appointment'));
+        $rawFormResponses = $appointment->appointment_form_response_json ?? [];
+        $formResponses = [];
+
+        if (!empty($rawFormResponses) && $appointment->service && $appointment->service->appointmentForm) {
+            $form = $appointment->service->appointmentForm;
+            $formSchema = $form->schema_json;
+            $fieldMeta = [];
+
+            if (isset($formSchema['fields']) && is_array($formSchema['fields'])) {
+                foreach ($formSchema['fields'] as $field) {
+                    if (isset($field['name'])) {
+                        $fieldMeta[$field['name']] = [
+                            'label' => $field['label'] ?? $field['name'],
+                        ];
+                    }
+                }
+            }
+
+            foreach ($rawFormResponses as $key => $value) {
+                $meta = $fieldMeta[$key] ?? ['label' => $key];
+                $formResponses[] = [
+                    'label' => $meta['label'],
+                    'value' => $value,
+                ];
+            }
+        } else if (!empty($rawFormResponses)) {
+            // Fallback if form is not available, just use keys
+            foreach ($rawFormResponses as $key => $value) {
+                $formResponses[] = [
+                    'label' => $key,
+                    'value' => $value,
+                ];
+            }
+        }
+
+        return view('clients::portal.appointments.show', compact('appointment', 'formResponses'));
     }
 
     public function cancel(Appointment $appointment)

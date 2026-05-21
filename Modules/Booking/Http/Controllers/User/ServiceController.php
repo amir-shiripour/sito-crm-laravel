@@ -95,6 +95,9 @@ class ServiceController extends Controller
 
         $isAdminUser = $this->isAdminUser($authUser);
 
+        // Sanitize price fields before validation
+        $this->sanitizePriceInputs($request);
+
         $data = $request->validate([
             'name'   => ['required', 'string', 'max:255'],
             'status' => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
@@ -222,6 +225,9 @@ class ServiceController extends Controller
 
         $isPublicService = $this->serviceIsPublic($service, $adminOwnerIds);
         $isOwnerService  = $authUser ? ((int)$service->owner_user_id === (int)$authUser->id) : false;
+
+        // Sanitize price fields before validation
+        $this->sanitizePriceInputs($request);
 
         // -------------------------------------------------
         // حالت 1: Provider روی سرویس عمومی (override در pivot)
@@ -402,6 +408,25 @@ class ServiceController extends Controller
     // --------------------------------------------------
     // Helperهای دسترسی
     // --------------------------------------------------
+
+    protected function sanitizePriceInputs(Request $request): void
+    {
+        $inputs = [];
+        $priceFields = ['base_price', 'discount_price', 'payment_amount_value'];
+
+        foreach ($priceFields as $field) {
+            $value = $request->input($field);
+            if ($value !== null) {
+                $sanitized = str_replace(',', '', $value);
+                // Convert empty string to null to avoid SQL errors
+                $inputs[$field] = $sanitized === '' ? null : $sanitized;
+            }
+        }
+
+        if (!empty($inputs)) {
+            $request->merge($inputs);
+        }
+    }
 
     /**
      * آیا کاربر ادمین/سوپرادمین/مدیر نوبت‌دهی است؟

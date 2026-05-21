@@ -27,7 +27,8 @@ class OnlineBookingController extends Controller
 {
     private function applyTax($price, $settings)
     {
-        if (!$settings->tax_enabled || empty($price)) {
+        $price = (float) $price;
+        if (!$settings->tax_enabled) {
             return $price;
         }
         $amount = (float) $settings->tax_amount;

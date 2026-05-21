@@ -4,6 +4,13 @@
     ? ['id' => $fixedProvider->id, 'name' => $fixedProvider->name]
     : null;
     $clientLabel = config('clients.labels.singular', 'مشتری');
+
+    $statusOptions = [
+        \Modules\Booking\Entities\Appointment::STATUS_DRAFT => 'پیش‌نویس',
+        \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'در انتظار تایید',
+        \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'در انتظار پرداخت',
+        \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'تایید شده',
+    ];
 @endphp
 
 @section('content')
@@ -35,6 +42,20 @@
             </div>
         @endif
 
+        @if ($errors->any())
+            <div class="flex flex-col gap-1 rounded-2xl border border-rose-200 dark:border-rose-700/70 bg-rose-50 dark:bg-rose-900/40 text-rose-800 dark:text-rose-100 px-4 py-3 shadow-sm">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xl">⚠️</span>
+                    <span class="text-sm font-bold">خطا در ثبت نوبت:</span>
+                </div>
+                <ul class="list-disc list-inside text-xs pr-8 space-y-1">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         @includeIf('partials.jalali-date-picker')
 
         {{-- Main Wizard Container (Changed from FORM to DIV to avoid nesting issues with client widget) --}}
@@ -53,6 +74,7 @@
                 <input type="hidden" name="end_time_local" x-model="manualEndTime">
                 <input type="hidden" name="appointment_form_response_json" x-ref="formJsonInput">
                 <input type="hidden" name="notes" x-model="notes">
+                <input type="hidden" name="status" x-model="status">
             </form>
 
             {{-- Stepper Component --}}
@@ -946,26 +968,44 @@
                         </div>
                         <div>
                             <div class="font-semibold text-base text-gray-800 dark:text-gray-100">ثبت نهایی نوبت</div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">لطفاً یادداشت را وارد کرده و نوبت را
+                            <div class="text-xs text-gray-500 dark:text-gray-400">لطفاً وضعیت و یادداشت را بررسی کرده و نوبت را
                                 ثبت کنید</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                            </path>
-                        </svg>
-                        یادداشت (اختیاری)
-                    </span>
-                    </label>
-                    <textarea name="notes" rows="4"
-                              class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                              placeholder="یادداشت یا توضیحات اضافی را اینجا وارد کنید..." x-model="notes"></textarea>
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                وضعیت نوبت
+                            </span>
+                        </label>
+                        <select x-model="status" class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 text-sm dark:text-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition">
+                            @foreach($statusOptions as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                </path>
+                            </svg>
+                            یادداشت (اختیاری)
+                        </span>
+                        </label>
+                        <textarea name="notes" rows="4"
+                                  class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                                  placeholder="یادداشت یا توضیحات اضافی را اینجا وارد کنید..." x-model="notes"></textarea>
+                    </div>
                 </div>
 
                 <div
@@ -1138,6 +1178,7 @@
                 manualEndTime: '',
                 manualDuration: '',
                 notes: '',
+                status: 'CONFIRMED',
 
                 providers: [],
                 services: [],

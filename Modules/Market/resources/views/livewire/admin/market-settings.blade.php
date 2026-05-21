@@ -24,6 +24,12 @@
             عمومی و کاتالوگ
         </button>
 
+        {{-- تب جدید: تنظیمات نمایشی 💡 --}}
+        <button @click="tab = 'ui'" :class="tab === 'ui' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+            تنظیمات نمایشی (UI)
+        </button>
+
         @if($store_type === 'multi')
             <button @click="tab = 'vendors'" :class="tab === 'vendors' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="animate-in fade-in flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -65,24 +71,48 @@
                 </div>
                 <div class="p-6 space-y-6">
 
-                    {{-- نوع فروشگاه --}}
-                    <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 p-5 rounded-2xl">
-                        <label class="{{ $labelClass }} text-indigo-900 dark:text-indigo-300 mb-3">معماری فروشگاه (Store Architecture)</label>
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <label class="flex items-center gap-3 cursor-pointer bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex-1 hover:border-indigo-500 transition-colors">
-                                <input type="radio" wire:model.live="store_type" value="single" class="text-indigo-600 focus:ring-indigo-500">
-                                <div>
-                                    <span class="block text-sm font-bold dark:text-white">تک فروشگاهی (Single Vendor)</span>
-                                    <span class="block text-[11px] text-gray-500 mt-1">فروشگاه اختصاصی شما. پنل فروشندگان و احراز هویت‌ها غیرفعال می‌شود.</span>
-                                </div>
-                            </label>
-                            <label class="flex items-center gap-3 cursor-pointer bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex-1 hover:border-indigo-500 transition-colors">
-                                <input type="radio" wire:model.live="store_type" value="multi" class="text-indigo-600 focus:ring-indigo-500">
-                                <div>
-                                    <span class="block text-sm font-bold dark:text-white">مارکت‌پلیس (Multi Vendor)</span>
-                                    <span class="block text-[11px] text-gray-500 mt-1">مدیریت ده‌ها فروشنده، احراز هویت (KYC)، ثبت‌نام و سیستم کمیسیون.</span>
-                                </div>
-                            </label>
+                    {{-- نوع نمایش و معماری فروشگاه --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {{-- نوع فروشگاه --}}
+                        <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 p-5 rounded-2xl">
+                            <label class="{{ $labelClass }} text-indigo-900 dark:text-indigo-300 mb-3">معماری فروشگاه (Store Architecture)</label>
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <label class="flex items-center gap-3 cursor-pointer bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex-1 hover:border-indigo-500 transition-colors">
+                                    <input type="radio" wire:model.live="store_type" value="single" class="text-indigo-600 focus:ring-indigo-500">
+                                    <div>
+                                        <span class="block text-sm font-bold dark:text-white">تک فروشگاهی (Single Vendor)</span>
+                                        <span class="block text-[11px] text-gray-500 mt-1">فروشگاه اختصاصی شما. پنل فروشندگان و احراز هویت‌ها غیرفعال می‌شود.</span>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex-1 hover:border-indigo-500 transition-colors">
+                                    <input type="radio" wire:model.live="store_type" value="multi" class="text-indigo-600 focus:ring-indigo-500">
+                                    <div>
+                                        <span class="block text-sm font-bold dark:text-white">مارکت‌پلیس (Multi Vendor)</span>
+                                        <span class="block text-[11px] text-gray-500 mt-1">مدیریت ده‌ها فروشنده، احراز هویت (KYC)، ثبت‌نام و سیستم کمیسیون.</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {{-- نوع نمایش فروشگاه --}}
+                        <div class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 p-5 rounded-2xl">
+                            <label class="{{ $labelClass }} text-emerald-900 dark:text-emerald-300 mb-3">نوع نمایش فروشگاه (Store Display Type)</label>
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <label class="flex items-center gap-3 cursor-pointer bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex-1 hover:border-emerald-500 transition-colors">
+                                    <input type="radio" wire:model.defer="store_display_type" value="by_vendor" class="text-emerald-600 focus:ring-emerald-500">
+                                    <div>
+                                        <span class="block text-sm font-bold dark:text-white">بر اساس فروشگاه/فروشندگان</span>
+                                        <span class="block text-[11px] text-gray-500 mt-1">نمایش صفحه اول و لیست‌ها بر اساس فروشگاه‌ها (مانند اسنپ‌فود)</span>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex-1 hover:border-emerald-500 transition-colors">
+                                    <input type="radio" wire:model.defer="store_display_type" value="by_product" class="text-emerald-600 focus:ring-emerald-500">
+                                    <div>
+                                        <span class="block text-sm font-bold dark:text-white">بر اساس محصول</span>
+                                        <span class="block text-[11px] text-gray-500 mt-1">نمایش مستقیم محصولات در فروشگاه (مانند دیجی‌کالا)</span>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -92,7 +122,7 @@
                             <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2">عملیات و لجستیک</h3>
 
                             <label class="flex items-center gap-3 cursor-pointer group">
-                                <input type="checkbox" wire:model.defer="enable_advanced_inventory" class="{{ $checkboxClass }}">
+                                <input type="checkbox" wire:model.defer="wms_enabled" class="{{ $checkboxClass }}">
                                 <div class="flex flex-col">
                                     <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">فعال‌سازی سیستم انبارداری (WMS) مجزا</span>
                                     <span class="text-[10px] text-gray-500 mt-1">مدیریت حواله، قفسه‌بندی و انبارگردانی پیشرفته به سیستم اضافه شود.</span>
@@ -169,7 +199,7 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {{-- بلوک وضعیت و کاتالوگ --}}
-                    <div class="space-y-4">
+                    <div class="space-y-4 border-l border-gray-100 dark:border-gray-700 pl-6">
                         <div>
                             <label class="{{ $labelClass }}">وضعیت فعالیت فروشگاه</label>
                             <select wire:model.defer="is_market_active" class="{{ $inputClass }}">
@@ -181,10 +211,23 @@
                             <input type="checkbox" wire:model.defer="hide_out_of_stock" class="{{ $checkboxClass }}">
                             <span class="text-sm font-bold text-gray-700 dark:text-gray-300">مخفی کردن محصولات ناموجود از کاتالوگ و جستجو</span>
                         </label>
+
+                        <div class="mt-4 bg-gray-50 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                            <label class="{{ $labelClass }}">نحوه نمایش محصولات متغیر (تنوع کالا) در فروشگاه</label>
+                            <select wire:model.defer="variant_display_mode" class="{{ $inputClass }}">
+                                <option value="grouped">گروه‌بندی شده (یک کارت محصول + ذکر تعداد تنوع)</option>
+                                <option value="separated">مجزا (هر رنگ/سایز یک کارت مجزا در فروشگاه باشد)</option>
+                            </select>
+                            <p class="text-[10px] text-gray-500 mt-2 leading-relaxed">
+                                <strong>گروه‌بندی شده:</strong> مشابه دیجی‌کالا. کارت تمیزتر است و کاربر داخل صفحه محصول رنگ را انتخاب می‌کند.<br>
+                                <strong>مجزا:</strong> مشابه فروشگاه‌های لباس یا دیجی‌استایل. باعث می‌شود فروشگاه پربارتر به نظر برسد.
+                            </p>
+                        </div>
+
                     </div>
 
                     {{-- بلوک مالی --}}
-                    <div class="space-y-4 border-r border-gray-100 dark:border-gray-700 pr-6">
+                    <div class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="{{ $labelClass }}">واحد پول پیش‌فرض</label>
@@ -241,7 +284,65 @@
             </div>
         </div>
 
-        {{-- 2. تب مالیات --}}
+        {{-- 💡 2.5 تب جدید: تنظیمات نمایشی (UI/UX) --}}
+        <div x-show="tab === 'ui'" x-cloak class="{{ $cardClass }}">
+            <div class="{{ $headerClass }}">
+                <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات نمایشی و رابط کاربری (UI)</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">مدیریت رفتار گرافیکی کارت‌ها و صفحات محصول</p>
+                </div>
+            </div>
+            <div class="p-6 space-y-6">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {{-- تنظیمات کارت محصول --}}
+                    <div class="space-y-4 border border-gray-100 dark:border-gray-700 p-5 rounded-2xl bg-gray-50/50 dark:bg-gray-800/50">
+                        <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2">تنظیمات کارت‌های فروشگاه</h3>
+
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" wire:model.defer="ui_show_category_on_card" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">نمایش نام دسته‌بندی روی کارت محصول</span>
+                        </label>
+
+                        <div class="pt-3">
+                            <label class="{{ $labelClass }}">طراحی (استایل) کارت محصولات</label>
+                            <select wire:model.defer="ui_product_card_style" class="{{ $inputClass }}">
+                                <option value="modern">مدرن (دارای هاور افکت‌های پیشرفته و بلور)</option>
+                                <option value="classic">کلاسیک (ساده و مینیمال - مناسب فروشگاه‌های سنگین)</option>
+                                <option value="minimal">مینیمال (بدون حاشیه و سایه‌های سنگین)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- تنظیمات صفحه محصول تکی --}}
+                    <div class="space-y-4 border border-gray-100 dark:border-gray-700 p-5 rounded-2xl bg-gray-50/50 dark:bg-gray-800/50">
+                        <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2">تنظیمات صفحه داخلی محصول</h3>
+
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" wire:model.defer="ui_show_vendor_on_product_page" class="{{ $checkboxClass }}">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">نمایش بخش "فروشنده" در باکس خرید</span>
+                                <span class="text-[10px] text-gray-500 mt-1">اگر سایت تک‌فروشگاهی است، پیشنهاد می‌شود این گزینه را خاموش کنید.</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" wire:model.defer="ui_show_stock_warning" class="{{ $checkboxClass }}">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">نمایش هشدار موجودی کم (پایین‌تر از ۳ عدد)</span>
+                                <span class="text-[10px] text-gray-500 mt-1">برای ایجاد حس فوریت (FOMO) در خریدار مناسب است.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        {{-- 3. تب مالیات --}}
         <div x-show="tab === 'tax'" x-cloak class="{{ $cardClass }}">
             <div class="{{ $headerClass }}">
                 <div class="w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-900/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
@@ -288,7 +389,7 @@
             </div>
         </div>
 
-        {{-- 3. تب فروشندگان (فقط Multi Vendor) --}}
+        {{-- 4. تب فروشندگان (فقط Multi Vendor) --}}
         @if($store_type === 'multi')
             <div x-show="tab === 'vendors'" x-cloak class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
@@ -318,6 +419,11 @@
                             <input type="checkbox" wire:model.defer="vendor_can_view_customer_info" class="{{ $checkboxClass }}">
                             <span class="text-sm font-bold text-gray-800 dark:text-gray-200">حریم خصوصی: فروشنده مجاز است شماره موبایل و ایمیل مشتری را در فاکتور ببیند.</span>
                         </label>
+
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                            <input type="checkbox" wire:model.defer="vendor_can_create_variants" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">تنوع محصولات: فروشنده مجاز است برای محصولات خود تنوع (رنگ، سایز و...) ایجاد کند.</span>
+                        </label>
                     </div>
 
                     <hr class="border-gray-100 dark:border-gray-700">
@@ -342,7 +448,7 @@
             </div>
         @endif
 
-        {{-- 4. تب سفارشات --}}
+        {{-- 5. تب سفارشات --}}
         <div x-show="tab === 'orders'" x-cloak class="{{ $cardClass }}">
             <div class="{{ $headerClass }}">
                 <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
@@ -398,7 +504,7 @@
             </div>
         </div>
 
-        {{-- 5. تب مالی --}}
+        {{-- 6. تب مالی --}}
         <div x-show="tab === 'finance'" x-cloak class="{{ $cardClass }}">
             <div class="{{ $headerClass }}">
                 <div class="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400">

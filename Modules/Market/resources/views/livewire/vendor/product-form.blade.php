@@ -83,13 +83,21 @@
         </div>
 
         {{-- بخش ۲: گرید تنوع‌ها و قیمت‌گذاری --}}
-        @if($selectedMasterProduct && count($available_variants) > 0)
+        @if($selectedMasterProduct)
             <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4">
                 <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
                     <h3 class="text-base font-bold text-gray-800 dark:text-gray-200">تنوع‌های انبار شما</h3>
-                    <span class="text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full font-bold">برای حذف از انبار، تیک آن را بردارید</span>
+                    @if($allow_custom_variants)
+                        <button wire:click="addCustomVariant" class="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 rounded-lg text-xs font-bold transition-colors flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            افزودن تنوع جدید
+                        </button>
+                    @else
+                         <span class="text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full font-bold">برای حذف از انبار، تیک آن را بردارید</span>
+                    @endif
                 </div>
 
+                {{-- تنوع‌های ایجاد شده توسط ادمین --}}
                 @foreach($available_variants as $variant)
                     <div class="bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 p-5 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600 transition-all duration-300" x-data="{ sell: @entangle('vendor_variants.'.$variant->id.'.sell_this') }">
 
@@ -97,81 +105,138 @@
                             <input type="checkbox" wire:model="vendor_variants.{{ $variant->id }}.sell_this" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 transition-colors">
                             <div class="flex flex-col">
                                 <span class="font-bold text-gray-900 dark:text-white text-sm" :class="sell ? 'text-indigo-700 dark:text-indigo-300' : ''">
-                                    {{ $vendor_variants[$variant->id]['display_name'] }}
+                                    {{ $vendor_variants[$variant->id]['display_name'] ?? 'تنوع استاندارد' }}
                                 </span>
                                 <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500">{{ $variant->variant_code }}</span>
                             </div>
                         </label>
 
-                        {{-- گرید ورودی‌های فروشنده (لود ایمن با جاوااسکریپت) --}}
                         <div x-show="sell" x-collapse>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700">
+                            <div class="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                                    {{-- قیمت اصلی --}}
+                                    <div class="lg:col-span-1" x-data="{
+                                        rawPrice: @entangle('vendor_variants.'.$variant->id.'.price'),
+                                        formattedPrice: '',
+                                        init() {
+                                            this.formatPrice(this.rawPrice);
+                                            this.$watch('rawPrice', val => this.formatPrice(val));
+                                        },
+                                        formatPrice(val) {
+                                            this.formattedPrice = val ? val.toString().replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                                        },
+                                        updatePrice() {
+                                            this.rawPrice = this.formattedPrice.replace(/,/g, '');
+                                        }
+                                    }">
+                                        <label class="{{ $labelClass }}">قیمت برای مصرف‌کننده <span class="text-red-500">*</span></label>
+                                        <div class="relative">
+                                            <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10" placeholder="مثلا 1,500,000">
+                                            <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">تومان</span>
+                                        </div>
+                                    </div>
 
-                                {{-- قیمت اصلی --}}
-                                <div class="lg:col-span-1" x-data="{
-                                    raw: @entangle('vendor_variants.'.$variant->id.'.price'),
-                                    formatted: '',
-                                    init() {
-                                        this.format(this.raw);
-                                        this.$watch('raw', val => this.format(val));
-                                    },
-                                    format(val) {
-                                        this.formatted = val ? val.toString().replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
-                                    },
-                                    update() {
-                                        this.raw = this.formatted.replace(/,/g, '');
-                                    }
-                                }">
-                                    <label class="{{ $labelClass }}">قیمت برای مصرف‌کننده <span class="text-red-500">*</span></label>
-                                    <div class="relative">
-                                        <input type="text" x-model="formatted" @input="update()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10" placeholder="مثلا 1,500,000">
-                                        <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">تومان</span>
+                                    {{-- 💡 آپدیت: محاسبه خودکار درصد و قیمت تخفیف --}}
+                                    <div class="lg:col-span-2 grid grid-cols-2 gap-2 bg-rose-50/50 dark:bg-rose-900/10 p-2 rounded-xl border border-rose-100 dark:border-rose-800" x-data="{
+                                        rawPrice: @entangle('vendor_variants.'.$variant->id.'.price'),
+                                        rawDiscount: @entangle('vendor_variants.'.$variant->id.'.discount_price'),
+                                        formattedDiscount: '',
+                                        percent: '',
+                                        init() {
+                                            this.formatDiscount(this.rawDiscount);
+                                            this.calcPercent();
+                                            this.$watch('rawDiscount', val => {
+                                                this.formatDiscount(val);
+                                                this.calcPercent();
+                                            });
+                                            this.$watch('rawPrice', () => this.calcPercent());
+                                        },
+                                        formatDiscount(val) {
+                                            this.formattedDiscount = val ? val.toString().replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                                        },
+                                        updateFromPrice() {
+                                            this.rawDiscount = this.formattedDiscount.replace(/,/g, '');
+                                            this.calcPercent();
+                                        },
+                                        updateFromPercent() {
+                                            let p = parseFloat(this.percent);
+                                            let pr = parseFloat(this.rawPrice);
+                                            if (p > 0 && p <= 100 && pr > 0) {
+                                                let d = pr - (pr * (p / 100));
+                                                this.rawDiscount = d.toString();
+                                            } else {
+                                                this.rawDiscount = '';
+                                            }
+                                        },
+                                        calcPercent() {
+                                            let pr = parseFloat(this.rawPrice);
+                                            let d = parseFloat(this.rawDiscount);
+                                            if (pr > 0 && d > 0 && d < pr) {
+                                                this.percent = Math.round(((pr - d) / pr) * 100);
+                                            } else {
+                                                this.percent = '';
+                                            }
+                                        }
+                                    }">
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">درصد تخفیف</label>
+                                            <div class="relative">
+                                                <input type="number" x-model="percent" @input="updateFromPercent()" class="{{ $inputClass }} dir-ltr text-center !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800" placeholder="%">
+                                                <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-rose-400">٪</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">قیمت نهایی</label>
+                                            <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800" placeholder="قیمت با تخفیف">
+                                        </div>
+                                    </div>
+
+                                    {{-- کنترل انبار --}}
+                                    <div class="grid grid-cols-3 lg:col-span-2 gap-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100 dark:border-gray-800">
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center">موجودی انبار</label>
+                                            <input type="number" wire:model="vendor_variants.{{ $variant->id }}.stock" class="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500 font-bold">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center text-nowrap" title="حداقل خرید">حداقل خرید</label>
+                                            <input type="number" wire:model="vendor_variants.{{ $variant->id }}.min_purchase" class="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center text-nowrap" title="حداکثر خرید">حداکثر خرید</label>
+                                            <input type="number" wire:model="vendor_variants.{{ $variant->id }}.max_purchase" class="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500" placeholder="نامحدود">
+                                        </div>
                                     </div>
                                 </div>
 
-                                {{-- قیمت تخفیف‌خورده --}}
-                                <div class="lg:col-span-1" x-data="{
-                                    raw: @entangle('vendor_variants.'.$variant->id.'.discount_price'),
-                                    formatted: '',
-                                    init() {
-                                        this.format(this.raw);
-                                        this.$watch('raw', val => this.format(val));
-                                    },
-                                    format(val) {
-                                        this.formatted = val ? val.toString().replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
-                                    },
-                                    update() {
-                                        this.raw = this.formatted.replace(/,/g, '');
-                                    }
-                                }">
-                                    <label class="{{ $labelClass }}">قیمت بعد از تخفیف</label>
-                                    <input type="text" x-model="formatted" @input="update()" class="{{ $inputClass }} font-mono dir-ltr text-center text-rose-600 dark:text-rose-400" placeholder="بدون تخفیف">
-                                </div>
-
-                                {{-- کنترل انبار --}}
-                                <div class="grid grid-cols-3 lg:col-span-2 gap-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100 dark:border-gray-800">
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center">موجودی انبار</label>
-                                        <input type="number" wire:model="vendor_variants.{{ $variant->id }}.stock" class="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500 font-bold">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center text-nowrap" title="حداقل خرید">حداقل خرید</label>
-                                        <input type="number" wire:model="vendor_variants.{{ $variant->id }}.min_purchase" class="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center text-nowrap" title="حداکثر خرید">حداکثر خرید</label>
-                                        <input type="number" wire:model="vendor_variants.{{ $variant->id }}.max_purchase" class="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500" placeholder="نامحدود">
+                                {{-- 💡 NEW: مدیریت زمان و شرایط تخفیف (اگر تخفیف وارد شده باشد) --}}
+                                <div x-data="{ hasDiscount: @entangle('vendor_variants.'.$variant->id.'.discount_price') }" x-show="hasDiscount" x-collapse>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 bg-rose-50/30 dark:bg-rose-900/5 p-4 rounded-xl border border-rose-100 dark:border-rose-800/50" wire:ignore x-data="{ initJalaliDatePicker() { new JalaliDatePicker(); } }" x-init="initJalaliDatePicker()">
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">تاریخ شروع تخفیف</label>
+                                            <input type="text" data-jdp-with-time wire:model.defer="vendor_variants.{{ $variant->id }}.discount_start_date" class="{{ $inputClass }} !border-rose-200 focus:!border-rose-500 dark:!border-rose-800">
+                                        </div>
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">تاریخ پایان تخفیف</label>
+                                            <input type="text" data-jdp-with-time wire:model.defer="vendor_variants.{{ $variant->id }}.discount_end_date" class="{{ $inputClass }} !border-rose-200 focus:!border-rose-500 dark:!border-rose-800">
+                                        </div>
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">تعداد موجودی در تخفیف</label>
+                                            <input type="number" wire:model.defer="vendor_variants.{{ $variant->id }}.discount_stock" class="{{ $inputClass }} !border-rose-200 focus:!border-rose-500 dark:!border-rose-800" placeholder="تا اتمام موجودی کل">
+                                        </div>
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">حداکثر خرید در تخفیف</label>
+                                            <input type="number" wire:model.defer="vendor_variants.{{ $variant->id }}.max_discount_purchase_qty" class="{{ $inputClass }} !border-rose-200 focus:!border-rose-500 dark:!border-rose-800" placeholder="نامحدود">
+                                        </div>
                                     </div>
                                 </div>
 
-                                {{-- وضعیت انتشار --}}
-                                <div class="lg:col-span-1 flex items-end pb-1">
-                                    <label class="flex items-center gap-2 cursor-pointer w-full justify-center bg-gray-50 dark:bg-gray-900/50 py-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                                <div class="mt-4 flex justify-end">
+                                    <label class="flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-gray-900/50 px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800">
                                         <div class="relative flex items-center">
                                             <input type="checkbox" wire:model="vendor_variants.{{ $variant->id }}.is_active" class="peer sr-only">
                                             <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
                                         </div>
-                                        <span class="text-[11px] font-bold text-gray-600 dark:text-gray-300">نمایش کالا</span>
+                                        <span class="text-[11px] font-bold text-gray-600 dark:text-gray-300">نمایش کالا در سایت</span>
                                     </label>
                                 </div>
 
@@ -179,6 +244,163 @@
                         </div>
                     </div>
                 @endforeach
+
+                {{-- تنوع‌های ایجاد شده توسط فروشنده (کاستوم) --}}
+                @if($allow_custom_variants && count($vendor_custom_variants) > 0)
+                    @foreach($vendor_custom_variants as $index => $customVariant)
+                        <div class="bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 p-5 rounded-2xl relative">
+                            <button wire:click="removeCustomVariant({{ $index }})" class="absolute top-4 left-4 text-gray-400 hover:text-red-500 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+
+                            <div class="mb-4 pr-2 border-r-4 border-indigo-500">
+                                <h4 class="font-bold text-indigo-900 dark:text-indigo-300 text-sm">ایجاد تنوع جدید</h4>
+                                <p class="text-[10px] text-gray-500 mt-1">ویژگی‌های زیر را برای ساخت تنوع خود انتخاب کنید.</p>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                @foreach($allowed_axes_options as $axisName => $options)
+                                    <div>
+                                        <label class="{{ $labelClass }}">{{ $axisName }} <span class="text-red-500">*</span></label>
+                                        <select wire:model.defer="vendor_custom_variants.{{ $index }}.attributes.{{ $axisName }}" class="{{ $inputClass }}">
+                                            <option value="">انتخاب کنید...</option>
+                                            @foreach($options as $option)
+                                                <option value="{{ $option }}">{{ $option }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="pt-4 border-t border-dashed border-indigo-200 dark:border-indigo-800">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                                    <div class="lg:col-span-1" x-data="{
+                                        rawPrice: @entangle('vendor_custom_variants.'.$index.'.price'),
+                                        formattedPrice: '',
+                                        init() {
+                                            this.formatPrice(this.rawPrice);
+                                            this.$watch('rawPrice', val => this.formatPrice(val));
+                                        },
+                                        formatPrice(val) {
+                                            this.formattedPrice = val ? val.toString().replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                                        },
+                                        updatePrice() {
+                                            this.rawPrice = this.formattedPrice.replace(/,/g, '');
+                                        }
+                                    }">
+                                        <label class="{{ $labelClass }}">قیمت برای مصرف‌کننده <span class="text-red-500">*</span></label>
+                                        <div class="relative">
+                                            <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10" placeholder="مثلا 1,500,000">
+                                            <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">تومان</span>
+                                        </div>
+                                    </div>
+
+                                    {{-- آپدیت محاسبه تخفیف برای تنوع دستی --}}
+                                    <div class="lg:col-span-2 grid grid-cols-2 gap-2 bg-rose-50/50 dark:bg-rose-900/10 p-2 rounded-xl border border-rose-100 dark:border-rose-800" x-data="{
+                                        rawPrice: @entangle('vendor_custom_variants.'.$index.'.price'),
+                                        rawDiscount: @entangle('vendor_custom_variants.'.$index.'.discount_price'),
+                                        formattedDiscount: '',
+                                        percent: '',
+                                        init() {
+                                            this.formatDiscount(this.rawDiscount);
+                                            this.calcPercent();
+                                            this.$watch('rawDiscount', val => {
+                                                this.formatDiscount(val);
+                                                this.calcPercent();
+                                            });
+                                            this.$watch('rawPrice', () => this.calcPercent());
+                                        },
+                                        formatDiscount(val) {
+                                            this.formattedDiscount = val ? val.toString().replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                                        },
+                                        updateFromPrice() {
+                                            this.rawDiscount = this.formattedDiscount.replace(/,/g, '');
+                                            this.calcPercent();
+                                        },
+                                        updateFromPercent() {
+                                            let p = parseFloat(this.percent);
+                                            let pr = parseFloat(this.rawPrice);
+                                            if (p > 0 && p <= 100 && pr > 0) {
+                                                let d = pr - (pr * (p / 100));
+                                                this.rawDiscount = d.toString();
+                                            } else {
+                                                this.rawDiscount = '';
+                                            }
+                                        },
+                                        calcPercent() {
+                                            let pr = parseFloat(this.rawPrice);
+                                            let d = parseFloat(this.rawDiscount);
+                                            if (pr > 0 && d > 0 && d < pr) {
+                                                this.percent = Math.round(((pr - d) / pr) * 100);
+                                            } else {
+                                                this.percent = '';
+                                            }
+                                        }
+                                    }">
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">درصد تخفیف</label>
+                                            <div class="relative">
+                                                <input type="number" x-model="percent" @input="updateFromPercent()" class="{{ $inputClass }} dir-ltr text-center !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800" placeholder="%">
+                                                <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-rose-400">٪</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">قیمت نهایی</label>
+                                            <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800" placeholder="قیمت با تخفیف">
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-3 lg:col-span-2 gap-2 bg-white dark:bg-gray-800 p-2 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center">موجودی انبار</label>
+                                            <input type="number" wire:model.defer="vendor_custom_variants.{{ $index }}.stock" class="w-full bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500 font-bold">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center text-nowrap">حداقل خرید</label>
+                                            <input type="number" wire:model.defer="vendor_custom_variants.{{ $index }}.min_purchase" class="w-full bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center text-nowrap">حداکثر خرید</label>
+                                            <input type="number" wire:model.defer="vendor_custom_variants.{{ $index }}.max_purchase" class="w-full bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500" placeholder="نامحدود">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- مدیریت زمان تخفیف تنوع دستی --}}
+                                <div x-data="{ hasDiscount: @entangle('vendor_custom_variants.'.$index.'.discount_price') }" x-show="hasDiscount" x-collapse>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 bg-rose-50/30 dark:bg-rose-900/5 p-4 rounded-xl border border-rose-100 dark:border-rose-800/50" wire:ignore x-data="{ initJalaliDatePicker() { new JalaliDatePicker(); } }" x-init="initJalaliDatePicker()">
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">تاریخ شروع تخفیف</label>
+                                            <input type="text" data-jdp-with-time wire:model.defer="vendor_custom_variants.{{ $index }}.discount_start_date" class="{{ $inputClass }} !border-rose-200 focus:!border-rose-500 dark:!border-rose-800">
+                                        </div>
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">تاریخ پایان تخفیف</label>
+                                            <input type="text" data-jdp-with-time wire:model.defer="vendor_custom_variants.{{ $index }}.discount_end_date" class="{{ $inputClass }} !border-rose-200 focus:!border-rose-500 dark:!border-rose-800">
+                                        </div>
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">تعداد موجودی در تخفیف</label>
+                                            <input type="number" wire:model.defer="vendor_custom_variants.{{ $index }}.discount_stock" class="{{ $inputClass }} !border-rose-200 focus:!border-rose-500 dark:!border-rose-800" placeholder="تا اتمام موجودی کل">
+                                        </div>
+                                        <div>
+                                            <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">حداکثر خرید در تخفیف</label>
+                                            <input type="number" wire:model.defer="vendor_custom_variants.{{ $index }}.max_discount_purchase_qty" class="{{ $inputClass }} !border-rose-200 focus:!border-rose-500 dark:!border-rose-800" placeholder="نامحدود">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 flex justify-end">
+                                    <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-800 px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <div class="relative flex items-center">
+                                            <input type="checkbox" wire:model.defer="vendor_custom_variants.{{ $index }}.is_active" class="peer sr-only">
+                                            <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                                        </div>
+                                        <span class="text-[11px] font-bold text-gray-600 dark:text-gray-300">نمایش کالا در سایت</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                @endif
 
                 <div class="pt-6 mt-6 flex justify-end">
                     <button wire:click="save" wire:loading.attr="disabled" class="px-8 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all active:scale-95 w-full sm:w-auto flex items-center justify-center gap-2">
@@ -192,4 +414,6 @@
             </div>
         @endif
     </div>
+    {{-- 💡 FIX: include به داخل div اصلی منتقل شد --}}
+    @includeIf('partials.jalali-date-picker')
 </div>

@@ -4,6 +4,7 @@ namespace Modules\Clients\App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class ClientPaymentController extends Controller
 {
@@ -13,7 +14,7 @@ class ClientPaymentController extends Controller
         $allPayments = collect();
 
         // 1. Fetch Booking Payments
-        if (class_exists(\Modules\Booking\Entities\BookingPayment::class)) {
+        if (class_exists(\Modules\Booking\Entities\BookingPayment::class) && Schema::hasTable('booking_payments')) {
             $bookingPayments = \Modules\Booking\Entities\BookingPayment::whereHas('appointment', function($q) use ($client) {
                 $q->where('client_id', $client->id);
             })->with('appointment.service')->get()->map(function($payment) {
@@ -33,7 +34,7 @@ class ClientPaymentController extends Controller
         }
 
         // 2. Fetch Market Orders (as invoices/payments)
-        if (class_exists(\Modules\Market\Entities\Order::class)) {
+        if (class_exists(\Modules\Market\Entities\Order::class) && Schema::hasTable('market_orders')) {
             $marketOrders = \Modules\Market\Entities\Order::where('client_id', $client->id)->get()->map(function($order) {
                 $statusMap = [
                     'pending' => 'PENDING',
@@ -70,7 +71,7 @@ class ClientPaymentController extends Controller
         $client = auth('client')->user();
 
         if ($type === 'booking') {
-            if (!class_exists(\Modules\Booking\Entities\BookingPayment::class)) abort(404);
+            if (!class_exists(\Modules\Booking\Entities\BookingPayment::class) || !Schema::hasTable('booking_payments')) abort(404);
 
             $payment = \Modules\Booking\Entities\BookingPayment::whereHas('appointment', function($q) use ($client) {
                 $q->where('client_id', $client->id);
@@ -80,7 +81,7 @@ class ClientPaymentController extends Controller
         }
 
         if ($type === 'market') {
-            if (!class_exists(\Modules\Market\Entities\Order::class)) abort(404);
+            if (!class_exists(\Modules\Market\Entities\Order::class) || !Schema::hasTable('market_orders')) abort(404);
 
             $order = \Modules\Market\Entities\Order::where('client_id', $client->id)
                 ->with(['items'])

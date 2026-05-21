@@ -31,7 +31,6 @@ class MasterProductController extends Controller
 
     public function edit(MasterProduct $master_product)
     {
-        // دقت کن متغیر باید $master_product باشه چون لاراول از روی اسم روت اینو میسازه
         return view('market::admin.master-products.edit', ['product' => $master_product]);
     }
 

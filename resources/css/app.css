@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@font-face{
+@font-face {
     font-family: "IRANYekanX";
     src: url("/resources/fonts/iranYekanX/IRANYekanXVFaNumVF.woff2") format("woff2-variations");
     font-weight: 100 900;               /* رنج وزن برای variable font */
@@ -32,11 +32,24 @@ html {
     /* --color-brand-500: oklch(0.7 0.12 260); */
 }
 
-html { font-family: var(--font-sans); font-variation-settings:"wght" 400; font-optical-sizing:auto; }
+html {
+    font-family: var(--font-sans);
+    font-variation-settings: "wght" 400;
+    font-optical-sizing: auto;
+}
 
-.digits-fa { font-feature-settings: "locl" 1; }
-.btn { @apply px-3 py-2 rounded-lg font-medium; }
-:focus-visible{outline: none !important}
+.digits-fa {
+    font-feature-settings: "locl" 1;
+}
+
+.btn {
+    @apply px-3 py-2 rounded-lg font-medium;
+}
+
+:focus-visible {
+    outline: none !important
+}
+
 [x-cloak] {
     display: none;
 }
@@ -46,4 +59,212 @@ html { font-family: var(--font-sans); font-variation-settings:"wght" 400; font-o
     z-index: 0; /* Fix z-index issue with modals/dropdowns */
     border-radius: 0.75rem;
     font-family: var(--font-sans);
+}
+
+
+/* =========================================
+Quill.js Editor Custom Styles (Professional RTL & Dark Mode)
+========================================= */
+
+
+/* استایل نوار ابزار (Toolbar) */
+.ql-toolbar.ql-snow {
+    border: 1px solid #e5e7eb !important;
+    border-bottom: none !important;
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+    background-color: #f9fafb !important;
+    font-family: inherit;
+    padding: 0.75rem !important;
+    transition: all 0.3s ease;
+}
+
+.dark .ql-toolbar.ql-snow {
+    border-color: #374151 !important;
+    background-color: #1f2937 !important;
+}
+
+.ql-container.ql-snow {
+    border: 1px solid #e5e7eb !important;
+    border-bottom-left-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+    background-color: #ffffff !important;
+    font-family: inherit;
+    font-size: 0.875rem !important;
+     transition: all 0.3s ease;
+}
+
+.dark .ql-container.ql-snow {
+    border-color: #374151 !important;
+    background-color: #111827 !important;
+    color: #f9fafb;
+}
+
+.custom-quill-wrapper:focus-within .ql-toolbar.ql-snow,
+.custom-quill-wrapper:focus-within .ql-container.ql-snow {
+    border-color: #6366f1 !important;
+}
+
+.dark .custom-quill-wrapper:focus-within .ql-toolbar.ql-snow,
+.dark .custom-quill-wrapper:focus-within .ql-container.ql-snow {
+    border-color: #818cf8 !important;
+}
+
+.ql-editor {
+    min-height: 250px;
+    line-height: 2;
+    padding: 1.25rem !important;
+    text-align: right !important;
+    direction: rtl !important;
+}
+
+/* رفع مشکل چپ‌چین بودن و رنگ Placeholder در فارسی */
+.ql-editor.ql-blank::before {
+    right: 1.25rem !important;
+    left: auto !important;
+    text-align: right !important;
+    direction: rtl !important;
+    font-style: normal !important;
+    color: #9ca3af !important;
+}
+
+.dark .ql-editor.ql-blank::before {
+    color: #6b7280 !important;
+}
+
+.ql-snow .ql-picker-options {
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 0.5rem 0;
+    border: 1px solid #e5e7eb !important;
+    background-color: #ffffff !important;
+    right: 0 !important;
+    left: auto !important;
+}
+
+.dark .ql-snow .ql-picker-options {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+}
+
+.dark .ql-picker-item {
+    color: #d1d5db !important;
+}
+
+.dark .ql-picker-item:hover {
+    color: #6366f1 !important;
+    background-color: #374151 !important;
+}
+
+.dark .ql-picker-label {
+    color: #d1d5db !important;
+}
+
+.dark .ql-picker-label:hover {
+    color: #f3f4f6 !important;
+}
+
+/* تغییر رنگ آیکون‌های SVG (بولد، ایتالیک، لیست و...) در دارک مود */
+.dark .ql-stroke {
+    stroke: #9ca3af !important;
+}
+
+.dark .ql-fill {
+    fill: #9ca3af !important;
+}
+
+.dark button:hover .ql-stroke,
+.dark button:focus .ql-stroke,
+.dark button.ql-active .ql-stroke,
+.dark .ql-picker-label:hover .ql-stroke,
+.dark .ql-picker-label.ql-active .ql-stroke {
+    stroke: #818cf8 !important;
+}
+
+.dark button:hover .ql-fill,
+.dark button:focus .ql-fill,
+.dark button.ql-active .ql-fill,
+.dark .ql-picker-label:hover .ql-fill,
+.dark .ql-picker-label.ql-active .ql-fill {
+    fill: #818cf8 !important;
+}
+
+/* فارسی‌سازی متون Tooltip و Dropdown بدون نیاز به جاوااسکریپت */
+.ql-snow .ql-picker.ql-header .ql-picker-label::before {
+    content: 'اندازه متن' !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="1"]::before {
+    content: 'تیتر ۱ (بزرگ)' !important;
+    font-size: 1.5em !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="2"]::before {
+    content: 'تیتر ۲ (متوسط)' !important;
+    font-size: 1.2em !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="3"]::before {
+    content: 'تیتر ۳ (کوچک)' !important;
+    font-size: 1.1em !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-item:not([data-value])::before {
+    content: 'متن عادی' !important;
+}
+
+.ql-snow .ql-tooltip {
+    direction: rtl;
+    text-align: right;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb !important;
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    padding: 10px 15px !important;
+}
+
+.dark .ql-snow .ql-tooltip {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #d1d5db !important;
+}
+
+.ql-snow .ql-tooltip input[type=text] {
+    border: 1px solid #d1d5db !important;
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    margin-left: 0;
+    margin-right: 0.5rem;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.ql-snow .ql-tooltip input[type=text]:focus {
+    border-color: #6366f1 !important;
+}
+
+.dark .ql-snow .ql-tooltip input[type=text] {
+    background-color: #111827 !important;
+    border-color: #4b5563 !important;
+    color: #ffffff !important;
+}
+
+.ql-snow .ql-tooltip::before {
+    content: "بازدید آدرس:" !important;
+    margin-left: 8px;
+}
+
+.ql-snow .ql-tooltip a.ql-action::after {
+    content: 'ویرایش' !important;
+    margin-right: 0.5rem;
+}
+
+.ql-snow .ql-tooltip a.ql-remove::before {
+    content: 'حذف' !important;
+    margin-right: 0.5rem;
 }

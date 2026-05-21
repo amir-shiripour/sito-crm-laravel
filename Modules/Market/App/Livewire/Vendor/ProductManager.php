@@ -6,6 +6,8 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Modules\Market\Entities\MasterProduct;
 use Modules\Market\Entities\VendorProduct;
+use Modules\Market\Entities\MarketSetting;
+use Morilog\Jalali\Jalalian;
 
 class ProductManager extends Component
 {
@@ -23,6 +25,10 @@ class ProductManager extends Component
         $this->editForm = [
             'price' => $vp->price,
             'discount_price' => $vp->discount_price,
+            'discount_start_date' => $vp->discount_start_date ? Jalalian::fromCarbon($vp->discount_start_date)->format('Y/m/d H:i') : '',
+            'discount_end_date' => $vp->discount_end_date ? Jalalian::fromCarbon($vp->discount_end_date)->format('Y/m/d H:i') : '',
+            'discount_stock' => $vp->discount_stock,
+            'max_discount_purchase_qty' => $vp->max_discount_purchase_qty,
             'stock' => $vp->stock,
             'reorder_point' => $vp->reorder_point,
             'min_purchase_qty' => $vp->min_purchase_qty,
@@ -47,14 +53,33 @@ class ProductManager extends Component
         $vendorId = auth()->user()->marketVendor->id;
         $vp = VendorProduct::where('id', $this->editingId)->where('vendor_id', $vendorId)->firstOrFail();
 
+        // 💡 FIX: تبدیل تاریخ شمسی به میلادی
+        $startDate = null;
+        if (!empty($this->editForm['discount_start_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $this->editForm['discount_start_date'])) {
+            $startDate = Jalalian::fromFormat('Y/m/d H:i', $this->editForm['discount_start_date'])->toCarbon();
+        }
+
+        $endDate = null;
+        if (!empty($this->editForm['discount_end_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $this->editForm['discount_end_date'])) {
+            $endDate = Jalalian::fromFormat('Y/m/d H:i', $this->editForm['discount_end_date'])->toCarbon();
+        }
+
+        // 💡 FIX: تعیین وضعیت بر اساس نوع فروشگاه
+        $storeType = MarketSetting::getValue('system.store_type', 'multi');
+        $defaultStatus = ($storeType === 'single') ? 'published' : 'pending_review';
+
         $vp->update([
             'price' => $this->editForm['price'],
             'discount_price' => !empty($this->editForm['discount_price']) ? $this->editForm['discount_price'] : null,
+            'discount_start_date' => $startDate,
+            'discount_end_date' => $endDate,
+            'discount_stock' => !empty($this->editForm['discount_stock']) ? $this->editForm['discount_stock'] : null,
+            'max_discount_purchase_qty' => !empty($this->editForm['max_discount_purchase_qty']) ? $this->editForm['max_discount_purchase_qty'] : null,
             'stock' => $this->editForm['stock'],
             'reorder_point' => $this->editForm['reorder_point'] ?: 5,
             'min_purchase_qty' => !empty($this->editForm['min_purchase_qty']) ? $this->editForm['min_purchase_qty'] : 1,
             'max_purchase_qty' => !empty($this->editForm['max_purchase_qty']) ? $this->editForm['max_purchase_qty'] : null,
-            'status' => $this->editForm['is_active'] ? 'pending_review' : 'draft',
+            'status' => $this->editForm['is_active'] ? $defaultStatus : 'draft',
         ]);
 
         $this->editingId = null;

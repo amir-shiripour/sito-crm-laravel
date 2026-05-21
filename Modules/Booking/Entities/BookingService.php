@@ -49,6 +49,9 @@ class BookingService extends Model
     ];
 
     protected $casts = [
+        'base_price' => 'decimal:0',
+        'discount_price' => 'decimal:0',
+        'payment_amount_value' => 'decimal:0',
         'discount_from' => 'datetime',
         'discount_to' => 'datetime',
         'client_profile_required_fields' => 'array',

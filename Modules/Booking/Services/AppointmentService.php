@@ -196,10 +196,9 @@ class AppointmentService
             $gateway = [];
 
             if ($needsPayment && ($settings->tax_enabled || $service->payment_mode === BookingService::PAYMENT_MODE_REQUIRED || $payNow)) {
-                $paymentMode = $settings->tax_enabled ? BookingService::PAYMENT_MODE_REQUIRED : $service->payment_mode;
                 $payment = $this->paymentService->createPendingPayment(
                     $appointment->id,
-                    $paymentMode,
+                    $client->id,
                     $amount,
                     $settings->currency_unit ?? config('booking.defaults.currency_unit', 'IRR')
                 );
@@ -298,7 +297,8 @@ class AppointmentService
         string $endAtUtcIso,
         ?int $createdByUserId = null,
         ?string $notes = null,
-        ?array $appointmentFormResponse = null
+        ?array $appointmentFormResponse = null,
+        ?string $status = null
     ): Appointment {
         $startUtc = Carbon::parse($startAtUtcIso);
         $endUtc   = Carbon::parse($endAtUtcIso);
@@ -310,7 +310,7 @@ class AppointmentService
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
         $localDate  = $startUtc->copy()->timezone($scheduleTz)->toDateString();
 
-        return DB::transaction(function () use ($serviceId, $providerUserId, $clientId, $startUtc, $endUtc, $localDate, $createdByUserId, $notes, $appointmentFormResponse) {
+        return DB::transaction(function () use ($serviceId, $providerUserId, $clientId, $startUtc, $endUtc, $localDate, $createdByUserId, $notes, $appointmentFormResponse, $status) {
             $this->lockDayAndSlot($serviceId, $providerUserId, $localDate, $startUtc, $endUtc);
             $this->assertCapacityAvailable($serviceId, $providerUserId, $localDate, $startUtc, $endUtc);
 
@@ -318,7 +318,7 @@ class AppointmentService
                 'service_id' => $serviceId,
                 'provider_user_id' => $providerUserId,
                 'client_id' => $clientId,
-                'status' => Appointment::STATUS_CONFIRMED,
+                'status' => $status ?? Appointment::STATUS_CONFIRMED,
                 'start_at_utc' => $startUtc,
                 'end_at_utc' => $endUtc,
                 'created_by_type' => Appointment::CREATED_BY_OPERATOR,
@@ -328,8 +328,13 @@ class AppointmentService
             ]);
 
             $this->triggerWorkflow('appointment_created', $appointment);
-            $this->triggerWorkflow('created_operator_confirmed', $appointment); // <--- تریگر جدید
-            $this->onAppointmentConfirmed($appointment);
+
+            if ($appointment->status === Appointment::STATUS_CONFIRMED) {
+                $this->triggerWorkflow('created_operator_confirmed', $appointment); // <--- تریگر جدید
+                $this->onAppointmentConfirmed($appointment);
+            } else {
+                $this->triggerWorkflow('status_' . $appointment->status, $appointment);
+            }
 
             $this->audit->log(
                 action: 'APPOINTMENT_CREATED_OPERATOR',

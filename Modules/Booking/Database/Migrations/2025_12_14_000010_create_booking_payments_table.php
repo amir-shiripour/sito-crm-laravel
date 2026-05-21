@@ -14,8 +14,9 @@ return new class extends Migration {
         Schema::create('booking_payments', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('appointment_id');
+            $table->unsignedBigInteger('client_id');
 
-            $table->string('mode', 20);
+            $table->string('type', 20)->default('booking');
             $table->decimal('amount', 14, 2)->default(0);
             $table->string('currency_unit', 10)->default('IRR');
 
@@ -26,6 +27,7 @@ return new class extends Migration {
             $table->timestamps();
 
             $table->foreign('appointment_id')->references('id')->on('appointments')->cascadeOnDelete();
+            $table->foreign('client_id')->references('id')->on('clients')->cascadeOnDelete();
 
             $table->index(['status', 'created_at']);
         });

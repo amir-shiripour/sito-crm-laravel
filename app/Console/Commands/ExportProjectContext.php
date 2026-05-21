@@ -20,19 +20,34 @@ class ExportProjectContext extends Command
      *
      * @var string
      */
-    protected $description = 'Export Modules architecture, Database schema, and packages for AI context';
+    protected $description = 'Export Modules architecture (Market & Settings), Database schema, Panel Core, and Settings Module for AI context';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('در حال جمع‌آوری نقشه پروژه برای توسعه ماژول Market...');
+        $this->info('در حال جمع‌آوری نقشه هسته پنل، ماژول Market و ماژول Settings...');
 
         $data = [
             'installed_packages' => $this->getComposerDependencies(),
             'modules_list' => $this->getDirectoriesList(base_path('Modules')),
+
+            // ساختار پوشه های کلیدی app به عنوان هسته پنل
+            'panel_core_structure' => [
+                'Controllers' => $this->getDirStructure(app_path('Http/Controllers')),
+                'Middleware' => $this->getDirStructure(app_path('Http/Middleware')),
+                'Providers' => $this->getDirStructure(app_path('Providers')),
+                'View_Components' => $this->getDirStructure(app_path('View/Components')),
+                'Rules' => $this->getDirStructure(app_path('Rules')),
+            ],
+
+            // ساختار ماژول تنظیمات
+            'settings_module_structure' => $this->getDirStructure(base_path('Modules/Settings')),
+
+            // اضافه شدن ساختار ماژول مارکت برای تحلیل سیستم تک و چند فروشندگی و WMS
             'market_module_structure' => $this->getDirStructure(base_path('Modules/Market')),
+
             'global_models' => $this->getDirStructure(app_path('Models')),
             'database_schema' => $this->getDatabaseSchema(),
         ];

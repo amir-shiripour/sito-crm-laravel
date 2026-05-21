@@ -223,6 +223,11 @@
                     selector: '[data-jdp-only-time]',
                     hasSecond: false,
                 });
+                jalaliDatepicker.startWatch({
+                    selector: '[data-jdp-with-time]',
+                    time: true,
+                    hasSecond: false,
+                });
             }
         });
     </script>

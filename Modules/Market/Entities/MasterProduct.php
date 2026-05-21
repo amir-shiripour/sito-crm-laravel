@@ -4,14 +4,79 @@ use Illuminate\Database\Eloquent\Model;
 
 class MasterProduct extends Model {
     protected $table = 'market_master_products';
-    protected $fillable = ['brand_id', 'category_id', 'crm_code', 'barcode', 'title', 'slug', 'main_image', 'gallery_images', 'description', 'attributes', 'status'];
+
+    // 💡 فیلد allow_vendor_variant_creation حذف شد
+    protected $fillable = [
+        'brand_id', 'category_id', 'crm_code', 'barcode', 'gtin', 'title', 'slug',
+        'main_image', 'gallery_images', 'short_description', 'description', 'attributes', 'status',
+        'single_sell', 'weight', 'length', 'width', 'height', 'shipping_class', 'enable_reviews',
+        'variant_axes_permissions'
+    ];
+
     protected $casts = [
         'attributes' => 'array',
-        'gallery_images' => 'array'
+        'gallery_images' => 'array',
+        'variant_axes_permissions' => 'array'
     ];
+
+    protected $appends = ['price_info'];
 
     public function brand() { return $this->belongsTo(Brand::class); }
     public function category() { return $this->belongsTo(Category::class); }
 
     public function variants() { return $this->hasMany(ProductVariant::class, 'master_product_id'); }
+
+    public function getPriceInfoAttribute()
+    {
+        $minPrice = null;
+        $maxPrice = null;
+        $originalPriceForMin = null;
+        $hasStock = false;
+        $totalStock = 0;
+        $activeVariantsCount = 0;
+
+        if ($this->relationLoaded('variants') || $this->variants()->exists()) {
+            foreach ($this->variants as $variant) {
+                $variantHasStock = false;
+
+                foreach ($variant->vendorProducts as $vp) {
+                    if ($vp->status === 'published' && $vp->stock > 0) {
+                        $hasStock = true;
+                        $variantHasStock = true;
+                        $totalStock += $vp->stock;
+
+                        $activePrice = $vp->discount_price > 0 ? $vp->discount_price : $vp->price;
+                        $basePrice = $vp->price;
+
+                        if ($minPrice === null || $activePrice < $minPrice) {
+                            $minPrice = $activePrice;
+                            $originalPriceForMin = $basePrice;
+                        }
+                        if ($maxPrice === null || $activePrice > $maxPrice) {
+                            $maxPrice = $activePrice;
+                        }
+                    }
+                }
+
+                if ($variantHasStock) {
+                    $activeVariantsCount++;
+                }
+            }
+        }
+
+        $discountPercent = 0;
+        if ($minPrice !== null && $originalPriceForMin !== null && $originalPriceForMin > $minPrice) {
+            $discountPercent = round((($originalPriceForMin - $minPrice) / $originalPriceForMin) * 100);
+        }
+
+        return [
+            'min_price' => $minPrice,
+            'max_price' => $maxPrice,
+            'original_price' => $originalPriceForMin,
+            'discount_percent' => $discountPercent,
+            'has_stock' => $hasStock,
+            'total_stock' => $totalStock,
+            'active_variants_count' => $activeVariantsCount,
+        ];
+    }
 }

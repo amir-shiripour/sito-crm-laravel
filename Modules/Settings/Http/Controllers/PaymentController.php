@@ -16,7 +16,7 @@ class PaymentController extends Controller
     public function request(Request $request)
     {
         // This is a dummy example. In a real scenario, you'd get the amount from an order/invoice.
-        $amount = $request->input('amount', 10000); // Toman
+        $amount = $request->input('amount', 1000); // Toman
         $gateway = $request->input('gateway', 'zarinpal');
         $description = $request->input('description', 'پرداخت تست');
 
@@ -42,7 +42,7 @@ class PaymentController extends Controller
                     'description' => $description,
                 ]);
 
-                // Redirect to Zarinpal
+                // Redirect to Gateway
                 return redirect()->away($result['payment_url']);
             } else {
                 Log::error('Payment request failed from gateway', ['result' => $result]);
@@ -59,34 +59,65 @@ class PaymentController extends Controller
      */
     public function verify(Request $request, $gateway)
     {
-        $authority = $request->query('Authority');
-        $status = $request->query('Status');
+        $authority = null;
+        $dataToVerify = [];
 
-        if (!$authority) {
-            return redirect()->route('settings.index')->with('error', 'اطلاعات پرداخت معتبر نیست.');
+        if ($gateway === 'zarinpal') {
+            $authority = $request->query('Authority');
+            $status = $request->query('Status');
+
+            if (!$authority) {
+                return redirect()->route('settings.index')->with('error', 'اطلاعات پرداخت معتبر نیست.');
+            }
+
+            if ($status === 'NOK') {
+                // Find payment and mark as failed without verification
+                $payment = Payment::where('authority', $authority)->where('status', 'pending')->first();
+                if ($payment) {
+                    $payment->update(['status' => 'failed']);
+                }
+                return redirect()->route('settings.index')->with('error', 'پرداخت توسط کاربر لغو شد.');
+            }
+
+            $dataToVerify = [
+                'Authority' => $authority,
+                'Status'    => $status,
+            ];
+
+        } elseif ($gateway === 'zibal') {
+            $authority = $request->query('trackId'); // Zibal uses trackId
+            $success = $request->query('success');
+
+            if (!$authority) {
+                return redirect()->route('settings.index')->with('error', 'اطلاعات پرداخت معتبر نیست.');
+            }
+
+            if ($success != 1) {
+                // Find payment and mark as failed without verification
+                $payment = Payment::where('authority', $authority)->where('status', 'pending')->first();
+                if ($payment) {
+                    $payment->update(['status' => 'failed']);
+                }
+                return redirect()->route('settings.index')->with('error', 'پرداخت توسط کاربر لغو شد یا ناموفق بود.');
+            }
+
+            $dataToVerify = $request->query(); // Pass all query params
+        } else {
+            return redirect()->route('settings.index')->with('error', 'درگاه پرداخت ناشناخته است.');
         }
 
-        // Find the pending payment
+        // Find the pending payment using the authority/trackId
         $payment = Payment::where('authority', $authority)->where('status', 'pending')->first();
 
         if (!$payment) {
             return redirect()->route('settings.index')->with('error', 'تراکنش یافت نشد یا قبلاً بررسی شده است.');
         }
 
-        if ($status === 'NOK') {
-            $payment->update(['status' => 'failed']);
-            return redirect()->route('settings.index')->with('error', 'پرداخت توسط کاربر لغو شد.');
-        }
+        // Add amount to data for verification (required by both gateways in our service)
+        $dataToVerify['Amount'] = $payment->amount;
 
         try {
             $paymentService = new PaymentService($gateway);
-
-            $dataToVerify = [
-                'Authority' => $authority,
-                'Status'    => $status,
-                'Amount'    => $payment->amount, // Amount in Toman
-            ];
-
             $result = $paymentService->verifyPayment($dataToVerify);
 
             if ($result['success']) {
@@ -103,7 +134,7 @@ class PaymentController extends Controller
                 // Payment failed during verification
                 $payment->update(['status' => 'failed']);
                 Log::error('Payment verification failed from gateway', ['result' => $result]);
-                return redirect()->route('settings.index')->with('error', 'خطا در تایید پرداخت: ' . $result['message']);
+                return redirect()->route('settings.index')->with('error', 'خطا در تایید پرداخت: ' . ($result['message'] ?? 'خطای ناشناخته'));
             }
         } catch (\Exception $e) {
             Log::error('Payment verify exception: ' . $e->getMessage());

@@ -25,6 +25,9 @@ class Installer extends BaseModuleInstaller
         'market_vendor_products',
         'market_orders',
         'market_order_items',
+        'market_warehouses',
+        'market_warehouse_stocks',
+        'market_warehouse_transactions',
     ];
 
     protected function trackerPath(): string
@@ -75,6 +78,9 @@ class Installer extends BaseModuleInstaller
 
             'market.vendors.view' => 'مشاهده فروشندگان',
             'market.vendors.manage' => 'مدیریت فروشندگان',
+
+            'market.warehouses.view' => 'مشاهده انبارها',
+            'market.warehouses.manage' => 'مدیریت انبارها',
         ];
 
         $tracker = $this->loadTracker();

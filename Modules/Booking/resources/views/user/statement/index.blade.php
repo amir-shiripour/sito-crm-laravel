@@ -279,6 +279,7 @@
                                         @php
                                             $statusMap = [
                                                 'CONFIRMED' => ['label' => 'تایید شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
+                                                'DRAFT' => ['label' => 'پیش نویس', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
                                                 'PENDING_PAYMENT' => ['label' => 'در انتظار پرداخت', 'class' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'],
                                                 'CANCELED_BY_CLIENT' => ['label' => 'لغو توسط بیمار', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
                                                 'CANCELED_BY_ADMIN' => ['label' => 'لغو توسط ادمین', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],

@@ -77,11 +77,11 @@
                                 <div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-xl text-sm font-bold flex flex-col items-center gap-0.5 border border-emerald-100 dark:border-emerald-800/50">
                                     @if($priceLabel) <span class="text-[9px] font-normal opacity-80">{{ $priceLabel }}</span> @endif
                                     <div class="flex items-center gap-1">
-                                        {{ number_format($price) }} <span class="text-[10px] font-normal">تومان</span>
+                                        {{ number_format($price) }} <span class="text-[10px] font-normal">{{ ($settings->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان' }}</span>
                                     </div>
                                     @if($settings->tax_enabled)
                                         <span class="text-[9px] font-normal opacity-80 text-emerald-600/80 dark:text-emerald-500"></span>
-{{--                                        <span class="text-[9px] font-normal opacity-80 text-emerald-600/80 dark:text-emerald-500">(با مالیات)</span>--}}
+                                        {{--                                        <span class="text-[9px] font-normal opacity-80 text-emerald-600/80 dark:text-emerald-500">(با مالیات)</span>--}}
                                     @endif
                                 </div>
                             </div>
