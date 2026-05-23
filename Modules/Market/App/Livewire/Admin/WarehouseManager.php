@@ -2,6 +2,7 @@
 
 namespace Modules\Market\App\Livewire\Admin;
 
+use App\Models\User;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Modules\Market\Entities\MarketSetting;
@@ -32,7 +33,6 @@ class WarehouseManager extends Component
     {
         return [
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:255|unique:market_warehouses,code,' . $this->warehouseId,
             'is_active' => 'boolean',
             'vendor_id' => 'nullable|exists:market_vendors,id',
         ];
@@ -70,7 +70,11 @@ class WarehouseManager extends Component
 
         Warehouse::updateOrCreate(
             ['id' => $this->warehouseId],
-            $validatedData
+            [
+                'name' => $validatedData['name'],
+                'is_active' => $validatedData['is_active'],
+                'vendor_id' => $validatedData['vendor_id'],
+            ]
         );
 
         $this->dispatch('notify', type: 'success', text: $this->warehouseId ? 'انبار با موفقیت ویرایش شد.' : 'انبار با موفقیت ایجاد شد.');
@@ -116,12 +120,28 @@ class WarehouseManager extends Component
             ->latest()
             ->paginate(10);
 
-        // 💡 اصلاح کوئری برای خواندن فروشندگان فعال
-        $vendors = $this->isMultiVendor ? Vendor::where('status', 'active')->get() : collect();
+        $vendors = collect();
+        $adminVendor = null;
+
+        if ($this->isMultiVendor) {
+            // 💡 واکشی تمام فروشندگان فعال با رابطه کاربر
+            $allActiveVendors = Vendor::with('user.roles')->where('status', 'active')->get();
+
+            // 💡 پیدا کردن فروشنده ادمین از بین فروشندگان فعال
+            $adminVendor = $allActiveVendors->first(function ($vendor) {
+                return $vendor->user && $vendor->user->hasAnyRole(['super-admin', 'admin']);
+            });
+
+            // 💡 فیلتر کردن سایر فروشندگان
+            $vendors = $allActiveVendors->filter(function ($vendor) use ($adminVendor) {
+                return !$adminVendor || $vendor->id !== $adminVendor->id;
+            });
+        }
 
         return view('market::livewire.admin.warehouse-manager', [
             'warehouses' => $warehouses,
             'vendors' => $vendors,
+            'adminVendor' => $adminVendor,
         ]);
     }
 }

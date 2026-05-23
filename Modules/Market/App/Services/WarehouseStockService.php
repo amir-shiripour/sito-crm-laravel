@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Modules\Market\Entities\MarketSetting;
 use Modules\Market\Entities\ProductVariant;
+use Modules\Market\Entities\Vendor;
 use Modules\Market\Entities\VendorProduct;
 use Modules\Market\Entities\Warehouse;
 use Modules\Market\Entities\WarehouseStock;
@@ -24,52 +25,67 @@ class WarehouseStockService
     }
 
     /**
-     * Get the available stock for a product variant.
-     * Switches between legacy stock and WMS based on settings.
+     * Get the stock deduction strategy.
+     *
+     * @return string
+     */
+    public function getStockDeductionStrategy(): string
+    {
+        return MarketSetting::getValue('wms.stock_deduction_strategy', 'combined');
+    }
+
+    /**
+     * Get the store architecture type.
+     *
+     * @return string
+     */
+    public function getStoreType(): string
+    {
+        return MarketSetting::getValue('system.store_type', 'multi');
+    }
+
+    /**
+     * Get the available stock for a product variant based on current settings.
      *
      * @param int $variantId
-     * @param int|null $vendorProductId
+     * @param int|null $vendorId
      * @return int
      */
-    public function getAvailableStock(int $variantId, int $vendorProductId = null): int
+    public function getAvailableStock(int $variantId, int $vendorId = null): int
     {
         if (!$this->isWmsActive()) {
             // WMS is not active, use legacy stock field.
-            if ($vendorProductId) {
-                $product = VendorProduct::find($vendorProductId);
+            if ($vendorId) {
+                $product = VendorProduct::where('vendor_id', $vendorId)->where('product_variant_id', $variantId)->first();
                 return $product ? $product->stock : 0;
             }
             $variant = ProductVariant::find($variantId);
             return $variant ? $variant->stock : 0;
         }
 
-        // WMS is active, calculate stock from warehouses.
+        // WMS is active
         $query = WarehouseStock::query()
             ->where('product_variant_id', $variantId)
             ->join('market_warehouses', 'market_warehouse_stocks.warehouse_id', '=', 'market_warehouses.id')
             ->where('market_warehouses.is_active', true);
 
-        if ($vendorProductId) {
-            $query->where('vendor_product_id', $vendorProductId);
+        if ($this->getStoreType() === 'multi' && $vendorId) {
+            // Multi-vendor: check vendor's own warehouses
+            $query->where('market_warehouses.vendor_id', $vendorId);
         } else {
-            $query->whereNull('vendor_product_id');
+            // Single-vendor or no vendor specified: check central warehouse
+            $query->whereNull('market_warehouses.vendor_id');
         }
 
-        return $query->sum(DB::raw('physical_stock - reserved_stock'));
+        $stockField = 'physical_stock';
+        if ($this->getStockDeductionStrategy() === 'separated') {
+            $stockField = 'online_stock';
+        }
+
+        return $query->sum(DB::raw("{$stockField} - reserved_stock"));
     }
 
-    /**
-     * Increment stock for a specific warehouse.
-     *
-     * @param int $warehouseId
-     * @param int $variantId
-     * @param int $quantity
-     * @param int|null $vendorProductId
-     * @param Model|null $reference
-     * @param int|null $userId
-     * @param string|null $description
-     * @return WarehouseStock
-     */
+    // ... (بقیه متدها بدون تغییر باقی می‌مانند)
     public function incrementStock(int $warehouseId, int $variantId, int $quantity, int $vendorProductId = null, $reference = null, int $userId = null, string $description = 'Stock increment'): WarehouseStock
     {
         return DB::transaction(function () use ($warehouseId, $variantId, $quantity, $vendorProductId, $reference, $userId, $description) {
@@ -79,7 +95,7 @@ class WarehouseStockService
                     'product_variant_id' => $variantId,
                     'vendor_product_id' => $vendorProductId,
                 ],
-                ['physical_stock' => 0, 'reserved_stock' => 0]
+                ['physical_stock' => 0, 'online_stock' => 0, 'reserved_stock' => 0]
             );
 
             $stock->increment('physical_stock', $quantity);
@@ -100,18 +116,6 @@ class WarehouseStockService
         });
     }
 
-    /**
-     * Decrement stock from a specific warehouse.
-     *
-     * @param int $warehouseId
-     * @param int $variantId
-     * @param int $quantity
-     * @param int|null $vendorProductId
-     * @param Model|null $reference
-     * @param int|null $userId
-     * @param string|null $description
-     * @return WarehouseStock
-     */
     public function decrementStock(int $warehouseId, int $variantId, int $quantity, int $vendorProductId = null, $reference = null, int $userId = null, string $description = 'Stock decrement'): WarehouseStock
     {
         return DB::transaction(function () use ($warehouseId, $variantId, $quantity, $vendorProductId, $reference, $userId, $description) {
@@ -145,16 +149,6 @@ class WarehouseStockService
         });
     }
 
-    /**
-     * Reserve stock for an order or other purposes.
-     *
-     * @param int $warehouseId
-     * @param int $variantId
-     * @param int $quantity
-     * @param int|null $vendorProductId
-     * @param Model|null $reference
-     * @return WarehouseStock
-     */
     public function reserveStock(int $warehouseId, int $variantId, int $quantity, int $vendorProductId = null, $reference = null): WarehouseStock
     {
         return DB::transaction(function () use ($warehouseId, $variantId, $quantity, $vendorProductId, $reference) {
@@ -166,7 +160,9 @@ class WarehouseStockService
                 ]
             );
 
-            if (($stock->physical_stock - $stock->reserved_stock) < $quantity) {
+            $stockField = $this->getStockDeductionStrategy() === 'separated' ? 'online_stock' : 'physical_stock';
+
+            if (($stock->{$stockField} - $stock->reserved_stock) < $quantity) {
                 throw new \Exception('Not enough available stock to reserve.');
             }
 
@@ -187,16 +183,6 @@ class WarehouseStockService
         });
     }
 
-    /**
-     * Release reserved stock.
-     *
-     * @param int $warehouseId
-     * @param int $variantId
-     * @param int $quantity
-     * @param int|null $vendorProductId
-     * @param Model|null $reference
-     * @return WarehouseStock
-     */
     public function releaseReservedStock(int $warehouseId, int $variantId, int $quantity, int $vendorProductId = null, $reference = null): WarehouseStock
     {
         return DB::transaction(function () use ($warehouseId, $variantId, $quantity, $vendorProductId, $reference) {
@@ -229,17 +215,6 @@ class WarehouseStockService
         });
     }
 
-    /**
-     * Finalize a shipment by converting reserved stock to a physical stock decrement.
-     *
-     * @param int $warehouseId
-     * @param int $variantId
-     * @param int $quantity
-     * @param int|null $vendorProductId
-     * @param Model|null $reference
-     * @param int|null $userId
-     * @return WarehouseStock
-     */
     public function finalizeShipment(int $warehouseId, int $variantId, int $quantity, int $vendorProductId = null, $reference = null, int $userId = null): WarehouseStock
     {
         return DB::transaction(function () use ($warehouseId, $variantId, $quantity, $vendorProductId, $reference, $userId) {

@@ -122,12 +122,22 @@
                             <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2">عملیات و لجستیک</h3>
 
                             <label class="flex items-center gap-3 cursor-pointer group">
-                                <input type="checkbox" wire:model.defer="wms_enabled" class="{{ $checkboxClass }}">
+                                <input type="checkbox" wire:model.live="wms_enabled" class="{{ $checkboxClass }}">
                                 <div class="flex flex-col">
                                     <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">فعال‌سازی سیستم انبارداری (WMS) مجزا</span>
                                     <span class="text-[10px] text-gray-500 mt-1">مدیریت حواله، قفسه‌بندی و انبارگردانی پیشرفته به سیستم اضافه شود.</span>
                                 </div>
                             </label>
+
+                            @if($wms_enabled)
+                                <div class="pl-8 animate-in fade-in">
+                                    <label for="stock_deduction_strategy" class="{{ $labelClass }}">استراتژی کسر موجودی</label>
+                                    <select id="stock_deduction_strategy" wire:model.defer="stock_deduction_strategy" class="{{ $inputClass }}">
+                                        <option value="combined">ترکیبی (موجودی کل انبارهای فیزیکی و آنلاین)</option>
+                                        <option value="separated">مجزا (فقط موجودی انبارهای نوع آنلاین)</option>
+                                    </select>
+                                </div>
+                            @endif
 
                             <label class="flex items-center gap-3 cursor-pointer group">
                                 <input type="checkbox" wire:model.defer="enable_reports" class="{{ $checkboxClass }}">

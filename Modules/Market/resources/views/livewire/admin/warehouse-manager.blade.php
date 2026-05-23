@@ -87,27 +87,32 @@
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ $warehouseId ? 'ویرایش انبار' : 'ایجاد انبار جدید' }}</h3>
                     </div>
                     <div class="p-6 space-y-4">
-                        @if($isMultiVendor)
-                            <div>
-                                <label for="vendor_id" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">مالک انبار (فروشنده)</label>
-                                <select id="vendor_id" class="{{ $inputClass }}" wire:model="vendor_id">
-                                    <option value="">انبار مرکزی (متعلق به سیستم)</option>
-                                    @foreach($vendors as $vendor)
-                                        <option value="{{ $vendor->id }}">{{ $vendor->store_name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('vendor_id') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
-                            </div>
-                        @endif
+                        <div>
+                            <label for="vendor_id" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">مالک انبار</label>
+                            <select id="vendor_id" class="{{ $inputClass }}" wire:model="vendor_id">
+                                @if($adminVendor)
+                                    <option value="{{ $adminVendor->id }}">فروشگاه اختصاصی ادمین (سیستم)</option>
+                                @endif
+                                <option value="">بدون فروشنده / انبار مرکزی ترانزیت</option>
+                                @if($isMultiVendor)
+                                    <optgroup label="سایر فروشندگان">
+                                        @foreach($vendors as $vendor)
+                                            <option value="{{ $vendor->id }}">{{ $vendor->store_name }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+                            </select>
+                            @error('vendor_id') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
+                        </div>
                         <div>
                             <label for="name" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">نام انبار</label>
                             <input type="text" id="name" class="{{ $inputClass }}" wire:model="name">
                             @error('name') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label for="code" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">کد انبار (منحصر به فرد)</label>
-                            <input type="text" id="code" class="{{ $inputClass }} font-mono" wire:model="code">
-                            @error('code') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
+                            <label for="code" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">کد انبار</label>
+                            <input type="text" id="code" class="{{ $inputClass }} bg-gray-100 dark:bg-gray-700/50 font-mono" wire:model="code" readonly placeholder="به صورت خودکار تولید می‌شود...">
+                            <p class="text-xs text-gray-400 mt-1">این کد به صورت سیستمی و یکتا تولید می‌شود.</p>
                         </div>
                         <label class="flex items-center gap-3 pt-2">
                             <input type="checkbox" id="is_active" class="{{ $checkboxClass }}" wire:model="is_active">

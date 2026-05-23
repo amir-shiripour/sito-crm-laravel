@@ -10,6 +10,7 @@ class ProductVariant extends Model {
 
     public function masterProduct() { return $this->belongsTo(MasterProduct::class, 'master_product_id'); }
     public function vendorProducts() { return $this->hasMany(VendorProduct::class, 'product_variant_id'); }
+    public function warehouseStocks() { return $this->hasMany(WarehouseStock::class, 'product_variant_id'); } // 💡 اضافه شد
 
     /**
      * 💡 FINAL: Accessor برای تولید نام واریانت از روی ساختار صحیح variant_attributes

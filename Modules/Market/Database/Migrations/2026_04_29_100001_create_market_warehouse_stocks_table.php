@@ -19,6 +19,7 @@ return new class extends Migration
             $table->foreignId('product_variant_id')->constrained('market_product_variants')->onDelete('cascade');
             $table->foreignId('vendor_product_id')->nullable()->constrained('market_vendor_products')->onDelete('cascade');
             $table->integer('physical_stock')->default(0);
+            $table->integer('online_stock')->default(0); // 💡 اضافه شد
             $table->integer('reserved_stock')->default(0);
             $table->timestamps();
 

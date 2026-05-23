@@ -13,6 +13,7 @@ use Modules\Market\App\Livewire\Admin\VendorForm;
 use Modules\Market\App\Livewire\Vendor\ProductForm;
 use Modules\Market\App\Livewire\Vendor\KycWizard;
 use Modules\Market\App\Livewire\Vendor\ProductManager;
+use Modules\Market\App\Livewire\Vendor\VendorWarehouseManager;
 use Modules\Market\App\Livewire\Admin\MarketSettings;
 use Modules\Market\App\Livewire\Admin\MasterProductForm;
 use Modules\Market\App\Livewire\Admin\BrandManager;
@@ -21,9 +22,11 @@ use Modules\Market\App\Livewire\Admin\AttributeManager;
 use Modules\Market\App\Livewire\Admin\VendorProductReview;
 use Modules\Market\App\Livewire\Admin\WarehouseManager;
 use Modules\Market\App\Livewire\Admin\WarehouseStockController;
-use Modules\Market\App\Livewire\Admin\ProductVariantSelector; // 💡 اضافه شد
+use Modules\Market\App\Livewire\Admin\ProductVariantSelector;
+use Modules\Market\App\Observers\VendorObserver; // 💡 اضافه شد
 use Modules\Market\Entities\MarketSetting;
 use Modules\Market\Entities\Vendor;
+use Modules\Market\Entities\Warehouse;
 
 class MarketServiceProvider extends ServiceProvider
 {
@@ -44,6 +47,7 @@ class MarketServiceProvider extends ServiceProvider
 
         if (BaseModuleInstaller::isInstalled($this->moduleName)) {
             $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+            $this->autoProvisionCentralWarehouse();
         }
 
         $widgetsFile = __DIR__ . '/../../config/widgets.php';
@@ -64,10 +68,27 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::admin.category-manager', CategoryManager::class);
         Livewire::component('market::admin.attribute-manager', AttributeManager::class);
         Livewire::component('market::vendor.product-manager', ProductManager::class);
+        Livewire::component('market::vendor.vendor-warehouse-manager', VendorWarehouseManager::class);
         Livewire::component('market::admin.vendor-product-review', VendorProductReview::class);
         Livewire::component('market::admin.warehouse-manager', WarehouseManager::class);
         Livewire::component('market::admin.warehouse-stock-controller', WarehouseStockController::class);
-        Livewire::component('market::admin.product-variant-selector', ProductVariantSelector::class); // 💡 اضافه شد
+        Livewire::component('market::admin.product-variant-selector', ProductVariantSelector::class);
+
+        // 💡 ثبت Observer
+        Vendor::observe(VendorObserver::class);
+    }
+
+    /**
+     * 💡 NEW: Automatically create a central warehouse if WMS is active and none exists.
+     */
+    protected function autoProvisionCentralWarehouse()
+    {
+        if (MarketSetting::getValue('wms.enabled', false)) {
+            Warehouse::firstOrCreate(
+                ['vendor_id' => null],
+                ['name' => 'انبار مرکزی سیستم', 'code' => 'WH-MAIN', 'is_active' => true]
+            );
+        }
     }
 
     /**

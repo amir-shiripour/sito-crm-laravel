@@ -195,7 +195,11 @@
                                     <div class="grid grid-cols-3 lg:col-span-2 gap-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100 dark:border-gray-800">
                                         <div>
                                             <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center">موجودی انبار</label>
-                                            <input type="number" wire:model="vendor_variants.{{ $variant->id }}.stock" class="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500 font-bold">
+                                            <input type="number" wire:model="vendor_variants.{{ $variant->id }}.stock" class="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-white rounded-lg text-center text-sm py-1.5 focus:ring-1 focus:ring-indigo-500 font-bold"
+                                                @if($isWmsActive) readonly @endif>
+                                            @if($isWmsActive)
+                                                <p class="text-[9px] text-center text-gray-400 mt-1">از بخش انبارگردانی</p>
+                                            @endif
                                         </div>
                                         <div>
                                             <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 text-center text-nowrap" title="حداقل خرید">حداقل خرید</label>
@@ -414,6 +418,5 @@
             </div>
         @endif
     </div>
-    {{-- 💡 FIX: include به داخل div اصلی منتقل شد --}}
     @includeIf('partials.jalali-date-picker')
 </div>

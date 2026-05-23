@@ -1,11 +1,11 @@
 <?php
 namespace Modules\Market\Entities;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class MasterProduct extends Model {
     protected $table = 'market_master_products';
 
-    // 💡 فیلد allow_vendor_variant_creation حذف شد
     protected $fillable = [
         'brand_id', 'category_id', 'crm_code', 'barcode', 'gtin', 'title', 'slug',
         'main_image', 'gallery_images', 'short_description', 'description', 'attributes', 'status',
@@ -19,15 +19,28 @@ class MasterProduct extends Model {
         'variant_axes_permissions' => 'array'
     ];
 
-    protected $appends = ['price_info'];
+    protected $appends = ['price_info', 'main_image_url'];
 
     public function brand() { return $this->belongsTo(Brand::class); }
     public function category() { return $this->belongsTo(Category::class); }
 
     public function variants() { return $this->hasMany(ProductVariant::class, 'master_product_id'); }
 
+    /**
+     * 💡 FINAL: Accessor for the main image URL.
+     */
+    public function getMainImageUrlAttribute()
+    {
+        if ($this->main_image && Storage::disk('public')->exists($this->main_image)) {
+            return Storage::url($this->main_image);
+        }
+        // فال‌بک به یک تصویر پیش‌فرض
+        return 'https://via.placeholder.com/150/e2e8f0/718096?text=No+Image';
+    }
+
     public function getPriceInfoAttribute()
     {
+        // ... (متد بدون تغییر)
         $minPrice = null;
         $maxPrice = null;
         $originalPriceForMin = null;

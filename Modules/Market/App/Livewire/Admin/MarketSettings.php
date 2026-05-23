@@ -3,17 +3,20 @@
 namespace Modules\Market\App\Livewire\Admin;
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Modules\Market\Entities\MarketSetting;
 use Modules\Market\Entities\Vendor;
+use Modules\Market\Entities\Warehouse;
+use Modules\Market\Entities\VendorProduct;
+use Modules\Market\Entities\WarehouseStock;
 
 class MarketSettings extends Component
 {
-    // ==========================================
-    // 1. تب هسته سیستم (سوپر ادمین)
-    // ==========================================
-    public string $store_type = 'multi'; // single | multi
-    public string $store_display_type = 'by_vendor'; // by_vendor | by_product
+    // ... (بقیه پراپرتی‌ها بدون تغییر)
+    public string $stock_deduction_strategy = 'combined';
+    public string $store_type = 'multi';
+    public string $store_display_type = 'by_vendor';
     public bool $wms_enabled = false;
     public bool $enable_reports = true;
     public bool $enable_coupons = true;
@@ -21,8 +24,6 @@ class MarketSettings extends Component
     public bool $enable_wallet = false;
     public bool $enable_affiliate = false;
     public string $system_product_prefix = 'SIT';
-
-    // ... (بقیه پراپرتی‌ها بدون تغییر باقی می‌مانند)
     public bool $is_market_active = true;
     public string $currency = 'toman';
     public string $currency_position = 'right_space';
@@ -57,7 +58,7 @@ class MarketSettings extends Component
 
     public function mount()
     {
-        // 1. سیستم
+        $this->stock_deduction_strategy = MarketSetting::getValue('wms.stock_deduction_strategy', 'combined');
         $this->store_type = MarketSetting::getValue('system.store_type', 'multi');
         $this->store_display_type = MarketSetting::getValue('system.store_display_type', 'by_vendor');
         $this->wms_enabled = (bool) MarketSetting::getValue('wms.enabled', false);
@@ -67,8 +68,6 @@ class MarketSettings extends Component
         $this->enable_wallet = (bool) MarketSetting::getValue('system.enable_wallet', false);
         $this->enable_affiliate = (bool) MarketSetting::getValue('system.enable_affiliate', false);
         $this->system_product_prefix = MarketSetting::getValue('system.product_prefix', 'SIT');
-
-        // ... (بقیه mount بدون تغییر)
         $this->is_market_active = (bool) MarketSetting::getValue('general.is_market_active', true);
         $this->currency = MarketSetting::getValue('general.currency', 'toman');
         $this->currency_position = MarketSetting::getValue('general.currency_position', 'right_space');
@@ -104,6 +103,7 @@ class MarketSettings extends Component
     public function save()
     {
         $this->validate([
+            'stock_deduction_strategy' => 'required|in:combined,separated',
             'default_tax_rate' => 'numeric|min:0|max:100',
             'default_commission_rate' => 'numeric|min:0|max:100',
             'max_vendor_addresses' => 'integer|min:1',
@@ -117,7 +117,10 @@ class MarketSettings extends Component
             'ui_product_card_style' => 'required|in:modern,classic,minimal',
         ]);
 
+        $wasWmsDisabled = !MarketSetting::getValue('wms.enabled', false);
+
         if (auth()->user()->hasRole('super-admin') || auth()->user()->hasRole('admin')) {
+            MarketSetting::setValue('wms.stock_deduction_strategy', $this->stock_deduction_strategy);
             MarketSetting::setValue('system.store_type', $this->store_type);
             MarketSetting::setValue('system.store_display_type', $this->store_display_type);
             MarketSetting::setValue('wms.enabled', $this->wms_enabled);
@@ -129,7 +132,6 @@ class MarketSettings extends Component
             MarketSetting::setValue('system.product_prefix', strtoupper($this->system_product_prefix));
         }
 
-        // ... (بقیه setValue ها بدون تغییر)
         MarketSetting::setValue('general.is_market_active', $this->is_market_active);
         MarketSetting::setValue('general.currency', $this->currency);
         MarketSetting::setValue('general.currency_position', $this->currency_position);
@@ -161,20 +163,101 @@ class MarketSettings extends Component
         MarketSetting::setValue('finance.min_withdrawal_amount', $this->min_withdrawal_amount);
         MarketSetting::setValue('finance.withdrawal_schedule', $this->withdrawal_schedule);
 
+        if ($wasWmsDisabled && $this->wms_enabled) {
+            $this->onWmsEnabled();
+        }
+
         $this->autoProvisionForSingleVendor();
 
         $this->dispatch('notify', type: 'success', text: 'تنظیمات پیشرفته فروشگاه با موفقیت بروزرسانی شد.');
     }
 
     /**
-     * 💡 NEW: متد ایجاد خودکار فروشگاه به این کامپوننت منتقل شد
+     * Hook for when WMS is enabled.
+     * This method performs a one-time data migration from the legacy stock system
+     * to the new Warehouse Management System (WMS). It ensures that the existing
+     * 'stock' values from 'market_vendor_products' are correctly transferred to the
+     * 'online_stock' and 'physical_stock' fields in the corresponding default
+     * warehouse for each product variant, making the legacy data the source of truth.
      */
+    protected function onWmsEnabled()
+    {
+        DB::transaction(function () {
+            // Step 1: CRITICAL - Reset all WMS stocks to zero before migration.
+            // This prevents additive errors from leftover data in the warehouse table,
+            // ensuring the legacy stock is the absolute source of truth.
+            WarehouseStock::query()->update([
+                'online_stock' => 0,
+                'physical_stock' => 0,
+                'reserved_stock' => 0,
+            ]);
+
+            // Step 2: Prepare a cache for default warehouses to minimize database queries.
+            $warehouseCache = [];
+
+            // Step 3: Iterate through all vendor products with legacy stock, in chunks, to sync them.
+            VendorProduct::query()
+                ->where('stock', '>', 0)
+                ->with('vendor.user') // Eager load vendor and user for efficiency
+                ->chunkById(200, function ($vendorProducts) use (&$warehouseCache) {
+                    foreach ($vendorProducts as $vendorProduct) {
+                        $vendorId = $vendorProduct->vendor_id;
+
+                        // Step 3.1: Find or create the default warehouse for the vendor/system.
+                        if (!isset($warehouseCache[$vendorId ?? 'system'])) {
+                            if ($vendorId) {
+                                $vendor = $vendorProduct->vendor;
+                                $warehouseCache[$vendorId] = Warehouse::firstOrCreate(
+                                    ['vendor_id' => $vendorId],
+                                    [
+                                        'name' => 'انبار اصلی ' . ($vendor->store_name ?: $vendor->user->name),
+                                        'code' => 'WH-' . strtoupper(substr($vendor->slug, 0, 10)),
+                                        'is_active' => true,
+                                    ]
+                                );
+                            } else {
+                                $warehouseCache['system'] = Warehouse::firstOrCreate(
+                                    ['vendor_id' => null],
+                                    [
+                                        'name' => 'انبار مرکزی سیستم',
+                                        'code' => 'WH-MAIN',
+                                        'is_active' => true,
+                                    ]
+                                );
+                            }
+                        }
+
+                        $targetWarehouse = $warehouseCache[$vendorId ?? 'system'];
+
+                        if (!$targetWarehouse) {
+                            continue;
+                        }
+
+                        // Step 3.2: Sync the legacy stock to the WMS using updateOrCreate.
+                        // Since we reset the table, this will correctly set the stock values.
+                        WarehouseStock::updateOrCreate(
+                            [
+                                'warehouse_id' => $targetWarehouse->id,
+                                'product_variant_id' => $vendorProduct->product_variant_id,
+                                // Adding vendor_product_id to the query key for more precise matching
+                                'vendor_product_id' => $vendorProduct->id,
+                            ],
+                            [
+                                'online_stock' => $vendorProduct->stock,
+                                'physical_stock' => $vendorProduct->stock,
+                                'reserved_stock' => 0,
+                            ]
+                        );
+                    }
+                });
+        });
+    }
+
+
     protected function autoProvisionForSingleVendor()
     {
         if ($this->store_type === 'single') {
-            $adminUser = User::whereHas('roles', function ($query) {
-                $query->where('name', 'super-admin')->orWhere('name', 'admin');
-            })->first();
+            $adminUser = User::role(['super-admin', 'admin'])->first();
 
             if ($adminUser) {
                 $vendorExists = Vendor::where('user_id', $adminUser->id)->exists();
@@ -186,7 +269,6 @@ class MarketSettings extends Component
                         'slug' => 'main-store',
                         'status' => 'active',
                         'kyc_status' => 'approved',
-                        'is_active' => true,
                     ]);
                 }
             }

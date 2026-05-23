@@ -7,7 +7,9 @@ use Modules\Market\Entities\MasterProduct;
 use Modules\Market\Entities\VendorProduct;
 use Modules\Market\Entities\ProductVariant;
 use Modules\Market\Entities\MarketSetting;
+use Modules\Market\Entities\WarehouseStock;
 use Morilog\Jalali\Jalalian;
+use Illuminate\Support\Facades\DB;
 
 class ProductForm extends Component
 {
@@ -18,15 +20,16 @@ class ProductForm extends Component
     public $available_variants = [];
     public $vendor_variants = [];
 
-    // برای حالت ساخت تنوع توسط فروشنده
     public $vendor_custom_variants = [];
     public $allow_custom_variants = false;
-
-    // نگهداری گزینه‌های مجاز برای انتخاب فروشنده
     public $allowed_axes_options = [];
+
+    public bool $isWmsActive = false;
 
     public function mount()
     {
+        $this->isWmsActive = (bool) MarketSetting::getValue('wms.enabled', false);
+
         if (request()->has('master_id')) {
             $this->selectProduct(request()->query('master_id'));
         }
@@ -78,22 +81,15 @@ class ProductForm extends Component
     {
         $this->allowed_axes_options = [];
         $permissions = $this->selectedMasterProduct->variant_axes_permissions ?? [];
-
         if (empty($permissions)) return;
-
         $category = $this->selectedMasterProduct->category;
         $variantFieldIds = is_array($category->variant_fields) ? $category->variant_fields : [];
-
         if (empty($variantFieldIds)) return;
-
         $attributes = \Modules\Market\Entities\MarketAttribute::with('values')->whereIn('id', $variantFieldIds)->get();
-
         foreach ($attributes as $attr) {
             $attrName = $attr->name;
-
             if (isset($permissions[$attrName])) {
                 $allowedVals = $permissions[$attrName];
-
                 if (in_array('هر ' . $attrName, $allowedVals)) {
                     $this->allowed_axes_options[$attrName] = $attr->values->pluck('value')->toArray();
                 } else {
@@ -109,7 +105,7 @@ class ProductForm extends Component
         $vendorId = auth()->user()->marketVendor->id;
 
         if ($this->selectedMasterProduct) {
-            $this->available_variants = $this->selectedMasterProduct->variants->where('is_active', true);
+            $this->available_variants = $this->selectedMasterProduct->variants()->where('is_active', true)->get();
 
             foreach ($this->available_variants as $variant) {
                 $attributes = $variant->variant_attributes ?? [];
@@ -117,17 +113,36 @@ class ProductForm extends Component
 
                 $existing = VendorProduct::where('vendor_id', $vendorId)->where('product_variant_id', $variant->id)->first();
 
+                $stockValue = 0;
+
+                // if WMS is active, dynamically calculate stock from warehouses to ensure frontend has the latest source of truth.
+                if ($this->isWmsActive) {
+                    $wmsOnlineStock = WarehouseStock::where('product_variant_id', $variant->id)
+                        ->whereHas('warehouse', function($q) use ($vendorId) {
+                            $q->where('vendor_id', $vendorId)
+                              ->where('is_active', true);
+                        })
+                        ->sum('online_stock');
+
+                    // Automatically heal/sync the legacy database field if a discrepancy exists
+                    if ($existing && $existing->stock != $wmsOnlineStock) {
+                        $existing->update(['stock' => $wmsOnlineStock]);
+                    }
+                    $stockValue = $wmsOnlineStock;
+                } else {
+                    $stockValue = $existing ? $existing->stock : 0;
+                }
+
                 $this->vendor_variants[$variant->id] = [
                     'display_name' => $variantName,
                     'sell_this' => $existing ? true : false,
                     'price' => $existing ? $existing->price : '',
                     'discount_price' => $existing ? $existing->discount_price : '',
-                    // 💡 FIX: فرمت کردن تاریخ و زمان میلادی به شمسی برای نمایش
                     'discount_start_date' => $existing && $existing->discount_start_date ? Jalalian::fromCarbon($existing->discount_start_date)->format('Y/m/d H:i') : '',
                     'discount_end_date' => $existing && $existing->discount_end_date ? Jalalian::fromCarbon($existing->discount_end_date)->format('Y/m/d H:i') : '',
                     'discount_stock' => $existing ? $existing->discount_stock : '',
                     'max_discount_purchase_qty' => $existing ? $existing->max_discount_purchase_qty : '',
-                    'stock' => $existing ? $existing->stock : 0,
+                    'stock' => $stockValue, // Note: the blade file MUST use $isWmsActive to set this input as disabled/readonly
                     'reorder_point' => $existing ? $existing->reorder_point : 5,
                     'min_purchase' => $existing ? $existing->min_purchase_qty : 1,
                     'max_purchase' => $existing ? $existing->max_purchase_qty : '',
@@ -148,7 +163,6 @@ class ProductForm extends Component
         foreach ($this->allowed_axes_options as $axisName => $options) {
             $initialAttributes[$axisName] = '';
         }
-
         $this->vendor_custom_variants[] = [
             'id' => null,
             'attributes' => $initialAttributes,
@@ -173,126 +187,134 @@ class ProductForm extends Component
         $this->vendor_custom_variants = array_values($this->vendor_custom_variants);
     }
 
-
     public function save()
     {
         $vendor = auth()->user()->marketVendor;
         $savedCount = 0;
-
         $storeType = MarketSetting::getValue('system.store_type', 'multi');
         $defaultStatus = ($storeType === 'single') ? 'published' : 'pending_review';
 
-        foreach ($this->vendor_variants as $variantId => $data) {
-
-            if (!$data['sell_this']) {
-                VendorProduct::where('vendor_id', $vendor->id)->where('product_variant_id', $variantId)->delete();
-                continue;
-            }
-
-            if (!empty($data['price'])) {
-                $cleanPrice = str_replace(',', '', $data['price']);
-                $cleanDiscount = str_replace(',', '', $data['discount_price']);
-
-                // 💡 FIX: تبدیل تاریخ و زمان شمسی به میلادی
-                $startDate = null;
-                if (!empty($data['discount_start_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $data['discount_start_date'])) {
-                    $startDate = Jalalian::fromFormat('Y/m/d H:i', $data['discount_start_date'])->toCarbon();
+        DB::beginTransaction();
+        try {
+            // Save standard variants
+            foreach ($this->vendor_variants as $variantId => $data) {
+                if (!$data['sell_this']) {
+                    VendorProduct::where('vendor_id', $vendor->id)->where('product_variant_id', $variantId)->delete();
+                    continue;
                 }
 
-                $endDate = null;
-                if (!empty($data['discount_end_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $data['discount_end_date'])) {
-                    $endDate = Jalalian::fromFormat('Y/m/d H:i', $data['discount_end_date'])->toCarbon();
-                }
+                if (!empty($data['price'])) {
+                    $cleanPrice = str_replace(',', '', $data['price']);
+                    $cleanDiscount = str_replace(',', '', $data['discount_price']);
 
-                VendorProduct::updateOrCreate(
-                    [
-                        'vendor_id' => $vendor->id,
-                        'product_variant_id' => $variantId,
-                    ],
-                    [
+                    $startDate = null;
+                    if (!empty($data['discount_start_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $data['discount_start_date'])) {
+                        $startDate = Jalalian::fromFormat('Y/m/d H:i', $data['discount_start_date'])->toCarbon();
+                    }
+
+                    $endDate = null;
+                    if (!empty($data['discount_end_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $data['discount_end_date'])) {
+                        $endDate = Jalalian::fromFormat('Y/m/d H:i', $data['discount_end_date'])->toCarbon();
+                    }
+
+                    $payload = [
                         'price' => $cleanPrice,
                         'discount_price' => !empty($cleanDiscount) ? $cleanDiscount : null,
                         'discount_start_date' => $startDate,
                         'discount_end_date' => $endDate,
                         'discount_stock' => !empty($data['discount_stock']) ? $data['discount_stock'] : null,
                         'max_discount_purchase_qty' => !empty($data['max_discount_purchase_qty']) ? $data['max_discount_purchase_qty'] : null,
-                        'stock' => $data['stock'] ?: 0,
                         'reorder_point' => $data['reorder_point'] ?? 5,
                         'min_purchase_qty' => $data['min_purchase'] ?: 1,
                         'max_purchase_qty' => !empty($data['max_purchase']) ? $data['max_purchase'] : null,
                         'status' => $data['is_active'] ? $defaultStatus : 'draft',
-                    ]
-                );
-                $savedCount++;
+                    ];
+
+                    // Determine stock strategy based on WMS status.
+                    // If WMS is active, ignore user input entirely and fetch from WMS, avoiding zeroing out the stock accidentally.
+                    if ($this->isWmsActive) {
+                        $payload['stock'] = WarehouseStock::where('product_variant_id', $variantId)
+                            ->whereHas('warehouse', function($q) use ($vendor) {
+                                $q->where('vendor_id', $vendor->id)
+                                  ->where('is_active', true);
+                            })
+                            ->sum('online_stock');
+                    } else {
+                        $payload['stock'] = $data['stock'] ?: 0;
+                    }
+
+                    VendorProduct::updateOrCreate(
+                        ['vendor_id' => $vendor->id, 'product_variant_id' => $variantId],
+                        $payload
+                    );
+                    $savedCount++;
+                }
             }
-        }
 
-        if ($this->allow_custom_variants) {
-            foreach ($this->vendor_custom_variants as $data) {
-                if (!$data['sell_this'] || empty($data['price'])) continue;
+            // Save custom variants
+            foreach ($this->vendor_custom_variants as $customData) {
+                if (!$customData['sell_this']) continue;
 
-                $hasEmptyAttr = false;
-                foreach ($data['attributes'] as $val) {
-                    if (empty($val)) $hasEmptyAttr = true;
-                }
-                if ($hasEmptyAttr) continue;
+                if (!empty($customData['price'])) {
+                    $cleanPrice = str_replace(',', '', $customData['price']);
+                    $cleanDiscount = str_replace(',', '', $customData['discount_price']);
 
-                $cleanPrice = str_replace(',', '', $data['price']);
-                $cleanDiscount = str_replace(',', '', $data['discount_price']);
+                    $startDate = null;
+                    if (!empty($customData['discount_start_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $customData['discount_start_date'])) {
+                        $startDate = Jalalian::fromFormat('Y/m/d H:i', $customData['discount_start_date'])->toCarbon();
+                    }
 
-                $sortedAttributes = $data['attributes'];
-                ksort($sortedAttributes);
+                    $endDate = null;
+                    if (!empty($customData['discount_end_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $customData['discount_end_date'])) {
+                        $endDate = Jalalian::fromFormat('Y/m/d H:i', $customData['discount_end_date'])->toCarbon();
+                    }
 
-                $attrHash = md5(json_encode($sortedAttributes));
-                $vCode = $this->selectedMasterProduct->crm_code . '-V' . substr($attrHash, 0, 8);
+                    $variant = ProductVariant::firstOrCreate([
+                        'master_product_id' => $this->master_product_id,
+                        'variant_attributes' => json_encode($customData['attributes']),
+                    ], [
+                        'variant_code' => $this->selectedMasterProduct->crm_code . '-' . uniqid(),
+                        'is_active' => true,
+                    ]);
 
-                $productVariant = ProductVariant::firstOrCreate(
-                    [
-                        'master_product_id' => $this->selectedMasterProduct->id,
-                        'variant_code' => $vCode,
-                    ],
-                    [
-                        'variant_attributes' => $sortedAttributes,
-                        'is_active' => true
-                    ]
-                );
-
-                // 💡 FIX: تبدیل تاریخ و زمان شمسی به میلادی
-                $startDate = null;
-                if (!empty($data['discount_start_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $data['discount_start_date'])) {
-                    $startDate = Jalalian::fromFormat('Y/m/d H:i', $data['discount_start_date'])->toCarbon();
-                }
-
-                $endDate = null;
-                if (!empty($data['discount_end_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $data['discount_end_date'])) {
-                    $endDate = Jalalian::fromFormat('Y/m/d H:i', $data['discount_end_date'])->toCarbon();
-                }
-
-                VendorProduct::updateOrCreate(
-                    [
-                        'vendor_id' => $vendor->id,
-                        'product_variant_id' => $productVariant->id,
-                    ],
-                    [
+                    $payload = [
                         'price' => $cleanPrice,
                         'discount_price' => !empty($cleanDiscount) ? $cleanDiscount : null,
                         'discount_start_date' => $startDate,
                         'discount_end_date' => $endDate,
-                        'discount_stock' => !empty($data['discount_stock']) ? $data['discount_stock'] : null,
-                        'max_discount_purchase_qty' => !empty($data['max_discount_purchase_qty']) ? $data['max_discount_purchase_qty'] : null,
-                        'stock' => $data['stock'] ?: 0,
-                        'reorder_point' => $data['reorder_point'] ?? 5,
-                        'min_purchase_qty' => $data['min_purchase'] ?: 1,
-                        'max_purchase_qty' => !empty($data['max_purchase']) ? $data['max_purchase'] : null,
-                        'status' => $data['is_active'] ? $defaultStatus : 'draft',
-                    ]
-                );
-                $savedCount++;
-            }
-        }
+                        'discount_stock' => !empty($customData['discount_stock']) ? $customData['discount_stock'] : null,
+                        'max_discount_purchase_qty' => !empty($customData['max_discount_purchase_qty']) ? $customData['max_discount_purchase_qty'] : null,
+                        'reorder_point' => $customData['reorder_point'] ?? 5,
+                        'min_purchase_qty' => $customData['min_purchase'] ?: 1,
+                        'max_purchase_qty' => !empty($customData['max_purchase']) ? $customData['max_purchase'] : null,
+                        'status' => $customData['is_active'] ? $defaultStatus : 'draft',
+                    ];
 
-        $this->dispatch('notify', type: 'success', text: "تغییرات انبار شما با موفقیت ذخیره شد. ({$savedCount} تنوع)");
-        return redirect()->route('user.market.vendor.products.index');
+                    if ($this->isWmsActive) {
+                        // For a newly created custom variant in a WMS-enabled environment,
+                        // stock is strictly managed by warehouses. Start at 0.
+                        $payload['stock'] = 0;
+                    } else {
+                        $payload['stock'] = $customData['stock'] ?: 0;
+                    }
+
+                    VendorProduct::updateOrCreate(
+                        ['vendor_id' => $vendor->id, 'product_variant_id' => $variant->id],
+                        $payload
+                    );
+                    $savedCount++;
+                }
+            }
+
+            DB::commit();
+
+            $this->dispatch('notify', type: 'success', text: "تغییرات شما با موفقیت ذخیره شد. ({$savedCount} تنوع)");
+            return redirect()->route('user.market.vendor.products.index');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->dispatch('notify', type: 'error', text: 'خطایی در هنگام ذخیره رخ داد: ' . $e->getMessage());
+        }
     }
 
     public function render()

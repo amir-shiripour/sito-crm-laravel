@@ -43,6 +43,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
             ->middleware(['permission:market.products.view', CheckVendorStatus::class])
             ->group(function () {
                 Route::resource('products', VendorProductController::class);
+                Route::view('warehouses', 'market::user.warehouses.index')->name('warehouses.index');
             });
 
         // Admin Section
@@ -57,11 +58,11 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
         Route::resource('master-products', MasterProductController::class);
 
         // Warehouse Management (WMS)
-        Route::view('warehouses', 'market::admin.warehouse.index') // 💡 تغییر به view
+        Route::view('warehouses', 'market::admin.warehouse.index')
             ->name('warehouses.index')
             ->middleware('permission:market.warehouses.view');
 
-        Route::view('warehouse-stock/{warehouseId}', 'market::admin.warehouse.stock') // 💡 تغییر به view
+        Route::view('warehouse-stock', 'market::admin.warehouse.stock') // 💡 حذف پارامتر {warehouseId}
             ->name('warehouse-stock.index')
             ->middleware('permission:market.warehouses.manage');
 
