@@ -5,6 +5,7 @@ namespace Modules\Clients\App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Modules\Market\App\Models\Order as MarketOrder; // 💡 مسیر صحیح جایگزین شد
 
 class ClientPaymentController extends Controller
 {
@@ -34,14 +35,15 @@ class ClientPaymentController extends Controller
         }
 
         // 2. Fetch Market Orders (as invoices/payments)
-        if (class_exists(\Modules\Market\Entities\Order::class) && Schema::hasTable('market_orders')) {
-            $marketOrders = \Modules\Market\Entities\Order::where('client_id', $client->id)->get()->map(function($order) {
+        if (class_exists(MarketOrder::class) && Schema::hasTable('market_orders')) {
+            $marketOrders = MarketOrder::where('client_id', $client->id)->get()->map(function($order) {
                 $statusMap = [
                     'pending' => 'PENDING',
                     'paid' => 'PAID',
                     'failed' => 'FAILED',
                     'refunded' => 'REFUNDED',
-                    'canceled' => 'CANCELED'
+                    'canceled' => 'CANCELED',
+                    'unpaid'   => 'PENDING',
                 ];
                 $normalizedStatus = $statusMap[strtolower($order->payment_status)] ?? strtoupper($order->payment_status);
 
@@ -81,9 +83,9 @@ class ClientPaymentController extends Controller
         }
 
         if ($type === 'market') {
-            if (!class_exists(\Modules\Market\Entities\Order::class) || !Schema::hasTable('market_orders')) abort(404);
+            if (!class_exists(MarketOrder::class) || !Schema::hasTable('market_orders')) abort(404);
 
-            $order = \Modules\Market\Entities\Order::where('client_id', $client->id)
+            $order = MarketOrder::where('client_id', $client->id)
                 ->with(['items'])
                 ->findOrFail($id);
 

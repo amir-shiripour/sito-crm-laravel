@@ -24,7 +24,6 @@
             عمومی و کاتالوگ
         </button>
 
-        {{-- تب جدید: تنظیمات نمایشی 💡 --}}
         <button @click="tab = 'ui'" :class="tab === 'ui' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
             تنظیمات نمایشی (UI)
@@ -45,6 +44,11 @@
         <button @click="tab = 'orders'" :class="tab === 'orders' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
             سفارشات و پرداخت
+        </button>
+
+        <button @click="tab = 'checkout'" :class="tab === 'checkout' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+            فرم تسویه حساب
         </button>
 
         <button @click="tab = 'finance'" :class="tab === 'finance' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
@@ -510,6 +514,54 @@
                             <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400 text-xs">روز</div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- 7. تب تسویه حساب --}}
+        <div x-show="tab === 'checkout'" x-cloak class="{{ $cardClass }}">
+            <div class="{{ $headerClass }}">
+                <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-white">فرم تسویه حساب و سینک اطلاعات</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">مدیریت فرم‌های پرداخت و همگام‌سازی با پروفایل مشتری</p>
+                </div>
+            </div>
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                            <input type="checkbox" wire:model.defer="checkout_auto_fill_from_client" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">پیش‌نمایش خودکار اطلاعات مشتری در فرم</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                            <input type="checkbox" wire:model.defer="checkout_sync_require_approval" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">تغییرات اطلاعات مشتری نیاز به تایید مدیر دارد</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label for="checkout_default_form_key" class="{{ $labelClass }}">فرم پیش‌فرض تسویه حساب</label>
+                        <select id="checkout_default_form_key" wire:model.defer="checkout_default_form_key" class="{{ $inputClass }}">
+                            <option value="">-- انتخاب کنید --</option>
+                            @if(isset($checkoutForms))
+                                @foreach($checkoutForms as $form)
+                                    <option value="{{ $form->key }}">{{ $form->name }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+                </div>
+                <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                        <input type="checkbox" wire:model.defer="checkout_allow_product_override" class="{{ $checkboxClass }}">
+                        <span class="text-sm font-bold text-gray-800 dark:text-gray-200">اجازه دادن به محصولات برای داشتن فرم تسویه حساب اختصاصی</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                        <input type="checkbox" wire:model.defer="checkout_allow_category_override" class="{{ $checkboxClass }}">
+                        <span class="text-sm font-bold text-gray-800 dark:text-gray-200">اجازه دادن به دسته‌بندی‌ها برای داشتن فرم تسویه حساب اختصاصی</span>
+                    </label>
                 </div>
             </div>
         </div>

@@ -1,14 +1,16 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Market\App\Http\Controllers\MarketController;
+use Modules\Market\App\Http\Controllers\User\CartController;
+use Modules\Market\App\Http\Controllers\User\CheckoutController;
 use Modules\Market\App\Http\Middleware\CheckVendorStatus;
 use Modules\Market\App\Http\Middleware\CheckMultiVendorMode;
-use Modules\Market\App\Http\Controllers\User\CheckoutController;
 use Modules\Market\App\Http\Controllers\User\VendorProductController;
 use Modules\Market\App\Http\Controllers\Admin\VendorController;
 use Modules\Market\App\Http\Controllers\User\MarketDashboardController;
 use Modules\Market\App\Http\Controllers\Admin\MasterProductController;
-use Modules\Market\App\Http\Controllers\MarketController;
+use Modules\Market\App\Livewire\Admin\CheckoutFormManager;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,26 +18,45 @@ use Modules\Market\App\Http\Controllers\MarketController;
 |--------------------------------------------------------------------------
 */
 
-// Public Market Routes
+// --- Public Facing Routes ---
 Route::middleware(['web'])->group(function() {
+
+    // Shop pages (e.g., /shop, /shop/product/slug)
     Route::group(['prefix' => 'shop', 'as' => 'market.public.'], function() {
         Route::get('/', [MarketController::class, 'index'])->name('index');
         Route::get('/category', [MarketController::class, 'category'])->name('category');
         Route::get('/category/{slug}', [MarketController::class, 'category'])->name('category.show');
         Route::get('/product/{slug}', [MarketController::class, 'show'])->name('product.show');
     });
+
+    // Cart page
+    Route::get('/cart', [CartController::class, 'index'])->name('market.cart.index');
+
+    // Checkout page - NOTE: Auth middleware is removed, logic is handled in the Livewire component now.
+    Route::get('/checkout', [CheckoutController::class, 'index'])->name('market.checkout.index');
+
+    // --- New Checkout Flow Routes ---
+    Route::group(['prefix' => 'market/checkout', 'as' => 'market.checkout.'], function() {
+        // Route to initiate payment process after order is created by Livewire
+        Route::get('/process/{order}', [CheckoutController::class, 'process'])->name('process')->middleware('auth:client');
+
+        // Payment gateway callback
+        Route::any('/callback', [CheckoutController::class, 'callback'])->name('callback');
+
+        // Success and Failed pages
+        Route::get('/success/{order}', [CheckoutController::class, 'success'])->name('success')->middleware('auth:client');
+        Route::get('/failed/{order}', [CheckoutController::class, 'failed'])->name('failed')->middleware('auth:client');
+    });
+
 });
 
 
-// User & Admin Routes
+// --- Authenticated User & Admin Routes ---
 Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth']], function () {
 
     Route::prefix('market')->name('market.')->group(function () {
 
         Route::get('dashboard', [MarketDashboardController::class, 'index'])->name('dashboard');
-
-        // Checkout
-        Route::post('checkout', [CheckoutController::class, 'store'])->name('checkout.store');
 
         // Vendor Section
         Route::prefix('vendor')
@@ -56,18 +77,20 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
 
         // Catalog Management
         Route::resource('master-products', MasterProductController::class);
+        Route::get('checkout-forms', CheckoutFormManager::class)->name('checkout-forms.index')->middleware('permission:market.manage');
+
 
         // Warehouse Management (WMS)
         Route::view('warehouses', 'market::admin.warehouse.index')
             ->name('warehouses.index')
             ->middleware('permission:market.warehouses.view');
 
-        Route::view('warehouse-stock', 'market::admin.warehouse.stock') // 💡 حذف پارامتر {warehouseId}
+        Route::view('warehouse-stock', 'market::admin.warehouse.stock')
             ->name('warehouse-stock.index')
             ->middleware('permission:market.warehouses.manage');
 
-        // Other Sections
-        Route::get('orders', function() { return 'لیست سفارشات (به زودی...)'; })->name('orders.index');
+        // Orders Section
+        Route::resource('orders', \Modules\Market\App\Http\Controllers\User\OrderController::class)->only(['index', 'show']);
         Route::view('brands', 'market::admin.brands.index')->name('brands.index');
         Route::view('categories', 'market::admin.categories.index')->name('categories.index');
         Route::view('attributes', 'market::admin.attributes.index')

@@ -8,6 +8,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
+use Modules\Market\App\Models\Order; // 💡 مدل Order اضافه شد
 
 class Client extends Authenticatable
 {
@@ -48,6 +49,14 @@ class Client extends Authenticatable
     {
         return $this->belongsToMany(User::class, 'client_user', 'client_id', 'user_id')
             ->withTimestamps();
+    }
+
+    /**
+     * Get all of the orders for the Client.
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'client_id');
     }
 
     /**

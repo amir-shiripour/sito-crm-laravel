@@ -69,11 +69,11 @@ class WarehouseStockService
             ->join('market_warehouses', 'market_warehouse_stocks.warehouse_id', '=', 'market_warehouses.id')
             ->where('market_warehouses.is_active', true);
 
-        if ($this->getStoreType() === 'multi' && $vendorId) {
-            // Multi-vendor: check vendor's own warehouses
+        if ($vendorId) {
+            // Check vendor's own warehouses
             $query->where('market_warehouses.vendor_id', $vendorId);
         } else {
-            // Single-vendor or no vendor specified: check central warehouse
+            // Check central warehouse
             $query->whereNull('market_warehouses.vendor_id');
         }
 

@@ -23,7 +23,14 @@ use Modules\Market\App\Livewire\Admin\VendorProductReview;
 use Modules\Market\App\Livewire\Admin\WarehouseManager;
 use Modules\Market\App\Livewire\Admin\WarehouseStockController;
 use Modules\Market\App\Livewire\Admin\ProductVariantSelector;
-use Modules\Market\App\Observers\VendorObserver; // 💡 اضافه شد
+use Modules\Market\App\Livewire\Admin\CheckoutFormManager;
+use Modules\Market\App\Livewire\Web\CartManager;
+use Modules\Market\App\Livewire\Web\PopupCart;
+use Modules\Market\App\Livewire\Web\CartCounter;
+use Modules\Market\App\Livewire\Web\AddToCartButton;
+use Modules\Market\App\Livewire\web\CheckoutModal;
+use Modules\Market\App\Livewire\web\CheckoutPage;
+use Modules\Market\App\Observers\VendorObserver;
 use Modules\Market\Entities\MarketSetting;
 use Modules\Market\Entities\Vendor;
 use Modules\Market\Entities\Warehouse;
@@ -73,6 +80,13 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::admin.warehouse-manager', WarehouseManager::class);
         Livewire::component('market::admin.warehouse-stock-controller', WarehouseStockController::class);
         Livewire::component('market::admin.product-variant-selector', ProductVariantSelector::class);
+        Livewire::component('market::admin.checkout-form-manager', CheckoutFormManager::class);
+        Livewire::component('market::web.cart-manager', CartManager::class);
+        Livewire::component('market::web.popup-cart', PopupCart::class);
+        Livewire::component('market::web.cart-counter', CartCounter::class);
+        Livewire::component('market::web.add-to-cart-button', AddToCartButton::class);
+        Livewire::component('market::web.checkout-modal', CheckoutModal::class); // 💡 ثبت کامپوننت مودال تسویه حساب
+        Livewire::component('market::web.checkout-page', CheckoutPage::class); // 💡 ثبت کامپوننت مودال تسویه حساب
 
         // 💡 ثبت Observer
         Vendor::observe(VendorObserver::class);

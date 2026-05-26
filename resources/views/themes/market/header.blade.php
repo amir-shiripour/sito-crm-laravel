@@ -37,10 +37,7 @@
                 <svg class="w-5 h-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
             </button>
 
-            <a href="#" class="hidden sm:flex relative p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                <span class="absolute top-0 right-0 w-4 h-4 {{ $t['bg'] ?? 'bg-orange-600' }} text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-gray-950">۲</span>
-            </a>
+            @livewire('market::web.cart-counter')
 
             <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block"></div>
 
@@ -167,22 +164,9 @@
 
             {{-- دکمه سبد خرید --}}
             @php $isActive = request()->routeIs('market.public.cart*') || request()->routeIs('checkout*'); @endphp
-            <a href="#" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
-                @if($isActive)
-                    <div class="absolute top-3 w-10 h-10 {{ $t['bg'] ?? 'bg-orange-600' }} opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
-                    <span class="absolute top-0 w-8 h-1 {{ $t['bg'] ?? 'bg-orange-600' }} rounded-b-full"></span>
-                @endif
-                <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isActive ? '-translate-y-0.5' : '' }}">
-                    <div class="relative">
-                        <svg class="w-6 h-6 mb-1 {{ $isActive ? ($t['text'] ?? 'text-orange-600') . ' ' . ($t['text_dark'] ?? 'dark:text-orange-400') : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300' }} transition-colors duration-300" fill="{{ $isActive ? 'currentColor' : 'none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="{{ $isActive ? '0' : '1.5' }}">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        {{-- نشان (Badge) اعلان با استایل مدرن --}}
-                        <span class="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] flex items-center justify-center px-1 {{ $t['bg'] ?? 'bg-orange-600' }} text-white text-[10px] font-black rounded-full border-[1.5px] border-white dark:border-gray-900 shadow-sm">۲</span>
-                    </div>
-                    <span class="text-[10px] font-bold {{ $isActive ? ($t['text'] ?? 'text-orange-600') . ' ' . ($t['text_dark'] ?? 'dark:text-orange-400') : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">سبد خرید</span>
-                </div>
-            </a>
+            <div class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
+                 @livewire('market::web.cart-counter', ['isBottomNav' => true])
+            </div>
 
             {{-- دکمه پروفایل / ورود --}}
             @php $isActive = request()->routeIs('user.dashboard') || request()->routeIs('admin.dashboard') || request()->routeIs('login'); @endphp

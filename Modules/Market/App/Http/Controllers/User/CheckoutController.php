@@ -4,66 +4,108 @@ namespace Modules\Market\App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Modules\Market\Services\OrderService;
-use Exception;
-use Illuminate\Support\Facades\Log;
+use Modules\Market\App\Models\Order;
+use Modules\Market\App\Services\PaymentService;
 
 class CheckoutController extends Controller
 {
-    protected $orderService;
-
-    // تزریق (Inject) کردن سرویس سفارشات به کنترلر
-    public function __construct(OrderService $orderService)
+    /**
+     * Display the checkout page.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    public function index()
     {
-        $this->orderService = $orderService;
+        return view('market::web.checkout.index');
     }
 
     /**
-     * پردازش و ثبت سفارش نهایی
+     * Process the order and redirect to the payment gateway or show a success page.
+     *
+     * @param Order $order
+     * @param PaymentService $paymentService
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Contracts\View\View
      */
-    public function store(Request $request)
+    public function process(Order $order, PaymentService $paymentService)
     {
-        // 1. اعتبارسنجی درخواست (در حالت واقعی بهتر است از FormRequest استفاده شود)
-        $validated = $request->validate([
-            'cart_items' => 'required|array|min:1',
-            'cart_items.*.product_id' => 'required|exists:market_products,id',
-            'cart_items.*.quantity' => 'required|integer|min:1',
-            'shipping_address' => 'required|array',
-            'shipping_method' => 'required|string',
-        ]);
-
-        try {
-            // 2. واگذاری تمام منطق پیچیده دیتابیس و انبار به Service
-            $shippingData = [
-                'address' => $validated['shipping_address'],
-                'method'  => $validated['shipping_method'],
-                'cost'    => 50000, // اینجا در آینده می‌تونی به سرویس پست متصل کنی
-                'discount'=> 0
-            ];
-
-            $order = $this->orderService->placeOrder(
-                auth()->user(),
-                $validated['cart_items'],
-                $shippingData
-            );
-
-            // 3. در صورت موفقیت، ارجاع کاربر به درگاه پرداخت یا صفحه موفقیت
-            return response()->json([
-                'success' => true,
-                'message' => 'سفارش با موفقیت ثبت شد.',
-                'order_id' => $order->id,
-                'redirect_url' => route('user.market.payment', $order->id) // مسیری که بعدا برای درگاه میسازیم
-            ]);
-
-        } catch (Exception $e) {
-            // ثبت خطای دقیق در فایل لاگ سیستم
-            Log::error('Market Checkout Error: ' . $e->getMessage());
-
-            // نمایش پیام خطای کاربرپسند (مثلاً "موجودی کافی نیست")
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 400);
+        // Ensure the user owns the order
+        if ($order->client_id !== auth('client')->id()) {
+            abort(403, 'شما اجازه دسترسی به این سفارش را ندارید.');
         }
+
+        // Ensure the order is in 'pending' state
+        if ($order->status !== 'pending') {
+            if (in_array($order->status, ['processing', 'completed'])) {
+                return redirect()->route('market.checkout.success', $order)->with('info', 'این سفارش قبلاً پردازش شده است.');
+            }
+            return redirect()->route('market.checkout.failed', $order)->with('info', 'این سفارش قبلاً پردازش شده است.');
+        }
+
+        switch ($order->payment_method) {
+            case 'pos':
+            case 'transfer':
+                // For offline payments, the order is already created.
+                // We just need to show a success page with instructions.
+                $order->update(['status' => 'processing']);
+                return redirect()->route('market.checkout.success', $order);
+
+            default:
+                try {
+                    return $paymentService->redirectToGateway($order);
+                } catch (\Exception $e) {
+                    \Log::error('Gateway Redirect failed for order #' . $order->id . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+                    return redirect()->route('market.checkout.failed', $order)->with('error', 'خطا در هدایت به درگاه پرداخت: ' . $e->getMessage());
+                }
+        }
+    }
+
+    /**
+     * Handle the payment gateway callback.
+     *
+     * @param Request $request
+     * @param PaymentService $paymentService
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function callback(Request $request, PaymentService $paymentService)
+    {
+        $order = $paymentService->verifyPayment($request);
+
+        if ($order) {
+            // Payment was successful
+            return redirect()->route('market.checkout.success', $order)->with('success', 'پرداخت شما با موفقیت انجام شد.');
+        }
+
+        // Payment failed or was canceled
+        $orderId = $request->input('order_id'); // Or however the order ID is passed back
+        $order = Order::find($orderId);
+        return redirect()->route('market.checkout.failed', $order)->with('error', 'پرداخت ناموفق بود یا توسط شما لغو شد.');
+    }
+
+    /**
+     * Display the success page.
+     *
+     * @param Order $order
+     * @return \Illuminate\Contracts\View\View
+     */
+    public function success(Order $order)
+    {
+        if ($order->client_id !== auth('client')->id()) {
+            abort(403);
+        }
+        return view('market::web.checkout.success', compact('order'));
+    }
+
+    /**
+     * Display the failed page.
+     *
+     * @param Order $order
+     * @return \Illuminate\Contracts\View\View
+     */
+    public function failed(Order $order)
+    {
+         if ($order->client_id !== auth('client')->id()) {
+            abort(403);
+        }
+        return view('market::web.checkout.failed', compact('order'));
     }
 }

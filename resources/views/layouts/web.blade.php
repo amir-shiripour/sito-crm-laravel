@@ -96,6 +96,10 @@
 {{-- Footer --}}
 @includeFirst(["themes.{$appTheme}.footer", 'themes.default.footer'], ['appName' => $appName, 'footerText' => $footerText])
 
+{{-- Global Livewire Components --}}
+@livewire('market::web.popup-cart')
+@livewire('market::web.checkout-modal')
+
 <script>
     function updateThemeUI() {
         const currentTheme = localStorage.theme || 'system';
@@ -110,8 +114,9 @@
     }
     document.addEventListener('DOMContentLoaded', updateThemeUI);
 </script>
-@stack('scripts')
+
 @livewireScripts
+@stack('scripts')
 
 {{-- استایل‌های Media Query در فایل Blade مستقیما روی تگ main اعمال شدند تا نیازی به style تگ در پایین نباشد --}}
 <style>

@@ -84,9 +84,9 @@
                     }
                 }
 
-                // 💡 FIX: ارسال صحیح تاریخ پایان تخفیف
                 $jsVariants[] = [
                     'id' => $variant->id,
+                    'vendor_product_id' => $activeVp ? $activeVp->id : null, // Added for Cart Logic
                     'attributes' => $attrs,
                     'stock' => $variantStock,
                     'price' => $variantOriginalPrice ?? 0,
@@ -208,7 +208,7 @@
                                     @foreach($availableAttributes as $attrKey => $attrValues)
                                         @php
                                             $safeGroupKey = md5($attrKey);
-                                            // پیدا کردن مدل دیکشنری برای این گروه כדי ببینیم نوعش چیه
+                                            // پیدا کردن مدل دیکشنری برای این گروه
                                             $dictAttr = $attributeDictionary->firstWhere('name', $attrKey);
                                             $type = $dictAttr ? $dictAttr->type : 'select';
                                             $unit = $dictAttr ? $dictAttr->unit : ''; // استخراج واحد اندازه‌گیری
@@ -369,7 +369,7 @@
                                         </div>
                                     @endif
 
-                                    {{-- 💡 NEW: نوار پیشرفت موجودی تخفیف --}}
+                                    {{-- نوار پیشرفت موجودی تخفیف --}}
                                     <div id="buybox-discount-stock-progress" class="hidden my-4 space-y-2">
                                         <div class="flex justify-between items-center text-xs">
                                             <span class="font-bold text-rose-600 dark:text-rose-400">موجودی شگفت‌انگیز</span>
@@ -380,13 +380,27 @@
                                         </div>
                                     </div>
 
-                                    <form id="add-to-cart-form" action="#" method="POST" class="mb-5">
-                                        @csrf
-                                        <input type="hidden" name="variant_id" id="buybox-variant-id" value="">
-                                        <button type="submit" id="buybox-add-btn" class="cursor-pointer w-full h-14 rounded-2xl {{ $t['bg'] ?? 'bg-indigo-600' }} {{ $t['bg_hover'] ?? 'hover:bg-indigo-700' }} text-white font-bold text-base flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow-lg {{ $t['shadow'] ?? 'shadow-indigo-500/30' }}">
+                                    {{-- دکمه سبد خرید با اتصال به Livewire و مدیریت تعداد --}}
+                                    <div class="mb-5 relative">
+                                        <input type="hidden" id="buybox-variant-id" value="">
+                                        <input type="hidden" id="buybox-vendor-product-id" value="">
+
+                                        {{-- دکمه افزودن مستقیم --}}
+                                        <button type="button" onclick="submitToCart()" id="buybox-add-btn" class="cursor-pointer w-full h-14 rounded-2xl {{ $t['bg'] ?? 'bg-indigo-600' }} {{ $t['bg_hover'] ?? 'hover:bg-indigo-700' }} text-white font-bold text-base flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow-lg {{ $t['shadow'] ?? 'shadow-indigo-500/30' }}">
                                             افزودن به سبد خرید
                                         </button>
-                                    </form>
+
+                                        {{-- کنترلر مثبت و منفی دسکتاپ --}}
+                                        <div id="buybox-quantity-selector" class="hidden items-center justify-between w-full h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-opacity duration-200">
+                                            <button type="button" onclick="incrementCart()" class="px-5 py-2 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                            </button>
+                                            <span id="buybox-quantity-val" class="text-xl font-bold text-gray-900 dark:text-white">0</span>
+                                            <button type="button" onclick="decrementCart()" class="px-5 py-2 text-gray-600 dark:text-gray-300 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer">
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
 
                                     {{-- مزایای خرید --}}
                                     <div class="space-y-3 pt-4 border-t border-gray-50 dark:border-gray-800/50">
@@ -432,7 +446,6 @@
     </div>
 
     {{-- 💡 نوار خرید شناور موبایل (Mobile Sticky Action Bar) --}}
-    {{-- z-[999] تا کاملاً روی فوتر بیفتد --}}
     <div id="mobile-buy-bar" class="md:hidden fixed bottom-0 left-0 right-0 z-[999] bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] transition-transform duration-300 pb-safe">
 
         {{-- هشدار موجودی موبایل با انیمیشن اسلاید ارتفاع و اوپاسیتی --}}
@@ -451,11 +464,22 @@
         <div class="p-4 flex items-center justify-between gap-4">
 
             {{-- 💡 بخش دکمه (سمت راست) --}}
-            <div class="flex-1 flex gap-2 w-full">
+            <div class="flex-1 flex gap-2 w-full relative">
                 {{-- دکمه افزودن موبایل --}}
-                <button type="button" onclick="document.getElementById('add-to-cart-form').submit()" id="mobile-buybox-add-btn" class="w-full h-11 rounded-xl {{ $t['bg'] ?? 'bg-indigo-600' }} text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg {{ $t['shadow'] ?? 'shadow-indigo-500/30' }}">
+                <button type="button" onclick="submitToCart()" id="mobile-buybox-add-btn" class="w-full h-11 rounded-xl {{ $t['bg'] ?? 'bg-indigo-600' }} text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg {{ $t['shadow'] ?? 'shadow-indigo-500/30' }}">
                     افزودن به سبد
                 </button>
+
+                {{-- کنترلر مثبت و منفی موبایل --}}
+                <div id="mobile-buybox-quantity-selector" class="hidden items-center justify-between w-full h-11 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1 transition-opacity duration-200">
+                    <button type="button" onclick="incrementCart()" class="px-4 py-2 text-gray-600 dark:text-gray-300 cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                    </button>
+                    <span id="mobile-buybox-quantity-val" class="text-lg font-bold text-gray-900 dark:text-white">0</span>
+                    <button type="button" onclick="decrementCart()" class="px-4 py-2 text-gray-600 dark:text-gray-300 cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" /></svg>
+                    </button>
+                </div>
 
                 {{-- دکمه موجود شد خبرم کن موبایل --}}
                 <button type="button" id="mobile-buybox-notify-btn" class="hidden w-full h-11 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs items-center justify-center gap-2 active:scale-95 transition-transform">
@@ -477,7 +501,7 @@
 
             {{-- بخش ناموجود موبایل (سمت چپ) --}}
             <div id="mobile-buybox-out-of-stock" class="hidden flex-col items-end min-w-[120px] text-left">
-                <span class="text-sm font-bold text-gray-900 dark:text-white w-full text-left ml-2">ناموجود</span>
+                <span class="text-sm font-bold text-gray-900 dark:text-white w-full text-left ml-2 font-black">ناموجود</span>
             </div>
 
         </div>
@@ -517,6 +541,9 @@
         @endif
     </div>
 
+    {{-- فراخوانی مخفی کامپوننت لایووایر مدیر سبد خرید --}}
+    @livewire('market::web.cart-manager')
+
 @endsection
 
 @push('styles')
@@ -554,11 +581,60 @@
                 document.body.appendChild(lightbox);
             }
 
-            // فراخوانی اولیه برای چک کردن اسکرول
+            // فراخوانی اولیه برای چک کردن اسکرول و هشدار موجودی موبایل
             updateMobileWarningVisibility();
+
+            // دریافت اولیه و یکسان‌سازی وضعیت دکمه‌ها با سبد خرید
+            updateCartUI();
+
+            // همگام‌سازی وضعیت در زمان شلیک شدن رویدادهای عمومی سبد خرید از Livewire
+            window.addEventListener('cartUpdated', (event) => {
+                console.log('Cart updated hook triggered.', event);
+
+                // غیرفعال کردن لودینگ
+                setCartLoadingUI(false);
+
+                // استخراج سبد جدید با پشتیبانی از تمامی ورژن‌های لایووایر
+                let updatedCart = null;
+                if (event.detail) {
+                    if (event.detail.cart) {
+                        updatedCart = event.detail.cart;
+                    } else if (Array.isArray(event.detail) && event.detail[0] && event.detail[0].cart) {
+                        updatedCart = event.detail[0].cart;
+                    } else if (event.detail[0]) {
+                        updatedCart = event.detail[0];
+                    } else {
+                        updatedCart = event.detail;
+                    }
+                }
+
+                if (updatedCart && typeof updatedCart === 'object') {
+                    let validCartCandidate = null;
+
+                    // بررسی برای وجود ساختار معتبر و فیلد تعداد کالاها
+                    if (Object.values(updatedCart).some(item => item && typeof item.quantity !== 'undefined')) {
+                        validCartCandidate = updatedCart;
+                    } else {
+                        // در صورت تغییر فرمت کلاینت، توپرینتهای فرعی را نیز بررسی می کنیم
+                        for (const prop in updatedCart) {
+                            if (updatedCart[prop] && typeof updatedCart[prop] === 'object') {
+                                if (Object.values(updatedCart[prop]).some(item => item && typeof item.quantity !== 'undefined')) {
+                                    validCartCandidate = updatedCart[prop];
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (validCartCandidate) {
+                        cart = validCartCandidate;
+                    }
+                }
+                updateCartUI();
+            });
         });
 
-        // منطق اسکرول با استفاده از requestAnimationFrame برای پرفورمنس بهتر
+        // منطق اسکرول پرفورمنس بالا برای نوار موبایل
         let isScrolled = false;
         let ticking = false;
 
@@ -576,7 +652,7 @@
             }
         });
 
-        // 💡 انیمیشن نرم با استفاده از ارتفاع ثابت و اوپاسیتی
+        // مدیریت لغزش نرم نوارهای هشدار موبایل
         function updateMobileWarningVisibility() {
             const warningEl = document.getElementById('mobile-buybox-stock-warning');
             if(!warningEl) return;
@@ -590,8 +666,16 @@
             }
         }
 
+        // دیتای ورودی سمت سرور
         const productVariants = @json($jsVariants);
         let selectedAttributes = @json($initialSelectedAttributes);
+        const requestedVariantId = @json($requestedVariantId);
+
+        // تبدیل بومی آرایه خالی لاراول به شیء در جاوا اسکریپت جهت جلوگیری از اخلال در تخصیص کلیدهای رشته‌ای
+        let rawCart = @json(Session::get('market_cart', []));
+        let cart = (Array.isArray(rawCart) && rawCart.length === 0) ? {} : rawCart;
+        let activeVariant = null;
+        let isCartLoading = false;
 
         const uiSettings = {
             showStockWarning: @json($showStockWarning ?? true),
@@ -601,6 +685,202 @@
         const activeClasses = "{{ $btnActiveClasses }}".trim().split(/\s+/).filter(Boolean);
         const inactiveClasses = "{{ $btnInactiveClasses }}".trim().split(/\s+/).filter(Boolean);
 
+        // گرفتن کلید محصول در سبد خرید
+        function getCartKey(variant) {
+            return variant.id + '_' + (variant.vendor_product_id || '');
+        }
+
+        // تابع هوشمند برای یافتن مقدار سبد با فال‌بک‌های منعطف (جلوگیری از پرش مقدار به صفر پس از تغییر تنوع کالا)
+        function getCartQuantity(variant) {
+            if (!variant || !cart) return 0;
+
+            // ۱. تلاش برای یافتن کلید دقیق: variantId_vendorProductId
+            const exactKey = getCartKey(variant);
+            if (cart[exactKey] && typeof cart[exactKey].quantity !== 'undefined') {
+                return parseInt(cart[exactKey].quantity);
+            }
+
+            // ۲. تلاش برای یافتن بر اساس شناسه تنوع کالا به تنهایی
+            if (cart[variant.id] && typeof cart[variant.id].quantity !== 'undefined') {
+                return parseInt(cart[variant.id].quantity);
+            }
+
+            // ۳. تطبیق فازی شناسه تنوع کالا با کلیدهای موجود در سبد خرید
+            for (const key in cart) {
+                if (key === String(variant.id) || key.startsWith(variant.id + '_')) {
+                    if (cart[key] && typeof cart[key].quantity !== 'undefined') {
+                        return parseInt(cart[key].quantity);
+                    }
+                }
+            }
+
+            return 0;
+        }
+
+        // مدیریت لودینگ دکمه‌ها و سلکتورها بدون بهم‌ریختگی DOM
+        function setCartLoadingUI(loading) {
+            isCartLoading = loading;
+            const desktopAddBtn = document.getElementById('buybox-add-btn');
+            const mobileAddBtn = document.getElementById('mobile-buybox-add-btn');
+            const desktopSelector = document.getElementById('buybox-quantity-selector');
+            const mobileSelector = document.getElementById('mobile-buybox-quantity-selector');
+
+            if (loading) {
+                if (desktopAddBtn) {
+                    desktopAddBtn.disabled = true;
+                    desktopAddBtn.classList.add('opacity-75', 'cursor-wait');
+                    desktopAddBtn.innerHTML = `
+                        <svg class="animate-spin h-5 w-5 text-white mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>درحال پردازش...</span>
+                    `;
+                }
+                if (mobileAddBtn) {
+                    mobileAddBtn.disabled = true;
+                    mobileAddBtn.classList.add('opacity-75', 'cursor-wait');
+                    mobileAddBtn.innerHTML = `
+                        <svg class="animate-spin h-4 w-4 text-white mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>درحال افزودن...</span>
+                    `;
+                }
+                if (desktopSelector) {
+                    desktopSelector.classList.add('opacity-60', 'pointer-events-none');
+                }
+                if (mobileSelector) {
+                    mobileSelector.classList.add('opacity-60', 'pointer-events-none');
+                }
+            } else {
+                if (desktopAddBtn) {
+                    desktopAddBtn.disabled = false;
+                    desktopAddBtn.classList.remove('opacity-75', 'cursor-wait');
+                    desktopAddBtn.innerHTML = `افزودن به سبد خرید`;
+                }
+                if (mobileAddBtn) {
+                    mobileAddBtn.disabled = false;
+                    mobileAddBtn.classList.remove('opacity-75', 'cursor-wait');
+                    mobileAddBtn.innerHTML = `افزودن به سبد`;
+                }
+                if (desktopSelector) {
+                    desktopSelector.classList.remove('opacity-60', 'pointer-events-none');
+                }
+                if (mobileSelector) {
+                    mobileSelector.classList.remove('opacity-60', 'pointer-events-none');
+                }
+            }
+        }
+
+        // همگام‌سازی رابط کاربری سبد خرید (بدون نیاز به رفرش)
+        function updateCartUI() {
+            if (!activeVariant) return;
+            const qty = getCartQuantity(activeVariant);
+
+            const desktopAddBtn = document.getElementById('buybox-add-btn');
+            const desktopSelector = document.getElementById('buybox-quantity-selector');
+            const desktopQtyVal = document.getElementById('buybox-quantity-val');
+
+            const mobileAddBtn = document.getElementById('mobile-buybox-add-btn');
+            const mobileSelector = document.getElementById('mobile-buybox-quantity-selector');
+            const mobileQtyVal = document.getElementById('mobile-buybox-quantity-val');
+
+            if (qty > 0) {
+                // نمایش کنترل‌گر تعداد دسکتاپ
+                if (desktopAddBtn) desktopAddBtn.classList.add('hidden');
+                if (desktopSelector) {
+                    desktopSelector.classList.remove('hidden');
+                    desktopSelector.classList.add('flex');
+                }
+                if (desktopQtyVal) desktopQtyVal.innerText = qty;
+
+                // نمایش کنترل‌گر تعداد موبایل
+                if (mobileAddBtn) mobileAddBtn.classList.add('hidden');
+                if (mobileSelector) {
+                    mobileSelector.classList.remove('hidden');
+                    mobileSelector.classList.add('flex');
+                }
+                if (mobileQtyVal) mobileQtyVal.innerText = qty;
+            } else {
+                // نمایش مجدد دکمه خرید اولیه
+                if (desktopAddBtn) desktopAddBtn.classList.remove('hidden');
+                if (desktopSelector) {
+                    desktopSelector.classList.add('hidden');
+                    desktopSelector.classList.remove('flex');
+                }
+
+                if (mobileAddBtn) mobileAddBtn.classList.remove('hidden');
+                if (mobileSelector) {
+                    mobileSelector.classList.add('hidden');
+                    mobileSelector.classList.remove('flex');
+                }
+            }
+        }
+
+        // ارسال درخواست امن و چندنسخه‌ای به Livewire
+        function dispatchLivewireEvent(eventName, payload) {
+            if (window.Livewire) {
+                if (typeof window.Livewire.dispatch === 'function') {
+                    window.Livewire.dispatch(eventName, payload);
+                } else if (typeof window.Livewire.emit === 'function') {
+                    window.Livewire.emit(eventName, payload);
+                }
+            }
+        }
+
+        // دکمه اول سبد خرید (افزودن اولیه)
+        function submitToCart() {
+            if (!activeVariant || isCartLoading) return;
+            const key = getCartKey(activeVariant);
+
+            // به‌روزرسانی آنی کلاینت (Optimistic UI)
+            cart[key] = { quantity: 1 };
+            updateCartUI();
+            setCartLoadingUI(true);
+
+            // ارسال درخواست سرور
+            dispatchLivewireEvent('addToCart', {
+                variantId: parseInt(activeVariant.id),
+                vendorProductId: activeVariant.vendor_product_id ? parseInt(activeVariant.vendor_product_id) : null,
+                quantity: 1
+            });
+        }
+
+        // افزایش تعداد
+        function incrementCart() {
+            if (!activeVariant || isCartLoading) return;
+            const key = getCartKey(activeVariant);
+            const currentQty = getCartQuantity(activeVariant);
+            const newQty = currentQty + 1;
+
+            cart[key] = { quantity: newQty };
+            updateCartUI();
+            setCartLoadingUI(true);
+
+            dispatchLivewireEvent('updateQuantity', { cartKey: key, newQuantity: newQty });
+        }
+
+        // کاهش تعداد
+        function decrementCart() {
+            if (!activeVariant || isCartLoading) return;
+            const key = getCartKey(activeVariant);
+            const currentQty = getCartQuantity(activeVariant);
+            const newQty = currentQty - 1;
+
+            if (newQty <= 0) {
+                delete cart[key];
+            } else {
+                cart[key] = { quantity: newQty };
+            }
+            updateCartUI();
+            setCartLoadingUI(true);
+
+            dispatchLivewireEvent('updateQuantity', { cartKey: key, newQuantity: newQty });
+        }
+
+        // به‌روزرسانی ویژگی‌ها و تنوع‌های انتخابی کلاینت
         function updateVariantSelection(btnElement) {
             const attrKey = btnElement.dataset.key;
             const attrValue = btnElement.dataset.val;
@@ -648,16 +928,18 @@
             updateBuyBoxDOM(matchedVariant);
         }
 
+        // به‌روزرسانی اطلاعات قیمت و وضعیت دسکتاپ و موبایل در DOM
         function updateBuyBoxDOM(variant) {
-            // المان‌های دسکتاپ
+            activeVariant = variant;
+
             const availableBox = document.getElementById('buybox-available');
             const outOfStockBox = document.getElementById('buybox-out-of-stock');
 
-            // المان‌های موبایل
             const mobileAvailableBox = document.getElementById('mobile-buybox-available');
             const mobileOutOfStockBox = document.getElementById('mobile-buybox-out-of-stock');
             const mobileAddBtn = document.getElementById('mobile-buybox-add-btn');
             const mobileNotifyBtn = document.getElementById('mobile-buybox-notify-btn');
+            const mobileQtySelector = document.getElementById('mobile-buybox-quantity-selector');
 
             if (!variant || variant.stock === 0) {
                 availableBox.classList.add('hidden');
@@ -669,6 +951,7 @@
                 mobileOutOfStockBox.classList.remove('hidden');
                 mobileOutOfStockBox.classList.add('flex');
                 mobileAddBtn.classList.add('hidden');
+                if (mobileQtySelector) mobileQtySelector.classList.add('hidden');
                 mobileNotifyBtn.classList.remove('hidden');
                 mobileNotifyBtn.classList.add('flex');
 
@@ -683,6 +966,7 @@
                     updateMobileWarningVisibility();
                 }
 
+                updateCartUI();
                 return;
             }
 
@@ -769,10 +1053,9 @@
                     spacer.classList.add('hidden');
                 }
 
-                // 💡 FIX: منطق نوار پیشرفت موجودی
                 if (discountStockProgress && variant.discount_stock > 0) {
                     const totalDiscountStock = variant.discount_stock;
-                    const currentStock = Math.min(variant.stock, totalDiscountStock); // موجودی فعلی نمی‌تواند از موجودی تخفیف بیشتر باشد
+                    const currentStock = Math.min(variant.stock, totalDiscountStock);
                     const remainingPercent = Math.max(0, Math.min(100, (currentStock / totalDiscountStock) * 100));
 
                     document.getElementById('discount-stock-bar').style.width = `${remainingPercent}%`;
@@ -800,13 +1083,18 @@
             document.getElementById('mobile-buybox-final-price').innerText = formattedFinalPrice;
 
             document.getElementById('buybox-variant-id').value = variant.id;
+            document.getElementById('buybox-vendor-product-id').value = variant.vendor_product_id || '';
 
             if (history.pushState) {
                 const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?variant=' + variant.id;
                 window.history.pushState({path:newurl}, '', newurl);
             }
+
+            // پس از بارگذاری اطلاعات، دکمه‌های سبد خرید برای این آیتم همگام‌سازی شوند
+            updateCartUI();
         }
 
+        // ثانیه‌شمار معکوس شگفت‌انگیز
         let currentTimer = null;
         function startCountdown(element, endDateIso) {
             if(currentTimer) clearInterval(currentTimer);
@@ -827,17 +1115,6 @@
                 const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-                /*let html = '';
-                if (days > 0) {
-                    html += `<span class="inline-flex flex-col items-center mx-1"><span class="font-bold text-base">${String(days).padStart(2, '0')}</span><span class="text-[8px] opacity-70">روز</span></span>`;
-                }
-                html += `<span class="inline-flex flex-col items-center mx-1"><span class="font-bold text-base">${String(hours).padStart(2, '0')}</span><span class="text-[8px] opacity-70">ساعت</span></span>`;
-                html += `<span class="inline-flex flex-col items-center mx-1"><span class="font-bold text-base">${String(minutes).padStart(2, '0')}</span><span class="text-[8px] opacity-70">دقیقه</span></span>`;
-                html += `<span class="inline-flex flex-col items-center mx-1"><span class="font-bold text-base">${String(seconds).padStart(2, '0')}</span><span class="text-[8px] opacity-70">ثانیه</span></span>`;
-
-                element.innerHTML = html;
-            }, 1000);*/
-
                 let html = '';
                 if (days > 0) {
                     html += `<span class="flex flex-col items-center"><span class="font-bold text-base">${String(days).padStart(2, '0')}</span><span class="text-[8px] opacity-70">روز</span></span><span class="font-bold text-base">:</span>`;
@@ -850,20 +1127,28 @@
             }, 1000);
         }
 
+        // بارگذاری اولیه با لحاظ اولویت شناسه در URL
         document.addEventListener('DOMContentLoaded', () => {
-            const initialVariant = productVariants.find(v => {
-                for (const key in selectedAttributes) {
-                    const selectedVal = selectedAttributes[key];
-                    const variantVal = v.attributes[key];
-                    if (variantVal === selectedVal) continue;
-                    if (variantVal && typeof variantVal === 'string' && variantVal.startsWith('هر ')) continue;
-                    return false;
-                }
-                return true;
-            });
+            let initialVariant = null;
+            if (requestedVariantId) {
+                initialVariant = productVariants.find(v => v.id == requestedVariantId);
+            }
+            if (!initialVariant) {
+                initialVariant = productVariants.find(v => {
+                    for (const key in selectedAttributes) {
+                        const selectedVal = selectedAttributes[key];
+                        const variantVal = v.attributes[key];
+                        if (variantVal === selectedVal) continue;
+                        if (variantVal && typeof variantVal === 'string' && variantVal.startsWith('هر ')) continue;
+                        return false;
+                    }
+                    return true;
+                });
+            }
             updateBuyBoxDOM(initialVariant || productVariants[0]);
         });
 
+        // گالری تصاویر کوچک
         function changeMainImage(src, btnElement) {
             document.getElementById('main-product-image').src = src;
 
@@ -881,6 +1166,7 @@
             }
         }
 
+        // پاپ‌آپ گالری (Lightbox)
         function openLightbox(src) {
             const lb = document.getElementById('image-lightbox');
             const img = document.getElementById('lightbox-img');

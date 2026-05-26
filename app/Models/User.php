@@ -9,6 +9,8 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
+use Modules\Clients\Entities\Client; // 💡 مدل Client اضافه شد
+use Modules\Market\App\Models\Order;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -62,6 +64,16 @@ class User extends Authenticatable
     protected $appends = [
         'profile_photo_url',
     ];
+
+    /**
+     * The clients that belong to the user.
+     */
+    public function clients()
+    {
+        return $this->belongsToMany(Client::class, 'client_user', 'user_id', 'client_id');
+    }
+
+    // 💡 رابطه orders حذف شد چون دیگر مستقیم نیست.
 
     public function customValues()
     {

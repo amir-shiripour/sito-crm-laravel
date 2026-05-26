@@ -5,8 +5,9 @@ namespace Modules\Clients\Entities;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use App\Contracts\FormSchemaContract;
 
-class ClientForm extends Model
+class ClientForm extends Model implements FormSchemaContract
 {
     protected $table = 'client_forms';
 
@@ -32,6 +33,16 @@ class ClientForm extends Model
         'notes'         => ['label' => 'یادداشت مدیریتی',    'column' => 'notes'],
         'password'      => ['label' => 'رمز عبور',           'column' => 'password'],
     ];
+
+    public static function getSystemFields(): array
+    {
+        return static::SYSTEM_FIELDS;
+    }
+
+    public function getSchema(): array
+    {
+        return $this->schema ?? [];
+    }
 
     public static function default(): ?self
     {

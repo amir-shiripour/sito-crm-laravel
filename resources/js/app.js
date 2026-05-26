@@ -1,5 +1,5 @@
 import './bootstrap';
-import './sortable.min';
+import Sortable from 'sortablejs';
 import '@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js';
 import '@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css';
 
@@ -36,11 +36,12 @@ L.Icon.Default.mergeOptions({
     shadowUrl: markerShadow,
 });
 
-// Make Leaflet and Geosearch available globally
+// Make libraries available globally
 window.L = L;
 window.GeoSearchControl = GeoSearchControl;
 window.OpenStreetMapProvider = OpenStreetMapProvider;
 window.Quill = Quill;
+window.Sortable = Sortable;
 
 // import Alpine from 'alpinejs'
 // window.Alpine = Alpine

@@ -4,6 +4,7 @@ namespace Modules\Clients\App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Schema;
+use Modules\Market\App\Models\Order as MarketOrder; // 💡 مسیر صحیح جایگزین شد
 use Nwidart\Modules\Facades\Module;
 
 class ClientDashboardController extends Controller
@@ -117,40 +118,38 @@ class ClientDashboardController extends Controller
         $recent = collect();
         $payments = collect();
 
-        if (class_exists(\Modules\Market\Entities\Order::class)) {
+        // 💡 از کلاس MarketOrder که در بالای فایل import شده استفاده می‌کنیم
+        $activeCount = MarketOrder::where('client_id', $client->id)
+            ->whereIn('payment_status', ['pending', 'processing', 'wait_for_payment', 'unpaid'])
+            ->count();
 
-            // حل مشکل ارور: ستون status به order_status تغییر یافت.
-            // اگر در دیتابیس شما نام ستون فرق دارد (مثلا payment_status)، آن را در خط زیر جایگزین کنید.
-            $activeCount = \Modules\Market\Entities\Order::where('client_id', $client->id)
-                ->whereIn('payment_status', ['pending', 'processing', 'wait_for_payment'])
-                ->count();
+        $recent = MarketOrder::where('client_id', $client->id)
+            ->latest()
+            ->take(5)
+            ->get();
 
-            $recent = \Modules\Market\Entities\Order::where('client_id', $client->id)
-                ->latest()
-                ->take(5)
-                ->get();
+        $payments = MarketOrder::where('client_id', $client->id)->get()->map(function($order) {
+            $statusMap = [
+                'pending'  => 'PENDING',
+                'paid'     => 'PAID',
+                'failed'   => 'FAILED',
+                'refunded' => 'REFUNDED',
+                'canceled' => 'CANCELED',
+                'unpaid'   => 'PENDING',
+            ];
+            $normalizedStatus = $statusMap[strtolower($order->payment_status)] ?? strtoupper($order->payment_status);
 
-            $payments = \Modules\Market\Entities\Order::where('client_id', $client->id)->get()->map(function($order) {
-                $statusMap = [
-                    'pending'  => 'PENDING',
-                    'paid'     => 'PAID',
-                    'failed'   => 'FAILED',
-                    'refunded' => 'REFUNDED',
-                    'canceled' => 'CANCELED'
-                ];
-                $normalizedStatus = $statusMap[strtolower($order->payment_status)] ?? strtoupper($order->payment_status);
+            return (object)[
+                'id'         => $order->id,
+                'type'       => 'market',
+                'type_label' => 'فروشگاه',
+                'amount'     => $order->grand_total,
+                'status'     => $normalizedStatus,
+                'date'       => $order->created_at,
+                'is_pending' => in_array(strtolower($normalizedStatus), ['pending', 'unpaid']),
+            ];
+        });
 
-                return (object)[
-                    'id'         => $order->id,
-                    'type'       => 'market',
-                    'type_label' => 'فروشگاه',
-                    'amount'     => $order->grand_total,
-                    'status'     => $normalizedStatus,
-                    'date'       => $order->created_at,
-                    'is_pending' => strtolower($normalizedStatus) === 'pending',
-                ];
-            });
-        }
 
         return [
             'activeCount' => $activeCount,
