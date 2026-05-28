@@ -33,10 +33,10 @@ class CheckoutController extends Controller
             abort(403, 'شما اجازه دسترسی به این سفارش را ندارید.');
         }
 
-        // Ensure the order is in 'pending' state
-        if ($order->status !== 'pending') {
-            if (in_array($order->status, ['processing', 'completed'])) {
-                return redirect()->route('market.checkout.success', $order)->with('info', 'این سفارش قبلاً پردازش شده است.');
+        // Ensure the order is in 'unpaid' state
+        if ($order->payment_status !== 'unpaid') {
+            if ($order->payment_status === 'paid') {
+                return redirect()->route('market.checkout.success', $order)->with('info', 'این سفارش قبلاً پرداخت شده است.');
             }
             return redirect()->route('market.checkout.failed', $order)->with('info', 'این سفارش قبلاً پردازش شده است.');
         }
@@ -46,14 +46,25 @@ class CheckoutController extends Controller
             case 'transfer':
                 // For offline payments, the order is already created.
                 // We just need to show a success page with instructions.
-                $order->update(['status' => 'processing']);
+                $order->update(['payment_status' => 'unpaid', 'delivery_status' => 'processing']);
                 return redirect()->route('market.checkout.success', $order);
 
             default:
                 try {
                     return $paymentService->redirectToGateway($order);
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
                     \Log::error('Gateway Redirect failed for order #' . $order->id . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+                    
+                    // Mark order as failed and release stock
+                    $order->payment_status = 'failed';
+                    $order->save();
+                    
+                    try {
+                        (new \Modules\Market\App\Services\StockService())->releaseReservation($order);
+                    } catch (\Throwable $stockEx) {
+                        \Log::error('Failed to release stock for order #' . $order->id . ': ' . $stockEx->getMessage());
+                    }
+
                     return redirect()->route('market.checkout.failed', $order)->with('error', 'خطا در هدایت به درگاه پرداخت: ' . $e->getMessage());
                 }
         }
@@ -76,7 +87,7 @@ class CheckoutController extends Controller
         }
 
         // Payment failed or was canceled
-        $orderId = $request->input('order_id'); // Or however the order ID is passed back
+        $orderId = $request->input('order_id') ?: $request->query('order_id');
         $order = Order::find($orderId);
         return redirect()->route('market.checkout.failed', $order)->with('error', 'پرداخت ناموفق بود یا توسط شما لغو شد.');
     }

@@ -103,4 +103,67 @@ class StockService
             ->getAvailableStock($variantId, $vendorId);
         $vp->update(['stock' => $newStock]);
     }
+
+    /**
+     * Restore stock for a failed or canceled order.
+     *
+     * @param \Modules\Market\App\Models\Order $order
+     * @return void
+     */
+    public function releaseReservation(\Modules\Market\App\Models\Order $order)
+    {
+        $isWmsActive = (bool) MarketSetting::getValue('wms.enabled', false);
+
+        foreach ($order->items as $item) {
+            $vp = VendorProduct::find($item->vendor_product_id);
+            if (!$vp) continue;
+
+            $variantId = $vp->product_variant_id;
+            $quantity = $item->quantity;
+
+            if ($isWmsActive) {
+                $this->restoreToWms($variantId, $quantity, $vp);
+            } else {
+                $this->restoreToLegacy($vp, $quantity);
+            }
+        }
+    }
+
+    /**
+     * Restore stock to legacy system.
+     */
+    protected function restoreToLegacy(VendorProduct $vp, int $quantity)
+    {
+        $vp->increment('stock', $quantity);
+    }
+
+    /**
+     * Restore stock to WMS system.
+     */
+    protected function restoreToWms(int $variantId, int $quantity, VendorProduct $vp)
+    {
+        $vendorId = $vp->vendor_id;
+        $strategy = MarketSetting::getValue('wms.stock_deduction_strategy', 'combined');
+        $stockField = $strategy === 'separated' ? 'online_stock' : 'physical_stock';
+
+        $warehouseStock = WarehouseStock::where('product_variant_id', $variantId)
+            ->whereHas('warehouse', function ($q) use ($vendorId) {
+                $q->where('vendor_id', $vendorId)->where('is_active', true);
+            })
+            ->first();
+
+        if ($warehouseStock) {
+            $warehouseStock->increment($stockField, $quantity);
+
+            if ($strategy !== 'separated') {
+                $warehouseStock->increment('online_stock', $quantity);
+            }
+        }
+
+        // Sync legacy stock field in market_vendor_products
+        $newStock = app(\Modules\Market\App\Services\WarehouseStockService::class)
+            ->getAvailableStock($variantId, $vendorId);
+        $vp->update(['stock' => $newStock]);
+    }
 }
+

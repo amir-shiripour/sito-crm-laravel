@@ -27,7 +27,7 @@
                     </div>
                     <div>
                          <span class="block text-sm text-gray-500 dark:text-gray-400 mb-1">وضعیت پرداخت:</span>
-                         @if($order->status === 'processing' || $order->status === 'paid')
+                         @if($order->payment_status === 'paid')
                              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">پرداخت شده</span>
                          @elseif($order->payment_method === 'pos' || $order->payment_method === 'transfer')
                              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">در انتظار تایید (آفلاین)</span>

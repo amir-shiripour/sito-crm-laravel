@@ -256,10 +256,13 @@ class CheckoutPage extends Component
                 $stockService->deduct($itemArray['variant_id'], $itemArray['quantity'], $itemArray['vendor_product_id']);
             }
 
-            $systemFieldIds = array_keys(CheckoutForm::getSystemFields());
             foreach ($this->formData as $key => $value) {
-                if (!in_array($key, $systemFieldIds) && !is_null($value)) {
-                    OrderMeta::create(['order_id' => $order->id, 'key' => $key, 'value' => $value]);
+                if (!is_null($value) && $value !== '') {
+                    OrderMeta::create([
+                        'order_id' => $order->id,
+                        'key' => $key,
+                        'value' => is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value
+                    ]);
                 }
             }
 

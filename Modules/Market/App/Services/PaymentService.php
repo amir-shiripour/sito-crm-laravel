@@ -6,8 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Modules\Market\App\Models\Order;
 use Modules\Settings\Entities\Setting;
-use Shetabit\Multipay\Invoice;
-use Shetabit\Payment\Facade\Payment;
+use App\Services\PaymentService as GlobalPaymentService;
 
 class PaymentService
 {
@@ -36,24 +35,34 @@ class PaymentService
             throw new \Exception('هیچ درگاه پرداخت پیش‌فرضی تنظیم نشده است.');
         }
 
-        // Create an invoice
-        $invoice = new Invoice;
-        $amount = (int) ($order->grand_total ?: $order->total_amount);
-        $invoice->amount($amount);
-        $invoice->detail('description', 'پرداخت سفارش شماره ' . $order->id);
-        $invoice->detail('order_id', $order->id);
+        $globalPaymentService = new GlobalPaymentService($gateway);
+
+        $amount = (float) ($order->grand_total ?: $order->total_amount);
+        $description = 'پرداخت سفارش شماره ' . $order->id;
+        $email = optional($order->client)->email;
         $mobile = ($order->shipping_address_json['recipient_mobile'] ?? null) ?: (optional($order->client)->mobile ?? null);
-        $invoice->detail('mobile', $mobile);
+        
+        // Pass order_id in callback so we can find the order during callback
+        $callbackUrl = route('market.checkout.callback', ['order_id' => $order->id]);
 
-        // Set the callback URL
-        $callbackUrl = route('market.checkout.callback');
+        $result = $globalPaymentService->requestPayment(
+            $amount,
+            $description,
+            $email,
+            $mobile,
+            $callbackUrl
+        );
 
-        // Purchase the invoice
-        return Payment::via($gateway)->callbackUrl($callbackUrl)->purchase($invoice, function($driver, $transactionId) use ($order) {
-            // Store transaction ID in the order
-            $order->transaction_id = $transactionId;
+        if ($result['success']) {
+            // Store transaction ID / authority in the order
+            $order->transaction_id = $result['authority'];
             $order->save();
-        })->pay()->render();
+
+            // Redirect the user to the gateway URL
+            return Redirect::away($result['payment_url']);
+        } else {
+            throw new \Exception($result['message'] ?? 'خطا در ارتباط با درگاه پرداخت');
+        }
     }
 
     /**
@@ -65,11 +74,17 @@ class PaymentService
     public function verifyPayment(Request $request): ?Order
     {
         try {
-            $transactionId = $request->input('Authority'); // Zarinpal specific, may need adjustment
-            $orderId = $request->input('order_id'); // Assuming it's passed back or stored in session
-
-            // Find the order by transaction ID
-            $order = Order::where('transaction_id', $transactionId)->firstOrFail();
+            $orderId = $request->query('order_id') ?: $request->input('order_id');
+            if ($orderId) {
+                $order = Order::findOrFail($orderId);
+            } else {
+                // Fallback to finding by transaction ID / Authority / trackId
+                $authority = $request->input('Authority') ?: $request->input('trackId');
+                if (!$authority) {
+                    throw new \Exception('شناسه تراکنش یافت نشد.');
+                }
+                $order = Order::where('transaction_id', $authority)->firstOrFail();
+            }
 
             $gateway = $order->payment_method;
             if (!$gateway || $gateway === 'online') {
@@ -78,32 +93,46 @@ class PaymentService
 
             if (!$gateway) return null;
 
-            // Verify the payment
-            $amount = (int) ($order->grand_total ?: $order->total_amount);
-            $receipt = Payment::via($gateway)
-                ->amount($amount)
-                ->transactionId($transactionId)
-                ->verify();
+            $globalPaymentService = new GlobalPaymentService($gateway);
 
-            // Payment is successful, update order status
-            $order->status = 'processing';
-            $order->payment_ref_id = $receipt->getReferenceId();
-            $order->paid_at = now();
-            $order->save();
+            // Prepare verification data based on gateway
+            $amount = (float) ($order->grand_total ?: $order->total_amount);
+            $verifyData = [
+                'Amount' => $amount,
+            ];
 
-            // You can dispatch an event here like OrderPaid
-            // event(new OrderPaid($order));
+            if ($gateway === 'zarinpal') {
+                $verifyData['Authority'] = $request->input('Authority');
+                $verifyData['Status'] = $request->input('Status');
+            } elseif ($gateway === 'zibal') {
+                $verifyData['trackId'] = $request->input('trackId');
+                $verifyData['success'] = $request->input('success');
+            }
 
-            return $order;
+            $result = $globalPaymentService->verifyPayment($verifyData);
+
+            if ($result['success']) {
+                // Payment is successful, update order status
+                $order->payment_status = 'paid';
+                $order->delivery_status = 'processing';
+                $order->payment_ref_id = $result['ref_id'] ?? null;
+                $order->paid_at = now();
+                $order->save();
+
+                return $order;
+            } else {
+                throw new \Exception($result['message'] ?? 'تایید پرداخت ناموفق بود.');
+            }
 
         } catch (\Exception $e) {
             // Log the error
-            \Log::error('Payment Verification Failed: ' . $e->getMessage());
+            \Log::error('Payment Verification Failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
 
-            // If order exists, you might want to mark it as 'failed'
+            // Mark order as failed and release stock
             if (isset($order)) {
-                $order->status = 'failed';
+                $order->payment_status = 'failed';
                 $order->save();
+                
                 // Release the stock reservation
                 (new StockService())->releaseReservation($order);
             }

@@ -90,7 +90,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
             ->middleware('permission:market.warehouses.manage');
 
         // Orders Section
-        Route::resource('orders', \Modules\Market\App\Http\Controllers\User\OrderController::class)->only(['index', 'show']);
+        Route::resource('orders', \Modules\Market\App\Http\Controllers\User\OrderController::class);
         Route::view('brands', 'market::admin.brands.index')->name('brands.index');
         Route::view('categories', 'market::admin.categories.index')->name('categories.index');
         Route::view('attributes', 'market::admin.attributes.index')
