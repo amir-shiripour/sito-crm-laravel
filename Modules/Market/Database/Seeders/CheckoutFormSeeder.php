@@ -81,5 +81,8 @@ class CheckoutFormSeeder extends Seeder
         ]);
 
         $form->save();
+
+        // Sync default checkout form key with MarketSetting
+        \Modules\Market\Entities\MarketSetting::setValue('checkout.default_form_key', 'default_checkout');
     }
 }

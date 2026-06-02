@@ -30,6 +30,8 @@ use Modules\Market\App\Livewire\Web\CartCounter;
 use Modules\Market\App\Livewire\Web\AddToCartButton;
 use Modules\Market\App\Livewire\web\CheckoutModal;
 use Modules\Market\App\Livewire\web\CheckoutPage;
+use Modules\Market\App\Livewire\Web\LocationModal;
+use Modules\Market\App\Livewire\user\OrderForm;
 use Modules\Market\App\Observers\VendorObserver;
 use Modules\Market\Entities\MarketSetting;
 use Modules\Market\Entities\Vendor;
@@ -85,8 +87,10 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::web.popup-cart', PopupCart::class);
         Livewire::component('market::web.cart-counter', CartCounter::class);
         Livewire::component('market::web.add-to-cart-button', AddToCartButton::class);
-        Livewire::component('market::web.checkout-modal', CheckoutModal::class); // 💡 ثبت کامپوننت مودال تسویه حساب
-        Livewire::component('market::web.checkout-page', CheckoutPage::class); // 💡 ثبت کامپوننت مودال تسویه حساب
+        Livewire::component('market::web.checkout-modal', CheckoutModal::class);
+        Livewire::component('market::web.checkout-page', CheckoutPage::class);
+        Livewire::component('market::web.location-modal', LocationModal::class);
+        Livewire::component('market::user.order-form', OrderForm::class);
 
         // 💡 ثبت Observer
         Vendor::observe(VendorObserver::class);
@@ -97,11 +101,17 @@ class MarketServiceProvider extends ServiceProvider
      */
     protected function autoProvisionCentralWarehouse()
     {
-        if (MarketSetting::getValue('wms.enabled', false)) {
-            Warehouse::firstOrCreate(
-                ['vendor_id' => null],
-                ['name' => 'انبار مرکزی سیستم', 'code' => 'WH-MAIN', 'is_active' => true]
-            );
+        try {
+            if (Schema::hasTable('market_settings') && Schema::hasTable('market_warehouses')) {
+                if (MarketSetting::getValue('wms.enabled', false)) {
+                    Warehouse::firstOrCreate(
+                        ['vendor_id' => null],
+                        ['name' => 'انبار مرکزی سیستم', 'code' => 'WH-MAIN', 'is_active' => true]
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore exceptions during boot phase (e.g. migration not run yet, database config errors, etc.)
         }
     }
 
@@ -111,6 +121,14 @@ class MarketServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->register(RouteServiceProvider::class);
+
+        $this->app->singleton(\Modules\Market\App\Services\Map\MapServiceInterface::class, function ($app) {
+            $provider = \Modules\Market\Entities\MarketSetting::getValue('map.provider', 'neshan');
+            if ($provider === 'map_ir') {
+                return new \Modules\Market\App\Services\Map\MapIrMapService();
+            }
+            return new \Modules\Market\App\Services\Map\NeshanMapService();
+        });
     }
 
     /**

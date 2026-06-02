@@ -122,6 +122,16 @@ class Installer extends BaseModuleInstaller
             $role->givePermissionTo(array_keys($perms));
         }
 
+        // انتساب نقش فروشنده (vendor) به تمام کاربران ادمین و سوپرادمین موجود در سیستم
+        try {
+            $adminUsers = \App\Models\User::role(['admin'])->get();
+            foreach ($adminUsers as $user) {
+                $user->assignRole('vendor');
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Market Installer: Could not assign vendor role to admin users. " . $e->getMessage());
+        }
+
         $tracker['permissions'] = array_values(array_unique($tracker['permissions']));
         $tracker['roles']       = array_values(array_unique($tracker['roles']));
         $this->saveTracker($tracker);

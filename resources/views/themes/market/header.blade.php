@@ -31,6 +31,17 @@
 
         {{-- اکشن‌ها --}}
         <div class="flex items-center gap-1 sm:gap-4 flex-shrink-0">
+            @if(class_exists(\Modules\Market\Entities\MarketSetting::class) && \Modules\Market\Entities\MarketSetting::getValue('orders.enable_geolocation_ordering', false))
+                @php
+                    $currentLoc = \Modules\Market\App\Helpers\GeolocationHelper::getClientLocation();
+                    $locText = ($currentLoc && !empty($currentLoc['city'])) ? $currentLoc['city'] : 'انتخاب موقعیت';
+                @endphp
+                <button onclick="Livewire.dispatch('openLocationModal')" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs font-bold">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span>{{ $locText }}</span>
+                </button>
+            @endif
+
             {{-- Dark Mode Switcher (مخفی در موبایل) --}}
             <button onclick="setAppThemeMode(localStorage.theme === 'dark' ? 'light' : 'dark')" class="hidden sm:block p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
                 <svg class="w-5 h-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -86,6 +97,19 @@
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
+
+        @if(class_exists(\Modules\Market\Entities\MarketSetting::class) && \Modules\Market\Entities\MarketSetting::getValue('orders.enable_geolocation_ordering', false))
+            @php
+                $currentLoc = \Modules\Market\App\Helpers\GeolocationHelper::getClientLocation();
+                $locText = ($currentLoc && !empty($currentLoc['city'])) ? $currentLoc['city'] : 'انتخاب موقعیت';
+            @endphp
+            <div class="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
+                <button onclick="Livewire.dispatch('openLocationModal')" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-300 shadow-sm transition-all active:scale-95">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span>موقعیت شما: {{ $locText }}</span>
+                </button>
+            </div>
+        @endif
 
         {{-- محتوای سایدبار --}}
         <div class="flex-1 overflow-y-auto p-4 space-y-6">

@@ -67,7 +67,7 @@
 
     {{-- ================= SCREEN DASHBOARD VIEW ================= --}}
     <div class="screen-dashboard-container space-y-6 text-right" dir="rtl">
-        
+
         {{-- Header & Top Action bar --}}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-200">
             <div class="flex items-center gap-3">
@@ -99,7 +99,7 @@
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">تاریخ ثبت: {{ \Morilog\Jalali\Jalalian::fromDateTime($order->created_at)->format('Y/m/d H:i') }}</p>
                 </div>
             </div>
-            
+
             <div class="flex items-center gap-2">
                 <a href="{{ route('user.market.orders.edit', $order) }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl shadow-sm text-xs transition-colors">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -147,56 +147,58 @@
                         ['id' => 'shipped', 'label' => 'ارسال مرسوله', 'desc' => 'تحویل به پست یا پیک توزیع', 'active' => in_array($delStatus, ['shipped', 'delivered'])],
                         ['id' => 'delivered', 'label' => 'تحویل نهایی', 'desc' => 'تحویل سفارش به مشتری', 'active' => $delStatus === 'delivered']
                     ];
+                    $currentStepIndex = 0;
+                    if ($delStatus === 'processing') $currentStepIndex = 1;
+                    elseif ($delStatus === 'shipped') $currentStepIndex = 2;
+                    elseif ($delStatus === 'delivered') $currentStepIndex = 3;
                 @endphp
 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
-                    @foreach($steps as $index => $step)
-                        <div class="flex items-start md:flex-col gap-4 md:items-center text-right md:text-center group">
-                            {{-- Step indicator circle --}}
-                            <div class="relative flex items-center justify-center shrink-0">
-                                @if($step['active'])
-                                    <div class="w-10 h-10 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center font-bold text-sm shadow-md ring-4 ring-indigo-50 dark:ring-indigo-950/50">
-                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                @else
-                                    <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center font-bold text-sm">
-                                        {{ $index + 1 }}
-                                    </div>
-                                @endif
-
-                                {{-- Connector Line for Desktop --}}
-                                @if(!$loop->last)
-                                    <div class="hidden md:block absolute right-1/2 left-[-50%] top-5 h-0.5 z-0 {{ $steps[$index+1]['active'] ? 'bg-indigo-600 dark:bg-indigo-500' : 'bg-gray-200 dark:bg-gray-700' }}"></div>
-                                @endif
+                <div class="relative pt-4">
+                    <div class="flex mb-2 items-center justify-between">
+                        @foreach($steps as $index => $step)
+                            <div class="w-1/4 text-center">
+                                <div class="relative flex items-center justify-center">
+                                    @if($step['active'])
+                                        <div class="w-10 h-10 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center font-bold text-sm shadow-md ring-4 ring-indigo-50 dark:ring-indigo-950/50 z-10">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                    @else
+                                        <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center font-bold text-sm z-10">
+                                            {{ $index + 1 }}
+                                        </div>
+                                    @endif
+                                </div>
+                                <div class="mt-3">
+                                    <h4 class="font-extrabold text-sm {{ $step['active'] ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500' }}">
+                                        {{ $step['label'] }}
+                                    </h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        {{ $step['desc'] }}
+                                    </p>
+                                </div>
                             </div>
-
-                            <div class="space-y-1">
-                                <h4 class="font-extrabold text-sm {{ $step['active'] ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500' }}">
-                                    {{ $step['label'] }}
-                                </h4>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ $step['desc'] }}
-                                </p>
-                            </div>
-                        </div>
-                    @endforeach
+                        @endforeach
+                    </div>
+                    <div class="absolute top-9 left-0 right-0 w-full h-0.5 bg-gray-200 dark:bg-gray-700">
+                        <div class="absolute h-full bg-indigo-600 dark:bg-indigo-500" style="width: {{ ($currentStepIndex / (count($steps) - 1)) * 100 }}%;"></div>
+                    </div>
                 </div>
             </div>
         @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             {{-- Left Column: Items Table, Details, Shipping Address --}}
             <div class="lg:col-span-2 space-y-6">
-                
+
                 {{-- Order Items Card --}}
                 <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                     <div class="p-5 border-b border-gray-100 dark:border-gray-700">
                         <h2 class="font-bold text-gray-900 dark:text-white text-base">محصولات سفارش داده شده</h2>
                     </div>
-                    
+
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm text-right">
                             <thead class="bg-gray-50/50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs">
@@ -223,7 +225,17 @@
                                                 </div>
                                                 <div>
                                                     <span class="font-bold block text-sm">{{ $item->product_title }}</span>
-                                                    <span class="text-xs text-gray-400 dark:text-gray-500 mt-1 block">تنوع کد: {{ optional($item->vendorProduct)->sku_extension ?: 'پیش‌فرض' }}</span>
+                                                    @if($item->vendorProduct && $item->vendorProduct->variant)
+                                                        @if($item->vendorProduct->variant->variant_code)
+                                                            <span class="text-xs text-gray-400 dark:text-gray-500 mt-1 block">کد تنوع: {{ $item->vendorProduct->variant->variant_code }}</span>
+                                                        @endif
+                                                        @if($item->vendorProduct->variant->name)
+                                                            <span class="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5 block font-medium">تنوع: {{ $item->vendorProduct->variant->name }}</span>
+                                                        @endif
+                                                    @endif
+                                                    @if($item->vendor)
+                                                        <span class="text-xs text-amber-600 dark:text-amber-400 mt-0.5 block">فروشنده: {{ $item->vendor->store_name }}</span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </td>
@@ -289,7 +301,7 @@
 
             {{-- Right Column: Client Card, Financial Summary, Payment info, Metadata fields --}}
             <div class="space-y-6">
-                
+
                 {{-- Client Profile Card (Full Details) --}}
                 <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
                     <h3 class="font-bold text-gray-900 dark:text-white text-base pb-2 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
@@ -337,7 +349,7 @@
                         </svg>
                         خلاصه فاکتور مالی
                     </h3>
-                    
+
                     <div class="space-y-3.5 text-sm">
                         <div class="flex justify-between">
                             <span class="text-gray-400">قیمت اقلام سفارش:</span>
@@ -414,29 +426,24 @@
                             </svg>
                             داده‌های تکمیل‌شده فرم
                         </h3>
-                        
+
                         <div class="space-y-4 text-sm">
                             @foreach($order->meta as $meta)
                                 @php
-                                    $fieldName = $meta->key;
-                                    $isSystemField = false;
-                                    if ($order->checkoutForm) {
-                                        $fields = $order->checkoutForm->getSchema()['fields'] ?? [];
-                                        foreach ($fields as $field) {
-                                            if (($field['id'] ?? '') === $meta->key) {
-                                                $fieldName = $field['label'] ?? $field['name'] ?? $meta->key;
-                                                $isSystemField = !empty($field['is_system']);
+                                    $field = $order->checkoutForm?->field($meta->key);
+                                    if (!$field) {
+                                        foreach (\Modules\Market\App\Models\CheckoutForm::all() as $form) {
+                                            $f = $form->field($meta->key);
+                                            if ($f) {
+                                                $field = $f;
                                                 break;
                                             }
                                         }
                                     }
-                                    
-                                    // Let's decode JSON if value is JSON
+                                    $fieldName = $field['label'] ?? (\Modules\Market\App\Models\CheckoutForm::getSystemFields()[$meta->key]['label'] ?? ($meta->label ?? $meta->key));
                                     $val = $meta->value;
-                                    $isJson = false;
                                     $decodedVal = json_decode($val, true);
                                     if (is_array($decodedVal) && json_last_error() === JSON_ERROR_NONE) {
-                                        $isJson = true;
                                         if (isset($decodedVal['province'])) {
                                             $val = 'استان ' . $decodedVal['province'] . '، شهر ' . ($decodedVal['city'] ?? '');
                                         } else {
@@ -444,7 +451,7 @@
                                         }
                                     }
                                 @endphp
-                                <div class="flex flex-col gap-1 {{ $isSystemField ? 'border-b border-dashed border-gray-100 dark:border-gray-700/50 pb-2' : '' }}">
+                                <div class="flex flex-col gap-1">
                                     <span class="text-xs text-gray-400 font-medium">{{ $fieldName }}:</span>
                                     <span class="font-bold text-gray-900 dark:text-white text-xs">
                                         {{ $val }}
@@ -462,7 +469,7 @@
     {{-- ================= OFFICIAL PRINTABLE INVOICE ================= --}}
     <div class="invoice-print-section font-sans text-right" dir="rtl">
         <h2 class="invoice-title text-center text-xl font-bold pb-2 border-b-2 border-black mb-4">صورتحساب فروش کالا و خدمات (فاکتور رسمی)</h2>
-        
+
         <div class="grid grid-cols-2 gap-4 text-xs mb-4">
             <div class="invoice-print-box">
                 <h4 class="font-bold text-sm border-b border-black pb-1 mb-2">مشخصات فروشنده</h4>
@@ -470,7 +477,7 @@
                 <p class="mb-1"><span class="font-semibold">تلفن تماس:</span> ۰۲۱-۱۲۳۴۵۶۷۸</p>
                 <p class="mb-1"><span class="font-semibold">نشانی:</span> تهران، خیابان اصلی، پلاک ۱</p>
             </div>
-            
+
             <div class="invoice-print-box">
                 <div class="flex justify-between items-center border-b border-black pb-1 mb-2">
                     <h4 class="font-bold text-sm">مشخصات خریدار</h4>
@@ -479,7 +486,7 @@
                 <p class="mb-1"><span class="font-semibold">نام و نام خانوادگی:</span> {{ optional($order->client)->full_name }}</p>
                 <p class="mb-1"><span class="font-semibold">شماره تلفن:</span> {{ optional($order->client)->phone ?: '-' }}</p>
                 <p class="mb-1"><span class="font-semibold">کد ملی:</span> {{ optional($order->client)->national_code ?: '-' }}</p>
-                <p class="mb-1"><span class="font-semibold">نشانی تحویل:</span> 
+                <p class="mb-1"><span class="font-semibold">نشانی تحویل:</span>
                     استان {{ $order->shipping_address_json['province'] ?: '-' }}، شهر {{ $order->shipping_address_json['city'] ?: '-' }}
                     @if(!empty($order->shipping_address_json['address']))
                          {{ $order->shipping_address_json['address'] }}
@@ -503,14 +510,27 @@
                 @foreach($order->items as $idx => $item)
                     <tr>
                         <td class="border border-black p-2">{{ $idx + 1 }}</td>
-                        <td class="border border-black p-2 font-mono text-xs">#PRD-{{ $item->vendor_product_id }}</td>
-                        <td class="border border-black p-2 font-bold">{{ $item->product_title }}</td>
+                        <td class="border border-black p-2 font-mono text-xs">
+                            #PRD-{{ $item->vendor_product_id }}
+                            @if($item->vendorProduct && $item->vendorProduct->variant && $item->vendorProduct->variant->variant_code)
+                                <br><span class="text-[9px] text-gray-500">کد: {{ $item->vendorProduct->variant->variant_code }}</span>
+                            @endif
+                        </td>
+                        <td class="border border-black p-2 font-bold text-right" style="text-align: right !important;">
+                            {{ $item->product_title }}
+                            @if($item->vendorProduct && $item->vendorProduct->variant && $item->vendorProduct->variant->name)
+                                <div class="text-[10px] text-indigo-700 font-normal">تنوع: {{ $item->vendorProduct->variant->name }}</div>
+                            @endif
+                            @if($item->vendor)
+                                <div class="text-[10px] text-amber-700 font-normal">فروشنده: {{ $item->vendor->store_name }}</div>
+                            @endif
+                        </td>
                         <td class="border border-black p-2">{{ $item->quantity }}</td>
                         <td class="border border-black p-2 font-mono">{{ number_format($item->unit_price) }}</td>
                         <td class="border border-black p-2 font-mono">{{ number_format($item->total_price) }}</td>
                     </tr>
                 @endforeach
-                
+
                 {{-- Totals inside table for print --}}
                 <tr>
                     <td colspan="4" class="border border-black p-2 text-left font-bold" style="text-align: left !important;">جمع کل اقلام:</td>
@@ -534,7 +554,7 @@
                 </tr>
             </tbody>
         </table>
-        
+
         {{-- Metadata / dynamic info printed officially --}}
         @if($order->meta->isNotEmpty())
             <div class="invoice-print-box mt-4">
@@ -542,17 +562,17 @@
                 <div class="grid grid-cols-2 gap-2 text-[10px]">
                     @foreach($order->meta as $meta)
                         @php
-                            $fieldName = $meta->key;
-                            if ($order->checkoutForm) {
-                                $fields = $order->checkoutForm->getSchema()['fields'] ?? [];
-                                foreach ($fields as $field) {
-                                    if (($field['id'] ?? '') === $meta->key) {
-                                        $fieldName = $field['label'] ?? $field['name'] ?? $meta->key;
+                            $field = $order->checkoutForm?->field($meta->key);
+                            if (!$field) {
+                                foreach (\Modules\Market\App\Models\CheckoutForm::all() as $form) {
+                                    $f = $form->field($meta->key);
+                                    if ($f) {
+                                        $field = $f;
                                         break;
                                     }
                                 }
                             }
-                            
+                            $fieldName = $field['label'] ?? (\Modules\Market\App\Models\CheckoutForm::getSystemFields()[$meta->key]['label'] ?? ($meta->label ?? $meta->key));
                             $val = $meta->value;
                             $decodedVal = json_decode($val, true);
                             if (is_array($decodedVal) && json_last_error() === JSON_ERROR_NONE) {
@@ -577,7 +597,7 @@
                 <p class="font-bold mb-12">مهر و امضای فروشنده</p>
                 <div class="h-8"></div>
             </div>
-            
+
             <div>
                 <p class="font-bold mb-12">مهر و امضای خریدار</p>
                 <div class="h-8"></div>

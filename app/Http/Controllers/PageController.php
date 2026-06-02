@@ -27,7 +27,7 @@ class PageController extends Controller
         // [Architecture Note]: واکشی دیتای واقعی برای تم‌هایی که نیاز به لیست سرویس‌های رزرو دارند
         // استفاده از class_exists برای جلوگیری از خطای سیستمی در صورت غیرفعال بودن ماژول Booking
         if (in_array($appTheme, ['booking', 'default'])) {
-            if (class_exists(\Modules\Booking\Entities\BookingService::class)) {
+            if (class_exists(\Modules\Booking\Entities\BookingService::class) && \App\Services\Modules\BaseModuleInstaller::isInstalled('Booking') && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
 
                 $engine = app(\Modules\Booking\Services\BookingEngine::class);
                 $settings = \Modules\Booking\Entities\BookingSetting::current();

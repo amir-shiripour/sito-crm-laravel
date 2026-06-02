@@ -417,25 +417,106 @@
                         اطلاعات تکمیلی
                     </h3>
 
-                    @if(is_array($client->meta) && count($client->meta))
+                    @php
+                        $schemaFields = isset($activeForm) && isset($activeForm->schema['fields']) ? $activeForm->schema['fields'] : [];
+                        $systemFieldIds = ['full_name', 'phone', 'email', 'national_code', 'case_number', 'notes', 'status_id', 'password'];
+                        
+                        // فیلتر کردن فیلدهای سفارشی که در اسکیمای فعال فرم وجود دارند و مقدار غیرخالی دارند
+                        $customMetaFields = collect($schemaFields)->filter(function($f) use ($client, $systemFieldIds) {
+                            $fid = $f['id'] ?? null;
+                            if (!$fid || in_array($fid, $systemFieldIds, true)) {
+                                return false;
+                            }
+                            return isset($client->meta[$fid]) && $client->meta[$fid] !== '' && $client->meta[$fid] !== [];
+                        });
+                    @endphp
+
+                    @if($customMetaFields->isNotEmpty())
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            @foreach($client->meta as $k => $v)
+                            @foreach($customMetaFields as $fieldDef)
                                 @php
-                                    // پیدا کردن لیبل فیلد از روی فرم فعال
-                                    $fieldLabel = $k;
-                                    $fieldType = 'text'; // پیش‌فرض
-                                    if (isset($activeForm) && isset($activeForm->schema['fields'])) {
-                                        $fieldDef = collect($activeForm->schema['fields'])->firstWhere('id', $k);
-                                        if ($fieldDef) {
-                                            $fieldLabel = $fieldDef['label'] ?? $k;
-                                            $fieldType = $fieldDef['type'] ?? 'text';
+                                    $k = $fieldDef['id'];
+                                    $v = $client->meta[$k];
+                                    $fieldLabel = $fieldDef['label'] ?? $k;
+                                    $fieldType = $fieldDef['type'] ?? 'text';
+                                    
+                                    // استخراج گزینه‌ها در صورت وجود
+                                    $options = [];
+                                    $optsJson = $fieldDef['options_json'] ?? '';
+                                    if (is_string($optsJson) && trim($optsJson) !== '') {
+                                        $decodedOpts = json_decode($optsJson, true);
+                                        if (is_array($decodedOpts)) {
+                                            $options = $decodedOpts;
+                                        } else {
+                                            $lines = array_filter(array_map('trim', explode("\n", $optsJson)));
+                                            foreach ($lines as $line) {
+                                                if (str_contains($line, ':')) {
+                                                    [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                                    $options[$okey] = $oval;
+                                                } else {
+                                                    $options[$line] = $line;
+                                                }
+                                            }
                                         }
                                     }
+
+                                    // تابع کمکی برای پیدا کردن عنوان نمایشی مقدار
+                                    $getDisplayVal = function($val) use ($options) {
+                                        $valStr = (string)$val;
+                                        if (isset($options[$valStr])) {
+                                            return $options[$valStr];
+                                        }
+                                        // جستجوی معکوس اگر کلیدها با مقادیر جابجا تعریف شده باشند
+                                        $flipped = array_flip($options);
+                                        if (isset($flipped[$valStr])) {
+                                            return $valStr; // کلید در flipped مقدار است
+                                        }
+                                        return $val;
+                                    };
                                 @endphp
                                 <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50">
                                     <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ $fieldLabel }}</div>
                                     <div class="text-sm font-medium text-gray-900 dark:text-gray-200 break-words">
-                                        @if($fieldType === 'select-province-city' && is_string($v))
+                                        @if($fieldType === 'file')
+                                            @php
+                                                $files = [];
+                                                if (is_array($v)) {
+                                                    $files = $v;
+                                                } else {
+                                                    $decoded = json_decode($v, true);
+                                                    if (is_array($decoded)) {
+                                                        $files = $decoded;
+                                                    } elseif (!empty($v)) {
+                                                        $files = [$v];
+                                                    }
+                                                }
+                                            @endphp
+                                            @if(empty($files))
+                                                <span class="text-gray-400">—</span>
+                                            @else
+                                                <div class="flex flex-wrap gap-2 mt-1">
+                                                    @foreach($files as $file)
+                                                        @php
+                                                            $fileUrl = Storage::disk('public')->url($file);
+                                                            $fileName = basename($file);
+                                                            $isImg = in_array(strtolower(pathinfo($file, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+                                                        @endphp
+                                                        <a href="{{ $fileUrl }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-xs font-medium text-gray-700 hover:text-indigo-600 hover:border-indigo-300 transition-colors dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:text-indigo-400 shadow-sm">
+                                                            @if($isImg)
+                                                                 <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                                </svg>
+                                                            @else
+                                                                <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                </svg>
+                                                            @endif
+                                                            <span class="truncate max-w-[150px] dir-ltr text-left">{{ $fileName }}</span>
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        @elseif($fieldType === 'select-province-city' && is_string($v))
                                             @php
                                                 $decoded = json_decode($v, true);
                                             @endphp
@@ -448,7 +529,7 @@
                                             <div class="flex flex-wrap gap-1 mt-1">
                                                 @foreach($v as $item)
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white border border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300">
-                                                        {{ is_string($item) ? $item : json_encode($item) }}
+                                                        {{ is_string($item) ? $getDisplayVal($item) : json_encode($item) }}
                                                     </span>
                                                 @endforeach
                                             </div>
@@ -457,7 +538,25 @@
                                                 {{ $v ? 'بله' : 'خیر' }}
                                             </span>
                                         @else
-                                            {{ $v ?: '—' }}
+                                            {{-- فیلدهای عادی، رادیو یا سلکت تک انتخابی --}}
+                                            @if(is_string($v) && str_starts_with($v, '[') && str_ends_with($v, ']'))
+                                                @php
+                                                    $decodedArr = json_decode($v, true);
+                                                @endphp
+                                                @if(is_array($decodedArr))
+                                                    <div class="flex flex-wrap gap-1 mt-1">
+                                                        @foreach($decodedArr as $item)
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white border border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300">
+                                                                {{ $getDisplayVal($item) }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    {{ $getDisplayVal($v) ?: '—' }}
+                                                @endif
+                                            @else
+                                                {{ $getDisplayVal($v) ?: '—' }}
+                                            @endif
                                         @endif
                                     </div>
                                 </div>

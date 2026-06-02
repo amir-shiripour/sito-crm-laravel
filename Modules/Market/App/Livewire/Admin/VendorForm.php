@@ -40,9 +40,31 @@ class VendorForm extends Component
 
     public $kyc_rejection_reason = '';
 
+    // Geolocation & Address management for admin
+    public bool $showAddressModal = false;
+    public $editingAddressId = null;
+    public string $addrType = 'warehouse';
+    public string $addrProvince = '';
+    public string $addrCity = '';
+    public string $addrAddress = '';
+    public string $addrPostalCode = '';
+    public float $addrLat = 35.6892;
+    public float $addrLng = 51.3890;
+    public string $mapProvider = 'neshan';
+    public string $mapApiKey = '';
+
+    protected $listeners = [
+        'updateAddrCoordinates' => 'updateAddrCoordinates'
+    ];
+
     public function mount(?Vendor $vendor = null)
     {
         $this->vendor = $vendor ?? new Vendor();
+
+        if (class_exists(\Modules\Market\Entities\MarketSetting::class)) {
+            $this->mapProvider = \Modules\Market\Entities\MarketSetting::getValue('map.provider', 'neshan');
+            $this->mapApiKey = \Modules\Market\Entities\MarketSetting::getValue('map.api_key', '');
+        }
 
         if ($this->vendor->exists) {
             $this->user_id = $this->vendor->user_id;
@@ -63,6 +85,194 @@ class VendorForm extends Component
             $this->bank_name = $this->vendor->bank_name;
             $this->kyc_rejection_reason = $this->vendor->kyc_rejection_reason;
         }
+    }
+
+    public function addAddress()
+    {
+        $this->editingAddressId = null;
+        $this->addrType = 'warehouse';
+        $this->addrProvince = '';
+        $this->addrCity = '';
+        $this->addrAddress = '';
+        $this->addrPostalCode = '';
+        $this->addrLat = 35.6892;
+        $this->addrLng = 51.3890;
+        $this->showAddressModal = true;
+    }
+
+    public function editAddress($addressId)
+    {
+        $address = $this->vendor->addresses()->findOrFail($addressId);
+        $this->editingAddressId = $address->id;
+        $this->addrType = $address->type;
+        $this->addrProvince = $address->province;
+        $this->addrCity = $address->city;
+        $this->addrAddress = $address->address;
+        $this->addrPostalCode = $address->postal_code ?? '';
+        $this->addrLat = $address->latitude ?? 35.6892;
+        $this->addrLng = $address->longitude ?? 51.3890;
+        $this->showAddressModal = true;
+    }
+
+    public function saveAddress()
+    {
+        $this->validate([
+            'addrType' => 'required|in:warehouse,office,store',
+            'addrProvince' => 'required|string',
+            'addrCity' => 'required|string',
+            'addrAddress' => 'required|string|min:5',
+            'addrPostalCode' => 'nullable|string|size:10',
+        ], [
+            'addrType.required' => 'نوع آدرس الزامی است.',
+            'addrProvince.required' => 'استان الزامی است.',
+            'addrCity.required' => 'شهر الزامی است.',
+            'addrAddress.required' => 'آدرس دقیق الزامی است.',
+            'addrAddress.min' => 'آدرس دقیق باید حداقل ۵ کاراکتر باشد.',
+            'addrPostalCode.size' => 'کد پستی باید ۱۰ رقم باشد.',
+        ]);
+
+        $isDefault = $this->vendor->addresses()->count() === 0;
+
+        $this->vendor->addresses()->updateOrCreate(
+            ['id' => $this->editingAddressId],
+            [
+                'type' => $this->addrType,
+                'province' => $this->addrProvince,
+                'city' => $this->addrCity,
+                'address' => $this->addrAddress,
+                'postal_code' => $this->addrPostalCode ?: null,
+                'latitude' => $this->addrLat,
+                'longitude' => $this->addrLng,
+                'is_default' => $this->editingAddressId ? (bool)$this->vendor->addresses()->find($this->editingAddressId)->is_default : $isDefault
+            ]
+        );
+
+        $this->showAddressModal = false;
+        $this->dispatch('notify', type: 'success', text: 'آدرس با موفقیت ذخیره شد.');
+        $this->vendor->load('addresses'); // Refresh relation
+    }
+
+    public function deleteAddress($addressId)
+    {
+        $address = $this->vendor->addresses()->findOrFail($addressId);
+        $address->delete();
+        $this->dispatch('notify', type: 'success', text: 'آدرس با موفقیت حذف شد.');
+        $this->vendor->load('addresses'); // Refresh relation
+    }
+
+    public function updateAddrCoordinates($lat, $lng)
+    {
+        $this->addrLat = (float)$lat;
+        $this->addrLng = (float)$lng;
+    }
+
+    public function fetchAddrCoordinatesAddress($lat, $lng)
+    {
+        $this->addrLat = $lat;
+        $this->addrLng = $lng;
+        $geoData = [];
+
+        if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
+            $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
+            $geoData = $mapService->reverseGeocode($lat, $lng);
+        }
+
+        if (empty($geoData['address'])) {
+            $geoData = $this->fallbackGeocode($lat, $lng);
+        }
+
+        if (!empty($geoData['address'])) {
+            $this->addrProvince = $geoData['province'] ?? $this->addrProvince;
+            $this->addrCity = $geoData['city'] ?? $this->addrCity;
+            $this->addrAddress = $this->sanitizeAddress($geoData['address'], $this->addrProvince, $this->addrCity);
+            
+            if (isset($geoData['data']['postal_code']) && !empty($geoData['data']['postal_code'])) {
+                $this->addrPostalCode = $geoData['data']['postal_code'];
+            } elseif (isset($geoData['postal_code']) && !empty($geoData['postal_code'])) {
+                $this->addrPostalCode = $geoData['postal_code'];
+            }
+        }
+    }
+
+    protected function sanitizeAddress($address, $province, $city)
+    {
+        if (empty($address)) return '';
+        $address = preg_replace('/^(ایران|iran)\s*[،,]\s*/iu', '', $address);
+
+        if (!empty($province)) {
+            $provinceClean = str_replace(['استان ', ' Province'], '', $province);
+            $address = preg_replace('/^(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+        }
+
+        if (!empty($city)) {
+            $cityClean = str_replace(['شهر ', ' City'], '', $city);
+            $address = preg_replace('/^(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+        }
+
+        $address = preg_replace('/\b\d{5}-?\d{5}\b/u', '', $address);
+        $address = preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
+        
+        if (!empty($province)) {
+            $provinceClean = str_replace(['استان ', ' Province'], '', $province);
+            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')$/iu', '', $address);
+        }
+        if (!empty($city)) {
+            $cityClean = str_replace(['شهر ', ' City'], '', $city);
+            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')$/iu', '', $address);
+        }
+        $address = preg_replace('/\s*[،,]\s*(ایران|iran)$/iu', '', $address);
+
+        return preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
+    }
+
+    protected function fallbackGeocode($lat, $lng)
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Laravel-CRM-Map-App'
+            ])->timeout(5)->get("https://nominatim.openstreetmap.org/reverse", [
+                'lat' => $lat,
+                'lon' => $lng,
+                'format' => 'json',
+                'accept-language' => 'fa,en'
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $addressData = $data['address'] ?? [];
+                
+                $province = $addressData['state'] ?? '';
+                $province = str_replace(['استان ', ' Province'], '', $province);
+
+                $city = $addressData['city'] ?? $addressData['town'] ?? $addressData['suburb'] ?? $addressData['village'] ?? '';
+
+                $addressParts = [];
+                if (!empty($addressData['road'])) {
+                    $addressParts[] = $addressData['road'];
+                }
+                if (!empty($addressData['neighbourhood'])) {
+                    $addressParts[] = $addressData['neighbourhood'];
+                }
+                if (!empty($addressData['suburb']) && $addressData['suburb'] !== $city) {
+                    $addressParts[] = $addressData['suburb'];
+                }
+                if (!empty($addressData['borough'])) {
+                    $addressParts[] = $addressData['borough'];
+                }
+
+                $addressStr = implode('، ', $addressParts);
+                return [
+                    'province' => $province,
+                    'city' => $city,
+                    'address' => $addressStr,
+                    'postal_code' => $addressData['postcode'] ?? null
+                ];
+            }
+        } catch (\Exception $e) {
+            // Silently fail
+        }
+
+        return [];
     }
 
     public function save()

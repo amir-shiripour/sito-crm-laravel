@@ -47,8 +47,7 @@ class Client extends Authenticatable
 
     public function users()
     {
-        return $this->belongsToMany(User::class, 'client_user', 'client_id', 'user_id')
-            ->withTimestamps();
+        return $this->belongsToMany(User::class, 'client_user', 'client_id', 'user_id');
     }
 
     /**
@@ -57,6 +56,14 @@ class Client extends Authenticatable
     public function orders()
     {
         return $this->hasMany(Order::class, 'client_id');
+    }
+
+    /**
+     * Get all of the addresses for the Client.
+     */
+    public function addresses()
+    {
+        return $this->hasMany(ClientAddress::class, 'client_id');
     }
 
     /**
@@ -120,16 +127,27 @@ class Client extends Authenticatable
 
     public function calls()
     {
-        return $this->hasMany(\Modules\ClientCalls\Entities\ClientCall::class, 'client_id')
-            ->orderByDesc('call_date')
-            ->orderByDesc('call_time');
+        $class = '\Modules\ClientCalls\Entities\ClientCall';
+        if (class_exists($class) && \Schema::hasTable('client_calls')) {
+            return $this->hasMany($class, 'client_id')
+                ->orderByDesc('call_date')
+                ->orderByDesc('call_time');
+        }
+        // Fallback relation if class or table doesn't exist to prevent crash
+        return $this->hasMany(Client::class, 'id', 'id')->whereRaw('1 = 0');
     }
 
     public function followUps()
     {
-        return $this->hasMany(\Modules\FollowUps\Entities\FollowUp::class, 'related_id')
-            ->where('related_type', \Modules\Tasks\Entities\Task::RELATED_TYPE_CLIENT)
-            ->orderByDesc('due_at')
-            ->orderByDesc('created_at');
+        $class = '\Modules\FollowUps\Entities\FollowUp';
+        $taskClass = '\Modules\Tasks\Entities\Task';
+        if (class_exists($class) && class_exists($taskClass) && \Schema::hasTable('tasks')) {
+            return $this->hasMany($class, 'related_id')
+                ->where('related_type', $taskClass::RELATED_TYPE_CLIENT)
+                ->orderByDesc('due_at')
+                ->orderByDesc('created_at');
+        }
+        // Fallback relation
+        return $this->hasMany(Client::class, 'id', 'id')->whereRaw('1 = 0');
     }
 }

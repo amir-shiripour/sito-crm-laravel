@@ -74,6 +74,10 @@ class MarketSetting extends Model
             'min_withdrawal_amount' => '500000',
             'withdrawal_schedule' => 'on_demand',
         ],
+        'map' => [
+            'provider' => 'neshan',
+            'api_key' => '',
+        ],
     ];
 
     public static function getValue(string $key, $default = null)

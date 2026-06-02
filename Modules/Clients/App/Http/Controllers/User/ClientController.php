@@ -107,12 +107,19 @@ class ClientController extends Controller
     {
         $this->ensureVisible($client);
 
-        $client->load([
-            'creator',
-            'status',
-            'calls.user',
-            'followUps.assignee',
-        ]);
+        $relations = ['creator', 'status'];
+
+        $clientCallsModule = \App\Models\Module::where('slug', 'clientcalls')->first();
+        if ($clientCallsModule && $clientCallsModule->installed && $clientCallsModule->active && \Schema::hasTable('client_calls')) {
+            $relations[] = 'calls.user';
+        }
+
+        $followUpsModule = \App\Models\Module::where('slug', 'followups')->first();
+        if ($followUpsModule && $followUpsModule->installed && $followUpsModule->active && \Schema::hasTable('tasks')) {
+            $relations[] = 'followUps.assignee';
+        }
+
+        $client->load($relations);
 
         // دریافت فرم فعال برای نمایش لیبل فیلدها
         $keyFromSettings = \Modules\Clients\Entities\ClientSetting::getValue('default_form_key');

@@ -69,7 +69,7 @@
 
         <div class="flex flex-wrap items-center gap-3">
             {{-- دکمه موقت برای مشاهده سفارش (در صورتی که روت آن وجود داشته باشد) --}}
-            <a href="#" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors text-sm font-medium shadow-sm">
+            <a href="{{ route('client.market.orders.show', $order->id) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors text-sm font-medium shadow-sm">
                 <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                 مشاهده سفارش
             </a>
@@ -117,8 +117,8 @@
                     <span class="font-medium text-gray-900 dark:text-white">{{ $gatewayName ?: 'ثبت نشده' }}</span>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">کد پیگیری مرسوله:</span>
-                    <span class="font-medium text-gray-900 dark:text-white font-mono">{{ $order->tracking_code ?: '---' }}</span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">کد پیگیری پرداخت (بانکی):</span>
+                    <span class="font-medium text-gray-900 dark:text-white font-mono">{{ $order->payment_ref_id ?: ($order->transaction_id ?: '---') }}</span>
                 </div>
             </div>
         </div>

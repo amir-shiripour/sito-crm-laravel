@@ -252,6 +252,13 @@ class ClientForm extends Model implements FormSchemaContract
                 $f['conditional_required'] = [];
             }
 
+            if (($f['type'] ?? '') === 'select') {
+                $f['creatable'] = (bool)($f['creatable'] ?? false);
+                $f['save_globally'] = (bool)($f['save_globally'] ?? false);
+                $f['use_clients_list'] = (bool)($f['use_clients_list'] ?? false);
+                $f['searchable'] = (bool)($f['searchable'] ?? false);
+            }
+
             $normalized[] = $f;
         }
 

@@ -96,6 +96,13 @@ class CartManager extends Component
 
     public function addItemToCart($variantId, $vendorProductId = null, $quantity = 1)
     {
+        if (MarketSetting::getValue('orders.enable_geolocation_ordering', false)) {
+            if (!auth()->guard('client')->check()) {
+                $this->dispatch('notify', type: 'error', text: 'برای افزودن محصول به سبد خرید، ابتدا باید وارد حساب کاربری خود شوید.');
+                return redirect()->route('client.login');
+            }
+        }
+
         $variant = ProductVariant::with('masterProduct')->find($variantId);
         if (!$variant) {
             $this->dispatch('notify', type: 'error', text: 'محصول یافت نشد.');

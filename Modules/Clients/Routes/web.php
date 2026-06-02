@@ -123,6 +123,12 @@ Route::prefix('clients')
             Route::get('payments/{type}/{id}', [ClientPaymentController::class, 'show'])
                 ->name('payments.show');
 
+            // 🛍️ Market Orders Routes
+            Route::get('market/orders', [ClientPaymentController::class, 'marketOrdersIndex'])
+                ->name('market.orders.index');
+            Route::get('market/orders/{id}', [ClientPaymentController::class, 'marketOrderShow'])
+                ->name('market.orders.show');
+
             Route::post('logout', [ClientAuthController::class, 'logout'])
                 ->name('logout');
         });

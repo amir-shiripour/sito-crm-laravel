@@ -52,9 +52,13 @@ class MarketSettings extends Component
     public int $auto_cancel_unpaid_orders_hours = 24;
     public int $return_policy_days = 7;
     public string $invoice_prefix = 'INV-';
+    public bool $enable_geolocation_ordering = false;
     public string $default_payment_gateway = 'zarinpal';
     public string $min_withdrawal_amount = '500000';
     public string $withdrawal_schedule = 'on_demand';
+
+    public string $map_provider = 'neshan';
+    public string $map_api_key = '';
 
     // Checkout settings
     public bool $checkout_sync_require_approval = false;
@@ -103,6 +107,7 @@ class MarketSettings extends Component
         $this->auto_cancel_unpaid_orders_hours = (int) MarketSetting::getValue('orders.auto_cancel_unpaid_hours');
         $this->return_policy_days = (int) MarketSetting::getValue('orders.return_policy_days');
         $this->invoice_prefix = MarketSetting::getValue('orders.invoice_prefix');
+        $this->enable_geolocation_ordering = (bool) MarketSetting::getValue('orders.enable_geolocation_ordering', false);
         $this->default_payment_gateway = MarketSetting::getValue('finance.default_gateway');
         $this->min_withdrawal_amount = MarketSetting::getValue('finance.min_withdrawal_amount');
         $this->withdrawal_schedule = MarketSetting::getValue('finance.withdrawal_schedule');
@@ -113,6 +118,10 @@ class MarketSettings extends Component
         $this->checkout_default_form_key = MarketSetting::getValue('checkout.default_form_key');
         $this->checkout_allow_product_override = (bool) MarketSetting::getValue('checkout.allow_product_override');
         $this->checkout_allow_category_override = (bool) MarketSetting::getValue('checkout.allow_category_override');
+
+        // Map settings
+        $this->map_provider = MarketSetting::getValue('map.provider', 'neshan');
+        $this->map_api_key = MarketSetting::getValue('map.api_key', '');
     }
 
     public function save()
@@ -130,6 +139,8 @@ class MarketSettings extends Component
             'store_display_type' => 'required|in:by_vendor,by_product',
             'variant_display_mode' => 'required|in:grouped,separated',
             'ui_product_card_style' => 'required|in:modern,classic,minimal',
+            'map_provider' => 'required|in:neshan,map_ir',
+            'map_api_key' => 'nullable|string',
         ]);
 
         $wasWmsDisabled = !MarketSetting::getValue('wms.enabled');
@@ -174,6 +185,7 @@ class MarketSettings extends Component
         MarketSetting::setValue('orders.auto_cancel_unpaid_hours', $this->auto_cancel_unpaid_orders_hours);
         MarketSetting::setValue('orders.return_policy_days', $this->return_policy_days);
         MarketSetting::setValue('orders.invoice_prefix', $this->invoice_prefix);
+        MarketSetting::setValue('orders.enable_geolocation_ordering', $this->enable_geolocation_ordering);
         MarketSetting::setValue('finance.default_gateway', $this->default_payment_gateway);
         MarketSetting::setValue('finance.min_withdrawal_amount', $this->min_withdrawal_amount);
         MarketSetting::setValue('finance.withdrawal_schedule', $this->withdrawal_schedule);
@@ -184,6 +196,10 @@ class MarketSettings extends Component
         MarketSetting::setValue('checkout.default_form_key', $this->checkout_default_form_key);
         MarketSetting::setValue('checkout.allow_product_override', $this->checkout_allow_product_override);
         MarketSetting::setValue('checkout.allow_category_override', $this->checkout_allow_category_override);
+
+        // Map settings
+        MarketSetting::setValue('map.provider', $this->map_provider);
+        MarketSetting::setValue('map.api_key', $this->map_api_key);
 
         if ($wasWmsDisabled && $this->wms_enabled) {
             $this->onWmsEnabled();

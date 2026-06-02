@@ -36,6 +36,8 @@ class ClientsServiceProvider extends ServiceProvider
                 WidgetRegistry::register($key, $definition);
             }
         }
+
+        \Livewire\Livewire::component('clients::portal.client-address-manager', \Modules\Clients\App\Livewire\Portal\ClientAddressManager::class);
     }
 
     /**

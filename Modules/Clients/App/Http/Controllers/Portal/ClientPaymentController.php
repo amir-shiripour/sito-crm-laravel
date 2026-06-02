@@ -94,4 +94,25 @@ class ClientPaymentController extends Controller
 
         abort(404);
     }
+
+    public function marketOrdersIndex()
+    {
+        $client = auth('client')->user();
+        if (!class_exists(MarketOrder::class) || !Schema::hasTable('market_orders')) abort(404);
+
+        $orders = MarketOrder::where('client_id', $client->id)->latest()->paginate(15);
+        return view('clients::portal.orders.index', compact('orders'));
+    }
+
+    public function marketOrderShow($id)
+    {
+        $client = auth('client')->user();
+        if (!class_exists(MarketOrder::class) || !Schema::hasTable('market_orders')) abort(404);
+
+        $order = MarketOrder::where('client_id', $client->id)
+            ->with(['items.vendorProduct.variant', 'items.vendor'])
+            ->findOrFail($id);
+
+        return view('clients::portal.orders.show', compact('order'));
+    }
 }

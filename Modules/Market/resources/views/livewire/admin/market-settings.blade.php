@@ -56,6 +56,11 @@
             مالی و تسویه حساب
         </button>
 
+        <button @click="tab = 'map'" :class="tab === 'map' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            تنظیمات نقشه
+        </button>
+
     </div>
 
     {{-- محتوای تب‌ها --}}
@@ -483,6 +488,14 @@
                     </div>
                 </label>
 
+                <label class="flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                    <input type="checkbox" wire:model.defer="enable_geolocation_ordering" class="{{ $checkboxClass }}">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900 dark:text-gray-200">فعال کردن سفارش کلاینت بر اساس موقعیت مکانی</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">در صورت فعال بودن، موقعیت مکانی (آدرس) کلاینت دریافت شده و فیلتر/ثبت سفارشات بر اساس آن انجام می‌شود.</span>
+                    </div>
+                </label>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="{{ $labelClass }}">حداقل مبلغ کل سبد خرید برای ثبت سفارش</label>
@@ -606,6 +619,36 @@
                         </select>
                     </div>
 
+                </div>
+            </div>
+        </div>
+
+        {{-- 7. تب تنظیمات نقشه --}}
+        <div x-show="tab === 'map'" x-cloak class="{{ $cardClass }}">
+            <div class="{{ $headerClass }}">
+                <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات نقشه و آدرس‌ها</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی منبع دریافت نقشه و مختصات (Neshan / Map.ir)</p>
+                </div>
+            </div>
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="{{ $labelClass }}">منبع نقشه و وب‌سرویس</label>
+                        <select wire:model.live="map_provider" class="{{ $inputClass }} appearance-none">
+                            <option value="neshan">Neshan.org (نقشه نشان)</option>
+                            <option value="map_ir">Map.ir (نقشه مپ)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="{{ $labelClass }}">کلید دسترسی API (API Key)</label>
+                        <input type="text" wire:model.defer="map_api_key" class="{{ $inputClass }} dir-ltr text-left font-mono" placeholder="مثال: web.1234567890abcdef...">
+                        @error('map_api_key') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
                 </div>
             </div>
         </div>

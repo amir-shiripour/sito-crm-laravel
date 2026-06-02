@@ -27,7 +27,7 @@ class OrderForm extends Component
     public $payment_method = 'zibal';
     public $payment_status = 'unpaid';
     public $delivery_status = 'processing';
-    
+
     public array $shipping_address = [
         'province' => '',
         'city' => '',
@@ -47,7 +47,7 @@ class OrderForm extends Component
     // Search and Lists
     public string $searchClient = '';
     public string $searchProduct = '';
-    public array $clientsList = [];
+    public $clientsList;
     public array $productsList = [];
     public array $checkoutFormsList = [];
     public array $provinces = [];
@@ -93,16 +93,9 @@ class OrderForm extends Component
 
     public function mount(?Order $order = null)
     {
+        $this->clientsList = collect();
         $this->provinces = ProvinceCity::getProvinces();
         $this->checkoutFormsList = CheckoutForm::where('is_active', true)->get()->toArray();
-        
-        // Set default form if exists
-        if (empty($order) && !empty($this->checkoutFormsList)) {
-            $defaultKey = MarketSetting::getValue('checkout.default_form_key');
-            $defaultForm = collect($this->checkoutFormsList)->firstWhere('key', $defaultKey) ?: $this->checkoutFormsList[0];
-            $this->formId = $defaultForm['id'];
-            $this->updatedFormId($this->formId);
-        }
 
         if ($order && $order->exists) {
             $this->order = $order;
@@ -114,6 +107,30 @@ class OrderForm extends Component
                 $this->searchClient = $client->full_name;
             }
             $this->formId = $order->checkout_form_id;
+
+            // Auto-detect formId from order meta keys if it's null/empty
+            if (empty($this->formId) && $order->meta->isNotEmpty()) {
+                foreach (CheckoutForm::all() as $form) {
+                    $formFieldIds = collect($form->schema['fields'] ?? [])->pluck('id')->all();
+                    $orderMetaKeys = $order->meta->pluck('key')->all();
+                    $intersection = array_intersect($orderMetaKeys, $formFieldIds);
+                    if (!empty($intersection)) {
+                        $this->formId = $form->id;
+                        break;
+                    }
+                }
+            }
+
+            if ($this->formId) {
+                $hasForm = collect($this->checkoutFormsList)->contains('id', $this->formId);
+                if (!$hasForm) {
+                    $orderForm = CheckoutForm::find($this->formId);
+                    if ($orderForm) {
+                        $this->checkoutFormsList[] = $orderForm->toArray();
+                    }
+                }
+            }
+
             $this->payment_method = $order->payment_method;
             $this->payment_status = $order->payment_status;
             $this->delivery_status = $order->delivery_status;
@@ -126,13 +143,16 @@ class OrderForm extends Component
 
             // Load items
             foreach ($order->items as $item) {
-                $vp = VendorProduct::find($item->vendor_product_id);
+                $vp = VendorProduct::with(['variant', 'vendor'])->find($item->vendor_product_id);
                 $this->items[] = [
                     'vendor_product_id' => $item->vendor_product_id,
                     'title' => $item->product_title,
                     'price' => (float)$item->unit_price,
                     'quantity' => (int)$item->quantity,
                     'stock' => $vp ? $vp->stock : 0,
+                    'variant_code' => $vp && $vp->variant ? $vp->variant->variant_code : null,
+                    'variant_name' => $vp && $vp->variant ? $vp->variant->name : null,
+                    'vendor_name' => $item->vendor ? $item->vendor->store_name : ($vp && $vp->vendor ? $vp->vendor->store_name : null),
                 ];
             }
 
@@ -141,8 +161,35 @@ class OrderForm extends Component
             $orderMeta = $order->meta->pluck('value', 'key')->all();
             foreach ($this->checkoutFields as $field) {
                 if (isset($orderMeta[$field['id']])) {
-                    $this->formData[$field['id']] = $orderMeta[$field['id']];
+                    $val = $orderMeta[$field['id']];
+                    $this->formData[$field['id']] = $val;
+                    
+                    // If it's a province/city field, decode and set shipping address if empty
+                    if ($field['type'] === 'select-province-city') {
+                        $decoded = json_decode($val, true);
+                        if (is_array($decoded)) {
+                            if (empty($this->shipping_address['province']) && !empty($decoded['province'])) {
+                                $this->shipping_address['province'] = $decoded['province'];
+                                $this->cities = ProvinceCity::getCities($decoded['province']);
+                            }
+                            if (empty($this->shipping_address['city']) && !empty($decoded['city'])) {
+                                $this->shipping_address['city'] = $decoded['city'];
+                            }
+                        }
+                    }
                 }
+            }
+
+            // After loading saved data, fill the rest from data sources
+            $this->fillFormDataFromSources();
+
+        } else {
+            // Set default form for new orders
+            if (!empty($this->checkoutFormsList)) {
+                $defaultKey = MarketSetting::getValue('checkout.default_form_key');
+                $defaultForm = collect($this->checkoutFormsList)->firstWhere('key', $defaultKey) ?: $this->checkoutFormsList[0];
+                $this->formId = $defaultForm['id'];
+                $this->updatedFormId($this->formId);
             }
         }
 
@@ -156,15 +203,47 @@ class OrderForm extends Component
         if ($form) {
             $schema = $form->getSchema();
             $this->checkoutFields = $schema['fields'] ?? [];
-            
+
             // Initialize formData keys
             $defaults = [];
             foreach ($this->checkoutFields as $field) {
                 $defaults[$field['id']] = '';
             }
             $this->formData = array_merge($defaults, $this->formData);
+
+            // Pre-fill data from sources
+            $this->fillFormDataFromSources();
         } else {
             $this->checkoutFields = [];
+        }
+    }
+
+    public function updatedClientId($clientId)
+    {
+        $this->clientId = $clientId;
+        $client = Client::find($clientId);
+        if ($client) {
+            $this->searchClient = $client->full_name;
+            $this->clientsList = collect(); // Hide search results
+            $this->fillFormDataFromSources();
+        }
+    }
+
+    private function fillFormDataFromSources()
+    {
+        if (!$this->clientId) return;
+
+        $client = Client::find($this->clientId);
+        if (!$client) return;
+
+        foreach ($this->checkoutFields as $field) {
+            $dataSource = $field['dataSource'] ?? null;
+            if ($dataSource && property_exists($client, $dataSource)) {
+                // Only fill if the field is currently empty to avoid overwriting user input or saved data.
+                if (empty($this->formData[$field['id']])) {
+                     $this->formData[$field['id']] = $client->{$dataSource};
+                }
+            }
         }
     }
 
@@ -184,16 +263,16 @@ class OrderForm extends Component
                   ->orWhere('email', 'like', '%' . $this->searchClient . '%');
             });
         }
-        $this->clientsList = $query->limit(10)->get()->toArray();
+        $this->clientsList = $query->limit(10)->get();
     }
 
     public function searchProducts()
     {
         $user = Auth::user();
         $isAdOrSa = $user->hasRole('super-admin') || $user->hasRole('admin');
-        
-        $query = VendorProduct::with(['variant.masterProduct']);
-        
+
+        $query = VendorProduct::with(['variant.masterProduct', 'vendor']);
+
         if (!$isAdOrSa) {
             $vendor = $user->marketVendor;
             if ($vendor) {
@@ -213,18 +292,23 @@ class OrderForm extends Component
         $this->productsList = $query->limit(10)->get()->map(function($vp) {
             $title = optional(optional($vp->variant)->masterProduct)->title ?? 'بدون عنوان';
             $sku = $vp->sku_extension ? " ({$vp->sku_extension})" : "";
+            $variantName = $vp->variant ? $vp->variant->name : '';
+            $vendorName = $vp->vendor ? $vp->vendor->store_name : 'بدون فروشنده';
             return [
                 'id' => $vp->id,
                 'title' => $title . $sku,
                 'price' => $vp->discount_price > 0 ? $vp->discount_price : $vp->price,
                 'stock' => $vp->stock,
+                'variant_name' => $variantName,
+                'vendor_name' => $vendorName,
+                'variant_code' => $vp->variant ? $vp->variant->variant_code : '',
             ];
         })->toArray();
     }
 
     public function addItem($productId)
     {
-        $vp = VendorProduct::find($productId);
+        $vp = VendorProduct::with(['variant', 'vendor'])->find($productId);
         if (!$vp) return;
 
         // Check if already added
@@ -248,6 +332,9 @@ class OrderForm extends Component
             'price' => (float)($vp->discount_price > 0 ? $vp->discount_price : $vp->price),
             'quantity' => 1,
             'stock' => $vp->stock,
+            'variant_code' => $vp->variant ? $vp->variant->variant_code : null,
+            'variant_name' => $vp->variant ? $vp->variant->name : null,
+            'vendor_name' => $vp->vendor ? $vp->vendor->store_name : null,
         ];
     }
 
@@ -313,10 +400,10 @@ class OrderForm extends Component
         $this->clientId = $client->id;
         $this->searchClient = $client->full_name;
         $this->searchClients();
-        
+
         $this->newClient = ['full_name' => '', 'phone' => '', 'email' => '', 'national_code' => ''];
         $this->showQuickClientModal = false;
-        
+
         $this->dispatch('notify', type: 'success', text: 'مشتری جدید با موفقیت ثبت شد.');
     }
 
@@ -364,7 +451,7 @@ class OrderForm extends Component
             // Create items and deduct stock
             foreach ($this->items as $itemArray) {
                 $vp = VendorProduct::findOrFail($itemArray['vendor_product_id']);
-                
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'vendor_product_id' => $vp->id,
@@ -381,15 +468,23 @@ class OrderForm extends Component
                 $stockService->deduct($vp->product_variant_id, $itemArray['quantity'], $vp->id);
             }
 
-            // Save custom metadata
-            // Save both custom fields and system fields to OrderMeta to ensure full editability
+            // Save custom metadata with labels based on the CURRENT form schema
             $order->meta()->delete();
-            foreach ($this->formData as $key => $value) {
-                if (!is_null($value) && $value !== '') {
+            $form = CheckoutForm::find($this->formId);
+            $fieldsSchema = $form->getSchema()['fields'] ?? [];
+
+            foreach ($fieldsSchema as $field) {
+                $key = $field['id'];
+                $fieldLabel = $field['label'] ?? $key;
+
+                if (isset($this->formData[$key]) && !is_null($this->formData[$key]) && $this->formData[$key] !== '') {
+                    $value = $this->formData[$key];
+
                     OrderMeta::create([
                         'order_id' => $order->id,
-                        'key' => $key,
-                        'value' => is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value
+                        'key'      => $key,
+                        'value'    => is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value,
+                        'label'    => $fieldLabel
                     ]);
                 }
             }

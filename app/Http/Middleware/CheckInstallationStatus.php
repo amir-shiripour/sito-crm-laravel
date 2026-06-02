@@ -28,13 +28,14 @@ class CheckInstallationStatus
                 'path' => $request->path()
             ]);
 
+            // از آنجا که برنامه نصب نشده است، تحت هیچ شرایطی نباید از سشن دیتابیس استفاده شود (چون جدول سشن‌ها وجود ندارد)
+            Config::set('session.driver', 'file');
+            session()->setDefaultDriver('file');
+            session()->forgetDrivers();
+            app()->forgetInstance('session.store');
+
             // ۳. آیا درخواست فعلی برای خود صفحه نصب‌کننده یا خطایابی است؟
             if ($this->isInstallRoute($request)) {
-                // بله. پس باید سشن را به 'file' تغییر دهیم تا این صفحه کرش نکند.
-                // هر دو روش را برای اطمینان کامل انجام می‌دهیم.
-                Config::set('session.driver', 'file');
-                session()->setDefaultDriver('file');
-
                 try {
                     // حالا بگذار درخواست به صفحه نصب‌کننده ادامه یابد.
                     $response = $next($request);

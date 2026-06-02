@@ -149,32 +149,87 @@
                                                 </label>
 
                                                 @if($isLocked)
-                                                    {{-- نمایش فیلد قفل شده --}}
-                                                    <div class="relative">
-                                                        @if($type === 'select-province-city')
-                                                            @php
-                                                                $decodedCity = is_string($fieldValue) ? json_decode($fieldValue, true) : $fieldValue;
-                                                                $cityStr = '';
-                                                                if(is_array($decodedCity)) {
-                                                                    $prov = $decodedCity['province'] ?? '';
-                                                                    $cit = $decodedCity['city'] ?? '';
-                                                                    if($prov) $cityStr .= $prov;
-                                                                    if($cit) $cityStr .= ($cityStr ? ' - ' : '') . $cit;
-                                                                } else {
-                                                                    $cityStr = $fieldValue;
-                                                                }
-                                                            @endphp
-                                                            <input type="text" value="{{ $cityStr }}" readonly class="{{ $lockedInputClass }}">
-                                                        @else
-                                                            <input type="text" value="{{ is_array($fieldValue) ? implode(', ', $fieldValue) : $fieldValue }}" readonly class="{{ $lockedInputClass }}">
-                                                        @endif
+                                                     {{-- نمایش فیلد قفل شده --}}
+                                                     <div class="relative">
+                                                         @if($type === 'select-province-city')
+                                                             @php
+                                                                 $decodedCity = is_string($fieldValue) ? json_decode($fieldValue, true) : $fieldValue;
+                                                                 $cityStr = '';
+                                                                 if(is_array($decodedCity)) {
+                                                                     $prov = $decodedCity['province'] ?? '';
+                                                                     $cit = $decodedCity['city'] ?? '';
+                                                                     if($prov) $cityStr .= $prov;
+                                                                     if($cit) $cityStr .= ($cityStr ? ' - ' : '') . $cit;
+                                                                 } else {
+                                                                     $cityStr = $fieldValue;
+                                                                 }
+                                                             @endphp
+                                                             <input type="text" value="{{ $cityStr }}" readonly class="{{ $lockedInputClass }}">
+                                                         @else
+                                                             @php
+                                                                 // پیدا کردن عنوان نمایشی برای فیلدهای سلکت و رادیو قفل شده
+                                                                 $displayVal = $fieldValue;
+                                                                 if (in_array($type, ['select', 'radio'])) {
+                                                                     $displayOptions = [];
+                                                                     if (!empty($field['options_json'])) {
+                                                                         $parsedOpts = json_decode($field['options_json'], true);
+                                                                         if (is_array($parsedOpts)) {
+                                                                             $displayOptions = $parsedOpts;
+                                                                         } else {
+                                                                             $lines = array_filter(array_map('trim', explode("\n", $field['options_json'])));
+                                                                             foreach ($lines as $line) {
+                                                                                 if (str_contains($line, ':')) {
+                                                                                     [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                                                                     $displayOptions[$okey] = $oval;
+                                                                                 } else {
+                                                                                     $displayOptions[$line] = $line;
+                                                                                 }
+                                                                             }
+                                                                         }
+                                                                     }
 
-                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                            </svg>
-                                                        </div>
-                                                    </div>
+                                                                     $getDisplayLabel = function($val) use ($displayOptions) {
+                                                                         $valStr = (string)$val;
+                                                                         if (isset($displayOptions[$valStr])) {
+                                                                             return $displayOptions[$valStr];
+                                                                         }
+                                                                         $flipped = array_flip($displayOptions);
+                                                                         if (isset($flipped[$valStr])) {
+                                                                             return $valStr;
+                                                                         }
+                                                                         return $val;
+                                                                     };
+
+                                                                     // بررسی آرایه یا مقدار متنی معمولی
+                                                                     $rawVals = $fieldValue;
+                                                                     if (is_string($fieldValue) && str_starts_with($fieldValue, '[') && str_ends_with($fieldValue, ']')) {
+                                                                         $decodedArr = json_decode($fieldValue, true);
+                                                                         if (is_array($decodedArr)) {
+                                                                             $rawVals = $decodedArr;
+                                                                         }
+                                                                     }
+
+                                                                     if (is_array($rawVals)) {
+                                                                         $mappedVals = array_map($getDisplayLabel, $rawVals);
+                                                                         $displayVal = implode(', ', $mappedVals);
+                                                                     } else {
+                                                                         $displayVal = $getDisplayLabel($fieldValue);
+                                                                     }
+                                                                 } else {
+                                                                     if (is_array($fieldValue)) {
+                                                                         $displayVal = implode(', ', $fieldValue);
+                                                                     }
+                                                                 }
+                                                             @endphp
+                                                             <input type="text" value="{{ $displayVal }}" readonly class="{{ $lockedInputClass }}">
+                                                         @endif
+
+                                                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                             <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                             </svg>
+                                                         </div>
+                                                     </div>
                                                 @else
                                                     {{-- رندر فیلد بر اساس نوع --}}
                                                     @switch($type)
@@ -346,6 +401,136 @@
                                                                     @endforeach
                                                                 </select>
                                                                 <p class="mt-1 text-xs text-gray-500">برای انتخاب چند مورد کلید Ctrl یا Cmd را نگه دارید.</p>
+                                                            @elseif(!empty($field['searchable']))
+                                                                {{-- حالت تک انتخابی با امکان جستجو در پورتال کلاینت --}}
+                                                                @php
+                                                                    $currentValArray = $fieldValue ? [(string) $fieldValue] : [];
+                                                                    $selectOptions = [];
+                                                                    foreach ($opts as $ov => $ol) {
+                                                                        $value = is_string($ov) ? $ov : $ol;
+                                                                        $label = is_string($ol) ? $ol : $ov;
+                                                                        $selectOptions[] = ['value' => (string) $value, 'label' => $label];
+                                                                    }
+                                                                @endphp
+                                                                <div x-data="{
+                                                                    options: @js($selectOptions),
+                                                                    selectedValues: @js($currentValArray),
+                                                                    search: '',
+                                                                    open: false,
+                                                                    placeholder: @js($field['placeholder'] ?? 'انتخاب کنید...'),
+                                                                    creatable: @js(!empty($field['creatable'])),
+                                                                    init() {
+                                                                        // Sync values and handle initial value if it's not in options (creatable fallback)
+                                                                        const initialVal = Array.isArray(this.selectedValues) ? this.selectedValues[0] : this.selectedValues;
+                                                                        if (initialVal && this.creatable && !this.options.some(o => o.value == initialVal)) {
+                                                                            this.options.push({ value: String(initialVal), label: String(initialVal) });
+                                                                        }
+
+                                                                        this.$watch('selectedValues', (values) => {
+                                                                            const arr = Array.isArray(values) ? values : [];
+                                                                            $refs.hiddenInput.value = arr[0] || '';
+                                                                        });
+                                                                    },
+                                                                    toggle(value) {
+                                                                        value = String(value);
+                                                                        if (this.selectedValues.includes(value)) {
+                                                                            this.selectedValues = [];
+                                                                        } else {
+                                                                            this.selectedValues = [value];
+                                                                        }
+                                                                        this.open = false;
+                                                                        this.search = '';
+                                                                    },
+                                                                    remove(value) {
+                                                                        this.selectedValues = [];
+                                                                    },
+                                                                    addNewOption() {
+                                                                        const val = this.search.trim();
+                                                                        if (val && !this.options.some(o => o.value.toLowerCase() === val.toLowerCase())) {
+                                                                            const newOpt = { value: val, label: val };
+                                                                            this.options.push(newOpt);
+                                                                            this.toggle(val);
+                                                                        }
+                                                                    },
+                                                                    get filteredOptions() {
+                                                                        if (!this.search) return this.options;
+                                                                        return this.options.filter(o => o.label.toLowerCase().includes(this.search.toLowerCase()));
+                                                                    }
+                                                                }">
+                                                                    <input type="hidden" name="{{ $fid }}" x-ref="hiddenInput" value="{{ $fieldValue }}">
+                                                                    
+                                                                    <div class="relative group" @click.outside="open = false">
+                                                                        {{-- کانتینر اصلی --}}
+                                                                        <div class="flex items-center gap-1.5 min-h-[42px] w-full rounded-xl border px-2 py-1.5 transition-all duration-200 cursor-text shadow-sm"
+                                                                             :class="open
+                                                                                ? 'border-indigo-500 ring-1 ring-indigo-500 bg-white dark:bg-gray-800'
+                                                                                : 'border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500'"
+                                                                             @click="if (!open) { open = true; search = ''; $nextTick(() => $refs.searchInput?.focus()); }">
+                                                                            
+                                                                            {{-- متن راهنما --}}
+                                                                            <template x-if="selectedValues.length === 0 && !search && !open">
+                                                                                <span class="text-xs text-gray-400 dark:text-gray-500 px-1 pointer-events-none select-none">
+                                                                                    <span x-text="placeholder"></span>
+                                                                                </span>
+                                                                            </template>
+                                                                            
+                                                                            {{-- نمایش مقدار انتخاب شده --}}
+                                                                            <template x-if="selectedValues.length > 0 && !open">
+                                                                                <span class="text-xs text-gray-900 dark:text-gray-100 truncate flex-1 px-1"
+                                                                                      x-text="options.find(o => o.value == selectedValues[0])?.label ?? selectedValues[0]"></span>
+                                                                            </template>
+                                                                            
+                                                                            {{-- جستجو --}}
+                                                                            <input x-show="selectedValues.length === 0 || open" x-ref="searchInput" type="text" x-model="search"
+                                                                                   class="flex-1 min-w-[60px] border-0 bg-transparent p-0 text-xs text-gray-900 focus:ring-0 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 leading-relaxed"
+                                                                                   placeholder="جستجو...">
+                                                                            
+                                                                            {{-- آیکون‌ها --}}
+                                                                            <div class="ml-auto pl-1 text-gray-400 pointer-events-none flex items-center gap-1">
+                                                                                <template x-if="selectedValues.length > 0 && !open">
+                                                                                    <button type="button" class="p-0.5 rounded-md hover:bg-gray-200 dark:hover:bg-white/10 text-gray-400 hover:text-gray-600 pointer-events-auto" @click.stop="remove(selectedValues[0])">
+                                                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                                    </button>
+                                                                                </template>
+                                                                                <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                                                </svg>
+                                                                            </div>
+                                                                        </div>
+                                                                        
+                                                                        {{-- لیست کشویی --}}
+                                                                        <div x-show="open" x-transition:enter="transition ease-out duration-100"
+                                                                             x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                                                                             x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 translate-y-0"
+                                                                             x-transition:leave-end="opacity-0 translate-y-1" style="display: none;" 
+                                                                             class="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl ring-1 ring-black ring-opacity-5 dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10">
+                                                                            <ul class="max-h-60 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                                                                                <template x-for="option in filteredOptions" :key="option.value">
+                                                                                    <li @click="toggle(option.value); $refs.searchInput.focus()"
+                                                                                        class="relative cursor-pointer select-none py-2 pl-9 pr-3 text-right text-xs rounded-lg transition-colors group"
+                                                                                        :class="selectedValues.includes(option.value) ? 'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-900/30 dark:text-indigo-300' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700/50'">
+                                                                                        <span x-text="option.label"></span>
+                                                                                        <span x-show="selectedValues.includes(option.value)" class="absolute inset-y-0 left-2 flex items-center text-indigo-600 dark:text-indigo-400">
+                                                                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                                                                        </span>
+                                                                                    </li>
+                                                                                </template>
+
+                                                                                {{-- امکان افزودن گزینه جدید در صورتی که creatable فعال باشد و جستجو با هیچ گزینه‌ای مطابق نباشد --}}
+                                                                                <template x-if="creatable && search.trim() && !options.some(o => o.label.toLowerCase() === search.trim().toLowerCase())">
+                                                                                    <li @click="addNewOption(); $refs.searchInput.focus()"
+                                                                                        class="relative cursor-pointer select-none py-2 px-3 text-right text-xs text-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 rounded-lg transition-colors font-medium dark:text-indigo-400 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30">
+                                                                                        <span>« افزودن گزینه جدید: <span class="font-bold" x-text="search.trim()"></span> »</span>
+                                                                                    </li>
+                                                                                </template>
+
+                                                                                <li x-show="filteredOptions.length === 0 && (!creatable || !search.trim())" class="py-3 text-center text-xs text-gray-500 dark:text-gray-400 italic">
+                                                                                    موردی یافت نشد.
+                                                                                </li>
+                                                                            </ul>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             @else
                                                                 <div class="relative">
                                                                     <select id="field_{{ $fid }}" name="{{ $fid }}" class="{{ $baseInputClass }} appearance-none">

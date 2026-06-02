@@ -1,9 +1,9 @@
 <div class="space-y-6">
     <form wire:submit.prevent="save" class="grid grid-cols-1 lg:grid-cols-3 gap-6 text-right" dir="rtl">
-        
+
         {{-- Left Section: Items, Customer Selection, Dynamic Metadata --}}
         <div class="lg:col-span-2 space-y-6">
-            
+
             {{-- Client Selection Card --}}
             <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
                 <div class="flex items-center justify-between">
@@ -17,20 +17,20 @@
                         + مشتری جدید سریع
                     </button>
                 </div>
-                
+
                 <div class="relative">
-                    <input type="text" wire:model.live.debounce.300ms="searchClient" wire:input="searchClients" 
-                           placeholder="جستجوی مشتری بر اساس نام، موبایل یا ایمیل..." 
+                    <input type="text" wire:model.live.debounce.300ms="searchClient" wire:input="searchClients"
+                           placeholder="جستجوی مشتری بر اساس نام، موبایل یا ایمیل..."
                            class="w-full px-4 py-3 rounded-2xl border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm">
-                    
-                    @if(!empty($clientsList) && $searchClient !== '')
+
+                    @if($clientsList->isNotEmpty() && $searchClient !== '')
                         <div class="absolute z-10 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
                             @foreach($clientsList as $c)
-                                <button type="button" wire:click="$set('clientId', {{ $c['id'] }}); $set('searchClient', '{{ addslashes($c['full_name']) }}'); $set('clientsList', [])" 
+                                <button type="button" wire:click="$set('clientId', {{ $c->id }}); $set('searchClient', '{{ addslashes($c->full_name) }}'); $set('clientsList', [])"
                                         class="w-full text-right px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors flex justify-between items-center text-sm">
                                     <div>
-                                        <span class="font-bold text-gray-900 dark:text-white">{{ $c['full_name'] }}</span>
-                                        <span class="text-xs text-gray-400 dark:text-gray-500 mr-2">({{ $c['phone'] }})</span>
+                                        <span class="font-bold text-gray-900 dark:text-white">{{ $c->full_name }}</span>
+                                        <span class="text-xs text-gray-400 dark:text-gray-500 mr-2">({{ $c->phone }})</span>
                                     </div>
                                     <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -43,7 +43,7 @@
 
                 @if($clientId)
                     @php
-                        $selectedClient = collect($clientsList)->firstWhere('id', $clientId) ?: \Modules\Clients\Entities\Client::find($clientId);
+                        $selectedClient = \Modules\Clients\Entities\Client::find($clientId);
                     @endphp
                     @if($selectedClient)
                         <div class="p-4 bg-indigo-50/50 dark:bg-indigo-950/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 flex flex-col md:flex-row justify-between gap-4 text-sm">
@@ -95,7 +95,7 @@
                                     {{ $label }}
                                     @if($required) <span class="text-rose-500">*</span> @endif
                                 </label>
-                                
+
                                 @if($type === 'select-province-city')
                                     <div class="grid grid-cols-2 gap-2">
                                         <select wire:model.live="shipping_address.province" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-xs">
@@ -116,7 +116,7 @@
                                 @else
                                     <input type="{{ $type }}" wire:model.defer="formData.{{ $fieldId }}" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-xs focus:ring-indigo-500 focus:border-indigo-500">
                                 @endif
-                                
+
                                 @error('formData.' . $fieldId) <span class="text-xs text-rose-600 block">{{ $message }}</span> @enderror
                             </div>
                         @endforeach
@@ -134,18 +134,23 @@
                 </h3>
 
                 <div class="relative">
-                    <input type="text" wire:model.live.debounce.300ms="searchProduct" wire:input="searchProducts" 
-                           placeholder="جستجوی محصول جهت افزودن به سفارش..." 
+                    <input type="text" wire:model.live.debounce.300ms="searchProduct" wire:input="searchProducts"
+                           placeholder="جستجوی محصول جهت افزودن به سفارش..."
                            class="w-full px-4 py-3 rounded-2xl border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm">
-                    
+
                     @if(!empty($productsList) && $searchProduct !== '')
                         <div class="absolute z-10 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
                             @foreach($productsList as $p)
-                                <button type="button" wire:click="addItem({{ $p['id'] }}); $set('searchProduct', ''); $set('productsList', [])" 
+                                <button type="button" wire:click="addItem({{ $p['id'] }}); $set('searchProduct', ''); $set('productsList', [])"
                                         class="w-full text-right px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors flex justify-between items-center text-sm">
                                     <div>
                                         <span class="font-bold text-gray-900 dark:text-white">{{ $p['title'] }}</span>
-                                        <span class="text-xs text-gray-400 dark:text-gray-500 mr-2">(موجودی: {{ $p['stock'] }} عدد)</span>
+                                        @if(!empty($p['variant_name']))
+                                            <span class="text-xs text-indigo-600 dark:text-indigo-400 mr-2 font-medium">تنوع: {{ $p['variant_name'] }} (کد: {{ $p['variant_code'] }})</span>
+                                        @endif
+                                        <div class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                                            فروشنده: {{ $p['vendor_name'] }} | موجودی: {{ $p['stock'] }} عدد
+                                        </div>
                                     </div>
                                     <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">{{ number_format($p['price']) }} تومان</span>
                                 </button>
@@ -169,7 +174,15 @@
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                                 @foreach($items as $idx => $item)
                                     <tr class="text-gray-900 dark:text-white">
-                                        <td class="py-3 font-semibold text-xs">{{ $item['title'] }}</td>
+                                        <td class="py-3 font-semibold text-xs">
+                                            <div>{{ $item['title'] }}</div>
+                                            @if(!empty($item['variant_name']))
+                                                <div class="text-[10px] text-indigo-600 dark:text-indigo-400 mt-0.5 font-medium">تنوع: {{ $item['variant_name'] }} (کد: {{ $item['variant_code'] }})</div>
+                                            @endif
+                                            @if(!empty($item['vendor_name']))
+                                                <div class="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">فروشنده: {{ $item['vendor_name'] }}</div>
+                                            @endif
+                                        </td>
                                         <td class="py-3 text-center font-mono text-xs">{{ number_format($item['price']) }}</td>
                                         <td class="py-3 text-center">
                                             <div class="inline-flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
@@ -265,7 +278,7 @@
 
         {{-- Right Section: Totals, Actions, Gateway and Status Configuration --}}
         <div class="space-y-6">
-            
+
             {{-- Summary & Totals Card --}}
             <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
                 <h3 class="font-bold text-gray-900 dark:text-gray-100 text-lg">خلاصه مالی فاکتور</h3>
@@ -345,7 +358,7 @@
                         </svg>
                     </button>
                 </div>
-                
+
                 <form wire:submit.prevent="createQuickClient" class="p-6 space-y-4">
                     <div class="space-y-1">
                         <label class="block text-sm font-semibold text-gray-600 dark:text-gray-400">نام و نام خانوادگی <span class="text-rose-500">*</span></label>

@@ -28,6 +28,28 @@
                 this.$watch('city', () => {
                     this.updateLivewireModel();
                 });
+                this.$watch('livewireModel', value => {
+                    if (value) {
+                        try {
+                            const decoded = typeof value === 'string' ? JSON.parse(value) : value;
+                            if (decoded) {
+                                const newProv = decoded.province || '';
+                                const newCity = decoded.city || '';
+                                if (newProv !== this.province || newCity !== this.city) {
+                                    this.province = newProv;
+                                    this.cities = (newProv && this.provincesData[newProv]) ? this.provincesData[newProv] : [];
+                                    this.$nextTick(() => {
+                                        this.city = newCity;
+                                    });
+                                }
+                            }
+                        } catch (e) {}
+                    } else {
+                        this.province = '';
+                        this.city = '';
+                        this.cities = [];
+                    }
+                });
             },
             updateLivewireModel() {
                 this.livewireModel = (this.province || this.city)

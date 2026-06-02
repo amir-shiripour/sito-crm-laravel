@@ -179,6 +179,9 @@ class ClientProfileController extends Controller
         $client->meta = $metaData;
         $client->save();
 
+        // Save new dynamic select options globally if configured
+        $this->clientFormService->saveNewOptionsFromPayload($metaData);
+
         return redirect()->route('client.profile.show')->with('success', 'اطلاعات پروفایل با موفقیت به‌روزرسانی شد.');
     }
 }

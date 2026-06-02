@@ -34,6 +34,10 @@ class KycWizard extends Component
     public $city = '';
     public $address = '';
     public $postal_code = '';
+    public $latitude = 35.6892;
+    public $longitude = 51.3890;
+    public $mapProvider = 'neshan';
+    public $mapApiKey = '';
 
     // مرحله ۴: مدارک (آپلود)
     public $nationalCardFile;
@@ -45,6 +49,11 @@ class KycWizard extends Component
     public function mount()
     {
         $this->vendor = auth()->user()->marketVendor;
+
+        if (class_exists(\Modules\Market\Entities\MarketSetting::class)) {
+            $this->mapProvider = \Modules\Market\Entities\MarketSetting::getValue('map.provider', 'neshan');
+            $this->mapApiKey = \Modules\Market\Entities\MarketSetting::getValue('map.api_key', '');
+        }
 
         if ($this->vendor) {
             // پر کردن اطلاعات قبلی در صورت وجود
@@ -65,6 +74,8 @@ class KycWizard extends Component
                 $this->city = $addr->city;
                 $this->address = $addr->address;
                 $this->postal_code = $addr->postal_code;
+                $this->latitude = $addr->latitude ?? 35.6892;
+                $this->longitude = $addr->longitude ?? 51.3890;
             }
             $this->kyc_rejection_reason = $this->vendor->kyc_rejection_reason;
             $this->existingNationalCard = $this->vendor->documents()->where('type', 'national_card')->first();
@@ -165,6 +176,8 @@ class KycWizard extends Component
                 'city' => $this->city,
                 'address' => $this->address,
                 'postal_code' => $this->postal_code,
+                'latitude' => $this->latitude,
+                'longitude' => $this->longitude,
                 'is_default' => true
             ]
         );
@@ -194,6 +207,115 @@ class KycWizard extends Component
         $this->dispatch('notify', type: 'success', text: 'اطلاعات شما با موفقیت ثبت شد و در انتظار تایید مدیریت است.');
 
         return redirect()->route('user.market.dashboard');
+    }
+
+    public function fetchNewAddressFromCoordinates($lat, $lng)
+    {
+        $this->latitude = $lat;
+        $this->longitude = $lng;
+        $geoData = [];
+
+        if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
+            $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
+            $geoData = $mapService->reverseGeocode($lat, $lng);
+        }
+
+        if (empty($geoData['address'])) {
+            $geoData = $this->fallbackGeocode($lat, $lng);
+        }
+
+        if (!empty($geoData['address'])) {
+            $this->province = $geoData['province'] ?? $this->province;
+            $this->city = $geoData['city'] ?? $this->city;
+            $this->address = $this->sanitizeAddress($geoData['address'], $this->province, $this->city);
+            
+            if (isset($geoData['data']['postal_code']) && !empty($geoData['data']['postal_code'])) {
+                $this->postal_code = $geoData['data']['postal_code'];
+            } elseif (isset($geoData['postal_code']) && !empty($geoData['postal_code'])) {
+                $this->postal_code = $geoData['postal_code'];
+            }
+        }
+    }
+
+    protected function sanitizeAddress($address, $province, $city)
+    {
+        if (empty($address)) return '';
+        $address = preg_replace('/^(ایران|iran)\s*[،,]\s*/iu', '', $address);
+
+        if (!empty($province)) {
+            $provinceClean = str_replace(['استان ', ' Province'], '', $province);
+            $address = preg_replace('/^(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+        }
+
+        if (!empty($city)) {
+            $cityClean = str_replace(['شهر ', ' City'], '', $city);
+            $address = preg_replace('/^(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+        }
+
+        $address = preg_replace('/\b\d{5}-?\d{5}\b/u', '', $address);
+        $address = preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
+        
+        if (!empty($province)) {
+            $provinceClean = str_replace(['استان ', ' Province'], '', $province);
+            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')$/iu', '', $address);
+        }
+        if (!empty($city)) {
+            $cityClean = str_replace(['شهر ', ' City'], '', $city);
+            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')$/iu', '', $address);
+        }
+        $address = preg_replace('/\s*[،,]\s*(ایران|iran)$/iu', '', $address);
+
+        return preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
+    }
+
+    protected function fallbackGeocode($lat, $lng)
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Laravel-CRM-Map-App'
+            ])->timeout(5)->get("https://nominatim.openstreetmap.org/reverse", [
+                'lat' => $lat,
+                'lon' => $lng,
+                'format' => 'json',
+                'accept-language' => 'fa,en'
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $addressData = $data['address'] ?? [];
+                
+                $province = $addressData['state'] ?? '';
+                $province = str_replace(['استان ', ' Province'], '', $province);
+
+                $city = $addressData['city'] ?? $addressData['town'] ?? $addressData['suburb'] ?? $addressData['village'] ?? '';
+
+                $addressParts = [];
+                if (!empty($addressData['road'])) {
+                    $addressParts[] = $addressData['road'];
+                }
+                if (!empty($addressData['neighbourhood'])) {
+                    $addressParts[] = $addressData['neighbourhood'];
+                }
+                if (!empty($addressData['suburb']) && $addressData['suburb'] !== $city) {
+                    $addressParts[] = $addressData['suburb'];
+                }
+                if (!empty($addressData['borough'])) {
+                    $addressParts[] = $addressData['borough'];
+                }
+
+                $addressStr = implode('، ', $addressParts);
+                return [
+                    'province' => $province,
+                    'city' => $city,
+                    'address' => $addressStr,
+                    'postal_code' => $addressData['postcode'] ?? null
+                ];
+            }
+        } catch (\Exception $e) {
+            // Silently fail
+        }
+
+        return [];
     }
 
     public function render()

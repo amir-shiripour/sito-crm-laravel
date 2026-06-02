@@ -58,19 +58,33 @@
         </div>
 
         {{-- کارت‌های آمار و اطلاعات --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 {{ $showMarketFeatures ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-6">
+        @php
+            $activeCards = 2; // تیکت و صورت حساب همیشه هستند
+            if ($showBookingFeatures) $activeCards++;
+            if ($showMarketFeatures) $activeCards++;
+
+            $gridColsClass = match($activeCards) {
+                4 => 'lg:grid-cols-4',
+                3 => 'lg:grid-cols-3',
+                2 => 'lg:grid-cols-2',
+                default => 'lg:grid-cols-4'
+            };
+        @endphp
+        <div class="grid grid-cols-1 md:grid-cols-2 {{ $gridColsClass }} gap-6">
 
             {{-- کارت نوبت ها --}}
-            <div class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="p-3 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            @if($showBookingFeatures)
+                <div class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">فعال و در انتظار</span>
                     </div>
-                    <span class="text-xs text-gray-400 dark:text-gray-500">فعال و در انتظار</span>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ $activeAppointmentsCount ?? 0 }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">نوبت های من</div>
                 </div>
-                <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ $activeAppointmentsCount ?? 0 }}</div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">نوبت های من</div>
-            </div>
+            @endif
 
             {{-- کارت تیکت‌ها --}}
             <div class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
@@ -133,12 +147,14 @@
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-600">تیکت جدید</span>
                 </a>
 
-                <a href="{{ route('booking.public.index') }}" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition-all group">
-                    <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    </div>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600">ثبت نوبت جدید</span>
-                </a>
+                @if($showBookingFeatures)
+                    <a href="{{ Route::has('booking.public.index') ? route('booking.public.index') : '#' }}" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition-all group">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600">ثبت نوبت جدید</span>
+                    </a>
+                @endif
 
                 {{-- دکمه فروشگاه (نمایش مشروط) --}}
                 @if($showMarketFeatures)
@@ -148,7 +164,9 @@
                         </div>
                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-600">محصولات فروشگاه</span>
                     </a>
-                @else
+                @endif
+
+                @if(!$showBookingFeatures || !$showMarketFeatures)
                     {{-- آیتم‌های غیرفعال (Placeholder) --}}
                     <div class="flex items-center justify-center p-6 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 text-gray-400 dark:text-gray-500 text-sm">
                         سایر بخش‌ها...
@@ -327,16 +345,25 @@
                                         <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
                                             #{{ $order->tracking_code ?? $order->id }}
                                         </td>
-                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
-                                            {{ number_format($order->total_price ?? 0) }} تومان
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300 font-mono text-xs">
+                                            {{ number_format($order->grand_total ?? 0) }} تومان
                                         </td>
                                         <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
                                             {{ $order->created_at ? jdate($order->created_at)->format('Y/m/d') : '---' }}
                                         </td>
                                         <td class="px-6 py-4">
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                            {{ $order->status_label ?? 'نامشخص' }}
-                                        </span>
+                                            @php
+                                                $delStatusMap = [
+                                                    'processing' => ['label' => 'در حال پردازش', 'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400'],
+                                                    'shipped' => ['label' => 'ارسال شده', 'class' => 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400'],
+                                                    'delivered' => ['label' => 'تحویل داده شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'],
+                                                    'canceled' => ['label' => 'لغو شده', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400'],
+                                                ];
+                                                $ds = $delStatusMap[strtolower($order->delivery_status)] ?? ['label' => $order->delivery_status ?: 'نامشخص', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'];
+                                            @endphp
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $ds['class'] }}">
+                                                {{ $ds['label'] }}
+                                            </span>
                                         </td>
                                         <td class="px-6 py-4 text-left">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>

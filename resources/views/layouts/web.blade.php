@@ -99,6 +99,7 @@
 {{-- Global Livewire Components --}}
 @livewire('market::web.popup-cart')
 @livewire('market::web.checkout-modal')
+@livewire('market::web.location-modal')
 
 <script>
     function updateThemeUI() {

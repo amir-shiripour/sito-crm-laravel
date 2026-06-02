@@ -44,6 +44,16 @@ class OrderItem extends Model
         return $this->belongsTo(\Modules\Market\Entities\ProductVariant::class, 'product_id');
     }
 
+    public function vendorProduct()
+    {
+        return $this->belongsTo(\Modules\Market\Entities\VendorProduct::class, 'vendor_product_id');
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(\Modules\Market\Entities\Vendor::class, 'vendor_id');
+    }
+
     protected static function newFactory()
     {
         // return \Modules\Market\Database\factories\OrderItemFactory::new();

@@ -33,6 +33,7 @@ class ClientDashboardController extends Controller
 
         return view('clients::portal.dashboard', [
             'client'                  => $client,
+            'showBookingFeatures'     => $isBookingActive,
             'showMarketFeatures'      => $isMarketActive, // ارسال به View برای جلوگیری از نوشتن منطق در Blade
 
             // داده‌های نوبت‌دهی
