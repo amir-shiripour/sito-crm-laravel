@@ -24,6 +24,11 @@ class MasterProduct extends Model {
     public function brand() { return $this->belongsTo(Brand::class); }
     public function category() { return $this->belongsTo(Category::class); }
 
+    public function displayCategories()
+    {
+        return $this->belongsToMany(DisplayCategory::class, 'market_product_display_category', 'master_product_id', 'display_category_id');
+    }
+
     public function variants() { return $this->hasMany(ProductVariant::class, 'master_product_id'); }
 
     /**

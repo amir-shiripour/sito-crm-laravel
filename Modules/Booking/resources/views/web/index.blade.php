@@ -43,16 +43,35 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-100">
                 @foreach($items as $item)
                     @php
-                        // منطق تعیین نام و مشخصات براساس جریان سرویس یا پزشک
+                        // ترکیب منطق تعیین مشخصات
+                        $profile = $item->profile ?? null;
+
                         $name = $isProviderFlow ? ($item->name ?? $item->full_name ?? 'پزشک') : $item->name;
-                        $desc = $isProviderFlow ? ($item->bio ?? $item->description ?? 'مشاهده خدمات و دریافت نوبت') : $item->description;
+
+                        // استفاده از اطلاعات جدید پروفایل
+                        $specialty = $profile?->specialty ?? null;
+                        $clinic = $profile?->clinic_name ?? null;
+
+                        // توضیحات فقط برای حالت سرویس‌ها نگه‌داشته می‌شود
+                        $desc = !$isProviderFlow ? $item->description : null;
+
                         $priceLabel = $isProviderFlow ? 'شروع قیمت از' : '';
                         $price = $isProviderFlow ? ($item->min_price ?? 0) : ($item->final_price ?? $item->base_price);
 
-                        // اطمینان از وجود روت provider برای جلوگیری از خطای برنامه
+                        // اطمینان از وجود روت provider
                         $link = $isProviderFlow
                             ? (Route::has('booking.public.provider') ? route('booking.public.provider', $item->id) : '#')
                             : route('booking.public.service', $item->id);
+
+                        // تعیین آواتار با بررسی دقیق‌ برای جلوگیری از لود عکس خالی
+                        $avatarUrl = null;
+                        /*if ($isProviderFlow) {
+                            if (!empty($item->profile_photo_url)) {
+                                $avatarUrl = $item->profile_photo_url;
+                            } elseif (!empty($item->avatar)) {
+                                $avatarUrl = $item->avatar;
+                            }
+                        }*/
                     @endphp
 
                     <a href="{{ $link }}"
@@ -61,9 +80,13 @@
                         <div class="p-8 flex-1 flex flex-col">
                             {{-- Item Header --}}
                             <div class="flex items-start justify-between gap-4 mb-6">
-                                <div class="flex-shrink-0 w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white dark:group-hover:bg-indigo-500 transition-colors duration-300 text-indigo-600 dark:text-indigo-400 overflow-hidden">
-                                    @if($isProviderFlow && !empty($item->avatar))
-                                        <img src="{{ $item->avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
+                                <div class="flex-shrink-0 w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white dark:group-hover:bg-indigo-500 transition-colors duration-300 text-indigo-600 dark:text-indigo-400 overflow-hidden relative">
+                                    @if(!empty($avatarUrl))
+                                        <img loading="lazy" src="{{ $avatarUrl }}" alt="{{ $name }}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                        {{-- SVG پشتیبان در صورت شکسته بودن لینک عکس --}}
+                                        <svg class="w-8 h-8 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
                                     @elseif($isProviderFlow)
                                         <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -74,26 +97,41 @@
                                         </svg>
                                     @endif
                                 </div>
-                                <div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-xl text-sm font-bold flex flex-col items-center gap-0.5 border border-emerald-100 dark:border-emerald-800/50">
+
+                                {{--<div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-xl text-sm font-bold flex flex-col items-center gap-0.5 border border-emerald-100 dark:border-emerald-800/50">
                                     @if($priceLabel) <span class="text-[9px] font-normal opacity-80">{{ $priceLabel }}</span> @endif
                                     <div class="flex items-center gap-1">
                                         {{ number_format($price) }} <span class="text-[10px] font-normal">{{ ($settings->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان' }}</span>
                                     </div>
-                                    @if($settings->tax_enabled)
+                                    @if(isset($settings->tax_enabled) && $settings->tax_enabled)
                                         <span class="text-[9px] font-normal opacity-80 text-emerald-600/80 dark:text-emerald-500"></span>
-                                        {{--                                        <span class="text-[9px] font-normal opacity-80 text-emerald-600/80 dark:text-emerald-500">(با مالیات)</span>--}}
                                     @endif
-                                </div>
+                                </div>--}}
                             </div>
 
                             <div class="flex-1 min-w-0">
-                                <h3 class="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 mb-3">
+                                <h3 class="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 mb-1">
                                     {{ $name }}
                                 </h3>
-                                @if($desc)
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3">
-                                        {{ $desc }}
-                                    </p>
+
+                                @if($isProviderFlow)
+                                    {{-- نمایش تخصص و کلینیک فقط برای حالت پزشک --}}
+                                    @if($specialty)
+                                        <div class="text-indigo-600 dark:text-indigo-400 text-sm font-semibold mb-1">
+                                            {{ $specialty }}
+                                        </div>
+                                    @endif
+
+                                    @if($clinic)
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 mb-3">{{ $clinic }}</div>
+                                    @endif
+                                @else
+                                    {{-- نمایش توضیحات فقط برای حالت سرویس‌ها --}}
+                                    @if($desc)
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3 mt-3">
+                                            {{ $desc }}
+                                        </p>
+                                    @endif
                                 @endif
                             </div>
 

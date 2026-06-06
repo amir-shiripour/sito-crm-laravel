@@ -17,10 +17,10 @@ return new class extends Migration {
             $table->unsignedBigInteger('provider_user_id');
             $table->string('client_temp_key')->nullable();
 
-            $table->timestamp('start_at_utc');
-            $table->timestamp('end_at_utc');
+            $table->timestamp('start_at_utc')->nullable();
+            $table->timestamp('end_at_utc')->nullable();
 
-            $table->timestamp('expires_at_utc');
+            $table->timestamp('expires_at_utc')->nullable();
             $table->timestamp('created_at');
 
             $table->foreign('service_id')->references('id')->on('booking_services')->cascadeOnDelete();

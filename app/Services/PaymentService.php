@@ -68,6 +68,20 @@ class PaymentService
         throw new \Exception("Payment gateway {$this->gateway} not supported.");
     }
 
+    /**
+     * مبلغ از قبل به ریال است - بدون تبدیل مجدد ارسال می‌شود.
+     * این متد برای ماژول Booking که مبلغ را از پیش به ریال ذخیره کرده استفاده می‌شود.
+     */
+    public function requestPaymentInRials(int $amountInRials, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null)
+    {
+        if ($this->gateway === 'zarinpal') {
+            return $this->requestZarinpalPaymentRaw($amountInRials, $description, $userEmail, $userMobile, $callbackUrl);
+        } elseif ($this->gateway === 'zibal') {
+            return $this->requestZibalPaymentRaw($amountInRials, $description, $userEmail, $userMobile, $callbackUrl);
+        }
+        throw new \Exception("Payment gateway {$this->gateway} not supported.");
+    }
+
     public function verifyPayment(array $data)
     {
         if ($this->gateway === 'zarinpal') {
@@ -79,7 +93,7 @@ class PaymentService
         throw new \Exception("Payment gateway {$this->gateway} not supported.");
     }
 
-    protected function requestZarinpalPayment(float $amount, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null)
+    protected function requestZarinpalPayment(float $amount, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null, bool $alreadyInRials = false)
     {
         if (!$this->merchantId) {
             Log::error('Zarinpal Error: Merchant ID is empty or not set in settings.');
@@ -91,7 +105,8 @@ class PaymentService
             ? 'https://sandbox.zarinpal.com/pg/v4/payment/request.json'
             : 'https://api.zarinpal.com/pg/v4/payment/request.json';
 
-        $amountInRials = $this->getAmountInRials($amount);
+        // اگر مبلغ از قبل به ریال است، تبدیل نکن
+        $amountInRials = $alreadyInRials ? (int) $amount : $this->getAmountInRials($amount);
 
         $data = [
             'merchant_id'  => $this->merchantId,
@@ -124,9 +139,6 @@ class PaymentService
             if (isset($result['data']['code']) && $result['data']['code'] == 100) {
                 $authority = $result['data']['authority'];
 
-                // For v4, sandbox StartPay URL is different from production StartPay URL in some older docs,
-                // but generally StartPay URL is the same, just the authority dictates sandbox vs production.
-                // Let's use the standard StartPay URL.
                 $paymentUrl = $this->sandbox
                     ? "https://sandbox.zarinpal.com/pg/StartPay/{$authority}"
                     : "https://www.zarinpal.com/pg/StartPay/{$authority}";
@@ -159,6 +171,11 @@ class PaymentService
                 'message' => 'خطای ارتباطی با سرور زرین‌پال: ' . $e->getMessage(),
             ];
         }
+    }
+
+    protected function requestZarinpalPaymentRaw(int $amountInRials, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null)
+    {
+        return $this->requestZarinpalPayment($amountInRials, $description, $userEmail, $userMobile, $callbackUrl, true);
     }
 
     protected function verifyZarinpalPayment(array $data)
@@ -238,7 +255,7 @@ class PaymentService
         }
     }
 
-    protected function requestZibalPayment(float $amount, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null)
+    protected function requestZibalPayment(float $amount, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null, bool $alreadyInRials = false)
     {
         if (!$this->merchantId) {
             Log::error('Zibal Error: Merchant ID is empty or not set in settings.');
@@ -247,7 +264,8 @@ class PaymentService
 
         $url = 'https://gateway.zibal.ir/v1/request';
 
-        $amountInRials = $this->getAmountInRials($amount);
+        // اگر مبلغ از قبل به ریال است، تبدیل نکن
+        $amountInRials = $alreadyInRials ? (int) $amount : $this->getAmountInRials($amount);
 
         $data = [
             'merchant'     => $this->merchantId,
@@ -306,6 +324,11 @@ class PaymentService
                 'message' => 'خطای ارتباطی با سرور زیبال: ' . $e->getMessage(),
             ];
         }
+    }
+
+    protected function requestZibalPaymentRaw(int $amountInRials, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null)
+    {
+        return $this->requestZibalPayment($amountInRials, $description, $userEmail, $userMobile, $callbackUrl, true);
     }
 
     protected function verifyZibalPayment(array $data)

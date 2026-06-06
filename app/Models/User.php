@@ -4,14 +4,18 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
+use Modules\Booking\App\Models\DoctorProfile;
 use Modules\Clients\Entities\Client; // 💡 مدل Client اضافه شد
 use Modules\Market\App\Models\Order;
+use Nwidart\Modules\Facades\Module;
 use Spatie\Permission\Traits\HasRoles;
+use Modules\Booking\App\Models\DoctorMedia;
 
 class User extends Authenticatable
 {
@@ -120,5 +124,21 @@ class User extends Authenticatable
         return 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
         */
         return asset('img/profile-sir.png');
+    }
+
+    public function profile():HasOne
+    {
+        return $this->hasOne(DoctorProfile::class,'user_id');
+
+    }
+    public function canAccessDoctorTab(): bool
+    {
+        return $this->hasRole('doctor')
+            && Module::has('Booking')
+            && Module::isEnabled('Booking');
+    }
+    public function doctorMedia()
+    {
+        return $this->hasMany(DoctorMedia::class, 'user_id', 'id');
     }
 }

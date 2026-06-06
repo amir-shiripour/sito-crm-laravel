@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Modules\Market\Entities\Brand;
 use Modules\Market\Entities\Category;
+use Modules\Market\Entities\DisplayCategory;
 use Modules\Market\Entities\MasterProduct;
 use Modules\Market\Entities\ProductVariant;
 use Modules\Market\Entities\MarketAttribute;
@@ -24,6 +25,11 @@ class MasterProductForm extends Component
     public $storeType;
     public $vendorCanCreateVariants;
     public $currentStep = 1;
+
+    public $catOptions = [];
+    public $displayCategoryOptions = [];
+    public $selectedDisplayCategories = [];
+    public bool $separate_category_enabled = false;
 
     // فیلدهای محصول
     public $title = '', $slug = '', $brand_id = '', $category_id = '', $status = 'active';
@@ -98,6 +104,16 @@ class MasterProductForm extends Component
         } else {
             $this->clearAllVariants();
         }
+
+        // بررسی سیستم دسته‌بندی مجزا
+        $this->separate_category_enabled = (bool) MarketSetting::getValue('system.separate_category_enabled', false);
+        if ($this->separate_category_enabled) {
+            $allDisplayCats = DisplayCategory::where('is_active', true)->orderBy('name')->get();
+            $this->displayCategoryOptions = $this->buildDisplayCategoryOptions($allDisplayCats);
+            $this->selectedDisplayCategories = $this->product->exists 
+                ? $this->product->displayCategories()->pluck('display_category_id')->map(fn($id) => (string)$id)->toArray() 
+                : [];
+        }
     }
 
     public function updatedCategoryId($id) {
@@ -108,7 +124,19 @@ class MasterProductForm extends Component
         }
     }
 
-    public function updatedBrandId() { $this->generateCode(); }
+    public function updatedBrandId($value)
+    {
+        $this->generateCode();
+        if ($value && $this->category_id) {
+            $cat = Category::find($this->category_id);
+            if ($cat && (string)$cat->brand_id !== (string)$value) {
+                $this->category_id = '';
+                $this->categoryFields = [];
+                $this->variantAxes = [];
+                $this->selectedAxisValues = [];
+            }
+        }
+    }
 
     public function setStep($step)
     {
@@ -313,10 +341,13 @@ class MasterProductForm extends Component
             'description' => $this->description, 'single_sell' => $this->single_sell, 'enable_reviews' => $this->enable_reviews,
             'weight' => empty($this->weight) ? null : $this->weight, 'length' => empty($this->length) ? null : $this->length,
             'width' => empty($this->width) ? null : $this->width, 'height' => empty($this->height) ? null : $this->height,
-            'shipping_class' => $this->shipping_class, 'main_image' => $imagePath, 'gallery_images' => $finalGallery,
             'attributes' => $this->dynamicAttributes, 'status' => $this->status,
             'variant_axes_permissions' => ($this->storeType === 'multi' && $this->vendorCanCreateVariants && !empty($this->selectedAxisValues)) ? $this->selectedAxisValues : null,
         ])->save();
+
+        if ($this->separate_category_enabled) {
+            $this->product->displayCategories()->sync($this->selectedDisplayCategories);
+        }
 
         $maxVariantSerial = ProductVariant::where('master_product_id', $this->product->id)->count();
         $keptVariantIds = [];
@@ -349,9 +380,57 @@ class MasterProductForm extends Component
 
     public function render()
     {
+        $categoriesQuery = Category::where('is_active', true)->orderBy('code_offset');
+        if ($this->brand_id) {
+            $categoriesQuery->where('brand_id', $this->brand_id);
+        } else {
+            $categoriesQuery->whereNull('brand_id');
+        }
+        $categories = $categoriesQuery->get();
+
+        $this->catOptions = array_merge(
+            [['value' => '', 'label' => 'انتخاب دسته...', 'depth' => 0, 'isSub' => false]],
+            $this->buildCategoryOptions($categories)
+        );
+
         return view('market::livewire.admin.master-product-form', [
             'brands' => Brand::where('is_active', true)->get(),
-            'parentCategories' => Category::whereNull('parent_id')->with('children')->get()
         ]);
+    }
+
+    private function buildCategoryOptions($categories, $parentId = null, $depth = 0)
+    {
+        $options = [];
+        $filtered = $categories->where('parent_id', $parentId);
+
+        foreach ($filtered as $cat) {
+            $options[] = [
+                'value' => (string)$cat->id,
+                'label' => $cat->name,
+                'depth' => $depth,
+                'isSub' => $depth > 0
+            ];
+            $options = array_merge($options, $this->buildCategoryOptions($categories, $cat->id, $depth + 1));
+        }
+
+        return $options;
+    }
+
+    private function buildDisplayCategoryOptions($categories, $parentId = null, $depth = 0)
+    {
+        $options = [];
+        $filtered = $categories->where('parent_id', $parentId);
+
+        foreach ($filtered as $cat) {
+            $options[] = [
+                'value' => (string)$cat->id,
+                'label' => $cat->name,
+                'depth' => $depth,
+                'isSub' => $depth > 0
+            ];
+            $options = array_merge($options, $this->buildDisplayCategoryOptions($categories, $cat->id, $depth + 1));
+        }
+
+        return $options;
     }
 }

@@ -65,7 +65,18 @@ class ClientPaymentController extends Controller
         // Sort by date descending
         $allPayments = $allPayments->sortByDesc('date')->values();
 
-        return view('clients::portal.payments.index', compact('allPayments'));
+        // Booking currency settings
+        $bookingCurrencyUnit = 'IRR';
+        $bookingCurrencyLabel = 'ریال';
+        if (class_exists(\Modules\Booking\Entities\BookingSetting::class) && Schema::hasTable('booking_settings')) {
+            try {
+                $bs = \Modules\Booking\Entities\BookingSetting::current();
+                $bookingCurrencyUnit = $bs->currency_unit ?? 'IRR';
+                $bookingCurrencyLabel = $bookingCurrencyUnit === 'IRT' ? 'تومان' : 'ریال';
+            } catch (\Exception $e) {}
+        }
+
+        return view('clients::portal.payments.index', compact('allPayments', 'bookingCurrencyUnit', 'bookingCurrencyLabel'));
     }
 
     public function show($type, $id)
@@ -79,7 +90,19 @@ class ClientPaymentController extends Controller
                 $q->where('client_id', $client->id);
             })->with(['appointment.service', 'appointment.provider'])->findOrFail($id);
 
-            return view('clients::portal.payments.show_booking', compact('payment'));
+            // Booking currency settings
+            $bookingCurrencyUnit = $payment->currency_unit ?? 'IRR';
+            $bookingCurrencyLabel = $bookingCurrencyUnit === 'IRT' ? 'تومان' : 'ریال';
+            // Double-check with BookingSetting if currency_unit not on payment record
+            if (!$payment->currency_unit && class_exists(\Modules\Booking\Entities\BookingSetting::class) && Schema::hasTable('booking_settings')) {
+                try {
+                    $bs = \Modules\Booking\Entities\BookingSetting::current();
+                    $bookingCurrencyUnit = $bs->currency_unit ?? 'IRR';
+                    $bookingCurrencyLabel = $bookingCurrencyUnit === 'IRT' ? 'تومان' : 'ریال';
+                } catch (\Exception $e) {}
+            }
+
+            return view('clients::portal.payments.show_booking', compact('payment', 'bookingCurrencyUnit', 'bookingCurrencyLabel'));
         }
 
         if ($type === 'market') {

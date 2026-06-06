@@ -40,29 +40,76 @@
                     @error('name') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
-                {{-- 💡 پردازش آرایه دسته‌ها برای جلوگیری از شکستن HTML --}}
                 @php
-                    $parentOptions = [];
-                    $parentOptions[] = ['value' => '', 'label' => '-- دسته اصلی (بدون والد) --', 'isSub' => false];
-                    foreach($parentCategories->whereNull('parent_id') as $mainCat) {
-                        if($mainCat->id !== $category_id) {
-                            $parentOptions[] = ['value' => (string)$mainCat->id, 'label' => $mainCat->name, 'isSub' => false];
-                            foreach($mainCat->children as $subCat) {
-                                if($subCat->id !== $category_id) {
-                                    $parentOptions[] = ['value' => (string)$subCat->id, 'label' => $subCat->name, 'isSub' => true];
-                                }
-                            }
-                        }
+                    $brandOptions = [];
+                    $brandOptions[] = ['value' => '', 'label' => '-- بدون برند --'];
+                    foreach($brands as $brand) {
+                        $brandOptions[] = ['value' => (string)$brand->id, 'label' => $brand->name];
                     }
                 @endphp
 
-                {{-- دراپ‌داون کاستوم و حرفه‌ای برای دسته والد --}}
+                {{-- دراپ‌داون کاستوم و حرفه‌ای برای برند (بیاید اول) --}}
+                <div>
+                    <label class="{{ $labelClass }}">اتصال به برند (انتخابی)</label>
+                    <div class="relative" x-data="{
+                        open: false,
+                        selected: @entangle('brand_id').live,
+                        isLocked: @entangle('has_parent_brand'),
+                        options: {{ json_encode($brandOptions) }},
+                        get selectedLabel() {
+                            let opt = this.options.find(o => o.value == this.selected);
+                            return opt ? opt.label : '-- بدون برند --';
+                        }
+                    }" @click.away="open = false">
+                        
+                        {{-- دکمه تریگر --}}
+                        <div @click="!isLocked ? open = !open : null" 
+                             class="{{ $inputClass }} flex justify-between items-center transition-colors select-none" 
+                             :class="{
+                                'bg-gray-100 dark:bg-gray-900/30 opacity-70 cursor-not-allowed text-gray-500': isLocked, 
+                                'cursor-pointer ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-900': open && !isLocked, 
+                                'bg-gray-50 dark:bg-gray-900/50 cursor-pointer': !open && !isLocked
+                             }">
+                            <span x-text="selectedLabel" class="block truncate font-bold text-gray-800 dark:text-gray-200" :class="{'!text-gray-500 dark:!text-gray-400 font-normal': selected === '' || selected == null}"></span>
+                            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open && !isLocked}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+
+                        {{-- لیست کشویی --}}
+                        <div x-show="open && !isLocked"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="transform opacity-0 scale-95"
+                             x-transition:enter-end="transform opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="transform opacity-100 scale-100"
+                             x-transition:leave-end="transform opacity-0 scale-95"
+                             class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2"
+                             style="display: none;">
+                            <template x-for="option in options" :key="option.value">
+                                <div @click="selected = option.value; open = false"
+                                     class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group"
+                                     :class="{
+                                        'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value,
+                                        'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value
+                                     }">
+                                    <span x-text="option.label"></span>
+                                    <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                            </template>
+                        </div>
+                        <template x-if="isLocked">
+                            <span class="text-[10px] text-amber-600 dark:text-amber-400 mt-1 block">💡 برند از والد به ارث رسیده است.</span>
+                        </template>
+                    </div>
+                    @error('brand_id') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                {{-- دراپ‌داون کاستوم و حرفه‌ای برای دسته والد (بعد از برند بیاید) --}}
                 <div class="relative" x-data="{
                     open: false,
-                    selected: @entangle('parent_id'),
-                    options: {{ json_encode($parentOptions) }},
+                    selected: @entangle('parent_id').live,
+                    options: @entangle('parentOptions'),
                     get selectedLabel() {
-                        let opt = this.options.find(o => o.value == this.selected);
+                        let opt = (this.options || []).find(o => o.value == this.selected);
                         return opt ? opt.label : '-- دسته اصلی (بدون والد) --';
                     }
                 }" @click.away="open = false">
@@ -90,9 +137,10 @@
                                  :class="{
                                     'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value,
                                     'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value,
-                                    'rtl:pr-8 text-sm border-r-2 border-transparent': option.isSub,
+                                    'text-sm border-r-2 border-transparent': option.isSub,
                                     'border-indigo-500 dark:border-indigo-400': option.isSub && selected == option.value
-                                 }">
+                                 }"
+                                 :style="option.isSub ? 'padding-right: ' + (option.depth * 1.25 + 0.75) + 'rem' : ''">
                                 <span x-show="option.isSub" class="text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 transition-colors">↳</span>
                                 <span x-text="option.label"></span>
                                 <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -101,7 +149,7 @@
                     </div>
                 </div>
 
-                <div>
+                <div class="md:col-span-3">
                     <label class="{{ $labelClass }}">آفست سیستمی (Offset Code) <span class="text-red-500">*</span></label>
                     <input type="number" wire:model.defer="code_offset" class="{{ $inputClass }} bg-gray-100 dark:bg-gray-900 text-center font-mono font-bold text-gray-500 cursor-not-allowed" readonly>
                 </div>
@@ -270,15 +318,67 @@
     @endif
 
     {{-- لیست درختی جدید و شیک --}}
-    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden p-4 sm:p-6">
+    <div class="space-y-6">
+        @php
+            // جدا کردن دسته‌های بدون برند و گروه‌بندی دسته‌های دارای برند بر اساس brand_id
+            $noBrandCategories = $categoriesTree->filter(fn($c) => is_null($c->brand_id));
+            $brandedCategories = $categoriesTree->filter(fn($c) => !is_null($c->brand_id));
+            $groupedByBrand = $brandedCategories->groupBy('brand_id');
+        @endphp
+
         @if($categoriesTree->count() > 0)
-            <div class="space-y-2">
-                @foreach($categoriesTree as $mainCategory)
-                    @include('market::livewire.admin.partials.category-tree-item', ['category' => $mainCategory])
-                @endforeach
-            </div>
+            {{-- دسته‌بندی‌های دارای برند (هر برند به صورت گروه جداگانه) --}}
+            @foreach($groupedByBrand as $brandId => $cats)
+                @php $brandObj = $cats->first()->brand; @endphp
+                <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden p-5 sm:p-6 space-y-4" x-data="{ expanded: false }">
+                    <div @click="expanded = !expanded" class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700/50 cursor-pointer select-none group/hdr">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover/hdr:scale-105 transition-transform">
+                                <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-black text-gray-900 dark:text-white group-hover/hdr:text-indigo-600 dark:group-hover/hdr:text-indigo-450 transition-colors">گروه برند: {{ $brandObj?->name ?? 'نامشخص' }}</h3>
+                                <p class="text-[10px] text-gray-400">دسته‌بندی‌های متصل به این برند تجاری (برای باز کردن کلیک کنید)</p>
+                            </div>
+                        </div>
+                        <button class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 text-gray-500 hover:text-indigo-650 hover:border-indigo-200 dark:hover:border-indigo-500 transition-all shadow-sm">
+                            <svg class="w-4 h-4 transform transition-transform duration-300" :class="expanded ? 'rotate-90' : 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                        </button>
+                    </div>
+                    <div class="space-y-2" x-show="expanded" x-collapse>
+                        @foreach($cats as $category)
+                            @include('market::livewire.admin.partials.category-tree-item', ['category' => $category])
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+
+            {{-- دسته‌بندی‌های فاقد برند --}}
+            @if($noBrandCategories->count() > 0)
+                <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden p-5 sm:p-6 space-y-4" x-data="{ expanded: false }">
+                    <div @click="expanded = !expanded" class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700/50 cursor-pointer select-none group/hdr">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-gray-500 group-hover/hdr:scale-105 transition-transform">
+                                <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-black text-gray-900 dark:text-white group-hover/hdr:text-indigo-600 dark:group-hover/hdr:text-indigo-450 transition-colors">دسته‌بندی‌های عمومی (فاقد برند)</h3>
+                                <p class="text-[10px] text-gray-400">دسته‌بندی‌های بدون برند تجاری خاص (برای باز کردن کلیک کنید)</p>
+                            </div>
+                        </div>
+                        <button class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 text-gray-500 hover:text-indigo-650 hover:border-indigo-200 dark:hover:border-indigo-500 transition-all shadow-sm">
+                            <svg class="w-4 h-4 transform transition-transform duration-300" :class="expanded ? 'rotate-90' : 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                        </button>
+                    </div>
+                    <div class="space-y-2" x-show="expanded" x-collapse>
+                        @foreach($noBrandCategories as $category)
+                            @include('market::livewire.admin.partials.category-tree-item', ['category' => $category])
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         @else
-            <div class="text-center py-10 text-gray-500 dark:text-gray-400">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 p-10 text-center text-gray-500 dark:text-gray-400">
                 هیچ دسته‌بندی تاکنون تعریف نشده است.
             </div>
         @endif

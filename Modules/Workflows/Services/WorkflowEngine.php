@@ -210,6 +210,11 @@ class WorkflowEngine
                             'type' => \Modules\Sms\Entities\SmsMessage::TYPE_SYSTEM,
                             'related_type' => $instance->related_type,
                             'related_id' => $instance->related_id,
+                            'meta' => [
+                                'workflow_id' => $instance->workflow_id,
+                                'workflow_name' => $instance->workflow?->name,
+                                'workflow_instance_id' => $instance->id,
+                            ],
                         ];
 
                         if (!empty($config['offset_minutes'])) {

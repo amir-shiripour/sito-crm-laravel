@@ -52,6 +52,7 @@ class BookingServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->register(RouteServiceProvider::class);
+        $this->app->register(\Modules\Booking\App\Providers\DoctorProfileServiceProvider::class);
     }
 
     protected function registerConfig(): void

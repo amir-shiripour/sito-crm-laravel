@@ -17,24 +17,41 @@ class ClientDashboardController extends Controller
         $isBookingActive = $this->isModuleActive('Booking', 'appointments');
         $isMarketActive  = $this->isModuleActive('Market', 'market_orders');
 
-        // 2. واکشی داده‌های هر ماژول از طریق متدهای مجزا (تمیز نگه داشتن متد اصلی)
-        $bookingData = $isBookingActive ? $this->getBookingData($client) : $this->getEmptyModuleData();
+        // 2. دریافت تنظیمات واحد پول نوبت‌دهی برای نمایش صحیح مبالغ
+        $bookingCurrencyUnit  = 'IRR';
+        $bookingCurrencyLabel = 'ریال';
+        if ($isBookingActive && class_exists(\Modules\Booking\Entities\BookingSetting::class) && Schema::hasTable('booking_settings')) {
+            try {
+                $bs = \Modules\Booking\Entities\BookingSetting::current();
+                $bookingCurrencyUnit  = $bs->currency_unit ?? 'IRR';
+                $bookingCurrencyLabel = $bookingCurrencyUnit === 'IRT' ? 'تومان' : 'ریال';
+            } catch (\Exception $e) {}
+        }
+
+        // 3. واکشی داده‌های هر ماژول از طریق متدهای مجزا (تمیز نگه داشتن متد اصلی)
+        $bookingData = $isBookingActive ? $this->getBookingData($client, $bookingCurrencyUnit) : $this->getEmptyModuleData();
         $marketData  = $isMarketActive  ? $this->getMarketData($client)  : $this->getEmptyModuleData();
 
-        // 3. ترکیب تمامی پرداخت‌ها (نوبت‌دهی + فروشگاه)
+        // 4. ترکیب تمامی پرداخت‌ها (نوبت‌دهی + فروشگاه)
         $allPayments = collect()
             ->merge($bookingData['payments'])
             ->merge($marketData['payments'])
             ->sortByDesc('date')
             ->values();
 
-        $unpaidInvoicesSum = $allPayments->where('is_pending', true)->sum('amount');
+        // مبلغ پرداخت نشده باید با توجه به واحد محاسبه شود
+        // مبالغ booking همیشه به IRR در DB هستند پس amount_display را استفاده می‌کنیم
+        $unpaidInvoicesSum = $allPayments->where('is_pending', true)->sum('amount_display');
         $recentPayments = $allPayments->take(5);
 
         return view('clients::portal.dashboard', [
             'client'                  => $client,
             'showBookingFeatures'     => $isBookingActive,
-            'showMarketFeatures'      => $isMarketActive, // ارسال به View برای جلوگیری از نوشتن منطق در Blade
+            'showMarketFeatures'      => $isMarketActive,
+
+            // واحد پول برای نمایش داینامیک
+            'bookingCurrencyUnit'     => $bookingCurrencyUnit,
+            'bookingCurrencyLabel'    => $bookingCurrencyLabel,
 
             // داده‌های نوبت‌دهی
             'activeAppointmentsCount' => $bookingData['activeCount'],
@@ -64,7 +81,7 @@ class ClientDashboardController extends Controller
     /**
      * واکشی اطلاعات مربوط به ماژول نوبت‌دهی
      */
-    private function getBookingData($client): array
+    private function getBookingData($client, string $currencyUnit = 'IRR'): array
     {
         $activeCount = 0;
         $recent = collect();
@@ -90,15 +107,22 @@ class ClientDashboardController extends Controller
         if (class_exists(\Modules\Booking\Entities\BookingPayment::class) && Schema::hasTable('booking_payments')) {
             $payments = \Modules\Booking\Entities\BookingPayment::whereHas('appointment', function($q) use ($client) {
                 $q->where('client_id', $client->id);
-            })->with('appointment.service')->get()->map(function($payment) {
+            })->with('appointment.service')->get()->map(function($payment) use ($currencyUnit) {
+                // booking_payments.amount همیشه به ریال (IRR) ذخیره شده
+                // amount_display: مقداری که باید به کاربر نشان داده شود (IRT = تقسیم بر 10)
+                $displayAmount = ($currencyUnit === 'IRT') ? ($payment->amount / 10) : $payment->amount;
+                $currLabel = ($currencyUnit === 'IRT') ? 'تومان' : 'ریال';
+
                 return (object)[
-                    'id'         => $payment->id,
-                    'type'       => 'booking',
-                    'type_label' => 'نوبت‌دهی',
-                    'amount'     => $payment->amount,
-                    'status'     => $payment->status,
-                    'date'       => $payment->created_at,
-                    'is_pending' => $payment->status === 'PENDING',
+                    'id'             => $payment->id,
+                    'type'           => 'booking',
+                    'type_label'     => 'نوبت‌دهی',
+                    'amount'         => $payment->amount,         // مقدار خام ریالی در DB
+                    'amount_display' => $displayAmount,          // مقدار قابل نمایش برای کاربر
+                    'currency_label' => $currLabel,              // برچسب واحد تنظیمات
+                    'status'         => $payment->status,
+                    'date'           => $payment->created_at,
+                    'is_pending'     => $payment->status === 'PENDING',
                 ];
             });
         }
@@ -141,13 +165,15 @@ class ClientDashboardController extends Controller
             $normalizedStatus = $statusMap[strtolower($order->payment_status)] ?? strtoupper($order->payment_status);
 
             return (object)[
-                'id'         => $order->id,
-                'type'       => 'market',
-                'type_label' => 'فروشگاه',
-                'amount'     => $order->grand_total,
-                'status'     => $normalizedStatus,
-                'date'       => $order->created_at,
-                'is_pending' => in_array(strtolower($normalizedStatus), ['pending', 'unpaid']),
+                'id'             => $order->id,
+                'type'           => 'market',
+                'type_label'     => 'فروشگاه',
+                'amount'         => $order->grand_total,
+                'amount_display' => $order->grand_total,  // سفارش‌ها به واحد خودشان ذخیره شده‌اند
+                'currency_label' => 'تومان',               // واحد ثابت فروشگاه
+                'status'         => $normalizedStatus,
+                'date'           => $order->created_at,
+                'is_pending'     => in_array(strtolower($normalizedStatus), ['pending', 'unpaid']),
             ];
         });
 

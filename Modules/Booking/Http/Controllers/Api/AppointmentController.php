@@ -78,7 +78,6 @@ class AppointmentController extends Controller
             'client.email' => ['nullable', 'email', 'max:255'],
             'client.national_code' => ['nullable', 'string', 'max:50'],
             'client.meta' => ['nullable', 'array'],
-
             'appointment_form_response_json' => ['nullable', 'array'],
             'pay_now' => ['nullable', 'boolean'],
         ]);

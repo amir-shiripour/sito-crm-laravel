@@ -38,6 +38,8 @@ class KycWizard extends Component
     public $longitude = 51.3890;
     public $mapProvider = 'neshan';
     public $mapApiKey = '';
+    public string $searchQuery = '';
+    public array $searchResults = [];
 
     // مرحله ۴: مدارک (آپلود)
     public $nationalCardFile;
@@ -316,6 +318,33 @@ class KycWizard extends Component
         }
 
         return [];
+    }
+
+    public function updatedSearchQuery($query)
+    {
+        if (strlen($query) < 3) {
+            $this->searchResults = [];
+            return;
+        }
+
+        if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
+            $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
+            $this->searchResults = $mapService->search($query, $this->latitude, $this->longitude);
+        } else {
+            $this->searchResults = [];
+        }
+    }
+
+    public function selectSearchResult($lat, $lng, $title = '')
+    {
+        $this->latitude = (float)$lat;
+        $this->longitude = (float)$lng;
+        $this->searchResults = [];
+        $this->searchQuery = $title;
+
+        $this->fetchNewAddressFromCoordinates($lat, $lng);
+
+        $this->dispatch('mapMoveTo', lat: $lat, lng: $lng);
     }
 
     public function render()

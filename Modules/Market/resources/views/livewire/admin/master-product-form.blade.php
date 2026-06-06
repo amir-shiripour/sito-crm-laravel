@@ -113,7 +113,7 @@
                         </div>
                     </div>
 
-                    {{-- فیلد برند به دراپ‌داون کاستوم --}}
+                    {{-- فیلد برند به دراپ‌داون کاستوم با قابلیت جستجو --}}
                     @php
                         $brandOptions = [];
                         $brandOptions[] = ['value' => '', 'label' => 'انتخاب برند...'];
@@ -124,7 +124,12 @@
                     <div class="relative" x-data="{
                         open: false,
                         selected: @entangle('brand_id').live,
+                        search: '',
                         options: {{ json_encode($brandOptions) }},
+                        get filteredOptions() {
+                            if (!this.search) return this.options;
+                            return this.options.filter(o => o.value === '' || o.label.toLowerCase().includes(this.search.toLowerCase()));
+                        },
                         get selectedLabel() {
                             let opt = this.options.find(o => o.value == this.selected);
                             return opt ? opt.label : 'انتخاب برند...';
@@ -138,8 +143,11 @@
                         </div>
 
                         <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
-                            <template x-for="option in options" :key="option.value">
-                                <div @click="selected = option.value; open = false" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value}">
+                            <div class="px-3 pb-2 pt-1 border-b border-gray-100 dark:border-gray-700 mb-1 sticky top-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md z-10">
+                                <input type="text" x-model="search" placeholder="جستجوی برند..." class="w-full text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none dark:text-white" @click.stop>
+                            </div>
+                            <template x-for="option in filteredOptions" :key="option.value">
+                                <div @click="selected = option.value; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value}">
                                     <span x-text="option.label"></span>
                                     <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 </div>
@@ -148,21 +156,16 @@
                         @error('brand_id') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
-                    {{-- فیلد دسته‌بندی --}}
-                    @php
-                        $catOptions = [];
-                        $catOptions[] = ['value' => '', 'label' => 'انتخاب دسته...', 'isSub' => false];
-                        foreach($parentCategories as $pCat) {
-                            $catOptions[] = ['value' => (string)$pCat->id, 'label' => $pCat->name, 'isSub' => false];
-                            foreach($pCat->children as $sCat) {
-                                $catOptions[] = ['value' => (string)$sCat->id, 'label' => $sCat->name, 'isSub' => true];
-                            }
-                        }
-                    @endphp
+                    {{-- فیلد دسته‌بندی با قابلیت جستجو و عمق بی‌نهایت --}}
                     <div class="relative" x-data="{
                         open: false,
                         selected: @entangle('category_id').live,
-                        options: {{ json_encode($catOptions) }},
+                        search: '',
+                        options: @entangle('catOptions'),
+                        get filteredOptions() {
+                            if (!this.search) return this.options;
+                            return this.options.filter(o => o.value === '' || o.label.toLowerCase().includes(this.search.toLowerCase()));
+                        },
                         get selectedLabel() {
                             let opt = this.options.find(o => o.value == this.selected);
                             return opt ? opt.label : 'انتخاب دسته...';
@@ -176,8 +179,11 @@
                         </div>
 
                         <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
-                            <template x-for="option in options" :key="option.value">
-                                <div @click="selected = option.value; open = false" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value, 'rtl:pr-8 text-sm border-r-2 border-transparent': option.isSub, 'border-indigo-500 dark:border-indigo-400': option.isSub && selected == option.value}">
+                            <div class="px-3 pb-2 pt-1 border-b border-gray-100 dark:border-gray-700 mb-1 sticky top-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md z-10">
+                                <input type="text" x-model="search" placeholder="جستجوی دسته‌بندی..." class="w-full text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none dark:text-white" @click.stop>
+                            </div>
+                            <template x-for="option in filteredOptions" :key="option.value">
+                                <div @click="selected = option.value; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group text-sm" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value, 'border-indigo-500 dark:border-indigo-400': option.isSub && selected == option.value}" :style="option.isSub ? 'padding-right: ' + (option.depth * 1.25 + 0.75) + 'rem' : ''">
                                     <span x-show="option.isSub" class="text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 transition-colors">↳</span>
                                     <span x-text="option.label"></span>
                                     <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -186,6 +192,61 @@
                         </div>
                         @error('category_id') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
+
+                    {{-- دسته‌بندی‌های نمایش فروشگاه در صورت فعال بودن سیستم مجزا --}}
+                    @if($separate_category_enabled)
+                        <div class="col-span-1 md:col-span-2 relative" x-data="{
+                            open: false,
+                            selected: @entangle('selectedDisplayCategories').live,
+                            options: {{ json_encode($displayCategoryOptions) }},
+                            search: '',
+                            get filteredOptions() {
+                                if (!this.search) return this.options;
+                                return this.options.filter(o => o.label.toLowerCase().includes(this.search.toLowerCase()));
+                            },
+                            toggle(val) {
+                                let index = this.selected.indexOf(val);
+                                if (index > -1) {
+                                    this.selected.splice(index, 1);
+                                } else {
+                                    this.selected.push(val);
+                                }
+                            }
+                        }" @click.away="open = false">
+                            <label class="{{ $labelClass }}">دسته‌بندی‌های نمایش فروشگاه (سیستم مجزا)</label>
+                            
+                            <div @click="open = !open" class="{{ $inputClass }} cursor-pointer flex justify-between items-center transition-colors select-none min-h-[44px] py-1.5" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-900': open, 'bg-gray-50 dark:bg-gray-900/50': !open}">
+                                <div class="flex flex-wrap gap-1.5 items-center max-w-[92%]">
+                                    <template x-if="selected.length === 0">
+                                        <span class="text-gray-500 dark:text-gray-400 font-normal">انتخاب دسته‌بندی‌های مجزا...</span>
+                                    </template>
+                                    <template x-for="val in selected" :key="val">
+                                        <div class="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-lg text-xs font-bold border border-indigo-100 dark:border-indigo-800/40">
+                                            <span x-text="options.find(o => o.value == val)?.label || val"></span>
+                                            <button type="button" @click.stop="toggle(val)" class="hover:text-indigo-900 dark:hover:text-white transition-colors">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+
+                            <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                                <div class="px-3 pb-2 pt-1 border-b border-gray-100 dark:border-gray-700 mb-1 sticky top-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md z-10">
+                                    <input type="text" x-model="search" placeholder="جستجوی دسته‌بندی مجزا..." class="w-full text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none dark:text-white" @click.stop>
+                                </div>
+                                <template x-for="option in filteredOptions" :key="option.value">
+                                    <div @click="toggle(option.value)" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-3 group text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50" :style="option.isSub ? 'padding-right: ' + (option.depth * 1.25 + 0.75) + 'rem' : ''">
+                                        <input type="checkbox" :checked="selected.includes(option.value)" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-700 pointer-events-none">
+                                        <span x-show="option.isSub" class="text-gray-300 dark:text-gray-600 transition-colors">↳</span>
+                                        <span x-text="option.label" class="text-gray-700 dark:text-gray-300" :class="{'font-bold text-indigo-700 dark:text-indigo-300': selected.includes(option.value)}"></span>
+                                    </div>
+                                </template>
+                            </div>
+                            @error('selectedDisplayCategories') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                    @endif
 
                     <div class="col-span-1 md:col-span-2">
                         <label class="{{ $labelClass }}">توضیح کوتاه (نمایش در نتایج جستجو)</label>

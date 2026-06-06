@@ -106,7 +106,7 @@
                     </div>
                     <span class="text-xs text-gray-400 dark:text-gray-500">پرداخت نشده</span>
                 </div>
-                <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ number_format($unpaidInvoicesSum ?? 0) }} <span class="text-xs font-normal text-gray-400">تومان</span></div>
+                <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ number_format($unpaidInvoicesSum ?? 0) }} <span class="text-xs font-normal text-gray-400">{{ $bookingCurrencyLabel ?? 'تومان' }}</span></div>
                 <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-emerald-600 transition-colors">لیست صورت‌حساب‌ها &larr;</div>
             </a>
 
@@ -273,7 +273,7 @@
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.payments.show', ['type' => $payment->type, 'id' => $payment->id]) }}'">
                                         <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
                                             <div class="flex flex-col">
-                                                <span>{{ number_format($payment->amount) }} <span class="text-xs font-normal text-gray-500">تومان</span></span>
+                                                <span>{{ number_format($payment->amount_display) }} <span class="text-xs font-normal text-gray-500">{{ $payment->currency_label }}</span></span>
                                                 <span class="text-xs text-gray-400 font-normal mt-1">{{ $payment->type_label }}</span>
                                             </div>
                                         </td>

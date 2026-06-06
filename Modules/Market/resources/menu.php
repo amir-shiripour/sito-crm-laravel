@@ -98,6 +98,15 @@ return [
         'position' => 37,
     ],
     [
+        'title' => 'دسته‌بندی مجزا',
+        'route' => 'user.market.display-categories.index',
+        'permission' => 'market.categories.manage',
+        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-hierarchy-2"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M19 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M12 5v5" /><path d="M5 15v-1a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v1" /><path d="M12 14v1" /></svg>',
+        'group' => 'market-settings',
+        'position' => 37.5,
+        'show' => fn() => (bool) MarketSetting::getValue('system.separate_category_enabled', false),
+    ],
+    [
         'title' => 'ویژگی‌های تنوع‌ساز',
         'route' => 'user.market.attributes.index',
         'permission' => 'market.manage',

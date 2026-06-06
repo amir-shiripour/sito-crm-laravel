@@ -26,8 +26,8 @@ return new class extends Migration {
                 $table->unsignedBigInteger('service_id');
                 $table->unsignedBigInteger('provider_user_id');
 
-                $table->timestamp('start_at_utc');
-                $table->timestamp('end_at_utc');
+                $table->dateTime('start_at_utc');
+                $table->dateTime('end_at_utc');
 
                 $table->timestamps();
 

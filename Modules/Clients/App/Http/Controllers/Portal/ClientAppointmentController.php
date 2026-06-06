@@ -53,7 +53,26 @@ class ClientAppointmentController extends Controller
             }
         }
 
-        return view('clients::portal.appointments.show', compact('appointment', 'formResponses'));
+        // Load booking settings for currency display
+        $bookingSettings = null;
+        $bookingCurrencyUnit = 'IRR';
+        $bookingCurrencyLabel = 'ریال';
+        if (class_exists(\Modules\Booking\Entities\BookingSetting::class)) {
+            try {
+                $bookingSettings = \Modules\Booking\Entities\BookingSetting::current();
+                $bookingCurrencyUnit = $bookingSettings->currency_unit ?? 'IRR';
+                $bookingCurrencyLabel = $bookingCurrencyUnit === 'IRT' ? 'تومان' : 'ریال';
+            } catch (\Exception $e) {
+                // fallback to defaults
+            }
+        }
+
+        return view('clients::portal.appointments.show', compact(
+            'appointment',
+            'formResponses',
+            'bookingCurrencyUnit',
+            'bookingCurrencyLabel'
+        ));
     }
 
     public function cancel(Appointment $appointment)

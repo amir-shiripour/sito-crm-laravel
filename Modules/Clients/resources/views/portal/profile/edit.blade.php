@@ -58,17 +58,28 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start" x-data="{ activeTab: '{{ $firstGroup }}' }">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start" x-data="{
+            activeTab: '{{ $firstGroup }}',
+            isTransitioning: false,
+            switchTab(tab) {
+                if (this.activeTab === tab) return;
+                this.isTransitioning = true;
+                setTimeout(() => {
+                    this.activeTab = tab;
+                    this.isTransitioning = false;
+                }, 220);
+            }
+        }">
 
             {{-- سایدبار تب‌ها --}}
             <div class="lg:col-span-1 space-y-2 sticky top-6">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-3">
                     <nav class="flex flex-col space-y-1" aria-label="Tabs">
                         @foreach($groups as $groupName)
-                            <button @click="activeTab = '{{ $groupName }}'"
+                            <button @click="switchTab('{{ $groupName }}')"
                                     :class="activeTab === '{{ $groupName }}' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white'"
-                                    class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right">
-                                <svg class="w-5 h-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right w-full">
+                                <svg class="w-5 h-5 opacity-70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                                 {{ $groupName }}
@@ -77,10 +88,20 @@
 
                         <div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>
 
-                        <button @click="activeTab = 'security'"
+                        <button @click="switchTab('addresses')"
+                                :class="activeTab === 'addresses' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white'"
+                                class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right w-full">
+                            <svg class="w-5 h-5 opacity-70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            آدرس‌های من
+                        </button>
+
+                        <button @click="switchTab('security')"
                                 :class="activeTab === 'security' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white'"
-                                class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right">
-                            <svg class="w-5 h-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right w-full">
+                            <svg class="w-5 h-5 opacity-70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
                             تغییر رمز عبور
@@ -89,9 +110,60 @@
                 </div>
             </div>
 
-            {{-- فرم اصلی --}}
+            {{-- wrapper واحد - grid هرگز reflow نمی‌کند --}}
             <div class="lg:col-span-3">
-                <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+
+                {{-- اسکلتون لودینگ --}}
+                <div x-show="isTransitioning"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     style="display:none;">
+                    <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden p-6 sm:p-10 min-h-[400px]">
+                        <div class="animate-pulse space-y-8">
+                            <div class="space-y-3">
+                                <div class="h-6 w-48 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+                                <div class="h-3.5 w-72 bg-gray-100 dark:bg-gray-700/60 rounded-lg"></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-7">
+                                <div class="space-y-2">
+                                    <div class="h-3.5 w-24 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-11 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="h-3.5 w-32 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-11 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="h-3.5 w-20 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-11 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="h-3.5 w-28 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-11 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                                <div class="md:col-span-2 space-y-2">
+                                    <div class="h-3.5 w-36 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-24 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- فرم اصلی --}}
+                <div x-show="!isTransitioning && activeTab !== 'addresses'"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     style="display:none;">
+                    <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
 
                     <form action="{{ route('client.profile.update') }}" method="POST" enctype="multipart/form-data">
                         @csrf
@@ -100,7 +172,13 @@
                         <div class="p-6 sm:p-10 min-h-[400px]">
                             {{-- محتوای تب‌ها بر اساس گروه‌های فرم --}}
                             @foreach($groupedFields as $groupName => $fields)
-                                <div x-show="activeTab === '{{ $groupName }}'" x-transition.opacity.duration.300ms x-cloak>
+                                <div x-show="activeTab === '{{ $groupName }}'" x-cloak
+                                     x-transition:enter="transition ease-out duration-250"
+                                     x-transition:enter-start="opacity-0 translate-y-1"
+                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                     x-transition:leave="transition ease-in duration-100"
+                                     x-transition:leave-start="opacity-100"
+                                     x-transition:leave-end="opacity-0">
                                     <div class="mb-8">
                                         <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ $groupName }}</h2>
                                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">اطلاعات مربوط به این بخش را می‌توانید مشاهده یا ویرایش کنید.</p>
@@ -615,7 +693,13 @@
                             @endforeach
 
                             {{-- تب امنیت و رمز عبور --}}
-                            <div x-show="activeTab === 'security'" x-transition.opacity.duration.300ms x-cloak>
+                            <div x-show="activeTab === 'security'" x-cloak
+                                 x-transition:enter="transition ease-out duration-250"
+                                 x-transition:enter-start="opacity-0 translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100"
+                                 x-transition:leave-end="opacity-0">
                                 <div class="mb-8">
                                     <h2 class="text-xl font-bold text-gray-900 dark:text-white">تغییر رمز عبور</h2>
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -684,6 +768,22 @@
                     </form>
                 </div>
             </div>
+
+                {{-- پنل آدرس‌های من --}}
+                <div x-show="!isTransitioning && activeTab === 'addresses'"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     style="display:none;">
+                    <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden p-6 sm:p-10 min-h-[400px]">
+                        @livewire('clients::portal.client-address-manager')
+                    </div>
+                </div>
+
+            </div>{{-- /wrapper واحد --}}
         </div>
     </div>
 @endsection

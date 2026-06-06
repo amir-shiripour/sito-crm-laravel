@@ -155,6 +155,14 @@
                                     <span class="text-[10px] text-gray-500 mt-1">ایجاد داشبورد نمودارها و خروجی‌های پیشرفته فروش.</span>
                                 </div>
                             </label>
+
+                            <label class="flex items-center gap-3 cursor-pointer group">
+                                <input type="checkbox" wire:model.defer="separate_category_enabled" class="{{ $checkboxClass }}">
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">سیستم دسته‌بندی مجزا</span>
+                                    <span class="text-[10px] text-gray-500 mt-1">فعال‌سازی سیستم دسته‌بندی مستقل جهت کنترل و نحوه‌ی نمایش محصولات و صفحات فروشگاه به کاربر.</span>
+                                </div>
+                            </label>
                         </div>
 
 

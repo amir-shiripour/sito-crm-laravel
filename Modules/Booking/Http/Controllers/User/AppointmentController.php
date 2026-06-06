@@ -608,29 +608,43 @@ class AppointmentController extends Controller
         $startUtc = $startLocal->copy()->timezone('UTC');
         $endUtc = $endLocal->copy()->timezone('UTC');
 
-        try {
-            $this->service->validateSlotAvailableForUpdate(
-                (int) $service->id,
-                (int) $data['provider_user_id'],
-                $localDate->toDateString(),
-                $startUtc,
-                $endUtc,
-                $appointment->id
-            );
-        } catch (\InvalidArgumentException | \RuntimeException $e) {
-            $message = match ($e->getMessage()) {
-                'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل است.',
-                'Day capacity is full.' => 'ظرفیت روز تکمیل است.',
-                'This day is closed.' => 'این روز بسته است.',
-                'Slot is outside work windows.' => 'این بازه خارج از ساعات کاری است.',
-                'Slot overlaps with break.' => 'این بازه با زمان استراحت تداخل دارد.',
-                'Slot crosses day boundary.' => 'بازه انتخابی باید داخل همان روز باشد.',
-                default => 'امکان ثبت نوبت در این بازه وجود ندارد.',
-            };
+        // وضعیت‌هایی که نوبت را غیرفعال می‌کنند نیازی به validation برنامه زمانی ندارند
+        // (لغو، عدم حضور، انجام شده، جابجا شده) - نباید بررسی تداخل با استراحت مانع این تغییرات شود
+        $terminalStatuses = [
+            Appointment::STATUS_CANCELED_BY_ADMIN,
+            Appointment::STATUS_CANCELED_BY_CLIENT,
+            Appointment::STATUS_NO_SHOW,
+            Appointment::STATUS_DONE,
+            Appointment::STATUS_RESCHEDULED,
+        ];
 
-            return back()
-                ->withErrors(['start_time_local' => $message])
-                ->withInput();
+        $skipSlotValidation = in_array($data['status'], $terminalStatuses);
+
+        if (!$skipSlotValidation) {
+            try {
+                $this->service->validateSlotAvailableForUpdate(
+                    (int) $service->id,
+                    (int) $data['provider_user_id'],
+                    $localDate->toDateString(),
+                    $startUtc,
+                    $endUtc,
+                    $appointment->id
+                );
+            } catch (\InvalidArgumentException | \RuntimeException $e) {
+                $message = match ($e->getMessage()) {
+                    'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل است.',
+                    'Day capacity is full.' => 'ظرفیت روز تکمیل است.',
+                    'This day is closed.' => 'این روز بسته است.',
+                    'Slot is outside work windows.' => 'این بازه خارج از ساعات کاری است.',
+                    'Slot overlaps with break.' => 'این بازه با زمان استراحت تداخل دارد.',
+                    'Slot crosses day boundary.' => 'بازه انتخابی باید داخل همان روز باشد.',
+                    default => 'امکان ثبت نوبت در این بازه وجود ندارد.',
+                };
+
+                return back()
+                    ->withErrors(['start_time_local' => $message])
+                    ->withInput();
+            }
         }
 
         $previousStatus = $appointment->status;

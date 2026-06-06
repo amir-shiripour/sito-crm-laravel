@@ -93,6 +93,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
         Route::resource('orders', \Modules\Market\App\Http\Controllers\User\OrderController::class);
         Route::view('brands', 'market::admin.brands.index')->name('brands.index');
         Route::view('categories', 'market::admin.categories.index')->name('categories.index');
+        Route::view('display-categories', 'market::admin.display-categories.index')->name('display-categories.index');
         Route::view('attributes', 'market::admin.attributes.index')
             ->name('attributes.index')
             ->middleware(['permission:market.manage']);

@@ -18,6 +18,7 @@ use Modules\Market\App\Livewire\Admin\MarketSettings;
 use Modules\Market\App\Livewire\Admin\MasterProductForm;
 use Modules\Market\App\Livewire\Admin\BrandManager;
 use Modules\Market\App\Livewire\Admin\CategoryManager;
+use Modules\Market\App\Livewire\Admin\DisplayCategoryManager;
 use Modules\Market\App\Livewire\Admin\AttributeManager;
 use Modules\Market\App\Livewire\Admin\VendorProductReview;
 use Modules\Market\App\Livewire\Admin\WarehouseManager;
@@ -75,6 +76,7 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::admin.master-product-form', MasterProductForm::class);
         Livewire::component('market::admin.brand-manager', BrandManager::class);
         Livewire::component('market::admin.category-manager', CategoryManager::class);
+        Livewire::component('market::admin.display-category-manager', DisplayCategoryManager::class);
         Livewire::component('market::admin.attribute-manager', AttributeManager::class);
         Livewire::component('market::vendor.product-manager', ProductManager::class);
         Livewire::component('market::vendor.vendor-warehouse-manager', VendorWarehouseManager::class);

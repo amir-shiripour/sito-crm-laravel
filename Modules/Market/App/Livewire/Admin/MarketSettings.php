@@ -19,6 +19,7 @@ class MarketSettings extends Component
     public string $store_type = 'multi';
     public string $store_display_type = 'by_vendor';
     public bool $wms_enabled = false;
+    public bool $separate_category_enabled = false;
     public bool $enable_reports = true;
     public bool $enable_coupons = true;
     public bool $sequential_discounts = false;
@@ -74,6 +75,7 @@ class MarketSettings extends Component
         $this->store_type = MarketSetting::getValue('system.store_type');
         $this->store_display_type = MarketSetting::getValue('system.store_display_type');
         $this->wms_enabled = (bool) MarketSetting::getValue('wms.enabled');
+        $this->separate_category_enabled = (bool) MarketSetting::getValue('system.separate_category_enabled', false);
         $this->enable_reports = (bool) MarketSetting::getValue('system.enable_reports');
         $this->enable_coupons = (bool) MarketSetting::getValue('system.enable_coupons');
         $this->sequential_discounts = (bool) MarketSetting::getValue('system.sequential_discounts');
@@ -150,6 +152,7 @@ class MarketSettings extends Component
             MarketSetting::setValue('system.store_type', $this->store_type);
             MarketSetting::setValue('system.store_display_type', $this->store_display_type);
             MarketSetting::setValue('wms.enabled', $this->wms_enabled);
+            MarketSetting::setValue('system.separate_category_enabled', $this->separate_category_enabled);
             MarketSetting::setValue('system.enable_reports', $this->enable_reports);
             MarketSetting::setValue('system.enable_coupons', $this->enable_coupons);
             MarketSetting::setValue('system.sequential_discounts', $this->sequential_discounts);

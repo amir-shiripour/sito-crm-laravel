@@ -53,6 +53,10 @@ class VendorForm extends Component
     public string $mapProvider = 'neshan';
     public string $mapApiKey = '';
 
+    // Search fields for location
+    public string $searchQuery = '';
+    public array $searchResults = [];
+
     protected $listeners = [
         'updateAddrCoordinates' => 'updateAddrCoordinates'
     ];
@@ -97,6 +101,8 @@ class VendorForm extends Component
         $this->addrPostalCode = '';
         $this->addrLat = 35.6892;
         $this->addrLng = 51.3890;
+        $this->searchQuery = '';
+        $this->searchResults = [];
         $this->showAddressModal = true;
     }
 
@@ -111,6 +117,8 @@ class VendorForm extends Component
         $this->addrPostalCode = $address->postal_code ?? '';
         $this->addrLat = $address->latitude ?? 35.6892;
         $this->addrLng = $address->longitude ?? 51.3890;
+        $this->searchQuery = '';
+        $this->searchResults = [];
         $this->showAddressModal = true;
     }
 
@@ -362,6 +370,33 @@ class VendorForm extends Component
             'addresses' => $this->vendor->exists ? $this->vendor->addresses : collect(),
             'documents' => $this->vendor->exists ? $this->vendor->documents : collect(),
         ]);
+    }
+
+    public function updatedSearchQuery($query)
+    {
+        if (strlen($query) < 3) {
+            $this->searchResults = [];
+            return;
+        }
+
+        if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
+            $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
+            $this->searchResults = $mapService->search($query, $this->addrLat, $this->addrLng);
+        } else {
+            $this->searchResults = [];
+        }
+    }
+
+    public function selectSearchResult($lat, $lng, $title = '')
+    {
+        $this->addrLat = (float)$lat;
+        $this->addrLng = (float)$lng;
+        $this->searchResults = [];
+        $this->searchQuery = $title;
+
+        $this->fetchAddrCoordinatesAddress($lat, $lng);
+
+        $this->dispatch('mapMoveTo', lat: $lat, lng: $lng);
     }
 
     public function cancelReview()
