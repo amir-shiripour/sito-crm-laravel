@@ -15,6 +15,8 @@ use Modules\Booking\Http\Controllers\User\FormController as UserFormController;
 use Modules\Booking\Http\Controllers\User\StatementController;
 use Modules\Settings\Http\Controllers\PaymentController;
 use Modules\Booking\App\Http\Controllers\User\DoctorController;
+use Modules\Booking\App\Http\Controllers\User\CureController;
+
 
 
 // Public minimal pages (optional)
@@ -51,6 +53,26 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->name('services.toggleForMe')
             ->middleware('can:booking.services.view');
 
+//custom-prices routes
+        Route::get('services/{service}/custom-prices', [UserServiceController::class, 'customPrices'])
+            ->name('services.custom-prices');
+        Route::post('services/{service}/custom-prices', [UserServiceController::class, 'updateCustomPrices'])
+            ->name('services.custom-prices.update');
+
+        //installment routes
+        Route::get('services/{service}/installments', [UserServiceController::class, 'editInstallments'])
+            ->name('services.installments');
+        Route::post('services/{service}/installments', [UserServiceController::class, 'updateInstallments'])
+            ->name('services.installments.update');
+
+        //cure routes
+        Route::get('/cure',[CureController::class, 'index'])->name('cure.index');
+        Route::post('/cure',[CureController::class, 'store'])->name('cure.store');
+        Route::get('/cure/list',[CureController::class, 'list'])->name('cure.list');
+        Route::get('/cure/{cure}',[CureController::class, 'show'])->name('cure.show');
+        Route::get('/cure/{cure}/edit',[CureController::class, 'edit'])->name('cure.edit');
+        Route::put('/cure/{cure}',[CureController::class, 'update'])->name('cure.update');
+        Route::delete('/cure/{cure}', [CureController::class, 'destroy'])->name('cure.destroy');
 
         // ⚠️ این دو تا از روی middleware سلب میشن تا کنترل دست ServiceAvailabilityController باشه
         Route::get('services/{service}/availability', [UserServiceAvailabilityController::class, 'edit'])
