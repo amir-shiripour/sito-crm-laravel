@@ -26,7 +26,7 @@ class OrderForm extends Component
     public $formId;
     public $payment_method = 'zibal';
     public $payment_status = 'unpaid';
-    public $delivery_status = 'processing';
+    public $market_order_status_id;
 
     public array $shipping_address = [
         'province' => '',
@@ -52,6 +52,12 @@ class OrderForm extends Component
     public array $checkoutFormsList = [];
     public array $provinces = [];
     public array $cities = [];
+    public array $shippingMethodsList = [];
+
+    // Shipping Management Fields
+    public $shipping_method;
+    public $tracking_code;
+    public $total_shipping_cost = 0;
 
     // Client Quick Creation inline
     public bool $showQuickClientModal = false;
@@ -69,7 +75,7 @@ class OrderForm extends Component
             'formId' => 'required|exists:checkout_forms,id',
             'payment_method' => 'required|string',
             'payment_status' => 'required|string',
-            'delivery_status' => 'required|string',
+            'market_order_status_id' => 'required|integer|exists:market_order_statuses,id',
             'shipping_address.province' => 'required|string',
             'shipping_address.city' => 'required|string',
             'shipping_address.address' => 'nullable|string',
@@ -79,12 +85,24 @@ class OrderForm extends Component
             'items' => 'required|array|min:1',
             'items.*.vendor_product_id' => 'required|exists:market_vendor_products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'shipping_method' => 'nullable|string',
+            'tracking_code' => 'nullable|string',
+            'total_shipping_cost' => 'nullable|numeric|min:0',
         ];
 
-        // Dynamic validation rules based on checkout form fields
+        // Dynamic validation rules based on checkout form fields and payment method
         foreach ($this->checkoutFields as $field) {
             if (!empty($field['required'])) {
-                $rules['formData.' . $field['id']] = 'required';
+                $isRequired = false;
+                if (empty($field['required_payment_methods'])) {
+                    $isRequired = true;
+                } elseif (in_array($this->payment_method, $field['required_payment_methods'] ?? [])) {
+                    $isRequired = true;
+                }
+
+                if ($isRequired) {
+                    $rules['formData.' . $field['id']] = 'required';
+                }
             }
         }
 
@@ -96,10 +114,15 @@ class OrderForm extends Component
         $this->clientsList = collect();
         $this->provinces = ProvinceCity::getProvinces();
         $this->checkoutFormsList = CheckoutForm::where('is_active', true)->get()->toArray();
+        $this->shippingMethodsList = \Modules\Market\Entities\ShippingMethod::where('is_active', true)->orderBy('sort_order', 'asc')->get()->toArray();
 
         if ($order && $order->exists) {
             $this->order = $order;
             $this->isEdit = true;
+
+            $this->shipping_method = $order->shipping_method;
+            $this->tracking_code = $order->tracking_code;
+            $this->total_shipping_cost = (float)$order->total_shipping_cost;
 
             $this->clientId = $order->client_id;
             $client = Client::find($order->client_id);
@@ -133,7 +156,7 @@ class OrderForm extends Component
 
             $this->payment_method = $order->payment_method;
             $this->payment_status = $order->payment_status;
-            $this->delivery_status = $order->delivery_status;
+            $this->market_order_status_id = $order->market_order_status_id;
 
             $shipping = $order->shipping_address_json;
             $this->shipping_address = array_merge($this->shipping_address, is_array($shipping) ? $shipping : []);
@@ -153,6 +176,7 @@ class OrderForm extends Component
                     'variant_code' => $vp && $vp->variant ? $vp->variant->variant_code : null,
                     'variant_name' => $vp && $vp->variant ? $vp->variant->name : null,
                     'vendor_name' => $item->vendor ? $item->vendor->store_name : ($vp && $vp->vendor ? $vp->vendor->store_name : null),
+                    'image' => $vp && $vp->variant && $vp->variant->masterProduct ? $vp->variant->masterProduct->main_image_url : null,
                 ];
             }
 
@@ -229,6 +253,13 @@ class OrderForm extends Component
         }
     }
 
+    public function clearClient()
+    {
+        $this->clientId = null;
+        $this->searchClient = '';
+        $this->clientsList = collect();
+    }
+
     private function fillFormDataFromSources()
     {
         if (!$this->clientId) return;
@@ -255,19 +286,27 @@ class OrderForm extends Component
 
     public function searchClients()
     {
-        $query = Client::query();
-        if ($this->searchClient !== '') {
-            $query->where(function($q) {
-                $q->where('full_name', 'like', '%' . $this->searchClient . '%')
-                  ->orWhere('phone', 'like', '%' . $this->searchClient . '%')
-                  ->orWhere('email', 'like', '%' . $this->searchClient . '%');
-            });
+        if (trim($this->searchClient) === '') {
+            $this->clientsList = collect();
+            return;
         }
+
+        $query = Client::query();
+        $query->where(function($q) {
+            $q->where('full_name', 'like', '%' . $this->searchClient . '%')
+              ->orWhere('phone', 'like', '%' . $this->searchClient . '%')
+              ->orWhere('email', 'like', '%' . $this->searchClient . '%');
+        });
         $this->clientsList = $query->limit(10)->get();
     }
 
     public function searchProducts()
     {
+        if (trim($this->searchProduct) === '') {
+            $this->productsList = [];
+            return;
+        }
+
         $user = Auth::user();
         $isAdOrSa = $user->hasRole('super-admin') || $user->hasRole('admin');
 
@@ -283,11 +322,9 @@ class OrderForm extends Component
             }
         }
 
-        if ($this->searchProduct !== '') {
-            $query->whereHas('variant.masterProduct', function($q) {
-                $q->where('title', 'like', '%' . $this->searchProduct . '%');
-            });
-        }
+        $query->whereHas('variant.masterProduct', function($q) {
+            $q->where('title', 'like', '%' . $this->searchProduct . '%');
+        });
 
         $this->productsList = $query->limit(10)->get()->map(function($vp) {
             $title = optional(optional($vp->variant)->masterProduct)->title ?? 'بدون عنوان';
@@ -302,6 +339,7 @@ class OrderForm extends Component
                 'variant_name' => $variantName,
                 'vendor_name' => $vendorName,
                 'variant_code' => $vp->variant ? $vp->variant->variant_code : '',
+                'image' => $vp->variant && $vp->variant->masterProduct ? $vp->variant->masterProduct->main_image_url : null,
             ];
         })->toArray();
     }
@@ -312,6 +350,7 @@ class OrderForm extends Component
         if (!$vp) return;
 
         // Check if already added
+        $found = false;
         foreach ($this->items as &$item) {
             if ($item['vendor_product_id'] == $productId) {
                 if ($item['quantity'] < $vp->stock) {
@@ -319,23 +358,31 @@ class OrderForm extends Component
                 } else {
                     $this->dispatch('notify', type: 'warning', text: 'موجودی انبار کافی نیست.');
                 }
-                return;
+                $found = true;
+                break;
             }
         }
 
-        $title = optional(optional($vp->variant)->masterProduct)->title ?? 'بدون عنوان';
-        $sku = $vp->sku_extension ? " ({$vp->sku_extension})" : "";
+        if (!$found) {
+            $title = optional(optional($vp->variant)->masterProduct)->title ?? 'بدون عنوان';
+            $sku = $vp->sku_extension ? " ({$vp->sku_extension})" : "";
 
-        $this->items[] = [
-            'vendor_product_id' => $vp->id,
-            'title' => $title . $sku,
-            'price' => (float)($vp->discount_price > 0 ? $vp->discount_price : $vp->price),
-            'quantity' => 1,
-            'stock' => $vp->stock,
-            'variant_code' => $vp->variant ? $vp->variant->variant_code : null,
-            'variant_name' => $vp->variant ? $vp->variant->name : null,
-            'vendor_name' => $vp->vendor ? $vp->vendor->store_name : null,
-        ];
+            $this->items[] = [
+                'vendor_product_id' => $vp->id,
+                'title' => $title . $sku,
+                'price' => (float)($vp->discount_price > 0 ? $vp->discount_price : $vp->price),
+                'quantity' => 1,
+                'stock' => $vp->stock,
+                'variant_code' => $vp->variant ? $vp->variant->variant_code : null,
+                'variant_name' => $vp->variant ? $vp->variant->name : null,
+                'vendor_name' => $vp->vendor ? $vp->vendor->store_name : null,
+                'image' => $vp->variant && $vp->variant->masterProduct ? $vp->variant->masterProduct->main_image_url : null,
+            ];
+        }
+
+        // Reset search field and close product search list
+        $this->searchProduct = '';
+        $this->productsList = [];
     }
 
     public function removeItem($index)
@@ -418,13 +465,16 @@ class OrderForm extends Component
             $orderData = [
                 'client_id' => $this->clientId,
                 'checkout_form_id' => $this->formId,
-                'grand_total' => $subtotal,
+                'grand_total' => $subtotal + (float)$this->total_shipping_cost,
                 'total_items_price' => $subtotal,
                 'total_discount' => 0,
                 'payment_method' => $this->payment_method,
                 'payment_status' => $this->payment_status,
-                'delivery_status' => $this->delivery_status,
+                'market_order_status_id' => $this->market_order_status_id,
                 'shipping_address_json' => $this->shipping_address,
+                'shipping_method' => $this->shipping_method,
+                'tracking_code' => $this->tracking_code,
+                'total_shipping_cost' => (float)$this->total_shipping_cost,
             ];
 
             if ($this->payment_status === 'paid' && empty($this->order?->paid_at)) {
@@ -465,7 +515,7 @@ class OrderForm extends Component
                 ]);
 
                 // Deduct stock for the order
-                $stockService->deduct($vp->product_variant_id, $itemArray['quantity'], $vp->id);
+                $stockService->deduct($vp->product_variant_id, $itemArray['quantity'], $vp->id, (float) $itemArray['price']);
             }
 
             // Save custom metadata with labels based on the CURRENT form schema
@@ -503,6 +553,10 @@ class OrderForm extends Component
 
     public function render()
     {
-        return view('market::livewire.user.order-form');
+        $statuses = \Modules\Market\App\Models\MarketOrderStatus::where('is_active', true)->orderBy('sort_order', 'asc')->get();
+
+        return view('market::livewire.user.order-form', [
+            'statuses' => $statuses
+        ])->layout('layouts.user');
     }
 }

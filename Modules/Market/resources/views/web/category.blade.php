@@ -65,7 +65,7 @@
                             <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                             فیلترها
                         </h2>
-                        @if(request()->hasAny(['q', 'categories', 'min_price', 'max_price', 'in_stock', 'attrs']))
+                        @if(request()->hasAny(['q', 'categories', 'brands', 'min_price', 'max_price', 'in_stock', 'attrs']))
                             <a href="{{ isset($currentCategory) ? route('market.public.category.show', $currentCategory->slug) : route('market.public.category') }}" class="text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded-lg">حذف همه</a>
                         @endif
                     </div>
@@ -163,6 +163,33 @@
                             </div>
                         @endif
 
+                        <!-- Brands Accordion -->
+                        @if(isset($brands) && $brands->count() > 1)
+                            <div x-data="{ expanded: true }" class="flex flex-col">
+                                <button type="button" @click="expanded = !expanded" class="flex items-center justify-between p-4 w-full hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors outline-none">
+                                    <span class="text-sm font-bold text-gray-800 dark:text-gray-200">برندها</span>
+                                    <svg class="w-5 h-5 text-gray-400 transition-transform duration-300" :class="expanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </button>
+                                <div x-show="expanded" x-collapse>
+                                    <div class="p-4 pt-0 space-y-3 max-h-52 overflow-y-auto custom-scrollbar">
+                                        @foreach($brands as $brand)
+                                            <label class="flex items-center justify-between cursor-pointer group">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="relative flex items-center justify-center w-5 h-5 flex-shrink-0">
+                                                        <input type="checkbox" name="brands[]" value="{{ $brand->id }}" onchange="if(window.innerWidth >= 1024) this.form.submit()"
+                                                               {{ in_array($brand->id, request('brands', [])) ? 'checked' : '' }}
+                                                               class="peer appearance-none w-5 h-5 border-2 border-gray-300 dark:border-gray-600 rounded-md cursor-pointer checked:bg-indigo-500 checked:border-indigo-500 transition-colors outline-none">
+                                                        <svg class="w-3.5 h-3.5 text-white absolute pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                    </div>
+                                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors select-none line-clamp-1">{{ $brand->name }}</span>
+                                                </div>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         <!-- Attributes Accordions (ویژگی‌های داینامیک) -->
                         @if(isset($filterAttributes) && $filterAttributes->count() > 0)
                             @foreach($filterAttributes as $attr)
@@ -248,7 +275,7 @@
                 <!-- Mobile Footer Action (Only visible on mobile sidebar) -->
                 <div class="lg:hidden p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 absolute bottom-0 left-0 right-0 flex gap-3 pb-safe z-20 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
                     <button type="button" onclick="document.getElementById('main-filter-form').submit()" class="flex-1 bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/30 active:scale-95 transition-transform text-sm">اعمال فیلترها</button>
-                    @if(request()->hasAny(['q', 'categories', 'min_price', 'max_price', 'in_stock', 'attrs']))
+                    @if(request()->hasAny(['q', 'categories', 'brands', 'min_price', 'max_price', 'in_stock', 'attrs']))
                         <a href="{{ isset($currentCategory) ? route('market.public.category.show', $currentCategory->slug) : route('market.public.category') }}" class="flex-shrink-0 px-6 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 font-bold py-3.5 rounded-xl active:scale-95 transition-transform text-sm flex items-center justify-center">حذف همه</a>
                     @endif
                 </div>
@@ -315,7 +342,7 @@
                                     // فیلتر کردن مقادیر "هر X" از ویژگی‌های قابل نمایش روی کارت
                                     $rawAttrs = is_array($item->variant_attributes) ? $item->variant_attributes : [];
                                     foreach($rawAttrs as $k => $v) {
-                                         if(!str_starts_with($v, 'هر ')) {
+                                         if(!str_starts_with($v, 'هر ') && !(in_array($k, ['name', 'نام']) && $v === 'استاندارد')) {
                                               $attributes[$k] = $v;
                                          }
                                     }
@@ -362,6 +389,10 @@
                                     $discountPercent = round((($originalPrice - $minPrice) / $originalPrice) * 100);
                                 }
 
+                                $masterProductForRating = $variantMode === 'separated' ? $item->masterProduct : $item;
+                                $ratingScore = $masterProductForRating->average_rating;
+                                $reviewsCount = $masterProductForRating->approved_reviews_count;
+
                                 // نشان‌های نمایشی برای افزایش نرخ تبدیل
                                 $promoBadges = [
                                     ['text' => 'ارسال سریع', 'icon' => 'M13 10V3L4 14h7v7l9-11h-7z', 'color' => 'text-teal-600 dark:text-teal-400', 'bg' => 'bg-teal-50 dark:bg-teal-900/20', 'border' => 'border-teal-100 dark:border-teal-800/30'],
@@ -390,7 +421,7 @@
                                             @php
                                                 $brand = $variantMode === 'separated' ? $item->masterProduct->brand : $item->brand;
                                             @endphp
-                                            @if($brand)
+                                            @if(isset($showBrandOnCard) && $showBrandOnCard && $brand)
                                                 <div class="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md text-[10px] font-bold text-gray-700 dark:text-gray-300 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
                                                     {{ $brand->name }}
                                                 </div>
@@ -415,7 +446,17 @@
                                             </h3>
 
                                             @php
-                                                $category = $variantMode === 'separated' ? $item->masterProduct->category : $item->category;
+                                                if (isset($separateCategoryEnabled) && $separateCategoryEnabled) {
+                                                    $displayCategories = $variantMode === 'separated' 
+                                                        ? $item->masterProduct->displayCategories 
+                                                        : $item->displayCategories;
+                                                    $parentIds = $displayCategories->pluck('parent_id')->filter()->toArray();
+                                                    $category = $displayCategories->reject(function($cat) use ($parentIds) {
+                                                        return in_array($cat->id, $parentIds);
+                                                    })->first();
+                                                } else {
+                                                    $category = $variantMode === 'separated' ? $item->masterProduct->category : $item->category;
+                                                }
                                             @endphp
                                             @if(isset($showCategoryOnCard) && $showCategoryOnCard && $category)
                                                 <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-3">{{ $category->name }}</span>
@@ -458,10 +499,13 @@
                                                         @endif
                                                     </div>
 
-                                                    <div class="flex items-center gap-1 text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md">
-                                                        <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">۴.۵</span>
-                                                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                                    </div>
+                                                    {{-- امتیاز --}}
+                                                    @if($masterProductForRating->enable_reviews && $ratingScore > 0)
+                                                        <div class="flex items-center gap-1 text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md" title="{{ $reviewsCount }} نظر">
+                                                            <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">{{ number_format($ratingScore, 1) }}</span>
+                                                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                                        </div>
+                                                    @endif
                                                 </div>
                                             @else
                                                 <div class="h-8"></div> {{-- اسپیسر برای تراز ماندن کارت‌های ناموجود --}}

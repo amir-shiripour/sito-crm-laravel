@@ -78,7 +78,7 @@
             </div>
             <div class="p-5">
                 <form action="{{ route('user.clients.index') }}" method="GET">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
                         {{-- جستجوی متنی --}}
                         <div>
                             <label for="search" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">جستجو</label>
@@ -129,9 +129,28 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- ترتیب نمایش --}}
+                        <div>
+                            <label for="sort" class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">ترتیب نمایش</label>
+                            <div class="relative">
+                                <select name="sort" id="sort"
+                                        class="w-full appearance-none pl-10 pr-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                                    <option value="newest" @selected(request('sort', 'newest') == 'newest')>جدیدترین</option>
+                                    <option value="oldest" @selected(request('sort') == 'oldest')>قدیمی‌ترین</option>
+                                    <option value="name_asc" @selected(request('sort') == 'name_asc')>نام (الف تا ی)</option>
+                                    <option value="name_desc" @selected(request('sort') == 'name_desc')>نام (ی تا الف)</option>
+                                </select>
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M6 8h12m-8 4h4" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="col-span-1 sm:col-span-2 md:col-span-3 flex items-center justify-end gap-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-5">
+                    <div class="col-span-1 sm:col-span-2 md:col-span-4 flex items-center justify-end gap-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-5">
                         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-900 transition-all shadow-lg shadow-indigo-500/30 active:scale-95">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                             اعمال فیلتر

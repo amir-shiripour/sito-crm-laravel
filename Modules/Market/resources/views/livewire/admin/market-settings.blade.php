@@ -334,6 +334,11 @@
                             <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">نمایش نام دسته‌بندی روی کارت محصول</span>
                         </label>
 
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" wire:model.defer="ui_show_brand_on_card" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">نمایش نام برند روی کارت محصول</span>
+                        </label>
+
                         <div class="pt-3">
                             <label class="{{ $labelClass }}">طراحی (استایل) کارت محصولات</label>
                             <select wire:model.defer="ui_product_card_style" class="{{ $inputClass }}">
@@ -347,6 +352,14 @@
                     {{-- تنظیمات صفحه محصول تکی --}}
                     <div class="space-y-4 border border-gray-100 dark:border-gray-700 p-5 rounded-2xl bg-gray-50/50 dark:bg-gray-800/50">
                         <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2">تنظیمات صفحه داخلی محصول</h3>
+
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" wire:model.defer="ui_show_brand_on_product_page" class="{{ $checkboxClass }}">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">نمایش نام برند در صفحه محصول</span>
+                                <span class="text-[10px] text-gray-500 mt-1">نمایش یا عدم نمایش نام برند در بالای عنوان کالا.</span>
+                            </div>
+                        </label>
 
                         <label class="flex items-center gap-3 cursor-pointer group">
                             <input type="checkbox" wire:model.defer="ui_show_vendor_on_product_page" class="{{ $checkboxClass }}">
@@ -535,6 +548,58 @@
                             <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400 text-xs">روز</div>
                         </div>
                     </div>
+                </div>
+
+                <hr class="border-gray-100 dark:border-gray-700">
+
+                <div class="space-y-4">
+                    <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200">وضعیت پیش‌فرض سفارش بر اساس روش‌های پرداخت</h3>
+                    <p class="text-xs text-gray-500">برای هر یک از روش‌های پرداخت فعال در تنظیمات سیستم، وضعیت اولیه پرداخت و تحویل فاکتور را مشخص کنید.</p>
+                    
+                    @if(empty($activePaymentMethods))
+                        <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 text-amber-600 dark:text-amber-400 text-xs">
+                            هیچ روش پرداختی در تنظیمات کلی سیستم فعال نیست.
+                        </div>
+                    @else
+                        <div class="grid grid-cols-1 gap-4">
+                            @foreach($activePaymentMethods as $methodKey => $methodName)
+                                <div class="p-4 rounded-xl border border-gray-150 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 flex flex-col md:flex-row md:items-center gap-4">
+                                    <div class="md:w-1/4 font-semibold text-sm text-gray-700 dark:text-gray-300">
+                                        {{ $methodName }}
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                                        @if(in_array($methodKey, ['zarinpal', 'zibal', 'behpardakht']))
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">وضعیت پرداخت (پس از تراکنش موفق)</label>
+                                                <div class="px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-sm font-bold border border-emerald-100 dark:border-emerald-900/20">
+                                                    پرداخت شده (paid)
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">وضعیت پرداخت</label>
+                                                <select wire:model.defer="payment_method_statuses.{{ $methodKey }}.payment_status" class="{{ $inputClass }}">
+                                                    <option value="unpaid">در انتظار پرداخت (unpaid)</option>
+                                                    <option value="paid">پرداخت شده (paid)</option>
+                                                    <option value="failed">ناموفق (failed)</option>
+                                                </select>
+                                            </div>
+                                        @endif
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">وضعیت تحویل / ارسال</label>
+                                            <select wire:model.defer="payment_method_statuses.{{ $methodKey }}.delivery_status" class="{{ $inputClass }}">
+                                                <option value="pending">در انتظار تایید (pending)</option>
+                                                <option value="processing">در حال پردازش (processing)</option>
+                                                <option value="shipped">ارسال شده (shipped)</option>
+                                                <option value="delivered">تحویل داده شده (delivered)</option>
+                                                <option value="canceled">لغو شده (canceled)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

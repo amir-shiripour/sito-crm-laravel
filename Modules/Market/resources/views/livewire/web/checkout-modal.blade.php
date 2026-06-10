@@ -112,6 +112,58 @@
                         </div>
                     @endif
 
+                    {{-- Shipping Selection --}}
+                    @if(!empty($shippingMethods))
+                        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <label class="block text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">روش ارسال مرسوله</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                @foreach($shippingMethods as $method)
+                                    <label wire:key="modal-ship-{{ $method['id'] }}" class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-all hover:border-indigo-300 dark:hover:border-indigo-700 {{ $selectedShippingMethodId == $method['id'] ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-500 dark:border-indigo-600 ring-2 ring-indigo-500/20' : 'bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700' }}">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <input type="radio" wire:model.live="selectedShippingMethodId" value="{{ $method['id'] }}" class="text-indigo-600 focus:ring-indigo-500 dark:bg-gray-850 dark:border-gray-700">
+                                                <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $method['name'] }}</span>
+                                            </div>
+                                            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                                {{ $method['cost'] > 0 ? number_format($method['cost']) . ' ' . $this->getCurrencyLabel() : 'رایگان' }}
+                                            </span>
+                                        </div>
+                                        <span class="text-[10px] text-gray-400">
+                                            @if($method['driver'] === 'post_api') استعلام مستقیم از پست
+                                            @elseif($method['driver'] === 'tipax_api') استعلام مستقیم از تیپاکس
+                                            @else محاسبه بر اساس وزن مرسوله @endif
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('selectedShippingMethodId') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Delivery Slots --}}
+                        @if(!empty($availableSlots))
+                            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                <label class="block text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">انتخاب بازه زمانی تحویل</label>
+                                <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700/50 rounded-xl">
+                                    @foreach($availableSlots as $slot)
+                                        <button type="button" 
+                                                wire:key="modal-slot-{{ $slot['slot_id'] }}-{{ $slot['date'] }}"
+                                                wire:click="selectSlot({{ $slot['slot_id'] }}, '{{ $slot['date'] }}')"
+                                                class="flex-1 min-w-[140px] text-right p-3 rounded-xl border text-xs transition-all {{ $selectedSlotId == $slot['slot_id'] && $selectedDeliveryDate == $slot['date'] ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-indigo-300' }}">
+                                            <div class="font-bold">{{ $slot['day_name'] }} ({{ $slot['jalali_date'] }})</div>
+                                            <div class="text-[10px] mt-1 {{ $selectedSlotId == $slot['slot_id'] && $selectedDeliveryDate == $slot['date'] ? 'text-indigo-200' : 'text-gray-400' }}">
+                                                ساعت: {{ $slot['start_time'] }} الی {{ $slot['end_time'] }}
+                                            </div>
+                                            <div class="text-[9px] mt-0.5 font-semibold {{ $selectedSlotId == $slot['slot_id'] && $selectedDeliveryDate == $slot['date'] ? 'text-indigo-100' : 'text-emerald-500' }}">
+                                                ظرفیت باقی‌مانده: {{ $slot['remaining'] }}
+                                            </div>
+                                        </button>
+                                    @endforeach
+                                </div>
+                                @error('selectedSlotId') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+                        @endif
+                    @endif
+
                     {{-- Payment Method --}}
                     <div>
                         <label class="block text-sm font-bold text-gray-800 dark:text-gray-200 mb-2">روش پرداخت</label>
@@ -158,10 +210,20 @@
 
                 {{-- Modal Footer --}}
                 <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 rounded-b-2xl flex items-center justify-between">
-                    <div class="flex items-baseline">
-                        <span class="text-sm text-gray-600 dark:text-gray-400">مبلغ کل:</span>
-                        <span class="mr-2 text-lg font-bold text-gray-900 dark:text-white">{{ number_format($totalAmount) }}</span>
-                        <span class="mr-1 text-xs text-gray-500 dark:text-gray-400">تومان</span>
+                    <div class="flex flex-col text-right">
+                        <div class="flex items-baseline gap-2 text-xs text-gray-500">
+                            <span>هزینه محصولات:</span>
+                            <span>{{ number_format($totalAmount) }} تومان</span>
+                            @if($shippingCost > 0)
+                                <span>+ هزینه ارسال:</span>
+                                <span>{{ number_format($shippingCost) }} تومان</span>
+                            @endif
+                        </div>
+                        <div class="flex items-baseline mt-1">
+                            <span class="text-sm font-bold text-gray-600 dark:text-gray-400">قابل پرداخت:</span>
+                            <span class="mr-2 text-lg font-extrabold text-indigo-600 dark:text-indigo-400">{{ number_format($totalAmount + $shippingCost) }}</span>
+                            <span class="mr-1 text-xs text-gray-500 dark:text-gray-400">تومان</span>
+                        </div>
                     </div>
                     <button type="submit"
                             wire:loading.attr="disabled"

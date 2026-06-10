@@ -31,6 +31,14 @@ return [
         'position' => 31,
     ],
     [
+        'title' => 'مدیریت وضعیت‌های سفارش',
+        'route' => 'user.market.order-statuses.index',
+        'permission' => 'market.manage',
+        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-activity"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12h4l3 8l4 -16l3 8h4" /></svg>',
+        'group' => 'market-settings',
+        'position' => 38.6,
+    ],
+    [
         'title' => 'سفارشات',
         'route' => 'user.market.orders.index',
         'permission' => 'market.orders.view',
@@ -74,6 +82,14 @@ return [
         'position' => 34,
     ],
     [
+        'title' => 'مدیریت دیدگاه‌ها',
+        'route' => 'user.market.reviews.index',
+        'permission' => 'market.manage',
+        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-message-2"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 20l-3 -3h-2a3 3 0 0 1 -3 -3v-6a3 3 0 0 1 3 -3h10a3 3 0 0 1 3 3v6a3 3 0 0 1 -3 3h-2l-3 3" /><path d="M8 9h8" /><path d="M8 13h6" /></svg>',
+        'group' => 'market-settings',
+        'position' => 34.5,
+    ],
+    [
         'title' => 'فرم‌های تسویه حساب',
         'route' => 'user.market.checkout-forms.index',
         'permission' => 'market.manage',
@@ -113,6 +129,14 @@ return [
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-palette"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25" /><path d="M8.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M12.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M16.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /></svg>',
         'group' => 'market-settings',
         'position' => 38,
+    ],
+    [
+        'title' => 'حمل و نقل و ارسال',
+        'route' => 'user.market.shipping.index',
+        'permission' => 'market.manage',
+        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-truck"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5" /></svg>',
+        'group' => 'market-settings',
+        'position' => 38.5,
     ],
     [
         'title' => 'تنظیمات فروشگاه',

@@ -18,6 +18,7 @@ class WarehouseTransaction extends Model
         'vendor_product_id',
         'type',
         'quantity',
+        'unit_price',
         'reference_type',
         'reference_id',
         'description',

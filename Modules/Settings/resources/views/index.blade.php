@@ -517,6 +517,11 @@
                                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ in_array('transfer', $activePaymentMethods) ? 'checked' : '' }}>
                                     <span class="text-sm text-gray-700 dark:text-gray-300">انتقال بانکی</span>
                                 </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="active_payment_methods[]" value="cod"
+                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ in_array('cod', $activePaymentMethods) ? 'checked' : '' }}>
+                                    <span class="text-sm text-gray-700 dark:text-gray-300">پرداخت در محل</span>
+                                </label>
                             </div>
                             <p class="text-[11px] text-gray-500 mt-2">این روش‌ها در فرم‌های نوبت‌دهی و بخش‌های مختلف
                                 سیستم قابل استفاده خواهند بود.</p>
@@ -882,6 +887,46 @@
                                 <textarea class="{{ $inputClass }}" id="bank_transfer_guidance"
                                           name="bank_transfer_guidance" rows="2"
                                           placeholder="مثال: لطفاً پس از واریز مبلغ، تصویر فیش یا کد پیگیری را در این قسمت وارد کنید.">{{ $settings['bank_transfer_guidance'] ?? '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- بخش ۴: پرداخت در محل --}}
+                    <div class="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600 dark:text-green-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-md font-bold text-gray-900 dark:text-white">۴. پرداخت در محل (Cash on Delivery)</h3>
+                            </div>
+                        </div>
+
+                        <div
+                            class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4">
+                            <div>
+                                <label for="cod_status" class="{{ $labelClass }}">وضعیت پرداخت در محل</label>
+                                <select class="{{ $inputClass }} md:w-1/3" id="cod_status" name="cod_status">
+                                    <option
+                                        value="inactive" {{ ($settings['cod_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>
+                                        غیرفعال
+                                    </option>
+                                    <option
+                                        value="active" {{ ($settings['cod_status'] ?? '') == 'active' ? 'selected' : '' }}>
+                                        فعال
+                                    </option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">با فعال کردن این گزینه، امکان پرداخت نقدی در محل تحویل برای مشتریان فعال می‌شود. این روش نیازی به اتصال به بانک یا درگاه پرداخت ندارد.</p>
+                            </div>
+
+                            <div>
+                                <label for="cod_guidance" class="{{ $labelClass }}">متن راهنمای کاربر</label>
+                                <textarea class="{{ $inputClass }}" id="cod_guidance" name="cod_guidance" rows="2"
+                                          placeholder="مثال: پس از تأیید سفارش، مبلغ را هنگام تحویل به پیک یا مسئول فروش پرداخت نمایید.">{{ $settings['cod_guidance'] ?? '' }}</textarea>
                             </div>
                         </div>
                     </div>

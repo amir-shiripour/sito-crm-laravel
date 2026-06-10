@@ -55,17 +55,37 @@ class CartManager extends Component
                 $finalPrice = $vp->discount_price > 0 ? $vp->discount_price : $vp->price;
                 $discountAmount = $vp->discount_price > 0 ? ($vp->price - $vp->discount_price) : 0;
 
+                $itemAttributes = $item['attributes'] ?? $variant->variant_attributes;
                 $fullAttributes = [];
-                if (is_array($variant->variant_attributes)) {
-                    foreach ($variant->variant_attributes as $attrKey => $attrValue) {
+                if (is_array($itemAttributes)) {
+                    foreach ($itemAttributes as $attrKey => $attrValue) {
                         $dictAttr = $attributeDictionary->firstWhere('name', $attrKey);
                         $dictVal = $dictAttr ? $dictAttr->values->firstWhere('value', $attrValue) : null;
+                        
+                        // مخفی کردن ویژگی استاندارد
+                        if ($attrKey === 'name' && $attrValue === 'استاندارد') {
+                            continue;
+                        }
+
                         $fullAttributes[] = [
                             'key' => $attrKey,
                             'value' => $attrValue,
                             'type' => $dictAttr->type ?? 'select',
                             'meta_value' => $dictVal->meta_value ?? null,
                         ];
+                    }
+                }
+
+                $attrString = '';
+                if (is_array($itemAttributes)) {
+                    $pairs = [];
+                    foreach ($itemAttributes as $k => $v) {
+                        if ($k && $v && $v !== 'استاندارد') {
+                            $pairs[] = "$k: $v";
+                        }
+                    }
+                    if (!empty($pairs)) {
+                        $attrString = ' - ' . implode(' - ', $pairs);
                     }
                 }
 
@@ -78,13 +98,13 @@ class CartManager extends Component
                     'price' => (float) $finalPrice,
                     'original_price' => (float) $vp->price,
                     'discount_amount' => (float) $discountAmount,
-                    'title' => $variant->masterProduct->title,
+                    'title' => $variant->masterProduct->title . $attrString,
                     'image' => $variant->masterProduct->main_image,
                     'slug' => $variant->masterProduct->slug,
                     'full_attributes' => $fullAttributes,
                     'vendor_name' => $this->showVendor ? $vp->vendor->store_name : null,
                     'vendor_logo' => $this->showVendor ? $vp->vendor->logo : null,
-                    'attributes' => $variant->variant_attributes,
+                    'attributes' => $itemAttributes,
                 ];
             }
         }
@@ -94,7 +114,7 @@ class CartManager extends Component
         $this->calculateTotals();
     }
 
-    public function addItemToCart($variantId, $vendorProductId = null, $quantity = 1)
+    public function addItemToCart($variantId, $vendorProductId = null, $quantity = 1, $selectedAttributes = [])
     {
         if (MarketSetting::getValue('orders.enable_geolocation_ordering', false)) {
             if (!auth()->guard('client')->check()) {
@@ -137,7 +157,35 @@ class CartManager extends Component
             $availableStock = $vp->stock;
         }
 
+        // بررسی و بازنویسی مقادیر "هر X" بر اساس ورودی selectedAttributes یا مقدار پیش‌فرض دیتابیس
+        $resolvedAttributes = $variant->variant_attributes ?? [];
+        $hasAnyAttribute = false;
+        $suffixParts = [];
+        if (is_array($resolvedAttributes)) {
+            foreach ($resolvedAttributes as $k => $v) {
+                if (is_string($v) && str_starts_with($v, 'هر ')) {
+                    $hasAnyAttribute = true;
+                    $val = $selectedAttributes[$k] ?? null;
+                    if (!$val) {
+                        $dictAttr = MarketAttribute::with('values')->where('name', $k)->first();
+                        if ($dictAttr && isset($dictAttr->values[0])) {
+                            $val = $dictAttr->values[0]->value;
+                        } else {
+                            $val = $v;
+                        }
+                    }
+                    $resolvedAttributes[$k] = $val;
+                    $suffixParts[] = $k . '=' . $val;
+                }
+            }
+        }
+
         $cartKey = $variantId . '_' . $vp->id;
+        if ($hasAnyAttribute && !empty($suffixParts)) {
+            sort($suffixParts);
+            $cartKey .= '_' . implode('&', $suffixParts);
+        }
+
         $currentCartQty = isset($this->cart[$cartKey]) ? $this->cart[$cartKey]['quantity'] : 0;
         $requestedQty = $currentCartQty + $quantity;
 
@@ -161,7 +209,7 @@ class CartManager extends Component
             'title' => $variant->masterProduct->title,
             'image' => $variant->masterProduct->main_image,
             'slug' => $variant->masterProduct->slug,
-            'attributes' => $variant->variant_attributes,
+            'attributes' => $resolvedAttributes,
         ];
 
         Session::put('market_cart', $this->cart);

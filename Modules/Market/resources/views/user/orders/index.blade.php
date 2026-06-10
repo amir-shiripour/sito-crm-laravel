@@ -29,7 +29,7 @@
             <div class="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 p-5 rounded-3xl border border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between transition-all duration-200 hover:shadow-md">
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">مجموع درآمد تایید شده</span>
-                    <h3 class="text-2xl font-black text-emerald-900 dark:text-emerald-300 font-mono">{{ number_format($stats['total_revenue']) }} <span class="text-xs font-normal">ریال</span></h3>
+                    <h3 class="text-2xl font-black text-emerald-900 dark:text-emerald-300">{{ number_format($stats['total_revenue']) }} <span class="text-xs font-normal">ریال</span></h3>
                 </div>
                 <div class="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-emerald-600 dark:text-emerald-400">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,7 +42,7 @@
             <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 p-5 rounded-3xl border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between transition-all duration-200 hover:shadow-md">
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">کل سفارشات ثبت شده</span>
-                    <h3 class="text-2xl font-black text-indigo-900 dark:text-indigo-300 font-mono">{{ number_format($stats['total_count']) }} <span class="text-xs font-normal">سفارش</span></h3>
+                    <h3 class="text-2xl font-black text-indigo-900 dark:text-indigo-300">{{ number_format($stats['total_count']) }} <span class="text-xs font-normal">سفارش</span></h3>
                 </div>
                 <div class="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-indigo-600 dark:text-indigo-400">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -55,7 +55,7 @@
             <div class="bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20 p-5 rounded-3xl border border-blue-100 dark:border-blue-900/30 flex items-center justify-between transition-all duration-200 hover:shadow-md">
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">سفارشات پرداخت شده</span>
-                    <h3 class="text-2xl font-black text-blue-900 dark:text-blue-300 font-mono">{{ number_format($stats['paid_count']) }} <span class="text-xs font-normal">سفارش</span></h3>
+                    <h3 class="text-2xl font-black text-blue-900 dark:text-blue-300">{{ number_format($stats['paid_count']) }} <span class="text-xs font-normal">سفارش</span></h3>
                 </div>
                 <div class="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-blue-600 dark:text-blue-400">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,7 +68,7 @@
             <div class="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-5 rounded-3xl border border-amber-100 dark:border-amber-900/30 flex items-center justify-between transition-all duration-200 hover:shadow-md">
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">در انتظار پرداخت</span>
-                    <h3 class="text-2xl font-black text-amber-900 dark:text-amber-300 font-mono">{{ number_format($stats['unpaid_count']) }} <span class="text-xs font-normal">سفارش</span></h3>
+                    <h3 class="text-2xl font-black text-amber-900 dark:text-amber-300">{{ number_format($stats['unpaid_count']) }} <span class="text-xs font-normal">سفارش</span></h3>
                 </div>
                 <div class="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-amber-600 dark:text-amber-400">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -108,13 +108,22 @@
 
                 {{-- Delivery Status Filter --}}
                 <div class="space-y-1">
-                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400">وضعیت ارسال</label>
-                    <select name="delivery_status" class="w-full px-3 py-2.5 rounded-xl text-xs bg-gray-50 border border-gray-200 dark:bg-gray-900 dark:border-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-all">
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400">وضعیت سفارش</label>
+                    <select name="market_order_status_id" class="w-full px-3 py-2.5 rounded-xl text-xs bg-gray-50 border border-gray-200 dark:bg-gray-900 dark:border-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-all">
                         <option value="">همه وضعیت‌ها</option>
-                        <option value="processing" {{ request('delivery_status') === 'processing' ? 'selected' : '' }}>در حال پردازش</option>
-                        <option value="shipped" {{ request('delivery_status') === 'shipped' ? 'selected' : '' }}>ارسال شده</option>
-                        <option value="delivered" {{ request('delivery_status') === 'delivered' ? 'selected' : '' }}>تحویل داده شده</option>
-                        <option value="canceled" {{ request('delivery_status') === 'canceled' ? 'selected' : '' }}>لغو شده</option>
+                        @php
+                            $isAdmin = auth()->user() && auth()->user()->hasRole(['super-admin', 'admin']);
+                            $filterStatusesQuery = \Modules\Market\App\Models\MarketOrderStatus::where('is_active', true);
+                            if (!$isAdmin) {
+                                $filterStatusesQuery->where('show_to_client', true);
+                            }
+                            $filterStatuses = $filterStatusesQuery->orderBy('sort_order', 'asc')->get();
+                        @endphp
+                        @foreach($filterStatuses as $s)
+                            <option value="{{ $s->id }}" {{ request('market_order_status_id') == $s->id ? 'selected' : '' }}>
+                                {{ $isAdmin ? $s->admin_label : $s->client_label }}
+                            </option>
+                        @endforeach
                     </select>
                 </div>
 
@@ -123,7 +132,7 @@
                     <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-sm hover:shadow-md transition-all">
                         اعمال فیلتر
                     </button>
-                    @if(request()->anyFilled(['search', 'payment_status', 'delivery_status']))
+                    @if(request()->anyFilled(['search', 'payment_status', 'market_order_status_id']))
                         <a href="{{ route('user.market.orders.index') }}" class="py-2.5 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold rounded-xl text-xs transition-colors">
                             حذف فیلترها
                         </a>
@@ -142,7 +151,7 @@
                             <th class="px-6 py-4 font-bold">خریدار</th>
                             <th class="px-6 py-4 font-bold">مبلغ فاکتور</th>
                             <th class="px-6 py-4 font-bold">وضعیت پرداخت</th>
-                            <th class="px-6 py-4 font-bold">وضعیت ارسال</th>
+                            <th class="px-6 py-4 font-bold">وضعیت سفارش</th>
                             <th class="px-6 py-4 font-bold">تاریخ ثبت</th>
                             <th class="px-6 py-4 font-bold text-left pl-8">عملیات</th>
                         </tr>
@@ -151,7 +160,7 @@
                         @forelse($orders as $order)
                             <tr class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-all duration-150">
                                 <td class="px-6 py-4">
-                                    <span class="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-1.5 rounded-xl border border-indigo-100 dark:border-indigo-900/20">
+                                    <span class="font-bold text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-1.5 rounded-xl border border-indigo-100 dark:border-indigo-900/20">
                                         #ORD-{{ $order->id }}
                                     </span>
                                 </td>
@@ -160,7 +169,7 @@
                                     <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ optional($order->client)->phone ?: '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span class="font-mono font-black text-gray-900 dark:text-white">{{ number_format($order->grand_total) }}</span>
+                                    <span class="font-black text-gray-900 dark:text-white">{{ number_format($order->grand_total) }}</span>
                                     <span class="text-[10px] text-gray-400 dark:text-gray-500">ریال</span>
                                 </td>
                                 <td class="px-6 py-4">
@@ -183,21 +192,23 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     @php
-                                        $deliveryLabels = [
-                                            'processing' => ['label' => 'در حال پردازش', 'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-100 dark:border-blue-900/20'],
-                                            'shipped' => ['label' => 'ارسال شده', 'class' => 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/20'],
-                                            'delivered' => ['label' => 'تحویل داده شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/20'],
-                                            'canceled' => ['label' => 'لغوشده', 'class' => 'bg-gray-50 text-gray-700 dark:bg-gray-950/30 dark:text-gray-400 border border-gray-100 dark:border-gray-900/20'],
-                                        ];
-                                        $dl = $deliveryLabels[$order->delivery_status] ?? ['label' => $order->delivery_status, 'class' => 'bg-gray-50 text-gray-700 border border-gray-100'];
+                                        $isAdmin = auth()->user() && auth()->user()->hasRole(['super-admin', 'admin']);
+                                        $status = $isAdmin ? $order->status : $order->client_status;
+                                        if ($status) {
+                                            $label = $isAdmin ? $status->admin_label : $status->client_label;
+                                            $class = $status->color_class;
+                                        } else {
+                                            $label = 'نامشخص';
+                                            $class = 'bg-gray-50 text-gray-700 border border-gray-100';
+                                        }
                                     @endphp
-                                    <span class="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold {{ $dl['class'] }}">
-                                        {{ $dl['label'] }}
+                                    <span class="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border {{ str_replace('bg-', 'border-', $class) }} {{ $class }}">
+                                        {{ $label }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ \Morilog\Jalali\Jalalian::fromDateTime($order->created_at)->format('Y/m/d') }}</div>
-                                    <div class="text-[10px] text-gray-400 font-mono mt-0.5">{{ \Morilog\Jalali\Jalalian::fromDateTime($order->created_at)->format('H:i') }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ \Morilog\Jalali\Jalalian::fromDateTime($order->created_at)->format('Y/m/d') }}</div>
+                                    <div class="text-[10px] text-gray-400 mt-0.5">{{ \Morilog\Jalali\Jalalian::fromDateTime($order->created_at)->format('H:i') }}</div>
                                 </td>
                                 <td class="px-6 py-4 text-left">
                                     <div class="flex items-center justify-end gap-1">

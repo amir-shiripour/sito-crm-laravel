@@ -35,6 +35,7 @@ class MasterProductForm extends Component
     public $title = '', $slug = '', $brand_id = '', $category_id = '', $status = 'active';
     public $crm_code = 'اتوماتیک';
     public $gtin = '';
+    public $barcode = '';
     public $short_description = '';
     public $description = '';
     public $single_sell = false;
@@ -73,6 +74,7 @@ class MasterProductForm extends Component
             $this->status = $this->product->status;
             $this->crm_code = $this->product->crm_code;
             $this->gtin = $this->product->gtin;
+            $this->barcode = $this->product->barcode;
             $this->short_description = $this->product->short_description;
             $this->description = $this->product->description;
             $this->single_sell = (bool) $this->product->single_sell;
@@ -97,12 +99,21 @@ class MasterProductForm extends Component
                 ];
             }
 
-            $this->selectedAxisValues = $this->product->variant_axes_permissions ?? [];
-            if (empty($this->selectedAxisValues)) {
+            $permissions = $this->product->variant_axes_permissions ?? [];
+            foreach ($this->variantAxes as $axis) {
+                $axisName = $axis['name'];
+                $this->selectedAxisValues[$axisName] = $permissions[$axisName] ?? [];
+            }
+            if (empty($permissions)) {
                 $this->parseExistingVariantsToSelectedAxes();
             }
         } else {
             $this->clearAllVariants();
+            // خودکارسازی انتخاب برند در صورتی که فقط یک برند فعال وجود داشته باشد
+            $activeBrands = Brand::where('is_active', true)->get();
+            if ($activeBrands->count() === 1) {
+                $this->brand_id = (string)$activeBrands->first()->id;
+            }
         }
 
         // بررسی سیستم دسته‌بندی مجزا
@@ -231,11 +242,42 @@ class MasterProductForm extends Component
 
     public function clearAllVariants() {
         $this->variants = [];
-        if(!empty($this->variantAxes)) {
-            foreach ($this->variantAxes as $axis) {
-                $this->selectedAxisValues[$axis['name']] = [];
+    }
+
+    private function expandVariantValues(array $values)
+    {
+        $expanded = [$values];
+
+        foreach ($this->variantAxes as $axis) {
+            $axisName = $axis['name'];
+            $axisValues = [];
+            foreach ($axis['values'] as $opt) {
+                if ($opt['id'] !== 'any') {
+                    $axisValues[] = $opt['value'];
+                }
             }
+
+            if (empty($axisValues)) {
+                continue;
+            }
+
+            $nextExpanded = [];
+            foreach ($expanded as $item) {
+                if (isset($item[$axisName]) && is_string($item[$axisName]) && str_starts_with($item[$axisName], 'هر ')) {
+                    // Expand this axis
+                    foreach ($axisValues as $val) {
+                        $newItem = $item;
+                        $newItem[$axisName] = $val;
+                        $nextExpanded[] = $newItem;
+                    }
+                } else {
+                    $nextExpanded[] = $item;
+                }
+            }
+            $expanded = $nextExpanded;
         }
+
+        return $expanded;
     }
 
     public function generateAllCombinations()
@@ -252,8 +294,24 @@ class MasterProductForm extends Component
                 return;
             }
 
-            // 💡 FIX 2: Removed the block that was preventing the use of "Any X"
-            $axesValuesToCombine[$axisName] = $selectedForAxis;
+            if ($this->storeType === 'single') {
+                $resolvedValues = [];
+                foreach ($selectedForAxis as $val) {
+                    if (is_string($val) && str_starts_with($val, 'هر ')) {
+                        // Expand "any X" to all concrete values of this axis
+                        foreach ($axis['values'] as $opt) {
+                            if ($opt['id'] !== 'any') {
+                                $resolvedValues[] = $opt['value'];
+                            }
+                        }
+                    } else {
+                        $resolvedValues[] = $val;
+                    }
+                }
+                $axesValuesToCombine[$axisName] = $resolvedValues;
+            } else {
+                $axesValuesToCombine[$axisName] = $selectedForAxis;
+            }
         }
 
         // اگر به فروشنده اجازه داده شده، ترکیبی نساز، فقط انتخاب‌ها را نگه دار
@@ -303,11 +361,12 @@ class MasterProductForm extends Component
 
     public function save()
     {
-        // 💡 FIX 1: Make image validation rules conditional
         $rules = [
             'title' => 'required|string|max:255',
             'slug' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'slug')->ignore($this->product->id)],
             'brand_id' => 'required', 'category_id' => 'required', 'status' => 'required|in:draft,active,archived',
+            'barcode' => ['nullable', 'string', 'max:255', Rule::unique('market_master_products', 'barcode')->ignore($this->product->id)],
+            'gtin' => 'nullable|string|max:255',
         ];
         if ($this->main_image && !is_string($this->main_image)) {
             $rules['main_image'] = 'image|max:5120';
@@ -337,11 +396,13 @@ class MasterProductForm extends Component
 
         $this->product->fill([
             'title' => $this->title, 'slug' => $this->slug, 'brand_id' => $this->brand_id, 'category_id' => $this->category_id,
-            'crm_code' => $this->crm_code, 'gtin' => $this->gtin, 'short_description' => $this->short_description,
+            'crm_code' => $this->crm_code, 'gtin' => $this->gtin, 'barcode' => $this->barcode, 'short_description' => $this->short_description,
             'description' => $this->description, 'single_sell' => $this->single_sell, 'enable_reviews' => $this->enable_reviews,
             'weight' => empty($this->weight) ? null : $this->weight, 'length' => empty($this->length) ? null : $this->length,
             'width' => empty($this->width) ? null : $this->width, 'height' => empty($this->height) ? null : $this->height,
             'attributes' => $this->dynamicAttributes, 'status' => $this->status,
+            'main_image' => $imagePath,
+            'gallery_images' => $finalGallery,
             'variant_axes_permissions' => ($this->storeType === 'multi' && $this->vendorCanCreateVariants && !empty($this->selectedAxisValues)) ? $this->selectedAxisValues : null,
         ])->save();
 
@@ -358,12 +419,36 @@ class MasterProductForm extends Component
 
         // اگر به فروشنده اجازه داده شده، هیچ تنوعی در این مرحله نساز
         if (!($this->storeType === 'multi' && $this->vendorCanCreateVariants)) {
+            $expandedVariants = [];
             foreach ($this->variants as $var) {
-                $vCode = $var['id'] ? ProductVariant::find($var['id'])->variant_code : $this->product->crm_code . '-' . str_pad(++$maxVariantSerial, 2, '0', STR_PAD_LEFT);
+                if ($this->storeType === 'single') {
+                    $expandedVals = $this->expandVariantValues($var['values'] ?? []);
+                    foreach ($expandedVals as $ev) {
+                        $expandedVariants[] = [
+                            'id' => null,
+                            'values' => $ev,
+                            'is_active' => $var['is_active'] ?? true,
+                        ];
+                    }
+                } else {
+                    $expandedVariants[] = $var;
+                }
+            }
+
+            foreach ($expandedVariants as $var) {
+                // Find if a variant with these exact attributes already exists for this master product to reuse its ID
+                $existingVariant = null;
+                if (!empty($var['values'])) {
+                    $existingVariant = ProductVariant::where('master_product_id', $this->product->id)
+                        ->whereJsonContains('variant_attributes', $var['values'])
+                        ->first();
+                }
+
+                $vCode = $existingVariant ? $existingVariant->variant_code : ($var['id'] ? ProductVariant::find($var['id'])->variant_code : $this->product->crm_code . '-' . str_pad(++$maxVariantSerial, 2, '0', STR_PAD_LEFT));
                 $variantValues = $var['values'] ?? (empty($this->variantAxes) ? ['name' => 'استاندارد'] : []);
 
                 $savedVariant = ProductVariant::updateOrCreate(
-                    ['id' => $var['id']],
+                    ['id' => $existingVariant ? $existingVariant->id : $var['id']],
                     ['master_product_id' => $this->product->id, 'variant_code' => $vCode, 'variant_attributes' => $variantValues, 'is_active' => $var['is_active'] ?? true]
                 );
                 $keptVariantIds[] = $savedVariant->id;
@@ -426,7 +511,8 @@ class MasterProductForm extends Component
                 'value' => (string)$cat->id,
                 'label' => $cat->name,
                 'depth' => $depth,
-                'isSub' => $depth > 0
+                'isSub' => $depth > 0,
+                'parent_id' => $cat->parent_id ? (string)$cat->parent_id : null
             ];
             $options = array_merge($options, $this->buildDisplayCategoryOptions($categories, $cat->id, $depth + 1));
         }

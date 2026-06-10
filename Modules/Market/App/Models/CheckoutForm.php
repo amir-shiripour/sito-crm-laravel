@@ -91,6 +91,10 @@ class CheckoutForm extends Model implements FormSchemaContract
                 $field['is_system'] = true;
             }
 
+            if (!isset($field['required_payment_methods'])) {
+                $field['required_payment_methods'] = [];
+            }
+
             $normalized[] = $field;
         }
 

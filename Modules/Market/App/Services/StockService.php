@@ -15,14 +15,15 @@ class StockService
      * @param int $variantId
      * @param int $quantity
      * @param int|null $vendorProductId
+     * @param float|null $unitPrice
      * @return void
      */
-    public function deduct(int $variantId, int $quantity, ?int $vendorProductId = null)
+    public function deduct(int $variantId, int $quantity, ?int $vendorProductId = null, ?float $unitPrice = null)
     {
         $isWmsActive = (bool) MarketSetting::getValue('wms.enabled', false);
 
         if ($isWmsActive) {
-            $this->deductFromWms($variantId, $quantity, $vendorProductId);
+            $this->deductFromWms($variantId, $quantity, $vendorProductId, $unitPrice);
         } else {
             $this->deductFromLegacy($variantId, $quantity, $vendorProductId);
         }
@@ -53,7 +54,7 @@ class StockService
     /**
      * Deduct stock from the Warehouse Management System (WMS).
      */
-    protected function deductFromWms(int $variantId, int $quantity, ?int $vendorProductId)
+    protected function deductFromWms(int $variantId, int $quantity, ?int $vendorProductId, ?float $unitPrice = null)
     {
         $vp = VendorProduct::findOrFail($vendorProductId);
         $vendorId = $vp->vendor_id;
@@ -92,8 +93,17 @@ class StockService
                 $stock->decrement('online_stock', $qtyToDeduct);
             }
 
-            // Optionally, you can also create a transaction log here
-            // WarehouseTransaction::create([...]);
+            // Create an automatic transaction log for checkout order
+            \Modules\Market\Entities\WarehouseTransaction::create([
+                'warehouse_id' => $stock->warehouse_id,
+                'product_variant_id' => $variantId,
+                'vendor_product_id' => $vendorProductId,
+                'type' => 'out',
+                'quantity' => $qtyToDeduct,
+                'unit_price' => $unitPrice,
+                'description' => 'کاهش خودکار موجودی از طریق سفارش آنلاین (فروش)',
+                'user_id' => auth()->id(),
+            ]);
 
             $remainingQty -= $qtyToDeduct;
         }

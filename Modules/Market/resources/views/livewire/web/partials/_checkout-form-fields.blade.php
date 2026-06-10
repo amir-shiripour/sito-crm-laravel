@@ -1,3 +1,14 @@
+@php
+    $isFieldRequired = false;
+    if (!empty($field['required'])) {
+        if (empty($field['required_payment_methods'])) {
+            $isFieldRequired = true;
+        } elseif (in_array($payment_method, $field['required_payment_methods'] ?? [])) {
+            $isFieldRequired = true;
+        }
+    }
+@endphp
+
 @if($field['type'] === 'select-province-city')
     @php
         $jsonPath = base_path('Modules/Clients/resources/data/iran-provinces-cities.json');
@@ -59,7 +70,12 @@
         }">
         {{-- Province Selector --}}
         <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative">
-            <label for="province-{{ $field['id'] }}" class="{{ $labelClass }}">استان</label>
+            <label for="province-{{ $field['id'] }}" class="{{ $labelClass }}">
+                استان
+                @if($isFieldRequired)
+                    <span class="text-red-500 font-semibold text-base mr-1">*</span>
+                @endif
+            </label>
             <div @click="open = !open" class="{{ $inputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-800': open, 'bg-gray-50 dark:bg-gray-800/50': !open}">
                 <span x-text="province || 'انتخاب استان...'" class="block truncate" :class="{'text-gray-400': !province}"></span>
                 <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
@@ -77,7 +93,12 @@
 
         {{-- City Selector --}}
         <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative">
-            <label for="city-{{ $field['id'] }}" class="{{ $labelClass }}">شهر</label>
+            <label for="city-{{ $field['id'] }}" class="{{ $labelClass }}">
+                شهر
+                @if($isFieldRequired)
+                    <span class="text-red-500 font-semibold text-base mr-1">*</span>
+                @endif
+            </label>
             <div @click="open = !open" class="{{ $inputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-800': open, 'bg-gray-50 dark:bg-gray-800/50': !open}" :disabled="!province">
                 <span x-text="city || 'انتخاب شهر...'" class="block truncate" :class="{'text-gray-400': !city}"></span>
                 <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
@@ -102,7 +123,7 @@
                 </div>
                 <div class="text-sm">
                     <span class="font-medium text-gray-800 dark:text-gray-200">{{ $field['label'] }}</span>
-                    @if(!empty($field['required']))
+                    @if($isFieldRequired)
                         <span class="text-red-500 font-semibold text-base mr-1">*</span>
                     @endif
                 </div>
@@ -110,7 +131,7 @@
         @else
             <label for="{{ $htmlId }}" class="{{ $labelClass }}">
                 {{ $field['label'] }}
-                @if(!empty($field['required']))
+                @if($isFieldRequired)
                     <span class="text-red-500 font-semibold text-base mr-1">*</span>
                 @endif
             </label>

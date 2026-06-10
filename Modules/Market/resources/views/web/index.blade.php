@@ -64,13 +64,13 @@
                                 $productUrl = route('market.public.product.show', ['slug' => $pSlug, 'variant' => $item->id]); // لینک همراه با آیدی متغیر
                                 $targetVariantId = $item->id;
 
-                                // 💡 فیلتر کردن مقادیر "هر X" از ویژگی‌های قابل نمایش روی کارت
-                                $rawAttrs = is_array($item->variant_attributes) ? $item->variant_attributes : [];
-                                foreach($rawAttrs as $k => $v) {
-                                     if(!str_starts_with($v, 'هر ')) {
-                                          $attributes[$k] = $v;
-                                     }
-                                }
+                                 // 💡 فیلتر کردن مقادیر "هر X" از ویژگی‌های قابل نمایش روی کارت
+                                 $rawAttrs = is_array($item->variant_attributes) ? $item->variant_attributes : [];
+                                 foreach($rawAttrs as $k => $v) {
+                                      if(!str_starts_with($v, 'هر ') && !(in_array($k, ['name', 'نام']) && $v === 'استاندارد')) {
+                                           $attributes[$k] = $v;
+                                      }
+                                 }
 
                                 foreach ($item->vendorProducts as $vp) {
                                     if ($vp->status === 'published' && $vp->stock > 0) {
@@ -115,6 +115,10 @@
                                 $discountPercent = round((($originalPrice - $minPrice) / $originalPrice) * 100);
                             }
 
+                            $masterProductForRating = $variantMode === 'separated' ? $item->masterProduct : $item;
+                            $ratingScore = $masterProductForRating->average_rating;
+                            $reviewsCount = $masterProductForRating->approved_reviews_count;
+
                             // نشان‌های نمایشی برای افزایش نرخ تبدیل (وقتی موجودی نرمال است)
                             $promoBadges = [
                                 ['text' => 'ارسال سریع', 'icon' => 'M13 10V3L4 14h7v7l9-11h-7z', 'color' => 'text-teal-600 dark:text-teal-400', 'bg' => 'bg-teal-50 dark:bg-teal-900/20', 'border' => 'border-teal-100 dark:border-teal-800/30'],
@@ -146,7 +150,7 @@
                                         @php
                                             $brand = $variantMode === 'separated' ? $item->masterProduct->brand : $item->brand;
                                         @endphp
-                                        @if($brand)
+                                        @if(isset($showBrandOnCard) && $showBrandOnCard && $brand)
                                             <div class="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md text-[10px] font-bold text-gray-700 dark:text-gray-300 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
                                                 {{ $brand->name }}
                                             </div>
@@ -175,7 +179,17 @@
 
                                         {{-- دسته‌بندی محصول --}}
                                         @php
-                                            $category = $variantMode === 'separated' ? $item->masterProduct->category : $item->category;
+                                            if (isset($separateCategoryEnabled) && $separateCategoryEnabled) {
+                                                $displayCategories = $variantMode === 'separated' 
+                                                    ? $item->masterProduct->displayCategories 
+                                                    : $item->displayCategories;
+                                                $parentIds = $displayCategories->pluck('parent_id')->filter()->toArray();
+                                                $category = $displayCategories->reject(function($cat) use ($parentIds) {
+                                                    return in_array($cat->id, $parentIds);
+                                                })->first();
+                                            } else {
+                                                $category = $variantMode === 'separated' ? $item->masterProduct->category : $item->category;
+                                            }
                                         @endphp
                                         @if(isset($showCategoryOnCard) && $showCategoryOnCard && $category)
                                             <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-3">{{ $category->name }}</span>
@@ -220,10 +234,12 @@
                                                 </div>
 
                                                 {{-- امتیاز --}}
-                                                <div class="flex items-center gap-1 text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md">
-                                                    <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">۴.۵</span>
-                                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                                </div>
+                                                @if($masterProductForRating->enable_reviews && $ratingScore > 0)
+                                                    <div class="flex items-center gap-1 text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md" title="{{ $reviewsCount }} نظر">
+                                                        <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">{{ number_format($ratingScore, 1) }}</span>
+                                                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                                    </div>
+                                                @endif
                                             </div>
                                         @else
                                             <div class="h-8"></div> {{-- اسپیسر برای تراز ماندن کارت‌های ناموجود --}}

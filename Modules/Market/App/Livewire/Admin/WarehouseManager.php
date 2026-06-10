@@ -15,6 +15,7 @@ class WarehouseManager extends Component
     use WithPagination;
 
     public $search = '';
+    public $filterType = 'all'; // 'central', 'vendors', 'all'
     public $isModalOpen = false;
     public $warehouseId;
     public $name;
@@ -40,6 +41,12 @@ class WarehouseManager extends Component
 
     public function updatingSearch()
     {
+        $this->resetPage();
+    }
+    
+    public function setFilter($filter)
+    {
+        $this->filterType = $filter;
         $this->resetPage();
     }
 
@@ -109,30 +116,33 @@ class WarehouseManager extends Component
 
     public function render()
     {
-        $warehouses = Warehouse::with('vendor')
-            ->where(function ($query) {
-                $query->where('name', 'like', '%' . $this->search . '%')
-                      ->orWhere('code', 'like', '%' . $this->search . '%')
-                      ->orWhereHas('vendor', function ($q) {
-                          $q->where('store_name', 'like', '%' . $this->search . '%');
-                      });
-            })
-            ->latest()
-            ->paginate(10);
+        $query = Warehouse::with('vendor')
+            ->where(function ($q) {
+                $q->where('name', 'like', '%' . $this->search . '%')
+                  ->orWhere('code', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('vendor', function ($q2) {
+                      $q2->where('store_name', 'like', '%' . $this->search . '%');
+                  });
+            });
+
+        if ($this->filterType === 'central') {
+            $query->whereNull('vendor_id');
+        } elseif ($this->filterType === 'vendors') {
+            $query->whereNotNull('vendor_id');
+        }
+
+        $warehouses = $query->latest()->paginate(10);
 
         $vendors = collect();
         $adminVendor = null;
 
         if ($this->isMultiVendor) {
-            // 💡 واکشی تمام فروشندگان فعال با رابطه کاربر
             $allActiveVendors = Vendor::with('user.roles')->where('status', 'active')->get();
 
-            // 💡 پیدا کردن فروشنده ادمین از بین فروشندگان فعال
             $adminVendor = $allActiveVendors->first(function ($vendor) {
                 return $vendor->user && $vendor->user->hasAnyRole(['super-admin', 'admin']);
             });
 
-            // 💡 فیلتر کردن سایر فروشندگان
             $vendors = $allActiveVendors->filter(function ($vendor) use ($adminVendor) {
                 return !$adminVendor || $vendor->id !== $adminVendor->id;
             });

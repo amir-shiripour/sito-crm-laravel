@@ -217,7 +217,7 @@
 
                                     {{-- تنظیمات پیشرفته زمان و موجودی تخفیف در ویرایش سریع --}}
                                     <div x-data="{ hasDiscount: @entangle('editForm.discount_price') }" x-show="hasDiscount" x-collapse>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 bg-rose-50/30 dark:bg-rose-900/5 p-3 rounded-xl border border-rose-100 dark:border-rose-800/50" wire:ignore x-data="{ initJalaliDatePicker() { new JalaliDatePicker(); } }" x-init="initJalaliDatePicker()">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 bg-rose-50/30 dark:bg-rose-900/5 p-3 rounded-xl border border-rose-100 dark:border-rose-800/50" wire:ignore>
                                             <div>
                                                 <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">شروع تخفیف</label>
                                                 <input type="text" data-jdp-with-time wire:model.defer="editForm.discount_start_date" class="{{ $inputClass }} !border-rose-200 dark:!border-rose-800">

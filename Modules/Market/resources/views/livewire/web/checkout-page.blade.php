@@ -154,6 +154,66 @@
                 </div>
             @endforeach
 
+            {{-- Shipping Selection --}}
+            @if(!empty($shippingMethods))
+                <div class="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
+                    <div class="border-b border-gray-100 dark:border-gray-700 pb-4">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">روش ارسال مرسوله</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">لطفاً روش ارسال مورد نظر خود را انتخاب کنید.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        @foreach($shippingMethods as $method)
+                            <label wire:key="page-ship-{{ $method['id'] }}" class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-all hover:border-indigo-300 dark:hover:border-indigo-700 {{ $selectedShippingMethodId == $method['id'] ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-500 dark:border-indigo-600 ring-2 ring-indigo-500/20' : 'bg-gray-55/50 dark:bg-gray-900/10 border-gray-200 dark:border-gray-700' }}">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <input type="radio" wire:model.live="selectedShippingMethodId" value="{{ $method['id'] }}" class="text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700">
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $method['name'] }}</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                        {{ $method['cost'] > 0 ? number_format($method['cost']) . ' ' . $this->getCurrencyLabel() : 'رایگان' }}
+                                    </span>
+                                </div>
+                                <span class="text-[10px] text-gray-450 dark:text-gray-400">
+                                    @if($method['driver'] === 'post_api') استعلام مستقیم از پست
+                                    @elseif($method['driver'] === 'tipax_api') استعلام مستقیم از تیپاکس
+                                    @else محاسبه بر اساس وزن مرسوله @endif
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('selectedShippingMethodId') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                {{-- Delivery Slots --}}
+                @if(!empty($availableSlots))
+                    <div class="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
+                        <div class="border-b border-gray-100 dark:border-gray-700 pb-4">
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">انتخاب بازه زمانی تحویل</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">بازه زمانی مناسب برای دریافت سفارش خود را تعیین کنید.</p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-3 max-h-60 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700/50 rounded-xl">
+                            @foreach($availableSlots as $slot)
+                                <button type="button" 
+                                        wire:key="page-slot-{{ $slot['slot_id'] }}-{{ $slot['date'] }}"
+                                        wire:click="selectSlot({{ $slot['slot_id'] }}, '{{ $slot['date'] }}')"
+                                        class="flex-1 min-w-[160px] text-right p-3.5 rounded-xl border text-xs transition-all {{ $selectedSlotId == $slot['slot_id'] && $selectedDeliveryDate == $slot['date'] ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-indigo-300' }}">
+                                    <div class="font-bold">{{ $slot['day_name'] }} ({{ $slot['jalali_date'] }})</div>
+                                    <div class="text-[10px] mt-1 {{ $selectedSlotId == $slot['slot_id'] && $selectedDeliveryDate == $slot['date'] ? 'text-indigo-200' : 'text-gray-400' }}">
+                                        ساعت: {{ $slot['start_time'] }} الی {{ $slot['end_time'] }}
+                                    </div>
+                                    <div class="text-[9px] mt-1 font-semibold {{ $selectedSlotId == $slot['slot_id'] && $selectedDeliveryDate == $slot['date'] ? 'text-indigo-100' : 'text-emerald-500' }}">
+                                        ظرفیت باقی‌مانده: {{ $slot['remaining'] }}
+                                    </div>
+                                </button>
+                            @endforeach
+                        </div>
+                        @error('selectedSlotId') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                @endif
+            @endif
+
             {{-- Payment Method Selection Card --}}
             <div class="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
                 <div class="border-b border-gray-100 dark:border-gray-700 pb-4">
@@ -211,23 +271,67 @@
                     <h2 class="text-lg font-bold text-gray-900 dark:text-white">خلاصه سفارش</h2>
                 </div>
                 <div class="p-6 space-y-5">
-                    <div class="space-y-4 max-h-72 overflow-y-auto pr-2 -ml-2">
+                    <div class="space-y-6 max-h-[480px] overflow-y-auto pr-2 -ml-2 custom-scrollbar">
                         @foreach($cartItems as $item)
-                            <div class="flex items-center justify-between" wire:key="cart-item-{{ $item['variant_id'] }}">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-16 h-16 rounded-lg overflow-hidden border border-gray-100 dark:border-gray-700">
-                                        <img src="{{ $item['image'] ?? '' }}" alt="{{ $item['name'] }}" class="w-full h-full object-cover">
-                                    </div>
-                                    <div>
-                                        <p class="font-bold text-sm text-gray-800 dark:text-gray-200">{{ $item['name'] }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $item['quantity'] }} عدد</p>
-                                    </div>
-                                </div>
-                                <div class="text-left">
-                                    <p class="font-bold text-sm text-gray-900 dark:text-white">{{ number_format($item['price'] * $item['quantity']) }} <span class="text-[10px] text-gray-550">تومان</span></p>
-                                    @if($item['price'] < $item['base_price'])
-                                        <p class="text-xs text-gray-400 line-through">{{ number_format($item['base_price'] * $item['quantity']) }}</p>
+                            <div class="flex items-start gap-4 border-b border-gray-100 dark:border-gray-800 pb-5 last:border-0 last:pb-0" wire:key="cart-item-{{ $item['variant_id'] }}">
+                                <!-- Image -->
+                                <a href="{{ route('market.public.product.show', ['slug' => $item['slug'] ?? '', 'variant' => $item['variant_id']]) }}" class="flex-shrink-0">
+                                    <img src="{{ $item['image'] ?? '' }}" alt="{{ $item['name'] }}" class="w-20 h-20 rounded-2xl object-contain bg-gray-50 dark:bg-gray-800 p-1.5 border border-gray-100 dark:border-gray-700">
+                                </a>
+
+                                <!-- Info -->
+                                <div class="flex-1 min-w-0">
+                                    <a href="{{ route('market.public.product.show', ['slug' => $item['slug'] ?? '', 'variant' => $item['variant_id']]) }}" class="text-sm font-bold text-gray-800 dark:text-gray-200 hover:text-indigo-650 dark:hover:text-indigo-400 transition-colors line-clamp-2 leading-relaxed mb-1">
+                                        {{ $item['name'] }}
+                                    </a>
+
+                                    @if(!empty($item['full_attributes']) || !empty($item['vendor_name']))
+                                        <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                                            <!-- Quantity tag -->
+                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded-md border border-gray-100 dark:border-gray-700/50 font-bold shrink-0">
+                                                {{ $item['quantity'] }} عدد
+                                            </span>
+
+                                            <!-- Vendor tag -->
+                                            @if(!empty($item['vendor_name']))
+                                                <span class="text-[10px] text-gray-550 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded-md border border-gray-100 dark:border-gray-700/50 font-bold shrink-0 flex items-center gap-1">
+                                                    <svg class="w-2.5 h-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                                    {{ $item['vendor_name'] }}
+                                                </span>
+                                            @endif
+
+                                            <!-- Variant tags -->
+                                            @if(!empty($item['full_attributes']))
+                                                @foreach($item['full_attributes'] as $attribute)
+                                                    <div class="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/60 px-2 py-0.5 rounded-md border border-gray-100 dark:border-gray-700/50 font-bold shrink-0">
+                                                        <span class="font-medium text-gray-400">{{ $attribute['key'] }}:</span>
+                                                        @if($attribute['type'] === 'color')
+                                                            <div class="w-2.5 h-2.5 rounded-full shadow-inner border border-white dark:border-gray-800" style="background-color: {{ $attribute['meta_value'] ?? '#ccc' }}"></div>
+                                                        @elseif($attribute['type'] === 'image' && $attribute['meta_value'])
+                                                            <img src="{{ Storage::url($attribute['meta_value']) }}" class="w-3.5 h-3.5 rounded object-cover border border-white dark:border-gray-850">
+                                                        @endif
+                                                        <span>{{ $attribute['value'] }}</span>
+                                                    </div>
+                                                @endforeach
+                                            @endif
+                                        </div>
                                     @endif
+
+                                    <div class="flex items-center justify-end mt-3">
+                                        <div class="text-left">
+                                            <div class="text-sm font-black text-gray-900 dark:text-white">
+                                                {{ number_format($item['price'] * $item['quantity']) }} <span class="text-[10px] font-bold text-gray-500">تومان</span>
+                                            </div>
+                                            @if($item['price'] < $item['base_price'])
+                                                <div class="flex items-center gap-1.5 justify-end mt-0.5">
+                                                    <span class="px-1.5 py-0.5 bg-rose-500 text-white text-[9px] font-black rounded-md">٪{{ round((($item['base_price'] - $item['price']) / $item['base_price']) * 100) }}</span>
+                                                    <span class="text-xs text-gray-400 line-through">
+                                                        {{ number_format($item['base_price'] * $item['quantity']) }}
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         @endforeach
@@ -242,9 +346,20 @@
                             <p class="text-gray-600 dark:text-gray-400">تخفیف شما:</p>
                             <p class="font-medium text-red-500">-{{ number_format($totals['discount']) }} <span class="text-xs">تومان</span></p>
                         </div>
+                        @if($shippingCost > 0)
+                            <div class="flex justify-between text-sm">
+                                <p class="text-gray-600 dark:text-gray-400">هزینه ارسال:</p>
+                                <p class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($shippingCost) }} <span class="text-xs">تومان</span></p>
+                            </div>
+                        @elseif($selectedShippingMethodId)
+                            <div class="flex justify-between text-sm">
+                                <p class="text-gray-600 dark:text-gray-400">هزینه ارسال:</p>
+                                <p class="font-medium text-emerald-500 text-xs">رایگان</p>
+                            </div>
+                        @endif
                         <div class="flex justify-between text-base font-bold pt-2 border-t border-dashed border-gray-200 dark:border-gray-700 mt-3">
                             <p class="text-gray-900 dark:text-white">مبلغ قابل پرداخت:</p>
-                            <p class="text-indigo-600 dark:text-indigo-400">{{ number_format($totals['grand_total']) }} <span class="text-xs">تومان</span></p>
+                            <p class="text-indigo-600 dark:text-indigo-400">{{ number_format($totals['grand_total'] + $shippingCost) }} <span class="text-xs">تومان</span></p>
                         </div>
                     </div>
 
@@ -278,7 +393,15 @@
                             <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">موقعیت آدرس خود را روی نقشه مشخص کرده و ذخیره کنید.</p>
                         </div>
                         <button type="button" wire:click="closeNewAddressModal" class="p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-indigo-600 hover:border-indigo-500 transition-all">
-                                                {{-- Autocomplete search box --}}
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Modal Body --}}
+                    <div class="p-5 overflow-y-auto max-h-[60vh] space-y-6">
+                        {{-- Autocomplete search box --}}
                         <div class="space-y-1 relative" x-data="{ showDropdown: true }">
                             <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">جستجوی آدرس / محله</label>
                             <div class="relative">

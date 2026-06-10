@@ -14,6 +14,7 @@ use Modules\Clients\App\Http\Controllers\Portal\ClientPaymentController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientProfileController;
 use Modules\Clients\App\Livewire\Settings\ClientAuthSettings;
 use Modules\Clients\App\Livewire\Settings\CsvImporter;
+use Modules\Clients\App\Livewire\Settings\CsvExporter;
 
 Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
     ->prefix('user')
@@ -81,6 +82,7 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class, 'permission
         Route::get('/statuses', ClientStatusesManager::class)->name('statuses');
         Route::get('/auth', ClientAuthSettings::class)->name('auth');
         Route::get('/import', CsvImporter::class)->name('import');
+        Route::get('/export', CsvExporter::class)->name('export');
     });
 
 Route::prefix('clients')

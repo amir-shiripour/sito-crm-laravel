@@ -53,8 +53,25 @@ class ClientController extends Controller
             $query->where('status_id', $request->input('status_id'));
         }
 
-        $clients = $query->orderBy('created_at', 'desc')
-            ->paginate(12)
+        // فیلتر بر اساس ترتیب نمایش (جدیدترین، قدیمی‌ترین و...)
+        $sort = $request->input('sort', 'newest');
+        switch ($sort) {
+            case 'oldest':
+                $query->orderBy('id', 'asc');
+                break;
+            case 'name_asc':
+                $query->orderBy('full_name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('full_name', 'desc');
+                break;
+            case 'newest':
+            default:
+                $query->orderBy('id', 'desc');
+                break;
+        }
+
+        $clients = $query->paginate(12)
             ->appends($request->query());
 
         // لیست کاربران و وضعیت‌ها برای دراپ‌داون‌های فیلتر

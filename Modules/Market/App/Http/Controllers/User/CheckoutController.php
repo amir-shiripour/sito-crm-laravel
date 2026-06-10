@@ -41,12 +41,20 @@ class CheckoutController extends Controller
             return redirect()->route('market.checkout.failed', $order)->with('info', 'این سفارش قبلاً پردازش شده است.');
         }
 
-        switch ($order->payment_method) {
+        $method = $order->payment_method;
+        $paymentStatus = \Modules\Market\Entities\MarketSetting::getValue("orders.status_{$method}_payment", 'unpaid');
+        $deliveryStatus = \Modules\Market\Entities\MarketSetting::getValue("orders.status_{$method}_delivery", 'processing');
+
+        switch ($method) {
             case 'pos':
             case 'transfer':
+            case 'cod':
                 // For offline payments, the order is already created.
                 // We just need to show a success page with instructions.
-                $order->update(['payment_status' => 'unpaid', 'delivery_status' => 'processing']);
+                $order->update([
+                    'payment_status' => $paymentStatus,
+                    'delivery_status' => $deliveryStatus,
+                ]);
                 return redirect()->route('market.checkout.success', $order);
 
             default:
@@ -57,6 +65,7 @@ class CheckoutController extends Controller
                     
                     // Mark order as failed and release stock
                     $order->payment_status = 'failed';
+                    $order->delivery_status = 'canceled';
                     $order->save();
                     
                     try {

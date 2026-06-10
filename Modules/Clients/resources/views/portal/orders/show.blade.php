@@ -22,6 +22,7 @@
     };
 
     $delStatusMap = [
+        'pending' => ['label' => 'در انتظار تایید', 'class' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'],
         'processing' => ['label' => 'در حال پردازش در انبار', 'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'],
         'shipped' => ['label' => 'مرسوله تحویل پست شده', 'class' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'],
         'delivered' => ['label' => 'مرسوله تحویل خریدار شده', 'class' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'],
@@ -35,6 +36,7 @@
         'pos' => 'کارتخوان در محل',
         'transfer' => 'کارت به کارت / واریز فیش',
         'wallet' => 'کیف پول کاربری',
+        'cod' => 'پرداخت در محل (نقدی)',
         default => ucfirst($order->payment_method)
     };
 

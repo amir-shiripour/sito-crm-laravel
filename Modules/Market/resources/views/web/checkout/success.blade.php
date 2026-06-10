@@ -25,27 +25,37 @@
                         <span class="block text-sm text-gray-500 dark:text-gray-400 mb-1">مبلغ پرداختی:</span>
                         <span class="text-lg font-bold text-gray-900 dark:text-white">{{ number_format($order->grand_total) }} تومان</span>
                     </div>
-                    <div>
-                         <span class="block text-sm text-gray-500 dark:text-gray-400 mb-1">وضعیت پرداخت:</span>
-                         @if($order->payment_status === 'paid')
-                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">پرداخت شده</span>
-                         @elseif($order->payment_method === 'pos' || $order->payment_method === 'transfer')
-                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">در انتظار تایید (آفلاین)</span>
-                         @else
-                              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">نامشخص</span>
-                         @endif
-                    </div>
-                    @if($order->payment_ref_id)
-                        <div>
-                            <span class="block text-sm text-gray-500 dark:text-gray-400 mb-1">کد پیگیری تراکنش:</span>
-                            <span class="text-lg font-bold text-gray-900 dark:text-white dir-ltr">{{ $order->payment_ref_id }}</span>
-                        </div>
-                    @endif
+                     <div>
+                          <span class="block text-sm text-gray-500 dark:text-gray-400 mb-1">وضعیت پرداخت:</span>
+                          @if($order->payment_status === 'paid')
+                              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">پرداخت شده</span>
+                          @elseif(in_array($order->payment_status, ['unpaid', 'pending']))
+                              @if(in_array($order->payment_method, ['pos', 'transfer', 'cod']))
+                                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">در انتظار تایید (آفلاین)</span>
+                              @else
+                                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">در انتظار پرداخت</span>
+                              @endif
+                          @elseif($order->payment_status === 'failed')
+                              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">پرداخت ناموفق</span>
+                          @else
+                               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">{{ $order->payment_status }}</span>
+                          @endif
+                     </div>
+                     @if($order->payment_ref_id)
+                         <div>
+                             <span class="block text-sm text-gray-500 dark:text-gray-400 mb-1">کد پیگیری تراکنش:</span>
+                             <span class="text-lg font-bold text-gray-900 dark:text-white dir-ltr">{{ $order->payment_ref_id }}</span>
+                         </div>
+                     @endif
                 </div>
 
                 @if($order->payment_method === 'pos')
                      <div class="mb-8 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl text-sm leading-relaxed text-right">
                          <strong>توجه:</strong> شما روش پرداخت در محل را انتخاب کرده‌اید. لطفا مبلغ سفارش را در زمان تحویل کالا پرداخت نمایید.
+                     </div>
+                @elseif($order->payment_method === 'cod')
+                     <div class="mb-8 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl text-sm leading-relaxed text-right">
+                         <strong>توجه:</strong> شما روش پرداخت در محل (نقدی) را انتخاب کرده‌اید. لطفا مبلغ سفارش را در زمان تحویل کالا به صورت نقدی پرداخت نمایید.
                      </div>
                 @elseif($order->payment_method === 'transfer')
                      <div class="mb-8 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl text-sm leading-relaxed text-right">

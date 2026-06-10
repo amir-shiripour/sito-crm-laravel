@@ -23,6 +23,7 @@ class CheckoutFormManager extends Component
     public $product_id = null;
     public $category_id = null;
     public array $schema = ['fields' => [], 'groups' => []];
+    public array $activePaymentMethods = [];
 
     // Data for select boxes
     public $products = [];
@@ -55,6 +56,33 @@ class CheckoutFormManager extends Component
         $this->forms = CheckoutForm::latest()->get();
         $this->products = MasterProduct::where('status', 'active')->pluck('title', 'id')->toArray();
         $this->categories = Category::pluck('name', 'id')->toArray();
+
+        // Load active payment methods from general system settings dynamically
+        $genSettings = \Modules\Settings\Entities\Setting::all()->pluck('value', 'key')->toArray();
+        $activeSystemMethods = json_decode($genSettings['active_payment_methods'] ?? '[]', true);
+        if (!is_array($activeSystemMethods)) $activeSystemMethods = [];
+
+        $this->activePaymentMethods = [];
+        if (in_array('online', $activeSystemMethods)) {
+            if (($genSettings['zarinpal_status'] ?? 'inactive') === 'active') {
+                $this->activePaymentMethods['zarinpal'] = 'زرین‌پال';
+            }
+            if (($genSettings['zibal_status'] ?? 'inactive') === 'active') {
+                $this->activePaymentMethods['zibal'] = 'زیبال';
+            }
+            if (($genSettings['behpardakht_status'] ?? 'inactive') === 'active') {
+                $this->activePaymentMethods['behpardakht'] = 'به پرداخت ملت';
+            }
+        }
+        if (in_array('pos', $activeSystemMethods) && ($genSettings['pos_status'] ?? 'inactive') === 'active') {
+            $this->activePaymentMethods['pos'] = 'پرداخت در محل (کارتخوان)';
+        }
+        if (in_array('transfer', $activeSystemMethods) && ($genSettings['bank_transfer_status'] ?? 'inactive') === 'active') {
+            $this->activePaymentMethods['transfer'] = 'کارت به کارت / فیش بانکی';
+        }
+        if (in_array('cod', $activeSystemMethods) && ($genSettings['cod_status'] ?? 'inactive') === 'active') {
+            $this->activePaymentMethods['cod'] = 'پرداخت در محل (نقدی)';
+        }
 
         $clientForm = ClientForm::active() ?? ClientForm::first();
         if ($clientForm) {
@@ -127,6 +155,7 @@ class CheckoutFormManager extends Component
             'group' => $defaultGroup,
             'width' => 'full',
             'required' => false,
+            'required_payment_methods' => [],
             'source' => 'meta',
             'sync' => null,
             'validation' => [],

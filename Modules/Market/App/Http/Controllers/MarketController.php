@@ -9,7 +9,9 @@ use Modules\Market\Entities\Vendor;
 use Modules\Market\Entities\MasterProduct;
 use Modules\Market\Entities\ProductVariant;
 use Modules\Market\Entities\Category;
+use Modules\Market\Entities\Brand;
 use Modules\Market\Entities\MarketAttribute;
+use Modules\Market\Entities\DisplayCategory;
 use Illuminate\Support\Facades\DB;
 
 class MarketController extends Controller
@@ -21,6 +23,9 @@ class MarketController extends Controller
 
         // دریافت تنظیمات نمایشی (UI/UX)
         $showCategoryOnCard = MarketSetting::getValue('ui.show_category_on_card', true);
+        $showBrandOnCard = MarketSetting::getValue('ui.show_brand_on_card', true);
+        $separateCategoryEnabled = MarketSetting::getValue('system.separate_category_enabled', false);
+        $hideOutOfStock = MarketSetting::getValue('general.hide_out_of_stock', false);
 
         // Geolocation ordering city filter
         $city = null;
@@ -32,7 +37,7 @@ class MarketController extends Controller
         if ($displayType === 'by_product') {
 
             if ($variantMode === 'separated') {
-                $items = ProductVariant::with(['masterProduct.brand', 'masterProduct.category', 'vendorProducts' => function($q) use ($city) {
+                $items = ProductVariant::with(['masterProduct.brand', 'masterProduct.category', 'masterProduct.displayCategories', 'vendorProducts' => function($q) use ($city) {
                         if ($city) {
                             $q->whereHas('vendor.addresses', function($q2) use ($city) {
                                 $q2->where('city', $city);
@@ -42,8 +47,11 @@ class MarketController extends Controller
                     ->whereHas('masterProduct', function($q) {
                         $q->where('status', 'active');
                     })
-                    ->whereHas('vendorProducts', function($q) use ($city) {
-                        $q->where('status', 'published')->where('stock', '>', 0);
+                    ->whereHas('vendorProducts', function($q) use ($city, $hideOutOfStock) {
+                        $q->where('status', 'published');
+                        if ($hideOutOfStock) {
+                            $q->where('stock', '>', 0);
+                        }
                         if ($city) {
                             $q->whereHas('vendor.addresses', function($q2) use ($city) {
                                 $q2->where('city', $city);
@@ -71,10 +79,13 @@ class MarketController extends Controller
                                 $q2->where('city', $city);
                             });
                         }
-                    }, 'brand', 'category'])
+                    }, 'brand', 'category', 'displayCategories'])
                     ->where('status', 'active')
-                    ->whereHas('variants.vendorProducts', function($q) use ($city) {
-                        $q->where('status', 'published')->where('stock', '>', 0);
+                    ->whereHas('variants.vendorProducts', function($q) use ($city, $hideOutOfStock) {
+                        $q->where('status', 'published');
+                        if ($hideOutOfStock) {
+                            $q->where('stock', '>', 0);
+                        }
                         if ($city) {
                             $q->whereHas('vendor.addresses', function($q2) use ($city) {
                                 $q2->where('city', $city);
@@ -102,6 +113,8 @@ class MarketController extends Controller
                 'displayType' => $displayType,
                 'variantMode' => $variantMode,
                 'showCategoryOnCard' => $showCategoryOnCard,
+                'showBrandOnCard' => $showBrandOnCard,
+                'separateCategoryEnabled' => $separateCategoryEnabled,
                 'items' => $items,
             ]);
         }
@@ -115,22 +128,35 @@ class MarketController extends Controller
         $items = $items->latest()->take(12)->get();
         return view('market::web.index', [
             'displayType' => $displayType,
+            'showCategoryOnCard' => $showCategoryOnCard,
+            'showBrandOnCard' => $showBrandOnCard,
+            'separateCategoryEnabled' => $separateCategoryEnabled,
             'items' => $items,
         ]);
     }
 
     public function category(Request $request, $slug = null)
     {
+        $separateCategoryEnabled = MarketSetting::getValue('system.separate_category_enabled', false);
+
         // جایگزینی دریافت ساده با دریافت درختی دسته‌بندی‌ها
-        $categoriesTree = Category::whereNull('parent_id')->with('children.children')->get();
+        if ($separateCategoryEnabled) {
+            $categoriesTree = DisplayCategory::whereNull('parent_id')->with('children.children')->get();
+        } else {
+            $categoriesTree = Category::whereNull('parent_id')->with('children.children')->get();
+        }
+
         $currentCategory = null;
         $variantMode = MarketSetting::getValue('general.variant_display_mode', 'grouped');
 
         // دریافت تنظیمات نمایشی (UI/UX)
         $showCategoryOnCard = MarketSetting::getValue('ui.show_category_on_card', true);
+        $showBrandOnCard = MarketSetting::getValue('ui.show_brand_on_card', true);
+        $hideOutOfStock = MarketSetting::getValue('general.hide_out_of_stock', false);
 
         // دریافت دیکشنری ویژگی‌ها برای ساخت فیلترهای سایدبار
         $filterAttributes = MarketAttribute::with('values')->get();
+        $brands = Brand::where('is_active', true)->get();
 
         // Geolocation ordering city filter
         $city = null;
@@ -141,8 +167,10 @@ class MarketController extends Controller
 
         // 💡 دریافت کمترین و بیشترین قیمت موجود در کل فروشگاه برای اسلایدر رنج قیمت
         $priceRangeQuery = DB::table('market_vendor_products')
-            ->where('status', 'published')
-            ->where('stock', '>', 0);
+            ->where('status', 'published');
+        if ($hideOutOfStock) {
+            $priceRangeQuery->where('stock', '>', 0);
+        }
         if ($city) {
             $priceRangeQuery->whereExists(function($q) use ($city) {
                 $q->select(DB::raw(1))
@@ -165,7 +193,7 @@ class MarketController extends Controller
         $maxPrice = $request->filled('max_price') ? (float)str_replace(',', '', $request->max_price) : null;
 
         if ($variantMode === 'separated') {
-            $query = ProductVariant::with(['masterProduct.brand', 'masterProduct.category', 'vendorProducts' => function($q) use ($city) {
+            $query = ProductVariant::with(['masterProduct.brand', 'masterProduct.category', 'masterProduct.displayCategories', 'vendorProducts' => function($q) use ($city) {
                     if ($city) {
                         $q->whereHas('vendor.addresses', function($q2) use ($city) {
                             $q2->where('city', $city);
@@ -188,15 +216,34 @@ class MarketController extends Controller
                 }]);
 
             if ($slug) {
-                $currentCategory = Category::where('slug', $slug)->firstOrFail();
-                $query->whereHas('masterProduct', function($q) use ($currentCategory) {
-                    $q->where('category_id', $currentCategory->id);
-                });
+                if ($separateCategoryEnabled) {
+                    $currentCategory = DisplayCategory::where('slug', $slug)->firstOrFail();
+                    $query->whereHas('masterProduct.displayCategories', function($q) use ($currentCategory) {
+                        $q->where('market_display_categories.id', $currentCategory->id);
+                    });
+                } else {
+                    $currentCategory = Category::where('slug', $slug)->firstOrFail();
+                    $query->whereHas('masterProduct', function($q) use ($currentCategory) {
+                        $q->where('category_id', $currentCategory->id);
+                    });
+                }
             }
 
             if ($request->has('categories') && is_array($request->categories)) {
+                if ($separateCategoryEnabled) {
+                    $query->whereHas('masterProduct.displayCategories', function($q) use ($request) {
+                        $q->whereIn('market_display_categories.id', $request->categories);
+                    });
+                } else {
+                    $query->whereHas('masterProduct', function($q) use ($request) {
+                        $q->whereIn('category_id', $request->categories);
+                    });
+                }
+            }
+
+            if ($request->has('brands') && is_array($request->brands)) {
                 $query->whereHas('masterProduct', function($q) use ($request) {
-                    $q->whereIn('category_id', $request->categories);
+                    $q->whereIn('brand_id', $request->brands);
                 });
             }
 
@@ -206,21 +253,25 @@ class MarketController extends Controller
                 });
             }
 
-            if ($request->boolean('in_stock')) {
-                $query->whereHas('vendorProducts', function ($q) use ($city) {
-                    $q->where('status', 'published')->where('stock', '>', 0);
-                    if ($city) {
-                        $q->whereHas('vendor.addresses', function($q2) use ($city) {
-                            $q2->where('city', $city);
-                        });
-                    }
-                });
-            }
+            $query->whereHas('vendorProducts', function ($q) use ($city, $hideOutOfStock, $request) {
+                $q->where('status', 'published');
+                if ($hideOutOfStock || $request->boolean('in_stock')) {
+                    $q->where('stock', '>', 0);
+                }
+                if ($city) {
+                    $q->whereHas('vendor.addresses', function($q2) use ($city) {
+                        $q2->where('city', $city);
+                    });
+                }
+            });
 
             // اعمال فیلتر قیمت در حالت مجزا
             if ($minPrice !== null || $maxPrice !== null) {
-                $query->whereHas('vendorProducts', function ($q) use ($minPrice, $maxPrice, $city) {
-                    $q->where('status', 'published')->where('stock', '>', 0);
+                $query->whereHas('vendorProducts', function ($q) use ($minPrice, $maxPrice, $city, $hideOutOfStock, $request) {
+                    $q->where('status', 'published');
+                    if ($hideOutOfStock || $request->boolean('in_stock')) {
+                        $q->where('stock', '>', 0);
+                    }
                     if ($city) {
                         $q->whereHas('vendor.addresses', function($q2) use ($city) {
                             $q2->where('city', $city);
@@ -261,12 +312,14 @@ class MarketController extends Controller
             if ($sort === 'price_asc' || $sort === 'price_desc') {
                 $direction = $sort === 'price_asc' ? 'asc' : 'desc';
 
-                $query->selectSub(function ($query) use ($city) {
+                $query->selectSub(function ($query) use ($city, $hideOutOfStock, $request) {
                     $query->selectRaw('MIN(COALESCE(discount_price, price))')
                         ->from('market_vendor_products')
                         ->whereColumn('product_variant_id', 'market_product_variants.id')
-                        ->where('status', 'published')
-                        ->where('stock', '>', 0);
+                        ->where('status', 'published');
+                    if ($hideOutOfStock || $request->boolean('in_stock')) {
+                        $query->where('stock', '>', 0);
+                    }
                     if ($city) {
                         $query->whereHas('vendor.addresses', function($q2) use ($city) {
                             $q2->where('city', $city);
@@ -292,7 +345,7 @@ class MarketController extends Controller
                             $q2->where('city', $city);
                         });
                     }
-                }, 'brand', 'category'])
+                }, 'brand', 'category', 'displayCategories'])
                 ->where('status', 'active');
 
             // اضافه کردن select اصلی برای رفع باگ OrderBy
@@ -309,33 +362,54 @@ class MarketController extends Controller
                 }]);
 
             if ($slug) {
-                $currentCategory = Category::where('slug', $slug)->firstOrFail();
-                $query->where('category_id', $currentCategory->id);
+                if ($separateCategoryEnabled) {
+                    $currentCategory = DisplayCategory::where('slug', $slug)->firstOrFail();
+                    $query->whereHas('displayCategories', function($q) use ($currentCategory) {
+                        $q->where('market_display_categories.id', $currentCategory->id);
+                    });
+                } else {
+                    $currentCategory = Category::where('slug', $slug)->firstOrFail();
+                    $query->where('category_id', $currentCategory->id);
+                }
             }
 
             if ($request->has('categories') && is_array($request->categories)) {
-                $query->whereIn('category_id', $request->categories);
+                if ($separateCategoryEnabled) {
+                    $query->whereHas('displayCategories', function($q) use ($request) {
+                        $q->whereIn('market_display_categories.id', $request->categories);
+                    });
+                } else {
+                    $query->whereIn('category_id', $request->categories);
+                }
+            }
+
+            if ($request->has('brands') && is_array($request->brands)) {
+                $query->whereIn('brand_id', $request->brands);
             }
 
             if ($request->filled('q')) {
                 $query->where('title', 'like', '%' . $request->q . '%');
             }
 
-            if ($request->boolean('in_stock')) {
-                $query->whereHas('variants.vendorProducts', function ($q) use ($city) {
-                    $q->where('status', 'published')->where('stock', '>', 0);
-                    if ($city) {
-                        $q->whereHas('vendor.addresses', function($q2) use ($city) {
-                            $q2->where('city', $city);
-                        });
-                    }
-                });
-            }
+            $query->whereHas('variants.vendorProducts', function ($q) use ($city, $hideOutOfStock, $request) {
+                $q->where('status', 'published');
+                if ($hideOutOfStock || $request->boolean('in_stock')) {
+                    $q->where('stock', '>', 0);
+                }
+                if ($city) {
+                    $q->whereHas('vendor.addresses', function($q2) use ($city) {
+                        $q2->where('city', $city);
+                    });
+                }
+            });
 
             // اعمال فیلتر قیمت در حالت گروهی
             if ($minPrice !== null || $maxPrice !== null) {
-                $query->whereHas('variants.vendorProducts', function ($q) use ($minPrice, $maxPrice, $city) {
-                    $q->where('status', 'published')->where('stock', '>', 0);
+                $query->whereHas('variants.vendorProducts', function ($q) use ($minPrice, $maxPrice, $city, $hideOutOfStock, $request) {
+                    $q->where('status', 'published');
+                    if ($hideOutOfStock || $request->boolean('in_stock')) {
+                        $q->where('stock', '>', 0);
+                    }
                     if ($city) {
                         $q->whereHas('vendor.addresses', function($q2) use ($city) {
                             $q2->where('city', $city);
@@ -378,13 +452,15 @@ class MarketController extends Controller
             if ($sort === 'price_asc' || $sort === 'price_desc') {
                 $direction = $sort === 'price_asc' ? 'asc' : 'desc';
 
-                $query->selectSub(function ($query) use ($city) {
+                $query->selectSub(function ($query) use ($city, $hideOutOfStock, $request) {
                     $query->selectRaw('MIN(COALESCE(vp.discount_price, vp.price))')
                         ->from('market_vendor_products as vp')
                         ->join('market_product_variants as pv', 'vp.product_variant_id', '=', 'pv.id')
                         ->whereColumn('pv.master_product_id', 'market_master_products.id')
-                        ->where('vp.status', 'published')
-                        ->where('vp.stock', '>', 0);
+                        ->where('vp.status', 'published');
+                    if ($hideOutOfStock || $request->boolean('in_stock')) {
+                        $query->where('vp.stock', '>', 0);
+                    }
                     if ($city) {
                         $query->join('market_vendors as v', 'vp.vendor_id', '=', 'v.id')
                             ->join('market_vendor_addresses as va', 'v.id', '=', 'va.vendor_id')
@@ -408,8 +484,11 @@ class MarketController extends Controller
             'items' => $items,
             'variantMode' => $variantMode,
             'showCategoryOnCard' => $showCategoryOnCard,
+            'showBrandOnCard' => $showBrandOnCard,
+            'separateCategoryEnabled' => $separateCategoryEnabled,
             'categoriesTree' => $categoriesTree,
             'filterAttributes' => $filterAttributes,
+            'brands' => $brands,
             'currentCategory' => $currentCategory,
             'absoluteMinPrice' => $absoluteMinPrice, // 💡 متغیر جدید برای ویو
             'absoluteMaxPrice' => $absoluteMaxPrice  // 💡 متغیر جدید برای ویو
@@ -430,7 +509,8 @@ class MarketController extends Controller
 
         $product = MasterProduct::with([
             'brand',
-            'category',
+            'category.parent.parent',
+            'displayCategories.parent.parent',
             'variants.vendorProducts' => function($q) use ($city) {
                 if ($city) {
                     $q->whereHas('vendor.addresses', function($q2) use ($city) {
@@ -461,9 +541,11 @@ class MarketController extends Controller
         $variantMode = MarketSetting::getValue('general.variant_display_mode', 'grouped');
         $showVendorInProductPage = MarketSetting::getValue('ui.show_vendor_on_product_page', true);
         $showStockWarning = MarketSetting::getValue('ui.show_stock_warning', true);
+        $separateCategoryEnabled = MarketSetting::getValue('system.separate_category_enabled', false);
+        $showBrandOnProductPage = MarketSetting::getValue('ui.show_brand_on_product_page', true);
 
         $attributeDictionary = MarketAttribute::with('values')->get();
 
-        return view('market::web.product.show', compact('product', 'relatedProducts', 'variantMode', 'showVendorInProductPage', 'showStockWarning', 'attributeDictionary'));
+        return view('market::web.product.show', compact('product', 'relatedProducts', 'variantMode', 'showVendorInProductPage', 'showStockWarning', 'attributeDictionary', 'separateCategoryEnabled', 'showBrandOnProductPage'));
     }
 }

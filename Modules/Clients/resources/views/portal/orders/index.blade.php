@@ -73,6 +73,7 @@
                             <td class="px-6 py-4">
                                 @php
                                     $delStatusMap = [
+                                        'pending' => ['label' => 'در انتظار تایید', 'class' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'],
                                         'processing' => ['label' => 'در حال پردازش', 'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400'],
                                         'shipped' => ['label' => 'ارسال شده', 'class' => 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400'],
                                         'delivered' => ['label' => 'تحویل داده شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'],

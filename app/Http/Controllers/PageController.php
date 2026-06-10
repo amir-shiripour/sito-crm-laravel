@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Modules\Settings\Entities\Setting;
+use Illuminate\Support\Facades\Route;
 
 class PageController extends Controller
 {
@@ -138,8 +139,13 @@ class PageController extends Controller
                 return redirect()->route('booking.public.index');
             } elseif ($appTheme === 'properties') {
                 return redirect()->route('properties.index');
+            } elseif ($appTheme === 'market' || $appTheme === 'shop') {
+                if (Route::has('market.public.index')) {
+                    return redirect()->route('market.public.index');
+                }
+                return redirect()->route('admin.dashboard');
             } else {
-                // شرکتی، فروشگاه و سایر مواردی که هنوز تعریف نشده‌اند
+                // شرکتی و سایر مواردی که هنوز تعریف نشده‌اند
                 return redirect()->route('admin.dashboard');
             }
         }

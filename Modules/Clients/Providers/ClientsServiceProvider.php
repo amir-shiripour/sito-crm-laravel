@@ -51,5 +51,7 @@ class ClientsServiceProvider extends ServiceProvider
         Livewire::component('clients.form', \Modules\Clients\App\Livewire\ClientForm::class);
         Livewire::component('client-auth-settings', \Modules\Clients\App\Livewire\Settings\ClientAuthSettings::class);
         Livewire::component('clients.csv-importer', \Modules\Clients\App\Livewire\Settings\CsvImporter::class);
+        Livewire::component('modules.clients.app.livewire.settings.csv-exporter', \Modules\Clients\App\Livewire\Settings\CsvExporter::class);
+        Livewire::component('clients.csv-exporter', \Modules\Clients\App\Livewire\Settings\CsvExporter::class);
     }
 }

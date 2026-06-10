@@ -24,6 +24,11 @@ class Handler extends ExceptionHandler
     public function register(): void
     {
         $this->reportable(function (Throwable $e) {
+            // اگر استثنا از مواردی است که نباید گزارش شود (مانند خطای اعتبارسنجی یا عدم احراز هویت)، لاگ نکن
+            if (!$this->shouldReport($e)) {
+                return;
+            }
+
             // فیلتر کردن خطاهای 404 معمولی
             if ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
                 // خطاهای 404 را فقط در حالت development لاگ می‌کنیم
@@ -51,6 +56,11 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
+        // اگر استثنا نباید گزارش/لاگ شود، مستقیما رندر کن بدون ثبت لاگ خطا
+        if (!$this->shouldReport($e)) {
+            return parent::render($request, $e);
+        }
+
         // فیلتر کردن خطاهای 404 معمولی (درخواست‌های اسکن/ربات)
         if ($this->isHttpException($e) && $e->getStatusCode() === 404) {
             $path = $request->path();

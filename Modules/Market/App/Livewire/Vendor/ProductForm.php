@@ -25,6 +25,19 @@ class ProductForm extends Component
     public $allowed_axes_options = [];
 
     public bool $isWmsActive = false;
+    public bool $isStandardOnly = false;
+
+    // Batch Edit Properties
+    public $batchPrice = '';
+    public $batchDiscountPercent = '';
+    public $batchDiscountPrice = '';
+    public $batchStock = '';
+    public $batchMinPurchase = '';
+    public $batchMaxPurchase = '';
+    public $batchDiscountStart = '';
+    public $batchDiscountEnd = '';
+    public $batchDiscountStock = '';
+    public $batchMaxDiscountQty = '';
 
     public function mount()
     {
@@ -106,6 +119,7 @@ class ProductForm extends Component
 
         if ($this->selectedMasterProduct) {
             $this->available_variants = $this->selectedMasterProduct->variants()->where('is_active', true)->get();
+            $this->isStandardOnly = ($this->available_variants->count() === 1 && empty($this->selectedMasterProduct->variant_axes_permissions));
 
             foreach ($this->available_variants as $variant) {
                 $attributes = $variant->variant_attributes ?? [];
@@ -135,7 +149,7 @@ class ProductForm extends Component
 
                 $this->vendor_variants[$variant->id] = [
                     'display_name' => $variantName,
-                    'sell_this' => $existing ? true : false,
+                    'sell_this' => ($this->isStandardOnly || $existing) ? true : false,
                     'price' => $existing ? $existing->price : '',
                     'discount_price' => $existing ? $existing->discount_price : '',
                     'discount_start_date' => $existing && $existing->discount_start_date ? Jalalian::fromCarbon($existing->discount_start_date)->format('Y/m/d H:i') : '',
@@ -198,7 +212,7 @@ class ProductForm extends Component
         try {
             // Save standard variants
             foreach ($this->vendor_variants as $variantId => $data) {
-                if (!$data['sell_this']) {
+                if (!$data['sell_this'] || ($this->isStandardOnly && empty($data['price']))) {
                     VendorProduct::where('vendor_id', $vendor->id)->where('product_variant_id', $variantId)->delete();
                     continue;
                 }
@@ -315,6 +329,134 @@ class ProductForm extends Component
             DB::rollBack();
             $this->dispatch('notify', type: 'error', text: 'خطایی در هنگام ذخیره رخ داد: ' . $e->getMessage());
         }
+    }
+
+    public function toggleAllVariants($state)
+    {
+        foreach ($this->vendor_variants as $key => $variant) {
+            $this->vendor_variants[$key]['sell_this'] = (bool) $state;
+        }
+        $this->vendor_variants = $this->vendor_variants; // Force reactivity
+    }
+
+    public function applyBatchSettings()
+    {
+        $cleanPrice = str_replace(',', '', $this->batchPrice);
+        $cleanDiscountPrice = str_replace(',', '', $this->batchDiscountPrice);
+
+        // Apply to standard variants
+        foreach ($this->vendor_variants as $variantId => $data) {
+            if ($data['sell_this']) {
+                if ($cleanPrice !== '') {
+                    $this->vendor_variants[$variantId]['price'] = $cleanPrice;
+                }
+                
+                if ($this->batchDiscountPercent !== '') {
+                    $pr = $cleanPrice !== '' ? (float)$cleanPrice : (float)str_replace(',', '', $data['price']);
+                    if ($pr > 0) {
+                        $p = (float)$this->batchDiscountPercent;
+                        $d = $pr - ($pr * ($p / 100));
+                        $this->vendor_variants[$variantId]['discount_price'] = round($d);
+                    }
+                } elseif ($cleanDiscountPrice !== '') {
+                    $this->vendor_variants[$variantId]['discount_price'] = $cleanDiscountPrice;
+                }
+
+                if ($this->batchStock !== '' && !$this->isWmsActive) {
+                    $this->vendor_variants[$variantId]['stock'] = $this->batchStock;
+                }
+
+                if ($this->batchMinPurchase !== '') {
+                    $this->vendor_variants[$variantId]['min_purchase'] = $this->batchMinPurchase;
+                }
+
+                if ($this->batchMaxPurchase !== '') {
+                    $this->vendor_variants[$variantId]['max_purchase'] = $this->batchMaxPurchase;
+                }
+
+                if ($this->batchDiscountStart !== '') {
+                    $this->vendor_variants[$variantId]['discount_start_date'] = $this->batchDiscountStart;
+                }
+
+                if ($this->batchDiscountEnd !== '') {
+                    $this->vendor_variants[$variantId]['discount_end_date'] = $this->batchDiscountEnd;
+                }
+
+                if ($this->batchDiscountStock !== '') {
+                    $this->vendor_variants[$variantId]['discount_stock'] = $this->batchDiscountStock;
+                }
+
+                if ($this->batchMaxDiscountQty !== '') {
+                    $this->vendor_variants[$variantId]['max_discount_purchase_qty'] = $this->batchMaxDiscountQty;
+                }
+            }
+        }
+
+        // Apply to custom variants
+        foreach ($this->vendor_custom_variants as $index => $data) {
+            if ($data['sell_this']) {
+                if ($cleanPrice !== '') {
+                    $this->vendor_custom_variants[$index]['price'] = $cleanPrice;
+                }
+
+                if ($this->batchDiscountPercent !== '') {
+                    $pr = $cleanPrice !== '' ? (float)$cleanPrice : (float)str_replace(',', '', $data['price']);
+                    if ($pr > 0) {
+                        $p = (float)$this->batchDiscountPercent;
+                        $d = $pr - ($pr * ($p / 100));
+                        $this->vendor_custom_variants[$index]['discount_price'] = round($d);
+                    }
+                } elseif ($cleanDiscountPrice !== '') {
+                    $this->vendor_custom_variants[$index]['discount_price'] = $cleanDiscountPrice;
+                }
+
+                if ($this->batchStock !== '' && !$this->isWmsActive) {
+                    $this->vendor_custom_variants[$index]['stock'] = $this->batchStock;
+                }
+
+                if ($this->batchMinPurchase !== '') {
+                    $this->vendor_custom_variants[$index]['min_purchase'] = $this->batchMinPurchase;
+                }
+
+                if ($this->batchMaxPurchase !== '') {
+                    $this->vendor_custom_variants[$index]['max_purchase'] = $this->batchMaxPurchase;
+                }
+
+                if ($this->batchDiscountStart !== '') {
+                    $this->vendor_custom_variants[$index]['discount_start_date'] = $this->batchDiscountStart;
+                }
+
+                if ($this->batchDiscountEnd !== '') {
+                    $this->vendor_custom_variants[$index]['discount_end_date'] = $this->batchDiscountEnd;
+                }
+
+                if ($this->batchDiscountStock !== '') {
+                    $this->vendor_custom_variants[$index]['discount_stock'] = $this->batchDiscountStock;
+                }
+
+                if ($this->batchMaxDiscountQty !== '') {
+                    $this->vendor_custom_variants[$index]['max_discount_purchase_qty'] = $this->batchMaxDiscountQty;
+                }
+            }
+        }
+
+        // Reset batch properties after applying
+        $this->batchPrice = '';
+        $this->batchDiscountPercent = '';
+        $this->batchDiscountPrice = '';
+        $this->batchStock = '';
+        $this->batchMinPurchase = '';
+        $this->batchMaxPurchase = '';
+        $this->batchDiscountStart = '';
+        $this->batchDiscountEnd = '';
+        $this->batchDiscountStock = '';
+        $this->batchMaxDiscountQty = '';
+
+        // Explicitly reassign arrays to force Livewire to detect deep updates
+        $this->vendor_variants = $this->vendor_variants;
+        $this->vendor_custom_variants = $this->vendor_custom_variants;
+
+        $this->dispatch('notify', type: 'success', text: 'تنظیمات گروهی با موفقیت بر روی تمام تنوع‌های فعال اعمال شد.');
     }
 
     public function render()

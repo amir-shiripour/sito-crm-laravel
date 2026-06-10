@@ -22,9 +22,12 @@ use Modules\Market\App\Livewire\Admin\DisplayCategoryManager;
 use Modules\Market\App\Livewire\Admin\AttributeManager;
 use Modules\Market\App\Livewire\Admin\VendorProductReview;
 use Modules\Market\App\Livewire\Admin\WarehouseManager;
+use Modules\Market\App\Livewire\Admin\ShippingManager;
+use Modules\Market\App\Livewire\Admin\OrderStatusManager;
 use Modules\Market\App\Livewire\Admin\WarehouseStockController;
 use Modules\Market\App\Livewire\Admin\ProductVariantSelector;
 use Modules\Market\App\Livewire\Admin\CheckoutFormManager;
+use Modules\Market\App\Livewire\Admin\ReviewManager;
 use Modules\Market\App\Livewire\Web\CartManager;
 use Modules\Market\App\Livewire\Web\PopupCart;
 use Modules\Market\App\Livewire\Web\CartCounter;
@@ -32,6 +35,7 @@ use Modules\Market\App\Livewire\Web\AddToCartButton;
 use Modules\Market\App\Livewire\web\CheckoutModal;
 use Modules\Market\App\Livewire\web\CheckoutPage;
 use Modules\Market\App\Livewire\Web\LocationModal;
+use Modules\Market\App\Livewire\Web\ProductReviews;
 use Modules\Market\App\Livewire\user\OrderForm;
 use Modules\Market\App\Observers\VendorObserver;
 use Modules\Market\Entities\MarketSetting;
@@ -85,6 +89,9 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::admin.warehouse-stock-controller', WarehouseStockController::class);
         Livewire::component('market::admin.product-variant-selector', ProductVariantSelector::class);
         Livewire::component('market::admin.checkout-form-manager', CheckoutFormManager::class);
+        Livewire::component('market::admin.shipping-manager', ShippingManager::class);
+        Livewire::component('market::admin.order-status-manager', OrderStatusManager::class);
+        Livewire::component('market::admin.review-manager', ReviewManager::class);
         Livewire::component('market::web.cart-manager', CartManager::class);
         Livewire::component('market::web.popup-cart', PopupCart::class);
         Livewire::component('market::web.cart-counter', CartCounter::class);
@@ -92,6 +99,7 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::web.checkout-modal', CheckoutModal::class);
         Livewire::component('market::web.checkout-page', CheckoutPage::class);
         Livewire::component('market::web.location-modal', LocationModal::class);
+        Livewire::component('market::web.product-reviews', ProductReviews::class);
         Livewire::component('market::user.order-form', OrderForm::class);
 
         // 💡 ثبت Observer

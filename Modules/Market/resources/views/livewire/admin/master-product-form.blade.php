@@ -106,10 +106,17 @@
                             <div class="{{ $inputClass }} bg-indigo-50 text-indigo-700 font-mono text-center font-bold dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 cursor-not-allowed">{{ $crm_code }}</div>
                         </div>
 
-                        <div>
-                            <label class="{{ $labelClass }}">شناسه جهانی کالا (GTIN/UPC/EAN)</label>
-                            <input type="text" wire:model.defer="gtin" class="{{ $inputClass }} font-mono dir-ltr text-left" placeholder="کد 13 یا 14 رقمی">
-                            @error('gtin') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="{{ $labelClass }}">شناسه جهانی کالا (GTIN/UPC/EAN)</label>
+                                <input type="text" wire:model.defer="gtin" class="{{ $inputClass }} font-mono dir-ltr text-left" placeholder="کد EAN/UPC">
+                                @error('gtin') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="{{ $labelClass }}">شناسه محصول (کد داخلی / بارکد)</label>
+                                <input type="text" wire:model.defer="barcode" class="{{ $inputClass }} font-mono dir-ltr text-left" placeholder="بارکد یا کد داخلی">
+                                @error('barcode') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
                         </div>
                     </div>
 
@@ -207,9 +214,32 @@
                             toggle(val) {
                                 let index = this.selected.indexOf(val);
                                 if (index > -1) {
+                                    // Deselect it
                                     this.selected.splice(index, 1);
+                                    // Also auto-deselect all child categories recursively
+                                    let deselectChildren = (parentId) => {
+                                        this.options.forEach(o => {
+                                            if (o.parent_id == parentId) {
+                                                let idx = this.selected.indexOf(o.value);
+                                                if (idx > -1) {
+                                                    this.selected.splice(idx, 1);
+                                                    deselectChildren(o.value);
+                                                }
+                                            }
+                                        });
+                                    };
+                                    deselectChildren(val);
                                 } else {
                                     this.selected.push(val);
+                                    // Auto-select parents recursively
+                                    let current = this.options.find(o => o.value == val);
+                                    while (current && current.parent_id) {
+                                        let pId = current.parent_id.toString();
+                                        if (!this.selected.includes(pId)) {
+                                            this.selected.push(pId);
+                                        }
+                                        current = this.options.find(o => o.value == pId);
+                                    }
                                 }
                             }
                         }" @click.away="open = false">

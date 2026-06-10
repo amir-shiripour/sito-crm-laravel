@@ -25,6 +25,14 @@ class CheckoutPage extends Component
     public array $schema = [];
     public array $formData = [];
 
+    // Shipping Fields
+    public $shippingMethods = [];
+    public $selectedShippingMethodId = null;
+    public $shippingCost = 0;
+    public $availableSlots = [];
+    public $selectedSlotId = null;
+    public $selectedDeliveryDate = null;
+
     public $totals = [
         'subtotal' => 0,
         'discount' => 0,
@@ -131,12 +139,14 @@ class CheckoutPage extends Component
         }
 
         $this->calculateTotals($cart);
+        $this->loadShippingMethods();
     }
 
     public function updatedSelectedProvince($provinceName)
     {
         $this->cities = ProvinceCity::getCities($provinceName);
         $this->formData['city'] = null;
+        $this->loadShippingMethods();
     }
 
 
@@ -157,6 +167,7 @@ class CheckoutPage extends Component
     {
         $sessionCart = Session::get('market_cart', []);
         $refreshedCart = [];
+        $attributeDictionary = \Modules\Market\Entities\MarketAttribute::with('values')->get();
 
         foreach ($sessionCart as $item) {
             if (empty($item['variant_id']) || empty($item['vendor_product_id'])) {
@@ -164,10 +175,31 @@ class CheckoutPage extends Component
             }
 
             $variant = ProductVariant::with('masterProduct.category')->find($item['variant_id']);
-            $vp = VendorProduct::find($item['vendor_product_id']);
+            $vp = VendorProduct::with('vendor')->find($item['vendor_product_id']);
 
             if ($variant && $vp) {
                 $finalPrice = $vp->discount_price > 0 ? $vp->discount_price : $vp->price;
+
+                $itemAttributes = $item['attributes'] ?? $variant->variant_attributes;
+                $fullAttributes = [];
+                if (is_array($itemAttributes)) {
+                    foreach ($itemAttributes as $attrKey => $attrValue) {
+                        $dictAttr = $attributeDictionary->firstWhere('name', $attrKey);
+                        $dictVal = $dictAttr ? $dictAttr->values->firstWhere('value', $attrValue) : null;
+                        
+                        // مخفی کردن ویژگی استاندارد
+                        if ($attrKey === 'name' && $attrValue === 'استاندارد') {
+                            continue;
+                        }
+
+                        $fullAttributes[] = [
+                            'key' => $attrKey,
+                            'value' => $attrValue,
+                            'type' => $dictAttr->type ?? 'select',
+                            'meta_value' => $dictVal->meta_value ?? null,
+                        ];
+                    }
+                }
 
                 $refreshedCart[] = [
                     'variant_id' => (int) $variant->id,
@@ -176,10 +208,13 @@ class CheckoutPage extends Component
                     'quantity' => (int) $item['quantity'],
                     'price' => (float) $finalPrice,
                     'base_price' => (float) $vp->price,
-                    'name' => $variant->masterProduct->title,
+                    'name' => $item['title'] ?? $variant->masterProduct->title,
                     'image' => $variant->masterProduct->main_image_url,
                     'product_id' => (int) $variant->master_product_id,
                     'category_id' => (int) $variant->masterProduct->category_id,
+                    'full_attributes' => $fullAttributes,
+                    'slug' => $variant->masterProduct->slug,
+                    'vendor_name' => $vp->vendor->store_name ?? 'نامشخص',
                 ];
             }
         }
@@ -301,7 +336,51 @@ class CheckoutPage extends Component
             }
         }
 
-        $this->validate($this->getDynamicRules());
+        $validationData = [
+            'formData' => $this->formData,
+            'payment_method' => $this->payment_method,
+        ];
+        $rules = $this->getDynamicRules();
+
+        if (!empty($this->shippingMethods)) {
+            $validationData['selectedShippingMethodId'] = $this->selectedShippingMethodId;
+            $rules['selectedShippingMethodId'] = 'required|exists:market_shipping_methods,id';
+        }
+
+        $shippingMethod = $this->selectedShippingMethodId ? \Modules\Market\Entities\ShippingMethod::find($this->selectedShippingMethodId) : null;
+        if ($shippingMethod && $shippingMethod->slots()->exists()) {
+            $validationData['selectedSlotId'] = $this->selectedSlotId;
+            $validationData['selectedDeliveryDate'] = $this->selectedDeliveryDate;
+            $rules['selectedSlotId'] = 'required|exists:market_shipping_slots,id';
+            $rules['selectedDeliveryDate'] = 'required|date';
+        }
+
+        $validator = Validator::make(
+            $validationData,
+            $rules,
+            [
+                'required' => 'فیلد «:attribute» الزامی است.',
+                'in' => 'مقدار انتخاب شده برای «:attribute» نامعتبر است.',
+                'selectedShippingMethodId.required' => 'انتخاب روش ارسال الزامی است.',
+                'selectedSlotId.required' => 'انتخاب بازه زمانی تحویل الزامی است.',
+                'selectedDeliveryDate.required' => 'انتخاب تاریخ تحویل الزامی است.',
+            ],
+            array_merge(
+                $this->getDynamicValidationAttributes(),
+                [
+                    'selectedShippingMethodId' => 'روش ارسال',
+                    'selectedSlotId' => 'بازه زمانی تحویل',
+                    'selectedDeliveryDate' => 'تاریخ تحویل',
+                ]
+            )
+        );
+
+        if ($validator->fails()) {
+            foreach ($validator->errors()->all() as $error) {
+                $this->dispatch('notify', type: 'error', text: $error);
+            }
+            $validator->validate();
+        }
 
         $client = Auth::guard('client')->user();
         if (!$client) {
@@ -328,15 +407,27 @@ class CheckoutPage extends Component
                 $city = $this->formData['city'] ?? null;
             }
 
+            $method = $this->payment_method;
+            $isOffline = in_array($method, ['pos', 'transfer', 'cod']);
+            $initialPaymentStatus = $isOffline 
+                ? MarketSetting::getValue("orders.status_{$method}_payment", 'unpaid')
+                : 'unpaid';
+            $initialDeliveryStatus = MarketSetting::getValue("orders.status_{$method}_delivery", 'processing');
+
+            $selectedMethod = $this->selectedShippingMethodId ? \Modules\Market\Entities\ShippingMethod::find($this->selectedShippingMethodId) : null;
+            $selectedSlot = $this->selectedSlotId ? \Modules\Market\Entities\ShippingSlot::find($this->selectedSlotId) : null;
+
             $orderData = [
                 'client_id' => $client->id,
                 'checkout_form_id' => $this->form->id,
-                'grand_total' => $this->totals['grand_total'],
+                'grand_total' => $this->totals['grand_total'] + $this->shippingCost,
                 'total_items_price' => $this->totals['subtotal'],
                 'total_discount' => $this->totals['discount'],
-                'payment_status' => 'unpaid',
-                'delivery_status' => 'processing',
-                'payment_method' => $this->payment_method,
+                'total_shipping_cost' => $this->shippingCost,
+                'shipping_method' => $selectedMethod ? $selectedMethod->name : null,
+                'payment_status' => $initialPaymentStatus,
+                'delivery_status' => $initialDeliveryStatus,
+                'payment_method' => $method,
             ];
 
             $orderData['shipping_address_json'] = [
@@ -345,9 +436,22 @@ class CheckoutPage extends Component
                 'recipient_name' => $this->formData['recipient_name'] ?? null,
                 'recipient_mobile' => $this->formData['recipient_mobile'] ?? null,
                 'recipient_national_code' => $this->formData['recipient_national_code'] ?? null,
+                'delivery_date' => $this->selectedDeliveryDate,
+                'delivery_slot' => $selectedSlot ? [
+                    'start_time' => date('H:i', strtotime($selectedSlot->start_time)),
+                    'end_time' => date('H:i', strtotime($selectedSlot->end_time)),
+                ] : null,
             ];
 
             $order = Order::create($orderData);
+
+            if ($this->selectedSlotId && $this->selectedDeliveryDate) {
+                $booking = \Modules\Market\Entities\ShippingSlotBooking::firstOrCreate([
+                    'shipping_slot_id' => $this->selectedSlotId,
+                    'booking_date' => $this->selectedDeliveryDate,
+                ]);
+                $booking->increment('orders_count');
+            }
 
             foreach ($freshCart as $itemArray) {
                 if (empty($itemArray['vendor_id']) || empty($itemArray['vendor_product_id'])) {
@@ -366,7 +470,7 @@ class CheckoutPage extends Component
                     'vendor_commission_rate' => 0,
                 ]);
 
-                $stockService->deduct($itemArray['variant_id'], $itemArray['quantity'], $itemArray['vendor_product_id']);
+                $stockService->deduct($itemArray['variant_id'], $itemArray['quantity'], $itemArray['vendor_product_id'], (float) $itemArray['price']);
             }
 
             foreach ($this->formData as $key => $value) {
@@ -397,7 +501,16 @@ class CheckoutPage extends Component
         foreach ($this->schema['fields'] ?? [] as $field) {
             $fieldRules = [];
             if (!empty($field['required'])) {
-                $fieldRules[] = 'required';
+                $isRequired = false;
+                if (empty($field['required_payment_methods'])) {
+                    $isRequired = true;
+                } elseif (in_array($this->payment_method, $field['required_payment_methods'])) {
+                    $isRequired = true;
+                }
+
+                if ($isRequired) {
+                    $fieldRules[] = 'required';
+                }
             }
 
             if (!empty($field['validation'])) {
@@ -413,6 +526,16 @@ class CheckoutPage extends Component
         }
         $rules['payment_method'] = 'required|in:' . implode(',', array_keys($this->paymentMethods));
         return $rules;
+    }
+
+    protected function getDynamicValidationAttributes(): array
+    {
+        $attributes = [];
+        foreach ($this->schema['fields'] ?? [] as $field) {
+            $attributes['formData.' . $field['id']] = $field['label'] ?? $field['id'];
+        }
+        $attributes['payment_method'] = 'روش پرداخت';
+        return $attributes;
     }
 
     public function getGroupedSchema(): array
@@ -470,6 +593,9 @@ class CheckoutPage extends Component
         if (in_array('transfer', $activeSystemMethods) && ($settings['bank_transfer_status'] ?? 'inactive') === 'active') {
             $methods['transfer'] = ['type' => 'offline', 'title' => 'کارت به کارت / واریز به حساب', 'description' => $settings['bank_transfer_guidance'] ?? ''];
         }
+        if (in_array('cod', $activeSystemMethods) && ($settings['cod_status'] ?? 'inactive') === 'active') {
+            $methods['cod'] = ['type' => 'offline', 'title' => 'پرداخت در محل (نقدی)', 'description' => $settings['cod_guidance'] ?? ''];
+        }
         return $methods;
     }
 
@@ -504,6 +630,7 @@ class CheckoutPage extends Component
                 $this->formData[$fieldId] = $address->postal_code;
             }
         }
+        $this->loadShippingMethods();
     }
 
     public function openNewAddressModal()
@@ -704,6 +831,181 @@ class CheckoutPage extends Component
 
         $this->dispatch('notify', type: 'success', text: 'آدرس جدید با موفقیت اضافه و انتخاب شد.');
         $this->closeNewAddressModal();
+    }
+
+    public function updatedFormData($value, $key)
+    {
+        $provinceCityFieldId = $this->findFieldIdByType('select-province-city');
+        if ($key === $provinceCityFieldId || $key === 'city' || $key === 'province') {
+            $this->loadShippingMethods();
+        }
+    }
+
+    public function loadShippingMethods()
+    {
+        $this->shippingMethods = [];
+        $this->selectedShippingMethodId = null;
+        $this->shippingCost = 0;
+        $this->availableSlots = [];
+        $this->selectedSlotId = null;
+        $this->selectedDeliveryDate = null;
+
+        // Extract province and city
+        $provinceCityFieldId = $this->findFieldIdByType('select-province-city');
+        $province = null;
+        $city = null;
+
+        if ($provinceCityFieldId && isset($this->formData[$provinceCityFieldId])) {
+            $val = $this->formData[$provinceCityFieldId];
+            $decoded = is_string($val) ? json_decode($val, true) : $val;
+            if (is_array($decoded)) {
+                $province = $decoded['province'] ?? null;
+                $city = $decoded['city'] ?? null;
+            }
+        } else {
+            $province = $this->selectedProvince;
+            $city = $this->formData['city'] ?? null;
+        }
+
+        if (!$province) {
+            return;
+        }
+
+        $freshCart = $this->getFreshCartItems();
+
+        // Find available methods
+        $shippingService = app(\Modules\Market\App\Services\ShippingService::class);
+        $allMethods = \Modules\Market\Entities\ShippingMethod::where('is_active', true)->orderBy('sort_order', 'asc')->get();
+
+        foreach ($allMethods as $method) {
+            $cost = $shippingService->calculateShippingCost($method->id, $province, $city, $freshCart, $this->totals['grand_total']);
+            
+            if ($cost === null) {
+                continue;
+            }
+
+            $hasSlots = $method->slots()->exists();
+
+            $this->shippingMethods[] = [
+                'id' => $method->id,
+                'name' => $method->name,
+                'driver' => $method->driver,
+                'cost' => $cost,
+                'has_slots' => $hasSlots,
+            ];
+        }
+    }
+
+    public function updatedSelectedShippingMethodId($value)
+    {
+        $this->selectedSlotId = null;
+        $this->selectedDeliveryDate = null;
+        $this->availableSlots = [];
+
+        if (!$value) {
+            $this->shippingCost = 0;
+            return;
+        }
+
+        $method = collect($this->shippingMethods)->firstWhere('id', $value);
+        $this->shippingCost = $method ? $method['cost'] : 0;
+
+        $this->loadAvailableSlots($value);
+    }
+
+    public function loadAvailableSlots($methodId)
+    {
+        $method = \Modules\Market\Entities\ShippingMethod::find($methodId);
+        if (!$method) return;
+
+        // Extract province and city
+        $provinceCityFieldId = $this->findFieldIdByType('select-province-city');
+        $province = null;
+        $city = null;
+
+        if ($provinceCityFieldId && isset($this->formData[$provinceCityFieldId])) {
+            $val = $this->formData[$provinceCityFieldId];
+            $decoded = is_string($val) ? json_decode($val, true) : $val;
+            if (is_array($decoded)) {
+                $province = $decoded['province'] ?? null;
+                $city = $decoded['city'] ?? null;
+            }
+        } else {
+            $province = $this->selectedProvince;
+            $city = $this->formData['city'] ?? null;
+        }
+
+        $slots = $method->slots()
+            ->where(function($q) use ($province, $city) {
+                $q->whereNull('states')
+                  ->orWhere(function($sub) use ($province, $city) {
+                      $sub->whereJsonContains('states', $province)
+                          ->where(function($sub2) use ($city) {
+                              $sub2->whereNull('cities')
+                                   ->orWhereJsonContains('cities', $city);
+                          });
+                  });
+            })
+            ->get();
+
+        if ($slots->isEmpty()) {
+            return;
+        }
+
+        // Generate dates for the next 7 days
+        $this->availableSlots = [];
+        for ($i = 1; $i <= 7; $i++) {
+            $date = now()->addDays($i);
+            $dayOfWeek = $date->dayOfWeek; // 0 (Sunday) to 6 (Saturday) in Carbon
+            
+            $daySlots = $slots->filter(function ($slot) use ($dayOfWeek) {
+                return is_array($slot->days) && in_array($dayOfWeek, $slot->days);
+            });
+            
+            foreach ($daySlots as $slot) {
+                // Check capacity
+                $booking = \Modules\Market\Entities\ShippingSlotBooking::where('shipping_slot_id', $slot->id)
+                    ->where('booking_date', $date->format('Y-m-d'))
+                    ->first();
+                
+                $bookedCount = $booking ? $booking->orders_count : 0;
+                if ($bookedCount < $slot->capacity) {
+                    $jalaliDate = \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d');
+                    $daysOfWeekNames = [
+                        0 => 'یکشنبه',
+                        1 => 'دوشنبه',
+                        2 => 'سه‌شنبه',
+                        3 => 'چهارشنبه',
+                        4 => 'پنجشنبه',
+                        5 => 'جمعه',
+                        6 => 'شنبه'
+                    ];
+                    $dayName = $daysOfWeekNames[$dayOfWeek] ?? '';
+
+                    $this->availableSlots[] = [
+                        'slot_id' => $slot->id,
+                        'date' => $date->format('Y-m-d'),
+                        'jalali_date' => $jalaliDate,
+                        'day_name' => $dayName,
+                        'start_time' => date('H:i', strtotime($slot->start_time)),
+                        'end_time' => date('H:i', strtotime($slot->end_time)),
+                        'remaining' => $slot->capacity - $bookedCount,
+                    ];
+                }
+            }
+        }
+    }
+
+    public function selectSlot($slotId, $date)
+    {
+        $this->selectedSlotId = $slotId;
+        $this->selectedDeliveryDate = $date;
+    }
+
+    public function getCurrencyLabel(): string
+    {
+        $currency = \Modules\Market\Entities\MarketSetting::getValue('general.currency', 'toman');
+        return $currency === 'rial' ? 'ریال' : 'تومان';
     }
 }
 

@@ -66,8 +66,25 @@
             </div>
         </div>
         <label class="flex items-center gap-3 pt-2">
-            <input type="checkbox" wire:model.defer="schema.fields.{{ $index }}.required" class="{{ $checkboxClass }}">
+            <input type="checkbox" wire:model="schema.fields.{{ $index }}.required" class="{{ $checkboxClass }}">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">این فیلد الزامی است</span>
         </label>
+
+        @if($field['required'] ?? false)
+            <div class="p-3 bg-gray-50 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700 rounded-xl space-y-2 mt-2">
+                <span class="block text-xs font-bold text-gray-600 dark:text-gray-400">الزامی برای روش‌های پرداخت خاص (در صورت عدم انتخاب، برای همه روش‌ها الزامی است):</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    @foreach($activePaymentMethods as $methodKey => $methodTitle)
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" 
+                                   value="{{ $methodKey }}" 
+                                   wire:model.defer="schema.fields.{{ $index }}.required_payment_methods" 
+                                   class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 cursor-pointer">
+                            <span class="text-xs text-gray-700 dark:text-gray-300">{{ $methodTitle }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     </div>
 </div>

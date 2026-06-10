@@ -35,6 +35,8 @@ class MarketSettings extends Component
     public string $business_days = '';
     public string $variant_display_mode = 'grouped';
     public bool $ui_show_category_on_card = true;
+    public bool $ui_show_brand_on_card = true;
+    public bool $ui_show_brand_on_product_page = true;
     public bool $ui_show_vendor_on_product_page = true;
     public bool $ui_show_stock_warning = true;
     public string $ui_product_card_style = 'modern';
@@ -68,6 +70,10 @@ class MarketSettings extends Component
     public bool $checkout_allow_product_override = true;
     public bool $checkout_allow_category_override = true;
 
+    // Payment method status settings
+    public array $activePaymentMethods = [];
+    public array $payment_method_statuses = [];
+
 
     public function mount()
     {
@@ -91,6 +97,8 @@ class MarketSettings extends Component
         $this->business_days = MarketSetting::getValue('general.business_days');
         $this->variant_display_mode = MarketSetting::getValue('general.variant_display_mode');
         $this->ui_show_category_on_card = (bool) MarketSetting::getValue('ui.show_category_on_card');
+        $this->ui_show_brand_on_card = (bool) MarketSetting::getValue('ui.show_brand_on_card', true);
+        $this->ui_show_brand_on_product_page = (bool) MarketSetting::getValue('ui.show_brand_on_product_page', true);
         $this->ui_show_vendor_on_product_page = (bool) MarketSetting::getValue('ui.show_vendor_on_product_page');
         $this->ui_show_stock_warning = (bool) MarketSetting::getValue('ui.show_stock_warning');
         $this->ui_product_card_style = MarketSetting::getValue('ui.product_card_style');
@@ -124,6 +132,46 @@ class MarketSettings extends Component
         // Map settings
         $this->map_provider = MarketSetting::getValue('map.provider', 'neshan');
         $this->map_api_key = MarketSetting::getValue('map.api_key', '');
+
+        // Load active payment methods from general system settings dynamically
+        $genSettings = \Modules\Settings\Entities\Setting::all()->pluck('value', 'key')->toArray();
+        $activeSystemMethods = json_decode($genSettings['active_payment_methods'] ?? '[]', true);
+        if (!is_array($activeSystemMethods)) $activeSystemMethods = [];
+
+        $this->activePaymentMethods = [];
+        if (in_array('online', $activeSystemMethods)) {
+            if (($genSettings['zarinpal_status'] ?? 'inactive') === 'active') {
+                $this->activePaymentMethods['zarinpal'] = 'زرین‌پال';
+            }
+            if (($genSettings['zibal_status'] ?? 'inactive') === 'active') {
+                $this->activePaymentMethods['zibal'] = 'زیبال';
+            }
+            if (($genSettings['behpardakht_status'] ?? 'inactive') === 'active') {
+                $this->activePaymentMethods['behpardakht'] = 'به پرداخت ملت';
+            }
+        }
+        if (in_array('pos', $activeSystemMethods) && ($genSettings['pos_status'] ?? 'inactive') === 'active') {
+            $this->activePaymentMethods['pos'] = 'پرداخت در محل (کارتخوان)';
+        }
+        if (in_array('transfer', $activeSystemMethods) && ($genSettings['bank_transfer_status'] ?? 'inactive') === 'active') {
+            $this->activePaymentMethods['transfer'] = 'کارت به کارت / فیش بانکی';
+        }
+        if (in_array('cod', $activeSystemMethods) && ($genSettings['cod_status'] ?? 'inactive') === 'active') {
+            $this->activePaymentMethods['cod'] = 'پرداخت در محل (نقدی)';
+        }
+
+        $this->payment_method_statuses = [];
+        foreach ($this->activePaymentMethods as $method => $name) {
+            $isOnline = in_array($method, ['zarinpal', 'zibal', 'behpardakht']);
+            $defaultPaymentStatus = $isOnline ? 'paid' : 'unpaid';
+            $this->payment_method_statuses[$method] = [
+                'payment_status' => MarketSetting::getValue("orders.status_{$method}_payment", $defaultPaymentStatus),
+                'delivery_status' => MarketSetting::getValue("orders.status_{$method}_delivery", 'processing'),
+            ];
+            if ($isOnline) {
+                $this->payment_method_statuses[$method]['payment_status'] = 'paid';
+            }
+        }
     }
 
     public function save()
@@ -143,6 +191,8 @@ class MarketSettings extends Component
             'ui_product_card_style' => 'required|in:modern,classic,minimal',
             'map_provider' => 'required|in:neshan,map_ir',
             'map_api_key' => 'nullable|string',
+            'payment_method_statuses.*.payment_status' => 'required|in:unpaid,paid,failed',
+            'payment_method_statuses.*.delivery_status' => 'required|in:pending,processing,shipped,delivered,canceled',
         ]);
 
         $wasWmsDisabled = !MarketSetting::getValue('wms.enabled');
@@ -170,6 +220,8 @@ class MarketSettings extends Component
         MarketSetting::setValue('general.business_days', $this->business_days);
         MarketSetting::setValue('general.variant_display_mode', $this->variant_display_mode);
         MarketSetting::setValue('ui.show_category_on_card', $this->ui_show_category_on_card);
+        MarketSetting::setValue('ui.show_brand_on_card', $this->ui_show_brand_on_card);
+        MarketSetting::setValue('ui.show_brand_on_product_page', $this->ui_show_brand_on_product_page);
         MarketSetting::setValue('ui.show_vendor_on_product_page', $this->ui_show_vendor_on_product_page);
         MarketSetting::setValue('ui.show_stock_warning', $this->ui_show_stock_warning);
         MarketSetting::setValue('ui.product_card_style', $this->ui_product_card_style);
@@ -203,6 +255,14 @@ class MarketSettings extends Component
         // Map settings
         MarketSetting::setValue('map.provider', $this->map_provider);
         MarketSetting::setValue('map.api_key', $this->map_api_key);
+
+        // Save order statuses for each payment method
+        foreach ($this->payment_method_statuses as $method => $statuses) {
+            $isOnline = in_array($method, ['zarinpal', 'zibal', 'behpardakht']);
+            $payStatus = $isOnline ? 'paid' : $statuses['payment_status'];
+            MarketSetting::setValue("orders.status_{$method}_payment", $payStatus);
+            MarketSetting::setValue("orders.status_{$method}_delivery", $statuses['delivery_status']);
+        }
 
         if ($wasWmsDisabled && $this->wms_enabled) {
             $this->onWmsEnabled();

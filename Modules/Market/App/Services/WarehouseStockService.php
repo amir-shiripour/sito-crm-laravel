@@ -248,4 +248,94 @@ class WarehouseStockService
             return $stock;
         });
     }
+
+    /**
+     * Transfer stock between warehouses (transactional and audited).
+     *
+     * @param \Modules\Market\Entities\WarehouseTransfer $transfer
+     * @param int $userId
+     * @return void
+     */
+    public function transferStock(\Modules\Market\Entities\WarehouseTransfer $transfer, int $userId): void
+    {
+        DB::transaction(function () use ($transfer, $userId) {
+            // 1. Fetch source stock
+            $sourceStock = WarehouseStock::where('warehouse_id', $transfer->source_warehouse_id)
+                ->where('product_variant_id', $transfer->product_variant_id)
+                ->first();
+
+            if (!$sourceStock) {
+                throw new \Exception('موجودی کالا در انبار مبدا یافت نشد.');
+            }
+
+            $qty = $transfer->quantity;
+            if ($sourceStock->physical_stock < $qty) {
+                throw new \Exception('موجودی فیزیکی کافی در انبار مبدا وجود ندارد.');
+            }
+            if ($sourceStock->online_stock < $qty) {
+                throw new \Exception('موجودی آنلاین کافی در انبار مبدا وجود ندارد.');
+            }
+
+            // 2. Deduct from source warehouse
+            $sourceStock->decrement('physical_stock', $qty);
+            $sourceStock->decrement('online_stock', $qty);
+
+            // 3. Find or create destination vendor product & stock
+            $destVendorId = $transfer->destinationWarehouse->vendor_id;
+            $destVendorIdForProduct = $destVendorId ?? (Vendor::first()?->id);
+            
+            $destVendorProduct = VendorProduct::firstOrCreate(
+                ['vendor_id' => $destVendorIdForProduct, 'product_variant_id' => $transfer->product_variant_id],
+                ['status' => 'draft', 'price' => 0]
+            );
+
+            $destStock = WarehouseStock::firstOrCreate(
+                [
+                    'warehouse_id' => $transfer->destination_warehouse_id,
+                    'product_variant_id' => $transfer->product_variant_id,
+                    'vendor_product_id' => $destVendorProduct->id,
+                ],
+                ['physical_stock' => 0, 'online_stock' => 0, 'reserved_stock' => 0]
+            );
+
+            // 4. Increment at destination warehouse
+            $destStock->increment('physical_stock', $qty);
+            $destStock->increment('online_stock', $qty);
+
+            // 5. Log WarehouseTransactions for source (out)
+            WarehouseTransaction::create([
+                'warehouse_id' => $transfer->source_warehouse_id,
+                'product_variant_id' => $transfer->product_variant_id,
+                'vendor_product_id' => $transfer->vendor_product_id,
+                'type' => 'out',
+                'quantity' => -$qty,
+                'description' => "انتقال کالا به انبار [{$transfer->destinationWarehouse->name}] (درخواست شماره #{$transfer->id})",
+                'user_id' => $userId,
+            ]);
+
+            // 6. Log WarehouseTransactions for destination (in)
+            $sourceVendorName = $transfer->sourceWarehouse->vendor->store_name ?? 'سیستم مرکزی';
+            WarehouseTransaction::create([
+                'warehouse_id' => $transfer->destination_warehouse_id,
+                'product_variant_id' => $transfer->product_variant_id,
+                'vendor_product_id' => $destVendorProduct->id,
+                'type' => 'in',
+                'quantity' => $qty,
+                'description' => "انتقال کالا از انبار [{$transfer->sourceWarehouse->name}] - فروشنده [{$sourceVendorName}] (درخواست شماره #{$transfer->id})",
+                'user_id' => $userId,
+            ]);
+
+            // 7. Sync legacy stocks
+            $sourceVendorId = $transfer->sourceWarehouse->vendor_id;
+            if ($sourceVendorId) {
+                $sourceStockNew = $this->getAvailableStock($transfer->product_variant_id, $sourceVendorId);
+                if ($transfer->vendorProduct) {
+                    $transfer->vendorProduct->update(['stock' => $sourceStockNew]);
+                }
+            }
+            $destStockNew = $this->getAvailableStock($transfer->product_variant_id, $destVendorId);
+            $destVendorProduct->update(['stock' => $destStockNew]);
+        });
+    }
 }
+

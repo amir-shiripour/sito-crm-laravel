@@ -112,9 +112,13 @@ class PaymentService
             $result = $globalPaymentService->verifyPayment($verifyData);
 
             if ($result['success']) {
-                // Payment is successful, update order status
-                $order->payment_status = 'paid';
-                $order->delivery_status = 'processing';
+                $method = $order->payment_method;
+                $paymentStatus = \Modules\Market\Entities\MarketSetting::getValue("orders.status_{$method}_payment", 'paid');
+                $deliveryStatus = \Modules\Market\Entities\MarketSetting::getValue("orders.status_{$method}_delivery", 'processing');
+
+                // Payment is successful, update order status dynamically
+                $order->payment_status = $paymentStatus;
+                $order->delivery_status = $deliveryStatus;
                 $order->payment_ref_id = $result['ref_id'] ?? null;
                 $order->paid_at = now();
                 $order->save();
@@ -131,6 +135,7 @@ class PaymentService
             // Mark order as failed and release stock
             if (isset($order)) {
                 $order->payment_status = 'failed';
+                $order->delivery_status = 'canceled';
                 $order->save();
                 
                 // Release the stock reservation

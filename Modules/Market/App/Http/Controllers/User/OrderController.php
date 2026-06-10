@@ -41,8 +41,8 @@ class OrderController extends Controller
             $query->where('payment_status', $request->input('payment_status'));
         }
 
-        if ($request->filled('delivery_status')) {
-            $query->where('delivery_status', $request->input('delivery_status'));
+        if ($request->filled('market_order_status_id')) {
+            $query->where('market_order_status_id', $request->input('market_order_status_id'));
         }
 
         // Compute total stats

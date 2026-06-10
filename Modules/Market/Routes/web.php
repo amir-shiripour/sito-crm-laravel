@@ -65,6 +65,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
             ->group(function () {
                 Route::resource('products', VendorProductController::class);
                 Route::view('warehouses', 'market::user.warehouses.index')->name('warehouses.index');
+                Route::view('warehouse-stock', 'market::admin.warehouse.stock')->name('warehouse-stock.index');
             });
 
         // Admin Section
@@ -88,6 +89,18 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
         Route::view('warehouse-stock', 'market::admin.warehouse.stock')
             ->name('warehouse-stock.index')
             ->middleware('permission:market.warehouses.manage');
+
+        Route::view('shipping', 'market::admin.shipping.index')
+            ->name('shipping.index')
+            ->middleware('permission:market.manage');
+
+        Route::get('order-statuses', \Modules\Market\App\Livewire\Admin\OrderStatusManager::class)
+            ->name('order-statuses.index')
+            ->middleware('permission:market.manage');
+
+        Route::get('reviews', \Modules\Market\App\Livewire\Admin\ReviewManager::class)
+            ->name('reviews.index')
+            ->middleware('permission:market.manage');
 
         // Orders Section
         Route::resource('orders', \Modules\Market\App\Http\Controllers\User\OrderController::class);

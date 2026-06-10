@@ -31,6 +31,27 @@ class MasterProduct extends Model {
 
     public function variants() { return $this->hasMany(ProductVariant::class, 'master_product_id'); }
 
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class, 'master_product_id');
+    }
+
+    public function approvedReviews()
+    {
+        return $this->reviews()->where('status', 'approved');
+    }
+
+    public function getAverageRatingAttribute()
+    {
+        $avg = $this->approvedReviews()->avg('rating');
+        return $avg ? round($avg, 1) : 0;
+    }
+
+    public function getApprovedReviewsCountAttribute()
+    {
+        return $this->approvedReviews()->count();
+    }
+
     /**
      * 💡 FINAL: Accessor for the main image URL.
      */

@@ -40,6 +40,7 @@ class Order extends Model
         'shipping_method',
         'tracking_code',
         'payment_status',
+        'market_order_status_id',
         'delivery_status',
         'customer_notes',
     ];
@@ -75,6 +76,43 @@ class Order extends Model
     public function checkoutForm()
     {
         return $this->belongsTo(CheckoutForm::class);
+    }
+
+    public function status()
+    {
+        return $this->belongsTo(MarketOrderStatus::class, 'market_order_status_id');
+    }
+
+    public function getClientStatusAttribute()
+    {
+        if (!$this->status) {
+            return null;
+        }
+        if ($this->status->show_to_client) {
+            return $this->status;
+        }
+        return MarketOrderStatus::where('is_active', true)
+            ->where('show_to_client', true)
+            ->where('sort_order', '<=', $this->status->sort_order)
+            ->orderBy('sort_order', 'desc')
+            ->first() ?? $this->status;
+    }
+
+    public function getDeliveryStatusAttribute()
+    {
+        return $this->status ? $this->status->system_type : null;
+    }
+
+    public function setDeliveryStatusAttribute($value)
+    {
+        $status = MarketOrderStatus::where('system_type', $value)
+            ->where('is_active', true)
+            ->orderBy('sort_order', 'asc')
+            ->first();
+            
+        if ($status) {
+            $this->attributes['market_order_status_id'] = $status->id;
+        }
     }
 
     protected static function newFactory()

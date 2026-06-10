@@ -24,6 +24,7 @@ class Installer extends BaseModuleInstaller
         'market_vendor_documents',
         'market_vendor_products',
         'market_orders',
+        'market_order_statuses',
         'market_order_items',
         'market_warehouses',
         'market_warehouse_stocks',
@@ -138,7 +139,113 @@ class Installer extends BaseModuleInstaller
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        // Seed default order statuses
+        $this->seedDefaultStatuses();
+
         Log::info("Market Installer: permissions created / roles updated.");
+    }
+
+    protected function seedDefaultStatuses(): void
+    {
+        $statuses = [
+            [
+                'admin_label' => 'در انتظار پرداخت مشتری',
+                'client_label' => 'ثبت اولیه سفارش',
+                'color_class' => 'bg-amber-50 text-amber-700 border-amber-200',
+                'system_type' => 'pending',
+                'show_to_client' => true,
+                'show_in_client_stepper' => true,
+                'show_in_admin_stepper' => true,
+                'sort_order' => 10,
+            ],
+            [
+                'admin_label' => 'پرداخت تایید شده / در انتظار بررسی مدیریت',
+                'client_label' => 'تایید پرداخت و ثبت نهایی',
+                'color_class' => 'bg-blue-50 text-blue-700 border-blue-200',
+                'system_type' => 'processing',
+                'show_to_client' => true,
+                'show_in_client_stepper' => true,
+                'show_in_admin_stepper' => true,
+                'sort_order' => 20,
+            ],
+            [
+                'admin_label' => 'ارجاع به انبار فروشنده / تامین‌کننده',
+                'client_label' => 'در حال آماده‌سازی در انبار',
+                'color_class' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                'system_type' => 'processing',
+                'show_to_client' => true,
+                'show_in_client_stepper' => false,
+                'show_in_admin_stepper' => true,
+                'sort_order' => 30,
+            ],
+            [
+                'admin_label' => 'تایید موجودی و بسته‌بندی شده',
+                'client_label' => 'بسته‌بندی شده و آماده ارسال',
+                'color_class' => 'bg-violet-50 text-violet-700 border-violet-200',
+                'system_type' => 'processing',
+                'show_to_client' => true,
+                'show_in_client_stepper' => true,
+                'show_in_admin_stepper' => true,
+                'sort_order' => 40,
+            ],
+            [
+                'admin_label' => 'تحویل به شرکت توزیع/پیک',
+                'client_label' => 'تحویل به مامور ارسال',
+                'color_class' => 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                'system_type' => 'shipped',
+                'show_to_client' => true,
+                'show_in_client_stepper' => false,
+                'show_in_admin_stepper' => true,
+                'sort_order' => 50,
+            ],
+            [
+                'admin_label' => 'مرسوله در حال حمل',
+                'client_label' => 'مرسوله در حال حمل',
+                'color_class' => 'bg-sky-50 text-sky-700 border-sky-200',
+                'system_type' => 'shipped',
+                'show_to_client' => true,
+                'show_in_client_stepper' => true,
+                'show_in_admin_stepper' => true,
+                'sort_order' => 60,
+            ],
+            [
+                'admin_label' => 'تحویل نهایی به مشتری',
+                'client_label' => 'تحویل نهایی شده',
+                'color_class' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                'system_type' => 'delivered',
+                'show_to_client' => true,
+                'show_in_client_stepper' => true,
+                'show_in_admin_stepper' => true,
+                'sort_order' => 70,
+            ],
+            [
+                'admin_label' => 'سفارش لغو شده',
+                'client_label' => 'لغو شده',
+                'color_class' => 'bg-rose-50 text-rose-700 border-rose-200',
+                'system_type' => 'canceled',
+                'show_to_client' => true,
+                'show_in_client_stepper' => false,
+                'show_in_admin_stepper' => true,
+                'sort_order' => 80,
+            ],
+            [
+                'admin_label' => 'مرجوع شده به انبار',
+                'client_label' => 'مرجوع شده',
+                'color_class' => 'bg-purple-50 text-purple-700 border-purple-200',
+                'system_type' => 'returned',
+                'show_to_client' => true,
+                'show_in_client_stepper' => false,
+                'show_in_admin_stepper' => true,
+                'sort_order' => 90,
+            ],
+        ];
+
+        foreach ($statuses as $status) {
+            \Modules\Market\App\Models\MarketOrderStatus::updateOrCreate(
+                ['admin_label' => $status['admin_label']],
+                $status
+            );
+        }
     }
 
     public function uninstall(): void

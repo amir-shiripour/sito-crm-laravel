@@ -24,6 +24,7 @@ class ProductVariant extends Model {
 
         $attributes = [];
         foreach ($this->variant_attributes as $key => $value) {
+            if ($key === 'name' && $value === 'استاندارد') continue;
             $attributes[] = "{$key}: {$value}";
         }
 

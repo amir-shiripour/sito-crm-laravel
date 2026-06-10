@@ -5,6 +5,7 @@
 
     $statusMap = [
         'pending' => 'PENDING',
+        'unpaid' => 'PENDING',
         'paid' => 'PAID',
         'failed' => 'FAILED',
         'refunded' => 'REFUNDED',
@@ -48,6 +49,9 @@
         'wallet' => 'کیف پول',
         'cash' => 'پرداخت نقدی / حضوری',
         'online' => 'پرداخت آنلاین',
+        'pos' => 'کارتخوان در محل',
+        'transfer' => 'کارت به کارت / واریز فیش',
+        'cod' => 'پرداخت در محل (نقدی)',
         '' => null,
         default => ucfirst($order->payment_method)
     };
