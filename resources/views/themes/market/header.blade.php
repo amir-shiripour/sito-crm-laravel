@@ -31,7 +31,7 @@
 
         {{-- اکشن‌ها --}}
         <div class="flex items-center gap-1 sm:gap-4 flex-shrink-0">
-            @if(class_exists(\Modules\Market\Entities\MarketSetting::class) && \Modules\Market\Entities\MarketSetting::getValue('orders.enable_geolocation_ordering', false))
+            @if(isset($isMarketActive) && $isMarketActive && class_exists(\Modules\Market\Entities\MarketSetting::class) && \Modules\Market\Entities\MarketSetting::getValue('orders.enable_geolocation_ordering', false))
                 @php
                     $currentLoc = \Modules\Market\App\Helpers\GeolocationHelper::getClientLocation();
                     $locText = ($currentLoc && !empty($currentLoc['city'])) ? $currentLoc['city'] : 'انتخاب موقعیت';
@@ -48,7 +48,9 @@
                 <svg class="w-5 h-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
             </button>
 
-            @livewire('market::web.cart-counter')
+            @if(isset($isMarketActive) && $isMarketActive)
+                @livewire('market::web.cart-counter')
+            @endif
 
             <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block"></div>
 
@@ -98,7 +100,7 @@
             </button>
         </div>
 
-        @if(class_exists(\Modules\Market\Entities\MarketSetting::class) && \Modules\Market\Entities\MarketSetting::getValue('orders.enable_geolocation_ordering', false))
+        @if(isset($isMarketActive) && $isMarketActive && class_exists(\Modules\Market\Entities\MarketSetting::class) && \Modules\Market\Entities\MarketSetting::getValue('orders.enable_geolocation_ordering', false))
             @php
                 $currentLoc = \Modules\Market\App\Helpers\GeolocationHelper::getClientLocation();
                 $locText = ($currentLoc && !empty($currentLoc['city'])) ? $currentLoc['city'] : 'انتخاب موقعیت';
@@ -124,7 +126,7 @@
             {{-- لینک‌های دسته‌بندی --}}
             <nav class="space-y-2">
                 <p class="text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 px-2">دسته‌بندی‌ها و لینک‌ها</p>
-                <a href="{{ route('market.public.category') ?? '#' }}" class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl">
+                <a href="{{ Route::has('market.public.category') ? route('market.public.category') : '#' }}" class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl">
                     <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     دسته‌بندی کالاها
                 </a>
@@ -173,7 +175,7 @@
 
             {{-- دکمه دسته‌بندی --}}
             @php $isActive = request()->routeIs('market.public.category*'); @endphp
-            <a href="{{ route('market.public.category') ?? '#' }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
+            <a href="{{ Route::has('market.public.category') ? route('market.public.category') : '#' }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
                 @if($isActive)
                     <div class="absolute top-3 w-10 h-10 {{ $t['bg'] ?? 'bg-orange-600' }} opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
                     <span class="absolute top-0 w-8 h-1 {{ $t['bg'] ?? 'bg-orange-600' }} rounded-b-full"></span>
@@ -189,7 +191,9 @@
             {{-- دکمه سبد خرید --}}
             @php $isActive = request()->routeIs('market.public.cart*') || request()->routeIs('checkout*'); @endphp
             <div class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
-                 @livewire('market::web.cart-counter', ['isBottomNav' => true])
+                 @if(isset($isMarketActive) && $isMarketActive)
+                     @livewire('market::web.cart-counter', ['isBottomNav' => true])
+                 @endif
             </div>
 
             {{-- دکمه پروفایل / ورود --}}

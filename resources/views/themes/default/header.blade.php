@@ -28,7 +28,9 @@
             {{-- اکشن‌های دسکتاپ --}}
             <div class="hidden md:flex items-center gap-4">
 
-                @livewire('market::web.cart-counter')
+                @if(isset($isMarketActive) && $isMarketActive)
+                    @livewire('market::web.cart-counter')
+                @endif
 
                 {{-- Dark/Light Mode Switcher Component --}}
                 <div class="flex items-center p-1 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/50">
@@ -60,7 +62,9 @@
 
             {{-- دکمه منوی همبرگری (موبایل) --}}
             <div class="md:hidden flex items-center gap-2">
-                @livewire('market::web.cart-counter')
+                @if(isset($isMarketActive) && $isMarketActive)
+                    @livewire('market::web.cart-counter')
+                @endif
                 <button onclick="toggleMobileMenu()" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors focus:outline-none">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>

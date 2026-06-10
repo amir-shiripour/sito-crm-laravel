@@ -13,6 +13,16 @@
         $footerText = $globalSettings['footer_text'] ?? 'تمام حقوق محفوظ است.';
         $appTheme = $globalSettings['app_theme'] ?? 'default';
 
+        $isMarketActive = false;
+        try {
+            if (class_exists(\App\Models\Module::class)) {
+                $isMarketActive = \App\Models\Module::where('slug', 'market')
+                    ->where('installed', true)
+                    ->where('active', true)
+                    ->exists();
+            }
+        } catch (\Throwable $e) {}
+
         $themeStyles = [
             'default' => [
                 'glow' => 'bg-indigo-500/20 dark:bg-indigo-500/10',
@@ -97,9 +107,11 @@
 @includeFirst(["themes.{$appTheme}.footer", 'themes.default.footer'], ['appName' => $appName, 'footerText' => $footerText])
 
 {{-- Global Livewire Components --}}
-@livewire('market::web.popup-cart')
-@livewire('market::web.checkout-modal')
-@livewire('market::web.location-modal')
+@if($isMarketActive)
+    @livewire('market::web.popup-cart')
+    @livewire('market::web.checkout-modal')
+    @livewire('market::web.location-modal')
+@endif
 
 <script>
     function updateThemeUI() {

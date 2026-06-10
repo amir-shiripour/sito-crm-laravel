@@ -7,8 +7,8 @@
     "Reminders": false,
     "Workflows": false,
     "Sms": true,
-    "Booking": false,
+    "Booking": true,
     "Properties": false,
     "Settings": true,
-    "Market": true
+    "Market": false
 }
