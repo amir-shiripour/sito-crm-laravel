@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Modules\Clients\Entities\Client;
 use Modules\Market\App\Models\CheckoutForm;
 use Modules\Market\App\Models\Order;
 use Modules\Market\App\Models\OrderItem;
@@ -42,8 +43,35 @@ class CheckoutModal extends Component
     public $selectedSlotId = null;
     public $selectedDeliveryDate = null;
 
+    public $provinces = [];
+    public $cities = [];
+    public $selectedProvince = null;
+
     public string $payment_method = '';
     public array $paymentMethods = [];
+
+    // Saved Addresses integration
+    public $addresses = [];
+    public $selectedAddressId = null;
+    public $showNewAddressModal = false;
+    public bool $showManualAddress = false;
+
+    // Quick address creation properties
+    public $newTitle = '';
+    public $newProvince = '';
+    public $newCity = '';
+    public $newAddress = '';
+    public $newPostalCode = '';
+    public $newLat = 35.6892;
+    public $newLng = 51.3890;
+
+    // Search query properties
+    public string $searchQuery = '';
+    public array $searchResults = [];
+
+    // Map config
+    public $mapProvider = 'neshan';
+    public $mapApiKey = '';
 
     protected $listeners = [
         'open-checkout-modal' => 'openModal'
@@ -55,9 +83,8 @@ class CheckoutModal extends Component
         if (!empty($this->paymentMethods)) {
             $this->payment_method = array_key_first($this->paymentMethods);
         }
-
+        $this->provinces = ProvinceCity::getProvinces();
     }
-
 
     protected function findFieldIdByType($type)
     {
@@ -69,11 +96,38 @@ class CheckoutModal extends Component
         return null;
     }
 
+    public function updatedSearchQuery($query)
+    {
+        if (strlen($query) < 3) {
+            $this->searchResults = [];
+            return;
+        }
+
+        if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
+            $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
+            $this->searchResults = $mapService->search($query, $this->newLat, $this->newLng);
+        } else {
+            $this->searchResults = [];
+        }
+    }
+
+    public function selectSearchResult($lat, $lng, $title = '')
+    {
+        $this->newLat = (float)$lat;
+        $this->newLng = (float)$lng;
+        $this->searchResults = [];
+        $this->searchQuery = $title;
+
+        $this->fetchNewAddressFromCoordinates($lat, $lng);
+
+        $this->dispatch('mapMoveTo', lat: $lat, lng: $lng);
+    }
+
     #[On('open-checkout-modal')]
     public function openModal()
     {
         $clientSyncService = app(ClientSyncService::class);
-        $this->reset(['formData', 'form', 'schema']);
+        $this->reset(['formData', 'form', 'schema', 'selectedAddressId', 'showManualAddress', 'showNewAddressModal']);
         $this->loadCartData();
 
         if ($this->cartItems->isEmpty()) {
@@ -86,7 +140,37 @@ class CheckoutModal extends Component
         if ($this->form) {
             $this->schema = $this->form->getSchema();
             $this->initializeData($clientSyncService);
+        }
+
+        $client = Auth::guard('client')->user();
+        $defaultAddress = null;
+        if ($client) {
+            $this->addresses = $client->addresses()->orderBy('is_default', 'desc')->orderBy('created_at', 'desc')->get();
+            if ($this->form) {
+                $defaultAddress = $client->addresses()->where('is_default', true)->first();
+                if ($defaultAddress) {
+                    $this->selectAddress($defaultAddress->id);
+                } else {
+                    $loc = session('client_location');
+                    $newCity = $loc['city'] ?? null;
+                    if ($newCity) {
+                        $this->syncCartWithLocation($newCity);
+                    }
+                    $this->loadShippingMethods();
+                }
+            }
+        } else {
+            $loc = session('client_location');
+            $newCity = $loc['city'] ?? null;
+            if ($newCity) {
+                $this->syncCartWithLocation($newCity);
+            }
             $this->loadShippingMethods();
+        }
+
+        if (class_exists(\Modules\Market\Entities\MarketSetting::class)) {
+            $this->mapProvider = \Modules\Market\Entities\MarketSetting::getValue('map.provider', 'neshan');
+            $this->mapApiKey = \Modules\Market\Entities\MarketSetting::getValue('map.api_key', '');
         }
 
         $this->isOpen = true;
@@ -99,6 +183,7 @@ class CheckoutModal extends Component
         $refreshedCart = [];
         $subtotal = 0;
         $discount = 0;
+        $attributeDictionary = \Modules\Market\Entities\MarketAttribute::with('values')->get();
 
         foreach ($sessionCart as $key => $item) {
             $variant = ProductVariant::with('masterProduct.category')->find($item['variant_id']);
@@ -108,15 +193,42 @@ class CheckoutModal extends Component
                 $finalPrice = $vp->discount_price > 0 ? $vp->discount_price : $vp->price;
                 $discountAmount = $vp->discount_price > 0 ? ($vp->price - $vp->discount_price) : 0;
 
+                $itemAttributes = $item['attributes'] ?? $variant->variant_attributes;
+                $fullAttributes = [];
+                if (is_array($itemAttributes)) {
+                    foreach ($itemAttributes as $attrKey => $attrValue) {
+                        $dictAttr = $attributeDictionary->firstWhere('name', $attrKey);
+                        $dictVal = $dictAttr ? $dictAttr->values->firstWhere('value', $attrValue) : null;
+                        
+                        if ($attrKey === 'name' && $attrValue === 'استاندارد') {
+                            continue;
+                        }
+
+                        $fullAttributes[] = [
+                            'key' => $attrKey,
+                            'value' => $attrValue,
+                            'type' => $dictAttr->type ?? 'select',
+                            'meta_value' => $dictVal->meta_value ?? null,
+                        ];
+                    }
+                }
+
                 $refreshedCart[$key] = [
                     'variant_id' => $item['variant_id'],
                     'vendor_product_id' => $item['vendor_product_id'],
+                    'vendor_id' => $vp->vendor_id,
                     'quantity' => $item['quantity'],
                     'product_id' => $variant->master_product_id,
                     'category_id' => $variant->masterProduct->category_id,
                     'price' => $finalPrice,
+                    'base_price' => $vp->price,
                     'name' => $variant->masterProduct->title,
                     'image' => $variant->masterProduct->main_image_url,
+                    'slug' => $variant->masterProduct->slug,
+                    'vendor_name' => $vp->vendor->store_name ?? 'نامشخص',
+                    'full_attributes' => $fullAttributes,
+                    'cart_amount_step' => $vp->cart_amount_step ? (float)$vp->cart_amount_step : 0.0,
+                    'purchase_step' => $vp->purchase_step ? (int)$vp->purchase_step : 0,
                 ];
 
                 $subtotal += $vp->price * $item['quantity'];
@@ -211,9 +323,121 @@ class CheckoutModal extends Component
     public function updatedFormData($value, $key)
     {
         $provinceCityFieldId = $this->findFieldIdByType('select-province-city');
+        if ($key === $provinceCityFieldId) {
+            $decoded = is_string($value) ? json_decode($value, true) : $value;
+            $newCity = $decoded['city'] ?? null;
+            $newProvince = $decoded['province'] ?? null;
+            if ($newProvince && $newCity) {
+                session(['client_location' => [
+                    'province' => $newProvince,
+                    'city' => $newCity
+                ]]);
+                $this->dispatch('location-changed', city: $newCity);
+            }
+            if ($newCity) {
+                $this->syncCartWithLocation($newCity);
+            }
+        } elseif ($key === 'city') {
+            $provinceFieldId = $this->findFieldIdByType('province') ?? 'province';
+            $province = $this->formData[$provinceFieldId] ?? $this->selectedProvince;
+            if ($province && $value) {
+                session(['client_location' => [
+                    'province' => $province,
+                    'city' => $value
+                ]]);
+                $this->dispatch('location-changed', city: $value);
+            }
+            $this->syncCartWithLocation($value);
+        }
+
         if ($key === $provinceCityFieldId || $key === 'city' || $key === 'province') {
             $this->loadShippingMethods();
         }
+    }
+
+    protected function syncCartWithLocation($newCity)
+    {
+        if (!MarketSetting::getValue('orders.enable_geolocation_ordering', false) || empty($newCity)) {
+            return;
+        }
+
+        $sessionCart = Session::get('market_cart', []);
+        $cartChanged = false;
+        $updatedCart = [];
+
+        foreach ($sessionCart as $key => $item) {
+            if (empty($item['vendor_product_id'])) continue;
+            
+            $vp = VendorProduct::with('vendor')->find($item['vendor_product_id']);
+            if (!$vp) {
+                continue;
+            }
+
+            $vendorCity = $vp->vendor->addresses()->where('is_default', true)->first()?->city 
+                ?? $vp->vendor->addresses()->first()?->city;
+
+            if ($vendorCity === $newCity) {
+                $updatedCart[$key] = $item;
+                continue;
+            }
+
+            // Not in the same city. Look for alternative in this city
+            $alternativeVp = VendorProduct::where('product_variant_id', $item['variant_id'])
+                ->where('status', 'published')
+                ->where('stock', '>', 0)
+                ->whereHas('vendor.addresses', function($q) use ($newCity) {
+                    $q->where('city', $newCity);
+                })
+                ->orderBy('price', 'asc')
+                ->first();
+
+            if ($alternativeVp) {
+                $item['vendor_product_id'] = $alternativeVp->id;
+                $item['vendor_id'] = $alternativeVp->vendor_id;
+                
+                $finalPrice = $alternativeVp->discount_price > 0 ? $alternativeVp->discount_price : $alternativeVp->price;
+                $item['price'] = $finalPrice;
+                if (isset($item['base_price'])) {
+                    $item['base_price'] = $alternativeVp->price;
+                }
+                if (isset($item['original_price'])) {
+                    $item['original_price'] = $alternativeVp->price;
+                }
+                if (isset($item['discount_amount'])) {
+                    $item['discount_amount'] = $alternativeVp->discount_price > 0 ? ($alternativeVp->price - $alternativeVp->discount_price) : 0;
+                }
+                
+                $updatedCart[$key] = $item;
+                $cartChanged = true;
+                
+                $itemName = $item['title'] ?? $item['name'] ?? 'محصول';
+                $this->dispatch('notify', type: 'warning', text: "فروشنده محصول «{$itemName}» به دلیل تغییر آدرس به نزدیک‌ترین فروشنده در شهر شما تغییر یافت.");
+            } else {
+                $cartChanged = true;
+                $itemName = $item['title'] ?? $item['name'] ?? 'محصول';
+                $this->dispatch('notify', type: 'error', text: "محصول «{$itemName}» در موقعیت جدید شما موجود نیست و از سبد خرید حذف شد.");
+            }
+        }
+
+        if ($cartChanged) {
+            Session::put('market_cart', $updatedCart);
+            $this->dispatch('cartUpdated');
+            
+            if (empty($updatedCart)) {
+                $this->closeModal();
+                return;
+            }
+            
+            $this->loadCartData();
+            $this->loadShippingMethods();
+        }
+    }
+
+    public function updatedSelectedProvince($provinceName)
+    {
+        $this->cities = ProvinceCity::getCities($provinceName);
+        $this->formData['city'] = null;
+        $this->loadShippingMethods();
     }
 
     public function loadShippingMethods()
@@ -237,6 +461,9 @@ class CheckoutModal extends Component
                 $province = $decoded['province'] ?? null;
                 $city = $decoded['city'] ?? null;
             }
+        } else {
+            $province = $this->selectedProvince;
+            $city = $this->formData['city'] ?? null;
         }
 
         if (!$province) {
@@ -300,6 +527,9 @@ class CheckoutModal extends Component
                 $province = $decoded['province'] ?? null;
                 $city = $decoded['city'] ?? null;
             }
+        } else {
+            $province = $this->selectedProvince;
+            $city = $this->formData['city'] ?? null;
         }
 
         $slots = $method->slots()
@@ -369,6 +599,249 @@ class CheckoutModal extends Component
         $this->selectedDeliveryDate = $date;
     }
 
+    public function selectAddress($addressId)
+    {
+        $client = Auth::guard('client')->user();
+        if (!$client) return;
+
+        $address = $client->addresses()->find($addressId);
+        if (!$address) return;
+
+        $this->selectedAddressId = $address->id;
+
+        // Auto-fill matching fields in formData
+        foreach ($this->schema['fields'] ?? [] as $field) {
+            $fieldId = $field['id'];
+            $fieldType = $field['type'] ?? '';
+            $fieldLabel = $field['label'] ?? '';
+
+            if ($fieldType === 'select-province-city') {
+                $this->formData[$fieldId] = json_encode([
+                    'province' => $address->province,
+                    'city' => $address->city
+                ], JSON_UNESCAPED_UNICODE);
+                
+                $this->selectedProvince = $address->province;
+                $this->cities = ProvinceCity::getCities($address->province);
+                $this->formData['city'] = $address->city;
+            } elseif ($fieldId === 'address' || str_contains($fieldId, 'address') || str_contains($fieldLabel, 'آدرس') || str_contains($fieldLabel, 'نشانی')) {
+                $this->formData[$fieldId] = $address->address;
+            } elseif ($fieldType === 'postal-code' || $fieldId === 'postal_code' || str_contains($fieldId, 'postal') || str_contains($fieldId, 'postcode') || str_contains($fieldLabel, 'کد پستی')) {
+                $this->formData[$fieldId] = $address->postal_code;
+            }
+        }
+
+        // Sync with storefront header location
+        session(['client_location' => [
+            'province' => $address->province,
+            'city' => $address->city
+        ]]);
+        $this->dispatch('location-changed', city: $address->city);
+
+        $this->syncCartWithLocation($address->city);
+        $this->loadShippingMethods();
+    }
+
+    public function openNewAddressModal()
+    {
+        $this->resetNewAddressForm();
+        $this->showNewAddressModal = true;
+        $this->dispatch('initNewAddressMap', lat: $this->newLat, lng: $this->newLng);
+    }
+
+    public function closeNewAddressModal()
+    {
+        $this->showNewAddressModal = false;
+        $this->resetNewAddressForm();
+    }
+
+    private function resetNewAddressForm()
+    {
+        $this->newTitle = '';
+        $this->newProvince = '';
+        $this->newCity = '';
+        $this->newAddress = '';
+        $this->newPostalCode = '';
+        $this->newLat = 35.6892;
+        $this->newLng = 51.3890;
+        $this->searchQuery = '';
+        $this->searchResults = [];
+        $this->resetErrorBag([
+            'newTitle',
+            'newProvince',
+            'newCity',
+            'newAddress',
+            'newPostalCode',
+        ]);
+    }
+
+    public function fetchNewAddressFromCoordinates($lat, $lng)
+    {
+        $this->newLat = $lat;
+        $this->newLng = $lng;
+        $geoData = [];
+
+        if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
+            $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
+            $geoData = $mapService->reverseGeocode($lat, $lng);
+        }
+
+        if (empty($geoData['address'])) {
+            $geoData = $this->fallbackGeocode($lat, $lng);
+        }
+
+        if (!empty($geoData['address'])) {
+            $this->newProvince = $geoData['province'] ?? $this->newProvince;
+            $this->newCity = $geoData['city'] ?? $this->newCity;
+            $this->newAddress = $this->sanitizeAddress($geoData['address'], $this->newProvince, $this->newCity);
+            
+            if (isset($geoData['data']['postal_code']) && !empty($geoData['data']['postal_code'])) {
+                $this->newPostalCode = $geoData['data']['postal_code'];
+            } elseif (isset($geoData['postal_code']) && !empty($geoData['postal_code'])) {
+                $this->newPostalCode = $geoData['postal_code'];
+            }
+        }
+    }
+
+    protected function sanitizeAddress($address, $province, $city)
+    {
+        if (empty($address)) return '';
+        
+        $address = preg_replace('/^(ایران|iran)\s*[،,]\s*/iu', '', $address);
+
+        if (!empty($province)) {
+            $provinceClean = str_replace(['استان ', ' Province'], '', $province);
+            $address = preg_replace('/^(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+        }
+
+        if (!empty($city)) {
+            $cityClean = str_replace(['شهر ', ' City'], '', $city);
+            $address = preg_replace('/^(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+        }
+
+        $address = preg_replace('/\b\d{5}-?\d{5}\b/u', '', $address);
+        $address = preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
+        
+        if (!empty($province)) {
+            $provinceClean = str_replace(['استان ', ' Province'], '', $province);
+            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')$/iu', '', $address);
+        }
+        if (!empty($city)) {
+            $cityClean = str_replace(['شهر ', ' City'], '', $city);
+            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')$/iu', '', $address);
+        }
+        $address = preg_replace('/\s*[،,]\s*(ایران|iran)$/iu', '', $address);
+
+        return preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
+    }
+
+    protected function fallbackGeocode($lat, $lng)
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Laravel-CRM-Map-App'
+            ])->timeout(5)->get("https://nominatim.openstreetmap.org/reverse", [
+                'lat' => $lat,
+                'lon' => $lng,
+                'format' => 'json',
+                'accept-language' => 'fa,en'
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $addressData = $data['address'] ?? [];
+                
+                $province = $addressData['state'] ?? '';
+                $province = str_replace(['استان ', ' Province'], '', $province);
+
+                $city = $addressData['city'] ?? $addressData['town'] ?? $addressData['suburb'] ?? $addressData['village'] ?? '';
+
+                $addressParts = [];
+                if (!empty($addressData['road'])) {
+                    $addressParts[] = $addressData['road'];
+                }
+                if (!empty($addressData['neighbourhood'])) {
+                    $addressParts[] = $addressData['neighbourhood'];
+                }
+                if (!empty($addressData['suburb']) && $addressData['suburb'] !== $city) {
+                    $addressParts[] = $addressData['suburb'];
+                }
+                if (!empty($addressData['borough'])) {
+                    $addressParts[] = $addressData['borough'];
+                }
+
+                if (count($addressParts) < 2) {
+                    $formattedAddress = $data['display_name'] ?? '';
+                } else {
+                    $formattedAddress = implode('، ', $addressParts);
+                }
+
+                $postcode = $addressData['postcode'] ?? '';
+                if (!empty($postcode)) {
+                    $postcode = str_replace('-', '', $postcode);
+                }
+
+                return [
+                    'province' => $province,
+                    'city' => $city,
+                    'address' => $formattedAddress,
+                    'formatted' => $formattedAddress,
+                    'postal_code' => $postcode,
+                    'data' => $data
+                ];
+            }
+        } catch (\Exception $e) {
+            // Silence fallback errors
+        }
+
+        return [
+            'province' => '',
+            'city' => '',
+            'address' => '',
+            'formatted' => ''
+        ];
+    }
+
+    public function saveNewAddress()
+    {
+        $client = Auth::guard('client')->user();
+        if (!$client) return;
+
+        $this->validate([
+            'newTitle' => 'required|string|max:100',
+            'newProvince' => 'required|string|max:100',
+            'newCity' => 'required|string|max:100',
+            'newAddress' => 'required|string',
+            'newPostalCode' => 'required|string|max:10',
+        ], [], [
+            'newTitle' => 'عنوان آدرس',
+            'newProvince' => 'استان',
+            'newCity' => 'شهر',
+            'newAddress' => 'نشانی دقیق',
+            'newPostalCode' => 'کد پستی',
+        ]);
+
+        $isDefault = $client->addresses()->count() === 0;
+
+        $newAddr = $client->addresses()->create([
+            'title' => $this->newTitle,
+            'province' => $this->newProvince,
+            'city' => $this->newCity,
+            'address' => $this->newAddress,
+            'postal_code' => $this->newPostalCode,
+            'lat' => $this->newLat,
+            'lng' => $this->newLng,
+            'is_default' => $isDefault,
+        ]);
+
+        $this->addresses = $client->addresses()->orderBy('is_default', 'desc')->orderBy('created_at', 'desc')->get();
+
+        $this->selectAddress($newAddr->id);
+
+        $this->dispatch('notify', type: 'success', text: 'آدرس جدید با موفقیت اضافه و انتخاب شد.');
+        $this->closeNewAddressModal();
+    }
+
     public function getCurrencyLabel(): string
     {
         $currency = \Modules\Market\Entities\MarketSetting::getValue('general.currency', 'toman');
@@ -377,42 +850,77 @@ class CheckoutModal extends Component
 
     public function submit(StockService $stockService, ClientSyncService $clientSyncService)
     {
-        $user = auth()->user();
-        $client = $user ? $user->clients()->first() : null;
+        $client = Auth::guard('client')->user();
 
         if (!$client) {
             $this->dispatch('notify', type: 'error', text: 'برای ثبت سفارش باید ابتدا وارد شوید.');
             return;
         }
 
-        // Geolocation ordering validation
-        if (MarketSetting::getValue('orders.enable_geolocation_ordering', false)) {
-            $provinceCityFieldId = $this->findFieldIdByType('select-province-city');
-            $province = null;
-            $city = null;
+        // Enforce purchase limits and cart total-based step limits
+        $cartTotalForStepLimits = 0;
+        foreach ($this->cartItems as $item) {
+            $cartTotalForStepLimits += ($item['price'] * $item['quantity']);
+        }
 
-            if ($provinceCityFieldId && isset($this->formData[$provinceCityFieldId])) {
-                $val = $this->formData[$provinceCityFieldId];
-                $decoded = is_string($val) ? json_decode($val, true) : $val;
-                if (is_array($decoded)) {
-                    $province = $decoded['province'] ?? null;
-                    $city = $decoded['city'] ?? null;
-                }
-            }
+        foreach ($this->cartItems as $item) {
+            $vp = VendorProduct::find($item['vendor_product_id']);
+            if (!$vp) continue;
 
-            if (!$city) {
-                $this->dispatch('notify', type: 'error', text: 'لطفاً موقعیت مکانی خود را انتخاب کنید.');
+            // 1. Min purchase
+            if ($vp->min_purchase_qty > 0 && $item['quantity'] < $vp->min_purchase_qty) {
+                $this->dispatch('notify', type: 'error', text: "حداقل تعداد خرید برای محصول «{$item['name']}» {$vp->min_purchase_qty} عدد است.");
                 return;
             }
 
-            foreach ($this->cartItems as $item) {
-                $vendorProduct = VendorProduct::find($item['vendor_product_id']);
-                if ($vendorProduct) {
-                    $vendorCity = $vendorProduct->vendor->addresses()->where('is_default', true)->first()?->city 
-                        ?? $vendorProduct->vendor->addresses()->first()?->city;
-                    if ($vendorCity !== $city) {
-                        $this->dispatch('notify', type: 'error', text: 'محصول ' . $item['name'] . ' در موقعیت مکانی انتخابی شما موجود نیست.');
-                        return;
+            // 2. Max purchase
+            if ($vp->max_purchase_qty > 0 && $item['quantity'] > $vp->max_purchase_qty) {
+                $this->dispatch('notify', type: 'error', text: "حداکثر تعداد خرید برای محصول «{$item['name']}» {$vp->max_purchase_qty} عدد است.");
+                return;
+            }
+
+            // 3. Cart total based limit
+            if ($vp->cart_amount_step > 0 && $vp->purchase_step > 0) {
+                $otherItemsTotal = 0;
+                foreach ($this->cartItems as $otherItem) {
+                    if ($otherItem['vendor_product_id'] !== $item['vendor_product_id'] && (int)$otherItem['variant_id'] !== (int)$item['variant_id']) {
+                        $otherItemsTotal += ($otherItem['price'] * $otherItem['quantity']);
+                    }
+                }
+                $maxAllowedByCartValue = floor($otherItemsTotal / $vp->cart_amount_step) * $vp->purchase_step;
+                if ($item['quantity'] > $maxAllowedByCartValue) {
+                    $formattedStep = number_format($vp->cart_amount_step);
+                    if ($maxAllowedByCartValue == 0) {
+                        $this->dispatch('notify', type: 'error', text: "برای خرید محصول «{$item['name']}»، مبلغ کل سبد خرید باید حداقل {$formattedStep} تومان باشد.");
+                    } else {
+                        $this->dispatch('notify', type: 'error', text: "با توجه به مبلغ کل سبد خرید، حداکثر {$maxAllowedByCartValue} عدد از محصول «{$item['name']}» قابل سفارش است (به ازای هر {$formattedStep} تومان سبد خرید، {$vp->purchase_step} عدد).");
+                    }
+                    return;
+                }
+            }
+        }
+
+        // Geolocation ordering validation
+        if (MarketSetting::getValue('orders.enable_geolocation_ordering', false)) {
+            if ($client->addresses()->count() === 0) {
+                $this->dispatch('notify', type: 'error', text: 'شما باید حداقل یک آدرس ثبت شده داشته باشید.');
+                return;
+            }
+            
+            $selectedAddr = $client->addresses()->find($this->selectedAddressId) 
+                ?? $client->addresses()->where('is_default', true)->first() 
+                ?? $client->addresses()->first();
+            if ($selectedAddr) {
+                $city = $selectedAddr->city;
+                foreach ($this->cartItems as $item) {
+                    $vendorProduct = VendorProduct::find($item['vendor_product_id']);
+                    if ($vendorProduct) {
+                        $vendorCity = $vendorProduct->vendor->addresses()->where('is_default', true)->first()?->city 
+                            ?? $vendorProduct->vendor->addresses()->first()?->city;
+                        if ($vendorCity !== $city) {
+                            $this->dispatch('notify', type: 'error', text: 'محصول ' . $item['name'] . ' در موقعیت مکانی انتخابی شما موجود نیست.');
+                            return;
+                        }
                     }
                 }
             }
@@ -476,6 +984,9 @@ class CheckoutModal extends Component
                     $province = $decoded['province'] ?? null;
                     $city = $decoded['city'] ?? null;
                 }
+            } else {
+                $province = $this->selectedProvince;
+                $city = $this->formData['city'] ?? null;
             }
 
             $method = $this->payment_method;
@@ -512,15 +1023,18 @@ class CheckoutModal extends Component
                 'payment_method' => $method,
             ];
 
-            $orderData['shipping_address_json'] = array_merge($this->formData, [
+            $orderData['shipping_address_json'] = [
                 'province' => $province,
                 'city' => $city,
+                'recipient_name' => $this->formData['recipient_name'] ?? null,
+                'recipient_mobile' => $this->formData['recipient_mobile'] ?? null,
+                'recipient_national_code' => $this->formData['recipient_national_code'] ?? null,
                 'delivery_date' => $this->selectedDeliveryDate,
                 'delivery_slot' => $selectedSlot ? [
                     'start_time' => date('H:i', strtotime($selectedSlot->start_time)),
                     'end_time' => date('H:i', strtotime($selectedSlot->end_time)),
                 ] : null,
-            ]);
+            ];
 
             $order = Order::create($orderData);
 
@@ -581,9 +1095,16 @@ class CheckoutModal extends Component
 
         if (in_array('online', $activeSystemMethods)) {
             $gateways = ['zarinpal', 'zibal', 'behpardakht'];
+            $gatewayTitles = [
+                'zarinpal' => 'درگاه پرداخت زرین‌پال',
+                'zibal' => 'درگاه پرداخت زیبال',
+                'behpardakht' => 'درگاه پرداخت به‌پرداخت ملت',
+            ];
             foreach ($gateways as $gateway) {
                 if (($settings["{$gateway}_status"] ?? 'inactive') === 'active') {
-                    $methods[$gateway] = ['type' => 'online', 'title' => $settings["{$gateway}_title"] ?? ucfirst($gateway), 'logo' => $settings["{$gateway}_logo"] ?? null];
+                     $defaultTitle = $gatewayTitles[$gateway] ?? ucfirst($gateway);
+                     $title = (!empty($settings["{$gateway}_title"])) ? $settings["{$gateway}_title"] : $defaultTitle;
+                     $methods[$gateway] = ['type' => 'online', 'title' => $title, 'logo' => $settings["{$gateway}_logo"] ?? null];
                 }
             }
         }
@@ -592,6 +1113,9 @@ class CheckoutModal extends Component
         }
         if (in_array('transfer', $activeSystemMethods) && ($settings['bank_transfer_status'] ?? 'inactive') === 'active') {
             $methods['transfer'] = ['type' => 'offline', 'title' => 'کارت به کارت / واریز به حساب', 'description' => $settings['bank_transfer_guidance'] ?? ''];
+        }
+        if (in_array('cod', $activeSystemMethods) && ($settings['cod_status'] ?? 'inactive') === 'active') {
+            $methods['cod'] = ['type' => 'offline', 'title' => 'پرداخت در محل (نقدی)', 'description' => $settings['cod_guidance'] ?? ''];
         }
         return $methods;
     }

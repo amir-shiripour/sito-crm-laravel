@@ -105,6 +105,8 @@ class CartManager extends Component
                     'vendor_name' => $this->showVendor ? $vp->vendor->store_name : null,
                     'vendor_logo' => $this->showVendor ? $vp->vendor->logo : null,
                     'attributes' => $itemAttributes,
+                    'cart_amount_step' => $vp->cart_amount_step ? (float) $vp->cart_amount_step : 0.0,
+                    'purchase_step' => $vp->purchase_step ? (int) $vp->purchase_step : 0,
                 ];
             }
         }
@@ -189,6 +191,13 @@ class CartManager extends Component
         $currentCartQty = isset($this->cart[$cartKey]) ? $this->cart[$cartKey]['quantity'] : 0;
         $requestedQty = $currentCartQty + $quantity;
 
+        // Verify purchase limits
+        list($ok, $errorMsg) = $this->validatePurchaseLimits($variantId, $vp->id, $requestedQty, $cartKey);
+        if (!$ok) {
+            $this->dispatch('notify', type: 'error', text: $errorMsg);
+            return;
+        }
+
         if ($availableStock < $requestedQty) {
             $this->dispatch('notify', type: 'error', text: "موجودی کافی نیست. حداکثر {$availableStock} عدد قابل سفارش است.");
             return;
@@ -210,6 +219,8 @@ class CartManager extends Component
             'image' => $variant->masterProduct->main_image,
             'slug' => $variant->masterProduct->slug,
             'attributes' => $resolvedAttributes,
+            'cart_amount_step' => $vp->cart_amount_step ? (float) $vp->cart_amount_step : 0.0,
+            'purchase_step' => $vp->purchase_step ? (int) $vp->purchase_step : 0,
         ];
 
         Session::put('market_cart', $this->cart);
@@ -223,6 +234,15 @@ class CartManager extends Component
     public function removeItemFromCart($cartKey)
     {
         if (isset($this->cart[$cartKey])) {
+            $prospectiveCart = $this->cart;
+            unset($prospectiveCart[$cartKey]);
+
+            list($ok, $errorMsg) = $this->validateEntireCart($prospectiveCart);
+            if (!$ok) {
+                $this->dispatch('notify', type: 'error', text: $errorMsg);
+                return;
+            }
+
             unset($this->cart[$cartKey]);
             Session::put('market_cart', $this->cart);
             $this->loadCart();
@@ -248,6 +268,14 @@ class CartManager extends Component
             return;
         }
 
+        // Verify purchase limits
+        list($ok, $errorMsg) = $this->validatePurchaseLimits($item['variant_id'], $vp->id, $newQuantity, $cartKey);
+        if (!$ok) {
+            $this->dispatch('notify', type: 'error', text: $errorMsg);
+            $this->loadCart(); // Force refresh to original quantity
+            return;
+        }
+
         $isWmsActive = (bool) MarketSetting::getValue('wms.enabled', false);
         $availableStock = 0;
 
@@ -262,11 +290,20 @@ class CartManager extends Component
 
         if ($availableStock < $newQuantity) {
             $this->dispatch('notify', type: 'error', text: "موجودی کافی نیست. حداکثر {$availableStock} عدد قابل سفارش است.");
-            $this->cart[$cartKey]['quantity'] = $availableStock;
-        } else {
-            $this->cart[$cartKey]['quantity'] = $newQuantity;
+            $newQuantity = $availableStock;
         }
 
+        // Check if updating this quantity causes any other item to violate its limits
+        $prospectiveCart = $this->cart;
+        $prospectiveCart[$cartKey]['quantity'] = $newQuantity;
+        list($ok, $errorMsg) = $this->validateEntireCart($prospectiveCart);
+        if (!$ok) {
+            $this->dispatch('notify', type: 'error', text: $errorMsg);
+            $this->loadCart(); // Force refresh
+            return;
+        }
+
+        $this->cart[$cartKey]['quantity'] = $newQuantity;
         Session::put('market_cart', $this->cart);
         $this->loadCart();
         $this->dispatch('cartUpdated', ['cart' => $this->cart]);
@@ -283,6 +320,70 @@ class CartManager extends Component
             $this->totalDiscount += ($item['discount_amount'] * $item['quantity']);
             $this->itemCount += $item['quantity'];
         }
+    }
+
+    private function validatePurchaseLimits($variantId, $vendorProductId, $requestedQty, $cartKeyToIgnore = null)
+    {
+        $vp = VendorProduct::find($vendorProductId);
+        if (!$vp) return [true, ''];
+
+        // 1. Min purchase limit
+        if ($vp->min_purchase_qty > 0 && $requestedQty < $vp->min_purchase_qty) {
+            return [false, "حداقل تعداد قابل سفارش برای این محصول {$vp->min_purchase_qty} عدد است."];
+        }
+
+        // 2. Max purchase limit
+        if ($vp->max_purchase_qty > 0 && $requestedQty > $vp->max_purchase_qty) {
+            return [false, "حداکثر تعداد قابل سفارش برای این محصول {$vp->max_purchase_qty} عدد است."];
+        }
+
+        // 3. Cart total based limit
+        if ($vp->cart_amount_step > 0 && $vp->purchase_step > 0) {
+            // Calculate cart total excluding the current item's quantity to find out how much other items contribute
+            $otherItemsTotal = 0;
+            foreach ($this->cart as $key => $item) {
+                if ($key !== $cartKeyToIgnore && (int)$item['variant_id'] !== (int)$variantId) {
+                    $otherItemsTotal += ($item['price'] * $item['quantity']);
+                }
+            }
+            
+            $maxAllowedByCartValue = floor($otherItemsTotal / $vp->cart_amount_step) * $vp->purchase_step;
+
+            if ($requestedQty > $maxAllowedByCartValue) {
+                $formattedStep = number_format($vp->cart_amount_step);
+                if ($maxAllowedByCartValue == 0) {
+                    return [false, "برای خرید این محصول، مبلغ سبد خرید شما باید حداقل {$formattedStep} تومان باشد."];
+                }
+                return [false, "با توجه به مبلغ سبد خرید شما، حداکثر {$maxAllowedByCartValue} عدد از این محصول قابل سفارش است (به ازای هر {$formattedStep} تومان سبد خرید، {$vp->purchase_step} عدد)."];
+            }
+        }
+
+        return [true, ''];
+    }
+
+    private function validateEntireCart($prospectiveCart)
+    {
+        foreach ($prospectiveCart as $key => $item) {
+            $vp = VendorProduct::find($item['vendor_product_id']);
+            if ($vp && $vp->cart_amount_step > 0 && $vp->purchase_step > 0) {
+                $otherItemsTotalForThis = 0;
+                foreach ($prospectiveCart as $k => $it) {
+                    if ($k !== $key && (int)$it['variant_id'] !== (int)$item['variant_id']) {
+                        $otherItemsTotalForThis += ($it['price'] * $it['quantity']);
+                    }
+                }
+                $maxAllowed = floor($otherItemsTotalForThis / $vp->cart_amount_step) * $vp->purchase_step;
+                if ($item['quantity'] > $maxAllowed) {
+                    $formattedStep = number_format($vp->cart_amount_step);
+                    $title = $item['title'] ?? 'محصول محدود شده';
+                    if ($maxAllowed == 0) {
+                        return [false, "به دلیل محدودیت خرید محصول «{$title}»، مبلغ سبد خرید شما باید حداقل {$formattedStep} تومان باشد. ابتدا تعداد آن را کاهش داده یا آن را حذف کنید."];
+                    }
+                    return [false, "با توجه به مبلغ سبد خرید، حداکثر {$maxAllowed} عدد از محصول «{$title}» قابل خرید است. ابتدا تعداد آن را به {$maxAllowed} عدد یا کمتر کاهش دهید."];
+                }
+            }
+        }
+        return [true, ''];
     }
 
     public function render()

@@ -39,7 +39,7 @@
                                         {{-- Render the Address Selector in place of the first address field --}}
                                         <div class="sm:col-span-2 space-y-4" wire:key="checkout-address-selector-block-{{ $group['id'] }}">
                                             <div class="bg-gray-50/50 dark:bg-gray-800/25 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-5 space-y-4">
-                                                <div class="flex justify-between items-center pb-3 border-b border-gray-150 dark:border-gray-700/60">
+                                                <div class="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-gray-700/60">
                                                     <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                                         <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -317,6 +317,13 @@
                                         </div>
                                     @endif
 
+                                    @if (!empty($item['cart_amount_step']) && !empty($item['purchase_step']))
+                                        <div class="inline-flex items-center gap-1.5 text-[10px] text-amber-700 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400 px-2.5 py-1 rounded-md border border-amber-100 dark:border-amber-900/60 font-bold shrink-0 w-full mt-2">
+                                            <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            <span>محدودیت خرید: به ازای هر {{ number_format($item['cart_amount_step']) }} تومان خرید، امکان خرید {{ $item['purchase_step'] }} عدد وجود دارد.</span>
+                                        </div>
+                                    @endif
+
                                     <div class="flex items-center justify-end mt-3">
                                         <div class="text-left">
                                             <div class="text-sm font-black text-gray-900 dark:text-white">
@@ -342,10 +349,12 @@
                             <p class="text-gray-600 dark:text-gray-400">جمع کل سبد خرید:</p>
                             <p class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($totals['subtotal']) }} <span class="text-xs">تومان</span></p>
                         </div>
-                        <div class="flex justify-between text-sm">
-                            <p class="text-gray-600 dark:text-gray-400">تخفیف شما:</p>
-                            <p class="font-medium text-red-500">-{{ number_format($totals['discount']) }} <span class="text-xs">تومان</span></p>
-                        </div>
+                        @if($totals['discount'] > 0)
+                            <div class="flex justify-between text-sm">
+                                <p class="text-gray-600 dark:text-gray-400">تخفیف شما:</p>
+                                <p class="font-medium text-red-500">-{{ number_format($totals['discount']) }} <span class="text-xs">تومان</span></p>
+                            </div>
+                        @endif
                         @if($shippingCost > 0)
                             <div class="flex justify-between text-sm">
                                 <p class="text-gray-600 dark:text-gray-400">هزینه ارسال:</p>
@@ -387,7 +396,7 @@
             <div class="relative w-full max-w-2xl mx-auto my-6 px-4">
                 <div class="relative flex flex-col w-full bg-white dark:bg-gray-900 border-0 rounded-3xl shadow-2xl outline-none focus:outline-none overflow-hidden max-h-[95vh] dark:border dark:border-gray-700">
                     {{-- Modal Header --}}
-                    <div class="flex items-center justify-between p-5 border-b border-solid border-gray-150 dark:border-gray-700 rounded-t-3xl">
+                    <div class="flex items-center justify-between p-5 border-b border-solid border-gray-200 dark:border-gray-700 rounded-t-3xl">
                         <div>
                             <h3 class="text-base font-bold text-gray-900 dark:text-white">ثبت آدرس جدید روی نقشه</h3>
                             <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">موقعیت آدرس خود را روی نقشه مشخص کرده و ذخیره کنید.</p>
@@ -419,7 +428,7 @@
                             
                             {{-- Suggestions dropdown --}}
                             @if(!empty($searchQuery) && count($searchResults) > 0)
-                                <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-1 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-150 dark:border-gray-700 rounded-2xl shadow-xl max-h-40 overflow-y-auto py-1">
+                                <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-1 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-40 overflow-y-auto py-1">
                                     @foreach($searchResults as $res)
                                         <button type="button" 
                                                 wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, '{{ addslashes($res['title']) }}')"
@@ -632,7 +641,7 @@
                         <div class="relative">
                             {{-- Modal Geocode Spinner Overlay --}}
                             <div wire:loading wire:target="fetchNewAddressFromCoordinates" class="absolute inset-0 bg-white/60 dark:bg-gray-900/60 backdrop-blur-[2px] z-[40] flex items-center justify-center rounded-2xl transition-all">
-                                <div class="flex flex-col items-center gap-2 bg-white dark:bg-gray-800 px-5 py-3.5 rounded-xl border border-gray-150 dark:border-gray-700 shadow-lg">
+                                <div class="flex flex-col items-center gap-2 bg-white dark:bg-gray-800 px-5 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg">
                                     <div class="w-5 h-5 border-3 border-indigo-650 border-t-transparent rounded-full animate-spin"></div>
                                     <span class="text-[11px] font-bold text-gray-800 dark:text-gray-200">در حال دریافت نشانی روی نقشه...</span>
                                 </div>
@@ -673,7 +682,7 @@
                     </div>
 
                     {{-- Modal Footer --}}
-                    <div class="flex items-center justify-end p-5 border-t border-solid border-gray-150 dark:border-gray-700 rounded-b-3xl gap-3">
+                    <div class="flex items-center justify-end p-5 border-t border-solid border-gray-200 dark:border-gray-700 rounded-b-3xl gap-3">
                         <button type="button" wire:click="saveNewAddress" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95">
                             ثبت و استفاده از آدرس
                         </button>

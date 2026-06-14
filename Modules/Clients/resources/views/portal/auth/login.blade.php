@@ -6,6 +6,8 @@
 
     $title = 'ورود به پنل مشتریان';
 
+    $registerEnabled = (bool) ClientSetting::getValue('auth.register_enabled', false);
+
     $mode         = ClientSetting::getValue('auth.mode', 'password'); // password | otp | both
     $defaultLogin = ClientSetting::getValue('auth.default', 'password'); // password | otp
 
@@ -27,6 +29,50 @@
     // مسیرهای OTP اگر وجود داشته باشند
     $otpSendUrl   = Route::has('client.otp.send') ? route('client.otp.send') : null;
     $otpVerifyUrl = Route::has('client.otp.verify') ? route('client.otp.verify') : null;
+
+    // متغیرهای ثبت‌نام
+    $activeForm = \Modules\Clients\Entities\ClientForm::active();
+    $regFields = $activeForm ? collect($activeForm->schema['fields'] ?? [])->where('show_in_registration', true) : collect();
+
+    $isRegisterMode = session('register_mode') || request()->query('register') == '1' || old('via_otp') !== null || $errors->has('full_name') || $errors->has('email') || $errors->has('phone') || $errors->has('national_code');
+    $registerUsername = session('register_username') ?: request()->query('username') ?: old('username');
+    $registerPassword = session('register_password') ?: old('password');
+    $registerAlert = session('register_alert');
+    $viaOtp = session('via_otp') || old('via_otp') || request()->query('via_otp') == '1';
+
+    // بومی‌سازی عنوان نام کاربری بر اساس تنظیمات
+    $usernameStrategy = ClientSetting::getValue('username_strategy')
+        ?? ClientSetting::getValue('username.strategy', 'email_local');
+
+    // تنظیمات تب ورود با رمز عبور
+    $usernameLabelPassword = 'نام کاربری';
+    $usernamePlaceholderPassword = 'Username';
+    $usernameInputTypePassword = 'text';
+
+    if ($usernameStrategy === 'mobile') {
+        $usernameLabelPassword = 'شماره موبایل';
+        $usernamePlaceholderPassword = 'مثلاً: 09123456789';
+        $usernameInputTypePassword = 'tel';
+    } elseif ($usernameStrategy === 'email_local' || $usernameStrategy === 'email') {
+        $usernameLabelPassword = 'ایمیل';
+        $usernamePlaceholderPassword = 'مثلاً: info@domain.com';
+        $usernameInputTypePassword = 'email';
+    } elseif ($usernameStrategy === 'national_code') {
+        $usernameLabelPassword = 'کد ملی';
+        $usernamePlaceholderPassword = 'مثلاً: 0012345678';
+        $usernameInputTypePassword = 'text';
+    }
+
+    // تنظیمات تب ورود با کد تایید (OTP)
+    $usernameLabelOtp = 'شماره موبایل (یا نام کاربری)';
+    $usernamePlaceholderOtp = 'مثلاً: 09123456789 یا نام کاربری';
+    $usernameInputTypeOtp = 'text';
+
+    if ($usernameStrategy === 'mobile') {
+        $usernameLabelOtp = 'شماره موبایل';
+        $usernamePlaceholderOtp = 'مثلاً: 09123456789';
+        $usernameInputTypeOtp = 'tel';
+    }
 @endphp
 
 @section('content')
@@ -44,18 +90,155 @@
                         </svg>
                     </div>
                     <h1 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                        ورود به پنل کاربری
+                        {{ $isRegisterMode ? 'تکمیل ثبت‌نام' : ($registerEnabled ? 'ورود و ثبت‌نام' : 'ورود به پرتال') }}
                     </h1>
                     <p class="text-xs text-gray-500 dark:text-gray-400 max-w-xs mx-auto leading-relaxed">
-                        جهت دسترسی به داشبورد و پیگیری درخواست‌ها وارد شوید.
+                        {{ $isRegisterMode ? 'لطفاً اطلاعات زیر را برای عضویت وارد کنید.' : 'جهت دسترسی به داشبورد و پیگیری درخواست‌ها وارد شوید.' }}
                     </p>
                 </div>
 
-                {{-- Alpine / JS Wrapper (برای both و otp) --}}
-                @if($mode === 'both' || $mode === 'otp')
+                @if($isRegisterMode)
+                    {{-- فرم ثبت‌نام --}}
+                    <div class="px-6 py-8 space-y-5">
+                        @if ($registerAlert)
+                            <div class="rounded-xl bg-indigo-50 p-3 text-xs font-medium text-indigo-700 dark:bg-indigo-900/10 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/20">
+                                {{ $registerAlert }}
+                            </div>
+                        @endif
+
+                        <form method="POST" action="{{ route('client.register.submit') }}" class="space-y-4">
+                            @csrf
+                            
+                            <input type="hidden" name="username" value="{{ $registerUsername }}">
+                            <input type="hidden" name="via_otp" value="{{ $viaOtp ? '1' : '0' }}">
+                            
+                            @if(!$viaOtp)
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                                        رمز عبور
+                                        <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="relative" x-data="{ show: false }">
+                                        <input :type="show ? 'text' : 'password'"
+                                               name="password"
+                                               required
+                                               class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dir-ltr"
+                                               placeholder="رمز عبور خود را انتخاب کنید (حداقل ۶ کاراکتر)">
+                                        <button type="button" @click="show = !show"
+                                                class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+                                            <svg x-show="!show" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <svg x-show="show" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" x-cloak>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    @error('password')
+                                        <div class="text-xs text-red-500 mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endif
+
+                            {{-- رندر پویا فیلدها --}}
+                            @foreach($regFields as $field)
+                                @php
+                                    $fid = $field['id'];
+                                    if ($fid === 'username' || $fid === 'password') {
+                                        continue;
+                                    }
+                                    if ($viaOtp && $fid === 'phone') {
+                                        continue;
+                                    }
+                                    $isRequired = !empty($field['required']);
+
+                                    // تعیین مقدار پیش‌فرض بر اساس استراتژی نام کاربری
+                                    $defaultValue = old($fid);
+                                    if (empty($defaultValue)) {
+                                        if ($fid === 'phone' && $usernameStrategy === 'mobile') {
+                                            $defaultValue = $registerUsername;
+                                        } elseif ($fid === 'email' && ($usernameStrategy === 'email_local' || $usernameStrategy === 'email')) {
+                                            $defaultValue = str_contains($registerUsername, '@') ? $registerUsername : '';
+                                        } elseif ($fid === 'national_code' && $usernameStrategy === 'national_code') {
+                                            $defaultValue = $registerUsername;
+                                        }
+                                    }
+                                @endphp
+                                
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                                        {{ $field['label'] }}
+                                        @if($isRequired)
+                                            <span class="text-red-500">*</span>
+                                        @endif
+                                    </label>
+                                    
+                                    @if($field['type'] === 'textarea')
+                                        <textarea name="{{ $fid }}" {{ $isRequired ? 'required' : '' }}
+                                                  class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">{{ $defaultValue }}</textarea>
+                                    @elseif($field['type'] === 'select')
+                                        @php
+                                            $options = [];
+                                            if (!empty($field['options_json'])) {
+                                                $lines = array_filter(array_map('trim', explode("\n", $field['options_json'])));
+                                                foreach ($lines as $line) {
+                                                    if (str_contains($line, ':')) {
+                                                        [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                                        $options[$okey] = $oval;
+                                                    } else {
+                                                        $options[$line] = $line;
+                                                    }
+                                                }
+                                            }
+                                        @endphp
+                                        <select name="{{ $fid }}" {{ $isRequired ? 'required' : '' }}
+                                                class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+                                            <option value="">انتخاب کنید...</option>
+                                            @foreach($options as $okey => $oval)
+                                                <option value="{{ $okey }}" {{ old($fid, $defaultValue) == $okey ? 'selected' : '' }}>{{ $oval }}</option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <input type="{{ $field['type'] === 'email' ? 'email' : ($field['type'] === 'number' ? 'number' : 'text') }}"
+                                               name="{{ $fid }}"
+                                               value="{{ $defaultValue }}"
+                                               {{ $isRequired ? 'required' : '' }}
+                                               class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+                                    @endif
+                                    
+                                    @error($fid)
+                                        <div class="text-xs text-red-500 mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endforeach
+
+                            @if($viaOtp)
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 mb-1.5">شماره موبایل (تایید شده)</label>
+                                    <input type="text" name="phone" value="{{ $registerUsername }}" readonly
+                                           class="block w-full rounded-xl border-gray-200 bg-gray-100 py-3 px-4 text-sm text-gray-400 dark:border-gray-700 dark:bg-gray-800 dir-ltr">
+                                </div>
+                            @endif
+
+                            <button type="submit"
+                                    class="group relative flex w-full justify-center rounded-xl bg-indigo-600 py-3 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:shadow-indigo-600/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-2 transition-all active:scale-[0.98]">
+                                تکمیل ثبت‌نام و ورود
+                            </button>
+
+                            <a href="{{ route('client.login') }}"
+                               class="block text-center text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors mt-2">
+                                بازگشت به صفحه ورود
+                            </a>
+                        </form>
+                    </div>
+                @else
+
+                {{-- Alpine / JS Wrapper --}}
+                @if($mode === 'both' || $mode === 'otp' || $mode === 'password')
                     <style>[x-cloak]{display:none!important}</style>
 
-                    <div class="{{ $mode === 'both' ? 'px-6 pt-5' : 'px-6 py-8' }}"
+                    <div class="{{ ($mode === 'both' || $mode === 'password') ? 'px-6 pt-5' : 'px-6 py-8' }}"
                          x-data="clientPortalLogin({
                             mode: @js($mode),
                             initialTab: @js($initialTab),
@@ -64,8 +247,12 @@
                             otpResendIn: @js($otpResendIn),
                             otpSendUrl: @js($otpSendUrl),
                             otpVerifyUrl: @js($otpVerifyUrl),
+                            checkUsernameUrl: @js(route('client.login.check-username')),
+                            loginUrl: @js(route('client.login')),
                             csrf: @js(csrf_token()),
                             dashboardUrl: @js(route('client.dashboard')),
+                            oldUsername: @js(old('username', '')),
+                            hasErrors: @js($errors->any()),
                          })"
                          x-init="init()"
                     >
@@ -97,19 +284,18 @@
                             <div class="mt-4 rounded-xl p-3 text-xs font-medium border flex items-center gap-2"
                                  :class="alert.type==='error'
                                     ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/10 dark:text-red-400 dark:border-red-900/20'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/10 dark:text-emerald-300 dark:border-emerald-900/20'">
+                                    : 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/10 dark:text-emerald-400 dark:border-emerald-900/20'">
                                 <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 <span x-text="alert.message"></span>
                             </div>
                         </template>
 
-                        {{-- ---------- PASSWORD FORM (داخل both) ---------- --}}
-                        @if($mode === 'both')
+                        {{-- ---------- PASSWORD FORM ---------- --}}
+                        @if($mode === 'both' || $mode === 'password')
                             <div class="mt-4" x-show="tab==='password'" x-cloak>
-                                <form method="POST" action="{{ route('client.login.submit') }}" class="px-0 py-6 space-y-5">
+                                <form method="POST" action="{{ route('client.login.submit') }}" class="px-0 py-6 space-y-5" @submit="checkPasswordUsername($event)">
                                     @csrf
 
                                     {{-- خطای مربوط به password --}}
@@ -123,44 +309,62 @@
                                         </div>
                                     @endif
 
-                                    {{-- username --}}
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">نام کاربری</label>
-                                        <div class="relative">
-                                            <input type="text" name="username" value="{{ old('username') }}"
-                                                   autocomplete="username" required
-                                                   class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900
-                                                          placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
-                                                          transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900 dir-ltr"
-                                                   placeholder="Username">
-                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                     {{-- username --}}
+                                     <div x-show="pwd.step === 1">
+                                         <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">{{ $usernameLabelPassword }}</label>
+                                         <div class="relative">
+                                             <input type="{{ $usernameInputTypePassword }}" name="username" x-model="pwd.username"
+                                                    autocomplete="username" :required="pwd.step === 1"
+                                                    class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900
+                                                           placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
+                                                           transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900 dir-ltr"
+                                                    placeholder="{{ $usernamePlaceholderPassword }}">
+                                             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
                                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                           d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                 </svg>
                                             </div>
                                         </div>
-                                    </div>
+                                     </div>
+
+                                     {{-- username info step 2 --}}
+                                     <div x-show="pwd.step === 2" class="space-y-4" x-cloak>
+                                         <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/30 px-4 py-3 text-xs text-gray-600 dark:text-gray-300 flex justify-between items-center">
+                                             <div>
+                                                 <span class="font-medium">{{ $usernameLabelPassword }}:</span>
+                                                 <span class="font-mono dir-ltr ml-1" x-text="pwd.username"></span>
+                                             </div>
+                                             <button type="button" @click="prevStep()" class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold transition-colors">
+                                                 تغییر
+                                             </button>
+                                         </div>
+                                     </div>
 
                                     {{-- password --}}
-                                    <div>
+                                    <div x-show="pwd.step === 2" class="animate-in fade-in duration-300" x-cloak>
                                         <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">رمز عبور</label>
                                         <div class="relative">
-                                            <input type="password" name="password" autocomplete="current-password" required
+                                            <input :type="pwd.show ? 'text' : 'password'" name="password" x-model="pwd.password"
+                                                   autocomplete="current-password" :required="pwd.step === 2"
                                                    class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900
                                                           placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
                                                           transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900 dir-ltr"
                                                    placeholder="••••••••">
-                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            <button type="button" @click="pwd.show = !pwd.show"
+                                                    class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+                                                <svg x-show="!pwd.show" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
-                                            </div>
+                                                <svg x-show="pwd.show" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" x-cloak>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                                </svg>
+                                            </button>
                                         </div>
                                     </div>
 
-                                    <div class="flex items-center justify-between">
+                                    <div class="flex items-center justify-between" x-show="pwd.step === 2" x-cloak>
                                         <label class="flex items-center cursor-pointer group">
                                             <div class="relative flex items-center">
                                                 <input type="checkbox" name="remember"
@@ -171,8 +375,11 @@
                                     </div>
 
                                     <button type="submit"
-                                            class="group relative flex w-full justify-center rounded-xl bg-indigo-600 py-3 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:shadow-indigo-600/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-2 transition-all active:scale-[0.98]">
-                                        ورود با رمز
+                                            :disabled="pwd.loading"
+                                            class="group relative flex w-full justify-center rounded-xl bg-indigo-600 py-3 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:shadow-indigo-600/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-2 transition-all active:scale-[0.98] disabled:opacity-50">
+                                        <span x-show="pwd.step === 1 && !pwd.loading">مرحله بعد</span>
+                                        <span x-show="pwd.step === 1 && pwd.loading">در حال بررسی...</span>
+                                        <span x-show="pwd.step === 2">ورود با رمز</span>
                                         <svg class="mr-2 h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14" />
                                         </svg>
@@ -204,20 +411,20 @@
                                         برای فعال شدن OTP بدون رفرش، این route ها باید اضافه شوند.
                                     </span>
                                 </div>
-                            @endif
+                             @endif
 
-                            {{-- مرحله ۱: ارسال کد --}}
-                            <div x-show="!otp.sent" class="py-6 space-y-5">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">نام کاربری</label>
-                                    <div class="relative">
-                                        <input type="text"
-                                               x-model="otp.username"
-                                               autocomplete="username"
-                                               class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900
-                                                      placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
-                                                      transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900 dir-ltr"
-                                               placeholder="Username">
+                             {{-- مرحله ۱: ارسال کد --}}
+                             <div x-show="!otp.sent" class="py-6 space-y-5">
+                                 <div>
+                                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">{{ $usernameLabelOtp }}</label>
+                                     <div class="relative">
+                                         <input type="{{ $usernameInputTypeOtp }}"
+                                                x-model="otp.username"
+                                                autocomplete="username"
+                                                class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900
+                                                       placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
+                                                       transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900 dir-ltr"
+                                                placeholder="{{ $usernamePlaceholderOtp }}">
                                         <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
                                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -327,7 +534,7 @@
                         function clientPortalLogin(cfg) {
                             return {
                                 mode: cfg.mode,
-                                tab: (cfg.mode === 'both') ? (cfg.initialTab || 'password') : 'otp',
+                                tab: (cfg.mode === 'both') ? (cfg.initialTab || 'password') : ((cfg.mode === 'password') ? 'password' : 'otp'),
 
                                 otpSendUrl: cfg.otpSendUrl,
                                 otpVerifyUrl: cfg.otpVerifyUrl,
@@ -343,6 +550,14 @@
                                     loading: false,
                                     resendRemaining: 0,
                                     _timer: null,
+                                },
+
+                                pwd: {
+                                    step: (cfg.hasErrors && cfg.oldUsername) ? 2 : 1,
+                                    username: cfg.oldUsername || '',
+                                    password: '',
+                                    loading: false,
+                                    show: false,
                                 },
 
                                 init() {
@@ -477,8 +692,11 @@
                                             return;
                                         }
 
-                                        // ریدایرکت
-                                        window.location.href = json.redirect || this.dashboardUrl;
+                                        if (json.register_mode) {
+                                            window.location.href = cfg.loginUrl + "?register=1&username=" + encodeURIComponent(json.username) + "&via_otp=1";
+                                        } else {
+                                            window.location.href = json.redirect || this.dashboardUrl;
+                                        }
 
                                     } catch (e) {
                                         this.setAlert('error', 'خطای شبکه در تایید کد');
@@ -498,85 +716,69 @@
                                     }
                                     this.otp.resendRemaining = 0;
                                 },
+
+                                async checkPasswordUsername(event) {
+                                    if (this.pwd.step === 1) {
+                                        event.preventDefault();
+                                        
+                                        if (!this.pwd.username) {
+                                            this.setAlert('error', 'لطفاً نام کاربری را وارد کنید.');
+                                            return;
+                                        }
+
+                                        this.pwd.loading = true;
+                                        this.clearAlert();
+
+                                        try {
+                                            const res = await fetch(cfg.checkUsernameUrl, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-TOKEN': this.csrf,
+                                                    'Accept': 'application/json',
+                                                },
+                                                body: JSON.stringify({ username: this.pwd.username }),
+                                            });
+
+                                            const json = await res.json().catch(() => ({}));
+
+                                            if (!res.ok) {
+                                                this.setAlert('error', json.message || 'خطا در بررسی نام کاربری');
+                                                return;
+                                            }
+
+                                            if (json.exists) {
+                                                this.pwd.step = 2;
+                                                this.$nextTick(() => {
+                                                    const pwdInput = document.querySelector('input[name="password"]');
+                                                    if (pwdInput) pwdInput.focus();
+                                                });
+                                            } else {
+                                                if (json.register_enabled) {
+                                                    window.location.href = cfg.loginUrl + "?register=1&username=" + encodeURIComponent(this.pwd.username);
+                                                } else {
+                                                    this.setAlert('error', 'حساب کاربری یافت نشد.');
+                                                }
+                                            }
+                                        } catch (e) {
+                                            this.setAlert('error', 'خطای شبکه در بررسی نام کاربری');
+                                        } finally {
+                                            this.pwd.loading = false;
+                                        }
+                                    }
+                                },
+
+                                prevStep() {
+                                    this.pwd.step = 1;
+                                    this.pwd.password = '';
+                                    this.pwd.show = false;
+                                    this.clearAlert();
+                                }
                             };
                         }
                     </script>
                 @endif
-
-                {{-- اگر فقط password --}}
-                @if($mode === 'password')
-                    <form method="POST" action="{{ route('client.login.submit') }}" class="px-6 py-8 space-y-5">
-                        @csrf
-
-                        @if($errors->any())
-                            <div class="rounded-xl bg-red-50 p-3 text-xs font-medium text-red-600 dark:bg-red-900/10 dark:text-red-400 border border-red-100 dark:border-red-900/20 mb-4 flex items-center gap-2">
-                                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>{{ $errors->first() }}</span>
-                            </div>
-                        @endif
-
-                        {{-- username --}}
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">نام کاربری</label>
-                            <div class="relative">
-                                <input type="text" name="username" value="{{ old('username') }}"
-                                       autocomplete="username" required autofocus
-                                       class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900
-                                              placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
-                                              transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900 dir-ltr"
-                                       placeholder="Username">
-                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- password --}}
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">رمز عبور</label>
-                            <div class="relative">
-                                <input type="password" name="password" autocomplete="current-password" required
-                                       class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900
-                                              placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
-                                              transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900 dir-ltr"
-                                       placeholder="••••••••">
-                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between">
-                            <label class="flex items-center cursor-pointer group">
-                                <div class="relative flex items-center">
-                                    <input type="checkbox" name="remember"
-                                           class="peer h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer" />
-                                </div>
-                                <span class="mr-2 text-xs font-medium text-gray-600 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-gray-300 select-none transition-colors">مرا به خاطر بسپار</span>
-                            </label>
-                        </div>
-
-                        <button type="submit"
-                                class="group relative flex w-full justify-center rounded-xl bg-indigo-600 py-3 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:shadow-indigo-600/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-2 transition-all active:scale-[0.98]">
-                            ورود به پنل
-                            <svg class="mr-2 h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14" />
-                            </svg>
-                        </button>
-
-                        <div class="pt-4 mt-2 border-t border-dashed border-gray-200 dark:border-gray-700 text-center">
-                            <p class="text-[10px] text-gray-400 dark:text-gray-500">
-                                در صورت فراموشی رمز عبور، با پشتیبانی تماس بگیرید.
-                            </p>
-                        </div>
-                    </form>
-                @endif
+            @endif
 
             </div>
         </div>

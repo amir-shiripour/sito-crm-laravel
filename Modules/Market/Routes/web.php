@@ -56,7 +56,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
 
     Route::prefix('market')->name('market.')->group(function () {
 
-        Route::get('dashboard', [MarketDashboardController::class, 'index'])->name('dashboard');
+        Route::get('dashboard', [MarketDashboardController::class, 'index'])->name('dashboard')->middleware('permission:market.dashboard.view');
 
         // Vendor Section
         Route::prefix('vendor')
@@ -70,16 +70,23 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
 
         // Admin Section
         Route::middleware([CheckMultiVendorMode::class])->group(function () {
-            Route::resource('vendors', VendorController::class);
+            Route::get('vendors', [VendorController::class, 'index'])->name('vendors.index')->middleware('permission:market.vendors.view');
+            Route::get('vendors/{vendor}', [VendorController::class, 'show'])->name('vendors.show')->middleware('permission:market.vendors.view');
+            Route::resource('vendors', VendorController::class)->except(['index', 'show'])->middleware('permission:market.vendors.manage');
             Route::view('vendor-products/review', 'market::admin.vendor-products.review')
                 ->name('vendor-products.review')
-                ->middleware(['permission:market.manage']);
+                ->middleware(['permission:market.vendors.manage']);
         });
 
         // Catalog Management
-        Route::resource('master-products', MasterProductController::class);
-        Route::get('checkout-forms', CheckoutFormManager::class)->name('checkout-forms.index')->middleware('permission:market.manage');
+        Route::get('master-products', [MasterProductController::class, 'index'])->name('master-products.index')->middleware('permission:market.products.view');
+        Route::get('master-products/create', [MasterProductController::class, 'create'])->name('master-products.create')->middleware('permission:market.master-products.manage');
+        Route::post('master-products', [MasterProductController::class, 'store'])->name('master-products.store')->middleware('permission:market.master-products.manage');
+        Route::get('master-products/{master_product}/edit', [MasterProductController::class, 'edit'])->name('master-products.edit')->middleware('permission:market.master-products.manage');
+        Route::put('master-products/{master_product}', [MasterProductController::class, 'update'])->name('master-products.update')->middleware('permission:market.master-products.manage');
+        Route::delete('master-products/{master_product}', [MasterProductController::class, 'destroy'])->name('master-products.destroy')->middleware('permission:market.master-products.manage');
 
+        Route::get('checkout-forms', CheckoutFormManager::class)->name('checkout-forms.index')->middleware('permission:market.checkout-forms.manage');
 
         // Warehouse Management (WMS)
         Route::view('warehouses', 'market::admin.warehouse.index')
@@ -92,30 +99,37 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
 
         Route::view('shipping', 'market::admin.shipping.index')
             ->name('shipping.index')
-            ->middleware('permission:market.manage');
+            ->middleware('permission:market.shipping.manage');
 
         Route::get('order-statuses', \Modules\Market\App\Livewire\Admin\OrderStatusManager::class)
             ->name('order-statuses.index')
-            ->middleware('permission:market.manage');
+            ->middleware('permission:market.order-statuses.manage');
 
         Route::get('reviews', \Modules\Market\App\Livewire\Admin\ReviewManager::class)
             ->name('reviews.index')
-            ->middleware('permission:market.manage');
+            ->middleware('permission:market.reviews.manage');
+
+        Route::get('questions', \Modules\Market\App\Livewire\Admin\QuestionManager::class)
+            ->name('questions.index')
+            ->middleware('permission:market.questions.manage');
 
         // Orders Section
-        Route::resource('orders', \Modules\Market\App\Http\Controllers\User\OrderController::class);
-        Route::view('brands', 'market::admin.brands.index')->name('brands.index');
-        Route::view('categories', 'market::admin.categories.index')->name('categories.index');
-        Route::view('display-categories', 'market::admin.display-categories.index')->name('display-categories.index');
+        Route::get('orders', [\Modules\Market\App\Http\Controllers\User\OrderController::class, 'index'])->name('orders.index')->middleware('permission:market.orders.view');
+        Route::get('orders/{order}', [\Modules\Market\App\Http\Controllers\User\OrderController::class, 'show'])->name('orders.show')->middleware('permission:market.orders.view');
+        Route::resource('orders', \Modules\Market\App\Http\Controllers\User\OrderController::class)->except(['index', 'show'])->middleware('permission:market.orders.manage');
+
+        Route::view('brands', 'market::admin.brands.index')->name('brands.index')->middleware('permission:market.brands.manage');
+        Route::view('categories', 'market::admin.categories.index')->name('categories.index')->middleware('permission:market.categories.manage');
+        Route::view('display-categories', 'market::admin.display-categories.index')->name('display-categories.index')->middleware('permission:market.categories.manage');
         Route::view('attributes', 'market::admin.attributes.index')
             ->name('attributes.index')
-            ->middleware(['permission:market.manage']);
+            ->middleware(['permission:market.attributes.manage']);
     });
 
     // Settings
     Route::prefix('settings/market')
         ->name('settings.market.')
-        ->middleware(['permission:market.manage'])
+        ->middleware(['permission:market.settings.manage'])
         ->group(function () {
             Route::view('general', 'market::admin.settings.general')->name('general');
         });

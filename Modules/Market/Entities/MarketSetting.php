@@ -61,6 +61,9 @@ class MarketSetting extends Model
             'vendor_can_create_variants' => false,
             'default_commission_rate' => '10',
             'max_vendor_addresses' => 3,
+            'vendor_can_create_catalog' => false,
+            'vendor_catalog_default_status' => 'draft',
+            'vendor_can_manage_prices' => true,
         ],
         'orders' => [
             'allow_guest_checkout' => false,

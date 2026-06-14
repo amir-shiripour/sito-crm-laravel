@@ -98,11 +98,17 @@ Route::prefix('clients')
             Route::post('login', [ClientAuthController::class, 'login'])
                 ->name('login.submit');
 
+            Route::post('login/check-username', [ClientAuthController::class, 'checkUsername'])
+                ->name('login.check-username');
+
             Route::post('login/otp/send', [ClientAuthController::class, 'sendOtp'])
                 ->name('otp.send');
 
             Route::post('login/otp/verify', [ClientAuthController::class, 'verifyOtp'])
                 ->name('otp.verify');
+
+            Route::post('register', [ClientAuthController::class, 'register'])
+                ->name('register.submit');
         });
 
         // کلاینت‌های لاگین کرده
@@ -130,6 +136,9 @@ Route::prefix('clients')
                 ->name('market.orders.index');
             Route::get('market/orders/{id}', [ClientPaymentController::class, 'marketOrderShow'])
                 ->name('market.orders.show');
+
+            Route::get('market/interactions', \Modules\Market\App\Livewire\Client\InteractionsManager::class)
+                ->name('market.interactions');
 
             Route::post('logout', [ClientAuthController::class, 'logout'])
                 ->name('logout');

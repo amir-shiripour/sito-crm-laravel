@@ -71,6 +71,7 @@
                 $variantMinPrice = null;
                 $variantOriginalPrice = null;
                 $activeVp = null;
+                $offers = [];
 
                 foreach ($variant->vendorProducts as $vp) {
                     if ($vp->status === 'published' && $vp->stock > 0) {
@@ -82,8 +83,28 @@
                             $variantOriginalPrice = $vp->price;
                             $activeVp = $vp;
                         }
+
+                        $offers[] = [
+                            'vendor_product_id' => (int) $vp->id,
+                            'vendor_name' => $vp->vendor->store_name ?? 'نامشخص',
+                            'vendor_logo' => ($vp->vendor && $vp->vendor->logo) ? asset('storage/' . $vp->vendor->logo) : null,
+                            'stock' => (int) $vp->stock,
+                            'price' => (float) $vp->price,
+                            'discount_price' => (float) $vp->discount_price,
+                            'final_price' => (float) $price,
+                            'discount_end_date' => ($vp->discount_price > 0 && $vp->discount_end_date) ? $vp->discount_end_date->toIso8601String() : null,
+                            'discount_stock' => $vp->discount_stock ? (int) $vp->discount_stock : null,
+                            'max_discount_purchase_qty' => $vp->max_discount_purchase_qty ? (int) $vp->max_discount_purchase_qty : null,
+                            'cart_amount_step' => $vp->cart_amount_step ? (float) $vp->cart_amount_step : 0.0,
+                            'purchase_step' => $vp->purchase_step ? (int) $vp->purchase_step : 0,
+                        ];
                     }
                 }
+
+                // Sort offers by final price ascending so the cheapest offer is first
+                usort($offers, function ($a, $b) {
+                    return $a['final_price'] <=> $b['final_price'];
+                });
 
                 $variant->calculated_stock = $variantStock;
                 $variant->calculated_min_price = $variantMinPrice;
@@ -125,6 +146,9 @@
                     'discount_end_date' => ($activeVp && $activeVp->discount_price > 0 && $activeVp->discount_end_date) ? $activeVp->discount_end_date->toIso8601String() : null,
                     'discount_stock' => $activeVp ? $activeVp->discount_stock : null,
                     'max_discount_purchase_qty' => $activeVp ? $activeVp->max_discount_purchase_qty : null,
+                    'cart_amount_step' => $activeVp ? (float) $activeVp->cart_amount_step : 0,
+                    'purchase_step' => $activeVp ? (int) $activeVp->purchase_step : 0,
+                    'offers' => $offers,
                 ];
 
                 if ($requestedVariantId && $variant->id == $requestedVariantId) {
@@ -416,6 +440,15 @@
                                         <input type="hidden" id="buybox-variant-id" value="">
                                         <input type="hidden" id="buybox-vendor-product-id" value="">
 
+                                        {{-- هشدار محدودیت ارزش سبد خرید دسکتاپ --}}
+                                        <div id="buybox-cart-limit-warning" class="hidden flex-col gap-1.5 bg-amber-50 dark:bg-amber-900/10 px-4 py-3 rounded-xl border border-amber-100 dark:border-amber-800/20 mb-3 text-xs font-bold text-amber-700 dark:text-amber-400">
+                                            <div class="flex items-center gap-1.5">
+                                                <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                                <span>محدودیت ارزش سبد خرید برای این محصول فعال است.</span>
+                                            </div>
+                                            <span id="buybox-cart-limit-remaining" class="text-[10px] font-normal text-amber-600 dark:text-amber-500"></span>
+                                        </div>
+
                                         {{-- دکمه افزودن مستقیم --}}
                                         <button type="button" onclick="submitToCart()" id="buybox-add-btn" class="cursor-pointer w-full h-14 rounded-2xl {{ $t['bg'] ?? 'bg-indigo-600' }} {{ $t['bg_hover'] ?? 'hover:bg-indigo-700' }} text-white font-bold text-base flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow-lg {{ $t['shadow'] ?? 'shadow-indigo-500/30' }}">
                                             افزودن به سبد خرید
@@ -466,6 +499,26 @@
             </div>
         </div>
 
+        {{-- بخش انتخاب فروشنده --}}
+        <div id="vendor-selection-section" class="mb-10 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm p-6 lg:p-8 hidden animate-in fade-in duration-500">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2">
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-{{ $t['name'] ?? 'indigo' }}-600 dark:text-{{ $t['name'] ?? 'indigo' }}-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        فروشندگان این کالا
+                    </h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">قیمت‌ها و شرایط گوناگون فروشندگان را مقایسه و بهترین گزینه را انتخاب کنید.</p>
+                </div>
+                <span id="vendor-offers-count" class="self-start sm:self-center px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-lg whitespace-nowrap"></span>
+            </div>
+            
+            <div id="vendor-offers-list" class="space-y-4">
+                <!-- به صورت پویا توسط جاوااسکریپت پر می‌شود -->
+            </div>
+        </div>
+
         @php
             $hasDescription = !empty(trim(strip_tags($product->description)));
             $hasAttributes = !empty($product->attributes) && is_array($product->attributes);
@@ -486,7 +539,9 @@
                         @if($product->enable_reviews)
                             <a href="#product-reviews-section" class="scrollspy-link pb-3 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-{{ $t['name'] ?? 'indigo' }}-600 dark:hover:text-{{ $t['name'] ?? 'indigo' }}-400 border-b-2 border-transparent transition-all">دیدگاه‌ها</a>
                         @endif
-                        <a href="#product-questions-section" class="scrollspy-link pb-3 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-{{ $t['name'] ?? 'indigo' }}-600 dark:hover:text-{{ $t['name'] ?? 'indigo' }}-400 border-b-2 border-transparent transition-all">پرسش‌ها</a>
+                        @if($product->enable_questions)
+                            <a href="#product-questions-section" class="scrollspy-link pb-3 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-{{ $t['name'] ?? 'indigo' }}-600 dark:hover:text-{{ $t['name'] ?? 'indigo' }}-400 border-b-2 border-transparent transition-all">پرسش‌ها</a>
+                        @endif
                     </nav>
                 </div>
             </div>
@@ -538,32 +593,12 @@
 
                     {{-- Reviews Section (دیدگاه‌ها) --}}
                     @if($product->enable_reviews)
-                        @livewire('market::web.product-reviews', ['product' => $product])
+                        @livewire('market::web.product-reviews', ['product' => $product, 't' => $t])
                     @endif
 
-                    {{-- Questions Section (پرسش‌ها) --}}
-                    <div id="product-questions-section" class="scroll-mt-36">
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                            <span class="w-1.5 h-6 bg-{{ $t['name'] ?? 'indigo' }}-600 rounded-full"></span>
-                            پرسش و پاسخ
-                        </h2>
-                        <div class="bg-white dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 md:p-8 space-y-6">
-                            <div class="flex items-start gap-3 border-b border-gray-100 dark:border-gray-800/60 pb-6">
-                                <span class="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-black shrink-0">پرسش</span>
-                                <div class="space-y-2">
-                                    <p class="text-sm font-bold text-gray-800 dark:text-gray-200">آیا این محصول دارای گارانتی معتبر شرکتی می‌باشد؟</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">پاسخ: بله، تمامی نسخه‌های ارائه شده توسط فروشندگان مجاز در سامانه دارای ۱۸ ماه گارانتی رسمی می‌باشند.</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-3">
-                                <span class="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-black shrink-0">پرسش</span>
-                                <div class="space-y-2">
-                                    <p class="text-sm font-bold text-gray-800 dark:text-gray-200">مدت زمان ارسال کالا چقدر است؟</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">پاسخ: ارسال تهران در کمتر از ۲۴ ساعت و شهرستان‌ها بین ۴۸ تا ۷۲ ساعت کاری انجام می‌پذیرد.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    @if($product->enable_questions)
+                        @livewire('market::web.product-questions', ['product' => $product, 't' => $t])
+                    @endif
 
                 </div>
 
@@ -649,6 +684,15 @@
 
                                 {{-- دکمه --}}
                                 <div>
+                                    {{-- هشدار محدودیت ارزش سبد خرید مینی سایدبار --}}
+                                    <div id="mini-buybox-cart-limit-warning" class="hidden flex-col gap-1 bg-amber-50 dark:bg-amber-900/10 px-3 py-2 rounded-xl border border-amber-100 dark:border-amber-800/20 mb-3 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                        <div class="flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            <span>محدودیت ارزش سبد خرید فعال است.</span>
+                                        </div>
+                                        <span id="mini-buybox-cart-limit-remaining" class="text-[9px] font-normal text-amber-600 dark:text-amber-500"></span>
+                                    </div>
+
                                     <button type="button" onclick="submitToCart()" id="mini-buybox-add-btn" class="cursor-pointer w-full h-11 rounded-2xl {{ $t['bg'] ?? 'bg-indigo-600' }} {{ $t['bg_hover'] ?? 'hover:bg-indigo-700' }} text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md {{ $t['shadow'] ?? 'shadow-indigo-500/25' }} active:scale-95">
                                         افزودن به سبد خرید
                                     </button>
@@ -719,6 +763,14 @@
             </div>
         @endif
 
+        {{-- هشدار محدودیت ارزش سبد خرید موبایل --}}
+        <div id="mobile-buybox-cart-limit-warning" class="hidden flex-col gap-1 bg-amber-50 dark:bg-amber-900/10 px-4 py-2 border-b border-amber-100 dark:border-amber-800/20 text-[10px] font-bold text-amber-700 dark:text-amber-400 text-center">
+            <div class="flex items-center justify-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <span>محدودیت ارزش سبد خرید برای این محصول فعال است.</span>
+            </div>
+            <span id="mobile-buybox-cart-limit-remaining" class="text-[9px] font-normal text-amber-600 dark:text-amber-500"></span>
+        </div>
         <div class="p-4 flex items-center justify-between gap-4">
 
             {{-- 💡 بخش دکمه (سمت راست) --}}
@@ -953,6 +1005,43 @@
 
         // دیتای ورودی سمت سرور
         const productVariants = @json($jsVariants);
+
+        // محاسبه و بررسی پویای محدودیت سبد خرید روی کلاینت
+        function checkCartLimit(variant, currentQuantity) {
+            if (!variant || !variant.cart_amount_step || !variant.purchase_step) {
+                return { isRestricted: false, maxAllowed: 9999, cartTotal: 0, requiredCartTotal: 0, remaining: 0 };
+            }
+
+            let otherItemsTotal = 0;
+            const currentCartKey = getCartKey(variant);
+            for (const key in cart) {
+                if (cart[key]) {
+                    const itemVariantId = parseInt(cart[key].variant_id) || 0;
+                    if (key === currentCartKey || itemVariantId === parseInt(variant.id)) {
+                        continue;
+                    }
+                    const price = parseFloat(cart[key].price || 0);
+                    const qty = parseInt(cart[key].quantity || 0);
+                    otherItemsTotal += (price * qty);
+                }
+            }
+
+            const itemPrice = parseFloat(variant.discount_price > 0 ? variant.discount_price : variant.final_price || variant.price);
+            const targetQty = Math.max(1, currentQuantity);
+            const maxAllowed = Math.floor(otherItemsTotal / variant.cart_amount_step) * variant.purchase_step;
+            const requiredCartTotal = Math.ceil(targetQty / variant.purchase_step) * variant.cart_amount_step;
+            const remaining = Math.max(0, requiredCartTotal - otherItemsTotal);
+
+            const isRestricted = targetQty > maxAllowed;
+
+            return {
+                isRestricted: isRestricted,
+                maxAllowed: maxAllowed,
+                cartTotal: 0,
+                requiredCartTotal: requiredCartTotal,
+                remaining: remaining
+            };
+        }
         let selectedAttributes = @json($initialSelectedAttributes);
         const requestedVariantId = @json($requestedVariantId);
 
@@ -960,6 +1049,7 @@
         let rawCart = @json(Session::get('market_cart', []));
         let cart = (Array.isArray(rawCart) && rawCart.length === 0) ? {} : rawCart;
         let activeVariant = null;
+        let activeOffer = null;
         let isCartLoading = false;
 
         const uiSettings = {
@@ -972,7 +1062,8 @@
 
         // گرفتن کلید محصول در سبد خرید
         function getCartKey(variant) {
-            let key = variant.id + '_' + (variant.vendor_product_id || '');
+            const vendorProductId = activeOffer ? activeOffer.vendor_product_id : (variant ? (variant.vendor_product_id || '') : '');
+            let key = (variant ? variant.id : '') + '_' + vendorProductId;
             
             // اگر تنوع دارای مقدار "هر " باشد، ویژگی انتخابی کاربر را به کلید اضافه می‌کنیم
             if (variant.attributes) {
@@ -1165,6 +1256,111 @@
                     miniSelector.classList.remove('flex');
                 }
             }
+
+            // بررسی محدودیت ارزش سبد خرید
+            const limitDesktop = document.getElementById('buybox-cart-limit-warning');
+            const limitMobile = document.getElementById('mobile-buybox-cart-limit-warning');
+            const limitMini = document.getElementById('mini-buybox-cart-limit-warning');
+
+            const limitRemainingDesktop = document.getElementById('buybox-cart-limit-remaining');
+            const limitRemainingMobile = document.getElementById('mobile-buybox-cart-limit-remaining');
+            const limitRemainingMini = document.getElementById('mini-buybox-cart-limit-remaining');
+
+            const incBtnDesktop = document.querySelector('#buybox-quantity-selector button[onclick="incrementCart()"]');
+            const incBtnMobile = document.querySelector('#mobile-buybox-quantity-selector button[onclick="incrementCart()"]');
+            const incBtnMini = document.querySelector('#mini-buybox-quantity-selector button[onclick="incrementCart()"]');
+
+            const hideWarnings = () => {
+                if (limitDesktop) { limitDesktop.classList.add('hidden'); limitDesktop.classList.remove('flex'); }
+                if (limitMobile) { limitMobile.classList.add('hidden'); limitMobile.classList.remove('flex'); }
+                if (limitMini) { limitMini.classList.add('hidden'); limitMini.classList.remove('flex'); }
+            };
+
+            const disableIncrementButtons = (disabled) => {
+                [incBtnDesktop, incBtnMobile, incBtnMini].forEach(btn => {
+                    if (btn) {
+                        btn.disabled = disabled;
+                        if (disabled) {
+                            btn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+                        } else {
+                            btn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+                        }
+                    }
+                });
+            };
+
+            const enableAddButtons = (enabled) => {
+                [desktopAddBtn, mobileAddBtn, miniAddBtn].forEach(btn => {
+                    if (btn) {
+                        btn.disabled = !enabled;
+                        if (enabled) {
+                            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                        } else {
+                            btn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                        }
+                    }
+                });
+            };
+
+            const stepAmount = activeOffer ? activeOffer.cart_amount_step : (activeVariant ? activeVariant.cart_amount_step : 0);
+            const stepPurchase = activeOffer ? activeOffer.purchase_step : (activeVariant ? activeVariant.purchase_step : 0);
+
+            if (activeVariant && stepAmount > 0 && stepPurchase > 0) {
+                const checkQty = qty > 0 ? qty : 1;
+                const limitCheck = checkCartLimit(activeVariant, checkQty);
+
+                if (limitCheck.isRestricted) {
+                    const formattedRemaining = new Intl.NumberFormat('fa-IR').format(limitCheck.remaining);
+                    const msg = `برای خرید این محصول، نیاز به ${formattedRemaining} تومان خرید بیشتر در سبد خود دارید.`;
+                    
+                    if (limitDesktop) { limitDesktop.classList.remove('hidden'); limitDesktop.classList.add('flex'); }
+                    if (limitRemainingDesktop) limitRemainingDesktop.innerText = msg;
+
+                    if (limitMobile) { limitMobile.classList.remove('hidden'); limitMobile.classList.add('flex'); }
+                    if (limitRemainingMobile) limitRemainingMobile.innerText = msg;
+
+                    if (limitMini) { limitMini.classList.remove('hidden'); limitMini.classList.add('flex'); }
+                    if (limitRemainingMini) limitRemainingMini.innerText = msg;
+
+                    // Disable primary Add to Cart buttons
+                    enableAddButtons(false);
+                    disableIncrementButtons(true);
+                } else {
+                    // Not restricted for checkQty, check if they can increment
+                    const nextLimitCheck = checkCartLimit(activeVariant, qty + 1);
+                    
+                    if (qty > 0 && nextLimitCheck.isRestricted) {
+                        const formattedRemaining = new Intl.NumberFormat('fa-IR').format(nextLimitCheck.remaining);
+                        const msg = `برای افزایش تعداد، نیاز به ${formattedRemaining} تومان خرید بیشتر در سبد خود دارید.`;
+                        
+                        if (limitDesktop) { limitDesktop.classList.remove('hidden'); limitDesktop.classList.add('flex'); }
+                        if (limitRemainingDesktop) limitRemainingDesktop.innerText = msg;
+
+                        if (limitMobile) { limitMobile.classList.remove('hidden'); limitMobile.classList.add('flex'); }
+                        if (limitRemainingMobile) limitRemainingMobile.innerText = msg;
+
+                        if (limitMini) { limitMini.classList.remove('hidden'); limitMini.classList.add('flex'); }
+                        if (limitRemainingMini) limitRemainingMini.innerText = msg;
+
+                        // Disable only the "+" increment button
+                        disableIncrementButtons(true);
+                    } else {
+                        // All good, hide warnings
+                        hideWarnings();
+                        disableIncrementButtons(false);
+                    }
+                    
+                    if (qty === 0) {
+                        enableAddButtons(true);
+                    }
+                }
+            } else {
+                hideWarnings();
+                disableIncrementButtons(false);
+                if (qty === 0) {
+                    enableAddButtons(true);
+                }
+            }
         }
 
         // ارسال درخواست امن و چندنسخه‌ای به Livewire
@@ -1189,9 +1385,10 @@
             setCartLoadingUI(true);
 
             // ارسال درخواست سرور
+            const vProductId = activeOffer ? parseInt(activeOffer.vendor_product_id) : (activeVariant.vendor_product_id ? parseInt(activeVariant.vendor_product_id) : null);
             dispatchLivewireEvent('addToCart', {
                 variantId: parseInt(activeVariant.id),
-                vendorProductId: activeVariant.vendor_product_id ? parseInt(activeVariant.vendor_product_id) : null,
+                vendorProductId: vProductId,
                 quantity: 1,
                 selectedAttributes: selectedAttributes
             });
@@ -1278,8 +1475,19 @@
         }
 
         // به‌روزرسانی اطلاعات قیمت و وضعیت دسکتاپ و موبایل در DOM
-        function updateBuyBoxDOM(variant) {
+        function updateBuyBoxDOM(variant, selectedOffer = null) {
             activeVariant = variant;
+
+            // تعیین پیشنهاد فعال از فروشندگان مختلف
+            let offer = null;
+            if (variant && variant.offers && variant.offers.length > 0) {
+                if (selectedOffer) {
+                    offer = selectedOffer;
+                } else {
+                    offer = variant.offers[0];
+                }
+            }
+            activeOffer = offer;
 
             const availableBox = document.getElementById('buybox-available');
             const outOfStockBox = document.getElementById('buybox-out-of-stock');
@@ -1300,11 +1508,11 @@
 
                 // ۱. نمایش فروشنده در مینی بای‌باکس
                 if (variant && document.getElementById('mini-buybox-vendor-name') && uiSettings.showVendor) {
-                    document.getElementById('mini-buybox-vendor-name').innerText = variant.vendor_name;
+                    document.getElementById('mini-buybox-vendor-name').innerText = offer ? offer.vendor_name : 'نامشخص';
                     const logoImg = document.getElementById('mini-buybox-vendor-logo');
                     const defaultIcon = document.getElementById('mini-buybox-vendor-icon');
-                    if (variant.vendor_logo) {
-                        if (logoImg) { logoImg.src = variant.vendor_logo; logoImg.classList.remove('hidden'); }
+                    if (offer && offer.vendor_logo) {
+                        if (logoImg) { logoImg.src = offer.vendor_logo; logoImg.classList.remove('hidden'); }
                         if (defaultIcon) defaultIcon.classList.add('hidden');
                     } else {
                         if (logoImg) logoImg.classList.add('hidden');
@@ -1380,7 +1588,7 @@
 
                 // ۳. نمایش/مخفی کردن پنل موجود/ناموجود + فروشنده
                 const miniVendorSection = document.getElementById('mini-buybox-vendor-section');
-                if (!variant || variant.stock === 0) {
+                if (!variant || !offer || offer.stock === 0) {
                     miniAvailableBox.classList.add('hidden');
                     miniOutOfStockBox.classList.remove('hidden');
                     if (miniBannerEl) { miniBannerEl.classList.add('hidden'); miniBannerEl.classList.remove('flex'); }
@@ -1394,7 +1602,7 @@
             }
             // --- پایان به‌روزرسانی مینی بای‌باکس ---
 
-            if (!variant || variant.stock === 0) {
+            if (!variant || !offer || offer.stock === 0) {
                 availableBox.classList.add('hidden');
                 availableBox.classList.remove('block');
                 outOfStockBox.classList.remove('hidden');
@@ -1419,6 +1627,7 @@
                     updateMobileWarningVisibility();
                 }
 
+                renderVendorOffers(variant);
                 updateCartUI();
                 return;
             }
@@ -1437,9 +1646,9 @@
 
             const vendorSection = document.getElementById('buybox-vendor-section');
             if (vendorSection && uiSettings.showVendor) {
-                document.getElementById('buybox-vendor-name').innerText = variant.vendor_name;
-                if (variant.vendor_logo) {
-                    document.getElementById('buybox-vendor-logo').src = variant.vendor_logo;
+                document.getElementById('buybox-vendor-name').innerText = offer.vendor_name;
+                if (offer.vendor_logo) {
+                    document.getElementById('buybox-vendor-logo').src = offer.vendor_logo;
                     document.getElementById('buybox-vendor-logo').classList.remove('hidden');
                     document.getElementById('buybox-vendor-icon').classList.add('hidden');
                 } else {
@@ -1451,11 +1660,11 @@
             const stockWarning = document.getElementById('buybox-stock-warning');
             const mobileStockWarning = document.getElementById('mobile-buybox-stock-warning');
 
-            const isLowStock = uiSettings.showStockWarning && variant.stock > 0 && variant.stock <= 3;
+            const isLowStock = uiSettings.showStockWarning && offer.stock > 0 && offer.stock <= 3;
 
             if (stockWarning) {
                 if (isLowStock) {
-                    document.getElementById('buybox-stock-text').innerText = `فقط ${variant.stock} عدد در انبار باقیست`;
+                    document.getElementById('buybox-stock-text').innerText = `فقط ${offer.stock} عدد در انبار باقیست`;
                     stockWarning.classList.remove('hidden');
                     stockWarning.classList.add('flex');
                 } else {
@@ -1467,7 +1676,7 @@
             if (mobileStockWarning) {
                 if (isLowStock) {
                     const mobileTextNode = document.getElementById('mobile-buybox-stock-text');
-                    mobileTextNode.innerHTML = `<span class="flex h-2 w-2 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></span>فقط ${variant.stock} عدد در انبار باقیست`;
+                    mobileTextNode.innerHTML = `<span class="flex h-2 w-2 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></span>فقط ${offer.stock} عدد در انبار باقیست`;
                     mobileStockWarning.dataset.show = 'true';
                 } else {
                     mobileStockWarning.dataset.show = 'false';
@@ -1479,9 +1688,9 @@
             const mobileDiscountSection = document.getElementById('mobile-buybox-discount-section');
             const discountStockProgress = document.getElementById('buybox-discount-stock-progress');
 
-            if (variant.discount_price > 0 && variant.discount_price < variant.price) {
-                const percent = Math.round(((variant.price - variant.discount_price) / variant.price) * 100);
-                const formattedPrice = new Intl.NumberFormat('fa-IR').format(variant.price);
+            if (offer.discount_price > 0 && offer.discount_price < offer.price) {
+                const percent = Math.round(((offer.price - offer.discount_price) / offer.price) * 100);
+                const formattedPrice = new Intl.NumberFormat('fa-IR').format(offer.price);
 
                 document.getElementById('buybox-old-price').innerText = formattedPrice;
                 document.getElementById('buybox-discount-badge').innerText = `٪${percent}`;
@@ -1497,20 +1706,20 @@
                 const spacer = document.getElementById('buybox-discount-spacer');
                 const countdownSpan = document.getElementById('countdown-timer-desktop');
 
-                if(variant.discount_end_date) {
+                if(offer.discount_end_date) {
                     banner.classList.remove('hidden');
                     banner.classList.add('flex');
                     spacer.classList.remove('hidden');
-                    startCountdown(countdownSpan, variant.discount_end_date);
+                    startCountdown(countdownSpan, offer.discount_end_date);
                 } else {
                     banner.classList.add('hidden');
                     banner.classList.remove('flex');
                     spacer.classList.add('hidden');
                 }
 
-                if (discountStockProgress && variant.discount_stock > 0) {
-                    const totalDiscountStock = variant.discount_stock;
-                    const currentStock = Math.min(variant.stock, totalDiscountStock);
+                if (discountStockProgress && offer.discount_stock > 0) {
+                    const totalDiscountStock = offer.discount_stock;
+                    const currentStock = Math.min(offer.stock, totalDiscountStock);
                     const remainingPercent = Math.max(0, Math.min(100, (currentStock / totalDiscountStock) * 100));
 
                     document.getElementById('discount-stock-bar').style.width = `${remainingPercent}%`;
@@ -1533,14 +1742,14 @@
                 }
             }
 
-            const formattedFinalPrice = new Intl.NumberFormat('fa-IR').format(variant.final_price);
+            const formattedFinalPrice = new Intl.NumberFormat('fa-IR').format(offer.final_price);
             document.getElementById('buybox-final-price').innerText = formattedFinalPrice;
             document.getElementById('mobile-buybox-final-price').innerText = formattedFinalPrice;
 
             document.getElementById('buybox-variant-id').value = variant.id;
-            document.getElementById('buybox-vendor-product-id').value = variant.vendor_product_id || '';
+            document.getElementById('buybox-vendor-product-id').value = offer.vendor_product_id || '';
 
-            if (miniAvailableBox && miniOutOfStockBox && variant && variant.stock > 0) {
+            if (miniAvailableBox && miniOutOfStockBox && offer && offer.stock > 0) {
                 // قیمت نهایی (فقط در حالت موجود)
                     const miniFinalPriceEl2 = document.getElementById('mini-buybox-final-price');
                     if (miniFinalPriceEl2) miniFinalPriceEl2.innerText = formattedFinalPrice;
@@ -1549,7 +1758,7 @@
                     const miniStockWarning = document.getElementById('mini-buybox-stock-warning');
                     if (miniStockWarning) {
                         if (isLowStock) {
-                            document.getElementById('mini-buybox-stock-text').innerText = `فقط ${variant.stock} عدد در انبار باقیست`;
+                            document.getElementById('mini-buybox-stock-text').innerText = `فقط ${offer.stock} عدد در انبار باقیست`;
                             miniStockWarning.classList.remove('hidden');
                             miniStockWarning.classList.add('flex');
                         } else {
@@ -1562,9 +1771,9 @@
                     const miniDiscountSection2 = document.getElementById('mini-buybox-discount-section');
                     const miniDiscountStockProgress2 = document.getElementById('mini-buybox-discount-stock-progress');
 
-                    if (variant.discount_price > 0 && variant.discount_price < variant.price) {
-                        const percent2 = Math.round(((variant.price - variant.discount_price) / variant.price) * 100);
-                        const formattedOrigPrice2 = new Intl.NumberFormat('fa-IR').format(variant.price);
+                    if (offer.discount_price > 0 && offer.discount_price < offer.price) {
+                        const percent2 = Math.round(((offer.price - offer.discount_price) / offer.price) * 100);
+                        const formattedOrigPrice2 = new Intl.NumberFormat('fa-IR').format(offer.price);
 
                         if (document.getElementById('mini-buybox-old-price')) {
                             document.getElementById('mini-buybox-old-price').innerText = formattedOrigPrice2;
@@ -1576,16 +1785,16 @@
                         }
 
                         const countdownSpanMini = document.getElementById('mini-countdown-timer');
-                        if (variant.discount_end_date) {
+                        if (offer.discount_end_date) {
                             if(miniBannerEl) { miniBannerEl.classList.remove('hidden'); miniBannerEl.classList.add('flex'); }
-                            startCountdown(countdownSpanMini, variant.discount_end_date);
+                            startCountdown(countdownSpanMini, offer.discount_end_date);
                         } else {
                             if(miniBannerEl) { miniBannerEl.classList.add('hidden'); miniBannerEl.classList.remove('flex'); }
                         }
 
-                        if (miniDiscountStockProgress2 && variant.discount_stock > 0) {
-                            const totalDiscountStock2 = variant.discount_stock;
-                            const currentStock2 = Math.min(variant.stock, totalDiscountStock2);
+                        if (miniDiscountStockProgress2 && offer.discount_stock > 0) {
+                            const totalDiscountStock2 = offer.discount_stock;
+                            const currentStock2 = Math.min(offer.stock, totalDiscountStock2);
                             const remainingPercent2 = Math.max(0, Math.min(100, (currentStock2 / totalDiscountStock2) * 100));
 
                             document.getElementById('mini-discount-stock-bar').style.width = `${remainingPercent2}%`;
@@ -1608,6 +1817,9 @@
                 const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?variant=' + variant.id;
                 window.history.pushState({path:newurl}, '', newurl);
             }
+
+            // رندرسازی مجدد بخش انتخاب فروشنده برای این تنوع
+            renderVendorOffers(variant);
 
             // پس از بارگذاری اطلاعات، دکمه‌های سبد خرید برای این آیتم همگام‌سازی شوند
             updateCartUI();
@@ -1805,6 +2017,143 @@
             if (btnElement) {
                 btnElement.classList.remove('border-transparent', 'opacity-50');
                 btnElement.classList.add('border-white', 'opacity-100');
+            }
+        }
+
+        // رندرسازی کارت‌های فروشندگان
+        function renderVendorOffers(variant) {
+            const sectionEl = document.getElementById('vendor-selection-section');
+            const listEl = document.getElementById('vendor-offers-list');
+            const countEl = document.getElementById('vendor-offers-count');
+
+            if (!sectionEl || !listEl) return;
+
+            // اگر تنوع خالی باشد یا کمتر از ۲ فروشنده داشته باشد، نیازی به نمایش سکشن مقایسه نیست
+            if (!variant || !variant.offers || variant.offers.length < 2) {
+                sectionEl.classList.add('hidden');
+                return;
+            }
+
+            sectionEl.classList.remove('hidden');
+            countEl.innerText = new Intl.NumberFormat('fa-IR').format(variant.offers.length) + ' فروشنده';
+
+            let html = '';
+            variant.offers.forEach(offer => {
+                const isSelected = activeOffer && activeOffer.vendor_product_id === offer.vendor_product_id;
+                const formattedPrice = new Intl.NumberFormat('fa-IR').format(offer.final_price);
+                const hasDiscount = offer.discount_price > 0 && offer.discount_price < offer.price;
+                const formattedOriginalPrice = new Intl.NumberFormat('fa-IR').format(offer.price);
+                const discountPercent = hasDiscount ? Math.round(((offer.price - offer.discount_price) / offer.price) * 100) : 0;
+                
+                // وضعیت موجودی کالا
+                let stockText = 'موجود در انبار';
+                let stockColorClass = 'text-teal-600 dark:text-teal-400';
+                if (offer.stock <= 3) {
+                    stockText = `تنها ${new Intl.NumberFormat('fa-IR').format(offer.stock)} عدد در انبار باقیست`;
+                    stockColorClass = 'text-rose-600 dark:text-rose-400';
+                }
+
+                // هشدار محدودیت ارزش سبد
+                let limitInfoHtml = '';
+                if (offer.cart_amount_step > 0 && offer.purchase_step > 0) {
+                    const formattedStep = new Intl.NumberFormat('fa-IR').format(offer.cart_amount_step);
+                    const formattedQty = new Intl.NumberFormat('fa-IR').format(offer.purchase_step);
+                    limitInfoHtml = `
+                        <div class="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 font-bold">
+                            <svg class="w-4 h-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>خرید ${formattedQty} عدد به ازای هر ${formattedStep} تومان سبد خرید</span>
+                        </div>
+                    `;
+                }
+
+                // لوگوی فروشنده
+                let logoHtml = `
+                    <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700 flex items-center justify-center overflow-hidden shrink-0">
+                        <svg class="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                    </div>
+                `;
+                if (offer.vendor_logo) {
+                    logoHtml = `
+                        <div class="w-12 h-12 rounded-full bg-white border border-gray-200/60 dark:border-gray-700 flex items-center justify-center overflow-hidden shrink-0">
+                            <img src="${offer.vendor_logo}" alt="Logo" class="w-full h-full object-cover">
+                        </div>
+                    `;
+                }
+
+                // دکمه انتخاب
+                let btnHtml = '';
+                if (isSelected) {
+                    btnHtml = `
+                        <button type="button" class="px-5 py-2.5 rounded-xl font-bold text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60 flex items-center gap-1.5 cursor-default whitespace-nowrap">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>گزینه انتخاب شده</span>
+                        </button>
+                    `;
+                } else {
+                    btnHtml = `
+                        <button type="button" onclick="selectVendorOffer(${offer.vendor_product_id})" class="cursor-pointer px-6 py-2.5 rounded-xl font-bold text-xs bg-white dark:bg-gray-900 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white border border-gray-200 dark:border-gray-700 hover:border-indigo-600 dark:hover:border-indigo-500 transition-all shadow-sm whitespace-nowrap">
+                            انتخاب فروشنده
+                        </button>
+                    `;
+                }
+
+                html += `
+                    <div class="flex flex-col md:flex-row md:items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-800/10 border ${isSelected ? 'border-indigo-500/50 dark:border-indigo-400/50 shadow-md shadow-indigo-500/5' : 'border-gray-100 dark:border-gray-800/60'} rounded-2xl transition-all gap-4">
+                        <!-- نام و لوگوی فروشنده -->
+                        <div class="flex items-center gap-4">
+                            ${logoHtml}
+                            <div>
+                                <div class="font-bold text-gray-800 dark:text-gray-200 text-sm sm:text-base">${offer.vendor_name}</div>
+                                <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">تضمین اصالت کالا و گارانتی معتبر</div>
+                            </div>
+                        </div>
+                        
+                        <!-- محدودیت خرید -->
+                        <div class="text-xs">
+                            ${limitInfoHtml}
+                        </div>
+                        
+                        <!-- وضعیت موجودی -->
+                        <div class="text-xs font-bold ${stockColorClass}">
+                            ${stockText}
+                        </div>
+                        
+                        <!-- قیمت و دکمه انتخاب -->
+                        <div class="flex items-center gap-4 sm:gap-6 justify-between md:justify-end shrink-0">
+                            <div class="flex flex-col items-end">
+                                ${hasDiscount ? `
+                                    <div class="flex items-center gap-1.5 mb-0.5">
+                                        <span class="px-1.5 py-0.5 bg-rose-500 text-white text-[10px] font-bold rounded">٪${discountPercent}</span>
+                                        <span class="text-xs text-gray-400 line-through font-medium">${formattedOriginalPrice}</span>
+                                    </div>
+                                ` : ''}
+                                <div class="text-gray-900 dark:text-white font-black text-lg sm:text-xl flex items-baseline gap-1">
+                                    <span>${formattedPrice}</span>
+                                    <span class="text-[10px] font-medium text-gray-500">تومان</span>
+                                </div>
+                            </div>
+                            
+                            ${btnHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            listEl.innerHTML = html;
+        }
+
+        // تابع رویداد انتخاب فروشنده
+        function selectVendorOffer(vendorProductId) {
+            if (!activeVariant || !activeVariant.offers) return;
+            const offer = activeVariant.offers.find(o => o.vendor_product_id === vendorProductId);
+            if (offer) {
+                updateBuyBoxDOM(activeVariant, offer);
             }
         }
     </script>

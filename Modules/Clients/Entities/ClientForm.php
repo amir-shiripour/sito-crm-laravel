@@ -200,9 +200,12 @@ class ClientForm extends Model implements FormSchemaContract
 
             $fid = $f['id'];
 
-            // تنظیم مقدار پیش‌فرض برای client_auth در فیلدهای سفارشی
+            // تنظیم مقدار پیش‌فرض برای client_auth و show_in_registration در فیلدهای سفارشی
             if (!array_key_exists('client_auth', $f)) {
                 $f['client_auth'] = false;
+            }
+            if (!array_key_exists('show_in_registration', $f)) {
+                $f['show_in_registration'] = false;
             }
 
             // اگر فیلد سیستمی است → روی تعریف سیستمی قفل کن (ولی overrideهای کاربر رو نگه می‌داریم)
@@ -217,7 +220,7 @@ class ClientForm extends Model implements FormSchemaContract
                     $f['label'] = $canon['label'];
                 }
 
-                foreach (['group', 'width', 'placeholder', 'quick_create', 'client_auth', 'required'] as $k) {
+                foreach (['group', 'width', 'placeholder', 'quick_create', 'client_auth', 'show_in_registration', 'required'] as $k) {
                     if (!array_key_exists($k, $f) && array_key_exists($k, $canon)) {
                         $f[$k] = $canon[$k];
                     }

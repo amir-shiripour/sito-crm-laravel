@@ -322,17 +322,58 @@ class KycWizard extends Component
 
     public function updatedSearchQuery($query)
     {
-        if (strlen($query) < 3) {
+        if (mb_strlen($query, 'UTF-8') < 3) {
             $this->searchResults = [];
             return;
         }
 
+        $results = [];
+
+        // 1. Try Map Service if bound and has API Key
         if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
             $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
-            $this->searchResults = $mapService->search($query, $this->latitude, $this->longitude);
-        } else {
-            $this->searchResults = [];
+            if (!empty($mapService->getApiKey())) {
+                $results = $mapService->search($query, $this->latitude, $this->longitude);
+            }
         }
+
+        // 2. Fallback to OpenStreetMap Nominatim search
+        if (empty($results)) {
+            $results = $this->fallbackSearch($query);
+        }
+
+        $this->searchResults = $results;
+    }
+
+    protected function fallbackSearch($query)
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Laravel-CRM-Map-App'
+            ])->timeout(5)->get("https://nominatim.openstreetmap.org/search", [
+                'q' => $query,
+                'format' => 'json',
+                'accept-language' => 'fa,en',
+                'limit' => 10
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $results = [];
+                foreach ($data as $item) {
+                    $results[] = [
+                        'title' => $item['name'] ?? $item['display_name'] ?? '',
+                        'address' => $item['display_name'] ?? '',
+                        'lat' => (float)($item['lat'] ?? 0),
+                        'lng' => (float)($item['lon'] ?? 0),
+                    ];
+                }
+                return $results;
+            }
+        } catch (\Exception $e) {
+            // Silently fail
+        }
+        return [];
     }
 
     public function selectSearchResult($lat, $lng, $title = '')

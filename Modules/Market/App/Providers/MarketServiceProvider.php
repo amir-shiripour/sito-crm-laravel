@@ -28,6 +28,8 @@ use Modules\Market\App\Livewire\Admin\WarehouseStockController;
 use Modules\Market\App\Livewire\Admin\ProductVariantSelector;
 use Modules\Market\App\Livewire\Admin\CheckoutFormManager;
 use Modules\Market\App\Livewire\Admin\ReviewManager;
+use Modules\Market\App\Livewire\Admin\QuestionManager;
+use Modules\Market\App\Livewire\Web\ProductQuestions;
 use Modules\Market\App\Livewire\Web\CartManager;
 use Modules\Market\App\Livewire\Web\PopupCart;
 use Modules\Market\App\Livewire\Web\CartCounter;
@@ -37,6 +39,7 @@ use Modules\Market\App\Livewire\web\CheckoutPage;
 use Modules\Market\App\Livewire\Web\LocationModal;
 use Modules\Market\App\Livewire\Web\ProductReviews;
 use Modules\Market\App\Livewire\user\OrderForm;
+use Modules\Market\App\Livewire\Client\InteractionsManager;
 use Modules\Market\App\Observers\VendorObserver;
 use Modules\Market\Entities\MarketSetting;
 use Modules\Market\Entities\Vendor;
@@ -92,6 +95,8 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::admin.shipping-manager', ShippingManager::class);
         Livewire::component('market::admin.order-status-manager', OrderStatusManager::class);
         Livewire::component('market::admin.review-manager', ReviewManager::class);
+        Livewire::component('market::admin.question-manager', QuestionManager::class);
+        Livewire::component('market::web.product-questions', ProductQuestions::class);
         Livewire::component('market::web.cart-manager', CartManager::class);
         Livewire::component('market::web.popup-cart', PopupCart::class);
         Livewire::component('market::web.cart-counter', CartCounter::class);
@@ -101,6 +106,7 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::web.location-modal', LocationModal::class);
         Livewire::component('market::web.product-reviews', ProductReviews::class);
         Livewire::component('market::user.order-form', OrderForm::class);
+        Livewire::component('market::client.interactions-manager', InteractionsManager::class);
 
         // 💡 ثبت Observer
         Vendor::observe(VendorObserver::class);

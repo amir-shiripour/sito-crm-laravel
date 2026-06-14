@@ -118,6 +118,7 @@ class CheckoutPage extends Component
         }
 
         $client = Auth::guard('client')->user();
+        $defaultAddress = null;
         if ($client) {
             $this->addresses = $client->addresses()->orderBy('is_default', 'desc')->orderBy('created_at', 'desc')->get();
             if ($this->form) {
@@ -125,6 +126,14 @@ class CheckoutPage extends Component
                 if ($defaultAddress) {
                     $this->selectAddress($defaultAddress->id);
                 }
+            }
+        }
+
+        if (!$client || !$defaultAddress) {
+            $loc = session('client_location');
+            $newCity = $loc['city'] ?? null;
+            if ($newCity) {
+                $this->syncCartWithLocation($newCity);
             }
         }
 
@@ -215,6 +224,8 @@ class CheckoutPage extends Component
                     'full_attributes' => $fullAttributes,
                     'slug' => $variant->masterProduct->slug,
                     'vendor_name' => $vp->vendor->store_name ?? 'نامشخص',
+                    'cart_amount_step' => $vp->cart_amount_step ? (float) $vp->cart_amount_step : 0.0,
+                    'purchase_step' => $vp->purchase_step ? (int) $vp->purchase_step : 0,
                 ];
             }
         }
@@ -287,6 +298,49 @@ class CheckoutPage extends Component
         if (empty($freshCart)) {
             $this->dispatch('notify', type: 'error', text: 'سبد خرید شما خالی است.');
             return;
+        }
+
+        // Enforce purchase limits and cart total-based step limits
+        $cartTotalForStepLimits = 0;
+        foreach ($freshCart as $itemArray) {
+            $cartTotalForStepLimits += ($itemArray['price'] * $itemArray['quantity']);
+        }
+
+        foreach ($freshCart as $itemArray) {
+            $vp = VendorProduct::find($itemArray['vendor_product_id']);
+            if (!$vp) continue;
+
+            // 1. Min purchase
+            if ($vp->min_purchase_qty > 0 && $itemArray['quantity'] < $vp->min_purchase_qty) {
+                $this->dispatch('notify', type: 'error', text: "حداقل تعداد خرید برای محصول «{$itemArray['name']}» {$vp->min_purchase_qty} عدد است.");
+                return;
+            }
+
+            // 2. Max purchase
+            if ($vp->max_purchase_qty > 0 && $itemArray['quantity'] > $vp->max_purchase_qty) {
+                $this->dispatch('notify', type: 'error', text: "حداکثر تعداد خرید برای محصول «{$itemArray['name']}» {$vp->max_purchase_qty} عدد است.");
+                return;
+            }
+
+            // 3. Cart total based limit
+            if ($vp->cart_amount_step > 0 && $vp->purchase_step > 0) {
+                $otherItemsTotal = 0;
+                foreach ($freshCart as $otherItem) {
+                    if ($otherItem['vendor_product_id'] !== $itemArray['vendor_product_id'] && (int)$otherItem['variant_id'] !== (int)$itemArray['variant_id']) {
+                        $otherItemsTotal += ($otherItem['price'] * $otherItem['quantity']);
+                    }
+                }
+                $maxAllowedByCartValue = floor($otherItemsTotal / $vp->cart_amount_step) * $vp->purchase_step;
+                if ($itemArray['quantity'] > $maxAllowedByCartValue) {
+                    $formattedStep = number_format($vp->cart_amount_step);
+                    if ($maxAllowedByCartValue == 0) {
+                        $this->dispatch('notify', type: 'error', text: "برای خرید محصول «{$itemArray['name']}»، مبلغ کل سبد خرید باید حداقل {$formattedStep} تومان باشد.");
+                    } else {
+                        $this->dispatch('notify', type: 'error', text: "با توجه به مبلغ کل سبد خرید، حداکثر {$maxAllowedByCartValue} عدد از محصول «{$itemArray['name']}» قابل سفارش است (به ازای هر {$formattedStep} تومان سبد خرید، {$vp->purchase_step} عدد).");
+                    }
+                    return;
+                }
+            }
         }
 
         // Geolocation ordering validation
@@ -581,9 +635,16 @@ class CheckoutPage extends Component
 
         if (in_array('online', $activeSystemMethods)) {
             $gateways = ['zarinpal', 'zibal', 'behpardakht'];
+            $gatewayTitles = [
+                'zarinpal' => 'درگاه پرداخت زرین‌پال',
+                'zibal' => 'درگاه پرداخت زیبال',
+                'behpardakht' => 'درگاه پرداخت به‌پرداخت ملت',
+            ];
             foreach ($gateways as $gateway) {
                 if (($settings["{$gateway}_status"] ?? 'inactive') === 'active') {
-                    $methods[$gateway] = ['type' => 'online', 'title' => $settings["{$gateway}_title"] ?? ucfirst($gateway), 'logo' => $settings["{$gateway}_logo"] ?? null];
+                    $defaultTitle = $gatewayTitles[$gateway] ?? ucfirst($gateway);
+                    $title = (!empty($settings["{$gateway}_title"])) ? $settings["{$gateway}_title"] : $defaultTitle;
+                    $methods[$gateway] = ['type' => 'online', 'title' => $title, 'logo' => $settings["{$gateway}_logo"] ?? null];
                 }
             }
         }
@@ -630,6 +691,15 @@ class CheckoutPage extends Component
                 $this->formData[$fieldId] = $address->postal_code;
             }
         }
+
+        // Sync with storefront header location
+        session(['client_location' => [
+            'province' => $address->province,
+            'city' => $address->city
+        ]]);
+        $this->dispatch('location-changed', city: $address->city);
+
+        $this->syncCartWithLocation($address->city);
         $this->loadShippingMethods();
     }
 
@@ -836,7 +906,112 @@ class CheckoutPage extends Component
     public function updatedFormData($value, $key)
     {
         $provinceCityFieldId = $this->findFieldIdByType('select-province-city');
+        if ($key === $provinceCityFieldId) {
+            $decoded = is_string($value) ? json_decode($value, true) : $value;
+            $newCity = $decoded['city'] ?? null;
+            $newProvince = $decoded['province'] ?? null;
+            if ($newProvince && $newCity) {
+                session(['client_location' => [
+                    'province' => $newProvince,
+                    'city' => $newCity
+                ]]);
+                $this->dispatch('location-changed', city: $newCity);
+            }
+            if ($newCity) {
+                $this->syncCartWithLocation($newCity);
+            }
+        } elseif ($key === 'city') {
+            $provinceFieldId = $this->findFieldIdByType('province') ?? 'province';
+            $province = $this->formData[$provinceFieldId] ?? $this->selectedProvince;
+            if ($province && $value) {
+                session(['client_location' => [
+                    'province' => $province,
+                    'city' => $value
+                ]]);
+                $this->dispatch('location-changed', city: $value);
+            }
+            $this->syncCartWithLocation($value);
+        }
+
         if ($key === $provinceCityFieldId || $key === 'city' || $key === 'province') {
+            $this->loadShippingMethods();
+        }
+    }
+
+    protected function syncCartWithLocation($newCity)
+    {
+        if (!MarketSetting::getValue('orders.enable_geolocation_ordering', false) || empty($newCity)) {
+            return;
+        }
+
+        $sessionCart = Session::get('market_cart', []);
+        $cartChanged = false;
+        $updatedCart = [];
+
+        foreach ($sessionCart as $key => $item) {
+            if (empty($item['vendor_product_id'])) continue;
+            
+            $vp = VendorProduct::with('vendor')->find($item['vendor_product_id']);
+            if (!$vp) {
+                continue;
+            }
+
+            $vendorCity = $vp->vendor->addresses()->where('is_default', true)->first()?->city 
+                ?? $vp->vendor->addresses()->first()?->city;
+
+            if ($vendorCity === $newCity) {
+                $updatedCart[$key] = $item;
+                continue;
+            }
+
+            // Not in the same city. Look for alternative in this city
+            $alternativeVp = VendorProduct::where('product_variant_id', $item['variant_id'])
+                ->where('status', 'published')
+                ->where('stock', '>', 0)
+                ->whereHas('vendor.addresses', function($q) use ($newCity) {
+                    $q->where('city', $newCity);
+                })
+                ->orderBy('price', 'asc')
+                ->first();
+
+            if ($alternativeVp) {
+                $item['vendor_product_id'] = $alternativeVp->id;
+                $item['vendor_id'] = $alternativeVp->vendor_id;
+                
+                $finalPrice = $alternativeVp->discount_price > 0 ? $alternativeVp->discount_price : $alternativeVp->price;
+                $item['price'] = $finalPrice;
+                if (isset($item['base_price'])) {
+                    $item['base_price'] = $alternativeVp->price;
+                }
+                if (isset($item['original_price'])) {
+                    $item['original_price'] = $alternativeVp->price;
+                }
+                if (isset($item['discount_amount'])) {
+                    $item['discount_amount'] = $alternativeVp->discount_price > 0 ? ($alternativeVp->price - $alternativeVp->discount_price) : 0;
+                }
+                
+                $updatedCart[$key] = $item;
+                $cartChanged = true;
+                
+                $itemName = $item['title'] ?? $item['name'] ?? 'محصول';
+                $this->dispatch('notify', type: 'warning', text: "فروشنده محصول «{$itemName}» به دلیل تغییر آدرس به نزدیک‌ترین فروشنده در شهر شما تغییر یافت.");
+            } else {
+                $cartChanged = true;
+                $itemName = $item['title'] ?? $item['name'] ?? 'محصول';
+                $this->dispatch('notify', type: 'error', text: "محصول «{$itemName}» در موقعیت جدید شما موجود نیست و از سبد خرید حذف شد.");
+            }
+        }
+
+        if ($cartChanged) {
+            Session::put('market_cart', $updatedCart);
+            $this->dispatch('cartUpdated');
+            
+            if (empty($updatedCart)) {
+                return redirect()->route('market.cart.index');
+            }
+            
+            $freshCart = $this->getFreshCartItems();
+            $this->calculateTotals($freshCart);
             $this->loadShippingMethods();
         }
     }

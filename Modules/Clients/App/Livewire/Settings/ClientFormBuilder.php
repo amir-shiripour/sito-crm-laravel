@@ -137,6 +137,7 @@ class ClientFormBuilder extends Component
             'label'               => 'بی‌نام',
             'quick_create'        => false,
             'client_auth'         => false,
+            'show_in_registration'=> false,
             'placeholder'         => '',
             'width'               => 'full',
             'group'               => '',
@@ -208,6 +209,9 @@ class ClientFormBuilder extends Component
         if (!array_key_exists('client_auth', $field)) {
             $field['client_auth'] = false;
         }
+        if (!array_key_exists('show_in_registration', $field)) {
+            $field['show_in_registration'] = false;
+        }
 
         $this->schema['fields'][] = $field;
     }
@@ -249,6 +253,9 @@ class ClientFormBuilder extends Component
 
             if (!array_key_exists('client_auth', $f)) {
                 $f['client_auth'] = false;
+            }
+            if (!array_key_exists('show_in_registration', $f)) {
+                $f['show_in_registration'] = false;
             }
 
             if ($isReserved) {

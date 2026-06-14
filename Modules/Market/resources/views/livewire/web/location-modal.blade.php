@@ -66,7 +66,7 @@
                         <div class="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1">
                             @foreach($addresses as $addr)
                                 <div wire:click="selectActiveAddress({{ $addr['id'] }})" 
-                                     class="p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:border-indigo-500 flex items-start gap-3.5 {{ $selectedAddressId == $addr['id'] ? 'border-indigo-650 bg-indigo-50/10 dark:bg-indigo-950/10 shadow-sm ring-1 ring-indigo-500/10' : 'border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/10' }}">
+                                     class="p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex items-start gap-3.5 {{ $selectedAddressId == $addr['id'] ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/20 shadow-sm ring-1 ring-indigo-600/20 dark:ring-indigo-500/25' : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 hover:border-indigo-300 dark:hover:border-indigo-800/60' }}">
                                     
                                     <div class="mt-1 flex items-center justify-center shrink-0">
                                         <input type="radio" name="active_address" value="{{ $addr['id'] }}" 
@@ -118,7 +118,7 @@
                             
                             {{-- Search Results Suggestion Dropdown --}}
                             @if(!empty($searchQuery) && count($searchResults) > 0)
-                                <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-150 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
+                                <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
                                     @foreach($searchResults as $res)
                                         <button type="button" 
                                                 wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, '{{ addslashes($res['title']) }}')"
@@ -318,7 +318,7 @@
                         <div class="space-y-6 animate-in fade-in duration-300">
                             <div class="grid grid-cols-1 gap-4">
                                 {{-- Option A: Select on Map --}}
-                                <button type="button" wire:click="$set('step', 2)" class="w-full text-right p-5 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/80 dark:border-indigo-900/40 hover:border-indigo-500 rounded-3xl transition-all flex items-center justify-between group active:scale-[0.99]">
+                                <button type="button" wire:click="$set('step', 2)" class="w-full text-right p-5 bg-indigo-50/30 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/60 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-3xl transition-all flex items-center justify-between group active:scale-[0.99]">
                                     <div class="flex items-center gap-4">
                                         <div class="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
                                             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -337,9 +337,9 @@
                                 </button>
 
                                 {{-- Option B: Login --}}
-                                <a href="{{ route('client.login') }}" class="w-full text-right p-5 bg-gray-50/50 dark:bg-gray-800/40 border border-gray-150 dark:border-gray-700/60 hover:border-indigo-500 rounded-3xl transition-all flex items-center justify-between group active:scale-[0.99]">
+                                <a href="{{ route('client.login') }}" class="w-full text-right p-5 bg-gray-50/50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-3xl transition-all flex items-center justify-between group active:scale-[0.99]">
                                     <div class="flex items-center gap-4">
-                                        <div class="w-12 h-12 bg-white dark:bg-gray-800 text-gray-755 dark:text-gray-200 border border-gray-150 dark:border-gray-700 rounded-2xl flex items-center justify-center shrink-0">
+                                        <div class="w-12 h-12 bg-white dark:bg-gray-800 text-gray-755 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-2xl flex items-center justify-center shrink-0">
                                             <svg class="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 01-3-3h7a3 3 0 013 3v1" />
                                             </svg>
@@ -355,9 +355,9 @@
                                 </a>
 
                                 {{-- Option C: Skip / Decline --}}
-                                <button type="button" wire:click="skipLocationSelection" class="w-full text-right p-5 bg-gray-50/50 dark:bg-gray-800/40 border border-gray-150 dark:border-gray-700/60 hover:border-indigo-500 rounded-3xl transition-all flex items-center justify-between group active:scale-[0.99]">
+                                <button type="button" wire:click="skipLocationSelection" class="w-full text-right p-5 bg-gray-50/50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-3xl transition-all flex items-center justify-between group active:scale-[0.99]">
                                     <div class="flex items-center gap-4">
-                                        <div class="w-12 h-12 bg-white dark:bg-gray-800 text-gray-755 dark:text-gray-200 border border-gray-150 dark:border-gray-700 rounded-2xl flex items-center justify-center shrink-0">
+                                        <div class="w-12 h-12 bg-white dark:bg-gray-800 text-gray-755 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-2xl flex items-center justify-center shrink-0">
                                             <svg class="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -395,7 +395,7 @@
                                 
                                 {{-- Search Results Suggestion Dropdown --}}
                                 @if(!empty($searchQuery) && count($searchResults) > 0)
-                                    <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-150 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
+                                    <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
                                         @foreach($searchResults as $res)
                                             <button type="button" 
                                                     wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, '{{ addslashes($res['title']) }}')"
@@ -533,8 +533,8 @@
                                         } else {
                                             alert('مرورگر شما از GPS پشتیبانی نمی کند.');
                                         }
-                                    " class="absolute bottom-2.5 left-2.5 z-[20] bg-white hover:bg-gray-100 text-indigo-650 p-2.5 rounded-xl shadow-md border border-gray-200 transition-colors flex items-center justify-center" title="موقعیت فعلی من (GPS)">
-                                        <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    " class="absolute bottom-2.5 left-2.5 z-[20] bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-indigo-600 dark:text-indigo-400 p-2.5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 transition-colors flex items-center justify-center" title="موقعیت فعلی من (GPS)">
+                                        <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <circle cx="12" cy="12" r="3" stroke-width="2" />
                                             <circle cx="12" cy="12" r="8" stroke-width="2" />
                                             <path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke-width="2" stroke-linecap="round" />
@@ -550,7 +550,7 @@
                                 <button type="button" 
                                         wire:click="confirmGuestLocation" 
                                         @if(!$selectedProvince || !$selectedCity) disabled @endif
-                                        class="px-8 py-3 rounded-xl bg-indigo-650 hover:bg-indigo-700 text-white font-bold transition-all shadow-lg shadow-indigo-500/20 text-xs text-center flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        class="px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-bold transition-all shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/10 text-xs text-center flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
                                     تایید و اعمال موقعیت
                                 </button>
                             </div>

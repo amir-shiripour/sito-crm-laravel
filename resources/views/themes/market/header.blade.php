@@ -38,7 +38,7 @@
                 @endphp
                 <button onclick="Livewire.dispatch('openLocationModal')" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs font-bold">
                     <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <span>{{ $locText }}</span>
+                    <span id="header-location-text">{{ $locText }}</span>
                 </button>
             @endif
 
@@ -108,7 +108,7 @@
             <div class="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
                 <button onclick="Livewire.dispatch('openLocationModal')" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-300 shadow-sm transition-all active:scale-95">
                     <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <span>موقعیت شما: {{ $locText }}</span>
+                    <span id="mobile-location-text">موقعیت شما: {{ $locText }}</span>
                 </button>
             </div>
         @endif
@@ -249,6 +249,14 @@
             document.body.style.overflow = '';
         }
     }
+
+    window.addEventListener('location-changed', (event) => {
+        const city = event.detail.city || 'انتخاب موقعیت';
+        const headerText = document.getElementById('header-location-text');
+        if (headerText) headerText.textContent = city;
+        const mobileText = document.getElementById('mobile-location-text');
+        if (mobileText) mobileText.textContent = 'موقعیت شما: ' + city;
+    });
 </script>
 
 {{--

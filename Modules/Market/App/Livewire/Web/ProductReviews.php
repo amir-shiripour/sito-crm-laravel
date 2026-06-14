@@ -12,6 +12,7 @@ class ProductReviews extends Component
     use WithPagination;
 
     public MasterProduct $product;
+    public $t = [];
 
     // Form attributes
     public $rating = 0;
@@ -22,9 +23,10 @@ class ProductReviews extends Component
     public $isPurchaseBased = false;
     public $selectedVendorProductId = null;
 
-    public function mount(MasterProduct $product)
+    public function mount(MasterProduct $product, $t = [])
     {
         $this->product = $product;
+        $this->t = $t ?: ['name' => 'indigo'];
 
         if (auth()->guard('client')->check()) {
             $this->purchasedItems = \Modules\Market\App\Models\OrderItem::whereHas('order', function ($query) {
@@ -100,6 +102,54 @@ class ProductReviews extends Component
         }
 
         session()->flash('message', 'دیدگاه شما با موفقیت ثبت شد و پس از بررسی و تایید مدیریت نمایش داده خواهد شد.');
+    }
+
+    public function likeReview($reviewId)
+    {
+        $review = ProductReview::find($reviewId);
+        if (!$review) return;
+
+        $liked = session()->get('liked_reviews', []);
+        $disliked = session()->get('disliked_reviews', []);
+
+        if (in_array($reviewId, $liked)) {
+            $review->decrement('likes_count');
+            $liked = array_diff($liked, [$reviewId]);
+        } else {
+            if (in_array($reviewId, $disliked)) {
+                $review->decrement('dislikes_count');
+                $disliked = array_diff($disliked, [$reviewId]);
+            }
+            $review->increment('likes_count');
+            $liked[] = $reviewId;
+        }
+
+        session()->put('liked_reviews', $liked);
+        session()->put('disliked_reviews', $disliked);
+    }
+
+    public function dislikeReview($reviewId)
+    {
+        $review = ProductReview::find($reviewId);
+        if (!$review) return;
+
+        $liked = session()->get('liked_reviews', []);
+        $disliked = session()->get('disliked_reviews', []);
+
+        if (in_array($reviewId, $disliked)) {
+            $review->decrement('dislikes_count');
+            $disliked = array_diff($disliked, [$reviewId]);
+        } else {
+            if (in_array($reviewId, $liked)) {
+                $review->decrement('likes_count');
+                $liked = array_diff($liked, [$reviewId]);
+            }
+            $review->increment('dislikes_count');
+            $disliked[] = $reviewId;
+        }
+
+        session()->put('liked_reviews', $liked);
+        session()->put('disliked_reviews', $disliked);
     }
 
     public function render()

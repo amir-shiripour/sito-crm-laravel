@@ -95,6 +95,73 @@
 <div class="fixed inset-0 theme-dynamic-bg pointer-events-none z-0"></div>
 <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] {{ $activeStyle['glow'] }} blur-[100px] rounded-full pointer-events-none z-0"></div>
 
+{{-- Toast / Notification Component --}}
+<div
+    x-data="{
+        items: [],
+        notify(e) {
+            const id = Date.now() + Math.random();
+            const detail = e.detail || e;
+            this.items.push({
+                id,
+                type: detail.type || 'info',
+                text: detail.text || detail.message || '',
+            });
+            setTimeout(() => this.remove(id), 5000);
+        },
+        remove(id) {
+            this.items = this.items.filter(i => i.id !== id);
+        }
+    }"
+    x-on:notify.window="notify($event)"
+    x-init="
+        @if(session()->has('success'))
+            notify({ type: 'success', text: '{{ session('success') }}' });
+        @endif
+        @if(session()->has('error'))
+            notify({ type: 'error', text: '{{ session('error') }}' });
+        @endif
+        @if(session()->has('warning'))
+            notify({ type: 'warning', text: '{{ session('warning') }}' });
+        @endif
+        @if(session()->has('info'))
+            notify({ type: 'info', text: '{{ session('info') }}' });
+        @endif
+
+        @if($errors->any())
+            @foreach($errors->all() as $error)
+                notify({ type: 'error', text: '{{ $error }}' });
+            @endforeach
+        @endif
+    "
+    class="fixed right-3 top-3 z-[99999] w-80 max-w-[90vw] space-y-2" style="z-index: 99999"
+>
+    <template x-for="item in items" :key="item.id">
+        <div
+            x-show="true"
+            x-transition
+            class="rounded-2xl px-4 py-3 text-sm shadow-lg border backdrop-blur bg-white/90 dark:bg-gray-900/90"
+            :class="{
+                'border-emerald-200 text-emerald-800 dark:border-emerald-500/60 dark:text-emerald-200': item.type === 'success',
+                'border-red-200 text-red-800 dark:border-red-500/60 dark:text-red-200': item.type === 'error',
+                'border-blue-200 text-blue-800 dark:border-blue-500/60 dark:text-blue-200': item.type === 'info',
+                'border-amber-200 text-amber-800 dark:border-amber-500/60 dark:text-amber-200': item.type === 'warning',
+            }"
+        >
+            <div class="flex items-start justify-between gap-3">
+                <p class="leading-relaxed" x-text="item.text"></p>
+                <button
+                    type="button"
+                    class="text-xs opacity-60 hover:opacity-100"
+                    @click="remove(item.id)"
+                >
+                    ✕
+                </button>
+            </div>
+        </div>
+    </template>
+</div>
+
 {{-- Header --}}
 @includeFirst(["themes.{$appTheme}.header", 'themes.default.header'], ['appName' => $appName, 'appLogo' => $appLogo])
 

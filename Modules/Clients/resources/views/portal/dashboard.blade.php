@@ -164,6 +164,13 @@
                         </div>
                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-600">محصولات فروشگاه</span>
                     </a>
+
+                    <a href="{{ route('client.market.interactions') }}" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-md transition-all group">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">دیدگاه‌ها و پرسش‌ها</span>
+                    </a>
                 @endif
 
                 @if(!$showBookingFeatures || !$showMarketFeatures)

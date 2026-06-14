@@ -1,5 +1,9 @@
 <div class="flex items-center justify-end">
-    @if ($quantityInCart > 0)
+    @if ($hasCartLimit)
+        <a href="{{ route('market.public.product.show', $productSlug) }}" class="inline-flex items-center justify-center px-4 h-11 text-xs font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400 rounded-2xl border border-amber-200 dark:border-amber-900/60 hover:bg-amber-100 transition-colors whitespace-nowrap">
+            شرایط خرید
+        </a>
+    @elseif ($quantityInCart > 0)
         {{-- Quantity Management View - Compact Version --}}
         <div class="flex items-center justify-evenly h-11 rounded-2xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-all duration-300">
             <button wire:click="increment" wire:loading.attr="disabled" wire:target="increment" class="px-3 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">

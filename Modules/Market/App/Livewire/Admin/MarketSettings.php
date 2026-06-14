@@ -50,6 +50,9 @@ class MarketSettings extends Component
     public bool $vendor_can_create_variants = false;
     public string $default_commission_rate = '10';
     public int $max_vendor_addresses = 3;
+    public bool $vendor_can_create_catalog = false;
+    public string $vendor_catalog_default_status = 'draft';
+    public bool $vendor_can_manage_prices = true;
     public bool $allow_guest_checkout = false;
     public string $min_order_amount = '0';
     public int $auto_cancel_unpaid_orders_hours = 24;
@@ -112,6 +115,9 @@ class MarketSettings extends Component
         $this->vendor_can_create_variants = (bool) MarketSetting::getValue('vendors.vendor_can_create_variants');
         $this->default_commission_rate = MarketSetting::getValue('vendors.default_commission_rate');
         $this->max_vendor_addresses = (int) MarketSetting::getValue('vendors.max_vendor_addresses');
+        $this->vendor_can_create_catalog = (bool) MarketSetting::getValue('vendors.vendor_can_create_catalog', false);
+        $this->vendor_catalog_default_status = MarketSetting::getValue('vendors.vendor_catalog_default_status', 'draft');
+        $this->vendor_can_manage_prices = (bool) MarketSetting::getValue('vendors.vendor_can_manage_prices', true);
         $this->allow_guest_checkout = (bool) MarketSetting::getValue('orders.allow_guest_checkout');
         $this->min_order_amount = MarketSetting::getValue('orders.min_order_amount');
         $this->auto_cancel_unpaid_orders_hours = (int) MarketSetting::getValue('orders.auto_cancel_unpaid_hours');
@@ -181,6 +187,7 @@ class MarketSettings extends Component
             'default_tax_rate' => 'numeric|min:0|max:100',
             'default_commission_rate' => 'numeric|min:0|max:100',
             'max_vendor_addresses' => 'integer|min:1',
+            'vendor_catalog_default_status' => 'required|in:draft,active',
             'auto_cancel_unpaid_orders_hours' => 'integer|min:1',
             'return_policy_days' => 'integer|min:0',
             'min_order_amount' => 'numeric|min:0',
@@ -235,6 +242,9 @@ class MarketSettings extends Component
         MarketSetting::setValue('vendors.vendor_can_create_variants', $this->vendor_can_create_variants);
         MarketSetting::setValue('vendors.default_commission_rate', $this->default_commission_rate);
         MarketSetting::setValue('vendors.max_vendor_addresses', $this->max_vendor_addresses);
+        MarketSetting::setValue('vendors.vendor_can_create_catalog', $this->vendor_can_create_catalog);
+        MarketSetting::setValue('vendors.vendor_catalog_default_status', $this->vendor_catalog_default_status);
+        MarketSetting::setValue('vendors.vendor_can_manage_prices', $this->vendor_can_manage_prices);
         MarketSetting::setValue('orders.allow_guest_checkout', $this->allow_guest_checkout);
         MarketSetting::setValue('orders.min_order_amount', $this->min_order_amount);
         MarketSetting::setValue('orders.auto_cancel_unpaid_hours', $this->auto_cancel_unpaid_orders_hours);

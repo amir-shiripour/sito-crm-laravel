@@ -17,6 +17,8 @@ class ProductReview extends Model
         'comment',
         'status',
         'rejection_reason',
+        'likes_count',
+        'dislikes_count',
     ];
 
     public function masterProduct()

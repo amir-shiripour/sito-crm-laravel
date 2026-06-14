@@ -103,6 +103,19 @@
                     </div>
                 @endif
 
+                {{-- تنظیمات ثبت‌نام --}}
+                <div class="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                    <label class="flex items-start gap-3 cursor-pointer group">
+                        <div class="flex items-center h-5">
+                            <input type="checkbox" wire:model="registerEnabled" id="registerEnabled" class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">امکان ثبت‌نام توسط مشتری (ثبت نام فعال باشد)</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">در صورت فعال بودن، کاربران جدید که در سیستم ثبت نشده‌اند می‌توانند با وارد کردن اطلاعات و کد تایید اقدام به ثبت‌نام کنند.</span>
+                        </div>
+                    </label>
+                </div>
+
                 {{-- تنظیمات OTP (فقط اگر mode = otp یا both) --}}
                 @if($mode === 'otp' || $mode === 'both')
                     <div class="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4">

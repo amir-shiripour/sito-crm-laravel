@@ -10,7 +10,7 @@ class MasterProduct extends Model {
         'brand_id', 'category_id', 'crm_code', 'barcode', 'gtin', 'title', 'slug',
         'main_image', 'gallery_images', 'short_description', 'description', 'attributes', 'status',
         'single_sell', 'weight', 'length', 'width', 'height', 'shipping_class', 'enable_reviews',
-        'variant_axes_permissions'
+        'variant_axes_permissions', 'enable_questions'
     ];
 
     protected $casts = [
@@ -39,6 +39,16 @@ class MasterProduct extends Model {
     public function approvedReviews()
     {
         return $this->reviews()->where('status', 'approved');
+    }
+
+    public function questions()
+    {
+        return $this->hasMany(ProductQuestion::class, 'master_product_id');
+    }
+
+    public function approvedQuestions()
+    {
+        return $this->questions()->whereNull('parent_id')->where('status', 'approved');
     }
 
     public function getAverageRatingAttribute()

@@ -300,32 +300,47 @@
                             ['value' => 'archived', 'label' => 'بایگانی شده']
                         ];
                     @endphp
-                    <div class="relative" x-data="{
-                        open: false,
-                        selected: @entangle('status'),
-                        options: {{ json_encode($statusOptions) }},
-                        get selectedLabel() {
-                            let opt = this.options.find(o => o.value == this.selected);
-                            return opt ? opt.label : 'وضعیت انتشار در کاتالوگ';
-                        }
-                    }" @click.away="open = false">
-                        <label class="{{ $labelClass }}">وضعیت انتشار در کاتالوگ <span class="text-red-500">*</span></label>
-
-                        <div @click="open = !open" class="{{ $inputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-900': open, 'bg-gray-50 dark:bg-gray-900/50': !open}">
-                            <span x-text="selectedLabel" class="block truncate font-bold text-gray-800 dark:text-gray-200"></span>
-                            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    @if($isVendor)
+                        <div>
+                            <label class="{{ $labelClass }}">وضعیت انتشار در کاتالوگ</label>
+                            <div class="{{ $inputClass }} bg-gray-100/50 text-gray-500 dark:bg-gray-800/40 cursor-not-allowed font-bold">
+                                @if($status === 'active')
+                                    فعال (انتشار مستقیم و خودکار)
+                                @elseif($status === 'draft')
+                                    پیش‌نویس (نیاز به بررسی و فعال‌سازی توسط ادمین)
+                                @else
+                                    بایگانی شده
+                                @endif
+                            </div>
                         </div>
+                    @else
+                        <div class="relative" x-data="{
+                            open: false,
+                            selected: @entangle('status'),
+                            options: {{ json_encode($statusOptions) }},
+                            get selectedLabel() {
+                                let opt = this.options.find(o => o.value == this.selected);
+                                return opt ? opt.label : 'وضعیت انتشار در کاتالوگ';
+                            }
+                        }" @click.away="open = false">
+                            <label class="{{ $labelClass }}">وضعیت انتشار در کاتالوگ <span class="text-red-500">*</span></label>
 
-                        <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
-                            <template x-for="option in options" :key="option.value">
-                                <div @click="selected = option.value; open = false" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value}">
-                                    <span x-text="option.label"></span>
-                                    <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                </div>
-                            </template>
+                            <div @click="open = !open" class="{{ $inputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-900': open, 'bg-gray-50 dark:bg-gray-900/50': !open}">
+                                <span x-text="selectedLabel" class="block truncate font-bold text-gray-800 dark:text-gray-200"></span>
+                                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+
+                            <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                                <template x-for="option in options" :key="option.value">
+                                    <div @click="selected = option.value; open = false" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value}">
+                                        <span x-text="option.label"></span>
+                                        <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    </div>
+                                </template>
+                            </div>
+                            @error('status') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                         </div>
-                        @error('status') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
-                    </div>
+                    @endif
 
                     {{-- سوئیچ‌های تنظیمات --}}
                     <div class="flex flex-col gap-4">
@@ -347,6 +362,17 @@
                             </div>
                             <div class="relative flex items-center">
                                 <input type="checkbox" wire:model="enable_reviews" class="peer sr-only">
+                                <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center justify-between cursor-pointer p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm transition-colors group">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-800 dark:text-gray-200">فعال بودن پرسش و پاسخ</span>
+                                <span class="text-[10px] text-gray-500 mt-1">امکان مطرح کردن پرسش و پاسخ برای کالا.</span>
+                            </div>
+                            <div class="relative flex items-center">
+                                <input type="checkbox" wire:model="enable_questions" class="peer sr-only">
                                 <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                             </div>
                         </label>
@@ -552,7 +578,7 @@
                         <div class="flex-1">
                             <h3 class="text-base font-bold text-indigo-900 dark:text-indigo-300 mb-1">تعریف محدودیت تنوع‌ها (مختص این کالا)</h3>
                             <p class="text-[11px] text-indigo-500/80 dark:text-indigo-400/80 mb-4 max-w-xl leading-relaxed">
-                                @if($storeType === 'multi' && $vendorCanCreateVariants)
+                                @if($storeType === 'multi' && $vendorCanCreateVariants && $vendorCanManagePrices)
                                     ویژگی‌های مجازی که فروشندگان می‌توانند برای این محصول وارد کنند را انتخاب کنید. اگر «هر رنگ» را انتخاب کنید، فروشنده مجاز به انتخاب هر رنگی خواهد بود.
                                 @else
                                     ترکیب تنوع‌هایی که می‌خواهید در سایت نمایش داده شوند را بسازید.
@@ -605,14 +631,10 @@
                                             <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
                                                 <template x-for="option in options" :key="option.id">
                                                     <div @click="toggleOption(option.value)" class="px-3 py-2 cursor-pointer transition-all flex items-center gap-3 group hover:bg-gray-50 dark:hover:bg-gray-700/50">
-
-                                                        {{-- چک‌باکس گرافیکی --}}
                                                         <div class="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
                                                              :class="selectedOptions.includes(option.value) ? 'bg-indigo-500 border-indigo-500 text-white dark:border-indigo-500' : 'bg-white border-gray-300 dark:bg-gray-900 dark:border-gray-600'">
                                                             <svg x-show="selectedOptions.includes(option.value)" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                                                         </div>
-
-                                                        {{-- آیکون رنگ یا تصویر --}}
                                                         <template x-if="option.id !== 'any' && (type === 'color' || type === 'image')">
                                                             <div class="w-5 h-5 rounded-md border border-gray-200 dark:border-gray-600 shadow-sm flex-shrink-0 overflow-hidden" :style="type === 'color' && option.meta_value && !option.meta_value.startsWith('attributes/') ? 'background-color: ' + option.meta_value : ''">
                                                                 <template x-if="option.meta_value && option.meta_value.startsWith('attributes/')">
@@ -622,55 +644,82 @@
                                                         </template>
 
                                                         <span x-text="option.value" class="text-xs text-gray-700 dark:text-gray-300 font-medium" :class="selectedOptions.includes(option.value) ? '!font-bold text-indigo-700 dark:text-indigo-300' : ''"></span>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
+                                                     </div>
+                                                 </template>
+                                             </div>
+                                         </div>
+                                     @endforeach
+                                 </div>
+                             @endif
+                         </div>
 
-                        @if(count($variantAxes) > 0)
-                            <div class="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-3 mt-4 lg:mt-0 lg:ml-auto w-full lg:w-auto">
-                                <button wire:click="generateAllCombinations" class="inline-flex items-center justify-center gap-2 px-5 py-3 lg:py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/40 transition-all active:scale-95 whitespace-nowrap w-full sm:w-auto">
-                                    <svg class="w-5 h-5 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                    @if($storeType === 'multi' && $vendorCanCreateVariants) ثبت گزینه‌های مجاز @else تولید ترکیب‌های مجاز @endif
-                                </button>
-                                <button wire:click="clearAllVariants" class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 lg:py-1.5 text-xs text-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 rounded-xl lg:rounded-lg transition-colors font-bold w-full sm:w-auto border border-rose-100 dark:border-rose-800/30 lg:border-transparent">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    پاکسازی کل لیست
-                                </button>
-                            </div>
-                        @endif
-                    </div>
-
-                    {{-- لیست تنوع‌های ساخته شده (فقط در صورتی نمایش داده می‌شود که ادمین در حال ساخت تنوع ثابت باشد) --}}
-                    @if(!($storeType === 'multi' && $vendorCanCreateVariants))
+                         @if(count($variantAxes) > 0)
+                             <div class="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-3 mt-4 lg:mt-0 lg:ml-auto w-full lg:w-auto">
+                                 <button wire:click="generateAllCombinations" class="inline-flex items-center justify-center gap-2 px-5 py-3 lg:py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/40 transition-all active:scale-95 whitespace-nowrap w-full sm:w-auto">
+                                     <svg class="w-5 h-5 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                     @if($storeType === 'multi' && $vendorCanCreateVariants && $vendorCanManagePrices) ثبت گزینه‌های مجاز @else تولید ترکیب‌های مجاز @endif
+                                 </button>
+                                 <button wire:click="clearAllVariants" class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 lg:py-1.5 text-xs text-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 rounded-xl lg:rounded-lg transition-colors font-bold w-full sm:w-auto border border-rose-100 dark:border-rose-800/30 lg:border-transparent">
+                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                     پاکسازی کل لیست
+                                 </button>
+                             </div>
+                         @endif
+                     </div>
+                           {{-- لیست تنوع‌های ساخته شده (در صورتی نمایش داده می‌شود که ادمین در حال ساخت تنوع ثابت باشد یا قیمت‌گذاری فروشندگان غیرفعال باشد) --}}
+                    @if(!($storeType === 'multi' && $vendorCanCreateVariants && $vendorCanManagePrices))
                         <div class="space-y-3">
                             @if(count($variantAxes) > 0)
                                 @if(count($variants) > 0)
                                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                         @foreach($variants as $index => $variant)
-                                            <div class="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center justify-between group relative overflow-hidden transition-all hover:border-indigo-200 dark:hover:border-indigo-800">
-                                                <div class="flex flex-col gap-1 z-10 relative">
-                                                    @foreach($variantAxes as $axis)
-                                                        <div class="flex items-center gap-1.5">
-                                                            <span class="text-[9px] text-gray-400 dark:text-gray-500">{{ $axis['name'] }}:</span>
-                                                            <span class="text-xs font-bold text-gray-800 dark:text-gray-200">{{ $variant['values'][$axis['name']] ?? 'نامشخص' }}</span>
-                                                        </div>
-                                                    @endforeach
+                                            <div class="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col justify-between gap-3 group relative overflow-hidden transition-all hover:border-indigo-200 dark:hover:border-indigo-800">
+                                                <div class="flex items-center justify-between w-full">
+                                                    <div class="flex flex-col gap-1 z-10 relative">
+                                                        @foreach($variantAxes as $axis)
+                                                            <div class="flex items-center gap-1.5">
+                                                                <span class="text-[9px] text-gray-400 dark:text-gray-500">{{ $axis['name'] }}:</span>
+                                                                <span class="text-xs font-bold text-gray-800 dark:text-gray-200">{{ $variant['values'][$axis['name']] ?? 'نامشخص' }}</span>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+
+                                                    <div class="flex items-center gap-2 z-10 relative">
+                                                        <label class="relative flex items-center cursor-pointer" title="فعال در کاتالوگ">
+                                                            <input type="checkbox" wire:model.defer="variants.{{ $index }}.is_active" class="peer sr-only">
+                                                            <div class="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-500"></div>
+                                                        </label>
+                                                        <button wire:click="removeVariant({{ $index }})" class="text-gray-400 hover:text-rose-500 transition-colors bg-gray-50 hover:bg-rose-50 dark:bg-gray-900/50 dark:hover:bg-rose-900/30 rounded-md p-1 shadow-sm border border-gray-100 dark:border-gray-700" title="حذف این ترکیب">
+                                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                        </button>
+                                                    </div>
                                                 </div>
 
-                                                <div class="flex flex-col items-end gap-2 z-10 relative">
-                                                    <label class="relative flex items-center cursor-pointer" title="فعال در کاتالوگ">
-                                                        <input type="checkbox" wire:model.defer="variants.{{ $index }}.is_active" class="peer sr-only">
-                                                        <div class="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-500"></div>
-                                                    </label>
-                                                    <button wire:click="removeVariant({{ $index }})" class="text-gray-400 hover:text-rose-500 transition-colors bg-gray-50 hover:bg-rose-50 dark:bg-gray-900/50 dark:hover:bg-rose-900/30 rounded-md p-1 shadow-sm border border-gray-100 dark:border-gray-700" title="حذف این ترکیب">
-                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                    </button>
-                                                </div>
+                                                @if(!$vendorCanManagePrices)
+                                                    <div class="w-full pt-2 border-t border-gray-100 dark:border-gray-700" x-data="{
+                                                        rawVal: @entangle('variants.'.$index.'.price'),
+                                                        formattedVal: '',
+                                                        init() {
+                                                            this.format(this.rawVal);
+                                                            this.$watch('rawVal', val => this.format(val));
+                                                        },
+                                                        format(val) {
+                                                            this.formattedVal = val ? val.toString().replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                                                        },
+                                                        update() {
+                                                            this.rawVal = this.formattedVal.replace(/,/g, '');
+                                                        }
+                                                    }">
+                                                        <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">قیمت کاتالوگ (تومان) <span class="text-red-500">*</span></label>
+                                                        <div class="relative">
+                                                            <input type="text"
+                                                                   x-model="formattedVal"
+                                                                   @input="update()"
+                                                                   class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 px-2 py-1 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 dark:text-gray-100 transition-all outline-none text-center font-mono font-bold"
+                                                                   placeholder="تعیین قیمت...">
+                                                        </div>
+                                                    </div>
+                                                @endif
                                             </div>
                                         @endforeach
                                     </div>

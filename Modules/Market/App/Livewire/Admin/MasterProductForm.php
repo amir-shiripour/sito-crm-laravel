@@ -24,6 +24,8 @@ class MasterProductForm extends Component
 
     public $storeType;
     public $vendorCanCreateVariants;
+    public bool $vendorCanManagePrices = true;
+    public bool $isVendor = false;
     public $currentStep = 1;
 
     public $catOptions = [];
@@ -40,6 +42,7 @@ class MasterProductForm extends Component
     public $description = '';
     public $single_sell = false;
     public $enable_reviews = true;
+    public $enable_questions = true;
     public $weight = '';
     public $length = '';
     public $width = '';
@@ -64,6 +67,9 @@ class MasterProductForm extends Component
         $this->product = $product ?? new MasterProduct();
         $this->storeType = MarketSetting::getValue('system.store_type', 'multi');
         $this->vendorCanCreateVariants = (bool) MarketSetting::getValue('vendors.vendor_can_create_variants', false);
+        $user = auth()->user();
+        $this->isVendor = !$user->hasAnyRole(['super-admin', 'admin']);
+        $this->vendorCanManagePrices = (bool) MarketSetting::getValue('vendors.vendor_can_manage_prices', true);
 
         if ($this->product->exists) {
             // 💡 FIX 1: Explicitly assign properties to avoid filling image properties with strings
@@ -79,6 +85,7 @@ class MasterProductForm extends Component
             $this->description = $this->product->description;
             $this->single_sell = (bool) $this->product->single_sell;
             $this->enable_reviews = (bool) $this->product->enable_reviews;
+            $this->enable_questions = $this->product->exists ? (bool) $this->product->enable_questions : true;
             $this->weight = $this->product->weight;
             $this->length = $this->product->length;
             $this->width = $this->product->width;
@@ -95,6 +102,7 @@ class MasterProductForm extends Component
                 $this->variants[] = [
                     'id' => $var->id,
                     'values' => $var->variant_attributes ?? [],
+                    'price' => $var->price ? number_format($var->price) : '',
                     'is_active' => (bool)$var->is_active,
                 ];
             }
@@ -109,6 +117,9 @@ class MasterProductForm extends Component
             }
         } else {
             $this->clearAllVariants();
+            if ($this->isVendor) {
+                $this->status = MarketSetting::getValue('vendors.vendor_catalog_default_status', 'draft');
+            }
             // خودکارسازی انتخاب برند در صورتی که فقط یک برند فعال وجود داشته باشد
             $activeBrands = Brand::where('is_active', true)->get();
             if ($activeBrands->count() === 1) {
@@ -314,8 +325,8 @@ class MasterProductForm extends Component
             }
         }
 
-        // اگر به فروشنده اجازه داده شده، ترکیبی نساز، فقط انتخاب‌ها را نگه دار
-        if ($this->storeType === 'multi' && $this->vendorCanCreateVariants) {
+        // اگر به فروشنده اجازه داده شده و می‌تواند قیمت‌گذاری کند، ترکیبی نساز، فقط انتخاب‌ها را نگه دار
+        if ($this->storeType === 'multi' && $this->vendorCanCreateVariants && $this->vendorCanManagePrices) {
             $this->dispatch('notify', type: 'info', text: 'گزینه‌های مجاز برای فروشنده مشخص شد. نیازی به ساخت ترکیب در این مرحله نیست.');
             return;
         }
@@ -338,7 +349,7 @@ class MasterProductForm extends Component
         foreach ($combinations as $combo) {
             $exists = collect($this->variants)->contains(fn($v) => $v['values'] == $combo);
             if (!$exists) {
-                $this->variants[] = ['id' => null, 'values' => $combo, 'is_active' => true];
+                $this->variants[] = ['id' => null, 'values' => $combo, 'price' => '', 'is_active' => true];
             }
         }
         $this->dispatch('notify', type: 'success', text: 'ترکیبات بر اساس انتخاب‌های شما با موفقیت ایجاد شدند.');
@@ -361,6 +372,13 @@ class MasterProductForm extends Component
 
     public function save()
     {
+        if ($this->isVendor) {
+            $vendorCanCreate = (bool) MarketSetting::getValue('vendors.vendor_can_create_catalog', false);
+            if (!$vendorCanCreate) {
+                abort(403, 'شما اجازه ثبت یا تغییر کاتالوگ محصولات را ندارید.');
+            }
+        }
+
         $rules = [
             'title' => 'required|string|max:255',
             'slug' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'slug')->ignore($this->product->id)],
@@ -398,6 +416,7 @@ class MasterProductForm extends Component
             'title' => $this->title, 'slug' => $this->slug, 'brand_id' => $this->brand_id, 'category_id' => $this->category_id,
             'crm_code' => $this->crm_code, 'gtin' => $this->gtin, 'barcode' => $this->barcode, 'short_description' => $this->short_description,
             'description' => $this->description, 'single_sell' => $this->single_sell, 'enable_reviews' => $this->enable_reviews,
+            'enable_questions' => $this->enable_questions,
             'weight' => empty($this->weight) ? null : $this->weight, 'length' => empty($this->length) ? null : $this->length,
             'width' => empty($this->width) ? null : $this->width, 'height' => empty($this->height) ? null : $this->height,
             'attributes' => $this->dynamicAttributes, 'status' => $this->status,
@@ -417,8 +436,8 @@ class MasterProductForm extends Component
             $this->variants[] = ['id' => null, 'values' => ['name' => 'استاندارد'], 'is_active' => true];
         }
 
-        // اگر به فروشنده اجازه داده شده، هیچ تنوعی در این مرحله نساز
-        if (!($this->storeType === 'multi' && $this->vendorCanCreateVariants)) {
+        // اگر به فروشنده اجازه داده شده و می‌تواند قیمت‌گذاری کند، هیچ تنوعی در این مرحله نساز (مگر اینکه قیمت‌گذاری فروشندگان غیرفعال باشد و ادمین باید ترکیب‌ها و قیمت‌ها را تعریف کند)
+        if (!($this->storeType === 'multi' && $this->vendorCanCreateVariants && $this->vendorCanManagePrices)) {
             $expandedVariants = [];
             foreach ($this->variants as $var) {
                 if ($this->storeType === 'single') {
@@ -427,6 +446,7 @@ class MasterProductForm extends Component
                         $expandedVariants[] = [
                             'id' => null,
                             'values' => $ev,
+                            'price' => $var['price'] ?? '',
                             'is_active' => $var['is_active'] ?? true,
                         ];
                     }
@@ -446,10 +466,17 @@ class MasterProductForm extends Component
 
                 $vCode = $existingVariant ? $existingVariant->variant_code : ($var['id'] ? ProductVariant::find($var['id'])->variant_code : $this->product->crm_code . '-' . str_pad(++$maxVariantSerial, 2, '0', STR_PAD_LEFT));
                 $variantValues = $var['values'] ?? (empty($this->variantAxes) ? ['name' => 'استاندارد'] : []);
+                $cleanPrice = isset($var['price']) && $var['price'] !== '' ? str_replace(',', '', $var['price']) : null;
 
                 $savedVariant = ProductVariant::updateOrCreate(
                     ['id' => $existingVariant ? $existingVariant->id : $var['id']],
-                    ['master_product_id' => $this->product->id, 'variant_code' => $vCode, 'variant_attributes' => $variantValues, 'is_active' => $var['is_active'] ?? true]
+                    [
+                        'master_product_id' => $this->product->id, 
+                        'variant_code' => $vCode, 
+                        'variant_attributes' => $variantValues, 
+                        'price' => $cleanPrice,
+                        'is_active' => $var['is_active'] ?? true
+                    ]
                 );
                 $keptVariantIds[] = $savedVariant->id;
             }

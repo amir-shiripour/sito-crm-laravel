@@ -33,6 +33,8 @@ class ProductManager extends Component
             'reorder_point' => $vp->reorder_point,
             'min_purchase_qty' => $vp->min_purchase_qty,
             'max_purchase_qty' => $vp->max_purchase_qty,
+            'cart_amount_step' => $vp->cart_amount_step ? number_format($vp->cart_amount_step) : '',
+            'purchase_step' => $vp->purchase_step,
             'is_active' => in_array($vp->status, ['published', 'pending_review']),
         ];
     }
@@ -45,10 +47,28 @@ class ProductManager extends Component
 
     public function saveEdit()
     {
+        if (!empty($this->editForm['cart_amount_step'])) {
+            $this->editForm['cart_amount_step'] = str_replace(',', '', $this->editForm['cart_amount_step']);
+        }
+
         $this->validate([
             'editForm.price' => 'required|numeric',
             'editForm.stock' => 'required|numeric|min:0',
+            'editForm.min_purchase_qty' => 'nullable|integer|min:1',
+            'editForm.max_purchase_qty' => 'nullable|integer|min:1',
+            'editForm.cart_amount_step' => 'nullable|numeric|min:0',
+            'editForm.purchase_step' => 'nullable|integer|min:1',
         ]);
+
+        if (!empty($this->editForm['cart_amount_step']) || !empty($this->editForm['purchase_step'])) {
+            $this->validate([
+                'editForm.cart_amount_step' => 'required|numeric|min:0.01',
+                'editForm.purchase_step' => 'required|integer|min:1',
+            ], [
+                'editForm.cart_amount_step.required' => 'در صورت تعیین محدودیت، مبنای مبلغ سبد خرید الزامی است.',
+                'editForm.purchase_step.required' => 'در صورت تعیین محدودیت، تعداد مجاز خرید الزامی است.',
+            ]);
+        }
 
         $vendorId = auth()->user()->marketVendor->id;
         $vp = VendorProduct::where('id', $this->editingId)->where('vendor_id', $vendorId)->firstOrFail();
@@ -79,6 +99,8 @@ class ProductManager extends Component
             'reorder_point' => $this->editForm['reorder_point'] ?: 5,
             'min_purchase_qty' => !empty($this->editForm['min_purchase_qty']) ? $this->editForm['min_purchase_qty'] : 1,
             'max_purchase_qty' => !empty($this->editForm['max_purchase_qty']) ? $this->editForm['max_purchase_qty'] : null,
+            'cart_amount_step' => !empty($this->editForm['cart_amount_step']) ? $this->editForm['cart_amount_step'] : null,
+            'purchase_step' => !empty($this->editForm['purchase_step']) ? $this->editForm['purchase_step'] : null,
             'status' => $this->editForm['is_active'] ? $defaultStatus : 'draft',
         ]);
 

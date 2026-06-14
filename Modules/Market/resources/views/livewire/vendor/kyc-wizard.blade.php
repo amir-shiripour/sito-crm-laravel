@@ -208,6 +208,7 @@
                         <input type="text" 
                                wire:model.live.debounce.300ms="searchQuery" 
                                @focus="showDropdown = true" 
+                               @input="showDropdown = true" 
                                class="{{ $baseInputClass }} pl-10" 
                                placeholder="مثال: تهران، ونک، ملاصدرا...">
                         <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">

@@ -14,11 +14,26 @@ class AddToCartButton extends Component
 
     protected $listeners = ['cartUpdated' => 'checkCart'];
 
+    public bool $hasCartLimit = false;
+    public ?string $productSlug = null;
+
     public function mount($variantId, $vendorProductId, $t = [])
     {
         $this->variantId = $variantId;
         $this->vendorProductId = $vendorProductId;
         $this->t = $t;
+
+        $vp = \Modules\Market\Entities\VendorProduct::find($vendorProductId);
+        if ($vp) {
+            if ($vp->cart_amount_step > 0 && $vp->purchase_step > 0) {
+                $this->hasCartLimit = true;
+            }
+            $variant = \Modules\Market\Entities\ProductVariant::with('masterProduct')->find($variantId);
+            if ($variant && $variant->masterProduct) {
+                $this->productSlug = $variant->masterProduct->slug;
+            }
+        }
+
         $this->checkCart();
     }
 

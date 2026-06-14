@@ -464,12 +464,31 @@
                             <input type="checkbox" wire:model.defer="vendor_can_create_variants" class="{{ $checkboxClass }}">
                             <span class="text-sm font-bold text-gray-800 dark:text-gray-200">تنوع محصولات: فروشنده مجاز است برای محصولات خود تنوع (رنگ، سایز و...) ایجاد کند.</span>
                         </label>
+
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                            <input type="checkbox" wire:model.defer="vendor_can_create_catalog" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">ایجاد کاتالوگ: فروشنده در صورت داشتن مجوز لازم، اجازه ایجاد کاتالوگ (محصولات مرجع) را داشته باشد.</span>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                            <input type="checkbox" wire:model.defer="vendor_can_manage_prices" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">مدیریت قیمت: فروشنده اجازه تعیین و تغییر قیمت را داشته باشد. (در غیر این صورت، قیمت توسط ادمین در کاتالوگ کالا مشخص می‌شود)</span>
+                        </label>
                     </div>
 
                     <hr class="border-gray-100 dark:border-gray-700">
 
-                    {{-- قوانین مالی فروشنده --}}
+                    {{-- قوانین مالی و وضعیت کاتالوگ فروشنده --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="{{ $labelClass }}">وضعیت پیش‌فرض کاتالوگ کارهای فروشنده</label>
+                            <select wire:model.defer="vendor_catalog_default_status" class="{{ $inputClass }}">
+                                <option value="draft">پیش‌نویس (نیاز به بررسی و فعال‌سازی توسط ادمین)</option>
+                                <option value="active">فعال (انتشار مستقیم و خودکار)</option>
+                            </select>
+                            <p class="text-[10px] text-gray-500 mt-1">محصولات مرجعی که فروشنده ایجاد می‌کند به صورت پیش‌فرض در این وضعیت قرار می‌گیرند.</p>
+                        </div>
+
                         <div>
                             <label class="{{ $labelClass }}">کمیسیون پایه سیستم (%)</label>
                             <div class="relative">

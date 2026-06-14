@@ -180,6 +180,14 @@
                                                         <span>{{ $product->max_purchase_qty ?: '∞' }}</span>
                                                     </div>
                                                 </div>
+                                                @if($product->cart_amount_step > 0 && $product->purchase_step > 0)
+                                                    <div class="flex justify-between items-center">
+                                                        <span class="text-xs text-gray-500 dark:text-gray-400">محدودیت ارزش سبد خرید:</span>
+                                                        <span class="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 px-2.5 py-1 rounded-lg">
+                                                            {{ $product->purchase_step }} عدد به ازای هر {{ number_format($product->cart_amount_step) }} تومان
+                                                        </span>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
 

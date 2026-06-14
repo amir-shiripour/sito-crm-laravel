@@ -24,6 +24,8 @@ class VendorProduct extends Model {
         'reorder_point',
         'min_purchase_qty',
         'max_purchase_qty',
+        'cart_amount_step',
+        'purchase_step',
         'status',
         'rejection_reason'
     ];

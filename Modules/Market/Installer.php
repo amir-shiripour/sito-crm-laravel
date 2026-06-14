@@ -66,6 +66,9 @@ class Installer extends BaseModuleInstaller
         // ----- Permissions -----
         $perms = [
             'market.manage' => 'مدیریت کلان فروشگاه (Super Admin)',
+            'market.dashboard.view' => 'مشاهده داشبورد فروشگاه',
+
+            'market.master-products.manage' => 'مدیریت کاتالوگ محصولات مرجع (Catalog)',
 
             'market.products.view' => 'مشاهده محصولات',
             'market.products.create' => 'ایجاد محصول',
@@ -82,6 +85,15 @@ class Installer extends BaseModuleInstaller
 
             'market.warehouses.view' => 'مشاهده انبارها',
             'market.warehouses.manage' => 'مدیریت انبارها',
+
+            'market.shipping.manage' => 'مدیریت حمل و نقل و ارسال',
+            'market.questions.manage' => 'مدیریت پرسش‌ها و پاسخ‌ها',
+            'market.reviews.manage' => 'مدیریت دیدگاه‌ها',
+            'market.brands.manage' => 'مدیریت برندها',
+            'market.attributes.manage' => 'مدیریت ویژگی‌های تنوع‌ساز',
+            'market.settings.manage' => 'مدیریت تنظیمات فروشگاه',
+            'market.checkout-forms.manage' => 'مدیریت فرم‌های تسویه حساب',
+            'market.order-statuses.manage' => 'مدیریت وضعیت‌های سفارش',
         ];
 
         $tracker = $this->loadTracker();
@@ -107,6 +119,17 @@ class Installer extends BaseModuleInstaller
             );
             if ($role->wasRecentlyCreated) {
                 $tracker['roles'][] = $role->name;
+            }
+            if ($rname === 'vendor') {
+                $role->syncPermissions([
+                    'market.dashboard.view',
+                    'market.products.view',
+                    'market.products.create',
+                    'market.products.edit',
+                    'market.products.delete',
+                    'market.orders.view',
+                    'market.warehouses.view',
+                ]);
             }
         }
 
