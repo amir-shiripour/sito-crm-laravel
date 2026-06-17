@@ -34,13 +34,13 @@
     // ۲. محاسبه پیگیری‌های معوقه (گذشته)
     $overdueCount = (clone $baseQuery)
         ->where('due_at', '<', $todayStart)
-        ->where('status', '!=', 'completed')
+        ->whereNotIn('status', [Task::STATUS_DONE, Task::STATUS_CANCELED])
         ->count();
 
     // ۳. محاسبه پیگیری‌های امروز
     $todayQuery = (clone $baseQuery)->whereBetween('due_at', [$todayStart, $todayEnd]);
     $todayTotal = (clone $todayQuery)->count();
-    $todayCompleted = (clone $todayQuery)->where('status', 'completed')->count();
+    $todayCompleted = (clone $todayQuery)->where('status', Task::STATUS_DONE)->count();
     $todayPending = $todayTotal - $todayCompleted;
 
     // ۴. چیدمان معکوس و داینامیک نمودار بر اساس هفته ایرانی با استفاده از Carbon لاراویل

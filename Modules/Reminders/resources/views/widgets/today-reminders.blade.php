@@ -29,10 +29,10 @@
     ];
 @endphp
 
-<div id="today-reminders-widget" 
+<div id="today-reminders-widget"
      class="flex flex-col"
      x-data="todayRemindersWidget()">
-    
+
     {{-- هدر ویجت --}}
     <div class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800/60">
         <div class="flex items-center gap-3">
@@ -76,22 +76,22 @@
 
     {{-- محتوا --}}
     <div class="flex-1 pt-4 overflow-hidden flex flex-col gap-4">
-        
+
         {{-- Tabs --}}
         @if($reminders->isNotEmpty())
             <div class="flex items-center gap-2 p-1 bg-gray-100/80 dark:bg-gray-900/50 rounded-xl">
-                <button @click="activeTab = 'overdue'" 
+                <button @click="activeTab = 'overdue'"
                         :class="activeTab === 'overdue' ? 'bg-white dark:bg-gray-800 shadow-sm text-red-600 dark:text-red-400 font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
                         class="flex-1 text-[12px] py-1.5 rounded-lg transition-all relative flex items-center justify-center gap-1.5">
-                    گذشته 
+                    گذشته
                     @if($overdueReminders->count() > 0)
                         <span class="px-1.5 py-0.5 rounded-md bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-[10px]">{{ $overdueReminders->count() }}</span>
                     @endif
                 </button>
-                <button @click="activeTab = 'upcoming'" 
+                <button @click="activeTab = 'upcoming'"
                         :class="activeTab === 'upcoming' ? 'bg-white dark:bg-gray-800 shadow-sm text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
                         class="flex-1 text-[12px] py-1.5 rounded-lg transition-all relative flex items-center justify-center gap-1.5">
-                    امروز 
+                    امروز
                     @if($upcomingReminders->count() > 0)
                         <span class="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]">{{ $upcomingReminders->count() }}</span>
                     @endif
@@ -99,7 +99,7 @@
             </div>
         @endif
 
-        <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700 pr-1">
+        <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700 pr-1 max-h-[668px]">
             @if($reminders->isEmpty())
                 <div class="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-80">
                     <div class="w-16 h-16 bg-gray-50 dark:bg-gray-900/40 rounded-full flex items-center justify-center border border-gray-100 dark:border-gray-800/60 mb-2">
@@ -113,7 +113,7 @@
                     </div>
                 </div>
             @else
-                
+
                 {{-- Overdue List --}}
                 <div x-show="activeTab === 'overdue'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-3">
                     @forelse($overdueReminders as $reminder)
@@ -141,7 +141,7 @@
     </div>
 
     {{-- مودال تاریخچه تعویق یادآوری --}}
-    <div x-show="showHistoryModal" 
+    <div x-show="showHistoryModal"
          class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
          style="display: none;"
          x-transition:enter="transition ease-out duration-300"
@@ -150,7 +150,7 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0">
-        
+
         {{-- Backdrop --}}
         <div class="fixed inset-0 bg-gray-950/40 dark:bg-gray-950/60 backdrop-blur-sm" @click="showHistoryModal = false"></div>
 
@@ -162,7 +162,7 @@
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="scale-100 translate-y-0"
              x-transition:leave-end="scale-95 translate-y-4">
-            
+
             {{-- Header --}}
             <div class="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-gray-700">
                 <div class="flex items-center gap-2">
@@ -208,7 +208,7 @@
                             <div class="relative pr-6">
                                 {{-- Timeline Dot --}}
                                 <div class="absolute -right-[6px] top-1.5 w-2.5 h-2.5 rounded-full bg-indigo-500 border-2 border-white dark:border-gray-800"></div>
-                                
+
                                 <div class="space-y-1">
                                     <div class="flex justify-between items-center gap-2">
                                         <span class="text-[11px] font-bold text-gray-900 dark:text-white">
@@ -231,7 +231,7 @@
                     </div>
                 </template>
             </div>
-            
+
             {{-- Footer --}}
             <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
                 <button @click="showHistoryModal = false" class="px-4 py-2 text-xs font-bold rounded-xl text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-750 transition-all">
@@ -248,7 +248,7 @@
         Alpine.data('todayRemindersWidget', () => ({
             activeTab: '{{ $overdueReminders->count() > 0 ? "overdue" : "upcoming" }}',
             isRefreshing: false,
-            
+
             // تاریخچه تعویق
             showHistoryModal: false,
             isLoadingHistory: false,
@@ -274,11 +274,11 @@
                     let parser = new DOMParser();
                     let doc = parser.parseFromString(html, 'text/html');
                     let newWidget = doc.querySelector('#today-reminders-widget');
-                    
+
                     if (newWidget) {
                         let currentTab = this.activeTab;
                         this.$root.innerHTML = newWidget.innerHTML;
-                        
+
                         // If we were on overdue tab but there are no overdue reminders anymore, switch to upcoming
                         let hasOverdue = doc.querySelectorAll('#today-reminders-widget [x-show="activeTab === \'overdue\'"] .reminder-card').length > 0;
                         if (currentTab === 'overdue' && !hasOverdue) {
@@ -298,7 +298,7 @@
                 this.historyLogs = [];
                 this.isLoadingHistory = true;
                 this.showHistoryModal = true;
-                
+
                 try {
                     let res = await fetch(url, {
                         headers: {
@@ -318,7 +318,7 @@
             async sendAction(url, method, data = {}, el) {
                 let card = el.closest('.reminder-card');
                 if(card) { card.style.opacity = '0.5'; card.style.pointerEvents = 'none'; }
-                
+
                 try {
                     let res = await fetch(url, {
                         method: method,
@@ -329,7 +329,7 @@
                         },
                         body: JSON.stringify(data)
                     });
-                    
+
                     if (res.ok) {
                         // Hide the card
                         if(card) {
