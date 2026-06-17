@@ -144,7 +144,7 @@
         >
             @foreach($renderList as $widget)
                 <div
-                    class="widget-card group relative flex flex-col h-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:shadow-md {{ !$widget['visible'] ? 'hidden' : '' }}"
+                    class="widget-card group relative flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:shadow-md {{ !$widget['visible'] ? 'hidden' : '' }} {{ $widget['key'] === 'today_reminders' ? 'md:col-span-2 lg:col-span-2' : '' }}"
                     :class="{'ring-2 ring-indigo-500 ring-offset-4 ring-offset-gray-50 dark:ring-offset-gray-900 cursor-move scale-[0.98] opacity-90 hover:opacity-100 hover:scale-100': editMode}"
                     data-key="{{ $widget['key'] }}"
                     id="widget-{{ $widget['key'] }}"

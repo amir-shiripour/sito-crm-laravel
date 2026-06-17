@@ -19,4 +19,17 @@ return [
         'group'      => 'تماس‌ها',
     ],
     */
+
+    'client_calls_daily_overview' => [
+        'label'      => 'وضعیت پوشش تماس روزانه بیماران',
+        'view'       => 'clientcalls::widgets.daily-overview', // پیشوند ماژول
+        'permission' => 'client-calls.view',
+        'group'      => 'گزارشات تماس‌ها',
+    ],
+    'client_calls_agent_performance' => [
+        'label'      => 'عملکرد پرسنل در تماس‌ها',
+        'view'       => 'clientcalls::widgets.agent-performance', // پیشوند ماژول
+        'permission' => 'client-calls.view.all',
+        'group'      => 'گزارشات تماس‌ها',
+    ],
 ];

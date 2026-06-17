@@ -18,6 +18,10 @@ class BookingServiceProvider extends ServiceProvider
         $this->registerViews();
         $this->registerTranslations();
 
+        if (class_exists(\Modules\Booking\App\Models\TreatmentPlan::class)) {
+            \Modules\Booking\App\Models\TreatmentPlan::observe(\Modules\Booking\App\Observers\TreatmentPlanObserver::class);
+        }
+
         // Load migrations unconditionally
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
 
@@ -52,6 +56,7 @@ class BookingServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->register(RouteServiceProvider::class);
+        $this->app->register(\Modules\Booking\App\Providers\DoctorProfileServiceProvider::class);
     }
 
     protected function registerConfig(): void

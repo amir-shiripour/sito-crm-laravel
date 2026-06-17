@@ -294,9 +294,11 @@
 
                     {{-- === فیلدهای سیستمی (ID ثابت) === --}}
                     @foreach($systemFields as $item)
-                        @php($i = $item['i'])
-                        @php($fid = $item['fid'])
-                        @php($field = $item['field'])
+                        @php
+                            $i = $item['i'];
+                            $fid = $item['fid'];
+                            $field = $item['field'];
+                        @endphp
                         <div class="group relative bg-white dark:bg-gray-800 rounded-2xl border border-emerald-300/70 dark:border-emerald-700/70 shadow-sm hover:shadow-md transition-all overflow-hidden"
                              wire:key="field-system-{{ $fid }}">
 
@@ -387,6 +389,12 @@
                                                    wire:model="schema.fields.{{ $i }}.client_auth">
                                             <span class="text-xs text-gray-700 dark:text-gray-300">احراز هویت کاربر (ویرایش در پروفایل)</span>
                                         </label>
+                                        <label
+                                            class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                            <input type="checkbox" class="{{ $checkboxClass }}"
+                                                   wire:model="schema.fields.{{ $i }}.show_in_registration">
+                                            <span class="text-xs text-gray-700 dark:text-gray-300">ثبت نام کاربر</span>
+                                        </label>
                                     </div>
                                 </div>
 
@@ -437,7 +445,7 @@
                                                             <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">اگر
                                                                 فیلد:</label>
                                                             <select class="{{ $inputClass }} !py-1.5 !text-xs"
-                                                                    wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.trigger_field_id">
+                                                                    wire:model.live="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.trigger_field_id">
                                                                 <option value="">انتخاب فیلد...</option>
                                                                 @foreach($schema['fields'] ?? [] as $otherIdx => $otherField)
                                                                     @if($otherIdx !== $i)
@@ -454,7 +462,7 @@
                                                             <label
                                                                 class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">شرط:</label>
                                                             <select class="{{ $inputClass }} !py-1.5 !text-xs"
-                                                                    wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.operator">
+                                                                    wire:model.live="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.operator">
                                                                 <option value="filled">پر شود</option>
                                                                 <option value="empty">خالی باشد</option>
                                                                 <option value="equals">برابر با</option>
@@ -466,11 +474,50 @@
                                                         <div>
                                                             <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">مقدار
                                                                 (اختیاری):</label>
-                                                            <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
-                                                                   placeholder="فقط برای 'برابر با'"
-                                                                   wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
-                                                                   @if(!in_array($rule['operator'] ?? 'filled' , ['equals', 'not_equals'
-                                                                   ])) disabled @endif>
+                                                            @php
+                                                                $triggerFieldId = $rule['trigger_field_id'] ?? '';
+                                                                $triggerField = collect($schema['fields'] ?? [])->firstWhere('id', $triggerFieldId);
+                                                                $triggerOptions = [];
+                                                                if ($triggerField) {
+                                                                    if ($triggerFieldId === 'status_id' && !empty($statuses)) {
+                                                                        foreach ($statuses as $st) {
+                                                                            $triggerOptions[$st['id']] = $st['label'];
+                                                                        }
+                                                                    } elseif (in_array($triggerField['type'] ?? '', ['select', 'radio']) && !empty($triggerField['options_json'])) {
+                                                                        $parsedOpts = json_decode($triggerField['options_json'], true);
+                                                                        if (is_array($parsedOpts)) {
+                                                                            $triggerOptions = $parsedOpts;
+                                                                        } else {
+                                                                            $lines = array_filter(array_map('trim', explode("\n", $triggerField['options_json'])));
+                                                                            foreach ($lines as $line) {
+                                                                                if (str_contains($line, ':')) {
+                                                                                    [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                                                                    $triggerOptions[$okey] = $oval;
+                                                                                } else {
+                                                                                    $triggerOptions[$line] = $line;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                $isDisabled = !in_array($rule['operator'] ?? 'filled', ['equals', 'not_equals']);
+                                                            @endphp
+
+                                                            @if(!empty($triggerOptions))
+                                                                <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                        wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
+                                                                    {{ $isDisabled ? 'disabled' : '' }}>
+                                                                    <option value="">انتخاب مقدار...</option>
+                                                                    @foreach($triggerOptions as $tkey => $tval)
+                                                                        <option value="{{ $tkey }}">{{ $tval }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            @else
+                                                                <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                       placeholder="فقط برای 'برابر با'"
+                                                                       wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
+                                                                    {{ $isDisabled ? 'disabled' : '' }}>
+                                                            @endif
                                                         </div>
                                                     </div>
 
@@ -503,9 +550,11 @@
 
                     {{-- === فیلدهای سفارشی (غیرسیستمی، مثل قبل) === --}}
                     @foreach($customFields as $item)
-                        @php($i = $item['i'])
-                        @php($fid = $item['fid'])
-                        @php($field = $item['field'])
+                        @php
+                            $i = $item['i'];
+                            $fid = $item['fid'];
+                            $field = $item['field'];
+                        @endphp
                         <div class="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all overflow-hidden"
                              wire:key="field-custom-{{ $fid }}">
 
@@ -563,10 +612,16 @@
                                         <span class="text-sm text-gray-700 dark:text-gray-300">نمایش در ایجاد سریع</span>
                                     </label>
                                     <label
-                                        class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30 md:col-span-2">
+                                        class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
                                         <input type="checkbox" class="{{ $checkboxClass }}"
                                                wire:model="schema.fields.{{ $i }}.client_auth">
-                                        <span class="text-sm text-gray-700 dark:text-gray-300">احراز هویت کاربر (ویرایش در پروفایل کاربری)</span>
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">احراز هویت (پروفایل)</span>
+                                    </label>
+                                    <label
+                                        class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                        <input type="checkbox" class="{{ $checkboxClass }}"
+                                               wire:model="schema.fields.{{ $i }}.show_in_registration">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">ثبت نام کاربر</span>
                                     </label>
 
                                     {{-- عرض فیلد --}}
@@ -608,7 +663,7 @@
                                 {{-- تنظیمات اختصاصی بر اساس نوع --}}
                                 @if($field['type'] === 'file')
                                     <div
-                                        class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
+                                        class="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
                                         <div>
                                             <label class="{{ $labelClass }}">Max Size (MB)</label>
                                             <input type="number" class="{{ $inputClass }}"
@@ -619,17 +674,33 @@
                                             <input type="text" class="{{ $inputClass }} dir-ltr"
                                                    placeholder="image/*,application/pdf" wire:model="schema.fields.{{ $i }}.accept">
                                         </div>
+                                        <div class="flex items-center gap-2 pt-5">
+                                            <input type="checkbox" id="multiple-upload-{{ $i }}"
+                                                   wire:model="schema.fields.{{ $i }}.multiple"
+                                                   class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                            <label for="multiple-upload-{{ $i }}" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                آپلود چندگانه (Multiple)
+                                            </label>
+                                        </div>
                                     </div>
                                 @endif
 
                                 @if($field['type'] === 'select' || $field['type'] === 'radio' || $field['type'] === 'checkbox')
-                                    <div class="space-y-3">
+                                    <div class="space-y-3"
+                                         x-data="{
+                                             type: '{{ $field['type'] }}',
+                                             @if($field['type'] === 'select')
+                                             useClientsList: $wire.entangle('schema.fields.{{ $i }}.use_clients_list'),
+                                             creatable: $wire.entangle('schema.fields.{{ $i }}.creatable'),
+                                             saveGlobally: $wire.entangle('schema.fields.{{ $i }}.save_globally'),
+                                             @endif
+                                         }">
                                         {{-- گزینه استفاده از لیست clients --}}
                                         @if($field['type'] === 'select')
                                             <div
                                                 class="flex items-center gap-2 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
                                                 <input type="checkbox" id="use-clients-{{ $i }}"
-                                                       wire:model="schema.fields.{{ $i }}.use_clients_list"
+                                                       x-model="useClientsList"
                                                        class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
                                                 <label for="use-clients-{{ $i }}"
                                                        class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none flex-1">
@@ -638,32 +709,183 @@
                                             </div>
                                         @endif
 
-                                        <div class="space-y-2"
-                                             x-show="@if($field['type'] === 'select') !$wire.get('schema.fields.{{ $i }}.use_clients_list') @else true @endif">
-                                            <label class="{{ $labelClass }}">
-                                                گزینه‌ها (JSON Format: <code>{"key":"Label"}</code>)
-                                            </label>
-                                            <textarea class="{{ $inputClass }} font-mono text-xs dir-ltr" rows="3"
-                                                      placeholder='{"m":"مرد", "f":"زن"}'
-                                                      wire:model.lazy="schema.fields.{{ $i }}.options_json" @if($field['type']==='select'
-                                    && !empty($field['use_clients_list'])) disabled @endif></textarea>
-                                            @if($field['type'] === 'select' && !empty($field['use_clients_list']))
-                                                <p class="text-[11px] text-gray-500 dark:text-gray-400">
-                                                    در صورت فعال بودن "استفاده از لیست مشتریان"، این فیلد غیرفعال می‌شود.
-                                                </p>
-                                            @endif
-                                        </div>
+                                        @if($field['type'] !== 'checkbox')
+                                            <div class="space-y-2"
+                                                 x-show="type === 'radio' || !useClientsList"
+                                                 x-data="{
+                                                      optionsJson: $wire.entangle('schema.fields.{{ $i }}.options_json'),
+                                                      optionsList: [],
+                                                      mode: 'visual',
+                                                      init() {
+                                                          this.parseJsonToList();
+                                                          this.$watch('optionsJson', value => {
+                                                              if (this.mode === 'json') {
+                                                                  this.parseJsonToList();
+                                                              }
+                                                          });
+                                                      },
+                                                      parseJsonToList() {
+                                                          try {
+                                                              if (!this.optionsJson) {
+                                                                  this.optionsList = [];
+                                                                  return;
+                                                              }
+                                                              const parsed = typeof this.optionsJson === 'string' ? JSON.parse(this.optionsJson) : this.optionsJson;
+                                                              if (typeof parsed === 'object' && parsed !== null) {
+                                                                  this.optionsList = Object.entries(parsed).map(([key, label]) => ({ key, label }));
+                                                              } else {
+                                                                  this.optionsList = [];
+                                                                  const lines = String(this.optionsJson).split('\n');
+                                                                  lines.forEach(line => {
+                                                                      const parts = line.split(':');
+                                                                      if (parts.length >= 2) {
+                                                                          this.optionsList.push({ key: parts[0].trim(), label: parts.slice(1).join(':').trim() });
+                                                                      } else if (line.trim() !== '') {
+                                                                          this.optionsList.push({ key: line.trim(), label: line.trim() });
+                                                                      }
+                                                                  });
+                                                              }
+                                                          } catch (e) {
+                                                              // Ignore invalid JSON while typing
+                                                          }
+                                                      },
+                                                      updateJsonFromList() {
+                                                          const obj = {};
+                                                          this.optionsList.forEach(opt => {
+                                                              if (opt.key !== '') {
+                                                                  obj[opt.key] = opt.label;
+                                                              }
+                                                          });
+                                                          this.optionsJson = JSON.stringify(obj);
+                                                      },
+                                                      addOption() {
+                                                          this.optionsList.push({ key: '', label: '' });
+                                                          this.updateJsonFromList();
+                                                      },
+                                                      removeOption(index) {
+                                                          this.optionsList.splice(index, 1);
+                                                          this.updateJsonFromList();
+                                                      }
+                                                  }">
 
+                                                {{-- تب هدر --}}
+                                                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2 mb-3">
+                                                    <label class="{{ $labelClass }} !mb-0">
+                                                        تنظیمات گزینه‌ها
+                                                    </label>
+                                                    <div class="flex bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg text-[10px]">
+                                                        <button type="button"
+                                                                class="px-2.5 py-1 rounded-md font-medium transition-all"
+                                                                :class="mode === 'visual' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                                                                @click="mode = 'visual'; parseJsonToList();">
+                                                            بصری (ساده)
+                                                        </button>
+                                                        <button type="button"
+                                                                class="px-2.5 py-1 rounded-md font-medium transition-all"
+                                                                :class="mode === 'json' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                                                                @click="mode = 'json'">
+                                                            قالب JSON
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {{-- تب بصری --}}
+                                                <div x-show="mode === 'visual'" class="space-y-2">
+                                                    <div class="max-h-60 overflow-y-auto pr-1 space-y-2">
+                                                        <template x-for="(opt, idx) in optionsList" :key="idx">
+                                                            <div class="flex items-center gap-2">
+                                                                <div class="flex-1 grid grid-cols-2 gap-2">
+                                                                    <div>
+                                                                        <input type="text"
+                                                                               placeholder="کد/کلید (مثال: male)"
+                                                                               class="{{ $inputClass }} !py-1 !text-xs dir-ltr font-mono text-center"
+                                                                               x-model="opt.key"
+                                                                               @input="updateJsonFromList()">
+                                                                    </div>
+                                                                    <div>
+                                                                        <input type="text"
+                                                                               placeholder="برچسب نمایشی (مثال: مرد)"
+                                                                               class="{{ $inputClass }} !py-1 !text-xs text-right"
+                                                                               x-model="opt.label"
+                                                                               @input="updateJsonFromList()">
+                                                                    </div>
+                                                                </div>
+                                                                <button type="button"
+                                                                        class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                                                        @click="removeOption(idx)">
+                                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                    <button type="button"
+                                                            class="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all"
+                                                            @click="addOption()">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                        </svg>
+                                                        افزودن گزینه جدید
+                                                    </button>
+                                                </div>
+
+                                                {{-- تب JSON --}}
+                                                <div x-show="mode === 'json'" class="space-y-1">
+                                                     <textarea class="{{ $inputClass }} font-mono text-xs dir-ltr" rows="3"
+                                                               placeholder='{"m":"مرد", "f":"زن"}'
+                                                               x-model="optionsJson"
+                                                               @input="(() => { try { JSON.parse(optionsJson) } catch(e) {} })()"></textarea>
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        {{-- تنظیمات پیشرفته سلکت --}}
                                         @if($field['type'] === 'select')
-                                            <div
-                                                class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600">
-                                                <input type="checkbox" id="multiple-{{ $i }}"
-                                                       wire:model="schema.fields.{{ $i }}.multiple"
-                                                       class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
-                                                <label for="multiple-{{ $i }}"
-                                                       class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-                                                    حالت چند انتخابی (Multiple Selection)
-                                                </label>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div
+                                                    class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600">
+                                                    <input type="checkbox" id="multiple-{{ $i }}"
+                                                           wire:model="schema.fields.{{ $i }}.multiple"
+                                                           class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                                    <label for="multiple-{{ $i }}"
+                                                           class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                        حالت چند انتخابی (Multiple Selection)
+                                                    </label>
+                                                </div>
+
+                                                <div
+                                                    class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600">
+                                                    <input type="checkbox" id="searchable-{{ $i }}"
+                                                           wire:model="schema.fields.{{ $i }}.searchable"
+                                                           class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                                    <label for="searchable-{{ $i }}"
+                                                           class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                        حالت جستجوپذیر (Searchable)
+                                                    </label>
+                                                </div>
+
+                                                <div
+                                                    class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600">
+                                                    <input type="checkbox" id="creatable-{{ $i }}"
+                                                           x-model="creatable"
+                                                           class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                                    <label for="creatable-{{ $i }}"
+                                                           class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                        امکان ورود مقدار دلخواه توسط کاربر (Creatable)
+                                                    </label>
+                                                </div>
+
+                                                <div x-show="creatable"
+                                                     class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600 animate-in fade-in duration-200">
+                                                    <input type="checkbox" id="save-globally-{{ $i }}"
+                                                           x-model="saveGlobally"
+                                                           class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                                    <label for="save-globally-{{ $i }}"
+                                                           class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                        ذخیره در گزینه‌ها به صورت سراسری (Save Globally)
+                                                    </label>
+                                                </div>
                                             </div>
                                         @endif
                                     </div>
@@ -758,7 +980,7 @@
                                                             <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">اگر
                                                                 فیلد:</label>
                                                             <select class="{{ $inputClass }} !py-1.5 !text-xs"
-                                                                    wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.trigger_field_id">
+                                                                    wire:model.live="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.trigger_field_id">
                                                                 <option value="">انتخاب فیلد...</option>
                                                                 @foreach($schema['fields'] ?? [] as $otherIdx => $otherField)
                                                                     @if($otherIdx !== $i)
@@ -775,9 +997,13 @@
                                                             <label
                                                                 class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">شرط:</label>
                                                             <select class="{{ $inputClass }} !py-1.5 !text-xs"
-                                                                    wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.operator">
+                                                                    wire:model.live="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.operator">
                                                                 <option value="filled">پر شود</option>
-                                                                <option value="empty">خالی باشد</option>
+                                                                @if(isset($triggerField['required']) && $triggerField['required'])
+                                                                    {{-- Do not show empty option if field is required --}}
+                                                                @else
+                                                                    <option value="empty">خالی باشد</option>
+                                                                @endif
                                                                 <option value="equals">برابر با</option>
                                                                 <option value="not_equals">مخالف با</option>
                                                             </select>
@@ -787,15 +1013,52 @@
                                                         <div>
                                                             <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">مقدار
                                                                 (اختیاری):</label>
-                                                            <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
-                                                                   placeholder="فقط برای 'برابر با'"
-                                                                   wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
-                                                                   @if(!in_array($rule['operator'] ?? 'filled' , ['equals', 'not_equals'
-                                                                   ])) disabled @endif>
-                                                        </div>
-                                                    </div>
+                                                            @php
+                                                                $triggerFieldId = $rule['trigger_field_id'] ?? '';
+                                                                $triggerField = collect($schema['fields'] ?? [])->firstWhere('id', $triggerFieldId);
+                                                                $triggerOptions = [];
+                                                                if ($triggerField) {
+                                                                    if ($triggerFieldId === 'status_id' && !empty($statuses)) {
+                                                                        foreach ($statuses as $st) {
+                                                                            $triggerOptions[$st['id']] = $st['label'];
+                                                                        }
+                                                                    } elseif (in_array($triggerField['type'] ?? '', ['select', 'radio']) && !empty($triggerField['options_json'])) {
+                                                                        $parsedOpts = json_decode($triggerField['options_json'], true);
+                                                                        if (is_array($parsedOpts)) {
+                                                                            $triggerOptions = $parsedOpts;
+                                                                        } else {
+                                                                            $lines = array_filter(array_map('trim', explode("\n", $triggerField['options_json'])));
+                                                                            foreach ($lines as $line) {
+                                                                                if (str_contains($line, ':')) {
+                                                                                    [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                                                                    $triggerOptions[$okey] = $oval;
+                                                                                } else {
+                                                                                    $triggerOptions[$line] = $line;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                $isDisabled = !in_array($rule['operator'] ?? 'filled', ['equals', 'not_equals']);
+                                                            @endphp
 
-                                                    {{-- حذف قانون --}}
+                                                            @if(!empty($triggerOptions))
+                                                                <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                        wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
+                                                                    {{ $isDisabled ? 'disabled' : '' }}>
+                                                                    <option value="">انتخاب مقدار...</option>
+                                                                    @foreach($triggerOptions as $tkey => $tval)
+                                                                        <option value="{{ $tkey }}">{{ $tval }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            @else
+                                                                <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                       placeholder="فقط برای 'برابر با'"
+                                                                       wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
+                                                                    {{ $isDisabled ? 'disabled' : '' }}>
+                                                            @endif
+                                                        </div>
+                                                    </div>{{-- حذف قانون --}}
                                                     <button type="button" wire:click="removeConditionalRule({{ $i }}, {{ $ruleIdx }})"
                                                             class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                                                             title="حذف قانون">

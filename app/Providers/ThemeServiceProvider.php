@@ -34,24 +34,26 @@ class ThemeServiceProvider extends ServiceProvider
         }
 
         try {
-            // ۲. تم فعال را از دیتابیس پیدا می‌کنیم (و برای سرعت بیشتر، آن را کش می‌کنیم)
-            $activeTheme = Cache::rememberForever('active_theme', function () {
-                return Theme::where('active', true)->first();
-            });
+            if (Schema::hasTable('themes')) {
+                // ۲. تم فعال را از دیتابیس پیدا می‌کنیم (و برای سرعت بیشتر، آن را کش می‌کنیم)
+                $activeTheme = Cache::rememberForever('active_theme', function () {
+                    return Theme::where('active', true)->first();
+                });
 
-            if ($activeTheme) {
-                // ۳. مسیر ویوهای تم فعال را به لاراول اضافه می‌کنیم
-                // مثال: resources/views/themes/corporate
-                $themeViewPath = resource_path('views/themes/' . $activeTheme->directory_name);
+                if ($activeTheme) {
+                    // ۳. مسیر ویوهای تم فعال را به لاراول اضافه می‌کنیم
+                    // مثال: resources/views/themes/corporate
+                    $themeViewPath = resource_path('views/themes/' . $activeTheme->directory_name);
 
-                if (is_dir($themeViewPath)) {
-                    // به لاراول می‌گوییم که *اول* در این مسیر به دنبال ویو بگردد
-                    View::addLocation($themeViewPath);
+                    if (is_dir($themeViewPath)) {
+                        // به لاراول می‌گوییم که *اول* در این مسیر به دنبال ویو بگردد
+                        View::addLocation($themeViewPath);
+                    }
+
+                    // ۴. متغیر $activeTheme را با تمام ویوها به اشتراک می‌گذاریم
+                    // تا در فایل‌های blade بتوانیم به اطلاعات تم (مثل نام) دسترسی داشته باشیم
+                    View::share('activeTheme', $activeTheme);
                 }
-
-                // ۴. متغیر $activeTheme را با تمام ویوها به اشتراک می‌گذاریم
-                // تا در فایل‌های blade بتوانیم به اطلاعات تم (مثل نام) دسترسی داشته باشیم
-                View::share('activeTheme', $activeTheme);
             }
         } catch (\Exception $e) {
             // اگر در اتصال به دیتابیس (مثلاً جدول themes) خطایی رخ داد،
@@ -66,9 +68,10 @@ class ThemeServiceProvider extends ServiceProvider
      */
     private function isAppInstalled(): bool
     {
-        // ما این را هم کش می‌کنیم تا در هر درخواست، فایل سیستم خوانده نشود
-        return Cache::rememberForever('app_installed_status', function () {
+        try {
             return Storage::disk('local')->exists('installed.flag');
-        });
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }

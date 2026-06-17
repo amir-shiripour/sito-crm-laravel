@@ -48,323 +48,203 @@ class SettingsController extends Controller
     public function update(Request $request)
     {
         $settings = BookingSetting::current();
-
         $shouldLog = (bool) config('app.debug') || (bool) config('booking.debug_logs', false);
 
-        // ---------------------------
-        // Helper: نرمال‌سازی allowed_roles به ID نقش‌ها
-        // ---------------------------
-        $normalizeRolesToIds = function ($rolesInput) use ($shouldLog): array {
-            if ($shouldLog) {
-                Log::info('[Booking][Settings] roles raw input', [
-                    'type' => gettype($rolesInput),
-                    'raw'  => $rolesInput,
-                ]);
-            }
-
-            // ممکن است از UI به صورت JSON string ارسال شود
+        // ── Helper: normalize roles to IDs ──
+        $normalizeRolesToIds = function ($rolesInput): array {
             if (is_string($rolesInput)) {
                 $decoded = json_decode($rolesInput, true);
-
-                if ($shouldLog) {
-                    Log::info('[Booking][Settings] roles decode attempt', [
-                        'is_json' => is_array($decoded),
-                        'decoded' => $decoded,
-                    ]);
-                }
-
-                // اگر JSON نبود، مثل CSV هم پشتیبانی کن
-                if (is_array($decoded)) {
-                    $rolesInput = $decoded;
-                } else {
-                    $rolesInput = preg_split('/\s*,\s*/', trim($rolesInput), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-                }
+                $rolesInput = is_array($decoded) ? $decoded : preg_split('/\s*,\s*/', trim($rolesInput), -1, PREG_SPLIT_NO_EMPTY);
             }
+            if (!is_array($rolesInput)) $rolesInput = [];
+            $rolesInput = array_values(array_filter($rolesInput, fn($v) => $v !== null && $v !== ''));
 
-            if (!is_array($rolesInput)) {
-                $rolesInput = [];
-            }
-
-            $rolesInput = array_values(array_filter($rolesInput, fn ($v) => $v !== null && $v !== ''));
-
-            if ($shouldLog) {
-                Log::info('[Booking][Settings] roles filtered', [
-                    'filtered' => $rolesInput,
-                ]);
-            }
-
-            $normalizedRoleIds = [];
+            $ids = [];
             foreach ($rolesInput as $v) {
-                // اگر ID عددی بود
                 if (is_int($v) || (is_string($v) && ctype_digit($v))) {
-                    $id = (int) $v;
-                    if ($id > 0) {
-                        $normalizedRoleIds[] = $id;
-                    }
+                    if ((int)$v > 0) $ids[] = (int)$v;
                     continue;
                 }
-
-                // اگر name نقش ارسال شده بود، به ID تبدیل کن
-                if (is_string($v)) {
-                    $name = trim($v);
-                    if ($name !== '') {
-                        $id = Role::query()->where('name', $name)->value('id');
-                        if ($id) {
-                            $normalizedRoleIds[] = (int) $id;
-                        } else {
-                            if ($shouldLog) {
-                                Log::warning('[Booking][Settings] unknown role name in roles', [
-                                    'name' => $name,
-                                ]);
-                            }
-                        }
-                    }
+                if (is_string($v) && trim($v) !== '') {
+                    $id = \Spatie\Permission\Models\Role::query()->where('name', trim($v))->value('id');
+                    if ($id) $ids[] = (int)$id;
                 }
             }
-
-            $final = array_values(array_unique($normalizedRoleIds));
-
-            if ($shouldLog) {
-                Log::info('[Booking][Settings] roles normalized', [
-                    'normalized_ids' => $final,
-                ]);
-            }
-
-            return $final;
+            return array_values(array_unique($ids));
         };
 
-        // قدیمی‌ها قبل از آپدیت برای محاسبه تفاوت (نرمال‌شده به ID)
         $oldAllowedRoles = $normalizeRolesToIds($settings->allowed_roles ?? []);
 
-        $data = $request->validate([
-            'currency_unit' => ['required', Rule::in(['IRR', 'IRT'])],
+        // ═══════════════════════════════════════
+        //  PART 1: Validate & Save General Settings
+        // ═══════════════════════════════════════
+        $generalData = $request->validate([
+            'currency_unit' => ['required', 'in:IRR,IRT'],
             'global_online_booking_enabled' => ['required'],
             'default_slot_duration_minutes' => ['required', 'integer', 'min:5', 'max:720'],
             'default_capacity_per_slot' => ['required', 'integer', 'min:1', 'max:1000'],
             'default_capacity_per_day' => ['nullable', 'integer', 'min:1', 'max:10000'],
-
             'allow_role_service_creation' => ['required'],
             'allowed_roles' => ['nullable'],
             'statement_roles' => ['nullable'],
-
-            'category_management_scope' => ['required', Rule::in(['ALL', 'OWN'])],
-            'form_management_scope' => ['required', Rule::in(['ALL', 'OWN'])],
-            'service_category_selection_scope' => ['required', Rule::in(['ALL', 'OWN'])],
-            'service_form_selection_scope' => ['required', Rule::in(['ALL', 'OWN'])],
-            'operator_appointment_flow' => ['required', Rule::in(['PROVIDER_FIRST', 'SERVICE_FIRST'])],
-            'user_appointment_flow' => ['required', Rule::in(['PROVIDER_FIRST', 'SERVICE_FIRST'])],
+            'category_management_scope' => ['required', 'in:ALL,OWN'],
+            'form_management_scope' => ['required', 'in:ALL,OWN'],
+            'service_category_selection_scope' => ['required', 'in:ALL,OWN'],
+            'service_form_selection_scope' => ['required', 'in:ALL,OWN'],
+            'operator_appointment_flow' => ['required', 'in:PROVIDER_FIRST,SERVICE_FIRST'],
+            'user_appointment_flow' => ['required', 'in:PROVIDER_FIRST,SERVICE_FIRST'],
             'allow_appointment_entry_exit_times' => ['required'],
-
-            'tax_enabled' => ['required', Rule::in(['0', '1', true, false])],
-            'tax_type' => ['nullable', Rule::in(['PERCENT', 'FIXED'])],
-            'tax_amount' => [
-                'nullable',
-                'numeric',
-                'min:0',
-                function ($attribute, $value, $fail) use ($request) {
-                    $type = $request->input('tax_type');
-                    if ($type === 'PERCENT' && $value > 100) {
-                        $fail('درصد ارزش افزوده نمی‌تواند بیشتر از 100 باشد.');
-                    }
-                },
-            ],
+            'tax_enabled' => ['required'],
+            'tax_type' => ['nullable', 'in:PERCENT,FIXED'],
+            'tax_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $data['global_online_booking_enabled'] = (bool) $data['global_online_booking_enabled'];
-        $data['allow_role_service_creation']   = (bool) $data['allow_role_service_creation'];
-        $data['allow_appointment_entry_exit_times'] = (bool) $data['allow_appointment_entry_exit_times'];
-        $data['tax_enabled'] = $request->boolean('tax_enabled');
+        $generalData['global_online_booking_enabled'] = (bool) $generalData['global_online_booking_enabled'];
+        $generalData['allow_role_service_creation'] = (bool) $generalData['allow_role_service_creation'];
+        $generalData['allow_appointment_entry_exit_times'] = (bool) $generalData['allow_appointment_entry_exit_times'];
+        $generalData['tax_enabled'] = $request->boolean('tax_enabled');
 
-        // پر کردن فیلدهای ساده
-        $settings->fill($data);
+        $settings->fill($generalData);
+        $settings->allowed_roles = $normalizeRolesToIds($request->input('allowed_roles', []));
+        $settings->statement_roles = $normalizeRolesToIds($request->input('statement_roles', []));
 
-        // نرمال‌سازی allowed_roles (همیشه به ID نقش‌ها)
-        $rolesInput = $request->input('allowed_roles', []);
-        $settings->allowed_roles = $normalizeRolesToIds($rolesInput);
+        // ═══════════════════════════════════════
+        //  PART 2: Save Cure Settings DIRECTLY
+        // ═══════════════════════════════════════
+        // Bypass fill() — assign each cure field manually
 
-        // نرمال‌سازی statement_roles
-        $statementRolesInput = $request->input('statement_roles', []);
-        $settings->statement_roles = $normalizeRolesToIds($statementRolesInput);
+        $settings->cure_default_status = $request->input('cure_default_status', 'draft');
+        $settings->cure_allow_edit_confirmed = $request->boolean('cure_allow_edit_confirmed');
+        $settings->cure_allow_discount = $request->boolean('cure_allow_discount');
+        $settings->cure_max_discount_percent = (int) $request->input('cure_max_discount_percent', 100);
+        $settings->cure_discount_type = $request->input('cure_discount_type', 'amount');
+        $settings->cure_auto_tax = $request->boolean('cure_auto_tax');
+        $settings->cure_warranty_enabled = $request->boolean('cure_warranty_enabled');
+        $settings->cure_default_warranty_months = (int) $request->input('cure_default_warranty_months', 6);
+        $settings->cure_default_warranty_text = $request->input('cure_default_warranty_text') ?: null;
+        $settings->cure_default_notes = $request->input('cure_default_notes') ?: null;
+        $settings->cure_require_notes = $request->boolean('cure_require_notes');
+        $settings->cure_tooth_numbering_system = $request->input('cure_tooth_numbering_system', 'universal');
+        $settings->cure_auto_highlight_teeth = $request->boolean('cure_auto_highlight_teeth');
+        $settings->cure_show_tooth_filter = $request->boolean('cure_show_tooth_filter');
 
         if ($shouldLog) {
-            Log::info('[Booking][Settings] BEFORE save snapshot', [
-                'booking_setting_id' => $settings->id ?? null,
-                'old_allowed_roles'  => $oldAllowedRoles,
-                'to_save_allowed_roles' => $settings->allowed_roles,
-                'to_save_statement_roles' => $settings->statement_roles,
-                'allow_role_service_creation' => (bool) $settings->allow_role_service_creation,
+            \Log::info('[Booking][Settings] Saving cure fields', [
+                'cure_default_status' => $settings->cure_default_status,
+                'cure_allow_discount' => $settings->cure_allow_discount,
+                'cure_warranty_enabled' => $settings->cure_warranty_enabled,
+                'cure_auto_tax' => $settings->cure_auto_tax,
             ]);
         }
 
         $settings->save();
 
         if ($shouldLog) {
-            Log::info('[Booking][Settings] AFTER save snapshot', [
-                'saved_allowed_roles' => $settings->fresh()->allowed_roles,
+            $fresh = $settings->fresh();
+            \Log::info('[Booking][Settings] After save verification', [
+                'cure_default_status' => $fresh->cure_default_status,
+                'cure_allow_discount' => $fresh->cure_allow_discount,
             ]);
         }
 
-        // ---------------------------
-        // مدیریت Permission نقش‌های Provider
-        // ---------------------------
-
-        // جدیدها بعد از ذخیره (IDها)
+        // ═══════════════════════════════════════
+        //  PART 3: Manage Provider Role Permissions
+        // ═══════════════════════════════════════
         $newAllowedRoles = (array) ($settings->allowed_roles ?? []);
-
-        // برای diff مطمئن باش همه چیز ID و به شکل string یکسان شده
         $old = array_map('strval', $oldAllowedRoles);
         $new = array_map('strval', $newAllowedRoles);
-
-        $added   = array_values(array_diff($new, $old)); // نقش‌هایی که تازه Provider شده‌اند
-        $removed = array_values(array_diff($old, $new)); // نقش‌هایی که دیگر Provider نیستند
-
-        $allowCreation      = (bool) $settings->allow_role_service_creation;
+        $added = array_values(array_diff($new, $old));
+        $removed = array_values(array_diff($old, $new));
+        $allowCreation = (bool) $settings->allow_role_service_creation;
         $protectedRoleNames = ['super-admin', 'admin'];
 
-        if ($shouldLog) {
-            Log::info('[Booking][Settings] allowed_roles diff', [
-                'old' => $oldAllowedRoles,
-                'new' => $newAllowedRoles,
-                'added' => $added,
-                'removed' => $removed,
-                'allow_creation' => $allowCreation,
-            ]);
-        }
-
-        // پرمیشن‌هایی که Provider همیشه باید داشته باشد
-        $providerAlwaysPerms   = [
-            'booking.view',
-            'booking.services.view',
-            'booking.categories.view',
-            'booking.forms.view',
-            'booking.appointments.view',
-            'booking.appointments.create',
-            'booking.appointments.edit',
+        $providerAlwaysPerms = [
+            'booking.view', 'booking.services.view', 'booking.categories.view',
+            'booking.forms.view', 'booking.appointments.view',
+            'booking.appointments.create', 'booking.appointments.edit',
         ];
-        // پرمیشن‌هایی که فقط در صورت allow_role_service_creation = true داده می‌شوند
         $providerCreationPerms = [
-            'booking.services.create',
-            'booking.services.edit',
-            'booking.services.delete',
-            'booking.categories.create',
-            'booking.categories.edit',
-            'booking.categories.delete',
-            'booking.forms.create',
-            'booking.forms.edit',
-            'booking.forms.delete',
+            'booking.services.create', 'booking.services.edit', 'booking.services.delete',
+            'booking.categories.create', 'booking.categories.edit', 'booking.categories.delete',
+            'booking.forms.create', 'booking.forms.edit', 'booking.forms.delete',
         ];
 
-        // 1) نقش‌هایی که تازه Provider شده‌اند → همیشه view بگیرند
         if (!empty($new)) {
-            $roles = Role::query()->whereIn('id', $new)->get();
-            foreach ($roles as $role) {
+            foreach (\Spatie\Permission\Models\Role::query()->whereIn('id', $new)->get() as $role) {
                 foreach ($providerAlwaysPerms as $perm) {
-                    if (! $role->hasPermissionTo($perm)) {
-                        $role->givePermissionTo($perm);
+                    if (!$role->hasPermissionTo($perm)) $role->givePermissionTo($perm);
+                }
+                if (!in_array($role->name, $protectedRoleNames, true)) {
+                    if ($allowCreation) {
+                        foreach ($providerCreationPerms as $perm) {
+                            if (!$role->hasPermissionTo($perm)) $role->givePermissionTo($perm);
+                        }
+                    } else {
+                        foreach ($providerCreationPerms as $perm) {
+                            if ($role->hasPermissionTo($perm)) $role->revokePermissionTo($perm);
+                        }
                     }
                 }
             }
         }
 
-        // 2) نقش‌هایی که دیگر Provider نیستند → تمام پرمیشن‌های booking.services.* ازشان گرفته شود
         if (!empty($removed)) {
-            $roles = Role::query()->whereIn('id', $removed)->get();
-            foreach ($roles as $role) {
-                if (in_array($role->name, $protectedRoleNames, true)) {
-                    // admin / super-admin را دست نزن
-                    continue;
-                }
+            foreach (\Spatie\Permission\Models\Role::query()->whereIn('id', $removed)->get() as $role) {
+                if (in_array($role->name, $protectedRoleNames, true)) continue;
                 foreach (array_merge($providerAlwaysPerms, $providerCreationPerms) as $perm) {
-                    if ($role->hasPermissionTo($perm)) {
-                        $role->revokePermissionTo($perm);
-                    }
+                    if ($role->hasPermissionTo($perm)) $role->revokePermissionTo($perm);
                 }
             }
         }
 
-        // 3) مدیریت پرمیشن‌های create/edit/delete بر اساس allow_role_service_creation
-        if (!empty($new)) {
-            $roles = Role::query()->whereIn('id', $new)->get();
-            foreach ($roles as $role) {
-                if (in_array($role->name, $protectedRoleNames, true)) {
-                    // admin / super-admin در Installer همه پرمیشن‌ها را گرفته‌اند، دست نمی‌زنیم
-                    continue;
-                }
-
-                if ($allowCreation) {
-                    // فعال: Providerها اجازه ساخت/ویرایش/حذف سرویس دارند
-                    foreach ($providerCreationPerms as $perm) {
-                        if (! $role->hasPermissionTo($perm)) {
-                            $role->givePermissionTo($perm);
-                        }
-                    }
-                } else {
-                    // غیرفعال: فقط view بماند، ساخت/ویرایش/حذف را بگیر
-                    foreach ($providerCreationPerms as $perm) {
-                        if ($role->hasPermissionTo($perm)) {
-                            $role->revokePermissionTo($perm);
-                        }
-                    }
-                }
-            }
-        }
-
-        // ---------------------------
-        // به‌روزرسانی برنامه زمانی سراسری (همان کد قبلی خودت)
-        // ---------------------------
+        // ═══════════════════════════════════════
+        //  PART 4: Update Weekly Schedule
+        // ═══════════════════════════════════════
         $rulesInput = $request->input('rules', []);
         for ($weekday = 0; $weekday <= 6; $weekday++) {
             $input = $rulesInput[$weekday] ?? null;
-            if ($input === null) {
-                continue;
-            }
+            if ($input === null) continue;
 
             $isClosed = (bool)($input['is_closed'] ?? false);
-            $start    = $input['work_start_local'] ?? null;
-            $end      = $input['work_end_local'] ?? null;
+            $start = $input['work_start_local'] ?? null;
+            $end = $input['work_end_local'] ?? null;
 
             $breaks = [];
             if (isset($input['breaks']) && is_array($input['breaks'])) {
                 foreach ($input['breaks'] as $row) {
                     $bStart = trim($row['start_local'] ?? '');
-                    $bEnd   = trim($row['end_local'] ?? '');
+                    $bEnd = trim($row['end_local'] ?? '');
                     if ($bStart !== '' && $bEnd !== '') {
                         $breaks[] = ['start_local' => $bStart, 'end_local' => $bEnd];
                     }
                 }
             } elseif (isset($input['breaks_json'])) {
                 $bVal = $input['breaks_json'];
-                if (is_string($bVal)) {
-                    $decoded = json_decode($bVal, true);
-                    $breaks = is_array($decoded) ? $decoded : [];
-                } elseif (is_array($bVal)) {
-                    $breaks = $bVal;
-                }
+                $breaks = is_string($bVal) ? (json_decode($bVal, true) ?: []) : (is_array($bVal) ? $bVal : []);
             }
 
             $slotDuration = isset($input['slot_duration_minutes']) && $input['slot_duration_minutes'] !== '' ? (int)$input['slot_duration_minutes'] : null;
-            $capSlot      = isset($input['capacity_per_slot']) && $input['capacity_per_slot'] !== '' ? (int)$input['capacity_per_slot'] : null;
-            $capDay       = isset($input['capacity_per_day']) && $input['capacity_per_day'] !== '' ? (int)$input['capacity_per_day'] : null;
+            $capSlot = isset($input['capacity_per_slot']) && $input['capacity_per_slot'] !== '' ? (int)$input['capacity_per_slot'] : null;
+            $capDay = isset($input['capacity_per_day']) && $input['capacity_per_day'] !== '' ? (int)$input['capacity_per_day'] : null;
 
             BookingAvailabilityRule::updateOrCreate(
+                ['scope_type' => BookingAvailabilityRule::SCOPE_GLOBAL, 'scope_id' => null, 'weekday' => $weekday],
                 [
-                    'scope_type' => BookingAvailabilityRule::SCOPE_GLOBAL,
-                    'scope_id'   => null,
-                    'weekday'    => $weekday,
-                ],
-                [
-                    'is_closed'            => $isClosed,
-                    'work_start_local'     => $isClosed ? null : ($start ?: null),
-                    'work_end_local'       => $isClosed ? null : ($end ?: null),
-                    'breaks_json'          => $isClosed ? [] : $breaks,
-                    'slot_duration_minutes'=> $isClosed ? null : $slotDuration,
-                    'capacity_per_slot'    => $isClosed ? null : $capSlot,
-                    'capacity_per_day'     => $isClosed ? null : $capDay,
+                    'is_closed' => $isClosed,
+                    'work_start_local' => $isClosed ? null : ($start ?: null),
+                    'work_end_local' => $isClosed ? null : ($end ?: null),
+                    'breaks_json' => $isClosed ? [] : $breaks,
+                    'slot_duration_minutes' => $isClosed ? null : $slotDuration,
+                    'capacity_per_slot' => $isClosed ? null : $capSlot,
+                    'capacity_per_day' => $isClosed ? null : $capDay,
                 ]
             );
         }
 
-        return redirect()->route('user.booking.settings.edit')->with('success', 'تنظیمات و برنامه زمانی ذخیره شد.');
-    }
-
-}
+        // ═══════════════════════════════════════
+        //  PART 5: Redirect back to the same tab
+        // ═══════════════════════════════════════
+        $activeTab = $request->input('_active_tab', 'general');
+        return redirect()->route('user.booking.settings.edit', ['tab' => $activeTab])
+            ->with('success', 'تنظیمات و برنامه زمانی ذخیره شد.');
+    }}

@@ -5,9 +5,12 @@ namespace Modules\Clients\App\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
+use App\Traits\FileUploadTrait;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Modules\Clients\Entities\ClientStatus;
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientForm as ClientFormSchema;
@@ -20,6 +23,9 @@ use Carbon\Carbon;
 #[Layout('layouts.user')]
 class ClientForm extends Component
 {
+    use WithFileUploads;
+    use FileUploadTrait;
+
     // بایندهای استاندارد فرم
     public ?Client $client = null;
 
@@ -38,6 +44,7 @@ class ClientForm extends Component
     public bool $auto_generate_password = false;
 
     public array $meta = [];
+    public array $upload_files = [];
     public $status_id = null;
 
     // اسکیمای فرم پویا (از ClientFormSchema)
@@ -119,6 +126,27 @@ class ClientForm extends Component
             $this->meta          = $this->convertMetaDatesForDisplay($client->meta ?? [], $form);
             $this->status_id     = $client->status_id;
 
+            // بارگذاری کاربران متصل شده برای فیلدهای select-user-by-role
+            foreach ($this->schema['fields'] as $f) {
+                if (($f['type'] ?? null) === 'select-user-by-role' && !empty($f['role'])) {
+                    $fid = $f['id'] ?? null;
+                    if ($fid) {
+                        $roleUserIds = $client->users()
+                            ->whereHas('roles', function($q) use ($f) {
+                                $q->where('name', $f['role']);
+                            })
+                            ->pluck('users.id')
+                            ->toArray();
+
+                        if (!empty($f['multiple'])) {
+                            $this->meta[$fid] = array_map('strval', $roleUserIds);
+                        } else {
+                            $this->meta[$fid] = count($roleUserIds) > 0 ? (string)$roleUserIds[0] : null;
+                        }
+                    }
+                }
+            }
+
             // برای ویرایش، پسورد را خالی می‌گذاریم (اگر پر شود یعنی تغییر پسورد)
             $this->password = null;
             $this->password_confirmation = null;
@@ -132,6 +160,24 @@ class ClientForm extends Component
             $this->case_number   = null;
             $this->notes         = null;
             $this->meta          = [];
+
+            // مقداردهی اولیه برای فیلدهای select-user-by-role (مثل قفل شدن روی کاربر فعلی)
+            foreach ($this->schema['fields'] as $f) {
+                if (($f['type'] ?? null) === 'select-user-by-role' && !empty($f['role'])) {
+                    $fid = $f['id'] ?? null;
+                    if ($fid) {
+                        if (!empty($f['lock_current_if_role']) && Auth::user()?->hasRole($f['role'])) {
+                            if (!empty($f['multiple'])) {
+                                $this->meta[$fid] = [(string)Auth::id()];
+                            } else {
+                                $this->meta[$fid] = (string)Auth::id();
+                            }
+                        } else {
+                            $this->meta[$fid] = !empty($f['multiple']) ? [] : null;
+                        }
+                    }
+                }
+            }
 
             // تنظیم وضعیت پیش‌فرض روی اولین وضعیت فعال
             $firstStatus = $statuses->first();
@@ -529,7 +575,21 @@ class ClientForm extends Component
 
         foreach (($this->meta ?? []) as $k => $v) {
             if ($v instanceof TemporaryUploadedFile) {
-                $this->meta[$k] = $v->store('clients/uploads', 'public');
+                $this->meta[$k] = $this->uploadFile($v, 'clients/uploads', 'public');
+            } elseif (is_array($v)) {
+                $files = [];
+                $hasUploadedFiles = false;
+                foreach ($v as $subV) {
+                    if ($subV instanceof TemporaryUploadedFile) {
+                        $files[] = $this->uploadFile($subV, 'clients/uploads', 'public');
+                        $hasUploadedFiles = true;
+                    } else {
+                        $files[] = $subV;
+                    }
+                }
+                if ($hasUploadedFiles) {
+                    $this->meta[$k] = $files;
+                }
             }
             // مقادیر JSON string (مثل select-province-city) به صورت string نگه داشته می‌شوند
             // و در meta به صورت JSON ذخیره می‌شوند
@@ -613,16 +673,52 @@ class ClientForm extends Component
                 Log::info('[Clients] create result', ['id' => $client?->id]);
             }
 
+            // Save new dynamic select options globally if configured
+            app(\Modules\Clients\App\Services\ClientFormService::class)->saveNewOptionsFromPayload($this->meta ?? []);
+
+            // هماهنگ‌سازی رابطه‌های چندبه‌چند کاربران بر اساس نقش‌ها
+            $allUserIdsToSync = [];
             foreach ($this->schema['fields'] as $f) {
                 if (($f['type'] ?? null) === 'select-user-by-role' && !empty($f['role'])) {
                     $val = data_get($this->meta, $f['id']);
                     $ids = is_array($val) ? $val : (empty($val) ? [] : [$val]);
+                    $ids = array_filter(array_map('intval', $ids));
 
                     if (!empty($f['lock_current_if_role']) && Auth::user()?->hasRole($f['role'])) {
                         $ids = [Auth::id()];
                     }
-                    $client->users()->syncWithoutDetaching($ids);
+                    
+                    // اضافه کردن به لیست کلی برای سینک نهایی
+                    foreach ($ids as $id) {
+                        $allUserIdsToSync[$id] = true;
+                    }
                 }
+            }
+            
+            // اگر فیلد نقش‌داری وجود دارد، سینک را بر اساس آنها انجام دهیم.
+            // برای اینکه کاربرانی که قبلاً متصل بودند و ربطی به نقش‌های فرم‌ساز فعلی ندارند پاک نشوند،
+            // فقط کاربرانی که نقشِ فیلدهای فعلی فرم‌ساز را دارند مدیریت (سینک یا دتاچ) می‌کنیم.
+            $rolesInForm = collect($this->schema['fields'])
+                ->where('type', 'select-user-by-role')
+                ->pluck('role')
+                ->filter()
+                ->unique()
+                ->toArray();
+
+            if (!empty($rolesInForm)) {
+                // پیدا کردن آی‌دی تمام کاربرانی که این نقش‌ها را دارند تا بدانیم کدام‌ها باید حذف/اضافه شوند
+                $allUsersWithFormRoles = User::role($rolesInForm)->pluck('id')->toArray();
+                
+                // لیست کاربرانی که در حال حاضر به کلاینت متصل هستند
+                $currentAttachedUserIds = $client->users()->pluck('users.id')->toArray();
+                
+                // کاربرانی که نقشی غیر از نقش‌های این فرم دارند را حفظ می‌کنیم
+                $userIdsToKeep = array_diff($currentAttachedUserIds, $allUsersWithFormRoles);
+                
+                // ترکیب کاربرانی که باید حفظ شوند با کاربران جدید انتخاب‌شده در فرم
+                $finalSyncIds = array_unique(array_merge($userIdsToKeep, array_keys($allUserIdsToSync)));
+                
+                $client->users()->sync($finalSyncIds);
             }
 
             DB::commit();
@@ -671,7 +767,7 @@ class ClientForm extends Component
         }
 
         // در بقیه حالت‌ها: ریدایرکت به لیست
-        return redirect()->route('user.clients.index');
+        return redirect()->to(session('clients_index_url', route('user.clients.index')));
     }
 
     // === ژنراتور یوزرنیم یکتا بر اساس تنظیمات ===
@@ -912,5 +1008,76 @@ class ClientForm extends Component
         }
 
         return $this->isFieldRequiredByConditional($field, $this->schema['fields'] ?? [], false);
+    }
+
+    /**
+     * حذف فایل پویا
+     */
+    public function deleteDynamicFile(string $fid, int $index): void
+    {
+        $existing = $this->meta[$fid] ?? null;
+        if (!$existing) {
+            return;
+        }
+
+        $existingFiles = [];
+        if (is_array($existing)) {
+            $existingFiles = $existing;
+        } else {
+            $decoded = json_decode($existing, true);
+            if (is_array($decoded)) {
+                $existingFiles = $decoded;
+            } else {
+                $existingFiles = [$existing];
+            }
+        }
+
+        if (isset($existingFiles[$index])) {
+            $filePath = $existingFiles[$index];
+            Storage::disk('public')->delete($filePath);
+            unset($existingFiles[$index]);
+            $existingFiles = array_values($existingFiles);
+        }
+
+        if (empty($existingFiles)) {
+            unset($this->meta[$fid]);
+        } else {
+            $field = collect($this->schema['fields'] ?? [])->firstWhere('id', $fid);
+            $multiple = !empty($field['multiple']);
+            if ($multiple) {
+                $this->meta[$fid] = $existingFiles;
+            } else {
+                $this->meta[$fid] = $existingFiles[0] ?? null;
+            }
+        }
+    }
+
+    /**
+     * همگام‌سازی و ادغام فایل‌های جدید و قدیم هنگام آپلود پویا
+     */
+    public function updatedUploadFiles($value, $key): void
+    {
+        $fid = $key;
+        $field = collect($this->schema['fields'] ?? [])->firstWhere('id', $fid);
+        $multiple = $field && !empty($field['multiple']);
+
+        if ($multiple) {
+            $existing = $this->meta[$fid] ?? [];
+            if (!is_array($existing)) {
+                $decoded = json_decode($existing, true);
+                $existing = is_array($decoded) ? $decoded : ($existing ? [$existing] : []);
+            }
+            
+            $newFiles = is_array($value) ? $value : [$value];
+            
+            // ادغام فایل‌های قدیمی با فایل‌های آپلود شده جدید
+            $this->meta[$fid] = array_merge($existing, $newFiles);
+        } else {
+            // آپلود تکی
+            $this->meta[$fid] = is_array($value) ? ($value[0] ?? null) : $value;
+        }
+
+        // ریست کردن ویژگی مربوط به آپلود
+        unset($this->upload_files[$fid]);
     }
 }

@@ -11,6 +11,10 @@ Route::prefix('user')
             ->name('tasks.index')
             ->middleware('can:tasks.view');
 
+        Route::post('tasks/bulk', [TaskController::class, 'bulkUpdate'])
+            ->name('tasks.bulk-update')
+            ->middleware('can:tasks.edit');
+
         Route::get('tasks/create', [TaskController::class, 'create'])
             ->name('tasks.create')
             ->middleware('can:tasks.create');

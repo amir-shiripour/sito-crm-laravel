@@ -22,6 +22,11 @@ Route::middleware(['can:sms.settings.view'])
             ->name('logs.index')
             ->middleware('can:sms.messages.view');
 
+        Route::post('/logs/{message}/resend', [SmsLogController::class, 'resend'])
+            ->name('logs.resend')
+            ->middleware('can:sms.messages.send');
+
+
         // ارسال دستی پیامک
         Route::get('/send', [SmsSendController::class, 'create'])
             ->name('send.create')

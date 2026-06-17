@@ -8,69 +8,47 @@ use Illuminate\Support\Facades\File;
 
 class ExportProjectContext extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'sito:export-context';
+    protected $description = 'Export Modules architecture, Database schema, and exact CRM state for AI context';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Export Modules architecture (Market & Settings), Database schema, Panel Core, and Settings Module for AI context';
-
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
-        $this->info('در حال جمع‌آوری نقشه هسته پنل، ماژول Market و ماژول Settings...');
+        $this->info('در حال جمع‌آوری نقشه دقیق پروژه (نسخه اصلاح شده برای Clients, ClientCalls, FollowUps)...');
 
         $data = [
             'installed_packages' => $this->getComposerDependencies(),
             'modules_list' => $this->getDirectoriesList(base_path('Modules')),
 
-            // ساختار پوشه های کلیدی app به عنوان هسته پنل
             'panel_core_structure' => [
                 'Controllers' => $this->getDirStructure(app_path('Http/Controllers')),
                 'Middleware' => $this->getDirStructure(app_path('Http/Middleware')),
                 'Providers' => $this->getDirStructure(app_path('Providers')),
                 'View_Components' => $this->getDirStructure(app_path('View/Components')),
-                'Rules' => $this->getDirStructure(app_path('Rules')),
             ],
 
-            // ساختار ماژول تنظیمات
-            'settings_module_structure' => $this->getDirStructure(base_path('Modules/Settings')),
-
-            // اضافه شدن ساختار ماژول مارکت برای تحلیل سیستم تک و چند فروشندگی و WMS
-            'market_module_structure' => $this->getDirStructure(base_path('Modules/Market')),
+            // ساختار دقیق ماژول‌های CRM بر اساس نام‌های واقعی پروژه شما
+            'client_module_structure' => $this->getDirStructure(base_path('Modules/Clients')),
+            'call_module_structure' => $this->getDirStructure(base_path('Modules/ClientCalls')),
+            'followup_module_structure' => $this->getDirStructure(base_path('Modules/FollowUps')),
 
             'global_models' => $this->getDirStructure(app_path('Models')),
             'database_schema' => $this->getDatabaseSchema(),
+
+            // استخراج کدهای لایه منطق ماژول‌های CRM
+            'crm_current_logic_code' => $this->getCRMCoreCodes(),
         ];
 
-        // ذخیره اطلاعات در پوشه storage
         $path = storage_path('app/sito_crm_context.json');
         File::put($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-        $this->info("نقشه پروژه با موفقیت در مسیر زیر ذخیره شد:");
+        $this->info("نقشه زنده پروژه با موفقیت در مسیر زیر ذخیره شد:");
         $this->line($path);
-        $this->info("لطفاً محتوای این فایل JSON را کپی کرده و برای من ارسال کنید.");
     }
 
-    /**
-     * پکیج‌های نصب شده پروژه را برمی‌گرداند تا AI بداند چه ابزارهایی در دسترس است
-     */
     private function getComposerDependencies()
     {
         $composerPath = base_path('composer.json');
-        if (!File::exists($composerPath)) {
-            return 'فایل composer.json پیدا نشد.';
-        }
-
+        if (!File::exists($composerPath)) return 'فایل composer.json پیدا نشد.';
         $composerData = json_decode(File::get($composerPath), true);
         return [
             'require' => $composerData['require'] ?? [],
@@ -78,61 +56,84 @@ class ExportProjectContext extends Command
         ];
     }
 
-    /**
-     * گرفتن لیست ماژول‌های موجود
-     */
     private function getDirectoriesList($dir)
     {
-        if (!File::exists($dir)) return ['پیام' => 'پوشه Modules هنوز ایجاد نشده یا خالی است.'];
-        $dirs = File::directories($dir);
-        return array_map('basename', $dirs);
+        if (!File::exists($dir)) return ['پیام' => 'پوشه Modules خالی است.'];
+        return array_map('basename', File::directories($dir));
     }
 
-    /**
-     * گرفتن ساختار درختی فایل‌های یک پوشه (بدون محتوای کد)
-     */
     private function getDirStructure($dir)
     {
-        if (!File::exists($dir)) return 'پوشه مورد نظر در مسیر ' . basename($dir) . ' پیدا نشد (شاید هنوز ایجاد نشده است).';
-
+        if (!File::exists($dir)) return null;
         $structure = [];
-        $files = File::allFiles($dir);
-
-        foreach ($files as $file) {
+        foreach (File::allFiles($dir) as $file) {
             $structure[] = $file->getRelativePathname();
         }
-
         return $structure;
     }
 
-    /**
-     * استخراج جداول و جزئیات دقیق ستون‌های دیتابیس
-     */
+    private function getCRMCoreCodes()
+    {
+        // نام دقیق ماژول‌های استخراج شده از خروجی شما
+        $targetModules = ['Clients', 'ClientCalls', 'FollowUps'];
+        $codes = [];
+
+        foreach ($targetModules as $module) {
+            $modulePath = base_path("Modules/{$module}");
+            if (!File::exists($modulePath)) continue;
+
+            $importantDirs = [
+                $modulePath . '/App/Models',
+                $modulePath . '/Entities',
+                $modulePath . '/App/Http/Controllers',
+                $modulePath . '/App/Livewire',
+            ];
+
+            foreach ($importantDirs as $dir) {
+                if (File::exists($dir)) {
+                    foreach (File::allFiles($dir) as $file) {
+                        if ($file->getExtension() === 'php') {
+                            $key = $module . '/' . $file->getRelativePathname();
+                            $codes[$key] = File::get($file->getRealPath());
+                        }
+                    }
+                }
+            }
+        }
+        return $codes;
+    }
+
     private function getDatabaseSchema()
     {
         $schema = [];
         try {
-            // استخراج نام جداول (مستقل از نام دیتابیس)
             $tables = DB::select('SHOW TABLES');
             $tableNames = array_map(function($table) {
                 return array_values((array) $table)[0];
             }, $tables);
 
             foreach ($tableNames as $table) {
-                // دریافت جزئیات ستون‌ها (نوع، کلید اصلی/خارجی، Nullable بودن)
-                $columns = DB::select("SHOW COLUMNS FROM `{$table}`");
+                // فیلتر کاملاً اصلاح شده برای گرفتن clients و tasks و ...
+                $isValidTable = str_starts_with($table, 'client_') ||
+                    $table === 'clients' ||
+                    str_starts_with($table, 'follow') ||
+                    $table === 'tasks' ||
+                    in_array($table, ['users', 'settings', 'modules']);
 
+                if (!$isValidTable) continue;
+
+                $columns = DB::select("SHOW COLUMNS FROM `{$table}`");
                 $schema[$table] = array_map(function($column) {
                     return [
                         'field' => $column->Field,
                         'type' => $column->Type,
                         'null' => $column->Null,
-                        'key' => $column->Key, // PRI, MUL, UNI
+                        'key' => $column->Key,
                     ];
                 }, $columns);
             }
         } catch (\Exception $e) {
-            $schema['error'] = 'خطا در ارتباط با دیتابیس: ' . $e->getMessage();
+            $schema['error'] = 'خطا در دیتابیس: ' . $e->getMessage();
         }
 
         return $schema;

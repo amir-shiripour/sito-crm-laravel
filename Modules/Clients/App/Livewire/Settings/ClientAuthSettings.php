@@ -14,6 +14,7 @@ class ClientAuthSettings extends Component
      * password | otp | both
      */
     public string $mode = 'password';
+    public bool $registerEnabled = false;
 
     /**
      * وقتی mode = both باشد، کدام حالت پیش‌فرض است؟
@@ -63,6 +64,7 @@ class ClientAuthSettings extends Component
         // خواندن تنظیمات ذخیره شده
         $this->mode = ClientSetting::getValue('auth.mode', 'password');
         $this->defaultLogin = ClientSetting::getValue('auth.default', 'password');
+        $this->registerEnabled = (bool) ClientSetting::getValue('auth.register_enabled', false);
 
         $this->otpLength = (int) ClientSetting::getValue('auth.otp_length', config('sms.otp.length', 5));
         $this->otpTtl = (int) ClientSetting::getValue('auth.otp_ttl', config('sms.otp.ttl', 5));
@@ -104,6 +106,7 @@ class ClientAuthSettings extends Component
 
         ClientSetting::setValue('auth.mode', $this->mode);
         ClientSetting::setValue('auth.default', $this->defaultLogin);
+        ClientSetting::setValue('auth.register_enabled', $this->registerEnabled);
 
         ClientSetting::setValue('auth.otp_length', $this->otpLength);
         ClientSetting::setValue('auth.otp_ttl', $this->otpTtl);

@@ -17,6 +17,10 @@ class CheckMultiVendorMode
      */
     public function handle(Request $request, Closure $next)
     {
+        if ($request->user() && $request->user()->hasAnyRole(['super-admin', 'admin'])) {
+            return $next($request);
+        }
+
         $storeType = MarketSetting::getValue('system.store_type', 'multi');
 
         if ($storeType === 'single') {

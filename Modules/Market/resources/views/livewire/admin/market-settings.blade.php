@@ -24,7 +24,6 @@
             عمومی و کاتالوگ
         </button>
 
-        {{-- تب جدید: تنظیمات نمایشی 💡 --}}
         <button @click="tab = 'ui'" :class="tab === 'ui' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
             تنظیمات نمایشی (UI)
@@ -47,9 +46,19 @@
             سفارشات و پرداخت
         </button>
 
+        <button @click="tab = 'checkout'" :class="tab === 'checkout' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+            فرم تسویه حساب
+        </button>
+
         <button @click="tab = 'finance'" :class="tab === 'finance' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             مالی و تسویه حساب
+        </button>
+
+        <button @click="tab = 'map'" :class="tab === 'map' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            تنظیمات نقشه
         </button>
 
     </div>
@@ -122,18 +131,36 @@
                             <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2">عملیات و لجستیک</h3>
 
                             <label class="flex items-center gap-3 cursor-pointer group">
-                                <input type="checkbox" wire:model.defer="wms_enabled" class="{{ $checkboxClass }}">
+                                <input type="checkbox" wire:model.live="wms_enabled" class="{{ $checkboxClass }}">
                                 <div class="flex flex-col">
                                     <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">فعال‌سازی سیستم انبارداری (WMS) مجزا</span>
                                     <span class="text-[10px] text-gray-500 mt-1">مدیریت حواله، قفسه‌بندی و انبارگردانی پیشرفته به سیستم اضافه شود.</span>
                                 </div>
                             </label>
 
+                            @if($wms_enabled)
+                                <div class="pl-8 animate-in fade-in">
+                                    <label for="stock_deduction_strategy" class="{{ $labelClass }}">استراتژی کسر موجودی</label>
+                                    <select id="stock_deduction_strategy" wire:model.defer="stock_deduction_strategy" class="{{ $inputClass }}">
+                                        <option value="combined">ترکیبی (موجودی کل انبارهای فیزیکی و آنلاین)</option>
+                                        <option value="separated">مجزا (فقط موجودی انبارهای نوع آنلاین)</option>
+                                    </select>
+                                </div>
+                            @endif
+
                             <label class="flex items-center gap-3 cursor-pointer group">
                                 <input type="checkbox" wire:model.defer="enable_reports" class="{{ $checkboxClass }}">
                                 <div class="flex flex-col">
                                     <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">سیستم گزارشات کلان (Analytics)</span>
                                     <span class="text-[10px] text-gray-500 mt-1">ایجاد داشبورد نمودارها و خروجی‌های پیشرفته فروش.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 cursor-pointer group">
+                                <input type="checkbox" wire:model.defer="separate_category_enabled" class="{{ $checkboxClass }}">
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">سیستم دسته‌بندی مجزا</span>
+                                    <span class="text-[10px] text-gray-500 mt-1">فعال‌سازی سیستم دسته‌بندی مستقل جهت کنترل و نحوه‌ی نمایش محصولات و صفحات فروشگاه به کاربر.</span>
                                 </div>
                             </label>
                         </div>
@@ -307,6 +334,11 @@
                             <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">نمایش نام دسته‌بندی روی کارت محصول</span>
                         </label>
 
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" wire:model.defer="ui_show_brand_on_card" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">نمایش نام برند روی کارت محصول</span>
+                        </label>
+
                         <div class="pt-3">
                             <label class="{{ $labelClass }}">طراحی (استایل) کارت محصولات</label>
                             <select wire:model.defer="ui_product_card_style" class="{{ $inputClass }}">
@@ -320,6 +352,14 @@
                     {{-- تنظیمات صفحه محصول تکی --}}
                     <div class="space-y-4 border border-gray-100 dark:border-gray-700 p-5 rounded-2xl bg-gray-50/50 dark:bg-gray-800/50">
                         <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2">تنظیمات صفحه داخلی محصول</h3>
+
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" wire:model.defer="ui_show_brand_on_product_page" class="{{ $checkboxClass }}">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">نمایش نام برند در صفحه محصول</span>
+                                <span class="text-[10px] text-gray-500 mt-1">نمایش یا عدم نمایش نام برند در بالای عنوان کالا.</span>
+                            </div>
+                        </label>
 
                         <label class="flex items-center gap-3 cursor-pointer group">
                             <input type="checkbox" wire:model.defer="ui_show_vendor_on_product_page" class="{{ $checkboxClass }}">
@@ -424,12 +464,31 @@
                             <input type="checkbox" wire:model.defer="vendor_can_create_variants" class="{{ $checkboxClass }}">
                             <span class="text-sm font-bold text-gray-800 dark:text-gray-200">تنوع محصولات: فروشنده مجاز است برای محصولات خود تنوع (رنگ، سایز و...) ایجاد کند.</span>
                         </label>
+
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                            <input type="checkbox" wire:model.defer="vendor_can_create_catalog" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">ایجاد کاتالوگ: فروشنده در صورت داشتن مجوز لازم، اجازه ایجاد کاتالوگ (محصولات مرجع) را داشته باشد.</span>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                            <input type="checkbox" wire:model.defer="vendor_can_manage_prices" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">مدیریت قیمت: فروشنده اجازه تعیین و تغییر قیمت را داشته باشد. (در غیر این صورت، قیمت توسط ادمین در کاتالوگ کالا مشخص می‌شود)</span>
+                        </label>
                     </div>
 
                     <hr class="border-gray-100 dark:border-gray-700">
 
-                    {{-- قوانین مالی فروشنده --}}
+                    {{-- قوانین مالی و وضعیت کاتالوگ فروشنده --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="{{ $labelClass }}">وضعیت پیش‌فرض کاتالوگ کارهای فروشنده</label>
+                            <select wire:model.defer="vendor_catalog_default_status" class="{{ $inputClass }}">
+                                <option value="draft">پیش‌نویس (نیاز به بررسی و فعال‌سازی توسط ادمین)</option>
+                                <option value="active">فعال (انتشار مستقیم و خودکار)</option>
+                            </select>
+                            <p class="text-[10px] text-gray-500 mt-1">محصولات مرجعی که فروشنده ایجاد می‌کند به صورت پیش‌فرض در این وضعیت قرار می‌گیرند.</p>
+                        </div>
+
                         <div>
                             <label class="{{ $labelClass }}">کمیسیون پایه سیستم (%)</label>
                             <div class="relative">
@@ -469,6 +528,14 @@
                     </div>
                 </label>
 
+                <label class="flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                    <input type="checkbox" wire:model.defer="enable_geolocation_ordering" class="{{ $checkboxClass }}">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900 dark:text-gray-200">فعال کردن سفارش کلاینت بر اساس موقعیت مکانی</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">در صورت فعال بودن، موقعیت مکانی (آدرس) کلاینت دریافت شده و فیلتر/ثبت سفارشات بر اساس آن انجام می‌شود.</span>
+                    </div>
+                </label>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="{{ $labelClass }}">حداقل مبلغ کل سبد خرید برای ثبت سفارش</label>
@@ -500,6 +567,106 @@
                             <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400 text-xs">روز</div>
                         </div>
                     </div>
+                </div>
+
+                <hr class="border-gray-100 dark:border-gray-700">
+
+                <div class="space-y-4">
+                    <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200">وضعیت پیش‌فرض سفارش بر اساس روش‌های پرداخت</h3>
+                    <p class="text-xs text-gray-500">برای هر یک از روش‌های پرداخت فعال در تنظیمات سیستم، وضعیت اولیه پرداخت و تحویل فاکتور را مشخص کنید.</p>
+                    
+                    @if(empty($activePaymentMethods))
+                        <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 text-amber-600 dark:text-amber-400 text-xs">
+                            هیچ روش پرداختی در تنظیمات کلی سیستم فعال نیست.
+                        </div>
+                    @else
+                        <div class="grid grid-cols-1 gap-4">
+                            @foreach($activePaymentMethods as $methodKey => $methodName)
+                                <div class="p-4 rounded-xl border border-gray-150 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 flex flex-col md:flex-row md:items-center gap-4">
+                                    <div class="md:w-1/4 font-semibold text-sm text-gray-700 dark:text-gray-300">
+                                        {{ $methodName }}
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                                        @if(in_array($methodKey, ['zarinpal', 'zibal', 'behpardakht']))
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">وضعیت پرداخت (پس از تراکنش موفق)</label>
+                                                <div class="px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-sm font-bold border border-emerald-100 dark:border-emerald-900/20">
+                                                    پرداخت شده (paid)
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">وضعیت پرداخت</label>
+                                                <select wire:model.defer="payment_method_statuses.{{ $methodKey }}.payment_status" class="{{ $inputClass }}">
+                                                    <option value="unpaid">در انتظار پرداخت (unpaid)</option>
+                                                    <option value="paid">پرداخت شده (paid)</option>
+                                                    <option value="failed">ناموفق (failed)</option>
+                                                </select>
+                                            </div>
+                                        @endif
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">وضعیت تحویل / ارسال</label>
+                                            <select wire:model.defer="payment_method_statuses.{{ $methodKey }}.delivery_status" class="{{ $inputClass }}">
+                                                <option value="pending">در انتظار تایید (pending)</option>
+                                                <option value="processing">در حال پردازش (processing)</option>
+                                                <option value="shipped">ارسال شده (shipped)</option>
+                                                <option value="delivered">تحویل داده شده (delivered)</option>
+                                                <option value="canceled">لغو شده (canceled)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        {{-- 7. تب تسویه حساب --}}
+        <div x-show="tab === 'checkout'" x-cloak class="{{ $cardClass }}">
+            <div class="{{ $headerClass }}">
+                <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-white">فرم تسویه حساب و سینک اطلاعات</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">مدیریت فرم‌های پرداخت و همگام‌سازی با پروفایل مشتری</p>
+                </div>
+            </div>
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                            <input type="checkbox" wire:model.defer="checkout_auto_fill_from_client" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">پیش‌نمایش خودکار اطلاعات مشتری در فرم</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                            <input type="checkbox" wire:model.defer="checkout_sync_require_approval" class="{{ $checkboxClass }}">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">تغییرات اطلاعات مشتری نیاز به تایید مدیر دارد</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label for="checkout_default_form_key" class="{{ $labelClass }}">فرم پیش‌فرض تسویه حساب</label>
+                        <select id="checkout_default_form_key" wire:model.defer="checkout_default_form_key" class="{{ $inputClass }}">
+                            <option value="">-- انتخاب کنید --</option>
+                            @if(isset($checkoutForms))
+                                @foreach($checkoutForms as $form)
+                                    <option value="{{ $form->key }}">{{ $form->name }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+                </div>
+                <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                        <input type="checkbox" wire:model.defer="checkout_allow_product_override" class="{{ $checkboxClass }}">
+                        <span class="text-sm font-bold text-gray-800 dark:text-gray-200">اجازه دادن به محصولات برای داشتن فرم تسویه حساب اختصاصی</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">
+                        <input type="checkbox" wire:model.defer="checkout_allow_category_override" class="{{ $checkboxClass }}">
+                        <span class="text-sm font-bold text-gray-800 dark:text-gray-200">اجازه دادن به دسته‌بندی‌ها برای داشتن فرم تسویه حساب اختصاصی</span>
+                    </label>
                 </div>
             </div>
         </div>
@@ -544,6 +711,36 @@
                         </select>
                     </div>
 
+                </div>
+            </div>
+        </div>
+
+        {{-- 7. تب تنظیمات نقشه --}}
+        <div x-show="tab === 'map'" x-cloak class="{{ $cardClass }}">
+            <div class="{{ $headerClass }}">
+                <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات نقشه و آدرس‌ها</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی منبع دریافت نقشه و مختصات (Neshan / Map.ir)</p>
+                </div>
+            </div>
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="{{ $labelClass }}">منبع نقشه و وب‌سرویس</label>
+                        <select wire:model.live="map_provider" class="{{ $inputClass }} appearance-none">
+                            <option value="neshan">Neshan.org (نقشه نشان)</option>
+                            <option value="map_ir">Map.ir (نقشه مپ)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="{{ $labelClass }}">کلید دسترسی API (API Key)</label>
+                        <input type="text" wire:model.defer="map_api_key" class="{{ $inputClass }} dir-ltr text-left font-mono" placeholder="مثال: web.1234567890abcdef...">
+                        @error('map_api_key') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
                 </div>
             </div>
         </div>

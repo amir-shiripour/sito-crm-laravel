@@ -14,6 +14,40 @@
 @endphp
 
 @section('content')
+    <style>
+        .tooth-path {
+            cursor: pointer;
+            transition: fill .14s ease, stroke .14s ease, filter .14s ease;
+            stroke-width: 1.5px;
+            vector-effect: non-scaling-stroke;
+        }
+        .tooth-selected {
+            fill: #3b82f6 !important;
+            stroke: #2563eb !important;
+            stroke-width: 2.5px !important;
+            filter: drop-shadow(0 2px 6px rgba(37, 99, 235, 0.45));
+        }
+        .dark .tooth-selected {
+            fill: #1d4ed8 !important;
+            stroke: #3b82f6 !important;
+        }
+        .tooth-unselected {
+            fill: #ffffff !important;
+            stroke: #cbd5e1;
+        }
+        .dark .tooth-unselected {
+            fill: #334155 !important;
+            stroke: #475569;
+        }
+        .tooth-unselected:hover {
+            fill: #f8fafc !important;
+            stroke: #3b82f6;
+        }
+        .dark .tooth-unselected:hover {
+            fill: #1e293b !important;
+            stroke: #60a5fa;
+        }
+    </style>
     <div class="space-y-5" data-fixed-provider='@json($fixedProviderPayload)'
          x-data="operatorWizard({ fixedProvider: null })" x-init="
     const raw = $el.dataset.fixedProvider;
@@ -937,7 +971,88 @@
                                                 </div>
                                             </template>
 
-                                            <template x-if="!['textarea','select','radio','checkbox'].includes(field.type)">
+                                            <template x-if="field.type === 'tooth_number'">
+                                                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mx-auto">
+                                                    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex-wrap gap-3">
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="w-2 h-5 rounded-full bg-rose-500 shrink-0"></span>
+                                                            <h2 class="font-semibold text-gray-800 dark:text-gray-100 text-sm">نقشه دندانی</h2>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <button type="button" @click="selectJaw('upper')"
+                                                                    :class="preset==='upper' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                                                                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all">فک بالا</button>
+                                                            <button type="button" @click="selectJaw('lower')"
+                                                                    :class="preset==='lower' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                                                                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all">فک پایین</button>
+                                                            <button type="button" @click="selectAllTeeth()"
+                                                                    :class="preset==='all' ? 'bg-violet-600 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                                                                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all">همه</button>
+                                                            <button type="button" @click="resetTeeth()"
+                                                                    class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-600
+                                                                           hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 transition-all">
+                                                                پاک‌سازی
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="px-4 pt-4 pb-1 relative">
+                                                        <div class="absolute top-6 left-6 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur
+                                                                    px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
+                                                            <span class="text-[10px] text-gray-400 uppercase font-bold block">انتخاب</span>
+                                                            <span class="text-xl font-black text-indigo-600 dark:text-indigo-400"
+                                                                  x-text="appointmentFormValues[field.name]?.length || 0"></span>
+                                                        </div>
+                                                        <x-booking::dental-chart/>
+                                                    </div>
+                                                    <div class="px-5 py-3 flex flex-wrap gap-1.5 min-h-12 border-t border-gray-50
+                                                                dark:border-gray-700/50 bg-gray-50/60 dark:bg-gray-900/20">
+                                                        <div class="flex flex-wrap items-center gap-2">
+                                                            <template x-for="([pos, teeth], idx) in groupedTeeth" :key="pos">
+                                                                <div class="flex items-center" :class="idx !== groupedTeeth.length - 1 ? 'border-l-2 border-gray-400 dark:border-gray-500 pl-2 ml-1' : ''">
+                                                                    <template x-for="t in teeth" :key="t">
+                                                                        <div role="button"
+                                                                             @click="toggle(t)"
+                                                                             class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-solid cursor-pointer"
+                                                                             :class="getQuadrantClasses(t)"
+                                                                             x-text="getToothLabel(t).num">
+                                                                        </div>
+                                                                    </template>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                        <template x-if="!appointmentFormValues[field.name] || appointmentFormValues[field.name].length === 0">
+                                                            <span class="text-xs text-gray-400 dark:text-gray-500 self-center">
+                                                                روی دندان کلیک کنید تا انتخاب شود
+                                                            </span>
+                                                        </template>
+                                                    </div>
+                                                    {{-- Client Treatment Plan Helper --}}
+                                                    <template x-if="Object.keys(clientToothPlans || {}).length > 0">
+                                                        <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-700 bg-indigo-50/30 dark:bg-indigo-950/10 space-y-3">
+                                                            <div class="flex items-center gap-2 text-indigo-850 dark:text-indigo-300">
+                                                                <span class="text-sm">💡</span>
+                                                                <span class="text-xs font-bold">طرح درمان‌های فعال کلاینت (برای انتخاب سریع کلیک کنید):</span>
+                                                            </div>
+                                                            <div class="flex flex-wrap gap-2">
+                                                                <template x-for="(treatments, toothId) in clientToothPlans" :key="toothId">
+                                                                    <button type="button"
+                                                                            @click="toggle(Number(toothId))"
+                                                                            :class="(appointmentFormValues[field.name] || []).includes(Number(toothId)) ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300 dark:ring-indigo-800' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                                                                            class="inline-flex flex-col items-start p-2.5 rounded-xl text-right transition-all hover:scale-[1.02] active:scale-[0.98] min-w-[140px] border border-transparent shadow-sm">
+                                                                        <div class="flex items-center justify-between w-full">
+                                                                            <span class="text-xs font-black" x-text="`دندان ${getToothLabel(Number(toothId)).num} (${getToothLabel(Number(toothId)).pos})`"></span>
+                                                                            <span class="w-2 h-2 rounded-full" :class="treatments[0].status === 'confirmed' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                                                                        </div>
+                                                                        <div class="mt-1 text-[10px] opacity-90 line-clamp-1 text-gray-500 dark:text-gray-400" :class="(appointmentFormValues[field.name] || []).includes(Number(toothId)) ? '!text-indigo-100' : ''" x-text="treatments.map(t => t.service_name).join('، ')"></div>
+                                                                    </button>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="!['textarea','select','radio','checkbox','tooth_number'].includes(field.type)">
                                                 <input
                                                     class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
                                                     :type="field.type || 'text'" :placeholder="field.placeholder || ''"
@@ -1210,6 +1325,7 @@
                 clientLoading: false,
                 clientSearchFocused: false,
                 isSubmitting: false,
+                clientToothPlans: {},
 
                 // Modal State
                 showHistoryModal: false,
@@ -1343,6 +1459,10 @@
                     });
 
                     this.$watch('manualStartTime', () => this.calculateEndTime());
+                    this.$watch('clientId', () => this.fetchClientPlans());
+                    if (this.clientId) {
+                        this.fetchClientPlans();
+                    }
                 },
 
                 // ---------------- providers/services/categories ----------------
@@ -1579,6 +1699,92 @@
                     this.hasAppointmentForm = false;
                 },
 
+                preset: 'none',
+                upperJawIds: [1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+                lowerJawIds: [15,16,17,18,19,20,21,22,23,24,25,26,27,28],
+
+                selectJaw(type) {
+                    const fieldName = this.appointmentFormSchema?.fields?.find(f => f.type === 'tooth_number')?.name || 'tooth_numbers';
+                    if (this.preset === type) { this.resetTeeth(); return; }
+                    this.preset = type;
+                    this.appointmentFormValues[fieldName] = type === 'upper' ? [...this.upperJawIds] : [...this.lowerJawIds];
+                },
+
+                selectAllTeeth() {
+                    const fieldName = this.appointmentFormSchema?.fields?.find(f => f.type === 'tooth_number')?.name || 'tooth_numbers';
+                    if (this.preset === 'all') { this.resetTeeth(); return; }
+                    this.preset = 'all';
+                    this.appointmentFormValues[fieldName] = [...this.upperJawIds, ...this.lowerJawIds];
+                },
+
+                resetTeeth() {
+                    const fieldName = this.appointmentFormSchema?.fields?.find(f => f.type === 'tooth_number')?.name || 'tooth_numbers';
+                    this.appointmentFormValues[fieldName] = [];
+                    this.preset = 'none';
+                },
+
+                getToothLabel(id) {
+                    const mapping = {
+                        1:  { num: 7, pos: 'UR' }, 2:  { num: 6, pos: 'UR' }, 3:  { num: 5, pos: 'UR' }, 4:  { num: 4, pos: 'UR' },
+                        5:  { num: 3, pos: 'UR' }, 6:  { num: 2, pos: 'UR' }, 7:  { num: 1, pos: 'UR' },
+                        8:  { num: 1, pos: 'UL' }, 9:  { num: 2, pos: 'UL' }, 10: { num: 3, pos: 'UL' }, 11: { num: 4, pos: 'UL' },
+                        12: { num: 5, pos: 'UL' }, 13: { num: 6, pos: 'UL' }, 14: { num: 7, pos: 'UL' },
+                        15: { num: 7, pos: 'LR' }, 16: { num: 6, pos: 'LR' }, 17: { num: 5, pos: 'LR' }, 18: { num: 4, pos: 'LR' },
+                        19: { num: 3, pos: 'LR' }, 20: { num: 2, pos: 'LR' }, 21: { num: 1, pos: 'LR' },
+                        22: { num: 1, pos: 'LL' }, 23: { num: 2, pos: 'LL' }, 24: { num: 3, pos: 'LL' }, 25: { num: 4, pos: 'LL' },
+                        26: { num: 5, pos: 'LL' }, 27: { num: 6, pos: 'LL' }, 28: { num: 7, pos: 'LL' }
+                    };
+                    return mapping[id] ?? { num: id, pos: 'UR' };
+                },
+
+                getQuadrantClasses(id) {
+                    const tooth = this.getToothLabel(id);
+                    switch(tooth.pos) {
+                        case 'UR': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'UL': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LR': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LL': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        default:   return '';
+                    }
+                },
+
+                get groupedTeeth() {
+                    const fieldName = this.appointmentFormSchema?.fields?.find(f => f.type === 'tooth_number')?.name || 'tooth_numbers';
+                    const vals = this.appointmentFormValues[fieldName] || [];
+                    const sorted = [...vals].sort((a, b) => {
+                        const posOrder = { 'UR': 1, 'UL': 2, 'LR': 3, 'LL': 4 };
+                        return posOrder[this.getToothLabel(a).pos] - posOrder[this.getToothLabel(b).pos];
+                    });
+                    const groups = { 'UR': [], 'UL': [], 'LR': [], 'LL': [] };
+                    sorted.forEach(t => groups[this.getToothLabel(t).pos].push(t));
+                    return Object.entries(groups).filter(([key, val]) => val.length > 0);
+                },
+
+                toggle(toothId) {
+                    const fieldName = this.appointmentFormSchema?.fields?.find(f => f.type === 'tooth_number')?.name || 'tooth_numbers';
+                    if (!Array.isArray(this.appointmentFormValues[fieldName])) {
+                        this.appointmentFormValues[fieldName] = [];
+                    }
+                    const idx = this.appointmentFormValues[fieldName].indexOf(toothId);
+                    if (idx > -1) {
+                        this.appointmentFormValues[fieldName].splice(idx, 1);
+                    } else {
+                        this.appointmentFormValues[fieldName].push(toothId);
+                    }
+                    this.preset = 'none';
+                },
+
+                is(toothId) {
+                    const fieldName = this.appointmentFormSchema?.fields?.find(f => f.type === 'tooth_number')?.name || 'tooth_numbers';
+                    const vals = this.appointmentFormValues[fieldName];
+                    const isSelected = Array.isArray(vals) && vals.includes(toothId);
+                    let cls = isSelected ? 'tooth-path tooth-selected' : 'tooth-path tooth-unselected';
+                    if (this.clientToothPlans && this.clientToothPlans[toothId]) {
+                        cls += ' !stroke-emerald-500 !stroke-[2.5px]';
+                    }
+                    return cls;
+                },
+
                 async fetchAppointmentForm(formId) {
                     this.appointmentFormSchema = null;
                     this.appointmentFormValues = {};
@@ -1603,7 +1809,7 @@
 
                     this.appointmentFormSchema = schema;
                     for (const field of schema.fields) {
-                        if (field.type === 'checkbox') {
+                        if (field.type === 'checkbox' || field.type === 'tooth_number') {
                             this.appointmentFormValues[field.name] = [];
                         } else {
                             this.appointmentFormValues[field.name] = '';
@@ -2053,6 +2259,27 @@
                         this.$refs.formJsonInput.value = JSON.stringify(this.appointmentFormValues || {});
                     } else {
                         this.$refs.formJsonInput.value = '';
+                    }
+                },
+
+                async fetchClientPlans() {
+                    if (!this.clientId) {
+                        this.clientToothPlans = {};
+                        return;
+                    }
+                    try {
+                        const res = await fetch(`/user/booking/cure/client-plans/${this.clientId}`, {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const json = await res.json();
+                        if (json.success) {
+                            this.clientToothPlans = json.tooth_treatments || {};
+                        } else {
+                            this.clientToothPlans = {};
+                        }
+                    } catch(e) {
+                        console.error('Failed to fetch client plans:', e);
+                        this.clientToothPlans = {};
                     }
                 },
             }

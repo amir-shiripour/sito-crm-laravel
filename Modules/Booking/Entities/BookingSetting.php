@@ -17,21 +17,30 @@ class BookingSetting extends Model
         'allow_role_service_creation',
         'allowed_roles',
         'statement_roles',
-
         'category_management_scope',
         'form_management_scope',
         'service_category_selection_scope',
         'service_form_selection_scope',
-
         'operator_appointment_flow',
         'user_appointment_flow',
         'allow_appointment_entry_exit_times',
-
         'tax_enabled',
         'tax_type',
         'tax_amount',
-
-        // Key-Value store for labels and other dynamic settings
+        'cure_default_status',
+        'cure_allow_edit_confirmed',
+        'cure_allow_discount',
+        'cure_max_discount_percent',
+        'cure_discount_type',
+        'cure_auto_tax',
+        'cure_warranty_enabled',
+        'cure_default_warranty_months',
+        'cure_default_warranty_text',
+        'cure_default_notes',
+        'cure_require_notes',
+        'cure_tooth_numbering_system',
+        'cure_auto_highlight_teeth',
+        'cure_show_tooth_filter',
         'key',
         'value',
     ];
@@ -43,6 +52,13 @@ class BookingSetting extends Model
         'statement_roles' => 'array',
         'allow_appointment_entry_exit_times' => 'boolean',
         'tax_enabled' => 'boolean',
+        'cure_allow_edit_confirmed' => 'boolean',
+        'cure_allow_discount' => 'boolean',
+        'cure_auto_tax' => 'boolean',
+        'cure_warranty_enabled' => 'boolean',
+        'cure_require_notes' => 'boolean',
+        'cure_auto_highlight_teeth' => 'boolean',
+        'cure_show_tooth_filter' => 'boolean',
     ];
 
     public static function current(): self
@@ -71,10 +87,23 @@ class BookingSetting extends Model
             'tax_enabled' => false,
             'tax_type' => 'PERCENT',
             'tax_amount' => null,
+
+            'cure_default_status' => 'draft',
+            'cure_allow_edit_confirmed' => false,
+            'cure_allow_discount' => true,
+            'cure_max_discount_percent' => 100,
+            'cure_discount_type' => 'amount',
+            'cure_auto_tax' => false,
+            'cure_warranty_enabled' => false,
+            'cure_default_warranty_months' => 6,
+            'cure_default_warranty_text' => null,
+            'cure_default_notes' => null,
+            'cure_require_notes' => false,
+            'cure_tooth_numbering_system' => 'universal',
+            'cure_auto_highlight_teeth' => true,
+            'cure_show_tooth_filter' => true,
         ]);
     }
-
-    // --- Key-Value Helpers ---
 
     public static function getValue(string $key, $default = null)
     {

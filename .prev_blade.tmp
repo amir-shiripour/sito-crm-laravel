@@ -1,0 +1,1036 @@
+﻿{{-- clients::user.settings.forms-builder --}}
+@php
+    $title = '┘ü╪▒┘àΓÇî╪│╪º╪▓ ' . config('clients.labels.singular');
+    // ╪º╪│╪¬╪º█î┘ä ┘╛╪º█î┘ç ╪º█î┘å┘╛┘ê╪¬ΓÇî┘ç╪º
+    $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500
+    focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50
+    dark:text-gray-100 dark:focus:bg-gray-900";
+    $labelClass = "block text-xs font-medium text-gray-700 dark:text-gray-400 mb-1";
+    $checkboxClass = "w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600
+    dark:bg-gray-800 transition-colors cursor-pointer";
+@endphp
+
+<div class="max-w-7xl mx-auto space-y-6">
+
+    {{-- ┘ç╪»╪▒ ╪╡┘ü╪¡┘ç --}}
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">┘ü╪▒┘àΓÇî╪│╪º╪▓ ┘ç┘ê╪┤┘à┘å╪»</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                ┘à╪»█î╪▒█î╪¬ ┘ü█î┘ä╪»┘ç╪º█î ╪│┘ü╪º╪▒╪┤█î ┘ê ╪│╪º╪«╪¬╪º╪▒ ┘ü╪▒┘àΓÇî┘ç╪º█î {{ config('clients.labels.singular') }}
+            </p>
+        </div>
+        <button wire:click="saveForm"
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all active:scale-95">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            ╪░╪«█î╪▒┘ç ╪¬╪║█î█î╪▒╪º╪¬
+        </button>
+    </div>
+
+    <div class="grid grid-cols-12 gap-6 items-start">
+
+        {{-- ╪│╪¬┘ê┘å ┌⌐┘å╪º╪▒█î: ┘ä█î╪│╪¬ ┘ü╪▒┘àΓÇî┘ç╪º --}}
+        <div class="col-span-12 lg:col-span-3 space-y-4 sticky top-20">
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                <div
+                    class="p-4 bg-gray-50/50 dark:bg-gray-900/30 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        ┘ä█î╪│╪¬ ┘ü╪▒┘àΓÇî┘ç╪º
+                    </h2>
+
+                    {{-- ┘ü╪▒┘à ╪¼╪»█î╪» --}}
+                    <button type="button" wire:click="newForm"
+                            class="text-xs px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                        + ┘ü╪▒┘à ╪¼╪»█î╪»
+                    </button>
+                </div>
+
+                <ul class="p-2 space-y-1">
+                    @foreach($forms as $f)
+                        <li class="flex items-center gap-1">
+                            <button wire:click="loadForm({{ $f->id }})"
+                                    class="group flex-1 flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all duration-200
+                                           {{ $activeFormId === $f->id
+                                              ? 'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-900/20 dark:text-indigo-300'
+                                              : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700/50' }}">
+                                <div class="flex flex-col items-start">
+                                    <span>{{ $f->name }}</span>
+                                    <span class="text-[10px] text-gray-400 dir-ltr">
+                                    key: {{ $f->key }}
+                                </span>
+                                </div>
+                                @if($f->is_active)
+                                    <span
+                                        class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                ┘ü╪╣╪º┘ä
+                            </span>
+                                @endif
+                            </button>
+
+                            {{-- ╪¡╪░┘ü ┘ü╪▒┘à --}}
+                            <button type="button" wire:click="deleteForm({{ $f->id }})"
+                                    onclick="return confirm('┘ü╪▒┘à ╪¡╪░┘ü ╪┤┘ê╪»╪ƒ');"
+                                    class="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200">
+                                Γ£ò
+                            </button>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+
+        {{-- ╪│╪¬┘ê┘å ╪º╪╡┘ä█î: ┘ê█î╪▒╪º█î╪┤┌»╪▒ --}}
+        <div class="col-span-12 lg:col-span-9 space-y-6">
+
+            {{-- ╪¿╪º┌⌐╪│ ╪¬┘å╪╕█î┘à╪º╪¬ ┌⌐┘ä█î ┘ü╪▒┘à --}}
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                    ╪¬┘å╪╕█î┘à╪º╪¬ ╪╣┘à┘ê┘à█î ┘ü╪▒┘à
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                        <label class="{{ $labelClass }}">┘å╪º┘à ┘å┘à╪º█î╪┤█î ┘ü╪▒┘à</label>
+                        <input type="text" wire:model="name" class="{{ $inputClass }}" placeholder="┘à╪½┘ä╪º┘ï: ┘ü╪▒┘à ╪¡┘é┘ê┘é█î">
+                        @error('name')
+                        <div class="mt-1 text-xs text-red-600">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="{{ $labelClass }}">╪┤┘å╪º╪│┘ç ╪│█î╪│╪¬┘à█î (Key)</label>
+                        <input type="text" wire:model="key" class="{{ $inputClass }} dir-ltr font-mono text-xs"
+                               placeholder="╪»╪▒ ╪╡┘ê╪▒╪¬ ╪«╪º┘ä█îΓÇî╪¿┘ê╪»┘å╪î ╪«┘ê╪»┌⌐╪º╪▒ ╪¬┘ê┘ä█î╪» ┘à█îΓÇî╪┤┘ê╪»">
+                        @error('key')
+                        <div class="mt-1 text-xs text-red-600">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="flex items-end pb-2">
+                        <label
+                            class="inline-flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer w-full border border-transparent hover:border-gray-200 dark:hover:border-gray-600">
+                            <input type="checkbox" wire:model="is_active" class="{{ $checkboxClass }}">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">╪º█î┘å ┘ü╪▒┘à ┘ü╪╣╪º┘ä ╪¿╪º╪┤╪»</span>
+                        </label>
+                    </div>
+                </div>
+
+                <p class="mt-3 text-[11px] text-gray-500 dark:text-gray-400">
+                    ╪ó█î╪»█îΓÇî┘ç╪º█î ╪▓█î╪▒ ╪¿╪▒╪º█î ┘ü█î┘ä╪»┘ç╪º█î ╪│█î╪│╪¬┘à█î ╪▒╪▓╪▒┘ê ╪┤╪»┘çΓÇî╪º┘å╪» ┘ê ┘å╪¿╪º█î╪» ╪»╪▒ ┘ü█î┘ä╪»┘ç╪º█î ╪│┘ü╪º╪▒╪┤█î ╪¿┘çΓÇî┌⌐╪º╪▒ ╪¿╪▒┘ê┘å╪»:
+                    <span class="font-mono">username, full_name, email, phone, national_code, case_number</span>
+                </p>
+
+                @error('schema')
+                <div class="mt-2 text-xs text-red-600">{{ $message }}</div>
+                @enderror
+            </div>
+
+            {{-- ╪¼╪╣╪¿┘ç ╪º╪¿╪▓╪º╪▒ ╪º┘ü╪▓┘ê╪»┘å ┘ü█î┘ä╪» --}}
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    ╪º┘ü╪▓┘ê╪»┘å ┘ü█î┘ä╪» ╪¼╪»█î╪»
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                    @foreach(['text','textarea','email','number','date','checkbox','radio','file','select','select-province-city','select-user-by-role','profile-photo']
+                    as $t)
+                        <button type="button" wire:click="addField('{{ $t }}')"
+                                class="px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 bg-gray-50 text-gray-600 hover:bg-white hover:border-indigo-300 hover:text-indigo-600 hover:shadow-sm transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:border-gray-500">
+                            + {{ $t }}
+                        </button>
+                    @endforeach
+                </div>
+                <div class="mt-3 border-t border-dashed border-gray-200 pt-3 dark:border-gray-700">
+                    <p class="text-xs font-semibold text-gray-500 mb-2 dark:text-gray-400">
+                        ┘ü█î┘ä╪»┘ç╪º█î ╪│█î╪│╪¬┘à█î (╪¿╪º ╪┤┘å╪º╪│┘ç ╪½╪º╪¿╪¬)
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        @php
+                            $sysDefaults = \Modules\Clients\Entities\ClientForm::systemFieldDefaults();
+                        @endphp
+
+                        @foreach($sysDefaults as $sid => $sf)
+                            @php
+                                $alreadyInForm = collect($schema['fields'] ?? [])
+                                ->contains(fn($f) => ($f['id'] ?? null) === $sid);
+                            @endphp
+
+                            <button type="button" @if(!$alreadyInForm) wire:click="addSystemField('{{ $sid }}')" @endif
+                            class="px-3 py-1.5 rounded-lg text-[11px] font-medium border
+                           {{ $alreadyInForm
+                                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 cursor-default dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-white hover:border-emerald-400 hover:text-emerald-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:border-emerald-500' }}">
+                                {{ $sf['label'] ?? $sid }}
+                                @if($alreadyInForm)
+                                    <span class="text-[10px] ml-1 opacity-70">(╪»╪▒ ╪º█î┘å ┘ü╪▒┘à ┘ê╪¼┘ê╪» ╪»╪º╪▒╪»)</span>
+                                @endif
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            @php
+                $systemFieldIds =
+                ['full_name','phone','email','national_code','case_number','notes','status_id','password'];
+
+                $systemFields = [];
+                $customFields = [];
+
+                foreach (($schema['fields'] ?? []) as $i => $field) {
+                $fid = $field['id'] ?? "f{$i}";
+                if (in_array($fid, $systemFieldIds, true)) {
+                $systemFields[] = ['i' => $i, 'field' => $field, 'fid' => $fid];
+                } else {
+                $customFields[] = ['i' => $i, 'field' => $field, 'fid' => $fid];
+                }
+                }
+            @endphp
+
+            {{-- ┘ä█î╪│╪¬ ┘ü█î┘ä╪»┘ç╪º (Schema) --}}
+
+            <div class="space-y-4">
+                <div class="flex items-center justify-between px-2">
+                    <h3 class="font-medium text-gray-900 dark:text-white">┘ü█î┘ä╪»┘ç╪º█î ┘ü╪╣╪º┘ä</h3>
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-lg dark:bg-gray-700 dark:text-gray-400">
+                            {{ count($schema['fields'] ?? []) }} ┘à┘ê╪▒╪»
+                        </span>
+                        @if(!$reorderMode)
+                            <button type="button" wire:click="toggleReorderMode"
+                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 font-medium hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-800/70 transition-all text-sm">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M4 8h16M4 16h16" />
+                                </svg>
+                                ┘à╪▒╪¬╪¿ΓÇî╪│╪º╪▓█î ┘ü█î┘ä╪»┘ç╪º
+                            </button>
+                        @else
+                            <div class="flex items-center gap-2">
+                                <button type="button" wire:click="confirmReorder"
+                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-all text-sm">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    ╪¬╪º█î█î╪»
+                                </button>
+                                <button type="button" wire:click="toggleReorderMode"
+                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-all text-sm">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    ┘ä╪║┘ê
+                                </button>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                @if($reorderMode)
+                    {{-- ╪¡╪º┘ä╪¬ ┘à╪▒╪¬╪¿ΓÇî╪│╪º╪▓█î: ┘å┘à╪º█î╪┤ ╪│╪º╪»┘ç ┘ü█î┘ä╪»┘ç╪º --}}
+                    @php
+                        $groupedFields = collect($schema['fields'] ?? [])->groupBy(function($field) {
+                        $group = $field['group'] ?? '';
+                        return $group === '' ? '__no_group__' : $group;
+                        });
+                    @endphp
+
+                    {{-- Container ╪¿╪▒╪º█î ╪¼╪º╪¿┘çΓÇî╪¼╪º█î█î ┌»╪▒┘ê┘çΓÇî┘ç╪º --}}
+                    <div class="space-y-4 sortable-groups-container">
+                        @foreach($groupedFields as $groupName => $groupFields)
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl border-2 border-indigo-300 dark:border-indigo-700 p-4 shadow-sm sortable-group-item"
+                                 data-group-name="{{ $groupName === '__no_group__' ? '' : $groupName }}">
+                                <div class="mb-3 flex items-center gap-2 cursor-move group-header">
+                                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24"
+                                         stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M4 8h16M4 16h16" />
+                                    </svg>
+                                    <h4 class="font-semibold text-gray-900 dark:text-white">
+                                        {{ $groupName === '__no_group__' ? '╪¿╪»┘ê┘å ┌»╪▒┘ê┘ç' : $groupName }}
+                                    </h4>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                                ({{ count($groupFields) }} ┘ü█î┘ä╪»)
+                            </span>
+                                </div>
+                                <div class="space-y-2 sortable-group"
+                                     data-group="{{ $groupName === '__no_group__' ? '' : $groupName }}">
+                                    @foreach($groupFields as $field)
+                                        <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 cursor-move hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors sortable-field-item"
+                                             data-field-id="{{ $field['id'] ?? '' }}">
+                                            <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M4 8h16M4 16h16" />
+                                            </svg>
+                                            <div class="flex-1">
+                                                <div class="font-medium text-sm text-gray-900 dark:text-white">
+                                                    {{ $field['label'] ?? '╪¿█îΓÇî┘å╪º┘à' }}
+                                                </div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                    {{ $field['type'] ?? 'text' }} | ID: {{ $field['id'] ?? '' }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                @else
+                    {{-- ╪¡╪º┘ä╪¬ ╪╣╪º╪»█î: ┘å┘à╪º█î╪┤ ┌⌐╪º┘à┘ä ┘ü█î┘ä╪»┘ç╪º --}}
+
+                    {{-- === ┘ü█î┘ä╪»┘ç╪º█î ╪│█î╪│╪¬┘à█î (ID ╪½╪º╪¿╪¬) === --}}
+                    @foreach($systemFields as $item)
+                        @php($i = $item['i'])
+                        @php($fid = $item['fid'])
+                        @php($field = $item['field'])
+                        <div class="group relative bg-white dark:bg-gray-800 rounded-2xl border border-emerald-300/70 dark:border-emerald-700/70 shadow-sm hover:shadow-md transition-all overflow-hidden"
+                             wire:key="field-system-{{ $fid }}">
+
+                            {{-- ┘å┘ê╪º╪▒ ╪▒┘å┌»█î ┌⌐┘å╪º╪▒ ┌⌐╪º╪▒╪¬ --}}
+                            <div
+                                class="absolute right-0 top-0 bottom-0 w-1 bg-emerald-500/70 group-hover:bg-emerald-500 transition-colors">
+                            </div>
+
+                            {{-- ┘ç╪»╪▒ --}}
+                            <div
+                                class="flex items-center justify-between bg-emerald-50/70 dark:bg-emerald-900/20 px-5 py-3 border-b border-emerald-100/70 dark:border-emerald-800/60">
+                                <div class="flex items-center gap-3">
+                            <span
+                                class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-600 text-white">
+                                ┘ü█î┘ä╪» ╪│█î╪│╪¬┘à█î
+                            </span>
+                                    <span
+                                        class="inline-flex items-center px-2 py-1 rounded text-xs font-mono font-semibold bg-gray-900/80 text-emerald-300">
+                                {{ $fid }}
+                            </span>
+                                    <input type="text" wire:model="schema.fields.{{ $i }}.label"
+                                           class="bg-transparent border-0 p-0 text-sm font-bold text-gray-900 focus:ring-0 dark:text-white placeholder-gray-300"
+                                           placeholder="╪╣┘å┘ê╪º┘å ┘ü█î┘ä╪»">
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    {{-- ┘ü┘é╪╖ ╪¡╪░┘ü ╪º╪▓ ╪º█î┘å ┘ü╪▒┘à (ID ╪½╪º╪¿╪¬ ┘à█îΓÇî┘à╪º┘å╪») --}}
+                                    <button type="button" wire:click="removeField({{ $i }})"
+                                            class="text-gray-400 hover:text-red-500 transition-colors text-xs flex items-center gap-1"
+                                            title="╪¡╪░┘ü ╪º█î┘å ┘ü█î┘ä╪» ╪│█î╪│╪¬┘à█î ╪º╪▓ ╪º█î┘å ┘ü╪▒┘à">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        <span>╪¡╪░┘ü ╪º╪▓ ┘ü╪▒┘à</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- ╪¿╪»┘å┘ç ╪¬┘å╪╕█î┘à╪º╪¬ ┘ü█î┘ä╪» ╪│█î╪│╪¬┘à█î --}}
+                            <div class="p-5 space-y-5">
+
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {{-- placeholder --}}
+                                    <div class="sm:col-span-2">
+                                        <label class="{{ $labelClass }}">Placeholder</label>
+                                        <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                               placeholder="┘à╪¬┘å ╪▒╪º┘ç┘å┘à╪º█î ╪»╪º╪«┘ä ┘ü█î┘ä╪»" wire:model="schema.fields.{{ $i }}.placeholder">
+                                    </div>
+
+                                    {{-- ╪╣╪▒╪╢ ┘ü█î┘ä╪» --}}
+                                    <div>
+                                        <label class="{{ $labelClass }}">╪╣╪▒╪╢ ┘ü█î┘ä╪»</label>
+                                        <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                wire:model="schema.fields.{{ $i }}.width">
+                                            <option value="full">╪¬┘à╪º┘à ╪╣╪▒╪╢</option>
+                                            <option value="1/2">┘å╪╡┘ü ╪╣╪▒╪╢</option>
+                                            <option value="1/3">█î┌⌐ΓÇî╪│┘ê┘à ╪╣╪▒╪╢</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {{-- ┌»╪▒┘ê┘ç --}}
+                                    <div class="sm:col-span-2">
+                                        <label class="{{ $labelClass }}">┌»╪▒┘ê┘ç (╪¿╪«╪┤)</label>
+                                        <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                               placeholder="┘à╪½┘ä╪º┘ï: ╪º╪╖┘ä╪º╪╣╪º╪¬ ┘ç┘ê█î╪¬█î" wire:model="schema.fields.{{ $i }}.group">
+                                    </div>
+
+                                    {{-- Required / Quick / Auth --}}
+                                    <div class="flex flex-col gap-2 pt-1">
+                                        <label
+                                            class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                            <input type="checkbox" class="{{ $checkboxClass }}"
+                                                   wire:model="schema.fields.{{ $i }}.required">
+                                            <span class="text-xs text-gray-700 dark:text-gray-300">╪º┘ä╪▓╪º┘à█î (Required)</span>
+                                        </label>
+                                        <label
+                                            class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                            <input type="checkbox" class="{{ $checkboxClass }}"
+                                                   wire:model="schema.fields.{{ $i }}.quick_create">
+                                            <span class="text-xs text-gray-700 dark:text-gray-300">┘å┘à╪º█î╪┤ ╪»╪▒ ╪º█î╪¼╪º╪» ╪│╪▒█î╪╣</span>
+                                        </label>
+                                        <label
+                                            class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                            <input type="checkbox" class="{{ $checkboxClass }}"
+                                                   wire:model="schema.fields.{{ $i }}.client_auth">
+                                            <span class="text-xs text-gray-700 dark:text-gray-300">╪º╪¡╪▒╪º╪▓ ┘ç┘ê█î╪¬ ┌⌐╪º╪▒╪¿╪▒ (┘ê█î╪▒╪º█î╪┤ ╪»╪▒ ┘╛╪▒┘ê┘ü╪º█î┘ä)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {{-- ╪º┘ä╪▓╪º┘à█î ╪¿╪▒ ╪º╪│╪º╪│ ┘ê╪╢╪╣█î╪¬ ┘╛╪▒┘ê┘å╪»┘ç --}}
+                                @if(!empty($statuses))
+                                    <div class="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+                                        <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                                            ╪º┘ä╪▓╪º┘à█î ╪¿╪▒ ╪º╪│╪º╪│ ┘ê╪╢╪╣█î╪¬ ┘╛╪▒┘ê┘å╪»┘ç
+                                        </p>
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach($statuses as $st)
+                                                <label
+                                                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-50 text-[11px] text-gray-700 border border-gray-200 cursor-pointer hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                                    <input type="checkbox" class="{{ $checkboxClass }} w-3.5 h-3.5"
+                                                           wire:model="schema.fields.{{ $i }}.required_status_keys"
+                                                           value="{{ $st['key'] }}">
+                                                    <span>{{ $st['label'] }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                        <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                                            ╪º┌»╪▒ ┘ê╪╢╪╣█î╪¬ ┘╛╪▒┘ê┘å╪»┘ç ╪▒┘ê█î ┘ç╪▒ █î┌⌐ ╪º╪▓ ╪º█î┘å ┘à┘ê╪º╪▒╪» ┘é╪▒╪º╪▒ ╪¿┌»█î╪▒╪»╪î ┘╛╪▒ ┌⌐╪▒╪»┘å ╪º█î┘å ┘ü█î┘ä╪» ╪¿┘çΓÇî╪╖┘ê╪▒ ╪«┘ê╪»┌⌐╪º╪▒
+                                            ╪º┘ä╪▓╪º┘à█î ┘à█îΓÇî╪┤┘ê╪».
+                                        </p>
+                                    </div>
+                                @endif
+
+                                {{-- ┘é┘ê╪º┘å█î┘å ╪┤╪▒╪╖█î ╪¿╪▒╪º█î ╪º┘ä╪▓╪º┘à█î ╪┤╪»┘å --}}
+                                <div class="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                            ╪º┘ä╪▓╪º┘à█î ╪┤╪▒╪╖█î (╪º┌»╪▒ ┘ü█î┘ä╪» ╪»█î┌»╪▒█î ┘╛╪▒ ╪┤╪»)
+                                        </p>
+                                        <button type="button" wire:click="addConditionalRule({{ $i }})"
+                                                class="text-xs px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-800/70 transition-colors">
+                                            + ╪º┘ü╪▓┘ê╪»┘å ┘é╪º┘å┘ê┘å
+                                        </button>
+                                    </div>
+
+                                    @if(!empty($field['conditional_required']))
+                                        <div class="space-y-2">
+                                            @foreach($field['conditional_required'] as $ruleIdx => $rule)
+                                                <div
+                                                    class="flex items-center gap-2 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
+                                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                        {{-- ┘ü█î┘ä╪» ┘à╪º╪┤┘ç --}}
+                                                        <div>
+                                                            <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">╪º┌»╪▒
+                                                                ┘ü█î┘ä╪»:</label>
+                                                            <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                    wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.trigger_field_id">
+                                                                <option value="">╪º┘å╪¬╪«╪º╪¿ ┘ü█î┘ä╪»...</option>
+                                                                @foreach($schema['fields'] ?? [] as $otherIdx => $otherField)
+                                                                    @if($otherIdx !== $i)
+                                                                        <option value="{{ $otherField['id'] ?? '' }}">
+                                                                            {{ $otherField['label'] ?? ($otherField['id'] ?? '') }}
+                                                                        </option>
+                                                                    @endif
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+
+                                                        {{-- ╪╣┘à┘ä┌»╪▒ --}}
+                                                        <div>
+                                                            <label
+                                                                class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">╪┤╪▒╪╖:</label>
+                                                            <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                    wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.operator">
+                                                                <option value="filled">┘╛╪▒ ╪┤┘ê╪»</option>
+                                                                <option value="empty">╪«╪º┘ä█î ╪¿╪º╪┤╪»</option>
+                                                                <option value="equals">╪¿╪▒╪º╪¿╪▒ ╪¿╪º</option>
+                                                                <option value="not_equals">┘à╪«╪º┘ä┘ü ╪¿╪º</option>
+                                                            </select>
+                                                        </div>
+
+                                                        {{-- ┘à┘é╪»╪º╪▒ (╪¿╪▒╪º█î equals/not_equals) --}}
+                                                        <div>
+                                                            <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">┘à┘é╪»╪º╪▒
+                                                                (╪º╪«╪¬█î╪º╪▒█î):</label>
+                                                            <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                   placeholder="┘ü┘é╪╖ ╪¿╪▒╪º█î '╪¿╪▒╪º╪¿╪▒ ╪¿╪º'"
+                                                                   wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
+                                                                   @if(!in_array($rule['operator'] ?? 'filled' , ['equals', 'not_equals'
+                                                                   ])) disabled @endif>
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- ╪¡╪░┘ü ┘é╪º┘å┘ê┘å --}}
+                                                    <button type="button" wire:click="removeConditionalRule({{ $i }}, {{ $ruleIdx }})"
+                                                            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                                            title="╪¡╪░┘ü ┘é╪º┘å┘ê┘å">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                  d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 italic">
+                                            ┘ç┘å┘ê╪▓ ┘é╪º┘å┘ê┘å█î ╪¬╪╣╪▒█î┘ü ┘å╪┤╪»┘ç ╪º╪│╪¬. ╪¿╪º ┌⌐┘ä█î┌⌐ ╪▒┘ê█î ┬½╪º┘ü╪▓┘ê╪»┘å ┘é╪º┘å┘ê┘å┬╗ ┘à█îΓÇî╪¬┘ê╪º┘å█î╪» ┘é╪º┘å┘ê┘å ╪¼╪»█î╪» ╪º╪╢╪º┘ü┘ç ┌⌐┘å█î╪».
+                                        </p>
+                                    @endif
+
+                                    <p class="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+                                        ┘à╪½╪º┘ä: ╪º┌»╪▒ ┘ü█î┘ä╪» ┬½┘å┘ê╪╣ ┘à╪┤╪¬╪▒█î┬╗ ╪¿╪▒╪º╪¿╪▒ ╪¿╪º ┬½╪¡┘é┘ê┘é█î┬╗ ╪¿╪º╪┤╪»╪î ┘ü█î┘ä╪» ┬½╪┤┘à╪º╪▒┘ç ╪½╪¿╪¬┬╗ ╪º┘ä╪▓╪º┘à█î ┘à█îΓÇî╪┤┘ê╪».
+                                    </p>
+                                </div>
+
+                            </div>
+                        </div>
+                    @endforeach
+
+                    {{-- === ┘ü█î┘ä╪»┘ç╪º█î ╪│┘ü╪º╪▒╪┤█î (╪║█î╪▒╪│█î╪│╪¬┘à█î╪î ┘à╪½┘ä ┘é╪¿┘ä) === --}}
+                    @foreach($customFields as $item)
+                        @php($i = $item['i'])
+                        @php($fid = $item['fid'])
+                        @php($field = $item['field'])
+                        <div class="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all overflow-hidden"
+                             wire:key="field-custom-{{ $fid }}">
+
+                            {{-- ┘å┘ê╪º╪▒ ╪▒┘å┌»█î ┌⌐┘å╪º╪▒ ┌⌐╪º╪▒╪¬ --}}
+                            <div
+                                class="absolute right-0 top-0 bottom-0 w-1 bg-indigo-500/20 group-hover:bg-indigo-500 transition-colors">
+                            </div>
+
+                            {{-- ┘ç╪»╪▒ ┘ü█î┘ä╪» --}}
+                            <div
+                                class="flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/30 px-5 py-3 border-b border-gray-100 dark:border-gray-700/50">
+                                <div class="flex items-center gap-3">
+                            <span
+                                class="inline-flex items-center px-2 py-1 rounded text-xs font-mono font-semibold bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 uppercase">
+                                {{ $field['type'] }}
+                            </span>
+                                    <input type="text" wire:model="schema.fields.{{ $i }}.label"
+                                           class="bg-transparent border-0 p-0 text-sm font-bold text-gray-900 focus:ring-0 dark:text-white placeholder-gray-400"
+                                           placeholder="╪╣┘å┘ê╪º┘å ┘ü█î┘ä╪» (Label)">
+                                </div>
+
+                                <div class="flex items-center gap-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs text-gray-400">ID:</span>
+                                        <input type="text" wire:model="schema.fields.{{ $i }}.id"
+                                               class="bg-transparent border-b border-gray-300 text-xs font-mono text-gray-600 focus:border-indigo-500 focus:ring-0 w-24 text-left dir-ltr dark:border-gray-600 dark:text-gray-400"
+                                               placeholder="field_id">
+                                    </div>
+
+                                    {{-- ╪¡╪░┘ü ┘ü█î┘ä╪» --}}
+                                    <button type="button" wire:click="removeField({{ $i }})"
+                                            class="text-gray-400 hover:text-red-500 transition-colors" title="╪¡╪░┘ü ┘ü█î┘ä╪»">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- ╪¿╪»┘å┘ç ┘ü█î┘ä╪» --}}
+                            <div class="p-5 space-y-5">
+                                {{-- ╪¬┘å╪╕█î┘à╪º╪¬ ╪º╪╡┘ä█î --}}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                    <label
+                                        class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                        <input type="checkbox" class="{{ $checkboxClass }}"
+                                               wire:model="schema.fields.{{ $i }}.required">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">╪º┘ä╪▓╪º┘à█î (Required)</span>
+                                    </label>
+                                    <label
+                                        class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                        <input type="checkbox" class="{{ $checkboxClass }}"
+                                               wire:model="schema.fields.{{ $i }}.quick_create">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">┘å┘à╪º█î╪┤ ╪»╪▒ ╪º█î╪¼╪º╪» ╪│╪▒█î╪╣</span>
+                                    </label>
+                                    <label
+                                        class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30 md:col-span-2">
+                                        <input type="checkbox" class="{{ $checkboxClass }}"
+                                               wire:model="schema.fields.{{ $i }}.client_auth">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">╪º╪¡╪▒╪º╪▓ ┘ç┘ê█î╪¬ ┌⌐╪º╪▒╪¿╪▒ (┘ê█î╪▒╪º█î╪┤ ╪»╪▒ ┘╛╪▒┘ê┘ü╪º█î┘ä ┌⌐╪º╪▒╪¿╪▒█î)</span>
+                                    </label>
+
+                                    {{-- ╪╣╪▒╪╢ ┘ü█î┘ä╪» --}}
+                                    <div>
+                                        <label class="{{ $labelClass }}">╪╣╪▒╪╢ ┘ü█î┘ä╪»</label>
+                                        <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                wire:model="schema.fields.{{ $i }}.width">
+                                            <option value="full">╪¬┘à╪º┘à ╪╣╪▒╪╢</option>
+                                            <option value="1/2">┘å╪╡┘ü ╪╣╪▒╪╢</option>
+                                            <option value="1/3">█î┌⌐ΓÇî╪│┘ê┘à ╪╣╪▒╪╢</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- ┌»╪▒┘ê┘ç --}}
+                                    <div>
+                                        <label class="{{ $labelClass }}">┌»╪▒┘ê┘ç (╪¿╪«╪┤)</label>
+                                        <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                               placeholder="┘à╪½┘ä╪º┘ï: ╪º╪╖┘ä╪º╪╣╪º╪¬ ╪¬┘à╪º╪│" wire:model="schema.fields.{{ $i }}.group">
+                                    </div>
+                                </div>
+
+                                {{-- placeholder + validation --}}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="{{ $labelClass }}">Placeholder</label>
+                                        <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                               placeholder="┘à╪¬┘å ╪▒╪º┘ç┘å┘à╪º█î ╪»╪º╪«┘ä ┘ü█î┘ä╪»" wire:model="schema.fields.{{ $i }}.placeholder">
+                                    </div>
+
+                                    @if(in_array($field['type'], ['text','email','number','date','textarea']))
+                                        <div>
+                                            <label class="{{ $labelClass }}">Validation Rules</label>
+                                            <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                   placeholder="string|max:255" wire:model="schema.fields.{{ $i }}.validate">
+                                        </div>
+                                    @endif
+                                </div>
+
+                                {{-- ╪¬┘å╪╕█î┘à╪º╪¬ ╪º╪«╪¬╪╡╪º╪╡█î ╪¿╪▒ ╪º╪│╪º╪│ ┘å┘ê╪╣ --}}
+                                @if($field['type'] === 'file')
+                                    <div
+                                        class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
+                                        <div>
+                                            <label class="{{ $labelClass }}">Max Size (MB)</label>
+                                            <input type="number" class="{{ $inputClass }}"
+                                                   wire:model="schema.fields.{{ $i }}.max_mb">
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label class="{{ $labelClass }}">Allowed Types</label>
+                                            <input type="text" class="{{ $inputClass }} dir-ltr"
+                                                   placeholder="image/*,application/pdf" wire:model="schema.fields.{{ $i }}.accept">
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if($field['type'] === 'select' || $field['type'] === 'radio' || $field['type'] === 'checkbox')
+                                    <div class="space-y-3">
+                                        {{-- ┌»╪▓█î┘å┘ç ╪º╪│╪¬┘ü╪º╪»┘ç ╪º╪▓ ┘ä█î╪│╪¬ clients --}}
+                                        @if($field['type'] === 'select')
+                                            <div
+                                                class="flex items-center gap-2 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
+                                                <input type="checkbox" id="use-clients-{{ $i }}"
+                                                       wire:model="schema.fields.{{ $i }}.use_clients_list"
+                                                       class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                                <label for="use-clients-{{ $i }}"
+                                                       class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none flex-1">
+                                                    ╪º╪│╪¬┘ü╪º╪»┘ç ╪º╪▓ ┘ä█î╪│╪¬ ┘à╪┤╪¬╪▒█î╪º┘å (╪¼╪│╪¬╪¼┘ê ╪¿╪▒ ╪º╪│╪º╪│ ┘å╪º┘à╪î ┌⌐╪» ┘à┘ä█î╪î ╪┤┘à╪º╪▒┘ç ╪¬┘à╪º╪│╪î ╪┤┘à╪º╪▒┘ç ┘╛╪▒┘ê┘å╪»┘ç)
+                                                </label>
+                                            </div>
+                                        @endif
+
+                                        <div class="space-y-2"
+                                             x-show="@if($field['type'] === 'select') !$wire.get('schema.fields.{{ $i }}.use_clients_list') @else true @endif">
+                                            <label class="{{ $labelClass }}">
+                                                ┌»╪▓█î┘å┘çΓÇî┘ç╪º (JSON Format: <code>{"key":"Label"}</code>)
+                                            </label>
+                                            <textarea class="{{ $inputClass }} font-mono text-xs dir-ltr" rows="3"
+                                                      placeholder='{"m":"┘à╪▒╪»", "f":"╪▓┘å"}'
+                                                      wire:model.lazy="schema.fields.{{ $i }}.options_json" @if($field['type']==='select'
+                                    && !empty($field['use_clients_list'])) disabled @endif></textarea>
+                                            @if($field['type'] === 'select' && !empty($field['use_clients_list']))
+                                                <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                                                    ╪»╪▒ ╪╡┘ê╪▒╪¬ ┘ü╪╣╪º┘ä ╪¿┘ê╪»┘å "╪º╪│╪¬┘ü╪º╪»┘ç ╪º╪▓ ┘ä█î╪│╪¬ ┘à╪┤╪¬╪▒█î╪º┘å"╪î ╪º█î┘å ┘ü█î┘ä╪» ╪║█î╪▒┘ü╪╣╪º┘ä ┘à█îΓÇî╪┤┘ê╪».
+                                                </p>
+                                            @endif
+                                        </div>
+
+                                        @if($field['type'] === 'select')
+                                            <div
+                                                class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600">
+                                                <input type="checkbox" id="multiple-{{ $i }}"
+                                                       wire:model="schema.fields.{{ $i }}.multiple"
+                                                       class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                                <label for="multiple-{{ $i }}"
+                                                       class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                    ╪¡╪º┘ä╪¬ ┌å┘å╪» ╪º┘å╪¬╪«╪º╪¿█î (Multiple Selection)
+                                                </label>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endif
+
+                                @if($field['type'] === 'select-province-city')
+                                    <div
+                                        class="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">
+                                        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        ╪»╪º╪»┘çΓÇî┘ç╪º█î ╪º█î┘å ┘ü█î┘ä╪» ╪¿┘ç ╪╡┘ê╪▒╪¬ ╪«┘ê╪»┌⌐╪º╪▒ ╪º╪▓ ┘ä█î╪│╪¬ ╪º╪│╪¬╪º┘åΓÇî┘ç╪º ┘ê ╪┤┘ç╪▒┘ç╪º█î ╪º█î╪▒╪º┘å ╪¿╪º╪▒┌»╪░╪º╪▒█î ┘à█îΓÇî╪┤┘ê╪».
+                                    </div>
+                                @endif
+
+                                @if($field['type'] === 'select-user-by-role')
+                                    <div
+                                        class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600">
+                                        <div>
+                                            <label class="{{ $labelClass }}">┘å┘é╪┤</label>
+                                            <select class="{{ $inputClass }} !py-1.5 !text-xs dir-ltr"
+                                                    wire:model="schema.fields.{{ $i }}.role">
+                                                <option value="">╪º┘å╪¬╪«╪º╪¿ ┘å┘é╪┤</option>
+                                                @foreach($roles as $role)
+                                                    <option value="{{ $role['name'] }}">{{ $role['name'] }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="flex flex-col justify-end pb-2 space-y-2">
+                                            <label class="inline-flex items-center gap-2">
+                                                <input type="checkbox" class="{{ $checkboxClass }}"
+                                                       wire:model="schema.fields.{{ $i }}.multiple">
+                                                <span class="text-xs text-gray-600 dark:text-gray-400">╪º┘å╪¬╪«╪º╪¿ ┌å┘å╪»┌»╪º┘å┘ç
+                                        (Multiple)</span>
+                                            </label>
+                                            <label class="inline-flex items-center gap-2">
+                                                <input type="checkbox" class="{{ $checkboxClass }}"
+                                                       wire:model="schema.fields.{{ $i }}.lock_current_if_role">
+                                                <span class="text-xs text-gray-600 dark:text-gray-400">
+                                        ╪º┌»╪▒ ┘å┘é╪┤ ┌⌐╪º╪▒╪¿╪▒ ┘ü╪╣┘ä█î ┘ç┘à█î┘å ╪¿╪º╪┤╪»╪î ╪▒┘ê█î ╪º┘ê ┘é┘ü┘ä ╪┤┘ê╪»
+                                    </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- ╪º┘ä╪▓╪º┘à█î ╪¿╪▒ ╪º╪│╪º╪│ ┘ê╪╢╪╣█î╪¬ ┘╛╪▒┘ê┘å╪»┘ç --}}
+                                @if(!empty($statuses))
+                                    <div class="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+                                        <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                                            ╪º┘ä╪▓╪º┘à█î ╪¿╪▒ ╪º╪│╪º╪│ ┘ê╪╢╪╣█î╪¬ ┘╛╪▒┘ê┘å╪»┘ç
+                                        </p>
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach($statuses as $st)
+                                                <label
+                                                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-50 text-[11px] text-gray-700 border border-gray-200 cursor-pointer hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                                    <input type="checkbox" class="{{ $checkboxClass }} w-3.5 h-3.5"
+                                                           wire:model="schema.fields.{{ $i }}.required_status_keys"
+                                                           value="{{ $st['key'] }}">
+                                                    <span>{{ $st['label'] }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                        <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                                            ┘à╪½╪º┘ä: ╪¿╪▒╪º█î ┘ü█î┘ä╪» ┬½╪╣┘ä╪¬ ┘ä╪║┘ê┬╗ ┘à█îΓÇî╪¬┘ê╪º┘å█î╪» ┘ê╪╢╪╣█î╪¬ ┬½┘ä╪║┘ê ╪┤╪»┘ç┬╗ ╪▒╪º ╪¬█î┌⌐ ╪¿╪▓┘å█î╪» ╪¬╪º ┘ü┘é╪╖ ╪»╪▒ ╪ó┘å ╪¡╪º┘ä╪¬╪î ┘╛╪▒
+                                            ┌⌐╪▒╪»┘å ┘ü█î┘ä╪» ╪º╪¼╪¿╪º╪▒█î ╪┤┘ê╪».
+                                        </p>
+                                    </div>
+                                @endif
+
+                                {{-- ┘é┘ê╪º┘å█î┘å ╪┤╪▒╪╖█î ╪¿╪▒╪º█î ╪º┘ä╪▓╪º┘à█î ╪┤╪»┘å --}}
+                                <div class="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                            ╪º┘ä╪▓╪º┘à█î ╪┤╪▒╪╖█î (╪º┌»╪▒ ┘ü█î┘ä╪» ╪»█î┌»╪▒█î ┘╛╪▒ ╪┤╪»)
+                                        </p>
+                                        <button type="button" wire:click="addConditionalRule({{ $i }})"
+                                                class="text-xs px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-800/70 transition-colors">
+                                            + ╪º┘ü╪▓┘ê╪»┘å ┘é╪º┘å┘ê┘å
+                                        </button>
+                                    </div>
+
+                                    @if(!empty($field['conditional_required']))
+                                        <div class="space-y-2">
+                                            @foreach($field['conditional_required'] as $ruleIdx => $rule)
+                                                <div
+                                                    class="flex items-center gap-2 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
+                                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                        {{-- ┘ü█î┘ä╪» ┘à╪º╪┤┘ç --}}
+                                                        <div>
+                                                            <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">╪º┌»╪▒
+                                                                ┘ü█î┘ä╪»:</label>
+                                                            <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                    wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.trigger_field_id">
+                                                                <option value="">╪º┘å╪¬╪«╪º╪¿ ┘ü█î┘ä╪»...</option>
+                                                                @foreach($schema['fields'] ?? [] as $otherIdx => $otherField)
+                                                                    @if($otherIdx !== $i)
+                                                                        <option value="{{ $otherField['id'] ?? '' }}">
+                                                                            {{ $otherField['label'] ?? ($otherField['id'] ?? '') }}
+                                                                        </option>
+                                                                    @endif
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+
+                                                        {{-- ╪╣┘à┘ä┌»╪▒ --}}
+                                                        <div>
+                                                            <label
+                                                                class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">╪┤╪▒╪╖:</label>
+                                                            <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                    wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.operator">
+                                                                <option value="filled">┘╛╪▒ ╪┤┘ê╪»</option>
+                                                                <option value="empty">╪«╪º┘ä█î ╪¿╪º╪┤╪»</option>
+                                                                <option value="equals">╪¿╪▒╪º╪¿╪▒ ╪¿╪º</option>
+                                                                <option value="not_equals">┘à╪«╪º┘ä┘ü ╪¿╪º</option>
+                                                            </select>
+                                                        </div>
+
+                                                        {{-- ┘à┘é╪»╪º╪▒ (╪¿╪▒╪º█î equals/not_equals) --}}
+                                                        <div>
+                                                            <label class="text-[10px] text-gray-600 dark:text-gray-400 mb-1 block">┘à┘é╪»╪º╪▒
+                                                                (╪º╪«╪¬█î╪º╪▒█î):</label>
+                                                            <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                                   placeholder="┘ü┘é╪╖ ╪¿╪▒╪º█î '╪¿╪▒╪º╪¿╪▒ ╪¿╪º'"
+                                                                   wire:model="schema.fields.{{ $i }}.conditional_required.{{ $ruleIdx }}.value"
+                                                                   @if(!in_array($rule['operator'] ?? 'filled' , ['equals', 'not_equals'
+                                                                   ])) disabled @endif>
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- ╪¡╪░┘ü ┘é╪º┘å┘ê┘å --}}
+                                                    <button type="button" wire:click="removeConditionalRule({{ $i }}, {{ $ruleIdx }})"
+                                                            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                                            title="╪¡╪░┘ü ┘é╪º┘å┘ê┘å">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                  d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 italic">
+                                            ┘ç┘å┘ê╪▓ ┘é╪º┘å┘ê┘å█î ╪¬╪╣╪▒█î┘ü ┘å╪┤╪»┘ç ╪º╪│╪¬. ╪¿╪º ┌⌐┘ä█î┌⌐ ╪▒┘ê█î ┬½╪º┘ü╪▓┘ê╪»┘å ┘é╪º┘å┘ê┘å┬╗ ┘à█îΓÇî╪¬┘ê╪º┘å█î╪» ┘é╪º┘å┘ê┘å ╪¼╪»█î╪» ╪º╪╢╪º┘ü┘ç ┌⌐┘å█î╪».
+                                        </p>
+                                    @endif
+
+                                    <p class="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+                                        ┘à╪½╪º┘ä: ╪º┌»╪▒ ┘ü█î┘ä╪» ┬½┘å┘ê╪╣ ┘à╪┤╪¬╪▒█î┬╗ ╪¿╪▒╪º╪¿╪▒ ╪¿╪º ┬½╪¡┘é┘ê┘é█î┬╗ ╪¿╪º╪┤╪»╪î ┘ü█î┘ä╪» ┬½╪┤┘à╪º╪▒┘ç ╪½╪¿╪¬┬╗ ╪º┘ä╪▓╪º┘à█î ┘à█îΓÇî╪┤┘ê╪».
+                                    </p>
+                                </div>
+
+                            </div>
+                        </div>
+                    @endforeach
+
+                    @if(empty($schema['fields']))
+                        <div
+                            class="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-300 dark:bg-gray-800 dark:border-gray-700">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                            </svg>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">┘ç┘å┘ê╪▓ ┘ü█î┘ä╪»█î ╪º╪╢╪º┘ü┘ç ┘å╪┤╪»┘ç ╪º╪│╪¬</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                ╪º╪▓ ╪¼╪╣╪¿┘ç ╪º╪¿╪▓╪º╪▒ ╪¿╪º┘ä╪º ╪¿╪▒╪º█î ╪º┘ü╪▓┘ê╪»┘å ╪º┘ê┘ä█î┘å ┘ü█î┘ä╪» ╪º╪│╪¬┘ü╪º╪»┘ç ┌⌐┘å█î╪».
+                            </p>
+                        </div>
+                    @endif
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- SortableJS Library --}}
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+    <style>
+        .sortable-chosen {
+            background-color: rgb(224 231 255) !important;
+        }
+
+        .dark .sortable-chosen {
+            background-color: rgb(30 58 138 / 0.3) !important;
+        }
+
+        .sortable-chosen-group {
+            background-color: rgb(199 210 254) !important;
+            border-color: rgb(99 102 241) !important;
+        }
+
+        .dark .sortable-chosen-group {
+            background-color: rgb(30 58 138 / 0.5) !important;
+            border-color: rgb(99 102 241) !important;
+        }
+
+        .group-header {
+            user-select: none;
+        }
+
+        .group-header:hover {
+            background-color: rgb(243 244 246);
+        }
+
+        .dark .group-header:hover {
+            background-color: rgb(55 65 81);
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let sortableGroupInstances = []; // ╪¿╪▒╪º█î ┌»╪▒┘ê┘çΓÇî┘ç╪º
+            let sortableFieldInstances = []; // ╪¿╪▒╪º█î ┘ü█î┘ä╪»┘ç╪º█î ╪»╪º╪«┘ä ┌»╪▒┘ê┘çΓÇî┘ç╪º
+
+            // ╪¬╪º╪¿╪╣ ╪¿╪▒╪º█î ╪▒╪º┘çΓÇî╪º┘å╪»╪º╪▓█î Sortable
+            function initSortable() {
+                // ╪¡╪░┘ü ┘å┘à┘ê┘å┘çΓÇî┘ç╪º█î ┘é╪¿┘ä█î
+                sortableGroupInstances.forEach(instance => {
+                    if (instance && instance.destroy) {
+                        instance.destroy();
+                    }
+                });
+                sortableGroupInstances = [];
+
+                sortableFieldInstances.forEach(instance => {
+                    if (instance && instance.destroy) {
+                        instance.destroy();
+                    }
+                });
+                sortableFieldInstances = [];
+
+                // 1. ╪▒╪º┘çΓÇî╪º┘å╪»╪º╪▓█î Sortable ╪¿╪▒╪º█î ┌»╪▒┘ê┘çΓÇî┘ç╪º
+                const groupsContainer = document.querySelector('.sortable-groups-container');
+                if (groupsContainer) {
+                    const groupsSortable = Sortable.create(groupsContainer, {
+                        animation: 200,
+                        handle: '.group-header',
+                        ghostClass: 'opacity-50',
+                        chosenClass: 'sortable-chosen-group',
+                        filter: '.sortable-group, .sortable-field-item', // ╪¼┘ä┘ê┌»█î╪▒█î ╪º╪▓ drag ╪┤╪»┘å ┌»╪▒┘ê┘ç ┘ê┘é╪¬█î ┘ü█î┘ä╪» drag ┘à█îΓÇî╪┤┘ê╪»
+                        preventOnFilter: false, // ╪º╪¼╪º╪▓┘ç ┘à█îΓÇî╪»┘ç╪» ┘ü█î┘ä╪»┘ç╪º drag ╪┤┘ê┘å╪»
+                        onEnd: function(evt) {
+                            // ┘ü┘é╪╖ ╪º┌»╪▒ header ┌»╪▒┘ê┘ç drag ╪┤╪»┘ç ╪¿╪º╪┤╪»
+                            if (evt.item.classList.contains('sortable-group-item')) {
+                                // ┌»╪▒┘ü╪¬┘å ╪¬╪▒╪¬█î╪¿ ╪¼╪»█î╪» ┌»╪▒┘ê┘çΓÇî┘ç╪º
+                                const groupNames = Array.from(groupsContainer.querySelectorAll(
+                                    '.sortable-group-item'))
+                                    .map(el => el.getAttribute('data-group-name'))
+                                    .filter(name => name !== null);
+
+                                // ╪º╪▒╪│╪º┘ä ╪¿┘ç Livewire
+                            @this.call('reorderGroups', groupNames);
+                            }
+                        }
+                    });
+                    sortableGroupInstances.push(groupsSortable);
+                }
+
+                // 2. ╪▒╪º┘çΓÇî╪º┘å╪»╪º╪▓█î Sortable ╪¿╪▒╪º█î ┘ü█î┘ä╪»┘ç╪º█î ╪»╪º╪«┘ä ┘ç╪▒ ┌»╪▒┘ê┘ç
+                const fieldGroups = document.querySelectorAll('.sortable-group');
+                fieldGroups.forEach(group => {
+                    const groupName = group.getAttribute('data-group');
+
+                    const fieldSortable = Sortable.create(group, {
+                        animation: 150,
+                        handle: '.sortable-field-item',
+                        ghostClass: 'opacity-50',
+                        chosenClass: 'sortable-chosen',
+                        group: {
+                            name: 'fields-' + (groupName || 'no-group'),
+                            pull: false, // ┘ü█î┘ä╪»┘ç╪º ┘å┘à█îΓÇî╪¬┘ê╪º┘å┘å╪» ╪º╪▓ ┌»╪▒┘ê┘ç ╪«╪º╪▒╪¼ ╪┤┘ê┘å╪»
+                            put: false // ┘ü█î┘ä╪»┘ç╪º ┘å┘à█îΓÇî╪¬┘ê╪º┘å┘å╪» ╪¿┘ç ┌»╪▒┘ê┘ç ╪»█î┌»╪▒ ┘à┘å╪¬┘é┘ä ╪┤┘ê┘å╪»
+                        },
+                        // ╪¼┘ä┘ê┌»█î╪▒█î ╪º╪▓ bubble ╪┤╪»┘å event ╪¿┘ç ┘ê╪º┘ä╪» (┌»╪▒┘ê┘ç)
+                        bubbleScroll: false,
+                        onStart: function(evt) {
+                            // ╪║█î╪▒┘ü╪╣╪º┘ä ┌⌐╪▒╪»┘å drag ┌»╪▒┘ê┘ç ┘ê┘é╪¬█î ┘ü█î┘ä╪» drag ┘à█îΓÇî╪┤┘ê╪»
+                            if (sortableGroupInstances.length > 0) {
+                                sortableGroupInstances.forEach(instance => {
+                                    if (instance && instance.option) {
+                                        instance.option('disabled', true);
+                                    }
+                                });
+                            }
+                        },
+                        onEnd: function(evt) {
+                            // ┘ü╪╣╪º┘ä ┌⌐╪▒╪»┘å ╪»┘ê╪¿╪º╪▒┘ç drag ┌»╪▒┘ê┘ç
+                            if (sortableGroupInstances.length > 0) {
+                                sortableGroupInstances.forEach(instance => {
+                                    if (instance && instance.option) {
+                                        instance.option('disabled', false);
+                                    }
+                                });
+                            }
+
+                            // ┌»╪▒┘ü╪¬┘å ╪¬╪▒╪¬█î╪¿ ╪¼╪»█î╪» ┘ü█î┘ä╪»┘ç╪º
+                            const fieldIds = Array.from(group.querySelectorAll(
+                                '[data-field-id]'))
+                                .map(el => el.getAttribute('data-field-id'))
+                                .filter(id => id !== '');
+
+                            // ╪º╪▒╪│╪º┘ä ╪¿┘ç Livewire
+                        @this.call('reorderFields', groupName, fieldIds);
+                        }
+                    });
+
+                    sortableFieldInstances.push(fieldSortable);
+                });
+            }
+
+            // ╪▒╪º┘çΓÇî╪º┘å╪»╪º╪▓█î ╪º┘ê┘ä█î┘ç
+            initSortable();
+
+            // ┌»┘ê╪┤ ╪»╪º╪»┘å ╪¿┘ç ╪¬╪║█î█î╪▒╪º╪¬ Livewire
+            let reinitTimeout = null;
+            Livewire.hook('morph.updated', ({
+                                                component
+                                            }) => {
+                // ╪º┌»╪▒ ╪»╪▒ ╪¡╪º┘ä╪¬ ┘à╪▒╪¬╪¿ΓÇî╪│╪º╪▓█î ┘ç╪│╪¬█î┘à╪î ╪»┘ê╪¿╪º╪▒┘ç ╪▒╪º┘çΓÇî╪º┘å╪»╪º╪▓█î ┌⌐┘å
+                // ╪º╪│╪¬┘ü╪º╪»┘ç ╪º╪▓ debounce ╪¿╪▒╪º█î ╪¼┘ä┘ê┌»█î╪▒█î ╪º╪▓ multiple calls
+                if (reinitTimeout) {
+                    clearTimeout(reinitTimeout);
+                }
+                reinitTimeout = setTimeout(() => {
+                    // ╪¿╪▒╪▒╪│█î ┘ê╪¼┘ê╪» ╪╣┘å╪º╪╡╪▒ ┘à╪▒╪¬╪¿ΓÇî╪│╪º╪▓█î ╪»╪▒ DOM
+                    const hasSortableGroups = document.querySelectorAll('.sortable-group').length >
+                        0;
+                    const hasGroupsContainer = document.querySelector(
+                        '.sortable-groups-container') !== null;
+
+                    if (hasSortableGroups && hasGroupsContainer) {
+                        // ┘ç┘à█î╪┤┘ç ╪»┘ê╪¿╪º╪▒┘ç ╪▒╪º┘çΓÇî╪º┘å╪»╪º╪▓█î ┌⌐┘å ┌å┘ê┘å DOM ┘à┘à┌⌐┘å ╪º╪│╪¬ ╪¬╪║█î█î╪▒ ┌⌐╪▒╪»┘ç ╪¿╪º╪┤╪»
+                        initSortable();
+                    }
+                }, 250);
+            });
+
+            // ┌»┘ê╪┤ ╪»╪º╪»┘å ╪¿┘ç ╪¬╪║█î█î╪▒ ╪¡╪º┘ä╪¬ ┘à╪▒╪¬╪¿ΓÇî╪│╪º╪▓█î
+            Livewire.on('reorderModeChanged', () => {
+                setTimeout(() => {
+                    // ╪¿╪▒╪▒╪│█î ┘ê╪¼┘ê╪» ╪╣┘å╪º╪╡╪▒ ┘à╪▒╪¬╪¿ΓÇî╪│╪º╪▓█î ╪»╪▒ DOM
+                    const hasSortableGroups = document.querySelectorAll('.sortable-group').length >
+                        0;
+
+                    if (hasSortableGroups) {
+                        // ╪º┌»╪▒ ╪╣┘å╪º╪╡╪▒ ┘à╪▒╪¬╪¿ΓÇî╪│╪º╪▓█î ┘ê╪¼┘ê╪» ╪»╪º╪▒┘å╪»╪î ╪▒╪º┘çΓÇî╪º┘å╪»╪º╪▓█î ┌⌐┘å
+                        initSortable();
+                    } else {
+                        // ╪¡╪░┘ü ┘å┘à┘ê┘å┘çΓÇî┘ç╪º ┘ç┘å┌»╪º┘à ╪«╪▒┘ê╪¼ ╪º╪▓ ╪¡╪º┘ä╪¬ ┘à╪▒╪¬╪¿ΓÇî╪│╪º╪▓█î
+                        sortableGroupInstances.forEach(instance => {
+                            if (instance && instance.destroy) {
+                                instance.destroy();
+                            }
+                        });
+                        sortableGroupInstances = [];
+
+                        sortableFieldInstances.forEach(instance => {
+                            if (instance && instance.destroy) {
+                                instance.destroy();
+                            }
+                        });
+                        sortableFieldInstances = [];
+                    }
+                }, 150);
+            });
+        });
+    </script>
+</div>

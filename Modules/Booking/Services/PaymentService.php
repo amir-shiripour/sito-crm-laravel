@@ -61,8 +61,11 @@ class PaymentService
 
     public function createPendingPayment(int $appointmentId, int $clientId, float $amount, string $currencyUnit): BookingPayment
     {
+        // مبلغ را به ریال تبدیل کرده و در دیتابیس ذخیره می‌کنیم
+        // GlobalPaymentService.startGateway() مبلغ را به ریال انتظار دارد
+        // پس باید مبلغ ذخیره‌شده همان ریال باشد تا از تبدیل مضاعف جلوگیری شود
         $amountInRial = $amount;
-        if ($currencyUnit === 'IRT') {
+        if (strtoupper($currencyUnit) === 'IRT') {
             $amountInRial = $amount * 10;
         }
 
@@ -71,7 +74,7 @@ class PaymentService
             'client_id' => $clientId,
             'type' => 'booking',
             'amount' => $amountInRial,
-            'currency_unit' => 'IRR', // Always store in IRR
+            'currency_unit' => 'IRR', // Always store in IRR (Rial)
             'status' => BookingPayment::STATUS_PENDING,
         ]);
     }
@@ -79,6 +82,8 @@ class PaymentService
     /**
      * Integrate with the global payment gateway.
      * Return array {payment_url?:string, gateway_ref?:string}
+     * مبلغ payment->amount همیشه به ریال (IRR) در دیتابیس ذخیره شده،
+     * پس باید مطمئن شویم GlobalPaymentService دوباره آن را تبدیل نمی‌کند.
      */
     public function startGateway(BookingPayment $payment): array
     {
@@ -104,8 +109,14 @@ class PaymentService
                 'payment' => $payment->id
             ]);
 
-            $result = $globalPaymentService->requestPayment(
-                $payment->amount,
+            // مبلغ payment->amount همیشه به ریال (IRR) ذخیره شده
+            // برای جلوگیری از تبدیل مضاعف در GlobalPaymentService.getAmountInRials()
+            // باید مطمئن شویم currency_unit را به‌عنوان IRR ارسال می‌کنیم.
+            // چون GlobalPaymentService فقط وقتی currency="toman" باشد ضرب‌در-۱۰ می‌کند،
+            // کافی است payment_currency را موقتاً روی 'rial' تنظیم کنیم.
+            // بهترین راه: متد جداگانه‌ای با mAmount که از قبل به ریال است
+            $result = $globalPaymentService->requestPaymentInRials(
+                (int) $payment->amount, // دقیقاً به ریال - بدون تبدیل مجدد
                 $description,
                 $client->email,
                 $client->phone,
@@ -113,7 +124,6 @@ class PaymentService
             );
 
             if ($result['success']) {
-                // Update the local booking payment record with the authority from the gateway
                 $payment->update(['gateway_ref' => $result['authority']]);
 
                 return [
@@ -132,18 +142,26 @@ class PaymentService
 
     /**
      * Verify the payment response from the gateway.
-     * سازماندهی شده: این منطق از کنترلر به اینجا منتقل شد تا کنترلر سبک بماند
+     * پشتیبانی از زیبال و زرین‌پال با پارامترهای callback متفاوت
      */
     public function verifyGatewayPayment(BookingPayment $payment, string $gateway, array $requestData, AppointmentService $appointmentService): array
     {
-        $authority = $requestData['Authority'] ?? null;
-        $status = $requestData['Status'] ?? null;
+        // --- استخراج پارامترها بر اساس درگاه ---
+        if ($gateway === 'zibal') {
+            // زیبال: trackId + success
+            $authority = $requestData['trackId'] ?? null;
+            $status    = ($requestData['success'] ?? null) == 1 ? 'OK' : 'NOK';
+        } else {
+            // زرین‌پال و سایر درگاه‌ها: Authority + Status
+            $authority = $requestData['Authority'] ?? null;
+            $status    = $requestData['Status'] ?? null;
+        }
 
         if (!$authority || !$payment) {
             return ['valid' => false, 'success' => false, 'message' => 'اطلاعات پرداخت معتبر نیست.'];
         }
 
-        if ($payment->gateway_ref !== $authority) {
+        if ($payment->gateway_ref !== (string) $authority) {
             return ['valid' => false, 'success' => false, 'message' => 'تراکنش نامعتبر است.'];
         }
 
@@ -155,25 +173,34 @@ class PaymentService
         try {
             $globalPaymentService = new GlobalPaymentService($gateway);
 
-            $dataToVerify = [
-                'Authority' => $authority,
-                'Status'    => $status,
-                'Amount'    => $payment->amount,
-            ];
+            // داده‌هایی که به verifyPayment پاس می‌دیم - برای هر درگاه فرمت خاص خود را دارد
+            if ($gateway === 'zibal') {
+                $dataToVerify = [
+                    'trackId' => $authority,
+                    'success' => 1,
+                    'Amount'  => $payment->amount,
+                ];
+            } else {
+                $dataToVerify = [
+                    'Authority' => $authority,
+                    'Status'    => $status,
+                    'Amount'    => $payment->amount,
+                ];
+            }
 
             $result = $globalPaymentService->verifyPayment($dataToVerify);
 
             if ($result['success']) {
                 $appointmentService->markPaymentPaid($payment->id, $result['ref_id']);
                 return [
-                    'valid' => true,
+                    'valid'   => true,
                     'success' => true,
                     'message' => 'پرداخت با موفقیت انجام شد و نوبت شما تایید شد. کد پیگیری: ' . $result['ref_id']
                 ];
             } else {
                 $payment->update(['status' => BookingPayment::STATUS_FAILED]);
                 return [
-                    'valid' => true,
+                    'valid'   => true,
                     'success' => false,
                     'message' => 'خطا در تایید پرداخت: ' . $result['message']
                 ];

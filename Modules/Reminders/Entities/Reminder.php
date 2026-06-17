@@ -22,9 +22,10 @@ class Reminder extends Model
     public const CHANNEL_WORKFLOW = 'WORKFLOW';
 
     // وضعیت‌ها
-    public const STATUS_OPEN     = 'OPEN';
-    public const STATUS_DONE     = 'DONE';
-    public const STATUS_CANCELED = 'CANCELED';
+    public const STATUS_OPEN      = 'OPEN';
+    public const STATUS_DONE      = 'DONE';
+    public const STATUS_CANCELED  = 'CANCELED';
+    public const STATUS_ESCALATED = 'ESCALATED'; // وضعیت ارجاع شده
 
     protected $table = 'reminders';
 
@@ -33,17 +34,24 @@ class Reminder extends Model
         'related_type',
         'related_id',
         'remind_at',
+        'original_remind_at',
         'channel',
         'message',
         'is_sent',
         'sent_at',
         'status',
+        'snooze_count',
+        'last_snoozed_at',
+        'last_snoozed_by',
     ];
 
     protected $casts = [
-        'remind_at' => 'datetime',
-        'sent_at'   => 'datetime',
-        'is_sent'   => 'bool',
+        'remind_at'          => 'datetime',
+        'original_remind_at' => 'datetime',
+        'sent_at'            => 'datetime',
+        'is_sent'            => 'bool',
+        'snooze_count'       => 'int',
+        'last_snoozed_at'    => 'datetime',
     ];
 
     /* ---------------- روابط ---------------- */
@@ -51,6 +59,22 @@ class Reminder extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * تاریخچه کامل تعویق‌های این یادآوری.
+     */
+    public function snoozeLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ReminderSnoozeLog::class, 'reminder_id')->orderByDesc('id');
+    }
+
+    /**
+     * کاربری که آخرین تعویق را روی این یادآوری ثبت کرده است.
+     */
+    public function lastSnoozedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'last_snoozed_by');
     }
 
     /**
@@ -91,7 +115,7 @@ class Reminder extends Model
      */
     public function scopeOpen(Builder $query): Builder
     {
-        return $query->where('status', self::STATUS_OPEN);
+        return $query->whereIn('status', [self::STATUS_OPEN, self::STATUS_ESCALATED]);
     }
 
     /**
@@ -127,9 +151,10 @@ class Reminder extends Model
     public static function statusOptions(): array
     {
         return [
-            self::STATUS_OPEN     => 'باز',
-            self::STATUS_DONE     => 'انجام شده',
-            self::STATUS_CANCELED => 'لغو شده',
+            self::STATUS_OPEN      => 'باز',
+            self::STATUS_DONE      => 'انجام شده',
+            self::STATUS_CANCELED  => 'لغو شده',
+            self::STATUS_ESCALATED => 'ارجاع شده',
         ];
     }
 

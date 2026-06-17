@@ -366,6 +366,143 @@ class ServiceController extends Controller
             ->with('success', 'سرویس با موفقیت بروزرسانی شد.');
     }
 
+    public function customPrices(BookingService $service)
+    {
+        $authUser = Auth::user();
+        $settings = BookingSetting::current();
+        $adminOwnerIds = $this->getAdminOwnerIds();
+
+        if (! $this->canEditServiceForUser($authUser, $service, $adminOwnerIds, $settings)) {
+            abort(403);
+        }
+
+        $customPrices = $service->custom_prices ?? [];
+
+        if (!isset($customPrices['tabs']) || !is_array($customPrices['tabs'])) {
+            $customPrices = [
+                'tabs' => []
+            ];
+        }
+
+        return view('booking::user.services.custom-prices', [
+            'service' => $service,
+            'customPrices' => $customPrices
+        ]);
+    }
+
+    public function updateCustomPrices(Request $request, BookingService $service)
+    {
+        $authUser = Auth::user();
+        $settings = BookingSetting::current();
+        $adminOwnerIds = $this->getAdminOwnerIds();
+
+        if (! $this->canEditServiceForUser($authUser, $service, $adminOwnerIds, $settings)) {
+            abort(403);
+        }
+
+        if ($request->filled('custom_prices')) {
+            $decoded = json_decode($request->input('custom_prices'), true);
+            if (is_array($decoded)) {
+                $request->merge($decoded);
+            }
+        }
+        $validated = $request->validate([
+            'tabs' => ['nullable', 'array'],
+            'tabs.*.title' => ['nullable', 'string', 'max:255'],
+            'tabs.*.sections' => ['nullable', 'array'],
+            'tabs.*.sections.*.title' => ['nullable', 'string', 'max:255'],
+            'tabs.*.sections.*.type' => ['nullable', 'string', 'max:255'],
+            'tabs.*.sections.*.brands' => ['nullable', 'array'],
+            'tabs.*.sections.*.brands.*.name' => ['nullable', 'string', 'max:255'],
+            'tabs.*.sections.*.brands.*.price' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $sanitizedTabs = [];
+
+        foreach ($validated['tabs'] ?? [] as $tab) {
+            $sections = [];
+
+            foreach ($tab['sections'] ?? [] as $section) {
+                $brands = [];
+
+                foreach ($section['brands'] ?? [] as $brand) {
+                    if (!empty($brand['name']) || isset($brand['price'])) {
+                        $brands[] = [
+                            'name'  => $brand['name'] ?? '',
+                            'price' => $brand['price'] !== null ? (float)$brand['price'] : 0,
+                        ];
+                    }
+                }
+
+                if (!empty($section['title']) || !empty($brands)) {
+                    $sections[] = [
+                        'title'  => $section['title'] ?? 'بدون عنوان',
+                        'type'   => $section['type'] ?? '',
+                        'brands' => $brands,
+                    ];
+                }
+            }
+            if (!empty($tab['title']) || !empty($sections)) {
+                $sanitizedTabs[] = [
+                    'title'    => $tab['title'] ?? 'تب بدون عنوان',
+                    'sections' => $sections,
+                ];
+            }
+        }
+        $service->update([
+            'custom_prices' => [
+                'tabs' => $sanitizedTabs
+            ]
+        ]);
+
+        return redirect()
+            ->route('user.booking.services.custom-prices', $service->id)
+            ->with('success', 'تنظیمات قیمت و عنوان‌ها با موفقیت ذخیره شد.');
+    }
+
+    public function installments(BookingService $service)
+    {
+        $authUser = Auth::user();
+        $settings = BookingSetting::current();
+        $adminOwnerIds = $this->getAdminOwnerIds();
+
+        if (! $this->canEditServiceForUser($authUser, $service, $adminOwnerIds, $settings)) {
+            abort(403);
+        }
+
+        $customPrices = $service->custom_prices['tabs'] ?? [];
+        $savedSettings = $service->installments ?? [];
+
+        return view('booking::user.services.installments', [
+            'service' => $service,
+            'customPrices' => $customPrices,
+            'savedSettings' => $savedSettings,
+        ]);
+    }
+
+    public function updateInstallments(Request $request, BookingService $service)
+    {
+        $authUser = Auth::user();
+        $settings = BookingSetting::current();
+        $adminOwnerIds = $this->getAdminOwnerIds();
+
+        if (! $this->canEditServiceForUser($authUser, $service, $adminOwnerIds, $settings)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'installments' => ['nullable', 'array'],
+        ]);
+
+        $service->update([
+            'installments' => $validated['installments'] ?? []
+        ]);
+
+        return redirect()
+            ->route('user.booking.services.installments', $service->id)
+            ->with('success', 'تنظیمات پرداخت قسطی با موفقیت ذخیره شد.');
+    }
+
     public function toggleForMe(Request $request, BookingService $service)
     {
         $authUser = Auth::user();

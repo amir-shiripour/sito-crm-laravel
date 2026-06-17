@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Modules\Booking\Entities\Appointment;
 use Modules\Booking\Entities\BookingDayLock;
 use Modules\Booking\Entities\BookingPayment;
@@ -14,8 +15,6 @@ use Modules\Booking\Entities\BookingServiceProvider;
 use Modules\Booking\Entities\BookingSetting;
 use Modules\Booking\Entities\BookingSlotHold;
 use Modules\Booking\Entities\BookingSlotLock;
-use Modules\Workflows\Entities\Workflow;
-use Modules\Workflows\Entities\WorkflowTrigger;
 
 class AppointmentService
 {
@@ -789,9 +788,9 @@ class AppointmentService
         */
 
         // 2. یادآوری‌های مبتنی بر ورک‌فلو (Dynamic Workflow Reminders)
-        if (class_exists('Modules\\Reminders\\Entities\\Reminder') && class_exists('Modules\\Workflows\\Entities\\Workflow')) {
+        if (class_exists('Modules\\Reminders\\Entities\\Reminder') && $this->isWorkflowModuleReady()) {
             $Reminder = \Modules\Reminders\Entities\Reminder::class;
-            $Workflow = \Modules\Workflows\Entities\Workflow::class;
+            $Workflow = 'Modules\\Workflows\\Entities\\Workflow';
 
             // پاکسازی یادآوری‌های قبلی ورک‌فلو برای این نوبت
             $Reminder::query()
@@ -962,21 +961,43 @@ class AppointmentService
         ]);
     }
 
-    public function triggerWorkflow(string $key, Appointment $appointment): void
+    /**
+     * بررسی اینکه آیا ماژول Workflows واقعاً آماده استفاده است.
+     * صرف وجود کلاس کافی نیست - جدول workflows باید در دیتابیس وجود داشته باشد.
+     */
+    protected function isWorkflowModuleReady(): bool
     {
         if (!config('booking.integrations.workflows.enabled', true)) {
-            Log::info("[Booking] Workflows disabled in config. Skipping trigger: $key");
-            return;
+            return false;
         }
 
         if (!class_exists('Modules\\Workflows\\Entities\\Workflow')) {
+            return false;
+        }
+
+        // بررسی وجود جدول در دیتابیس (ماژول نصب و migration اجرا شده باشد)
+        if (!Schema::hasTable('workflows')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function triggerWorkflow(string $key, Appointment $appointment): void
+    {
+        if (!$this->isWorkflowModuleReady()) {
             return;
         }
 
-        $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
+        /** @var class-string $WorkflowClass */
+        $WorkflowClass = 'Modules\\Workflows\\Entities\\Workflow';
+        /** @var class-string $WorkflowTriggerClass */
+        $WorkflowTriggerClass = 'Modules\\Workflows\\Entities\\WorkflowTrigger';
+
+        $engine = app('Modules\\Workflows\\Services\\WorkflowEngine');
 
         // 1. Get ALL active workflows and filter in PHP to avoid JSON query issues
-        $allWorkflows = Workflow::query()
+        $allWorkflows = $WorkflowClass::query()
             ->where('is_active', true)
             ->with('triggers')
             ->get();
@@ -996,7 +1017,7 @@ class AppointmentService
                 }
 
                 // Check EVENT triggers
-                if ($type === WorkflowTrigger::TYPE_EVENT) {
+                if ($type === $WorkflowTriggerClass::TYPE_EVENT) {
                     $eventKey = $config['event_key'] ?? null;
 
                     // Case-insensitive comparison
@@ -1032,7 +1053,7 @@ class AppointmentService
         // 2. Legacy: Check for workflow key mapping in config
         $workflowKey = config("booking.integrations.workflows.workflow_keys.{$key}") ?: $key;
         if ($workflowKey && $workflowKey !== $key) { // Only if mapped to something else
-             $legacyWf = Workflow::where('key', $workflowKey)->where('is_active', true)->first();
+             $legacyWf = $WorkflowClass::where('key', $workflowKey)->where('is_active', true)->first();
              if ($legacyWf) {
                  $engine->startWorkflow($legacyWf, 'APPOINTMENT', $appointment->id);
              }

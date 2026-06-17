@@ -51,26 +51,59 @@ class ClientAuthController extends Controller
                 ->onlyInput('username');
         }
 
+        $strategy = ClientSetting::getValue('username_strategy', 'email_local');
+        $usernameLabel = match ($strategy) {
+            'mobile' => 'شماره موبایل',
+            'email_local', 'email' => 'ایمیل',
+            'national_code' => 'کد ملی',
+            default => 'نام کاربری',
+        };
+
         $credentials = $request->validate([
             'username' => ['required', 'string'],
             'password' => ['required', 'string'],
         ], [
-            'username.required' => 'نام کاربری الزامی است.',
+            'username.required' => "{$usernameLabel} الزامی است.",
             'password.required' => 'رمز عبور الزامی است.',
         ]);
 
         $remember = $request->boolean('remember');
 
-        if (Auth::guard('client')->attempt([
-            'username' => $credentials['username'],
-            'password' => $credentials['password'],
-        ], $remember)) {
-            $request->session()->regenerate();
-            return redirect()->intended(route('client.dashboard'));
+        // بررسی اینکه آیا کاربر وجود دارد (با یوزرنیم، ایمیل، موبایل یا کدملی)
+        $client = Client::query()
+            ->where('username', $credentials['username'])
+            ->orWhere('email', $credentials['username'])
+            ->orWhere('phone', $credentials['username'])
+            ->orWhere('national_code', $credentials['username'])
+            ->first();
+
+        if ($client) {
+            if (Auth::guard('client')->attempt([
+                'username' => $client->username,
+                'password' => $credentials['password'],
+            ], $remember)) {
+                $request->session()->regenerate();
+                return redirect()->intended(route('client.dashboard'));
+            }
+
+            return back()
+                ->withErrors(['username' => "{$usernameLabel} یا رمز عبور نادرست است."])
+                ->onlyInput('username');
+        }
+
+        // اگر کاربر وجود نداشت و ثبت‌نام فعال بود
+        $registerEnabled = (bool) ClientSetting::getValue('auth.register_enabled', false);
+        if ($registerEnabled) {
+            return back()
+                ->with('register_mode', true)
+                ->with('register_username', $credentials['username'])
+                ->with('register_password', $credentials['password'])
+                ->with('register_alert', 'حساب کاربری یافت نشد. می‌توانید با تکمیل اطلاعات زیر ثبت‌نام کنید.')
+                ->withInput();
         }
 
         return back()
-            ->withErrors(['username' => 'نام کاربری یا رمز عبور نادرست است.'])
+            ->withErrors(['username' => "{$usernameLabel} یا رمز عبور نادرست است."])
             ->onlyInput('username');
     }
 
@@ -101,15 +134,62 @@ class ClientAuthController extends Controller
             'username' => ['required', 'string'],
         ]);
 
+        // بررسی اینکه آیا کاربر وجود دارد (با یوزرنیم، ایمیل، موبایل یا کدملی)
         $client = Client::query()
             ->where('username', $data['username'])
+            ->orWhere('email', $data['username'])
+            ->orWhere('phone', $data['username'])
+            ->orWhere('national_code', $data['username'])
             ->first();
 
-        if (! $client || empty($client->phone)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'نام کاربری معتبر نیست یا شماره موبایل ثبت نشده است.',
-            ], 422);
+        $strategy = ClientSetting::getValue('username_strategy', 'email_local');
+        $usernameLabel = match ($strategy) {
+            'mobile' => 'شماره موبایل',
+            'email_local', 'email' => 'ایمیل',
+            'national_code' => 'کد ملی',
+            default => 'نام کاربری',
+        };
+
+        $registerEnabled = (bool) ClientSetting::getValue('auth.register_enabled', false);
+        $isRegister = false;
+
+        if (! $client) {
+            if (!$registerEnabled) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "{$usernameLabel} معتبر نیست یا شماره موبایل ثبت نشده است.",
+                ], 422);
+            }
+
+            // بررسی شماره تلفن معتبر در ایران
+            $phone = preg_replace('/[^0-9]/', '', $data['username']);
+            if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
+                $phone = '0' . $phone;
+            }
+
+            if (strlen($phone) !== 11 || !str_starts_with($phone, '09')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حساب کاربری یافت نشد. برای ثبت‌نام با پیامک، لطفا شماره موبایل معتبر خود را وارد کنید.',
+                ], 422);
+            }
+
+            if (Client::where('phone', $phone)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'کاربری با این شماره موبایل قبلاً ثبت‌نام شده است.',
+                ], 422);
+            }
+
+            $isRegister = true;
+        } else {
+            $phone = $client->phone;
+            if (empty($phone)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'شماره موبایل برای این حساب ثبت نشده است.',
+                ], 422);
+            }
         }
 
         $otpLength         = (int) ClientSetting::getValue('auth.otp_length', 5);
@@ -123,7 +203,6 @@ class ClientAuthController extends Controller
         $otpMaxRequests = max(1, min(10, $otpMaxRequests));
 
         $context = 'login_client';
-        $phone   = $client->phone;
 
         // 1) محدودیت ارسال مجدد (cooldown)
         $last = SmsOtp::query()
@@ -169,7 +248,7 @@ class ClientAuthController extends Controller
         $options = [
             'type'        => SmsMessage::TYPE_OTP,
             'related_type'=> 'CLIENT',
-            'related_id'  => $client->id,
+            'related_id'  => $client ? $client->id : null,
             'meta'        => [
                 'context' => $context,
                 'otp'     => $code,
@@ -188,10 +267,11 @@ class ClientAuthController extends Controller
             'phone'      => $phone,
             'code'       => $code,
             'context'    => $context,
-            'client_id'  => $client->id,
+            'client_id'  => $client ? $client->id : null,
             'expires_at' => now()->addMinutes($otpTtl),
             'meta'       => [
-                'username' => $client->username,
+                'username' => $client ? $client->username : $phone,
+                'is_registration' => $isRegister,
             ],
         ]);
 
@@ -211,13 +291,59 @@ class ClientAuthController extends Controller
 
         $client = Client::query()
             ->where('username', $data['username'])
+            ->orWhere('email', $data['username'])
+            ->orWhere('phone', $data['username'])
+            ->orWhere('national_code', $data['username'])
             ->first();
 
-        if (! $client || empty($client->phone)) {
+        $strategy = ClientSetting::getValue('username_strategy', 'email_local');
+        $usernameLabel = match ($strategy) {
+            'mobile' => 'شماره موبایل',
+            'email_local', 'email' => 'ایمیل',
+            'national_code' => 'کد ملی',
+            default => 'نام کاربری',
+        };
+
+        $registerEnabled = (bool) ClientSetting::getValue('auth.register_enabled', false);
+
+        if (! $client) {
+            if (!$registerEnabled) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "{$usernameLabel} معتبر نیست.",
+                ], 422);
+            }
+
+            $phone = preg_replace('/[^0-9]/', '', $data['username']);
+            if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
+                $phone = '0' . $phone;
+            }
+
+            $context = 'login_client';
+
+            $otp = SmsOtp::query()
+                ->where('phone', $phone)
+                ->whereNull('client_id')
+                ->where('context', $context)
+                ->where('code', $data['code'])
+                ->latest()
+                ->first();
+
+            if (! $otp || $otp->isExpired() || $otp->isUsed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'کد نامعتبر است یا منقضی شده است.',
+                ], 422);
+            }
+
+            $otp->update(['used_at' => now()]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'نام کاربری معتبر نیست.',
-            ], 422);
+                'success' => true,
+                'register_mode' => true,
+                'phone' => $phone,
+                'username' => $phone,
+            ]);
         }
 
         $context = 'login_client';
@@ -246,5 +372,205 @@ class ClientAuthController extends Controller
             'success' => true,
             'redirect' => route('client.dashboard'),
         ]);
+    }
+
+    public function register(Request $request)
+    {
+        $registerEnabled = (bool) ClientSetting::getValue('auth.register_enabled', false);
+        if (!$registerEnabled) {
+            abort(403, 'ثبت‌نام غیرفعال است.');
+        }
+
+        $activeForm = \Modules\Clients\Entities\ClientForm::active();
+        $fields = $activeForm ? ($activeForm->schema['fields'] ?? []) : [];
+        $regFields = collect($fields)->where('show_in_registration', true);
+
+        $rules = [
+            'username' => ['required', 'string'],
+        ];
+        
+        $messages = [
+            'username.required' => 'نام کاربری الزامی است.',
+        ];
+
+        $viaOtp = $request->boolean('via_otp');
+
+        if ($viaOtp) {
+            $rules['phone'] = ['required', 'string'];
+        } else {
+            $rules['password'] = ['required', 'string', 'min:6'];
+            $messages['password.required'] = 'رمز عبور الزامی است.';
+            $messages['password.min'] = 'رمز عبور باید حداقل ۶ کاراکتر باشد.';
+        }
+
+        foreach ($regFields as $field) {
+            $fid = $field['id'];
+            if ($fid === 'username' || $fid === 'password' || ($viaOtp && $fid === 'phone')) {
+                continue;
+            }
+
+            $fieldRules = [];
+            if (!empty($field['required'])) {
+                $fieldRules[] = 'required';
+            } else {
+                $fieldRules[] = 'nullable';
+            }
+
+            if ($field['type'] === 'email') {
+                $fieldRules[] = 'email';
+                if ($fid === 'email') {
+                    $fieldRules[] = 'unique:clients,email';
+                }
+            } elseif ($field['type'] === 'number') {
+                $fieldRules[] = 'numeric';
+            }
+
+            if ($fid === 'phone') {
+                $fieldRules[] = 'unique:clients,phone';
+            } elseif ($fid === 'national_code') {
+                $fieldRules[] = 'unique:clients,national_code';
+            }
+
+            $rules[$fid] = $fieldRules;
+            $messages["{$fid}.required"] = "فیلد {$field['label']} الزامی است.";
+            $messages["{$fid}.unique"] = "این {$field['label']} قبلاً در سیستم ثبت شده است.";
+        }
+
+        $validated = $request->validate($rules, $messages);
+
+        $strategy = ClientSetting::getValue('username_strategy', 'email_local');
+        
+        $phoneVal = $validated['phone'] ?? $request->input('phone');
+        $emailVal = $validated['email'] ?? $request->input('email');
+        $nationalCodeVal = $validated['national_code'] ?? $request->input('national_code');
+
+        // مپ خودکار نام کاربری به فیلد اصلی استراتژی در صورت خالی بودن
+        if ($strategy === 'mobile' && empty($phoneVal)) {
+            $phoneVal = $request->input('username');
+        }
+        if (($strategy === 'email_local' || $strategy === 'email') && empty($emailVal)) {
+            $emailVal = $request->input('username');
+        }
+        if ($strategy === 'national_code' && empty($nationalCodeVal)) {
+            $nationalCodeVal = $request->input('username');
+        }
+
+        if ($strategy === 'mobile' && empty($phoneVal)) {
+            return back()->withErrors(['phone' => 'شماره موبایل برای ثبت‌نام الزامی است.'])->withInput();
+        }
+        if (($strategy === 'email_local' || $strategy === 'email') && empty($emailVal)) {
+            return back()->withErrors(['email' => 'ایمیل برای ثبت‌نام الزامی است.'])->withInput();
+        }
+        if ($strategy === 'national_code' && empty($nationalCodeVal)) {
+            return back()->withErrors(['national_code' => 'کد ملی برای ثبت‌نام الزامی است.'])->withInput();
+        }
+
+        $username = $this->generateUsername([
+            'phone' => $phoneVal,
+            'email' => $emailVal,
+            'national_code' => $nationalCodeVal,
+        ]);
+
+        if (Client::where('username', $username)->exists()) {
+            return back()->withErrors(['username' => 'نام کاربری قبلاً انتخاب شده است.'])->withInput();
+        }
+
+        $clientData = [
+            'username' => $username,
+            'full_name' => $validated['full_name'] ?? $request->input('full_name') ?? 'کاربر ثبت‌نامی',
+            'email' => $emailVal,
+            'phone' => $phoneVal,
+            'national_code' => $nationalCodeVal,
+            'case_number' => $validated['case_number'] ?? $request->input('case_number'),
+            'notes' => $validated['notes'] ?? $request->input('notes'),
+            'status_id' => \Modules\Clients\Entities\ClientStatus::active()->orderBy('sort_order')->first()?->id,
+            'created_by' => null,
+        ];
+
+        if ($viaOtp) {
+            $clientData['password'] = Hash::make(\Illuminate\Support\Str::random(12));
+        } else {
+            $clientData['password'] = Hash::make($validated['password']);
+        }
+
+        $meta = [];
+        foreach ($regFields as $field) {
+            $fid = $field['id'];
+            if (\Modules\Clients\Entities\ClientForm::isSystemFieldId($fid)) {
+                continue;
+            }
+            if ($request->has($fid)) {
+                $meta[$fid] = $request->input($fid);
+            }
+        }
+        $clientData['meta'] = $meta;
+
+        $client = Client::create($clientData);
+
+        Auth::guard('client')->login($client);
+        $request->session()->regenerate();
+
+        return redirect()->route('client.dashboard');
+    }
+
+    public function checkUsername(Request $request)
+    {
+        $data = $request->validate([
+            'username' => ['required', 'string'],
+        ]);
+
+        $username = $data['username'];
+        $normalizedPhone = preg_replace('/[^0-9]/', '', $username);
+        if (strlen($normalizedPhone) === 10 && str_starts_with($normalizedPhone, '9')) {
+            $normalizedPhone = '0' . $normalizedPhone;
+        }
+
+        $clientQuery = Client::query()
+            ->where('username', $username)
+            ->orWhere('email', $username)
+            ->orWhere('phone', $username)
+            ->orWhere('national_code', $username);
+
+        if (strlen($normalizedPhone) === 11 && str_starts_with($normalizedPhone, '09')) {
+            $clientQuery->orWhere('phone', $normalizedPhone)
+                        ->orWhere('username', $normalizedPhone);
+        }
+
+        $client = $clientQuery->first();
+        $registerEnabled = (bool) ClientSetting::getValue('auth.register_enabled', false);
+
+        if ($client) {
+            return response()->json([
+                'success' => true,
+                'exists' => true,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'exists' => false,
+            'register_enabled' => $registerEnabled,
+        ]);
+    }
+
+    protected function generateUsername(array $data): string
+    {
+        $strategy = ClientSetting::getValue('username_strategy', 'email_local');
+        $base = '';
+        switch ($strategy) {
+            case 'mobile': $base = $data['phone'] ?? ''; break;
+            case 'national_code': $base = $data['national_code'] ?? ''; break;
+            case 'email_local': $base = explode('@', $data['email'] ?? '')[0]; break;
+            default: $base = 'user_' . Str::random(6);
+        }
+        $base = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $base);
+        if (empty($base)) $base = 'user_' . Str::random(8);
+        if ($strategy === 'mobile') return $base;
+        $username = $base;
+        $counter = 1;
+        while (Client::where('username', $username)->exists()) {
+            $username = $base . '_' . $counter++;
+        }
+        return $username;
     }
 }

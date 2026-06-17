@@ -117,18 +117,74 @@
 
         {{-- مرحله 3: آدرس --}}
         @if($currentStep === 3)
+            @push('styles')
+                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+            @endpush
+            @push('scripts')
+                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+            @endpush
+
             <div class="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">آدرس دفتر / انبار</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div>
+                @php
+                    $jsonPath = base_path('Modules/Clients/resources/data/iran-provinces-cities.json');
+                    $provincesData = file_exists($jsonPath) ? json_decode(file_get_contents($jsonPath), true) : [];
+                    $allProvinces = array_keys($provincesData);
+                @endphp
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"
+                     x-data="{
+                         province: @entangle('province'),
+                         city: @entangle('city'),
+                         provinces: @js($allProvinces),
+                         cities: [],
+                         provincesData: @js($provincesData),
+                         init() {
+                             if (this.province && this.provincesData[this.province]) {
+                                 this.cities = this.provincesData[this.province];
+                             }
+                             this.$watch('province', value => {
+                                 this.cities = (value && this.provincesData[value]) ? this.provincesData[value] : [];
+                                 if (value && this.cities && !this.cities.includes(this.city)) {
+                                     this.city = '';
+                                 }
+                             });
+                          }
+                      }">
+                    <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative">
                         <label class="{{ $labelClass }}">استان <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model.defer="province" class="{{ $baseInputClass }}">
-                        @error('province') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
+                        <div @click="open = !open" class="{{ $baseInputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-800': open, 'bg-gray-50 dark:bg-gray-900/50': !open}">
+                            <span x-text="province || 'انتخاب استان...'" class="block truncate" :class="{'text-gray-400 dark:text-gray-500': !province}"></span>
+                            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                        <div x-show="open" x-transition class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                            <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-150">
+                            <template x-for="p in provinces.filter(item => item.toLowerCase().includes(search.toLowerCase()))" :key="p">
+                                <div @click="province = p; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': province == p, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': province != p}">
+                                    <span x-text="p"></span>
+                                    <svg x-show="province == p" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                            </template>
+                        </div>
+                        @error('province') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
-                    <div>
+
+                    {{-- City Selector --}}
+                    <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative">
                         <label class="{{ $labelClass }}">شهر <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model.defer="city" class="{{ $baseInputClass }}">
-                        @error('city') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
+                        <div @click="province ? open = !open : null" class="{{ $baseInputClass }} flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-800 cursor-pointer': open && province, 'bg-gray-50 dark:bg-gray-900/50 cursor-pointer': !open && province, 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-900/30': !province}">
+                            <span x-text="city || 'انتخاب شهر...'" class="block truncate" :class="{'text-gray-400 dark:text-gray-500': !city}"></span>
+                            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open && province}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                        <div x-show="open && province" x-transition class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                            <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-150">
+                            <template x-for="c in cities.filter(item => item.toLowerCase().includes(search.toLowerCase()))" :key="c">
+                                <div @click="city = c; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': city == c, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': city != c}">
+                                    <span x-text="c"></span>
+                                    <svg x-show="city == c" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                            </template>
+                        </div>
+                        @error('city') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -142,6 +198,164 @@
                         <label class="{{ $labelClass }}">کد پستی انبار/دفتر</label>
                         <input type="text" wire:model.defer="postal_code" class="{{ $baseInputClass }} dir-ltr text-right" placeholder="10 رقمی">
                         @error('postal_code') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                {{-- جستجوی آدرس --}}
+                <div class="space-y-2 mt-6 relative" x-data="{ showDropdown: true }">
+                    <label class="{{ $labelClass }}">جستجوی آدرس / محله</label>
+                    <div class="relative">
+                        <input type="text" 
+                               wire:model.live.debounce.300ms="searchQuery" 
+                               @focus="showDropdown = true" 
+                               @input="showDropdown = true" 
+                               class="{{ $baseInputClass }} pl-10" 
+                               placeholder="مثال: تهران، ونک، ملاصدرا...">
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    {{-- Suggestions dropdown --}}
+                    @if(!empty($searchQuery) && count($searchResults) > 0)
+                        <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-1 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-150 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
+                            @foreach($searchResults as $res)
+                                <button type="button" 
+                                        wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, '{{ addslashes($res['title']) }}')"
+                                        @click="showDropdown = false"
+                                        class="w-full text-right px-4 py-2 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/30 transition-colors flex flex-col gap-0.5 border-b border-gray-100 last:border-0 dark:border-gray-700/50">
+                                    <span class="text-xs font-bold text-gray-900 dark:text-white">{{ $res['title'] }}</span>
+                                    @if(!empty($res['address']))
+                                        <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate">{{ $res['address'] }}</span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                {{-- Map Pinning for Vendor --}}
+                <div class="mt-6 space-y-2">
+                    <label class="{{ $labelClass }}">انتخاب موقعیت دقیق انبار/دفتر روی نقشه</label>
+                    <div class="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div wire:ignore class="w-full h-64 bg-gray-100 dark:bg-gray-900 relative z-10"
+                             x-data="{
+                                 map: null,
+                                 marker: null,
+                                 lat: @entangle('latitude'),
+                                 lng: @entangle('longitude'),
+                                 provider: @js($mapProvider),
+                                 apiKey: @js($mapApiKey),
+                                 initMap() {
+                                     if (typeof L === 'undefined') {
+                                         setTimeout(() => this.initMap(), 100);
+                                         return;
+                                     }
+                                     
+                                     this.map = L.map(this.$el).setView([this.lat, this.lng], 15);
+                                     
+                                     if (this.provider === 'map_ir' && this.apiKey) {
+                                         // Map.ir Raster setup
+                                         if (!L.TileLayer.WMS.Header) {
+                                             L.TileLayer.WMS.Header = L.TileLayer.WMS.extend({
+                                                 initialize: function (url, options) {
+                                                     const wmsOptions = Object.assign({}, options);
+                                                     this.headers = wmsOptions.headers || {};
+                                                     delete wmsOptions.headers;
+                                                     L.TileLayer.WMS.prototype.initialize.call(this, url, wmsOptions);
+                                                 },
+                                                 createTile: function (coords, done) {
+                                                     const url = this.getTileUrl(coords);
+                                                     const img = document.createElement('img');
+                                                     fetch(url, { headers: this.headers, mode: 'cors' })
+                                                         .then(res => res.blob())
+                                                         .then(blob => {
+                                                             const objectURL = URL.createObjectURL(blob);
+                                                             img.onload = () => { URL.revokeObjectURL(objectURL); done(null, img); };
+                                                             img.src = objectURL;
+                                                         });
+                                                     return img;
+                                                 }
+                                             });
+                                             L.tileLayer.wms.header = function (url, options) {
+                                                 return new L.TileLayer.WMS.Header(url, options);
+                                             };
+                                         }
+                                         L.tileLayer.wms.header('https://map.ir/shiveh', {
+                                             layers: 'Shiveh:Shiveh',
+                                             format: 'image/png',
+                                             headers: { 'x-api-key': this.apiKey }
+                                         }).addTo(this.map);
+                                     } else if (this.provider === 'neshan' && this.apiKey) {
+                                         // Neshan Raster setup
+                                         L.tileLayer(`https://api.neshan.org/v5/maps/raster/standard?key=${this.apiKey}`, {
+                                             attribution: 'Neshan Map'
+                                         }).addTo(this.map);
+                                     } else {
+                                         // OpenStreetMap fallback
+                                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                             attribution: '© OpenStreetMap contributors'
+                                         }).addTo(this.map);
+                                     }
+
+                                     this.marker = L.marker([this.lat, this.lng], { draggable: true }).addTo(this.map);
+
+                                     this.map.on('click', (e) => {
+                                         this.marker.setLatLng(e.latlng);
+                                         this.lat = e.latlng.lat;
+                                         this.lng = e.latlng.lng;
+                                         @this.fetchNewAddressFromCoordinates(e.latlng.lat, e.latlng.lng);
+                                     });
+
+                                     this.marker.on('dragend', () => {
+                                         const pos = this.marker.getLatLng();
+                                         this.lat = pos.lat;
+                                         this.lng = pos.lng;
+                                         @this.fetchNewAddressFromCoordinates(pos.lat, pos.lng);
+                                     });
+
+                                     window.addEventListener('mapMoveTo', (e) => {
+                                         const targetLat = e.detail.lat;
+                                         const targetLng = e.detail.lng;
+                                         if (this.map && this.marker) {
+                                             this.map.setView([targetLat, targetLng], 16);
+                                             this.marker.setLatLng([targetLat, targetLng]);
+                                         }
+                                     });
+
+                                     setTimeout(() => this.map.invalidateSize(), 300);
+                                 }
+                             }"
+                             x-init="initMap()">
+                        </div>
+
+                        {{-- GPS locator button --}}
+                        <button type="button" onclick="
+                            if (navigator.geolocation) {
+                                navigator.geolocation.getCurrentPosition(
+                                    (position) => {
+                                        const userLat = position.coords.latitude;
+                                        const userLng = position.coords.longitude;
+                                        window.dispatchEvent(new CustomEvent('mapMoveTo', { detail: { lat: userLat, lng: userLng } }));
+                                        $wire.fetchNewAddressFromCoordinates(userLat, userLng);
+                                    },
+                                    (error) => {
+                                        alert('خطا در دریافت موقعیت از GPS: ' + error.message);
+                                    },
+                                    { enableHighAccuracy: true, timeout: 8000 }
+                                );
+                            } else {
+                                alert('مرورگر شما از GPS پشتیبانی نمی کند.');
+                            }
+                        " class="absolute bottom-4 left-2.5 z-[20] bg-white hover:bg-gray-100 text-indigo-650 p-2.5 rounded-xl shadow-md border border-gray-200 transition-colors flex items-center justify-center" title="موقعیت فعلی من (GPS)">
+                            <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <circle cx="12" cy="12" r="3" stroke-width="2" />
+                                <circle cx="12" cy="12" r="8" stroke-width="2" />
+                                <path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>

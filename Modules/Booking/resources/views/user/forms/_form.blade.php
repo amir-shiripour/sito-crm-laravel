@@ -46,7 +46,7 @@
     </div>
 </div>
 
-<div class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+<div class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3" id="fields-section-container">
     <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">فیلدهای فرم</h2>
         <button type="button"
@@ -148,12 +148,34 @@
     document.addEventListener('DOMContentLoaded', function() {
         const container = document.getElementById('form-fields-container');
         const addBtn = document.getElementById('add-form-field');
+        const fieldsSection = document.getElementById('fields-section-container');
+        const formTypeSelect = document.querySelector('select[name="form_type"]');
         const inputClass = @json($inputClass.
         ' text-sm');
         const selectClass = @json($selectClass.
         ' text-sm');
         const smallLabelClass = @json($smallLabelClass);
         const fieldCardClass = @json($fieldCardClasses);
+
+        function toggleFieldsSection() {
+            if (!formTypeSelect || !fieldsSection) return;
+            if (formTypeSelect.value === 'TOOTH_NUMBER') {
+                fieldsSection.classList.add('hidden');
+                fieldsSection.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = true;
+                });
+            } else {
+                fieldsSection.classList.remove('hidden');
+                fieldsSection.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = false;
+                });
+            }
+        }
+
+        if (formTypeSelect) {
+            formTypeSelect.addEventListener('change', toggleFieldsSection);
+            toggleFieldsSection();
+        }
 
         if (!container || !addBtn) return;
 

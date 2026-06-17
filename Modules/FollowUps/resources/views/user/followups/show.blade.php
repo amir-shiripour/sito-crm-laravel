@@ -261,6 +261,71 @@
                     @endcan
                 </div>
 
+                {{-- تاریخچه تعویق یادآوری‌ها --}}
+                @php
+                    $snoozedReminders = $taskReminders->where('snooze_count', '>', 0);
+                @endphp
+                @if($snoozedReminders->count() > 0)
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span class="text-orange-500">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </span>
+                            تاریخچه تعویق یادآوری‌ها
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            @foreach($snoozedReminders as $rem)
+                                <div class="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-900/20 border border-gray-150 dark:border-gray-750 space-y-3">
+                                    <div class="flex justify-between items-center flex-wrap gap-2">
+                                        <h4 class="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                            {{ $rem->message ?? 'یادآوری' }}
+                                        </h4>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md border bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900/30 text-[10px] font-semibold">
+                                            {{ $rem->snooze_count }} بار تعویق
+                                        </span>
+                                    </div>
+
+                                    {{-- تایم‌لاین لاگ‌های این یادآوری --}}
+                                    <div class="relative border-r-2 border-gray-100 dark:border-gray-700 mr-2 space-y-4 pr-1">
+                                        @foreach($rem->snoozeLogs as $log)
+                                            <div class="relative pr-6">
+                                                <div class="absolute -right-[6px] top-1.5 w-2.5 h-2.5 rounded-full bg-indigo-500 border-2 border-white dark:border-gray-800"></div>
+                                                <div class="text-xs">
+                                                    <div class="flex justify-between items-center gap-2 flex-wrap">
+                                                        <span class="text-[11px] font-bold text-gray-955 dark:text-white">
+                                                            تعویق #{{ $log->snooze_sequence }}
+                                                        </span>
+                                                        <span class="text-[10px] text-gray-400 dark:text-gray-500 font-mono" dir="ltr">
+                                                            {{ Jalalian::fromCarbon($log->created_at)->format('Y/m/d - H:i') }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                                                        توسط: <span class="font-semibold text-gray-700 dark:text-gray-300">{{ $log->user ? $log->user->name : 'ناشناس' }}</span>
+                                                    </div>
+                                                    <div class="text-[10px] text-gray-500 dark:text-gray-400">
+                                                        زمان سررسید قبلی: <span class="line-through text-red-500/80" dir="ltr">{{ Jalalian::fromCarbon($log->original_remind_at)->format('Y/m/d - H:i') }}</span>
+                                                    </div>
+                                                    <div class="text-[10px] text-gray-500 dark:text-gray-400">
+                                                        زمان جدید پس از تعویق: <span class="font-semibold text-emerald-600 dark:text-emerald-400" dir="ltr">{{ Jalalian::fromCarbon($log->snoozed_to)->format('Y/m/d - H:i') }}</span>
+                                                    </div>
+                                                    @if($log->reason)
+                                                        <div class="text-[10px] text-gray-600 dark:text-gray-400 bg-gray-100/50 dark:bg-gray-900/40 p-2.5 rounded-lg border border-gray-150 dark:border-gray-800 mt-2">
+                                                            علت تعویق: {{ $log->reason }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
             </div>
 
             {{-- ستون کناری (راست) --}}

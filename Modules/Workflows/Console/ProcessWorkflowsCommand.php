@@ -68,54 +68,119 @@ class ProcessWorkflowsCommand extends Command
         $config = $trigger->config;
         $offsetMinutes = (int)($config['offset_minutes'] ?? 0);
         $status = $config['status'] ?? Appointment::STATUS_CONFIRMED;
+        $statuses = $config['statuses'] ?? [$status];
 
-        // Align to start of minute
-        $now = now()->startOfMinute();
+        $scheduleTz = config('booking.timezones.display_default', 'Asia/Tehran');
+        $runAtTime = $config['run_at_time'] ?? null;
 
-        // Calculate target window
-        // Use 2 minutes window to ensure we don't miss anything due to seconds mismatch
-        // We check [Target - 1min, Target + 1min]
+        $now = now();
+        $nowLocal = $now->copy()->timezone($scheduleTz);
 
-        $targetTimeStart = $now->copy()->subMinutes($offsetMinutes)->subMinutes(1);
-        $targetTimeEnd = $now->copy()->subMinutes($offsetMinutes)->addMinutes(2);
+        if (!empty($runAtTime)) {
+            // 1. Time-of-day reminder logic
+            $query = Appointment::query()
+                ->whereIn('status', $statuses)
+                ->where('start_at_utc', '>=', $now->toDateTimeString())
+                ->where('start_at_utc', '<=', $now->copy()->addDays(45)->toDateTimeString());
 
+            // Apply Service Filters (Include/Exclude)
+            $serviceIds = $config['service_ids'] ?? (isset($config['service_id']) ? [$config['service_id']] : []);
+            $serviceIds = array_filter(array_map('intval', $serviceIds));
+            $serviceOperator = $config['service_operator'] ?? 'IN';
+            if (!empty($serviceIds)) {
+                if ($serviceOperator === 'IN') {
+                    $query->whereIn('service_id', $serviceIds);
+                } else {
+                    $query->whereNotIn('service_id', $serviceIds);
+                }
+            }
 
-        Log::debug("[Workflows] Checking reminders for workflow: {$workflow->name}", [
-            'offset' => $offsetMinutes,
-            'status' => $status,
-            'now' => $now->toIso8601String(),
-            'target_start_range' => $targetTimeStart->toIso8601String(), // UTC conversion happens in query
-            'target_end_range' => $targetTimeEnd->toIso8601String(),
-        ]);
+            // Apply Provider Filters (Include/Exclude)
+            $providerIds = $config['provider_ids'] ?? (isset($config['provider_id']) ? [$config['provider_id']] : []);
+            $providerIds = array_filter(array_map('intval', $providerIds));
+            $providerOperator = $config['provider_operator'] ?? 'IN';
+            if (!empty($providerIds)) {
+                if ($providerOperator === 'IN') {
+                    $query->whereIn('provider_user_id', $providerIds);
+                } else {
+                    $query->whereNotIn('provider_user_id', $providerIds);
+                }
+            }
 
+            $appointments = $query->get();
 
-        // Note: Laravel automatically converts Carbon dates to UTC for database queries if configured correctly.
-        // However, to be absolutely sure, we can force UTC conversion here if 'start_at_utc' is stored as UTC.
-        // Assuming 'start_at_utc' is a datetime column.
+            foreach ($appointments as $appointment) {
+                if (!$appointment->start_at_utc) continue;
 
-        $appointments = Appointment::query()
-            ->where('status', $status)
-            ->where('start_at_utc', '>=', $targetTimeStart->utc()) // Force UTC for comparison
-            ->where('start_at_utc', '<', $targetTimeEnd->utc())   // Force UTC for comparison
-            ->get();
+                $apptLocal = $appointment->start_at_utc->copy()->timezone($scheduleTz);
+                $targetTimeLocal = $apptLocal->copy()->addMinutes($offsetMinutes);
 
-        if ($appointments->isNotEmpty()) {
-            Log::info("[Workflows] Found " . $appointments->count() . " appointments for reminder workflow: {$workflow->name}");
+                try {
+                    [$hours, $minutes] = explode(':', $runAtTime);
+                    $scheduledRunTime = $targetTimeLocal->copy()->hour((int)$hours)->minute((int)$minutes)->second(0);
+                } catch (\Throwable $e) {
+                    continue;
+                }
+
+                if ($nowLocal->greaterThanOrEqualTo($scheduledRunTime)) {
+                    $exists = $workflow->instances()
+                        ->where('related_type', 'APPOINTMENT')
+                        ->where('related_id', $appointment->id)
+                        ->exists();
+
+                    if (!$exists) {
+                        Log::info("[Workflows] Triggering scheduled time reminder '{$workflow->name}' for Appointment #{$appointment->id} at local time {$nowLocal}");
+                        $engine->startWorkflow($workflow, 'APPOINTMENT', $appointment->id);
+                    }
+                }
+            }
         } else {
-             // Log::debug("[Workflows] No appointments found in range.");
-        }
+            // 2. Exact minute fallback logic
+            $nowMinute = now()->startOfMinute();
+            $targetTimeStart = $nowMinute->copy()->subMinutes($offsetMinutes)->subMinutes(1);
+            $targetTimeEnd = $nowMinute->copy()->subMinutes($offsetMinutes)->addMinutes(2);
 
-        foreach ($appointments as $appointment) {
-            $exists = $workflow->instances()
-                ->where('related_type', 'APPOINTMENT')
-                ->where('related_id', $appointment->id)
-                ->exists();
+            $query = Appointment::query()
+                ->whereIn('status', $statuses)
+                ->where('start_at_utc', '>=', $targetTimeStart->utc())
+                ->where('start_at_utc', '<', $targetTimeEnd->utc());
 
-            if (!$exists) {
-                Log::info("[Workflows] Triggering reminder workflow '{$workflow->name}' for Appointment #{$appointment->id}");
-                $engine->startWorkflow($workflow, 'APPOINTMENT', $appointment->id);
-            } else {
-                Log::debug("[Workflows] Reminder already sent for Appointment #{$appointment->id}");
+            // Service IDs filter
+            $serviceIds = $config['service_ids'] ?? (isset($config['service_id']) ? [$config['service_id']] : []);
+            $serviceIds = array_filter(array_map('intval', $serviceIds));
+            $serviceOperator = $config['service_operator'] ?? 'IN';
+            if (!empty($serviceIds)) {
+                if ($serviceOperator === 'IN') {
+                    $query->whereIn('service_id', $serviceIds);
+                } else {
+                    $query->whereNotIn('service_id', $serviceIds);
+                }
+            }
+
+            // Provider IDs filter
+            $providerIds = $config['provider_ids'] ?? (isset($config['provider_id']) ? [$config['provider_id']] : []);
+            $providerIds = array_filter(array_map('intval', $providerIds));
+            $providerOperator = $config['provider_operator'] ?? 'IN';
+            if (!empty($providerIds)) {
+                if ($providerOperator === 'IN') {
+                    $query->whereIn('provider_user_id', $providerIds);
+                } else {
+                    $query->whereNotIn('provider_user_id', $providerIds);
+                }
+            }
+
+            $appointments = $query->get();
+
+            foreach ($appointments as $appointment) {
+                $exists = $workflow->instances()
+                    ->where('related_type', 'APPOINTMENT')
+                    ->where('related_id', $appointment->id)
+                    ->exists();
+
+                if (!$exists) {
+                    Log::info("[Workflows] Triggering exact minute reminder '{$workflow->name}' for Appointment #{$appointment->id}");
+                    $engine->startWorkflow($workflow, 'APPOINTMENT', $appointment->id);
+                }
             }
         }
     }

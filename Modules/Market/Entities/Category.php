@@ -9,13 +9,19 @@ class Category extends Model
     protected $table = 'market_categories';
 
     protected $fillable = [
-        'parent_id', 'name', 'slug', 'code_offset',
+        'parent_id', 'brand_id', 'name', 'slug', 'code_offset',
         'description', 'icon', 'meta_title', 'meta_description', 'sort_order', 'target_attributes', 'variant_fields', 'is_active',
     ];
     protected $casts = [
         'target_attributes' => 'array',
         'variant_fields' => 'array', // اضافه شد
     ];
+
+    // رابطه با برند
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class, 'brand_id');
+    }
 
     // رابطه با دسته پدر
     public function parent()

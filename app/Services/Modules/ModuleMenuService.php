@@ -41,6 +41,14 @@ class ModuleMenuService
                             }
                         }
 
+                        // بررسی نمایش مشروط آیتم
+                        if (isset($m['show'])) {
+                            $show = is_callable($m['show']) ? $m['show']() : (bool) $m['show'];
+                            if (!$show) {
+                                continue;
+                            }
+                        }
+
                         // اضافه کردن اطلاعات ماژول به آیتم
                         $m['module'] = 'core';
                         $m['module_name'] = 'سیستم';
@@ -95,6 +103,14 @@ class ModuleMenuService
                             // اگر permission تعریف شده باشد و کاربر دسترسی ندارد، رد کن
                             if (!empty($m['permission'])) {
                                 if (! $user->can($m['permission'])) {
+                                    continue;
+                                }
+                            }
+
+                            // بررسی نمایش مشروط آیتم
+                            if (isset($m['show'])) {
+                                $show = is_callable($m['show']) ? $m['show']() : (bool) $m['show'];
+                                if (!$show) {
                                     continue;
                                 }
                             }

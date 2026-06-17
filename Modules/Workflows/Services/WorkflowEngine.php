@@ -14,6 +14,11 @@ use Modules\Workflows\Entities\WorkflowAction;
 use Modules\Workflows\Entities\WorkflowInstance;
 use Modules\Workflows\Entities\WorkflowLog;
 use Modules\Workflows\Entities\WorkflowTrigger;
+use Modules\Workflows\Entities\WorkflowNode;
+use Modules\Workflows\Entities\WorkflowEdge;
+use Modules\Workflows\Events\NodeReached;
+use Modules\Workflows\Events\WorkflowCompleted;
+use Modules\Workflows\Services\ConditionEvaluator;
 
 class WorkflowEngine
 {
@@ -57,20 +62,37 @@ class WorkflowEngine
         });
     }
 
-    public function start(string $workflowKey, string $relatedType, int $relatedId, array $payload = []): ?WorkflowInstance
+    public function start($workflow, ?string $relatedType = null, ?int $relatedId = null, array $payload = []): ?WorkflowInstance
     {
+        if ($workflow instanceof Workflow) {
+            return $this->startNodeWorkflow($workflow, $relatedType, $relatedId, $payload);
+        }
+
+        $workflowKey = $workflow;
+
         // 1. Try to find workflow by key (Legacy/Direct trigger)
-        $workflow = Workflow::where('key', $workflowKey)->first();
-        if ($workflow) {
-            return $this->startWorkflow($workflow, $relatedType, $relatedId, $payload);
+        $workflowModel = Workflow::where('key', $workflowKey)->first();
+        if ($workflowModel) {
+            if ($workflowModel->nodes()->exists()) {
+                return $this->startNodeWorkflow($workflowModel, $relatedType, $relatedId, $payload);
+            }
+            return $this->startWorkflow($workflowModel, $relatedType, $relatedId, $payload);
         }
 
         // 2. Try to find workflows by EVENT trigger
         // We look for workflows that have a trigger of type EVENT with config->event_key matching the workflowKey
-        $workflows = Workflow::whereHas('triggers', function ($q) use ($workflowKey) {
-            $q->where('type', WorkflowTrigger::TYPE_EVENT)
-              ->whereJsonContains('config->event_key', $workflowKey);
-        })->get();
+        $workflows = Workflow::where('is_active', true)
+            ->whereHas('triggers', function ($q) use ($workflowKey) {
+                $q->where('type', WorkflowTrigger::TYPE_EVENT)
+                  ->where(function ($query) use ($workflowKey) {
+                      $query->whereJsonContains('config->event_key', $workflowKey)
+                            ->orWhere('config->event_key', $workflowKey);
+                  });
+            })
+            ->with(['triggers' => function ($q) {
+                $q->where('type', WorkflowTrigger::TYPE_EVENT);
+            }])
+            ->get();
 
         if ($workflows->isEmpty()) {
             Log::warning("[Workflows] No workflow found for key/event: '{$workflowKey}'");
@@ -79,10 +101,204 @@ class WorkflowEngine
 
         $lastInstance = null;
         foreach ($workflows as $wf) {
-            $lastInstance = $this->startWorkflow($wf, $relatedType, $relatedId, $payload);
+            $trigger = $wf->triggers->first(function ($t) use ($workflowKey) {
+                $eventKey = $t->config['event_key'] ?? null;
+                if (is_array($eventKey)) {
+                    return in_array($workflowKey, $eventKey);
+                }
+                return $eventKey === $workflowKey;
+            });
+
+            if ($trigger) {
+                $config = $trigger->config;
+
+                // 1. Service Filter
+                if ($relatedType === 'APPOINTMENT') {
+                    $appt = \Modules\Booking\Entities\Appointment::find($relatedId);
+                    if ($appt) {
+                        $serviceIds = $config['service_ids'] ?? (isset($config['service_id']) ? [$config['service_id']] : []);
+                        $serviceIds = array_filter(array_map('intval', $serviceIds));
+                        $serviceOperator = $config['service_operator'] ?? 'IN';
+
+                        if (!empty($serviceIds)) {
+                            $inArray = in_array((int)$appt->service_id, $serviceIds, true);
+                            if (($serviceOperator === 'IN' && !$inArray) || ($serviceOperator === 'NOT_IN' && $inArray)) {
+                                Log::info("[Workflows] Skipping workflow {$wf->name} (ID: {$wf->id}) due to service filter mismatch (Operator: {$serviceOperator}).");
+                                continue;
+                            }
+                        }
+
+                        $providerIds = $config['provider_ids'] ?? (isset($config['provider_id']) ? [$config['provider_id']] : []);
+                        $providerIds = array_filter(array_map('intval', $providerIds));
+                        $providerOperator = $config['provider_operator'] ?? 'IN';
+
+                        if (!empty($providerIds)) {
+                            $inArray = in_array((int)$appt->provider_user_id, $providerIds, true);
+                            if (($providerOperator === 'IN' && !$inArray) || ($providerOperator === 'NOT_IN' && $inArray)) {
+                                Log::info("[Workflows] Skipping workflow {$wf->name} (ID: {$wf->id}) due to provider filter mismatch (Operator: {$providerOperator}).");
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ($wf->nodes()->exists()) {
+                $lastInstance = $this->startNodeWorkflow($wf, $relatedType, $relatedId, $payload);
+            } else {
+                $lastInstance = $this->startWorkflow($wf, $relatedType, $relatedId, $payload);
+            }
         }
 
         return $lastInstance;
+    }
+
+    public function startNodeWorkflow(Workflow $workflow, $subjectType, $subjectId, array $payload = [], ?int $parentInstanceId = null): ?WorkflowInstance
+    {
+        Log::info("[Workflows] Starting node-based workflow: '{$workflow->key}' for {$subjectType}:{$subjectId}");
+
+        if (!$workflow->is_active) {
+            Log::warning("[Workflows] Workflow inactive: '{$workflow->key}'");
+            return null;
+        }
+
+        $startNode = $workflow->nodes()->where('type', WorkflowNode::TYPE_START)->first();
+
+        if (!$startNode) {
+            Log::warning("[Workflows] No START node found for workflow: '{$workflow->name}'");
+            return null;
+        }
+
+        return DB::transaction(function () use ($workflow, $startNode, $subjectType, $subjectId, $payload, $parentInstanceId) {
+            $instance = WorkflowInstance::create([
+                'workflow_id'        => $workflow->id,
+                'parent_instance_id' => $parentInstanceId,
+                'related_type'       => $subjectType,
+                'related_id'         => $subjectId,
+                'current_node_id'    => $startNode->id,
+                'status'             => WorkflowInstance::STATUS_ACTIVE,
+                'started_at'         => now(),
+                'created_by'         => Auth::id(),
+            ]);
+
+            Log::info("[Workflows] Node-based Instance created: {$instance->id}. Current node: START ({$startNode->id})");
+
+            $context = $this->buildContextData($instance, $payload);
+
+            event(new NodeReached($instance, $startNode, $context));
+
+            $this->advance($instance, $context);
+
+            return $instance;
+        });
+    }
+
+    public function advance(WorkflowInstance $instance, array $context = []): void
+    {
+        if ($instance->status !== WorkflowInstance::STATUS_ACTIVE) {
+            Log::warning("[Workflows] Cannot advance inactive workflow instance {$instance->id}");
+            return;
+        }
+
+        $currentNode = $instance->currentNode;
+        if (!$currentNode) {
+            Log::warning("[Workflows] Workflow instance {$instance->id} has no current node.");
+            return;
+        }
+
+        Log::info("[Workflows] Advancing instance {$instance->id} from node ID {$currentNode->id} ({$currentNode->name}, Type: {$currentNode->type})");
+
+        if (empty($context)) {
+            $context = $this->buildContextData($instance);
+        }
+
+        $edges = WorkflowEdge::where('source_node_id', $currentNode->id)->get();
+        if ($edges->isEmpty()) {
+            Log::info("[Workflows] Node ID {$currentNode->id} has no outgoing edges.");
+            if ($currentNode->type === WorkflowNode::TYPE_END) {
+                $this->completeWorkflow($instance, $context);
+            }
+            return;
+        }
+
+        $evaluator = new ConditionEvaluator();
+        $matchedEdge = null;
+
+        if ($currentNode->type === WorkflowNode::TYPE_CONDITION) {
+            $nodeExpr = $currentNode->config['condition_expression'] ?? null;
+            
+            $varName = $nodeExpr;
+            if (str_contains($nodeExpr, '=')) {
+                $varName = trim(explode('=', $nodeExpr, 2)[0]);
+            }
+            
+            $resolvedValue = $evaluator->resolveValue($varName, $context);
+            if ($resolvedValue === null) {
+                Log::info("[Workflows] Node ID {$currentNode->id} condition variable '{$varName}' is missing. Pausing workflow for user input.");
+                return;
+            }
+
+            $nodeResult = $evaluator->evaluate($nodeExpr, $context);
+
+            Log::info("[Workflows] Node ID {$currentNode->id} condition expression '{$nodeExpr}' evaluated to " . ($nodeResult ? 'TRUE' : 'FALSE'));
+
+            foreach ($edges as $edge) {
+                $edgeCond = trim($edge->condition);
+                // Map common Persian/English yes/no values to boolean
+                $isYesEdge = in_array(strtolower($edgeCond), ['بله', 'yes', 'true', '1']);
+                $isNoEdge = in_array(strtolower($edgeCond), ['خیر', 'no', 'false', '0']);
+
+                if (($nodeResult && $isYesEdge) || (!$nodeResult && $isNoEdge)) {
+                    $matchedEdge = $edge;
+                    break;
+                }
+            }
+        } else {
+            foreach ($edges as $edge) {
+                if ($evaluator->evaluate($edge->condition, $context)) {
+                    $matchedEdge = $edge;
+                    break;
+                }
+            }
+        }
+
+        if (!$matchedEdge) {
+            Log::warning("[Workflows] No matching transition edge found from node ID {$currentNode->id} for instance {$instance->id}");
+            return;
+        }
+
+        $targetNode = WorkflowNode::find($matchedEdge->target_node_id);
+        if (!$targetNode) {
+            Log::error("[Workflows] Target node ID {$matchedEdge->target_node_id} not found for edge ID {$matchedEdge->id}");
+            return;
+        }
+
+        DB::transaction(function () use ($instance, $targetNode, $context) {
+            $instance->current_node_id = $targetNode->id;
+            $instance->save();
+            $instance->unsetRelation('currentNode');
+
+            Log::info("[Workflows] Instance {$instance->id} transitioned to node ID {$targetNode->id} ({$targetNode->name})");
+
+            event(new NodeReached($instance, $targetNode, $context));
+            event(new \Modules\Workflows\Events\PatientStageAdvanced($instance, $context));
+
+            if ($targetNode->type === WorkflowNode::TYPE_END) {
+                $this->completeWorkflow($instance, $context);
+            }
+        });
+    }
+
+    protected function completeWorkflow(WorkflowInstance $instance, array $context): void
+    {
+        $instance->status = WorkflowInstance::STATUS_COMPLETED;
+        $instance->completed_at = now();
+        $instance->save();
+
+        Log::info("[Workflows] Workflow instance {$instance->id} reached END node. Status set to COMPLETED.");
+
+        event(new WorkflowCompleted($instance, $context));
+        event(new \Modules\Workflows\Events\PatientStageAdvanced($instance, $context));
     }
 
     public function moveToStage(WorkflowInstance $instance, WorkflowStage $stage): void
@@ -161,7 +377,9 @@ class WorkflowEngine
                     $title = $this->renderTemplate($config['title'] ?? $stage->name, $context);
                     $description = $this->renderTemplate($config['description'] ?? '', $context);
 
-                    Log::info("[Workflows] Creating Task/FollowUp. Title: $title, Assignee: $targetUserId");
+                    $clientId = $this->resolveClientId($instance);
+                    $taskRelatedType = $clientId ? 'CLIENT' : $instance->related_type;
+                    $taskRelatedId = $clientId ?: $instance->related_id;
 
                     try {
                         $task = $Model::create([
@@ -169,14 +387,20 @@ class WorkflowEngine
                             'description'  => $description,
                             'task_type'    => $isTask ? ($config['task_type'] ?? 'GENERAL') : 'FOLLOW_UP',
                             'assignee_id'  => $targetUserId,
-                            'creator_id'   => Auth::id(),
+                            'creator_id'   => $instance->created_by ?: Auth::id(),
                             'status'       => $config['status'] ?? 'TODO',
                             'priority'     => $config['priority'] ?? ($isTask ? 'MEDIUM' : 'HIGH'),
                             'due_at'       => $dueAt,
-                            'related_type' => $instance->related_type,
-                            'related_id'   => $instance->related_id,
+                            'related_type' => $taskRelatedType,
+                            'related_id'   => $taskRelatedId,
+                            'meta'         => [
+                                'workflow_instance_id' => $instance->id,
+                                'auto_advance'         => (bool) ($config['auto_advance'] ?? true),
+                                'related_target'       => $clientId ? 'client' : 'none',
+                                'related_client_ids'   => $clientId ? [$clientId] : [],
+                            ]
                         ]);
-                        Log::info("[Workflows] Task created successfully. ID: {$task->id}");
+                        Log::info("[Workflows] Task created successfully. ID: {$task->id} linked to client ID {$taskRelatedId}");
                         $result = ['status' => 'created', 'task_id' => $task->id];
                     } catch (\Exception $e) {
                         Log::error("[Workflows] Task creation threw exception: " . $e->getMessage());
@@ -210,6 +434,11 @@ class WorkflowEngine
                             'type' => \Modules\Sms\Entities\SmsMessage::TYPE_SYSTEM,
                             'related_type' => $instance->related_type,
                             'related_id' => $instance->related_id,
+                            'meta' => [
+                                'workflow_id' => $instance->workflow_id,
+                                'workflow_name' => $instance->workflow?->name,
+                                'workflow_instance_id' => $instance->id,
+                            ],
                         ];
 
                         if (!empty($config['offset_minutes'])) {
@@ -259,7 +488,7 @@ class WorkflowEngine
         return $minutes ? $base->copy()->addMinutes($minutes) : $base;
     }
 
-    protected function buildContextData(WorkflowInstance $instance, array $payload = []): array
+    public function buildContextData(WorkflowInstance $instance, array $payload = []): array
     {
         $data = ['tokens' => []];
 
@@ -321,7 +550,38 @@ class WorkflowEngine
             }
         }
 
+        // Handle TREATMENT_PLAN context
+        if ($instance->related_type === 'TREATMENT_PLAN' && class_exists('Modules\\Booking\\App\\Models\\TreatmentPlan')) {
+            $plan = \Modules\Booking\App\Models\TreatmentPlan::with(['client', 'patient', 'user'])->find($instance->related_id);
+            if ($plan) {
+                $data['treatment_plan'] = $plan;
+                $data['tokens'] = array_merge([
+                    'plan_id' => $plan->id,
+                    'patient_name' => $plan->patient_name ?? $plan->client?->full_name,
+                    'status' => $plan->status,
+                    'notes' => $plan->notes,
+                    'total' => $plan->total,
+                ], $data['tokens']);
+            }
+        }
+
         return $data;
+    }
+
+    protected function resolveClientId(WorkflowInstance $instance): ?int
+    {
+        if ($instance->related_type === 'TREATMENT_PLAN') {
+            if (class_exists(\Modules\Booking\App\Models\TreatmentPlan::class)) {
+                $plan = \Modules\Booking\App\Models\TreatmentPlan::find($instance->related_id);
+                return $plan?->client_id;
+            }
+        } elseif ($instance->related_type === 'APPOINTMENT') {
+            if (class_exists(\Modules\Booking\Entities\Appointment::class)) {
+                $appt = \Modules\Booking\Entities\Appointment::find($instance->related_id);
+                return $appt?->client_id;
+            }
+        }
+        return null;
     }
 
     protected function resolveTargetPhone(array $config, array $context): ?string

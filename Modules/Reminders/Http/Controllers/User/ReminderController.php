@@ -12,6 +12,7 @@ use Modules\FollowUps\Entities\FollowUp;
 use Carbon\Carbon;
 use Morilog\Jalali\Jalalian;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
 
 
 class ReminderController extends Controller
@@ -35,20 +36,33 @@ class ReminderController extends Controller
         [$from, $to] = $this->resolvePeriod($request, $period);
 
         $baseQuery = Reminder::query()
-            ->visibleForUser($user)
             ->forTasks() // فقط یادآوری‌هایی که روی Task/FollowUp ساخته شده‌اند
             ->with(['task', 'followUp', 'user']);
+        
+        $users = [];
+        $selectedUserId = $user->id;
+
+        if ($user->can('reminders.manage') || $user->can('reminders.view')) {
+            $users = User::select('id', 'name')->get();
+            $selectedUserId = $request->get('user_id', $user->id);
+            $baseQuery->where('user_id', $selectedUserId);
+        } else {
+            $baseQuery->where('user_id', $user->id);
+        }
 
         // وضعیت
         if ($status !== 'all') {
-            $statusMap = [
-                'open'     => Reminder::STATUS_OPEN,
-                'done'     => Reminder::STATUS_DONE,
-                'canceled' => Reminder::STATUS_CANCELED,
-            ];
+            if ($status === 'open') {
+                $baseQuery->whereIn('status', [Reminder::STATUS_OPEN, Reminder::STATUS_ESCALATED]);
+            } else {
+                $statusMap = [
+                    'done'     => Reminder::STATUS_DONE,
+                    'canceled' => Reminder::STATUS_CANCELED,
+                ];
 
-            if (isset($statusMap[$status])) {
-                $baseQuery->where('status', $statusMap[$status]);
+                if (isset($statusMap[$status])) {
+                    $baseQuery->where('status', $statusMap[$status]);
+                }
             }
         }
 
@@ -108,7 +122,9 @@ class ReminderController extends Controller
             'statusFilterOptions',
             'periodOptions',
             'from',
-            'to'
+            'to',
+            'users',
+            'selectedUserId'
         ));
     }
 
@@ -437,5 +453,228 @@ class ReminderController extends Controller
         $reminder->delete();
 
         return back()->with('status', 'یادآوری حذف شد.');
+    }
+
+    /* ------------ تعویق یادآوری (Snooze) ------------ */
+
+    public function snooze(Request $request, Reminder $reminder)
+    {
+        $user = Auth::user();
+
+        if (! $reminder->canChangeStatus($user)) {
+            abort(403);
+        }
+
+        // ۱. بررسی فعال بودن قابلیت تعویق در تنظیمات
+        $snoozeEnabled = get_setting('reminders_snooze_enabled', '1') == '1';
+        if (!$snoozeEnabled) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'قابلیت تعویق یادآوری‌ها توسط مدیریت غیرفعال شده است.',
+                ], 400);
+            }
+            return back()->with('error', 'قابلیت تعویق یادآوری‌ها غیرفعال است.');
+        }
+
+        // ۲. اعتبارسنجی
+        $reasonRule = get_setting('reminders_snooze_reason_required', 'optional');
+        $validationRules = [
+            'duration' => ['required', 'string', Rule::in(['15m', '1h', '1d', 'custom'])],
+            'custom_minutes' => ['nullable', 'required_if:duration,custom', 'integer', 'min:5', 'max:10080'],
+        ];
+
+        if ($reasonRule === 'required') {
+            $validationRules['reason'] = ['required', 'string', 'min:3', 'max:500'];
+        } else {
+            $validationRules['reason'] = ['nullable', 'string', 'max:500'];
+        }
+
+        $data = $request->validate($validationRules, [
+            'reason.required' => 'ثبت دلیل برای تعویق یادآوری الزامی است.',
+            'custom_minutes.required_if' => 'در صورت انتخاب تعویق سفارشی، وارد کردن زمان الزامی است.',
+        ]);
+
+        $originalRemindAt = $reminder->remind_at->copy();
+        $now = now();
+
+        // ۳. محاسبه زمان جدید تعویق
+        $minutes = match ($data['duration']) {
+            '15m' => 15,
+            '1h' => 60,
+            '1d' => 1440,
+            'custom' => (int) $data['custom_minutes'],
+        };
+
+        $newRemindAt = $now->copy()->addMinutes($minutes);
+
+        // ۴. ثبت لاگ تعویق در جدول جدید
+        \Modules\Reminders\Entities\ReminderSnoozeLog::create([
+            'reminder_id'        => $reminder->id,
+            'user_id'            => $user->id,
+            'original_remind_at' => $originalRemindAt,
+            'snoozed_to'         => $newRemindAt,
+            'duration_key'       => $data['duration'],
+            'duration_minutes'   => $minutes,
+            'reason'             => $reasonRule !== 'disabled' ? ($data['reason'] ?? null) : null,
+            'snooze_sequence'    => $reminder->snooze_count + 1,
+            'ip_address'         => $request->ip(),
+            'user_agent'         => $request->userAgent(),
+        ]);
+
+        // ۵. بروزرسانی یادآوری
+        if (!$reminder->original_remind_at) {
+            $reminder->original_remind_at = $originalRemindAt;
+        }
+        $reminder->remind_at = $newRemindAt;
+        $reminder->snooze_count++;
+        $reminder->last_snoozed_at = $now;
+        $reminder->last_snoozed_by = $user->id;
+        $reminder->is_sent = false;
+        $reminder->sent_at = null;
+        
+        // اگر قبلاً لغو یا انجام شده بود، دوباره باز شود
+        $reminder->status = Reminder::STATUS_OPEN;
+        $reminder->save();
+
+        // ۶. ثبت لاگ فعالیت در هسته سیستم
+        $title = $reminder->relatedTitle();
+        \App\Services\ActivityLogger::log(
+            'snooze_reminder',
+            "یادآوری «{$title}» به مدت {$minutes} دقیقه به تعویق انداخته شد.",
+            $reminder,
+            [
+                'duration' => $data['duration'],
+                'minutes' => $minutes,
+                'snooze_sequence' => $reminder->snooze_count,
+                'reason' => $data['reason'] ?? null
+            ]
+        );
+
+        // ۷. بررسی Escalation (ارجاع خودکار)
+        $escalated = (new \Modules\Reminders\Services\SnoozeEscalationService())->checkAndEscalate($reminder);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $escalated ? 'یادآوری به علت تعویق بیش از حد به مدیریت ارجاع داده شد.' : 'یادآوری به تعویق افتاد.',
+                'reminder' => $reminder,
+                'new_date' => $reminder->remind_at->format('Y-m-d H:i'),
+                'escalated' => $escalated,
+            ]);
+        }
+
+        return back()->with('status', $escalated ? 'یادآوری به علت تعویق بیش از حد به مدیریت ارجاع شد.' : 'یادآوری به تعویق افتاد.');
+    }
+
+    /**
+     * نمایش تاریخچه تعویق‌های یک یادآوری.
+     */
+    public function snoozeHistory(Request $request, Reminder $reminder)
+    {
+        $user = Auth::user();
+
+        if (!$reminder->canChangeStatus($user)) {
+            abort(403);
+        }
+
+        $logs = $reminder->snoozeLogs()
+            ->with('user:id,name')
+            ->get();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'logs' => $logs->map(function ($log) {
+                    return [
+                        'id' => $log->id,
+                        'user_name' => $log->user ? $log->user->name : 'ناشناس',
+                        'original_remind_at' => Jalalian::fromCarbon($log->original_remind_at)->format('Y/m/d - H:i'),
+                        'snoozed_to' => Jalalian::fromCarbon($log->snoozed_to)->format('Y/m/d - H:i'),
+                        'duration' => $log->duration_minutes,
+                        'reason' => $log->reason,
+                        'sequence' => $log->snooze_sequence,
+                        'created_at' => Jalalian::fromCarbon($log->created_at)->format('Y/m/d - H:i'),
+                    ];
+                })
+            ]);
+        }
+
+        return view('reminders::user.reminders.snooze-history', compact('reminder', 'logs'));
+    }
+
+    /* ------------ شروع/انجام موجودیت مرتبط ------------ */
+
+    public function progressRelated(Request $request, Reminder $reminder)
+    {
+        $user = Auth::user();
+
+        if (! $reminder->canChangeStatus($user)) {
+            abort(403);
+        }
+
+        $inProgressEnabled = get_setting('reminders_in_progress_enabled', '1') == '1';
+        if (!$inProgressEnabled) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'قابلیت تغییر وضعیت به درحال انجام توسط مدیریت غیرفعال شده است.',
+                ], 400);
+            }
+            return back()->with('error', 'قابلیت تغییر وضعیت به درحال انجام غیرفعال است.');
+        }
+
+        $related = $reminder->related();
+
+        if ($related && $reminder->related_type === 'TASK') {
+            if (isset($related->status) && $related->status === Task::STATUS_TODO) {
+                $related->status = Task::STATUS_IN_PROGRESS;
+                $related->save();
+            }
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'وضعیت به درحال انجام تغییر کرد.',
+                'reminder' => $reminder,
+            ]);
+        }
+
+        return back()->with('status', 'وضعیت به درحال انجام تغییر کرد.');
+    }
+
+    public function markRelatedDone(Request $request, Reminder $reminder)
+    {
+        $user = Auth::user();
+
+        if (! $reminder->canChangeStatus($user)) {
+            abort(403);
+        }
+
+        $related = $reminder->related();
+
+        if ($related && $reminder->related_type === 'TASK') {
+            if (isset($related->status)) {
+                $related->status = Task::STATUS_DONE ?? 'DONE';
+                $related->save();
+            }
+        }
+
+        // یادآوری را هم در صورت لزوم انجام شده در نظر می‌گیریم
+        $reminder->status = Reminder::STATUS_DONE;
+        $reminder->is_sent = true;
+        $reminder->sent_at = now();
+        $reminder->save();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'مورد مرتبط با موفقیت انجام شد.',
+                'reminder' => $reminder,
+            ]);
+        }
+
+        return back()->with('status', 'مورد مرتبط با موفقیت انجام شد.');
     }
 }

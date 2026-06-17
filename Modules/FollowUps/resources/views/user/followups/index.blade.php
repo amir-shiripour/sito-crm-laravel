@@ -34,18 +34,31 @@
 
         {{-- فیلترها --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
-            <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 {{ auth()->user()->can('followups.view.all') ? 'md:grid-cols-5' : 'md:grid-cols-4' }} gap-4">
                 <div>
                     <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">جستجو</label>
                     <input type="text" name="q" value="{{ request('q') }}"
                            placeholder="عنوان، توضیحات..."
-                           class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                           class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
                 </div>
+
+                @if(auth()->user()->can('followups.view.all'))
+                    <div>
+                        <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">کاربر مسئول</label>
+                        <select name="assignee_id"
+                                class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                            <option value="">همه کاربران</option>
+                            @foreach($users ?? [] as $u)
+                                <option value="{{ $u->id }}" @selected(request('assignee_id') == $u->id)>{{ $u->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
 
                 <div>
                     <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">وضعیت</label>
                     <select name="status"
-                            class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
                         <option value="">همه</option>
                         @foreach($statuses as $value => $label)
                             <option value="{{ $value }}" @selected(request('status') == $value)>{{ $label }}</option>
@@ -56,7 +69,7 @@
                 <div>
                     <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">نوع</label>
                     <select name="task_type"
-                            class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
                         <option value="">همه</option>
                         @foreach($types as $value => $label)
                             <option value="{{ $value }}" @selected(request('task_type') == $value)>{{ $label }}</option>
@@ -67,7 +80,7 @@
                 <div>
                     <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">اولویت</label>
                     <select name="priority"
-                            class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
                         <option value="">همه</option>
                         @foreach($priorities as $value => $label)
                             <option value="{{ $value }}" @selected(request('priority') == $value)>{{ $label }}</option>
@@ -75,7 +88,7 @@
                     </select>
                 </div>
 
-                <div class="flex items-end gap-2 md:col-span-4">
+                <div class="flex items-end gap-2 {{ auth()->user()->can('followups.view.all') ? 'md:col-span-5' : 'md:col-span-4' }}">
                     <button type="submit"
                             class="flex-1 px-4 py-2 rounded-xl text-sm font-medium bg-amber-500 text-white hover:bg-amber-600">
                         اعمال فیلتر

@@ -111,7 +111,7 @@
                     @endphp
 
                     <div class="{{ $cardClass }}"
-                         x-data="availabilityDay(@json($breaksArray ?? []), '{{ $isClosedValue }}')">
+                         x-data="availabilityDay({{ Js::from($breaksArray ?? []) }}, '{{ $isClosedValue }}')">
 
                         {{-- هدر کارت روز --}}
                         <div class="px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/30">

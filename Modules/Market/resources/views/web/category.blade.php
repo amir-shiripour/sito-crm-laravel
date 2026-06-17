@@ -65,7 +65,7 @@
                             <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                             فیلترها
                         </h2>
-                        @if(request()->hasAny(['q', 'categories', 'min_price', 'max_price', 'in_stock', 'attrs']))
+                        @if(request()->hasAny(['q', 'categories', 'brands', 'min_price', 'max_price', 'in_stock', 'attrs']))
                             <a href="{{ isset($currentCategory) ? route('market.public.category.show', $currentCategory->slug) : route('market.public.category') }}" class="text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded-lg">حذف همه</a>
                         @endif
                     </div>
@@ -163,6 +163,33 @@
                             </div>
                         @endif
 
+                        <!-- Brands Accordion -->
+                        @if(isset($brands) && $brands->count() > 1)
+                            <div x-data="{ expanded: true }" class="flex flex-col">
+                                <button type="button" @click="expanded = !expanded" class="flex items-center justify-between p-4 w-full hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors outline-none">
+                                    <span class="text-sm font-bold text-gray-800 dark:text-gray-200">برندها</span>
+                                    <svg class="w-5 h-5 text-gray-400 transition-transform duration-300" :class="expanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </button>
+                                <div x-show="expanded" x-collapse>
+                                    <div class="p-4 pt-0 space-y-3 max-h-52 overflow-y-auto custom-scrollbar">
+                                        @foreach($brands as $brand)
+                                            <label class="flex items-center justify-between cursor-pointer group">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="relative flex items-center justify-center w-5 h-5 flex-shrink-0">
+                                                        <input type="checkbox" name="brands[]" value="{{ $brand->id }}" onchange="if(window.innerWidth >= 1024) this.form.submit()"
+                                                               {{ in_array($brand->id, request('brands', [])) ? 'checked' : '' }}
+                                                               class="peer appearance-none w-5 h-5 border-2 border-gray-300 dark:border-gray-600 rounded-md cursor-pointer checked:bg-indigo-500 checked:border-indigo-500 transition-colors outline-none">
+                                                        <svg class="w-3.5 h-3.5 text-white absolute pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                    </div>
+                                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors select-none line-clamp-1">{{ $brand->name }}</span>
+                                                </div>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         <!-- Attributes Accordions (ویژگی‌های داینامیک) -->
                         @if(isset($filterAttributes) && $filterAttributes->count() > 0)
                             @foreach($filterAttributes as $attr)
@@ -248,7 +275,7 @@
                 <!-- Mobile Footer Action (Only visible on mobile sidebar) -->
                 <div class="lg:hidden p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 absolute bottom-0 left-0 right-0 flex gap-3 pb-safe z-20 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
                     <button type="button" onclick="document.getElementById('main-filter-form').submit()" class="flex-1 bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/30 active:scale-95 transition-transform text-sm">اعمال فیلترها</button>
-                    @if(request()->hasAny(['q', 'categories', 'min_price', 'max_price', 'in_stock', 'attrs']))
+                    @if(request()->hasAny(['q', 'categories', 'brands', 'min_price', 'max_price', 'in_stock', 'attrs']))
                         <a href="{{ isset($currentCategory) ? route('market.public.category.show', $currentCategory->slug) : route('market.public.category') }}" class="flex-shrink-0 px-6 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 font-bold py-3.5 rounded-xl active:scale-95 transition-transform text-sm flex items-center justify-center">حذف همه</a>
                     @endif
                 </div>
@@ -304,15 +331,18 @@
                                 $pSlug = '';
                                 $attributes = [];
                                 $productUrl = '#';
+                                $bestVpId = null;
+                                $targetVariantId = null;
 
                                 if ($variantMode === 'separated') {
                                     $pSlug = $item->masterProduct->slug;
                                     $productUrl = route('market.public.product.show', ['slug' => $pSlug, 'variant' => $item->id]); // لینک کامل
+                                    $targetVariantId = $item->id;
 
                                     // فیلتر کردن مقادیر "هر X" از ویژگی‌های قابل نمایش روی کارت
                                     $rawAttrs = is_array($item->variant_attributes) ? $item->variant_attributes : [];
                                     foreach($rawAttrs as $k => $v) {
-                                         if(!str_starts_with($v, 'هر ')) {
+                                         if(!str_starts_with($v, 'هر ') && !(in_array($k, ['name', 'نام']) && $v === 'استاندارد')) {
                                               $attributes[$k] = $v;
                                          }
                                     }
@@ -326,6 +356,7 @@
                                             if ($minPrice === null || $activePrice < $minPrice) {
                                                 $minPrice = $activePrice;
                                                 $originalPrice = $vp->price;
+                                                $bestVpId = $vp->id;
                                             }
                                         }
                                     }
@@ -344,6 +375,8 @@
                                                 if ($minPrice === null || $activePrice < $minPrice) {
                                                     $minPrice = $activePrice;
                                                     $originalPrice = $vp->price;
+                                                    $bestVpId = $vp->id;
+                                                    $targetVariantId = $variant->id;
                                                 }
                                             }
                                         }
@@ -356,6 +389,10 @@
                                     $discountPercent = round((($originalPrice - $minPrice) / $originalPrice) * 100);
                                 }
 
+                                $masterProductForRating = $variantMode === 'separated' ? $item->masterProduct : $item;
+                                $ratingScore = $masterProductForRating->average_rating;
+                                $reviewsCount = $masterProductForRating->approved_reviews_count;
+
                                 // نشان‌های نمایشی برای افزایش نرخ تبدیل
                                 $promoBadges = [
                                     ['text' => 'ارسال سریع', 'icon' => 'M13 10V3L4 14h7v7l9-11h-7z', 'color' => 'text-teal-600 dark:text-teal-400', 'bg' => 'bg-teal-50 dark:bg-teal-900/20', 'border' => 'border-teal-100 dark:border-teal-800/30'],
@@ -367,107 +404,121 @@
 
                             {{-- Product Card --}}
                             <div class="h-full relative {{ !$hasStock ? 'opacity-80' : '' }}">
-                                <a href="{{ $productUrl }}" class="group flex flex-col bg-white dark:bg-gray-900/80 backdrop-blur-md rounded-3xl border border-gray-100 dark:border-gray-800 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] dark:shadow-none hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 overflow-hidden h-full">
+                                <div class="group flex flex-col bg-white dark:bg-gray-900/80 backdrop-blur-md rounded-3xl border border-gray-100 dark:border-gray-800 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] dark:shadow-none hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 overflow-hidden h-full">
+                                    <a href="{{ $productUrl }}" class="flex-1 flex flex-col">
+                                        <div class="relative h-60 w-full overflow-hidden bg-gray-50/80 dark:bg-gray-800/40 p-6 flex items-center justify-center">
+                                            @php
+                                                $imgSrc = $variantMode === 'separated' && isset($item->masterProduct->main_image)
+                                                    ? $item->masterProduct->main_image
+                                                    : ($item->main_image ?? null);
+                                            @endphp
+                                            @if($imgSrc)
+                                                <img src="{{ asset('storage/' . $imgSrc) }}" alt="{{ $item->title ?? ($item->masterProduct->title ?? 'محصول') }}" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal transition-transform duration-500 group-hover:scale-110">
+                                            @else
+                                                <svg class="w-20 h-20 opacity-20 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                            @endif
 
-                                    <div class="relative h-60 w-full overflow-hidden bg-gray-50/80 dark:bg-gray-800/40 p-6 flex items-center justify-center">
-                                        @php
-                                            $imgSrc = $variantMode === 'separated' && isset($item->masterProduct->main_image)
-                                                ? $item->masterProduct->main_image
-                                                : ($item->main_image ?? null);
-                                        @endphp
-                                        @if($imgSrc)
-                                            <img src="{{ asset('storage/' . $imgSrc) }}" alt="{{ $item->title ?? ($item->masterProduct->title ?? 'محصول') }}" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal transition-transform duration-500 group-hover:scale-110">
-                                        @else
-                                            <svg class="w-20 h-20 opacity-20 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                        @endif
+                                            @php
+                                                $brand = $variantMode === 'separated' ? $item->masterProduct->brand : $item->brand;
+                                            @endphp
+                                            @if(isset($showBrandOnCard) && $showBrandOnCard && $brand)
+                                                <div class="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md text-[10px] font-bold text-gray-700 dark:text-gray-300 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                                                    {{ $brand->name }}
+                                                </div>
+                                            @endif
 
-                                        @php
-                                            $brand = $variantMode === 'separated' ? $item->masterProduct->brand : $item->brand;
-                                        @endphp
-                                        @if($brand)
-                                            <div class="absolute top-3 right-3 px-2.5 py-1 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md text-[10px] font-bold text-gray-700 dark:text-gray-300 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
-                                                {{ $brand->name }}
-                                            </div>
-                                        @endif
+                                            @if($discountPercent > 0 && $hasStock)
+                                                <div class="absolute top-3 left-3 px-2.5 py-1 bg-rose-500 text-[11px] font-black text-white rounded-lg shadow-md shadow-rose-500/30">
+                                                    فروش ویژه
+                                                </div>
+                                            @endif
 
-                                        @if($discountPercent > 0 && $hasStock)
-                                            <div class="absolute top-3 left-3 px-2.5 py-1 bg-rose-500 text-[11px] font-black text-white rounded-lg shadow-md shadow-rose-500/30">
-                                                فروش ویژه
-                                            </div>
-                                        @endif
+                                            {{-- استایل محو برای محصول ناموجود --}}
+                                            @if(!$hasStock)
+                                                <div class="absolute inset-0 bg-white/40 dark:bg-gray-900/60 backdrop-blur-[2px] z-10 pointer-events-none"></div>
+                                            @endif
+                                        </div>
 
-                                        {{-- استایل محو برای محصول ناموجود --}}
-                                        @if(!$hasStock)
-                                            <div class="absolute inset-0 bg-white/40 dark:bg-gray-900/60 backdrop-blur-[2px] z-10 pointer-events-none"></div>
-                                        @endif
-                                    </div>
+                                        <div class="p-5 flex-1 flex flex-col relative bg-white dark:bg-gray-900 z-10">
 
-                                    <div class="p-5 flex-1 flex flex-col relative bg-white dark:bg-gray-900 z-10">
+                                            <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-200 line-clamp-2 mb-1.5 leading-relaxed min-h-[44px]">
+                                                {{ $item->title ?? ($item->masterProduct->title ?? 'محصول') }}
+                                            </h3>
 
-                                        <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-200 line-clamp-2 mb-1.5 leading-relaxed min-h-[44px]">
-                                            {{ $item->title ?? ($item->masterProduct->title ?? 'محصول') }}
-                                        </h3>
+                                            @php
+                                                if (isset($separateCategoryEnabled) && $separateCategoryEnabled) {
+                                                    $displayCategories = $variantMode === 'separated' 
+                                                        ? $item->masterProduct->displayCategories 
+                                                        : $item->displayCategories;
+                                                    $parentIds = $displayCategories->pluck('parent_id')->filter()->toArray();
+                                                    $category = $displayCategories->reject(function($cat) use ($parentIds) {
+                                                        return in_array($cat->id, $parentIds);
+                                                    })->first();
+                                                } else {
+                                                    $category = $variantMode === 'separated' ? $item->masterProduct->category : $item->category;
+                                                }
+                                            @endphp
+                                            @if(isset($showCategoryOnCard) && $showCategoryOnCard && $category)
+                                                <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-3">{{ $category->name }}</span>
+                                            @endif
 
-                                        @php
-                                            $category = $variantMode === 'separated' ? $item->masterProduct->category : $item->category;
-                                        @endphp
-                                        @if(isset($showCategoryOnCard) && $showCategoryOnCard && $category)
-                                            <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-3">{{ $category->name }}</span>
-                                        @endif
+                                            @if($variantMode === 'separated' && !empty($attributes))
+                                                <div class="flex flex-wrap gap-1.5 mb-4">
+                                                    @foreach($attributes as $key => $val)
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+                                                            <span class="text-gray-500 dark:text-gray-400 font-medium ml-1">{{ $key }}:</span> {{ $val }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
 
-                                        @if($variantMode === 'separated' && !empty($attributes))
-                                            <div class="flex flex-wrap gap-1.5 mb-4">
-                                                @foreach($attributes as $key => $val)
-                                                    <span class="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
-                                                        <span class="text-gray-500 dark:text-gray-400 font-medium ml-1">{{ $key }}:</span> {{ $val }}
-                                                    </span>
-                                                @endforeach
-                                            </div>
-                                        @endif
+                                            {{-- هشدار موجودی کم / تنوع / نشان ترغیبی --}}
+                                            @if($hasStock)
+                                                <div class="mb-3 flex items-center justify-between">
+                                                    <div>
+                                                        @if($variantMode === 'grouped' && $activeVariantsCount > 1)
+                                                            <div class="inline-flex items-center gap-1 bg-gray-50 dark:bg-gray-800/50 px-2.5 py-1 rounded-xl border border-gray-100 dark:border-gray-700">
+                                                                <div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>
+                                                                <div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+                                                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500"></div>
+                                                                <span class="text-[10px] font-bold text-gray-600 dark:text-gray-300 mr-1.5">+{{ $activeVariantsCount }} تنوع</span>
+                                                            </div>
+                                                        @elseif($variantMode === 'separated' && $totalStock <= 3)
+                                                            <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 text-[10px] font-bold rounded-xl border border-rose-100 dark:border-rose-800">
+                                                                <span class="flex h-2 w-2 relative">
+                                                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                                                                </span>
+                                                                تنها {{ $totalStock }} عدد در انبار باقی مانده
+                                                            </div>
+                                                        @else
+                                                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 {{ $promoBadge['bg'] }} {{ $promoBadge['color'] }} text-[10px] font-bold rounded-xl border {{ $promoBadge['border'] }}">
+                                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $promoBadge['icon'] }}"/></svg>
+                                                                {{ $promoBadge['text'] }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
 
-                                        {{-- هشدار موجودی کم / تنوع / نشان ترغیبی --}}
-                                        @if($hasStock)
-                                            <div class="mb-3 flex items-center justify-between">
-                                                <div>
-                                                    @if($variantMode === 'grouped' && $activeVariantsCount > 1)
-                                                        <div class="inline-flex items-center gap-1 bg-gray-50 dark:bg-gray-800/50 px-2.5 py-1 rounded-xl border border-gray-100 dark:border-gray-700">
-                                                            <div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>
-                                                            <div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                                                            <div class="w-2.5 h-2.5 rounded-full bg-teal-500"></div>
-                                                            <span class="text-[10px] font-bold text-gray-600 dark:text-gray-300 mr-1.5">+{{ $activeVariantsCount }} تنوع</span>
-                                                        </div>
-                                                    @elseif($variantMode === 'separated' && $totalStock <= 3)
-                                                        <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 text-[10px] font-bold rounded-xl border border-rose-100 dark:border-rose-800">
-                                                            <span class="flex h-2 w-2 relative">
-                                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                                                            </span>
-                                                            تنها {{ $totalStock }} عدد در انبار باقی مانده
-                                                        </div>
-                                                    @else
-                                                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 {{ $promoBadge['bg'] }} {{ $promoBadge['color'] }} text-[10px] font-bold rounded-xl border {{ $promoBadge['border'] }}">
-                                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $promoBadge['icon'] }}"/></svg>
-                                                            {{ $promoBadge['text'] }}
+                                                    {{-- امتیاز --}}
+                                                    @if($masterProductForRating->enable_reviews && $ratingScore > 0)
+                                                        <div class="flex items-center gap-1 text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md" title="{{ $reviewsCount }} نظر">
+                                                            <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">{{ number_format($ratingScore, 1) }}</span>
+                                                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                                                         </div>
                                                     @endif
                                                 </div>
-
-                                                <div class="flex items-center gap-1 text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md">
-                                                    <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">۴.۵</span>
-                                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                                </div>
-                                            </div>
-                                        @else
-                                            <div class="h-8"></div> {{-- اسپیسر برای تراز ماندن کارت‌های ناموجود --}}
-                                        @endif
-
-                                        <div class="mt-auto pt-4 border-t border-gray-50 dark:border-gray-800/50">
+                                            @else
+                                                <div class="h-8"></div> {{-- اسپیسر برای تراز ماندن کارت‌های ناموجود --}}
+                                            @endif
+                                            <div class="mt-auto"></div>
+                                        </div>
+                                    </a>
+                                    <div class="p-5 pt-0">
+                                        <div class="border-t border-gray-50 dark:border-gray-800/50 pt-4">
                                             @if($hasStock && $minPrice !== null)
                                                 <div class="flex items-end justify-between">
-                                                    {{-- دکمه سبد خرید --}}
-                                                    <div class="w-11 h-11 rounded-2xl {{ $t['bg'] ?? 'bg-indigo-600' }} text-white flex items-center justify-center transition-all duration-300 flex-shrink-0 {{ $t['bg_hover'] ?? 'hover:bg-indigo-700' }} hover:shadow-lg {{ $t['shadow'] ?? 'hover:shadow-indigo-500/40' }} transform group-hover:scale-105">
-                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                                    </div>
+                                                    {{-- دکمه سبد خرید جدید --}}
+                                                    @livewire('market::web.add-to-cart-button', ['variantId' => $targetVariantId, 'vendorProductId' => $bestVpId, 't' => $t], key($targetVariantId . '-' . $bestVpId))
 
                                                     <div class="flex flex-col text-left">
                                                         @if($discountPercent > 0)
@@ -497,7 +548,7 @@
                                             @endif
                                         </div>
                                     </div>
-                                </a>
+                                </div>
                             </div>
                         @endforeach
                     </div>
@@ -527,6 +578,9 @@
                 @endif
             </div>
         </div>
+
+        {{-- فراخوانی مخفی کامپوننت لایووایر مدیر سبد خرید --}}
+        @livewire('market::web.cart-manager')
     </div>
 @endsection
 

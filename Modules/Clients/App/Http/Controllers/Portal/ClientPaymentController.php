@@ -5,6 +5,7 @@ namespace Modules\Clients\App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Modules\Market\App\Models\Order as MarketOrder; // 💡 مسیر صحیح جایگزین شد
 
 class ClientPaymentController extends Controller
 {
@@ -34,14 +35,15 @@ class ClientPaymentController extends Controller
         }
 
         // 2. Fetch Market Orders (as invoices/payments)
-        if (class_exists(\Modules\Market\Entities\Order::class) && Schema::hasTable('market_orders')) {
-            $marketOrders = \Modules\Market\Entities\Order::where('client_id', $client->id)->get()->map(function($order) {
+        if (class_exists(MarketOrder::class) && Schema::hasTable('market_orders')) {
+            $marketOrders = MarketOrder::where('client_id', $client->id)->get()->map(function($order) {
                 $statusMap = [
                     'pending' => 'PENDING',
                     'paid' => 'PAID',
                     'failed' => 'FAILED',
                     'refunded' => 'REFUNDED',
-                    'canceled' => 'CANCELED'
+                    'canceled' => 'CANCELED',
+                    'unpaid'   => 'PENDING',
                 ];
                 $normalizedStatus = $statusMap[strtolower($order->payment_status)] ?? strtoupper($order->payment_status);
 
@@ -63,7 +65,18 @@ class ClientPaymentController extends Controller
         // Sort by date descending
         $allPayments = $allPayments->sortByDesc('date')->values();
 
-        return view('clients::portal.payments.index', compact('allPayments'));
+        // Booking currency settings
+        $bookingCurrencyUnit = 'IRR';
+        $bookingCurrencyLabel = 'ریال';
+        if (class_exists(\Modules\Booking\Entities\BookingSetting::class) && Schema::hasTable('booking_settings')) {
+            try {
+                $bs = \Modules\Booking\Entities\BookingSetting::current();
+                $bookingCurrencyUnit = $bs->currency_unit ?? 'IRR';
+                $bookingCurrencyLabel = $bookingCurrencyUnit === 'IRT' ? 'تومان' : 'ریال';
+            } catch (\Exception $e) {}
+        }
+
+        return view('clients::portal.payments.index', compact('allPayments', 'bookingCurrencyUnit', 'bookingCurrencyLabel'));
     }
 
     public function show($type, $id)
@@ -77,13 +90,25 @@ class ClientPaymentController extends Controller
                 $q->where('client_id', $client->id);
             })->with(['appointment.service', 'appointment.provider'])->findOrFail($id);
 
-            return view('clients::portal.payments.show_booking', compact('payment'));
+            // Booking currency settings
+            $bookingCurrencyUnit = $payment->currency_unit ?? 'IRR';
+            $bookingCurrencyLabel = $bookingCurrencyUnit === 'IRT' ? 'تومان' : 'ریال';
+            // Double-check with BookingSetting if currency_unit not on payment record
+            if (!$payment->currency_unit && class_exists(\Modules\Booking\Entities\BookingSetting::class) && Schema::hasTable('booking_settings')) {
+                try {
+                    $bs = \Modules\Booking\Entities\BookingSetting::current();
+                    $bookingCurrencyUnit = $bs->currency_unit ?? 'IRR';
+                    $bookingCurrencyLabel = $bookingCurrencyUnit === 'IRT' ? 'تومان' : 'ریال';
+                } catch (\Exception $e) {}
+            }
+
+            return view('clients::portal.payments.show_booking', compact('payment', 'bookingCurrencyUnit', 'bookingCurrencyLabel'));
         }
 
         if ($type === 'market') {
-            if (!class_exists(\Modules\Market\Entities\Order::class) || !Schema::hasTable('market_orders')) abort(404);
+            if (!class_exists(MarketOrder::class) || !Schema::hasTable('market_orders')) abort(404);
 
-            $order = \Modules\Market\Entities\Order::where('client_id', $client->id)
+            $order = MarketOrder::where('client_id', $client->id)
                 ->with(['items'])
                 ->findOrFail($id);
 
@@ -91,5 +116,26 @@ class ClientPaymentController extends Controller
         }
 
         abort(404);
+    }
+
+    public function marketOrdersIndex()
+    {
+        $client = auth('client')->user();
+        if (!class_exists(MarketOrder::class) || !Schema::hasTable('market_orders')) abort(404);
+
+        $orders = MarketOrder::where('client_id', $client->id)->latest()->paginate(15);
+        return view('clients::portal.orders.index', compact('orders'));
+    }
+
+    public function marketOrderShow($id)
+    {
+        $client = auth('client')->user();
+        if (!class_exists(MarketOrder::class) || !Schema::hasTable('market_orders')) abort(404);
+
+        $order = MarketOrder::where('client_id', $client->id)
+            ->with(['items.vendorProduct.variant', 'items.vendor'])
+            ->findOrFail($id);
+
+        return view('clients::portal.orders.show', compact('order'));
     }
 }

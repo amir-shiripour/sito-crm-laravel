@@ -74,17 +74,19 @@ class WorkflowController extends Controller
 
     public function create()
     {
-        Gate::authorize('workflows.manage');
+        Gate::authorize('workflows.create');
 
         $triggerOptions = $this->getTriggerOptions();
+        $users = User::query()->select(['id', 'name'])->orderBy('name')->get();
         $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
+        $tokens = config('workflows.tokens', []);
 
-        return view('workflows::user.workflows.create', compact('triggerOptions', 'services'));
+        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens'));
     }
 
     public function store(Request $request)
     {
-        Gate::authorize('workflows.manage');
+        Gate::authorize('workflows.create');
 
         // اگر از dropdown انتخاب شده باشد، key را از همان بگیر
         if ($request->filled('key_preset') && $request->key_preset !== '__custom__') {
@@ -125,7 +127,7 @@ class WorkflowController extends Controller
 
     public function edit(Workflow $workflow)
     {
-        Gate::authorize('workflows.manage');
+        Gate::authorize('workflows.edit');
 
         $workflow->load(['stages.actions', 'triggers']);
         $triggerOptions = $this->getTriggerOptions();
@@ -140,7 +142,7 @@ class WorkflowController extends Controller
 
     public function update(Request $request, Workflow $workflow)
     {
-        Gate::authorize('workflows.manage');
+        Gate::authorize('workflows.edit');
 
         // اگر از dropdown انتخاب شده باشد، key را از همان بگیر
         if ($request->filled('key_preset') && $request->key_preset !== '__custom__') {
@@ -178,16 +180,27 @@ class WorkflowController extends Controller
         foreach ($triggersData as $tData) {
             if (empty($tData['type'])) continue;
 
+            $config = $tData['config'] ?? [];
+
+            // Clean up config arrays to remove null/empty elements
+            foreach ($config as $cKey => $cVal) {
+                if (is_array($cVal)) {
+                    $config[$cKey] = array_values(array_filter($cVal, function ($v) {
+                        return $v !== null && $v !== '';
+                    }));
+                }
+            }
+
             $workflow->triggers()->create([
                 'type'   => $tData['type'],
-                'config' => $tData['config'] ?? [],
+                'config' => $config,
             ]);
         }
     }
 
     public function destroy(Workflow $workflow)
     {
-        Gate::authorize('workflows.manage');
+        Gate::authorize('workflows.delete');
         $workflow->delete();
 
         return redirect()->route('user.workflows.index')->with('success', 'گردش کار حذف شد.');
@@ -355,4 +368,178 @@ class WorkflowController extends Controller
             'config'      => $config,
         ];
     }
+
+    public function designer(Workflow $workflow)
+    {
+        Gate::authorize('workflows.view');
+
+        $workflow->load(['nodes', 'edges']);
+
+        $roles = \Spatie\Permission\Models\Role::orderBy('name')->get();
+        $users = \App\Models\User::select('id', 'name', 'email')->orderBy('name')->get();
+        
+        $subWorkflows = Workflow::where('id', '!=', $workflow->id)
+            ->where('is_active', true)
+            ->get();
+
+        return view('workflows::user.workflows.designer', compact('workflow', 'roles', 'subWorkflows', 'users'));
+    }
+
+    public function saveGraph(Request $request, Workflow $workflow)
+    {
+        Gate::authorize('workflows.edit');
+
+        $data = $request->validate([
+            'nodes'   => ['required', 'array'],
+            'nodes.*.id' => ['required'],
+            'nodes.*.name' => ['required', 'string'],
+            'nodes.*.type' => ['required', 'string'],
+            'nodes.*.config' => ['nullable', 'array'],
+            'nodes.*.x' => ['nullable', 'numeric'],
+            'nodes.*.y' => ['nullable', 'numeric'],
+            'edges'   => ['nullable', 'array'],
+            'edges.*.source_id' => ['required'],
+            'edges.*.target_id' => ['required'],
+            'edges.*.condition' => ['nullable', 'string'],
+        ]);
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($workflow, $data) {
+            $existingNodes = $workflow->nodes()->get();
+            $incomingNodes = $data['nodes'];
+
+            $incomingIds = [];
+            foreach ($incomingNodes as $nodeData) {
+                if (is_numeric($nodeData['id'])) {
+                    $incomingIds[] = (int) $nodeData['id'];
+                }
+            }
+
+            $nodesToDelete = $existingNodes->filter(function ($node) use ($incomingIds) {
+                return !in_array($node->id, $incomingIds);
+            });
+
+            if ($nodesToDelete->isNotEmpty()) {
+                $nodeIdsToDelete = $nodesToDelete->pluck('id')->toArray();
+                
+                $activeInstancesCount = \Modules\Workflows\Entities\WorkflowInstance::query()
+                    ->where('workflow_id', $workflow->id)
+                    ->where('status', \Modules\Workflows\Entities\WorkflowInstance::STATUS_ACTIVE)
+                    ->whereIn('current_node_id', $nodeIdsToDelete)
+                    ->count();
+
+                if ($activeInstancesCount > 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'برخی از گره‌ها به فرآیندهای فعال متصل هستند و حذف آنها باعث اختلال در روند درمان بیماران می‌شود.'
+                    ], 422);
+                }
+            }
+
+            $workflow->edges()->delete();
+
+            if ($nodesToDelete->isNotEmpty()) {
+                $workflow->nodes()->whereIn('id', $nodesToDelete->pluck('id'))->delete();
+            }
+
+            $idMap = [];
+
+            foreach ($incomingNodes as $nodeData) {
+                $config = $nodeData['config'] ?? [];
+                $config['x'] = $nodeData['x'] ?? 0;
+                $config['y'] = $nodeData['y'] ?? 0;
+
+                if (is_numeric($nodeData['id']) && $existingNodes->contains('id', $nodeData['id'])) {
+                    $node = $workflow->nodes()->find($nodeData['id']);
+                    $node->update([
+                        'name'   => $nodeData['name'],
+                        'type'   => $nodeData['type'],
+                        'config' => $config,
+                    ]);
+                    $idMap[$nodeData['id']] = $node->id;
+                } else {
+                    $node = $workflow->nodes()->create([
+                        'name'   => $nodeData['name'],
+                        'type'   => $nodeData['type'],
+                        'config' => $config,
+                    ]);
+                    $idMap[$nodeData['id']] = $node->id;
+                }
+            }
+
+            if (!empty($data['edges'])) {
+                foreach ($data['edges'] as $edgeData) {
+                    $sourceDbId = $idMap[$edgeData['source_id']] ?? null;
+                    $targetDbId = $idMap[$edgeData['target_id']] ?? null;
+
+                    if ($sourceDbId && $targetDbId) {
+                        $workflow->edges()->create([
+                            'source_node_id' => $sourceDbId,
+                            'target_node_id' => $targetDbId,
+                            'condition'      => $edgeData['condition'] ?? null,
+                        ]);
+                    }
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'طرح گرافیکی گردش‌کار با موفقیت ذخیره شد.'
+            ]);
+        });
+    }
+
+    public function advanceInstance(Request $request, \Modules\Workflows\Entities\WorkflowInstance $instance, \Modules\Workflows\Services\WorkflowEngine $engine)
+    {
+        Gate::authorize('workflows.edit');
+        if ($instance->status !== \Modules\Workflows\Entities\WorkflowInstance::STATUS_ACTIVE) {
+            return response()->json(['success' => false, 'message' => 'فرآیند غیرفعال است.'], 422);
+        }
+        
+        $context = $engine->buildContextData($instance, $request->all());
+        $engine->advance($instance, $context);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'فرآیند با موفقیت به گام بعدی هدایت شد.'
+        ]);
+    }
+
+    public function cancelInstance(\Modules\Workflows\Entities\WorkflowInstance $instance)
+    {
+        Gate::authorize('workflows.edit');
+        $instance->update([
+            'status' => \Modules\Workflows\Entities\WorkflowInstance::STATUS_CANCELED,
+            'completed_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'فرآیند لغو شد.'
+        ]);
+    }
+
+    public function restartInstance(\Modules\Workflows\Entities\WorkflowInstance $instance, \Modules\Workflows\Services\WorkflowEngine $engine)
+    {
+        Gate::authorize('workflows.edit');
+        
+        // Cancel the current active one
+        $instance->update([
+            'status' => \Modules\Workflows\Entities\WorkflowInstance::STATUS_CANCELED,
+            'completed_at' => now(),
+        ]);
+
+        // Start a new one
+        $new = $engine->startNodeWorkflow(
+            $instance->workflow,
+            $instance->related_type,
+            $instance->related_id
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'فرآیند مجدداً راه‌اندازی شد.',
+            'instance' => $new
+        ]);
+    }
 }
+

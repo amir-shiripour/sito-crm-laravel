@@ -348,7 +348,16 @@
     search: '',
     open: false,
     placeholder: @js($placeholder ?: 'انتخاب کنید...'),
+    creatable: @js(!empty($field['creatable'])),
     init() {
+        if (this.creatable) {
+            const arr = Array.isArray(this.selectedValues) ? this.selectedValues : [];
+            arr.forEach(val => {
+                if (val && !this.options.some(o => o.value == val)) {
+                    this.options.push({ value: String(val), label: String(val) });
+                }
+            });
+        }
         // sync با Livewire - فقط زمانی که تغییر می‌کند
         this.$watch('selectedValues', (values) => {
             // تبدیل به آرایه و sync با Livewire
@@ -367,12 +376,149 @@
     remove(value) {
         this.selectedValues = this.selectedValues.filter(v => v !== String(value));
     },
+    addNewOption() {
+        const val = this.search.trim();
+        if (val && !this.options.some(o => o.value.toLowerCase() === val.toLowerCase())) {
+            const newOpt = { value: val, label: val };
+            this.options.push(newOpt);
+            this.toggle(val);
+            this.search = '';
+        }
+    },
     get filteredOptions() {
         if (!this.search) return this.options;
         return this.options.filter(o => o.label.toLowerCase().includes(this.search.toLowerCase()));
     }
 }" wire:ignore>
             @include('clients::components.inline-multiselect')
+        </div>
+    @elseif(!empty($field['searchable']) || !empty($field['creatable']))
+        {{-- حالت تک انتخابی با امکان جستجو (Searchable Single Select) --}}
+        @php
+            $selectOptions = [];
+            foreach ($opts as $ov => $ol) {
+                $value = is_string($ov) ? $ov : $ol;
+                $label = is_string($ol) ? $ol : $ov;
+                $selectOptions[] = ['value' => (string) $value, 'label' => $label];
+            }
+        @endphp
+        <div x-data="{
+            options: @js($selectOptions),
+            selectedValues: @js($currentValue),
+            search: '',
+            open: false,
+            placeholder: @js($placeholder ?: 'انتخاب کنید...'),
+            creatable: @js(!empty($field['creatable'])),
+            init() {
+                // Sync values and handle initial value if it's not in options (creatable fallback)
+                const initialVal = Array.isArray(this.selectedValues) ? this.selectedValues[0] : this.selectedValues;
+                if (initialVal && this.creatable && !this.options.some(o => o.value == initialVal)) {
+                    this.options.push({ value: String(initialVal), label: String(initialVal) });
+                }
+                
+                // sync با Livewire
+                this.$watch('selectedValues', (values) => {
+                    const arr = Array.isArray(values) ? values : [];
+                    @this.set('{{ $model }}', arr[0] || null);
+                }, { deep: true });
+            },
+            toggle(value) {
+                value = String(value);
+                if (this.selectedValues.includes(value)) {
+                    this.selectedValues = [];
+                } else {
+                    this.selectedValues = [value];
+                }
+                this.open = false;
+                this.search = '';
+            },
+            remove(value) {
+                this.selectedValues = [];
+            },
+            addNewOption() {
+                const val = this.search.trim();
+                if (val && !this.options.some(o => o.value.toLowerCase() === val.toLowerCase())) {
+                    const newOpt = { value: val, label: val };
+                    this.options.push(newOpt);
+                    this.toggle(val);
+                }
+            },
+            get filteredOptions() {
+                if (!this.search) return this.options;
+                return this.options.filter(o => o.label.toLowerCase().includes(this.search.toLowerCase()));
+            }
+        }" wire:ignore>
+            <div class="relative group" @click.outside="open = false">
+                {{-- کانتینر اصلی (شبیه اینپوت) --}}
+                <div class="flex items-center gap-1.5 min-h-[42px] w-full rounded-xl border px-2 py-1.5 transition-all duration-200 cursor-text shadow-sm"
+                     :class="open
+                        ? 'border-indigo-500 ring-1 ring-indigo-500 bg-white dark:bg-gray-800'
+                        : 'border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500'"
+                     @click="if (!open) { open = true; search = ''; $nextTick(() => $refs.searchInput?.focus()); }">
+                    
+                    {{-- متن راهنما (زمانی که خالی است) --}}
+                    <template x-if="selectedValues.length === 0 && !search && !open">
+                        <span class="text-xs text-gray-400 dark:text-gray-500 px-1 pointer-events-none select-none">
+                            <span x-text="placeholder"></span>
+                        </span>
+                    </template>
+                    
+                    {{-- نمایش مقدار انتخاب شده --}}
+                    <template x-if="selectedValues.length > 0 && !open">
+                        <span class="text-xs text-gray-900 dark:text-gray-100 truncate flex-1 px-1"
+                              x-text="options.find(o => o.value == selectedValues[0])?.label ?? selectedValues[0]"></span>
+                    </template>
+                    
+                    {{-- اینپوت جستجو --}}
+                    <input x-show="selectedValues.length === 0 || open" x-ref="searchInput" type="text" x-model="search"
+                           class="flex-1 min-w-[60px] border-0 bg-transparent p-0 text-xs text-gray-900 focus:ring-0 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 leading-relaxed"
+                           placeholder="جستجو...">
+                    
+                    {{-- دکمه‌ها و آیکون فلش --}}
+                    <div class="ml-auto pl-1 text-gray-400 pointer-events-none flex items-center gap-1">
+                        <template x-if="selectedValues.length > 0 && !open">
+                            <button type="button" class="p-0.5 rounded-md hover:bg-gray-200 dark:hover:bg-white/10 text-gray-400 hover:text-gray-600 pointer-events-auto" @click.stop="remove(selectedValues[0])">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </template>
+                        <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
+                
+                {{-- لیست کشویی --}}
+                <div x-show="open" x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 translate-y-1" style="display: none;" 
+                     class="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl ring-1 ring-black ring-opacity-5 dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10">
+                    <ul class="max-h-60 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                        <template x-for="option in filteredOptions" :key="option.value">
+                            <li @click="toggle(option.value); $refs.searchInput.focus()"
+                                class="relative cursor-pointer select-none py-2 pl-9 pr-3 text-right text-xs rounded-lg transition-colors group"
+                                :class="selectedValues.includes(option.value) ? 'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-900/30 dark:text-indigo-300' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700/50'">
+                                <span x-text="option.label"></span>
+                                <span x-show="selectedValues.includes(option.value)" class="absolute inset-y-0 left-2 flex items-center text-indigo-600 dark:text-indigo-400">
+                                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                </span>
+                            </li>
+                        </template>
+                        
+                        {{-- امکان افزودن گزینه جدید در صورتی که creatable فعال باشد و جستجو با هیچ گزینه‌ای مطابق نباشد --}}
+                        <template x-if="creatable && search.trim() && !options.some(o => o.label.toLowerCase() === search.trim().toLowerCase())">
+                            <li @click="addNewOption(); $refs.searchInput.focus()"
+                                class="relative cursor-pointer select-none py-2 px-3 text-right text-xs text-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 rounded-lg transition-colors font-medium dark:text-indigo-400 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30">
+                                <span>« افزودن گزینه جدید: <span class="font-bold" x-text="search.trim()"></span> »</span>
+                            </li>
+                        </template>
+
+                        <li x-show="filteredOptions.length === 0 && (!creatable || !search.trim())" class="py-3 text-center text-xs text-gray-500 dark:text-gray-400 italic">
+                            موردی یافت نشد.
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
     @else
         {{-- حالت تک انتخابی (select معمولی) --}}
@@ -455,15 +601,113 @@
 
     {{-- file --}}
 @elseif ($type === 'file')
-    <div class="relative">
-        <input type="file" wire:model="{{ $model }}" class="block w-full text-sm text-gray-500
-                   file:ml-4 file:py-2.5 file:px-4
-                   file:rounded-full file:border-0
-                   file:text-xs file:font-semibold
-                   file:bg-indigo-50 file:text-indigo-700
-                   hover:file:bg-indigo-100
-                   dark:file:bg-indigo-900/30 dark:file:text-indigo-300
-                   cursor-pointer transition-all" />
+    <div class="relative w-full space-y-3">
+        <label for="file_{{ $fid }}" class="relative flex flex-col items-center justify-center w-full py-4 px-4 transition-all bg-white dark:bg-gray-800/50 border-2 border-gray-200 dark:border-gray-700 border-dashed rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-800 group overflow-hidden">
+            <div class="flex flex-col items-center space-y-1 text-center transition-all duration-300">
+                <div class="p-2 bg-indigo-50 dark:bg-indigo-900/40 rounded-full text-indigo-500 group-hover:scale-110 transition-transform">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="font-bold text-xs text-indigo-600 dark:text-indigo-400">برای آپلود فایل کلیک کنید</span>
+                </div>
+                <p class="text-[10px] text-gray-400 dark:text-gray-500">
+                    {{ !empty($field['multiple']) ? 'امکان آپلود همزمان چند فایل' : 'یا فایل خود را اینجا رها کنید' }}
+                </p>
+            </div>
+        </label>
+
+        <input id="file_{{ $fid }}"
+               type="file"
+               wire:model="upload_files.{{ $fid }}"
+               class="hidden"
+               @if(!empty($field['multiple'])) multiple @endif
+               @if(!empty($field['accept'])) accept="{{ $field['accept'] }}" @endif />
+
+        {{-- نمایش وضعیت آپلود لایووایر --}}
+        <div wire:loading wire:target="upload_files.{{ $fid }}" class="w-full">
+            <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700 overflow-hidden">
+                <div class="bg-indigo-600 h-1.5 rounded-full animate-pulse" style="width: 100%"></div>
+            </div>
+            <span class="text-[10px] text-gray-400 mt-1 block text-right">در حال بارگذاری فایل...</span>
+        </div>
+
+        @php
+            $existing = $this->meta[$fid] ?? null;
+            $allFiles = [];
+            if ($existing) {
+                if (is_array($existing)) {
+                    $allFiles = $existing;
+                } else {
+                    $decoded = json_decode($existing, true);
+                    if (is_array($decoded)) {
+                        $allFiles = $decoded;
+                    } else {
+                        $allFiles = [$existing];
+                    }
+                }
+            }
+        @endphp
+
+        @if(!empty($allFiles))
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                @foreach($allFiles as $fIndex => $f)
+                    @php
+                        $isImage = false;
+                        $url = '#';
+                        $name = '';
+                        if ($f instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
+                            $name = $f->getClientOriginalName();
+                            $isImage = str_starts_with($f->getMimeType(), 'image/');
+                            try {
+                                $url = $isImage ? $f->temporaryUrl() : '#';
+                            } catch (\Throwable $e) {
+                                $url = '#';
+                            }
+                        } else {
+                            $name = basename($f);
+                            $url = Storage::disk('public')->url($f);
+                            $isImage = in_array(strtolower(pathinfo($f, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+                        }
+                    @endphp
+                    <div class="flex items-center justify-between gap-3 p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-800 transition-all hover:bg-white dark:hover:bg-gray-900">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            @if($isImage && $url !== '#')
+                                <a href="{{ $url }}" target="_blank" class="block shrink-0 relative group">
+                                    <img src="{{ $url }}" class="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
+                                    <div class="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                    </div>
+                                </a>
+                            @else
+                                <div class="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 rounded-lg shrink-0">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                            @endif
+                            <div class="min-w-0">
+                                <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate dir-ltr text-left" title="{{ $name }}">{{ $name }}</p>
+                                @if($f instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile)
+                                    <span class="text-[9px] text-amber-500 font-medium">جدید (ذخیره نشده)</span>
+                                @else
+                                    <span class="text-[9px] text-emerald-500 font-medium">ذخیره شده</span>
+                                @endif
+                            </div>
+                        </div>
+                        <button type="button" wire:click="deleteDynamicFile('{{ $fid }}', {{ $fIndex }})" class="p-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 text-rose-500 rounded-lg transition-all shrink-0">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                @endforeach
+            </div>
+        @endif
     </div>
 
     {{-- select-user-by-role --}}

@@ -268,3 +268,18 @@ Quill.js Editor Custom Styles (Professional RTL & Dark Mode)
     content: 'حذف' !important;
     margin-right: 0.5rem;
 }
+
+/* SortableJS Ghost Classes */
+.sortable-ghost {
+    @apply bg-gray-200 opacity-50;
+}
+.dark .sortable-ghost {
+    @apply bg-gray-700;
+}
+
+.sortable-ghost-item {
+    @apply bg-indigo-100;
+}
+.dark .sortable-ghost-item {
+    @apply bg-indigo-900/50;
+}

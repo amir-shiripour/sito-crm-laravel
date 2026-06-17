@@ -131,8 +131,13 @@
                             <div class="text-sm text-gray-500 mt-1">ارائه‌دهنده: {{ optional($payment->appointment->provider)->full_name ?? optional($payment->appointment->provider)->name ?? '---' }}</div>
                         </div>
                     </div>
+                    @php
+                        // booking_payments.amount همیشه به ریال (IRR) در دیتابیس ذخیره شده
+                        // اگر واحد نمایش تومان باشد تقسیم بر ۱۰ کن
+                        $displayAmount = ($bookingCurrencyUnit === 'IRT') ? ($payment->amount / 10) : $payment->amount;
+                    @endphp
                     <div class="text-xl font-bold text-gray-900 dark:text-white">
-                        {{ number_format($payment->amount) }} <span class="text-sm font-normal text-gray-500">تومان</span>
+                        {{ number_format($displayAmount) }} <span class="text-sm font-normal text-gray-500">{{ $bookingCurrencyLabel }}</span>
                     </div>
                 </div>
             </div>
@@ -141,7 +146,7 @@
         <div class="flex flex-col items-end gap-2 border-t border-gray-100 dark:border-gray-700 pt-6">
             <div class="flex justify-between w-full sm:w-1/2">
                 <span class="text-gray-500 dark:text-gray-400">جمع کل مبلغ:</span>
-                <span class="font-bold text-xl text-gray-900 dark:text-white">{{ number_format($payment->amount) }} <span class="text-sm font-normal text-gray-500">تومان</span></span>
+                <span class="font-bold text-xl text-gray-900 dark:text-white">{{ number_format($displayAmount) }} <span class="text-sm font-normal text-gray-500">{{ $bookingCurrencyLabel }}</span></span>
             </div>
         </div>
 

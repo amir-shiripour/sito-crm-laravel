@@ -26,6 +26,8 @@ class ClientController extends Controller
      */
     public function index(Request $request)
     {
+        session(['clients_index_url' => $request->fullUrl()]);
+
         $user = auth()->user();
         $query = Client::visibleForUser($user)
             ->with(['creator', 'status', 'calls.user']);
@@ -53,8 +55,25 @@ class ClientController extends Controller
             $query->where('status_id', $request->input('status_id'));
         }
 
-        $clients = $query->orderBy('created_at', 'desc')
-            ->paginate(12)
+        // فیلتر بر اساس ترتیب نمایش (جدیدترین، قدیمی‌ترین و...)
+        $sort = $request->input('sort', 'newest');
+        switch ($sort) {
+            case 'oldest':
+                $query->orderBy('id', 'asc');
+                break;
+            case 'name_asc':
+                $query->orderBy('full_name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('full_name', 'desc');
+                break;
+            case 'newest':
+            default:
+                $query->orderBy('id', 'desc');
+                break;
+        }
+
+        $clients = $query->paginate(12)
             ->appends($request->query());
 
         // لیست کاربران و وضعیت‌ها برای دراپ‌داون‌های فیلتر
@@ -87,7 +106,7 @@ class ClientController extends Controller
         Client::create($data);
 
         return redirect()
-            ->route('user.clients.index')
+            ->to(session('clients_index_url', route('user.clients.index')))
             ->with('success', 'Client created.');
     }
 
@@ -107,12 +126,19 @@ class ClientController extends Controller
     {
         $this->ensureVisible($client);
 
-        $client->load([
-            'creator',
-            'status',
-            'calls.user',
-            'followUps.assignee',
-        ]);
+        $relations = ['creator', 'status'];
+
+        $clientCallsModule = \App\Models\Module::where('slug', 'clientcalls')->first();
+        if ($clientCallsModule && $clientCallsModule->installed && $clientCallsModule->active && \Schema::hasTable('client_calls')) {
+            $relations[] = 'calls.user';
+        }
+
+        $followUpsModule = \App\Models\Module::where('slug', 'followups')->first();
+        if ($followUpsModule && $followUpsModule->installed && $followUpsModule->active && \Schema::hasTable('tasks')) {
+            $relations[] = 'followUps.assignee';
+        }
+
+        $client->load($relations);
 
         // دریافت فرم فعال برای نمایش لیبل فیلدها
         $keyFromSettings = \Modules\Clients\Entities\ClientSetting::getValue('default_form_key');
@@ -143,7 +169,7 @@ class ClientController extends Controller
         $client->update($data);
 
         return redirect()
-            ->route('user.clients.index')
+            ->to(session('clients_index_url', route('user.clients.index')))
             ->with('success', 'Client updated.');
     }
 
@@ -156,6 +182,47 @@ class ClientController extends Controller
         $client->forceDelete();
 
         return back()->with('success', 'Client deleted.');
+    }
+
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:clients,id'],
+            'action' => ['required', 'string', 'in:status,delete'],
+            'status_id' => ['required_if:action,status', 'nullable', 'integer', 'exists:client_statuses,id'],
+        ]);
+
+        $ids = $request->input('ids');
+        $action = $request->input('action');
+        $user = auth()->user();
+
+        // فیلتر کلاینت‌ها بر اساس دسترسی مشاهده
+        $clientsQuery = Client::visibleForUser($user)->whereIn('id', $ids);
+        $clients = $clientsQuery->get();
+        $count = 0;
+
+        if ($action === 'status') {
+            $statusId = $request->input('status_id');
+            foreach ($clients as $client) {
+                if ($user->can('clients.edit')) {
+                    $client->update(['status_id' => $statusId]);
+                    $count++;
+                }
+            }
+            return redirect()->to(session('clients_index_url', route('user.clients.index')))->with('success', "وضعیت {$count} مشتری با موفقیت تغییر کرد.");
+        } elseif ($action === 'delete') {
+            if (!$user->can('clients.delete')) {
+                abort(403);
+            }
+            foreach ($clients as $client) {
+                $client->forceDelete();
+                $count++;
+            }
+            return redirect()->to(session('clients_index_url', route('user.clients.index')))->with('success', "تعداد {$count} مشتری با موفقیت حذف شد.");
+        }
+
+        return redirect()->to(session('clients_index_url', route('user.clients.index')));
     }
 
     /**
@@ -187,7 +254,7 @@ class ClientController extends Controller
 
         // fallback برای ارسال معمولی فرم
         return redirect()
-            ->route('user.clients.index')
+            ->to(session('clients_index_url', route('user.clients.index')))
             ->with('success', 'Client created.');
     }
 

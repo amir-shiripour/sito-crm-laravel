@@ -98,6 +98,15 @@ class ClientFormBuilder extends Component
             if (!isset($f['conditional_required']) || !is_array($f['conditional_required'])) {
                 $f['conditional_required'] = [];
             }
+            if (($f['type'] ?? '') === 'file' && !isset($f['multiple'])) {
+                $f['multiple'] = false;
+            }
+            if (($f['type'] ?? '') === 'select') {
+                $f['creatable'] = (bool)($f['creatable'] ?? false);
+                $f['save_globally'] = (bool)($f['save_globally'] ?? false);
+                $f['use_clients_list'] = (bool)($f['use_clients_list'] ?? false);
+                $f['searchable'] = (bool)($f['searchable'] ?? false);
+            }
         }
         unset($f);
     }
@@ -128,6 +137,7 @@ class ClientFormBuilder extends Component
             'label'               => 'بی‌نام',
             'quick_create'        => false,
             'client_auth'         => false,
+            'show_in_registration'=> false,
             'placeholder'         => '',
             'width'               => 'full',
             'group'               => '',
@@ -140,7 +150,14 @@ class ClientFormBuilder extends Component
         if ($type === 'select') {
             $this->schema['fields'][$lastIndex]['options_json'] = '';
             $this->schema['fields'][$lastIndex]['multiple'] = false;
+            $this->schema['fields'][$lastIndex]['searchable'] = false;
             $this->schema['fields'][$lastIndex]['use_clients_list'] = false;
+            $this->schema['fields'][$lastIndex]['creatable'] = false;
+            $this->schema['fields'][$lastIndex]['save_globally'] = false;
+        }
+
+        if ($type === 'radio') {
+            $this->schema['fields'][$lastIndex]['options_json'] = '';
         }
 
         if ($type === 'select-user-by-role') {
@@ -152,6 +169,7 @@ class ClientFormBuilder extends Component
         if ($type === 'file') {
             $this->schema['fields'][$lastIndex]['max_mb'] = null;
             $this->schema['fields'][$lastIndex]['accept'] = '';
+            $this->schema['fields'][$lastIndex]['multiple'] = false;
         }
     }
 
@@ -190,6 +208,9 @@ class ClientFormBuilder extends Component
         }
         if (!array_key_exists('client_auth', $field)) {
             $field['client_auth'] = false;
+        }
+        if (!array_key_exists('show_in_registration', $field)) {
+            $field['show_in_registration'] = false;
         }
 
         $this->schema['fields'][] = $field;
@@ -232,6 +253,9 @@ class ClientFormBuilder extends Component
 
             if (!array_key_exists('client_auth', $f)) {
                 $f['client_auth'] = false;
+            }
+            if (!array_key_exists('show_in_registration', $f)) {
+                $f['show_in_registration'] = false;
             }
 
             if ($isReserved) {

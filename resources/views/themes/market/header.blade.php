@@ -31,16 +31,26 @@
 
         {{-- اکشن‌ها --}}
         <div class="flex items-center gap-1 sm:gap-4 flex-shrink-0">
+            @if(isset($isMarketActive) && $isMarketActive && class_exists(\Modules\Market\Entities\MarketSetting::class) && \Modules\Market\Entities\MarketSetting::getValue('orders.enable_geolocation_ordering', false))
+                @php
+                    $currentLoc = \Modules\Market\App\Helpers\GeolocationHelper::getClientLocation();
+                    $locText = ($currentLoc && !empty($currentLoc['city'])) ? $currentLoc['city'] : 'انتخاب موقعیت';
+                @endphp
+                <button onclick="Livewire.dispatch('openLocationModal')" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs font-bold">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span id="header-location-text">{{ $locText }}</span>
+                </button>
+            @endif
+
             {{-- Dark Mode Switcher (مخفی در موبایل) --}}
             <button onclick="setAppThemeMode(localStorage.theme === 'dark' ? 'light' : 'dark')" class="hidden sm:block p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
                 <svg class="w-5 h-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                 <svg class="w-5 h-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
             </button>
 
-            <a href="#" class="hidden sm:flex relative p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                <span class="absolute top-0 right-0 w-4 h-4 {{ $t['bg'] ?? 'bg-orange-600' }} text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-gray-950">۲</span>
-            </a>
+            @if(isset($isMarketActive) && $isMarketActive)
+                @livewire('market::web.cart-counter')
+            @endif
 
             <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block"></div>
 
@@ -90,6 +100,19 @@
             </button>
         </div>
 
+        @if(isset($isMarketActive) && $isMarketActive && class_exists(\Modules\Market\Entities\MarketSetting::class) && \Modules\Market\Entities\MarketSetting::getValue('orders.enable_geolocation_ordering', false))
+            @php
+                $currentLoc = \Modules\Market\App\Helpers\GeolocationHelper::getClientLocation();
+                $locText = ($currentLoc && !empty($currentLoc['city'])) ? $currentLoc['city'] : 'انتخاب موقعیت';
+            @endphp
+            <div class="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
+                <button onclick="Livewire.dispatch('openLocationModal')" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-300 shadow-sm transition-all active:scale-95">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span id="mobile-location-text">موقعیت شما: {{ $locText }}</span>
+                </button>
+            </div>
+        @endif
+
         {{-- محتوای سایدبار --}}
         <div class="flex-1 overflow-y-auto p-4 space-y-6">
             {{-- جستجو در موبایل --}}
@@ -103,7 +126,7 @@
             {{-- لینک‌های دسته‌بندی --}}
             <nav class="space-y-2">
                 <p class="text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 px-2">دسته‌بندی‌ها و لینک‌ها</p>
-                <a href="{{ route('market.public.category') ?? '#' }}" class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl">
+                <a href="{{ Route::has('market.public.category') ? route('market.public.category') : '#' }}" class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl">
                     <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     دسته‌بندی کالاها
                 </a>
@@ -152,7 +175,7 @@
 
             {{-- دکمه دسته‌بندی --}}
             @php $isActive = request()->routeIs('market.public.category*'); @endphp
-            <a href="{{ route('market.public.category') ?? '#' }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
+            <a href="{{ Route::has('market.public.category') ? route('market.public.category') : '#' }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
                 @if($isActive)
                     <div class="absolute top-3 w-10 h-10 {{ $t['bg'] ?? 'bg-orange-600' }} opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
                     <span class="absolute top-0 w-8 h-1 {{ $t['bg'] ?? 'bg-orange-600' }} rounded-b-full"></span>
@@ -167,22 +190,11 @@
 
             {{-- دکمه سبد خرید --}}
             @php $isActive = request()->routeIs('market.public.cart*') || request()->routeIs('checkout*'); @endphp
-            <a href="#" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
-                @if($isActive)
-                    <div class="absolute top-3 w-10 h-10 {{ $t['bg'] ?? 'bg-orange-600' }} opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
-                    <span class="absolute top-0 w-8 h-1 {{ $t['bg'] ?? 'bg-orange-600' }} rounded-b-full"></span>
-                @endif
-                <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isActive ? '-translate-y-0.5' : '' }}">
-                    <div class="relative">
-                        <svg class="w-6 h-6 mb-1 {{ $isActive ? ($t['text'] ?? 'text-orange-600') . ' ' . ($t['text_dark'] ?? 'dark:text-orange-400') : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300' }} transition-colors duration-300" fill="{{ $isActive ? 'currentColor' : 'none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="{{ $isActive ? '0' : '1.5' }}">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        {{-- نشان (Badge) اعلان با استایل مدرن --}}
-                        <span class="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] flex items-center justify-center px-1 {{ $t['bg'] ?? 'bg-orange-600' }} text-white text-[10px] font-black rounded-full border-[1.5px] border-white dark:border-gray-900 shadow-sm">۲</span>
-                    </div>
-                    <span class="text-[10px] font-bold {{ $isActive ? ($t['text'] ?? 'text-orange-600') . ' ' . ($t['text_dark'] ?? 'dark:text-orange-400') : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">سبد خرید</span>
-                </div>
-            </a>
+            <div class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
+                 @if(isset($isMarketActive) && $isMarketActive)
+                     @livewire('market::web.cart-counter', ['isBottomNav' => true])
+                 @endif
+            </div>
 
             {{-- دکمه پروفایل / ورود --}}
             @php $isActive = request()->routeIs('user.dashboard') || request()->routeIs('admin.dashboard') || request()->routeIs('login'); @endphp
@@ -237,6 +249,14 @@
             document.body.style.overflow = '';
         }
     }
+
+    window.addEventListener('location-changed', (event) => {
+        const city = event.detail.city || 'انتخاب موقعیت';
+        const headerText = document.getElementById('header-location-text');
+        if (headerText) headerText.textContent = city;
+        const mobileText = document.getElementById('mobile-location-text');
+        if (mobileText) mobileText.textContent = 'موقعیت شما: ' + city;
+    });
 </script>
 
 {{--

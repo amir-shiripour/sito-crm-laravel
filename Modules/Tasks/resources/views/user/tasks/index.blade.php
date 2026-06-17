@@ -4,7 +4,7 @@
     @php
         use Morilog\Jalali\Jalalian;
     @endphp
-    <div class="w-full mx-auto px-4 py-8">
+    <div class="w-full mx-auto px-4 py-8" x-data="{ selectedIds: [], allChecked: false, bulkStatus: '' }">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -26,17 +26,29 @@
 
         {{-- فیلترها --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
-            <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 {{ auth()->user()->can('tasks.view.all') ? 'md:grid-cols-3 lg:grid-cols-6' : 'md:grid-cols-5' }} gap-4">
                 <div>
                     <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">جستجو</label>
                     <input type="text" name="q" value="{{ request('q') }}"
                            placeholder="عنوان، توضیحات..."
-                           class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                           class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
                 </div>
+                @if(auth()->user()->can('tasks.view.all'))
+                    <div>
+                        <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">کاربر مسئول</label>
+                        <select name="assignee_id"
+                                class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                            <option value="">همه کاربران</option>
+                            @foreach($users ?? [] as $u)
+                                <option value="{{ $u->id }}" @selected(request('assignee_id') == $u->id)>{{ $u->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
                 <div>
                     <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">وضعیت</label>
                     <select name="status"
-                            class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
                         <option value="">همه</option>
                         @foreach($statuses ?? [] as $value => $label)
                             <option value="{{ $value }}" @selected(request('status') == $value)>{{ $label }}</option>
@@ -46,11 +58,21 @@
                 <div>
                     <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">اولویت</label>
                     <select name="priority"
-                            class="w-full rounded-xl border-gray-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
                         <option value="">همه</option>
                         @foreach($priorities ?? [] as $value => $label)
                             <option value="{{ $value }}" @selected(request('priority') == $value)>{{ $label }}</option>
                         @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium mb-1 text-gray-500 dark:text-gray-400">مرتب‌سازی</label>
+                    <select name="sort"
+                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                        <option value="newest" @selected(request('sort') == 'newest' || !request('sort'))>زمان ایجاد (جدیدترین)</option>
+                        <option value="oldest" @selected(request('sort') == 'oldest')>زمان ایجاد (قدیمی‌ترین)</option>
+                        <option value="due_asc" @selected(request('sort') == 'due_asc')>زمان سررسید (نزدیک‌ترین)</option>
+                        <option value="due_desc" @selected(request('sort') == 'due_desc')>زمان سررسید (دورترین)</option>
                     </select>
                 </div>
                 <div class="flex items-end gap-2">
@@ -66,12 +88,50 @@
             </form>
         </div>
 
+        {{-- پنل عملیات گروهی --}}
+        <div x-show="selectedIds.length > 0"
+             x-transition
+             class="flex flex-wrap items-center justify-between gap-4 p-4 mb-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl">
+            <div class="flex items-center gap-2 text-sm text-emerald-800 dark:text-emerald-300">
+                <span class="font-bold text-base" x-text="selectedIds.length"></span>
+                <span>مورد انتخاب شده است.</span>
+            </div>
+            
+            <form method="POST" action="{{ route('user.tasks.bulk-update') }}" class="flex flex-wrap items-center gap-3">
+                @csrf
+                <template x-for="id in selectedIds" :key="id">
+                    <input type="hidden" name="ids[]" :value="id">
+                </template>
+
+                <div class="flex items-center gap-2">
+                    <select name="status" x-model="bulkStatus" class="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                        <option value="">تغییر وضعیت به...</option>
+                        @foreach($statuses ?? [] as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" name="action" value="status" :disabled="!bulkStatus" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-medium transition-colors">
+                        اعمال وضعیت
+                    </button>
+                </div>
+
+                <div class="h-4 w-px bg-emerald-200 dark:bg-emerald-800 hidden sm:block"></div>
+
+                <button type="submit" name="action" value="delete" onclick="return confirm('آیا از حذف گروهی وظایف انتخاب شده مطمئن هستید؟')" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-medium transition-colors">
+                    حذف گروهی
+                </button>
+            </form>
+        </div>
+
         {{-- جدول --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             @if($tasks->count())
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-900/50">
                     <tr>
+                        <th class="w-12 px-4 py-3 text-right">
+                            <input type="checkbox" x-model="allChecked" @change="selectedIds = allChecked ? [{{ implode(',', $tasks->pluck('id')->toArray()) }}] : []" class="rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                        </th>
                         <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">عنوان</th>
                         <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">نوع</th>
                         <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">مسئول</th>
@@ -84,6 +144,9 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                     @foreach($tasks as $task)
                         <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-900/30">
+                            <td class="w-12 px-4 py-3">
+                                <input type="checkbox" :value="{{ $task->id }}" x-model="selectedIds" @change="allChecked = (selectedIds.length === {{ $tasks->count() }})" class="rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                            </td>
                             <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
                                 <a href="{{ route('user.tasks.show', $task) }}"
                                    class="font-medium hover:text-emerald-600">
@@ -99,7 +162,7 @@
                                 {{ $types[$task->task_type] ?? $task->task_type }}
                             </td>
                             <td class="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
-                                {{ optional($task->assignee)->name ?? '—' }}
+                                {{ $task->assignee_name }}
                             </td>
                             <td class="px-4 py-3 text-xs">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full

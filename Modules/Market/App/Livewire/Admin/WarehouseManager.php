@@ -2,6 +2,7 @@
 
 namespace Modules\Market\App\Livewire\Admin;
 
+use App\Models\User;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Modules\Market\Entities\MarketSetting;
@@ -14,6 +15,7 @@ class WarehouseManager extends Component
     use WithPagination;
 
     public $search = '';
+    public $filterType = 'all'; // 'central', 'vendors', 'all'
     public $isModalOpen = false;
     public $warehouseId;
     public $name;
@@ -32,7 +34,6 @@ class WarehouseManager extends Component
     {
         return [
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:255|unique:market_warehouses,code,' . $this->warehouseId,
             'is_active' => 'boolean',
             'vendor_id' => 'nullable|exists:market_vendors,id',
         ];
@@ -40,6 +41,12 @@ class WarehouseManager extends Component
 
     public function updatingSearch()
     {
+        $this->resetPage();
+    }
+    
+    public function setFilter($filter)
+    {
+        $this->filterType = $filter;
         $this->resetPage();
     }
 
@@ -70,7 +77,11 @@ class WarehouseManager extends Component
 
         Warehouse::updateOrCreate(
             ['id' => $this->warehouseId],
-            $validatedData
+            [
+                'name' => $validatedData['name'],
+                'is_active' => $validatedData['is_active'],
+                'vendor_id' => $validatedData['vendor_id'],
+            ]
         );
 
         $this->dispatch('notify', type: 'success', text: $this->warehouseId ? 'انبار با موفقیت ویرایش شد.' : 'انبار با موفقیت ایجاد شد.');
@@ -105,23 +116,42 @@ class WarehouseManager extends Component
 
     public function render()
     {
-        $warehouses = Warehouse::with('vendor')
-            ->where(function ($query) {
-                $query->where('name', 'like', '%' . $this->search . '%')
-                      ->orWhere('code', 'like', '%' . $this->search . '%')
-                      ->orWhereHas('vendor', function ($q) {
-                          $q->where('store_name', 'like', '%' . $this->search . '%');
-                      });
-            })
-            ->latest()
-            ->paginate(10);
+        $query = Warehouse::with('vendor')
+            ->where(function ($q) {
+                $q->where('name', 'like', '%' . $this->search . '%')
+                  ->orWhere('code', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('vendor', function ($q2) {
+                      $q2->where('store_name', 'like', '%' . $this->search . '%');
+                  });
+            });
 
-        // 💡 اصلاح کوئری برای خواندن فروشندگان فعال
-        $vendors = $this->isMultiVendor ? Vendor::where('status', 'active')->get() : collect();
+        if ($this->filterType === 'central') {
+            $query->whereNull('vendor_id');
+        } elseif ($this->filterType === 'vendors') {
+            $query->whereNotNull('vendor_id');
+        }
+
+        $warehouses = $query->latest()->paginate(10);
+
+        $vendors = collect();
+        $adminVendor = null;
+
+        if ($this->isMultiVendor) {
+            $allActiveVendors = Vendor::with('user.roles')->where('status', 'active')->get();
+
+            $adminVendor = $allActiveVendors->first(function ($vendor) {
+                return $vendor->user && $vendor->user->hasAnyRole(['super-admin', 'admin']);
+            });
+
+            $vendors = $allActiveVendors->filter(function ($vendor) use ($adminVendor) {
+                return !$adminVendor || $vendor->id !== $adminVendor->id;
+            });
+        }
 
         return view('market::livewire.admin.warehouse-manager', [
             'warehouses' => $warehouses,
             'vendors' => $vendors,
+            'adminVendor' => $adminVendor,
         ]);
     }
 }

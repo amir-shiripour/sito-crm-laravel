@@ -87,8 +87,16 @@
                 </li>
             </template>
 
+            {{-- امکان افزودن گزینه جدید در صورتی که creatable فعال باشد و جستجو با هیچ گزینه‌ای مطابق نباشد --}}
+            <template x-if="creatable && search.trim() && !options.some(o => o.label.toLowerCase() === search.trim().toLowerCase())">
+                <li @click="addNewOption(); $refs.searchInput.focus()"
+                    class="relative cursor-pointer select-none py-2 px-3 text-right text-xs text-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 rounded-lg transition-colors font-medium dark:text-indigo-400 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30">
+                    <span>« افزودن گزینه جدید: <span class="font-bold" x-text="search.trim()"></span> »</span>
+                </li>
+            </template>
+
             {{-- پیام خالی --}}
-            <li x-show="filteredOptions.length === 0"
+            <li x-show="filteredOptions.length === 0 && (!creatable || !search.trim())"
                 class="py-3 text-center text-xs text-gray-500 dark:text-gray-400 italic">
                 موردی یافت نشد.
             </li>

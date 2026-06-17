@@ -43,14 +43,12 @@ class AvailabilityController extends Controller
             'scope_type' => ['required', Rule::in([BookingAvailabilityRule::SCOPE_GLOBAL, BookingAvailabilityRule::SCOPE_SERVICE, BookingAvailabilityRule::SCOPE_SERVICE_PROVIDER])],
             'scope_id' => ['nullable', 'integer'],
             'weekday' => ['required', 'integer', 'min:0', 'max:6'],
-
             'is_closed' => ['required', 'boolean'],
             'work_start_local' => ['nullable', 'date_format:H:i'],
             'work_end_local' => ['nullable', 'date_format:H:i'],
             'breaks_json' => ['nullable', 'array'],
             'breaks_json.*.start_local' => ['required_with:breaks_json', 'date_format:H:i'],
             'breaks_json.*.end_local' => ['required_with:breaks_json', 'date_format:H:i'],
-
             'slot_duration_minutes' => ['nullable', 'integer', 'min:5', 'max:720'],
             'capacity_per_slot' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'capacity_per_day' => ['nullable', 'integer', 'min:0', 'max:10000'],

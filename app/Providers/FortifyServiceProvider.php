@@ -102,7 +102,14 @@ class FortifyServiceProvider extends ServiceProvider
                     $user = $request->user();
 
                     if ($user && method_exists($user, 'hasRole') && $user->hasRole('super-admin')) {
+                        // سوپر ادمین را به ادمین هدایت کن
                         return redirect()->intended('/admin/dashboard');
+                    }
+
+                    // کاربران غیر سوپر ادمین نباید به آدرس‌های مدیریت هدایت شوند
+                    $intended = redirect()->intended('/user/dashboard')->getTargetUrl();
+                    if (str_contains($intended, '/admin/')) {
+                        return redirect()->to('/user/dashboard');
                     }
 
                     return redirect()->intended('/user/dashboard');

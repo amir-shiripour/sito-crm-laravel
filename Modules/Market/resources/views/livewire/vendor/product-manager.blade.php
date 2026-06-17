@@ -117,6 +117,11 @@
                                         <div class="flex flex-col border-r border-gray-100 dark:border-gray-700 pr-3">
                                             <span class="text-[10px] text-gray-400 dark:text-gray-500">خرید (حداقل - حداکثر)</span>
                                             <span class="font-bold text-gray-600 dark:text-gray-300 text-sm">{{ $vp->min_purchase_qty }} - {{ $vp->max_purchase_qty ?: 'نامحدود' }}</span>
+                                            @if($vp->cart_amount_step > 0 && $vp->purchase_step > 0)
+                                                <span class="text-[9px] text-amber-600 dark:text-amber-400 mt-1 font-semibold block" title="محدودیت بر اساس مبلغ سبد خرید">
+                                                    به ازای هر {{ number_format($vp->cart_amount_step) }} تومان: {{ $vp->purchase_step }} عدد
+                                                </span>
+                                            @endif
                                         </div>
 
                                         <div class="flex items-center justify-end gap-2 pr-3">
@@ -138,7 +143,7 @@
                                     </div>
 
                                     {{-- 💡 آپدیت: محاسبه درصد و مدیریت زمان تخفیف در ویرایش سریع --}}
-                                    <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
+                                    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
                                         <div class="col-span-2 lg:col-span-1" x-data="{
                                             raw: @entangle('editForm.price'),
                                             formatted: '',
@@ -162,7 +167,7 @@
                                                 this.$watch('rawDiscount', val => {
                                                     this.formatDiscount(val);
                                                     this.calcPercent();
-                                                });
+                                                 });
                                                 this.$watch('rawPrice', () => this.calcPercent());
                                             },
                                             formatDiscount(val) {
@@ -205,19 +210,61 @@
                                             </div>
                                         </div>
 
-                                        <div class="lg:col-span-1">
+                                        <div class="col-span-2 lg:col-span-1">
                                             <label class="{{ $labelClass }}">موجودی</label>
                                             <input type="number" wire:model="editForm.stock" class="{{ $inputClass }} text-center font-bold">
                                         </div>
-                                        <div class="lg:col-span-1">
-                                            <label class="{{ $labelClass }}">حداقل سفارش</label>
-                                            <input type="number" wire:model="editForm.min_purchase_qty" class="{{ $inputClass }} text-center">
+                                    </div>
+
+                                    {{-- محدودیت‌های خرید --}}
+                                    <div class="mt-3 bg-gray-50/50 dark:bg-gray-900/10 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <div class="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-2 border-b border-gray-100 dark:border-gray-700/50 pb-1">تنظیمات محدودیت خرید</div>
+                                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                            <div>
+                                                <label class="{{ $labelClass }}">حداقل سفارش</label>
+                                                <input type="number" wire:model="editForm.min_purchase_qty" class="{{ $inputClass }} text-center">
+                                                @error('editForm.min_purchase_qty') <span class="text-[10px] text-red-500">{{ $message }}</span> @enderror
+                                            </div>
+                                            <div>
+                                                <label class="{{ $labelClass }}">حداکثر سفارش</label>
+                                                <input type="number" wire:model="editForm.max_purchase_qty" class="{{ $inputClass }} text-center" placeholder="نامحدود">
+                                                @error('editForm.max_purchase_qty') <span class="text-[10px] text-red-500">{{ $message }}</span> @enderror
+                                            </div>
+                                            <div x-data="{
+                                                rawAmount: @entangle('editForm.cart_amount_step'),
+                                                formattedAmount: '',
+                                                init() {
+                                                    this.formatAmount(this.rawAmount);
+                                                    this.$watch('rawAmount', val => this.formatAmount(val));
+                                                },
+                                                formatAmount(val) {
+                                                    this.formattedAmount = val ? val.toString().replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                                                },
+                                                updateAmount() {
+                                                    this.rawAmount = this.formattedAmount.replace(/,/g, '');
+                                                }
+                                            }">
+                                                <label class="{{ $labelClass }}">مبنای مبلغ سبد خرید</label>
+                                                <div class="relative">
+                                                    <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-mono dir-ltr text-center" placeholder="مثلا 1,000,000">
+                                                    <span class="absolute inset-y-0 right-3 flex items-center text-[9px] text-gray-400">تومان سبد</span>
+                                                </div>
+                                                @error('editForm.cart_amount_step') <span class="text-[10px] text-red-500">{{ $message }}</span> @enderror
+                                            </div>
+                                            <div>
+                                                <label class="{{ $labelClass }}">تعداد مجاز به ازای مبنا</label>
+                                                <div class="relative">
+                                                    <input type="number" wire:model="editForm.purchase_step" class="{{ $inputClass }} text-center" placeholder="مثلا 1">
+                                                    <span class="absolute inset-y-0 right-3 flex items-center text-[9px] text-gray-400">عدد کالا</span>
+                                                </div>
+                                                @error('editForm.purchase_step') <span class="text-[10px] text-red-500">{{ $message }}</span> @enderror
+                                            </div>
                                         </div>
                                     </div>
 
                                     {{-- تنظیمات پیشرفته زمان و موجودی تخفیف در ویرایش سریع --}}
                                     <div x-data="{ hasDiscount: @entangle('editForm.discount_price') }" x-show="hasDiscount" x-collapse>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 bg-rose-50/30 dark:bg-rose-900/5 p-3 rounded-xl border border-rose-100 dark:border-rose-800/50" wire:ignore x-data="{ initJalaliDatePicker() { new JalaliDatePicker(); } }" x-init="initJalaliDatePicker()">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 bg-rose-50/30 dark:bg-rose-900/5 p-3 rounded-xl border border-rose-100 dark:border-rose-800/50" wire:ignore>
                                             <div>
                                                 <label class="{{ $labelClass }} !text-rose-700 dark:!text-rose-400">شروع تخفیف</label>
                                                 <input type="text" data-jdp-with-time wire:model.defer="editForm.discount_start_date" class="{{ $inputClass }} !border-rose-200 dark:!border-rose-800">

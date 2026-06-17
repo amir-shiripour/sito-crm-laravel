@@ -37,9 +37,14 @@
 
     $basePrice = $service?->base_price ?: 0;
     $discountPrice = $service?->discount_price ?: 0;
+    // قیمت خدمت به واحد پول تنظیمات (مثلاً تومان یا ریال)
     $totalPrice = $discountPrice > 0 ? $discountPrice : $basePrice;
 
-    $totalPaid = $appointment->payments->where('status', 'PAID')->sum('amount');
+    // booking_payments.amount همیشه به ریال (IRR) در دیتابیس ذخیره شده
+    // اگر واحد تنظیمات تومان (IRT) باشد باید مبلغ پرداخت را تقسیم بر ۱۰ کنیم
+    $paidSumIRR = $appointment->payments->where('status', 'PAID')->sum('amount');
+    $totalPaid = ($bookingCurrencyUnit === 'IRT') ? ($paidSumIRR / 10) : $paidSumIRR;
+
     $remainingBalance = max(0, $totalPrice - $totalPaid);
 
     if ($service?->payment_mode === 'NONE' || $totalPrice == 0) {
@@ -171,17 +176,17 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                     <div class="flex flex-col">
                         <span class="text-sm text-gray-500 dark:text-gray-400 mb-1">مبلغ کل نوبت</span>
-                        <span class="font-medium text-gray-900 dark:text-white">{{ number_format($totalPrice) }} <span class="text-xs text-gray-500">تومان</span></span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ number_format($totalPrice) }} <span class="text-xs text-gray-500">{{ $bookingCurrencyLabel }}</span></span>
                     </div>
 
                     <div class="flex flex-col border-t sm:border-t-0 sm:border-r border-gray-200 dark:border-gray-700 pt-3 sm:pt-0 sm:pr-4">
                         <span class="text-sm text-gray-500 dark:text-gray-400 mb-1">پرداخت شده</span>
-                        <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($totalPaid) }} <span class="text-xs text-emerald-500/70">تومان</span></span>
+                        <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($totalPaid) }} <span class="text-xs text-emerald-500/70">{{ $bookingCurrencyLabel }}</span></span>
                     </div>
 
                     <div class="flex flex-col border-t sm:border-t-0 sm:border-r border-gray-200 dark:border-gray-700 pt-3 sm:pt-0 sm:pr-4">
                         <span class="text-sm text-gray-500 dark:text-gray-400 mb-1">مبلغ باقیمانده</span>
-                        <span class="font-bold {{ $remainingBalance > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white' }}">{{ number_format($remainingBalance) }} <span class="text-xs {{ $remainingBalance > 0 ? 'text-rose-500/70' : 'text-gray-500' }}">تومان</span></span>
+                        <span class="font-bold {{ $remainingBalance > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white' }}">{{ number_format($remainingBalance) }} <span class="text-xs {{ $remainingBalance > 0 ? 'text-rose-500/70' : 'text-gray-500' }}">{{ $bookingCurrencyLabel }}</span></span>
                     </div>
                 </div>
             </div>
@@ -255,7 +260,11 @@
                             <div class="p-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-3 transition-colors hover:border-emerald-200 dark:hover:border-emerald-800">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="flex flex-col">
-                                        <span class="font-bold text-gray-900 dark:text-white text-lg">{{ number_format($payment->amount) }} <span class="text-xs font-normal text-gray-500">تومان</span></span>
+                                        @php
+                                            // booking_payments.amount به IRR ذخیره شده - نمایش با واحد تنظیمات
+                                            $displayAmount = ($bookingCurrencyUnit === 'IRT') ? ($payment->amount / 10) : $payment->amount;
+                                        @endphp
+                                        <span class="font-bold text-gray-900 dark:text-white text-lg">{{ number_format($displayAmount) }} <span class="text-xs font-normal text-gray-500">{{ $bookingCurrencyLabel }}</span></span>
                                         <span class="text-xs text-gray-400 mt-0.5">{{ jdate($payment->created_at)->format('Y/m/d H:i') }}</span>
                                     </div>
                                     <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-medium {{ $payStatusColor }}">{{ $payStatusLabel }}</span>

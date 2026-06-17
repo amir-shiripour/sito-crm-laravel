@@ -72,4 +72,116 @@ class SmsMessage extends Model
 
         $this->save();
     }
+
+    public function creator(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'created_by');
+    }
+
+    public function getWorkflow(): ?array
+    {
+        if ($this->type !== self::TYPE_SYSTEM) {
+            return null;
+        }
+
+        // 1. Check if stored in meta
+        if (is_array($this->meta) && isset($this->meta['workflow_name'])) {
+            return [
+                'id' => $this->meta['workflow_id'] ?? null,
+                'name' => $this->meta['workflow_name'],
+            ];
+        }
+
+        // 2. Fallback to querying WorkflowLog for legacy messages
+        if (class_exists('\Modules\Workflows\Entities\WorkflowLog')) {
+            $log = \Modules\Workflows\Entities\WorkflowLog::query()
+                ->where('action_type', 'SEND_SMS')
+                ->where(function($query) {
+                    $query->where('data->result->sms_id', $this->id)
+                          ->orWhere('data->sms_id', $this->id);
+                })
+                ->with('instance.workflow')
+                ->first();
+
+            if ($log && $log->instance && $log->instance->workflow) {
+                return [
+                    'id' => $log->instance->workflow->id,
+                    'name' => $log->instance->workflow->name,
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    public function getSenderDetails(): array
+    {
+        if ($this->type === self::TYPE_SYSTEM) {
+            $wf = $this->getWorkflow();
+            if ($wf) {
+                return [
+                    'type' => 'workflow',
+                    'label' => $wf['name'],
+                    'id' => $wf['id'],
+                ];
+            }
+            return [
+                'type' => 'system',
+                'label' => 'سیستم',
+            ];
+        }
+
+        if ($this->type === self::TYPE_MANUAL && $this->created_by) {
+            $user = $this->creator;
+            if ($user) {
+                return [
+                    'type' => 'user',
+                    'label' => $user->name,
+                ];
+            }
+        }
+
+        return [
+            'type' => 'other',
+            'label' => match($this->type) {
+                self::TYPE_OTP => 'رمز یکبار مصرف',
+                self::TYPE_SCHEDULED => 'زمان‌بندی شده',
+                default => 'سیستم',
+            }
+        ];
+    }
+
+    public function getFinalMessageAttribute(): ?string
+    {
+        if ($this->message) {
+            return $this->message;
+        }
+
+        if (!$this->template_key) {
+            return null;
+        }
+
+        $template = \Modules\Sms\Entities\SmsTemplate::query()
+            ->where('key', $this->template_key)
+            ->orWhere('provider_pattern', $this->template_key)
+            ->first();
+
+        if ($template && $template->body) {
+            $body = $template->body;
+            $params = $this->params ?? [];
+            if (is_array($params)) {
+                foreach ($params as $key => $value) {
+                    $body = str_replace('{' . $key . '}', (string) $value, $body);
+                }
+            }
+            return $body;
+        }
+
+        if (is_array($this->params) && !empty($this->params)) {
+            return 'پارامترها: ' . implode(', ', $this->params);
+        }
+
+        return null;
+    }
 }
+

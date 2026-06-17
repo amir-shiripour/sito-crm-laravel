@@ -85,6 +85,18 @@ class Installer extends BaseModuleInstaller
             'booking.statement.edit',
             'booking.statement.delete',
             'booking.statement.manage',
+
+
+            // Cure (Treatment Plans)
+            'booking.cure.view',
+            'booking.cure.view.all',
+            'booking.cure.view.own',
+            'booking.cure.create',
+            'booking.cure.edit',
+            'booking.cure.edit.confirmed',
+            'booking.cure.delete',
+            'booking.cure.confirm',
+            'booking.cure.manage',
         ];
 
         $trackerPath = $this->permissionsTrackerPath();

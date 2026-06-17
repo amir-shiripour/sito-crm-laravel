@@ -102,7 +102,9 @@
                             <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">وضعیت</th>
                             <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">درایور</th>
                             <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/3">پیام / الگو</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">فرستنده</th>
                             <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">تاریخ</th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">عملیات</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
@@ -163,38 +165,85 @@
                                     <span class="font-mono text-xs">{{ $msg->driver ?? '—' }}</span>
                                 </td>
 
-                                {{-- پیام --}}
-                                <td class="px-6 py-4">
-                                    <div class="flex flex-col gap-1 max-w-xs">
-                                        @if($msg->template_key)
-                                            <div class="flex items-center gap-1">
-                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
-                                                    Pattern: {{ $msg->template_key }}
-                                                </span>
-                                            </div>
-                                        @endif
+                                 {{-- پیام --}}
+                                 <td class="px-6 py-4">
+                                     <div class="flex flex-col gap-1 max-w-xs">
+                                         @if($msg->template_key)
+                                             <div class="flex items-center gap-1">
+                                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                                     Pattern: {{ $msg->template_key }}
+                                                 </span>
+                                             </div>
+                                         @endif
 
-                                        @if($msg->message)
-                                            <p class="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 leading-relaxed" title="{{ $msg->message }}">
-                                                {{ $msg->message }}
-                                            </p>
-                                        @else
-                                            <span class="text-xs text-gray-400 italic">بدون متن</span>
-                                        @endif
-                                    </div>
-                                </td>
+                                         @if($msg->final_message)
+                                             <p class="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 leading-relaxed" title="{{ $msg->final_message }}">
+                                                 {{ $msg->final_message }}
+                                             </p>
+                                         @else
+                                             <span class="text-xs text-gray-400 italic">بدون متن</span>
+                                         @endif
+                                     </div>
+                                 </td>
 
-                                {{-- تاریخ --}}
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    <div class="flex flex-col items-end">
-                                        <span class="font-bold text-gray-700 dark:text-gray-300 dir-ltr text-xs">
-                                            {{ $msg->created_at?->format('Y-m-d') }}
-                                        </span>
-                                        <span class="text-xs text-gray-400 dir-ltr">
-                                            {{ $msg->created_at?->format('H:i') }}
-                                        </span>
-                                    </div>
-                                </td>
+                                 {{-- فرستنده --}}
+                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                     @php
+                                         $sender = $msg->getSenderDetails();
+                                     @endphp
+                                     @if($sender['type'] === 'workflow')
+                                         <div class="flex flex-col">
+                                             <span class="text-[10px] text-gray-400 dark:text-gray-500">گردش کار</span>
+                                             @can('workflows.view')
+                                                 <a href="{{ route('user.workflows.edit', $sender['id']) }}" class="text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-bold dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                     {{ $sender['label'] }}
+                                                 </a>
+                                             @else
+                                                 <span class="text-xs text-gray-700 dark:text-gray-300 font-bold">{{ $sender['label'] }}</span>
+                                             @endcan
+                                         </div>
+                                     @elseif($sender['type'] === 'user')
+                                         <div class="flex flex-col">
+                                             <span class="text-[10px] text-gray-400 dark:text-gray-500">کاربر</span>
+                                             <span class="text-xs text-gray-700 dark:text-gray-300 font-medium">{{ $sender['label'] }}</span>
+                                         </div>
+                                     @else
+                                         <span class="text-xs text-gray-500 dark:text-gray-400">{{ $sender['label'] }}</span>
+                                     @endif
+                                 </td>
+
+                                 {{-- تاریخ --}}
+                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                     <div class="flex flex-col items-end">
+                                         <span class="font-bold text-gray-700 dark:text-gray-300 dir-ltr text-xs">
+                                             {{ $msg->created_at ? jdate($msg->created_at)->format('Y/m/d') : '—' }}
+                                         </span>
+                                         <span class="text-xs text-gray-400 dir-ltr">
+                                             {{ $msg->created_at ? jdate($msg->created_at)->format('H:i') : '—' }}
+                                         </span>
+                                     </div>
+                                 </td>
+
+                                 {{-- عملیات --}}
+                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                     @if($msg->status !== 'sent')
+                                         @can('sms.messages.send')
+                                             <form action="{{ route('user.sms.logs.resend', $msg->id) }}" method="POST" class="inline" onsubmit="return confirm('آیا از ارسال مجدد این پیامک اطمینان دارید؟')">
+                                                 @csrf
+                                                 <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 transition-all border border-indigo-100 text-xs font-bold dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-900/50" title="ارسال مجدد">
+                                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
+                                                     </svg>
+                                                     <span>ارسال مجدد</span>
+                                                 </button>
+                                             </form>
+                                         @else
+                                             <span class="text-xs text-gray-400">—</span>
+                                         @endcan
+                                     @else
+                                         <span class="text-xs text-gray-400">—</span>
+                                     @endif
+                                 </td>
                             </tr>
                         @endforeach
                         </tbody>

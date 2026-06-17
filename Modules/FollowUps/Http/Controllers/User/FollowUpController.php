@@ -175,6 +175,11 @@ class FollowUpController extends Controller
             $query->where('related_id', $relatedId);
         }
 
+        // فیلتر کاربر مسئول
+        if ($user->can('followups.view.all') && $assigneeId = $request->get('assignee_id')) {
+            $query->where('assignee_id', $assigneeId);
+        }
+
         // فیلتر جستجو در عنوان/توضیحات
         if ($q = $request->get('q')) {
             $query->where(function ($qBuilder) use ($q) {
@@ -190,11 +195,17 @@ class FollowUpController extends Controller
         $priorities = Task::priorityOptions();
         $types      = Task::typeOptions();
 
+        $users = [];
+        if ($user->can('followups.view.all')) {
+            $users = \App\Models\User::select('id', 'name', 'email')->get();
+        }
+
         return view('followups::user.followups.index', compact(
             'followups',
             'statuses',
             'priorities',
-            'types'
+            'types',
+            'users'
         ));
     }
 

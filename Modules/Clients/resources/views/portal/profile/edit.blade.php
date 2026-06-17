@@ -58,17 +58,28 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start" x-data="{ activeTab: '{{ $firstGroup }}' }">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start" x-data="{
+            activeTab: '{{ $firstGroup }}',
+            isTransitioning: false,
+            switchTab(tab) {
+                if (this.activeTab === tab) return;
+                this.isTransitioning = true;
+                setTimeout(() => {
+                    this.activeTab = tab;
+                    this.isTransitioning = false;
+                }, 220);
+            }
+        }">
 
             {{-- سایدبار تب‌ها --}}
             <div class="lg:col-span-1 space-y-2 sticky top-6">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-3">
                     <nav class="flex flex-col space-y-1" aria-label="Tabs">
                         @foreach($groups as $groupName)
-                            <button @click="activeTab = '{{ $groupName }}'"
+                            <button @click="switchTab('{{ $groupName }}')"
                                     :class="activeTab === '{{ $groupName }}' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white'"
-                                    class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right">
-                                <svg class="w-5 h-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right w-full">
+                                <svg class="w-5 h-5 opacity-70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                                 {{ $groupName }}
@@ -77,10 +88,20 @@
 
                         <div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>
 
-                        <button @click="activeTab = 'security'"
+                        <button @click="switchTab('addresses')"
+                                :class="activeTab === 'addresses' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white'"
+                                class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right w-full">
+                            <svg class="w-5 h-5 opacity-70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            آدرس‌های من
+                        </button>
+
+                        <button @click="switchTab('security')"
                                 :class="activeTab === 'security' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white'"
-                                class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right">
-                            <svg class="w-5 h-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all outline-none text-right w-full">
+                            <svg class="w-5 h-5 opacity-70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
                             تغییر رمز عبور
@@ -89,9 +110,60 @@
                 </div>
             </div>
 
-            {{-- فرم اصلی --}}
+            {{-- wrapper واحد - grid هرگز reflow نمی‌کند --}}
             <div class="lg:col-span-3">
-                <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+
+                {{-- اسکلتون لودینگ --}}
+                <div x-show="isTransitioning"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     style="display:none;">
+                    <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden p-6 sm:p-10 min-h-[400px]">
+                        <div class="animate-pulse space-y-8">
+                            <div class="space-y-3">
+                                <div class="h-6 w-48 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+                                <div class="h-3.5 w-72 bg-gray-100 dark:bg-gray-700/60 rounded-lg"></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-7">
+                                <div class="space-y-2">
+                                    <div class="h-3.5 w-24 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-11 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="h-3.5 w-32 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-11 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="h-3.5 w-20 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-11 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="h-3.5 w-28 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-11 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                                <div class="md:col-span-2 space-y-2">
+                                    <div class="h-3.5 w-36 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                                    <div class="h-24 w-full bg-gray-100 dark:bg-gray-700/50 rounded-xl"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- فرم اصلی --}}
+                <div x-show="!isTransitioning && activeTab !== 'addresses'"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     style="display:none;">
+                    <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
 
                     <form action="{{ route('client.profile.update') }}" method="POST" enctype="multipart/form-data">
                         @csrf
@@ -100,7 +172,13 @@
                         <div class="p-6 sm:p-10 min-h-[400px]">
                             {{-- محتوای تب‌ها بر اساس گروه‌های فرم --}}
                             @foreach($groupedFields as $groupName => $fields)
-                                <div x-show="activeTab === '{{ $groupName }}'" x-transition.opacity.duration.300ms x-cloak>
+                                <div x-show="activeTab === '{{ $groupName }}'" x-cloak
+                                     x-transition:enter="transition ease-out duration-250"
+                                     x-transition:enter-start="opacity-0 translate-y-1"
+                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                     x-transition:leave="transition ease-in duration-100"
+                                     x-transition:leave-start="opacity-100"
+                                     x-transition:leave-end="opacity-0">
                                     <div class="mb-8">
                                         <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ $groupName }}</h2>
                                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">اطلاعات مربوط به این بخش را می‌توانید مشاهده یا ویرایش کنید.</p>
@@ -149,32 +227,87 @@
                                                 </label>
 
                                                 @if($isLocked)
-                                                    {{-- نمایش فیلد قفل شده --}}
-                                                    <div class="relative">
-                                                        @if($type === 'select-province-city')
-                                                            @php
-                                                                $decodedCity = is_string($fieldValue) ? json_decode($fieldValue, true) : $fieldValue;
-                                                                $cityStr = '';
-                                                                if(is_array($decodedCity)) {
-                                                                    $prov = $decodedCity['province'] ?? '';
-                                                                    $cit = $decodedCity['city'] ?? '';
-                                                                    if($prov) $cityStr .= $prov;
-                                                                    if($cit) $cityStr .= ($cityStr ? ' - ' : '') . $cit;
-                                                                } else {
-                                                                    $cityStr = $fieldValue;
-                                                                }
-                                                            @endphp
-                                                            <input type="text" value="{{ $cityStr }}" readonly class="{{ $lockedInputClass }}">
-                                                        @else
-                                                            <input type="text" value="{{ is_array($fieldValue) ? implode(', ', $fieldValue) : $fieldValue }}" readonly class="{{ $lockedInputClass }}">
-                                                        @endif
+                                                     {{-- نمایش فیلد قفل شده --}}
+                                                     <div class="relative">
+                                                         @if($type === 'select-province-city')
+                                                             @php
+                                                                 $decodedCity = is_string($fieldValue) ? json_decode($fieldValue, true) : $fieldValue;
+                                                                 $cityStr = '';
+                                                                 if(is_array($decodedCity)) {
+                                                                     $prov = $decodedCity['province'] ?? '';
+                                                                     $cit = $decodedCity['city'] ?? '';
+                                                                     if($prov) $cityStr .= $prov;
+                                                                     if($cit) $cityStr .= ($cityStr ? ' - ' : '') . $cit;
+                                                                 } else {
+                                                                     $cityStr = $fieldValue;
+                                                                 }
+                                                             @endphp
+                                                             <input type="text" value="{{ $cityStr }}" readonly class="{{ $lockedInputClass }}">
+                                                         @else
+                                                             @php
+                                                                 // پیدا کردن عنوان نمایشی برای فیلدهای سلکت و رادیو قفل شده
+                                                                 $displayVal = $fieldValue;
+                                                                 if (in_array($type, ['select', 'radio'])) {
+                                                                     $displayOptions = [];
+                                                                     if (!empty($field['options_json'])) {
+                                                                         $parsedOpts = json_decode($field['options_json'], true);
+                                                                         if (is_array($parsedOpts)) {
+                                                                             $displayOptions = $parsedOpts;
+                                                                         } else {
+                                                                             $lines = array_filter(array_map('trim', explode("\n", $field['options_json'])));
+                                                                             foreach ($lines as $line) {
+                                                                                 if (str_contains($line, ':')) {
+                                                                                     [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                                                                     $displayOptions[$okey] = $oval;
+                                                                                 } else {
+                                                                                     $displayOptions[$line] = $line;
+                                                                                 }
+                                                                             }
+                                                                         }
+                                                                     }
 
-                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                            </svg>
-                                                        </div>
-                                                    </div>
+                                                                     $getDisplayLabel = function($val) use ($displayOptions) {
+                                                                         $valStr = (string)$val;
+                                                                         if (isset($displayOptions[$valStr])) {
+                                                                             return $displayOptions[$valStr];
+                                                                         }
+                                                                         $flipped = array_flip($displayOptions);
+                                                                         if (isset($flipped[$valStr])) {
+                                                                             return $valStr;
+                                                                         }
+                                                                         return $val;
+                                                                     };
+
+                                                                     // بررسی آرایه یا مقدار متنی معمولی
+                                                                     $rawVals = $fieldValue;
+                                                                     if (is_string($fieldValue) && str_starts_with($fieldValue, '[') && str_ends_with($fieldValue, ']')) {
+                                                                         $decodedArr = json_decode($fieldValue, true);
+                                                                         if (is_array($decodedArr)) {
+                                                                             $rawVals = $decodedArr;
+                                                                         }
+                                                                     }
+
+                                                                     if (is_array($rawVals)) {
+                                                                         $mappedVals = array_map($getDisplayLabel, $rawVals);
+                                                                         $displayVal = implode(', ', $mappedVals);
+                                                                     } else {
+                                                                         $displayVal = $getDisplayLabel($fieldValue);
+                                                                     }
+                                                                 } else {
+                                                                     if (is_array($fieldValue)) {
+                                                                         $displayVal = implode(', ', $fieldValue);
+                                                                     }
+                                                                 }
+                                                             @endphp
+                                                             <input type="text" value="{{ $displayVal }}" readonly class="{{ $lockedInputClass }}">
+                                                         @endif
+
+                                                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                             <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                             </svg>
+                                                         </div>
+                                                     </div>
                                                 @else
                                                     {{-- رندر فیلد بر اساس نوع --}}
                                                     @switch($type)
@@ -346,6 +479,136 @@
                                                                     @endforeach
                                                                 </select>
                                                                 <p class="mt-1 text-xs text-gray-500">برای انتخاب چند مورد کلید Ctrl یا Cmd را نگه دارید.</p>
+                                                            @elseif(!empty($field['searchable']))
+                                                                {{-- حالت تک انتخابی با امکان جستجو در پورتال کلاینت --}}
+                                                                @php
+                                                                    $currentValArray = $fieldValue ? [(string) $fieldValue] : [];
+                                                                    $selectOptions = [];
+                                                                    foreach ($opts as $ov => $ol) {
+                                                                        $value = is_string($ov) ? $ov : $ol;
+                                                                        $label = is_string($ol) ? $ol : $ov;
+                                                                        $selectOptions[] = ['value' => (string) $value, 'label' => $label];
+                                                                    }
+                                                                @endphp
+                                                                <div x-data="{
+                                                                    options: @js($selectOptions),
+                                                                    selectedValues: @js($currentValArray),
+                                                                    search: '',
+                                                                    open: false,
+                                                                    placeholder: @js($field['placeholder'] ?? 'انتخاب کنید...'),
+                                                                    creatable: @js(!empty($field['creatable'])),
+                                                                    init() {
+                                                                        // Sync values and handle initial value if it's not in options (creatable fallback)
+                                                                        const initialVal = Array.isArray(this.selectedValues) ? this.selectedValues[0] : this.selectedValues;
+                                                                        if (initialVal && this.creatable && !this.options.some(o => o.value == initialVal)) {
+                                                                            this.options.push({ value: String(initialVal), label: String(initialVal) });
+                                                                        }
+
+                                                                        this.$watch('selectedValues', (values) => {
+                                                                            const arr = Array.isArray(values) ? values : [];
+                                                                            $refs.hiddenInput.value = arr[0] || '';
+                                                                        });
+                                                                    },
+                                                                    toggle(value) {
+                                                                        value = String(value);
+                                                                        if (this.selectedValues.includes(value)) {
+                                                                            this.selectedValues = [];
+                                                                        } else {
+                                                                            this.selectedValues = [value];
+                                                                        }
+                                                                        this.open = false;
+                                                                        this.search = '';
+                                                                    },
+                                                                    remove(value) {
+                                                                        this.selectedValues = [];
+                                                                    },
+                                                                    addNewOption() {
+                                                                        const val = this.search.trim();
+                                                                        if (val && !this.options.some(o => o.value.toLowerCase() === val.toLowerCase())) {
+                                                                            const newOpt = { value: val, label: val };
+                                                                            this.options.push(newOpt);
+                                                                            this.toggle(val);
+                                                                        }
+                                                                    },
+                                                                    get filteredOptions() {
+                                                                        if (!this.search) return this.options;
+                                                                        return this.options.filter(o => o.label.toLowerCase().includes(this.search.toLowerCase()));
+                                                                    }
+                                                                }">
+                                                                    <input type="hidden" name="{{ $fid }}" x-ref="hiddenInput" value="{{ $fieldValue }}">
+                                                                    
+                                                                    <div class="relative group" @click.outside="open = false">
+                                                                        {{-- کانتینر اصلی --}}
+                                                                        <div class="flex items-center gap-1.5 min-h-[42px] w-full rounded-xl border px-2 py-1.5 transition-all duration-200 cursor-text shadow-sm"
+                                                                             :class="open
+                                                                                ? 'border-indigo-500 ring-1 ring-indigo-500 bg-white dark:bg-gray-800'
+                                                                                : 'border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500'"
+                                                                             @click="if (!open) { open = true; search = ''; $nextTick(() => $refs.searchInput?.focus()); }">
+                                                                            
+                                                                            {{-- متن راهنما --}}
+                                                                            <template x-if="selectedValues.length === 0 && !search && !open">
+                                                                                <span class="text-xs text-gray-400 dark:text-gray-500 px-1 pointer-events-none select-none">
+                                                                                    <span x-text="placeholder"></span>
+                                                                                </span>
+                                                                            </template>
+                                                                            
+                                                                            {{-- نمایش مقدار انتخاب شده --}}
+                                                                            <template x-if="selectedValues.length > 0 && !open">
+                                                                                <span class="text-xs text-gray-900 dark:text-gray-100 truncate flex-1 px-1"
+                                                                                      x-text="options.find(o => o.value == selectedValues[0])?.label ?? selectedValues[0]"></span>
+                                                                            </template>
+                                                                            
+                                                                            {{-- جستجو --}}
+                                                                            <input x-show="selectedValues.length === 0 || open" x-ref="searchInput" type="text" x-model="search"
+                                                                                   class="flex-1 min-w-[60px] border-0 bg-transparent p-0 text-xs text-gray-900 focus:ring-0 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 leading-relaxed"
+                                                                                   placeholder="جستجو...">
+                                                                            
+                                                                            {{-- آیکون‌ها --}}
+                                                                            <div class="ml-auto pl-1 text-gray-400 pointer-events-none flex items-center gap-1">
+                                                                                <template x-if="selectedValues.length > 0 && !open">
+                                                                                    <button type="button" class="p-0.5 rounded-md hover:bg-gray-200 dark:hover:bg-white/10 text-gray-400 hover:text-gray-600 pointer-events-auto" @click.stop="remove(selectedValues[0])">
+                                                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                                    </button>
+                                                                                </template>
+                                                                                <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                                                </svg>
+                                                                            </div>
+                                                                        </div>
+                                                                        
+                                                                        {{-- لیست کشویی --}}
+                                                                        <div x-show="open" x-transition:enter="transition ease-out duration-100"
+                                                                             x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                                                                             x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 translate-y-0"
+                                                                             x-transition:leave-end="opacity-0 translate-y-1" style="display: none;" 
+                                                                             class="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl ring-1 ring-black ring-opacity-5 dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10">
+                                                                            <ul class="max-h-60 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                                                                                <template x-for="option in filteredOptions" :key="option.value">
+                                                                                    <li @click="toggle(option.value); $refs.searchInput.focus()"
+                                                                                        class="relative cursor-pointer select-none py-2 pl-9 pr-3 text-right text-xs rounded-lg transition-colors group"
+                                                                                        :class="selectedValues.includes(option.value) ? 'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-900/30 dark:text-indigo-300' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700/50'">
+                                                                                        <span x-text="option.label"></span>
+                                                                                        <span x-show="selectedValues.includes(option.value)" class="absolute inset-y-0 left-2 flex items-center text-indigo-600 dark:text-indigo-400">
+                                                                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                                                                        </span>
+                                                                                    </li>
+                                                                                </template>
+
+                                                                                {{-- امکان افزودن گزینه جدید در صورتی که creatable فعال باشد و جستجو با هیچ گزینه‌ای مطابق نباشد --}}
+                                                                                <template x-if="creatable && search.trim() && !options.some(o => o.label.toLowerCase() === search.trim().toLowerCase())">
+                                                                                    <li @click="addNewOption(); $refs.searchInput.focus()"
+                                                                                        class="relative cursor-pointer select-none py-2 px-3 text-right text-xs text-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 rounded-lg transition-colors font-medium dark:text-indigo-400 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30">
+                                                                                        <span>« افزودن گزینه جدید: <span class="font-bold" x-text="search.trim()"></span> »</span>
+                                                                                    </li>
+                                                                                </template>
+
+                                                                                <li x-show="filteredOptions.length === 0 && (!creatable || !search.trim())" class="py-3 text-center text-xs text-gray-500 dark:text-gray-400 italic">
+                                                                                    موردی یافت نشد.
+                                                                                </li>
+                                                                            </ul>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             @else
                                                                 <div class="relative">
                                                                     <select id="field_{{ $fid }}" name="{{ $fid }}" class="{{ $baseInputClass }} appearance-none">
@@ -430,7 +693,13 @@
                             @endforeach
 
                             {{-- تب امنیت و رمز عبور --}}
-                            <div x-show="activeTab === 'security'" x-transition.opacity.duration.300ms x-cloak>
+                            <div x-show="activeTab === 'security'" x-cloak
+                                 x-transition:enter="transition ease-out duration-250"
+                                 x-transition:enter-start="opacity-0 translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100"
+                                 x-transition:leave-end="opacity-0">
                                 <div class="mb-8">
                                     <h2 class="text-xl font-bold text-gray-900 dark:text-white">تغییر رمز عبور</h2>
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -499,6 +768,22 @@
                     </form>
                 </div>
             </div>
+
+                {{-- پنل آدرس‌های من --}}
+                <div x-show="!isTransitioning && activeTab === 'addresses'"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     style="display:none;">
+                    <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden p-6 sm:p-10 min-h-[400px]">
+                        @livewire('clients::portal.client-address-manager')
+                    </div>
+                </div>
+
+            </div>{{-- /wrapper واحد --}}
         </div>
     </div>
 @endsection

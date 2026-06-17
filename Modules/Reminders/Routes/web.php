@@ -2,11 +2,21 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Reminders\Http\Controllers\User\ReminderController;
+use Modules\Reminders\Http\Controllers\User\ReminderSettingsController;
 
 Route::prefix('user')
     ->as('user.')
     ->middleware(['web', 'auth'])
     ->group(function () {
+
+        // تنظیمات یادآوری و تعویق
+        Route::get('reminders/settings', [ReminderSettingsController::class, 'index'])
+            ->name('reminders.settings.index')
+            ->middleware('can:reminders.settings.view');
+
+        Route::put('reminders/settings', [ReminderSettingsController::class, 'update'])
+            ->name('reminders.settings.update')
+            ->middleware('can:reminders.settings.manage');
 
         // لیست یادآوری‌ها با فیلترها
         Route::get('reminders', [ReminderController::class, 'index'])
@@ -35,6 +45,26 @@ Route::prefix('user')
         // تغییر وضعیت گروهی
         Route::match(['post', 'patch'], 'reminders/bulk-status', [ReminderController::class, 'bulkUpdateStatus'])
             ->name('reminders.bulk-status')
+            ->middleware('can:reminders.edit');
+
+        // تعویق
+        Route::patch('reminders/{reminder}/snooze', [ReminderController::class, 'snooze'])
+            ->name('reminders.snooze')
+            ->middleware('can:reminders.edit');
+
+        // تاریخچه تعویق
+        Route::get('reminders/{reminder}/snooze-history', [ReminderController::class, 'snoozeHistory'])
+            ->name('reminders.snooze-history')
+            ->middleware('can:reminders.edit');
+
+        // انجام موجودیت مرتبط
+        Route::patch('reminders/{reminder}/related-done', [ReminderController::class, 'markRelatedDone'])
+            ->name('reminders.related-done')
+            ->middleware('can:reminders.edit');
+
+        // درحال انجام کردن موجودیت مرتبط
+        Route::patch('reminders/{reminder}/progress-related', [ReminderController::class, 'progressRelated'])
+            ->name('reminders.progress-related')
             ->middleware('can:reminders.edit');
 
         // حذف

@@ -11,7 +11,7 @@ return new class extends Migration {
             Schema::create('property_categories', function (Blueprint $table) {
                 $table->id();
                 $table->string('name');
-                $table->string('slug')->nullable()->after('name');
+                $table->string('slug')->nullable();
                 $table->string('color')->nullable();
 
                 $table->foreignId('user_id')

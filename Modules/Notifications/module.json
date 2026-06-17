@@ -1,0 +1,10 @@
+{
+    "name": "Notifications",
+    "alias": "notifications",
+    "description": "ماژول اعلان‌ها برای ثبت و مدیریت اعلان‌های سیستمی و درون‌برنامه‌ای کاربران.",
+    "keywords": ["notifications", "alerts", "crm"],
+    "priority": 10,
+    "providers": [
+        "Modules\\Notifications\\Providers\\NotificationsServiceProvider"
+    ]
+}

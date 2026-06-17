@@ -9,4 +9,10 @@ return [
         'group'      => 'پیگیری‌ها',
     ],
 
+    'followups_pulse_and_overdue' => [
+        'label'      => 'نبض پیگیری‌های امروز و معوقات',
+        'view'       => 'followups::widgets.pulse-overview', // حتماً پیشوند ماژول وارد شود
+        'permission' => 'followups.view',
+        'group'      => 'گزارشات پیگیری',
+    ],
 ];

@@ -13,17 +13,37 @@ use Modules\Market\App\Livewire\Admin\VendorForm;
 use Modules\Market\App\Livewire\Vendor\ProductForm;
 use Modules\Market\App\Livewire\Vendor\KycWizard;
 use Modules\Market\App\Livewire\Vendor\ProductManager;
+use Modules\Market\App\Livewire\Vendor\VendorWarehouseManager;
 use Modules\Market\App\Livewire\Admin\MarketSettings;
 use Modules\Market\App\Livewire\Admin\MasterProductForm;
 use Modules\Market\App\Livewire\Admin\BrandManager;
 use Modules\Market\App\Livewire\Admin\CategoryManager;
+use Modules\Market\App\Livewire\Admin\DisplayCategoryManager;
 use Modules\Market\App\Livewire\Admin\AttributeManager;
 use Modules\Market\App\Livewire\Admin\VendorProductReview;
 use Modules\Market\App\Livewire\Admin\WarehouseManager;
+use Modules\Market\App\Livewire\Admin\ShippingManager;
+use Modules\Market\App\Livewire\Admin\OrderStatusManager;
 use Modules\Market\App\Livewire\Admin\WarehouseStockController;
-use Modules\Market\App\Livewire\Admin\ProductVariantSelector; // 💡 اضافه شد
+use Modules\Market\App\Livewire\Admin\ProductVariantSelector;
+use Modules\Market\App\Livewire\Admin\CheckoutFormManager;
+use Modules\Market\App\Livewire\Admin\ReviewManager;
+use Modules\Market\App\Livewire\Admin\QuestionManager;
+use Modules\Market\App\Livewire\Web\ProductQuestions;
+use Modules\Market\App\Livewire\Web\CartManager;
+use Modules\Market\App\Livewire\Web\PopupCart;
+use Modules\Market\App\Livewire\Web\CartCounter;
+use Modules\Market\App\Livewire\Web\AddToCartButton;
+use Modules\Market\App\Livewire\web\CheckoutModal;
+use Modules\Market\App\Livewire\web\CheckoutPage;
+use Modules\Market\App\Livewire\Web\LocationModal;
+use Modules\Market\App\Livewire\Web\ProductReviews;
+use Modules\Market\App\Livewire\user\OrderForm;
+use Modules\Market\App\Livewire\Client\InteractionsManager;
+use Modules\Market\App\Observers\VendorObserver;
 use Modules\Market\Entities\MarketSetting;
 use Modules\Market\Entities\Vendor;
+use Modules\Market\Entities\Warehouse;
 
 class MarketServiceProvider extends ServiceProvider
 {
@@ -44,6 +64,7 @@ class MarketServiceProvider extends ServiceProvider
 
         if (BaseModuleInstaller::isInstalled($this->moduleName)) {
             $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+            $this->autoProvisionCentralWarehouse();
         }
 
         $widgetsFile = __DIR__ . '/../../config/widgets.php';
@@ -62,12 +83,52 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::admin.master-product-form', MasterProductForm::class);
         Livewire::component('market::admin.brand-manager', BrandManager::class);
         Livewire::component('market::admin.category-manager', CategoryManager::class);
+        Livewire::component('market::admin.display-category-manager', DisplayCategoryManager::class);
         Livewire::component('market::admin.attribute-manager', AttributeManager::class);
         Livewire::component('market::vendor.product-manager', ProductManager::class);
+        Livewire::component('market::vendor.vendor-warehouse-manager', VendorWarehouseManager::class);
         Livewire::component('market::admin.vendor-product-review', VendorProductReview::class);
         Livewire::component('market::admin.warehouse-manager', WarehouseManager::class);
         Livewire::component('market::admin.warehouse-stock-controller', WarehouseStockController::class);
-        Livewire::component('market::admin.product-variant-selector', ProductVariantSelector::class); // 💡 اضافه شد
+        Livewire::component('market::admin.product-variant-selector', ProductVariantSelector::class);
+        Livewire::component('market::admin.checkout-form-manager', CheckoutFormManager::class);
+        Livewire::component('market::admin.shipping-manager', ShippingManager::class);
+        Livewire::component('market::admin.order-status-manager', OrderStatusManager::class);
+        Livewire::component('market::admin.review-manager', ReviewManager::class);
+        Livewire::component('market::admin.question-manager', QuestionManager::class);
+        Livewire::component('market::web.product-questions', ProductQuestions::class);
+        Livewire::component('market::web.cart-manager', CartManager::class);
+        Livewire::component('market::web.popup-cart', PopupCart::class);
+        Livewire::component('market::web.cart-counter', CartCounter::class);
+        Livewire::component('market::web.add-to-cart-button', AddToCartButton::class);
+        Livewire::component('market::web.checkout-modal', CheckoutModal::class);
+        Livewire::component('market::web.checkout-page', CheckoutPage::class);
+        Livewire::component('market::web.location-modal', LocationModal::class);
+        Livewire::component('market::web.product-reviews', ProductReviews::class);
+        Livewire::component('market::user.order-form', OrderForm::class);
+        Livewire::component('market::client.interactions-manager', InteractionsManager::class);
+
+        // 💡 ثبت Observer
+        Vendor::observe(VendorObserver::class);
+    }
+
+    /**
+     * 💡 NEW: Automatically create a central warehouse if WMS is active and none exists.
+     */
+    protected function autoProvisionCentralWarehouse()
+    {
+        try {
+            if (Schema::hasTable('market_settings') && Schema::hasTable('market_warehouses')) {
+                if (MarketSetting::getValue('wms.enabled', false)) {
+                    Warehouse::firstOrCreate(
+                        ['vendor_id' => null],
+                        ['name' => 'انبار مرکزی سیستم', 'code' => 'WH-MAIN', 'is_active' => true]
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore exceptions during boot phase (e.g. migration not run yet, database config errors, etc.)
+        }
     }
 
     /**
@@ -76,6 +137,14 @@ class MarketServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->register(RouteServiceProvider::class);
+
+        $this->app->singleton(\Modules\Market\App\Services\Map\MapServiceInterface::class, function ($app) {
+            $provider = \Modules\Market\Entities\MarketSetting::getValue('map.provider', 'neshan');
+            if ($provider === 'map_ir') {
+                return new \Modules\Market\App\Services\Map\MapIrMapService();
+            }
+            return new \Modules\Market\App\Services\Map\NeshanMapService();
+        });
     }
 
     /**

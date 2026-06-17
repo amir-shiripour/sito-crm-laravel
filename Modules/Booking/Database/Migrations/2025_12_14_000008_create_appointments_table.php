@@ -19,8 +19,8 @@ return new class extends Migration {
 
             $table->string('status', 30)->default('DRAFT');
 
-            $table->timestamp('start_at_utc');
-            $table->timestamp('end_at_utc');
+            $table->timestamp('start_at_utc')->nullable();
+            $table->timestamp('end_at_utc')->nullable();
 
             $table->string('created_by_type', 30);
             $table->unsignedBigInteger('created_by_user_id')->nullable();

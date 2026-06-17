@@ -5,8 +5,9 @@ namespace Modules\Clients\Entities;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use App\Contracts\FormSchemaContract;
 
-class ClientForm extends Model
+class ClientForm extends Model implements FormSchemaContract
 {
     protected $table = 'client_forms';
 
@@ -32,6 +33,16 @@ class ClientForm extends Model
         'notes'         => ['label' => 'یادداشت مدیریتی',    'column' => 'notes'],
         'password'      => ['label' => 'رمز عبور',           'column' => 'password'],
     ];
+
+    public static function getSystemFields(): array
+    {
+        return static::SYSTEM_FIELDS;
+    }
+
+    public function getSchema(): array
+    {
+        return $this->schema ?? [];
+    }
 
     public static function default(): ?self
     {
@@ -189,9 +200,12 @@ class ClientForm extends Model
 
             $fid = $f['id'];
 
-            // تنظیم مقدار پیش‌فرض برای client_auth در فیلدهای سفارشی
+            // تنظیم مقدار پیش‌فرض برای client_auth و show_in_registration در فیلدهای سفارشی
             if (!array_key_exists('client_auth', $f)) {
                 $f['client_auth'] = false;
+            }
+            if (!array_key_exists('show_in_registration', $f)) {
+                $f['show_in_registration'] = false;
             }
 
             // اگر فیلد سیستمی است → روی تعریف سیستمی قفل کن (ولی overrideهای کاربر رو نگه می‌داریم)
@@ -206,7 +220,7 @@ class ClientForm extends Model
                     $f['label'] = $canon['label'];
                 }
 
-                foreach (['group', 'width', 'placeholder', 'quick_create', 'client_auth', 'required'] as $k) {
+                foreach (['group', 'width', 'placeholder', 'quick_create', 'client_auth', 'show_in_registration', 'required'] as $k) {
                     if (!array_key_exists($k, $f) && array_key_exists($k, $canon)) {
                         $f[$k] = $canon[$k];
                     }
@@ -239,6 +253,13 @@ class ClientForm extends Model
                 }));
             } else {
                 $f['conditional_required'] = [];
+            }
+
+            if (($f['type'] ?? '') === 'select') {
+                $f['creatable'] = (bool)($f['creatable'] ?? false);
+                $f['save_globally'] = (bool)($f['save_globally'] ?? false);
+                $f['use_clients_list'] = (bool)($f['use_clients_list'] ?? false);
+                $f['searchable'] = (bool)($f['searchable'] ?? false);
             }
 
             $normalized[] = $f;

@@ -47,7 +47,10 @@ class OnlineBookingController extends Controller
         $services = BookingService::query()
             ->where('status', BookingService::STATUS_ACTIVE)
             ->with(['serviceProviders' => function ($query) {
-                $query->where('is_active', true)->with('provider');
+                $query->where('is_active', true)->with([
+                    'provider.profile',
+                    'provider.doctorMedia',
+                ]);
             }])
             ->orderBy('name')
             ->get();
@@ -77,18 +80,44 @@ class OnlineBookingController extends Controller
 
         // اگر جریان روی "ارائه‌دهنده اول" بود، لیست پزشکان را استخراج و نمایش می‌دهیم
         if ($flow === 'PROVIDER_FIRST') {
+
             $providers = collect();
+
             foreach ($availableServices as $service) {
+
                 foreach ($service->serviceProviders as $sp) {
-                    if ($sp->is_active && $engine->isOnlineBookingEnabled($service->id, $sp->provider_user_id)) {
+
+                    if ($sp->is_active &&
+                        $engine->isOnlineBookingEnabled($service->id, $sp->provider_user_id)) {
+
                         $prov = $sp->provider;
+
+                        if ($prov && $prov->profile) {
+                            $prov->bio = $prov->profile->bio ?? null;
+                            $prov->avatar = $prov->profile->avatar ?? null;
+                            $prov->checked_inputs = $prov->profile->checked_inputs ?? [];
+                            $media = $prov->doctorMedia ?? collect();
+                            $prov->gallery = $media->where('type', 'photo')->values()->toArray();
+                            $prov->videos  = $media->where('type', 'video')->values()->toArray();
+                        }
+
                         if ($prov && !$providers->contains('id', $prov->id)) {
-                            // ذخیره حداقل قیمت سرویس‌ها برای این پزشک (جهت نمایش شروع قیمت از...)
+
                             $prov->min_price = $service->final_price;
+
                             $providers->push($prov);
-                        } else if ($prov) {
+
+                        } elseif ($prov) {
+
                             $existingProv = $providers->firstWhere('id', $prov->id);
-                            $existingProv->min_price = min($existingProv->min_price, $service->final_price);
+
+                            if ($existingProv) {
+
+                                $existingProv->min_price = min(
+                                    $existingProv->min_price,
+                                    $service->final_price
+                                );
+                            }
                         }
                     }
                 }
@@ -99,6 +128,7 @@ class OnlineBookingController extends Controller
                 'settings' => $settings
             ]);
         }
+
 
         return view('booking::web.index', [
             'items' => $availableServices,
@@ -155,6 +185,7 @@ class OnlineBookingController extends Controller
         }
 
         $provider = $availableServices->first()->serviceProviders->first()->provider;
+        $provider->load('doctorMedia');
 
         $availableServices->transform(function ($service) use ($settings) {
             $service->final_price = $this->applyTax($service->base_price, $settings);

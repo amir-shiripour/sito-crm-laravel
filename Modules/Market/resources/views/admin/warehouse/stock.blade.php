@@ -1,6 +1,5 @@
 @extends('layouts.user')
-@php($title = 'موجودی انبار')
+@php($title = 'مدیریت موجودی انبار') {{-- 💡 عنوان تغییر کرد --}}
 @section('content')
-    @livewire('market::admin.warehouse-stock-controller', ['warehouseId' => request()->route('warehouseId')])
+    @livewire('market::admin.warehouse-stock-controller') {{-- 💡 حذف پارامتر warehouseId --}}
 @endsection
-

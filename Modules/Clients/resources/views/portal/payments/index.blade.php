@@ -82,7 +82,18 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                                    {{ number_format($payment->amount) }} <span class="text-xs font-normal text-gray-500">تومان</span>
+                                    @php
+                                        // booking_payments.amount به ریال (IRR) در DB ذخیره شده
+                                        // market orders به واحد خودشان ذخیره شده‌اند
+                                        if ($payment->type === 'booking') {
+                                            $displayAmt = ($bookingCurrencyUnit === 'IRT') ? ($payment->amount / 10) : $payment->amount;
+                                            $currLabel = $bookingCurrencyLabel;
+                                        } else {
+                                            $displayAmt = $payment->amount;
+                                            $currLabel = 'تومان'; // واحد سفارش‌های فروشگاه
+                                        }
+                                    @endphp
+                                    {{ number_format($displayAmt) }} <span class="text-xs font-normal text-gray-500">{{ $currLabel }}</span>
                                 </td>
                                 <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
                                     <div class="flex flex-col">

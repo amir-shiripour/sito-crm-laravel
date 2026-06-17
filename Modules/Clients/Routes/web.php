@@ -14,6 +14,7 @@ use Modules\Clients\App\Http\Controllers\Portal\ClientPaymentController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientProfileController;
 use Modules\Clients\App\Livewire\Settings\ClientAuthSettings;
 use Modules\Clients\App\Livewire\Settings\CsvImporter;
+use Modules\Clients\App\Livewire\Settings\CsvExporter;
 
 Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
     ->prefix('user')
@@ -56,6 +57,12 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
                     ->name('destroy')
                     ->middleware('permission:clients.delete');
 
+                Route::post('/bulk', [UserClientController::class, 'bulkUpdate'])
+                    ->name('bulk-update')
+                    ->middleware('permission:clients.edit');
+
+
+
                 // 🔹 این روت جدید برای "ورود به پنل مشتری در تب جدید" است
                 Route::get('/{client}/portal-login', [ClientAuthController::class, 'autoLoginFromAdmin'])
                     ->name('portal-login')
@@ -81,6 +88,7 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class, 'permission
         Route::get('/statuses', ClientStatusesManager::class)->name('statuses');
         Route::get('/auth', ClientAuthSettings::class)->name('auth');
         Route::get('/import', CsvImporter::class)->name('import');
+        Route::get('/export', CsvExporter::class)->name('export');
     });
 
 Route::prefix('clients')
@@ -96,11 +104,17 @@ Route::prefix('clients')
             Route::post('login', [ClientAuthController::class, 'login'])
                 ->name('login.submit');
 
+            Route::post('login/check-username', [ClientAuthController::class, 'checkUsername'])
+                ->name('login.check-username');
+
             Route::post('login/otp/send', [ClientAuthController::class, 'sendOtp'])
                 ->name('otp.send');
 
             Route::post('login/otp/verify', [ClientAuthController::class, 'verifyOtp'])
                 ->name('otp.verify');
+
+            Route::post('register', [ClientAuthController::class, 'register'])
+                ->name('register.submit');
         });
 
         // کلاینت‌های لاگین کرده
@@ -122,6 +136,17 @@ Route::prefix('clients')
                 ->name('payments.index');
             Route::get('payments/{type}/{id}', [ClientPaymentController::class, 'show'])
                 ->name('payments.show');
+
+            // 🛍️ Market Orders Routes
+            Route::get('market/orders', [ClientPaymentController::class, 'marketOrdersIndex'])
+                ->name('market.orders.index');
+            Route::get('market/orders/{id}', [ClientPaymentController::class, 'marketOrderShow'])
+                ->name('market.orders.show');
+
+            if (class_exists('Modules\Market\App\Livewire\Client\InteractionsManager')) {
+                Route::get('market/interactions', \Modules\Market\App\Livewire\Client\InteractionsManager::class)
+                    ->name('market.interactions');
+            }
 
             Route::post('logout', [ClientAuthController::class, 'logout'])
                 ->name('logout');

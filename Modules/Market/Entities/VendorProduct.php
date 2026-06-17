@@ -2,6 +2,8 @@
 namespace Modules\Market\Entities;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Market\Entities\MarketSetting;
+use Modules\Market\Entities\WarehouseStock;
 
 class VendorProduct extends Model {
     use SoftDeletes; // بر اساس ساختار دیتابیستون این جدول deleted_at داره
@@ -22,6 +24,8 @@ class VendorProduct extends Model {
         'reorder_point',
         'min_purchase_qty',
         'max_purchase_qty',
+        'cart_amount_step',
+        'purchase_step',
         'status',
         'rejection_reason'
     ];
@@ -51,5 +55,18 @@ class VendorProduct extends Model {
     // 💡 رفع ارور: ارتباط با جدول Vendors
     public function vendor() {
         return $this->belongsTo(Vendor::class, 'vendor_id');
+    }
+
+    /**
+     * Get stock value. If WMS is active, dynamically sum available stock from WMS active warehouses.
+     */
+    public function getStockAttribute($value)
+    {
+        $isWmsActive = (bool) MarketSetting::getValue('wms.enabled', false);
+        if ($isWmsActive) {
+            return (int) app(\Modules\Market\App\Services\WarehouseStockService::class)
+                ->getAvailableStock($this->product_variant_id, $this->vendor_id);
+        }
+        return $value;
     }
 }

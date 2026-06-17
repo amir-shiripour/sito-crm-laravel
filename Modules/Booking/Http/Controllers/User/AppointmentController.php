@@ -33,8 +33,15 @@ class AppointmentController extends Controller
             ->with(['service', 'provider', 'client']);
 
         // Permission Scope
-        if ($this->userIsProvider($user, $settings) && ! $this->isAdminUser($user)) {
-            $query->where('provider_user_id', $user->id);
+        if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.view.all')) {
+            if ($user->can('booking.appointments.view.own') || $this->userIsProvider($user, $settings)) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('provider_user_id', $user->id)
+                      ->orWhere('created_by_user_id', $user->id);
+                });
+            } else {
+                $query->where('created_by_user_id', $user->id);
+            }
         }
 
         // --- Filtering ---
@@ -456,16 +463,18 @@ class AppointmentController extends Controller
                     if (isset($field['name'])) {
                         $fieldMeta[$field['name']] = [
                             'label' => $field['label'] ?? $field['name'],
+                            'type' => $field['type'] ?? 'text',
                         ];
                     }
                 }
             }
 
             foreach ($rawFormResponses as $key => $value) {
-                $meta = $fieldMeta[$key] ?? ['label' => $key];
+                $meta = $fieldMeta[$key] ?? ['label' => $key, 'type' => 'text'];
                 $formResponses[] = [
                     'label' => $meta['label'],
                     'value' => $value,
+                    'type' => $meta['type'],
                 ];
             }
         } else if (!empty($rawFormResponses)) {
@@ -474,6 +483,7 @@ class AppointmentController extends Controller
                 $formResponses[] = [
                     'label' => $key,
                     'value' => $value,
+                    'type' => 'text',
                 ];
             }
         }
@@ -608,29 +618,43 @@ class AppointmentController extends Controller
         $startUtc = $startLocal->copy()->timezone('UTC');
         $endUtc = $endLocal->copy()->timezone('UTC');
 
-        try {
-            $this->service->validateSlotAvailableForUpdate(
-                (int) $service->id,
-                (int) $data['provider_user_id'],
-                $localDate->toDateString(),
-                $startUtc,
-                $endUtc,
-                $appointment->id
-            );
-        } catch (\InvalidArgumentException | \RuntimeException $e) {
-            $message = match ($e->getMessage()) {
-                'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل است.',
-                'Day capacity is full.' => 'ظرفیت روز تکمیل است.',
-                'This day is closed.' => 'این روز بسته است.',
-                'Slot is outside work windows.' => 'این بازه خارج از ساعات کاری است.',
-                'Slot overlaps with break.' => 'این بازه با زمان استراحت تداخل دارد.',
-                'Slot crosses day boundary.' => 'بازه انتخابی باید داخل همان روز باشد.',
-                default => 'امکان ثبت نوبت در این بازه وجود ندارد.',
-            };
+        // وضعیت‌هایی که نوبت را غیرفعال می‌کنند نیازی به validation برنامه زمانی ندارند
+        // (لغو، عدم حضور، انجام شده، جابجا شده) - نباید بررسی تداخل با استراحت مانع این تغییرات شود
+        $terminalStatuses = [
+            Appointment::STATUS_CANCELED_BY_ADMIN,
+            Appointment::STATUS_CANCELED_BY_CLIENT,
+            Appointment::STATUS_NO_SHOW,
+            Appointment::STATUS_DONE,
+            Appointment::STATUS_RESCHEDULED,
+        ];
 
-            return back()
-                ->withErrors(['start_time_local' => $message])
-                ->withInput();
+        $skipSlotValidation = in_array($data['status'], $terminalStatuses);
+
+        if (!$skipSlotValidation) {
+            try {
+                $this->service->validateSlotAvailableForUpdate(
+                    (int) $service->id,
+                    (int) $data['provider_user_id'],
+                    $localDate->toDateString(),
+                    $startUtc,
+                    $endUtc,
+                    $appointment->id
+                );
+            } catch (\InvalidArgumentException | \RuntimeException $e) {
+                $message = match ($e->getMessage()) {
+                    'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل است.',
+                    'Day capacity is full.' => 'ظرفیت روز تکمیل است.',
+                    'This day is closed.' => 'این روز بسته است.',
+                    'Slot is outside work windows.' => 'این بازه خارج از ساعات کاری است.',
+                    'Slot overlaps with break.' => 'این بازه با زمان استراحت تداخل دارد.',
+                    'Slot crosses day boundary.' => 'بازه انتخابی باید داخل همان روز باشد.',
+                    default => 'امکان ثبت نوبت در این بازه وجود ندارد.',
+                };
+
+                return back()
+                    ->withErrors(['start_time_local' => $message])
+                    ->withInput();
+            }
         }
 
         $previousStatus = $appointment->status;
@@ -1201,6 +1225,7 @@ class AppointmentController extends Controller
             'data' => [
                 'id' => $form->id,
                 'name' => $form->name,
+                'form_type' => $form->form_type,
                 'schema_json' => $form->schema_json ?? [],
             ],
         ]);
@@ -1230,14 +1255,29 @@ class AppointmentController extends Controller
         $startUtc = $localDate->copy()->startOfDay()->timezone('UTC');
         $endUtc = $localDate->copy()->endOfDay()->timezone('UTC');
 
-        $appointments = Appointment::query()
+        $user = $request->user();
+        $settings = BookingSetting::current();
+
+        $query = Appointment::query()
             ->with(['client'])
             ->where('service_id', $serviceId)
             ->where('provider_user_id', $providerId)
             ->where('start_at_utc', '>=', $startUtc)
-            ->where('start_at_utc', '<=', $endUtc)
-            ->orderBy('start_at_utc')
-            ->get();
+            ->where('start_at_utc', '<=', $endUtc);
+
+        // Permission Scope
+        if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.view.all')) {
+            if ($user->can('booking.appointments.view.own') || $this->userIsProvider($user, $settings)) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('provider_user_id', $user->id)
+                      ->orWhere('created_by_user_id', $user->id);
+                });
+            } else {
+                $query->where('created_by_user_id', $user->id);
+            }
+        }
+
+        $appointments = $query->orderBy('start_at_utc')->get();
 
         $statusLabels = [
             Appointment::STATUS_DRAFT => 'پیش‌نویس',

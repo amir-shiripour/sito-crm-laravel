@@ -36,6 +36,10 @@ class ClientCallsServiceProvider extends ServiceProvider
                 WidgetRegistry::register($key, $definition);
             }
         }
+
+        \Livewire\Livewire::component('clientcalls::widgets.daily-overview', \Modules\ClientCalls\App\Livewire\Widgets\DailyCallOverview::class);
+        \Livewire\Livewire::component('clientcalls::widgets.agent-performance', \Modules\ClientCalls\App\Livewire\Widgets\AgentCallPerformance::class);
+
     }
 
     /**

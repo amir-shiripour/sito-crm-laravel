@@ -118,6 +118,17 @@ class Task extends Model
      */
     protected static function booted(): void
     {
+        // قبل از ذخیره وظیفه (ایجاد یا ویرایش)
+        static::saving(function (Task $task) {
+            if ($task->isDirty('status')) {
+                if ($task->status === self::STATUS_DONE) {
+                    $task->completed_at = now();
+                } else {
+                    $task->completed_at = null;
+                }
+            }
+        });
+
         // بعد از ایجاد وظیفه
         static::created(function (Task $task) {
             $task->autoCreateReminderIfPossible();
@@ -126,7 +137,43 @@ class Task extends Model
         // بعد از بروزرسانی وظیفه
         static::updated(function (Task $task) {
             $task->syncRemindersOnUpdate();
+            $task->advanceWorkflowIfDone();
         });
+    }
+
+    public function advanceWorkflowIfDone(): void
+    {
+        if ($this->wasChanged('status') && $this->status === self::STATUS_DONE) {
+            $instanceId = $this->meta['workflow_instance_id'] ?? null;
+            $nodeId = $this->meta['workflow_node_id'] ?? null;
+            $autoAdvance = $this->meta['auto_advance'] ?? true;
+
+            if (!$autoAdvance) {
+                logger()->info("[Workflows] Task {$this->id} completed, but auto_advance is disabled in metadata. Pausing.");
+                return;
+            }
+
+            if ($instanceId && class_exists(\Modules\Workflows\Services\WorkflowEngine::class) && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                if ($nodeId) {
+                    // Check if there are other tasks for this same node of this workflow instance that are not DONE.
+                    $pendingTasksCount = self::where('meta->workflow_instance_id', $instanceId)
+                        ->where('meta->workflow_node_id', $nodeId)
+                        ->where('status', '!=', self::STATUS_DONE)
+                        ->count();
+
+                    if ($pendingTasksCount > 0) {
+                        logger()->info("[Workflows] Task {$this->id} completed, but {$pendingTasksCount} other tasks for node {$nodeId} are still pending.");
+                        return;
+                    }
+                }
+
+                $instance = \Modules\Workflows\Entities\WorkflowInstance::find($instanceId);
+                if ($instance && $instance->status === \Modules\Workflows\Entities\WorkflowInstance::STATUS_ACTIVE) {
+                    $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
+                    $engine->advance($instance);
+                }
+            }
+        }
     }
 
 
@@ -144,6 +191,65 @@ class Task extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_id');
+    }
+
+    public function getCreatorNameAttribute(): string
+    {
+        if ($this->task_type === self::TYPE_SYSTEM && $this->creator) {
+            if ($this->creator->hasAnyRole(['admin', 'super-admin'])) {
+                return 'سیستم';
+            }
+        }
+        return $this->creator?->name ?? 'سیستم';
+    }
+
+    public function relatedClient()
+    {
+        return $this->belongsTo(\Modules\Clients\Entities\Client::class, 'related_id');
+    }
+
+    public function relatedUser()
+    {
+        return $this->belongsTo(User::class, 'related_id');
+    }
+
+    public function getAssigneeNameAttribute(): string
+    {
+        if ($this->assignee) {
+            return $this->assignee->name;
+        }
+
+        $meta = $this->meta ?? [];
+        if (($meta['assignee_mode'] ?? 'single_user') === 'by_roles') {
+            $roleIds = $meta['assignee_role_ids'] ?? [];
+            if (!empty($roleIds)) {
+                if (in_array('__all__', $roleIds, true)) {
+                    return 'همه نقش‌ها';
+                }
+                
+                static $rolesCache = null;
+                if ($rolesCache === null) {
+                    if (class_exists(\Spatie\Permission\Models\Role::class)) {
+                        $rolesCache = \Spatie\Permission\Models\Role::pluck('name', 'id')->all();
+                    } else {
+                        $rolesCache = [];
+                    }
+                }
+                
+                $names = [];
+                foreach ($roleIds as $rid) {
+                    if (isset($rolesCache[$rid])) {
+                        $names[] = $rolesCache[$rid];
+                    }
+                }
+                
+                if (!empty($names)) {
+                    return 'نقش: ' . implode('، ', $names);
+                }
+            }
+        }
+
+        return '—';
     }
 
     /**
@@ -251,6 +357,23 @@ class Task extends Model
                     ->update([
                         'status' => Reminder::STATUS_CANCELED,
                     ]);
+            } elseif (in_array($this->status, [self::STATUS_TODO, self::STATUS_IN_PROGRESS])) {
+                $oldStatus = $this->getOriginal('status');
+                if (in_array($oldStatus, [self::STATUS_DONE, self::STATUS_CANCELED])) {
+                    if (! $this->reminders()->where('status', Reminder::STATUS_OPEN)->exists()) {
+                        // Reopen the most recent reminder or create a new one
+                        $lastReminder = $this->reminders()->orderByDesc('id')->first();
+                        if ($lastReminder) {
+                            $lastReminder->update([
+                                'status' => Reminder::STATUS_OPEN,
+                                'is_sent' => false,
+                                'sent_at' => null,
+                            ]);
+                        } else {
+                            $this->autoCreateReminderIfPossible();
+                        }
+                    }
+                }
             }
         }
     }

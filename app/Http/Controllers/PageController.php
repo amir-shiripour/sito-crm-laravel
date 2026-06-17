@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Modules\Settings\Entities\Setting;
+use Illuminate\Support\Facades\Route;
 
 class PageController extends Controller
 {
@@ -27,7 +28,7 @@ class PageController extends Controller
         // [Architecture Note]: واکشی دیتای واقعی برای تم‌هایی که نیاز به لیست سرویس‌های رزرو دارند
         // استفاده از class_exists برای جلوگیری از خطای سیستمی در صورت غیرفعال بودن ماژول Booking
         if (in_array($appTheme, ['booking', 'default'])) {
-            if (class_exists(\Modules\Booking\Entities\BookingService::class)) {
+            if (class_exists(\Modules\Booking\Entities\BookingService::class) && \App\Services\Modules\BaseModuleInstaller::isInstalled('Booking') && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
 
                 $engine = app(\Modules\Booking\Services\BookingEngine::class);
                 $settings = \Modules\Booking\Entities\BookingSetting::current();
@@ -138,8 +139,13 @@ class PageController extends Controller
                 return redirect()->route('booking.public.index');
             } elseif ($appTheme === 'properties') {
                 return redirect()->route('properties.index');
+            } elseif ($appTheme === 'market' || $appTheme === 'shop') {
+                if (Route::has('market.public.index')) {
+                    return redirect()->route('market.public.index');
+                }
+                return redirect()->route('admin.dashboard');
             } else {
-                // شرکتی، فروشگاه و سایر مواردی که هنوز تعریف نشده‌اند
+                // شرکتی و سایر مواردی که هنوز تعریف نشده‌اند
                 return redirect()->route('admin.dashboard');
             }
         }

@@ -128,6 +128,44 @@ class PermissionCatalog
                 'matchers' => ['properties.buildings.'],
             ],
 
+            // Market module
+            'market' => [
+                'title'    => 'فروشگاه (Market)',
+                'matchers' => ['market.manage', 'market.dashboard.', 'market.settings.'],
+            ],
+            'market_products' => [
+                'title'    => 'فروشگاه: محصولات و برندها',
+                'matchers' => ['market.products.', 'market.master-products.', 'market.brands.', 'market.attributes.'],
+            ],
+            'market_orders' => [
+                'title'    => 'فروشگاه: سفارشات و فیلدها',
+                'matchers' => ['market.orders.', 'market.order-statuses.', 'market.checkout-forms.'],
+            ],
+            'market_categories' => [
+                'title'    => 'فروشگاه: دسته‌بندی‌ها',
+                'matchers' => ['market.categories.'],
+            ],
+            'market_vendors' => [
+                'title'    => 'فروشگاه: فروشندگان',
+                'matchers' => ['market.vendors.'],
+            ],
+            'market_warehouses' => [
+                'title'    => 'فروشگاه: انبارها',
+                'matchers' => ['market.warehouses.'],
+            ],
+            'market_shipping' => [
+                'title'    => 'فروشگاه: حمل و نقل',
+                'matchers' => ['market.shipping.'],
+            ],
+            'market_reviews' => [
+                'title'    => 'فروشگاه: دیدگاه‌ها',
+                'matchers' => ['market.reviews.'],
+            ],
+            'market_questions' => [
+                'title'    => 'فروشگاه: پرسش‌ها',
+                'matchers' => ['market.questions.'],
+            ],
+
             'other' => [
                 'title'    => 'سایر',
                 'matchers' => [''], // fallback
@@ -318,6 +356,30 @@ class PermissionCatalog
             'properties.buildings.edit'     => 'ویرایش ساختمان',
             'properties.buildings.delete'   => 'حذف ساختمان',
             'properties.buildings.manage'   => 'مدیریت ساختمان‌ها',
+
+            // Market
+            'market.manage'                 => 'مدیریت کلان فروشگاه (Super Admin)',
+            'market.dashboard.view'         => 'مشاهده داشبورد فروشگاه',
+            'market.master-products.manage' => 'مدیریت کاتالوگ محصولات مرجع (Catalog)',
+            'market.products.view'          => 'مشاهده محصولات فروشنده',
+            'market.products.create'        => 'ایجاد محصول فروشنده',
+            'market.products.edit'          => 'ویرایش محصول فروشنده',
+            'market.products.delete'        => 'حذف محصول فروشنده',
+            'market.orders.view'            => 'مشاهده سفارشات',
+            'market.orders.manage'          => 'مدیریت سفارشات',
+            'market.categories.manage'      => 'مدیریت کاتالوگ و دسته‌بندی‌ها',
+            'market.vendors.view'           => 'مشاهده فروشندگان',
+            'market.vendors.manage'         => 'مدیریت فروشندگان',
+            'market.warehouses.view'        => 'مشاهده انبارها',
+            'market.warehouses.manage'      => 'مدیریت انبارها',
+            'market.shipping.manage'        => 'مدیریت حمل و نقل و ارسال',
+            'market.questions.manage'       => 'مدیریت پرسش‌ها و پاسخ‌ها',
+            'market.reviews.manage'         => 'مدیریت دیدگاه‌ها',
+            'market.brands.manage'          => 'مدیریت برندها',
+            'market.attributes.manage'      => 'مدیریت ویژگی‌های تنوع‌ساز',
+            'market.settings.manage'        => 'مدیریت تنظیمات فروشگاه',
+            'market.checkout-forms.manage'  => 'مدیریت فرم‌های تسویه حساب',
+            'market.order-statuses.manage'  => 'مدیریت وضعیت‌های سفارش',
         ];
 
         // اگر ترجمه صریح نداریم، یک تبدیل خوانا بساز:

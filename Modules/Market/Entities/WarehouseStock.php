@@ -16,6 +16,7 @@ class WarehouseStock extends Model
         'product_variant_id',
         'vendor_product_id',
         'physical_stock',
+        'online_stock', // 💡 اضافه شد
         'reserved_stock',
     ];
 

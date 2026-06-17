@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('market')->name('admin.market.')->middleware(['permission:market.manage'])->group(function () {
+Route::prefix('market')->name('admin.market.')->middleware(['permission:market.settings.manage'])->group(function () {
 
     // تایید یا رد کردن پروفایل فروشندگان
     // Route::resource('vendors', AdminVendorController::class);
