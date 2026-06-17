@@ -24,14 +24,14 @@ class FollowUpPulseOverview extends Component
         // ۱. پیگیری‌های معوقه (تاریخ گذشته و تکمیل نشده)
         $overdueCount = (clone $baseQuery)
             ->where('due_at', '<', $todayStart)
-            ->where('status', '!=', 'completed') // بسته به استرینگ وضعیت در پروژه شما (مانند pending یا open)
+            ->whereNotIn('status', [Task::STATUS_DONE, Task::STATUS_CANCELED])
             ->count();
 
         // ۲. کل پیگیری‌های امروز
         $todayQuery = (clone $baseQuery)->whereBetween('due_at', [$todayStart, $todayEnd]);
 
         $todayTotal = (clone $todayQuery)->count();
-        $todayCompleted = (clone $todayQuery)->where('status', 'completed')->count();
+        $todayCompleted = (clone $todayQuery)->where('status', Task::STATUS_DONE)->count();
         $todayPending = $todayTotal - $todayCompleted;
 
         // ۳. بار کاری ۷ روز آینده برای چارت هفتگی
