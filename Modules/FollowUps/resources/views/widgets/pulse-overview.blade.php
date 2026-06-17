@@ -20,10 +20,34 @@
     }
 
     // ۲. محاسبه پیگیری‌های معوقه (گذشته)
-    $overdueCount = (clone $baseQuery)
+    $overdueTasksQuery = (clone $baseQuery)
         ->where('due_at', '<', $todayStart)
-        ->whereNotIn('status', [Task::STATUS_DONE, Task::STATUS_CANCELED])
-        ->count();
+        ->whereNotIn('status', [Task::STATUS_DONE, Task::STATUS_CANCELED]);
+
+    $overdueCount = $overdueTasksQuery->count();
+
+    // -- DEBUG LOGGING --
+    try {
+        $overdueTaskIds = $overdueTasksQuery->pluck('id')->toArray();
+        $reminderTaskIds = \Modules\Reminders\Entities\Reminder::query()
+            ->where('user_id', $user->id)
+            ->open()
+            ->where('remind_at', '<', $todayStart)
+            ->where('related_type', 'TASK')
+            ->pluck('related_id')->toArray();
+
+        \Log::info('Pulse vs Reminders Debug', [
+            'user_id' => $user->id,
+            'hasGlobalView' => $hasGlobalView,
+            'pulse_count' => $overdueCount,
+            'reminders_count' => count($reminderTaskIds),
+            'pulse_extra_ids' => array_values(array_diff($overdueTaskIds, $reminderTaskIds)),
+            'reminder_extra_ids' => array_values(array_diff($reminderTaskIds, $overdueTaskIds)),
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('Pulse debug error: ' . $e->getMessage());
+    }
+    // -- END DEBUG LOGGING --
 
     // ۳. محاسبه پیگیری‌های امروز
     $todayQuery = (clone $baseQuery)->whereBetween('due_at', [$todayStart, $todayEnd]);
