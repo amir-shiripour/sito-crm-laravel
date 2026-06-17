@@ -15,20 +15,8 @@
     $baseQuery = FollowUp::query()->where('related_type', Task::RELATED_TYPE_CLIENT);
 
     if (!$hasGlobalView) {
-        $baseQuery->where(function($q) use ($user) {
-            $hasAppliedCondition = false;
-            if ($user->can('followups.view.assigned')) {
-                $q->orWhere('assignee_id', $user->id);
-                $hasAppliedCondition = true;
-            }
-            if ($user->can('followups.view.own')) {
-                $q->orWhere('creator_id', $user->id);
-                $hasAppliedCondition = true;
-            }
-            if (!$hasAppliedCondition) {
-                $q->where('assignee_id', $user->id);
-            }
-        });
+        // در ویجت «نبض پیگیری‌های من» برای آمار فردی (پیشرفت، معوقات)، فقط تسک‌هایی که به خود کاربر ارجاع شده‌اند لحاظ می‌شود
+        $baseQuery->where('assignee_id', $user->id);
     }
 
     // ۲. محاسبه پیگیری‌های معوقه (گذشته)
