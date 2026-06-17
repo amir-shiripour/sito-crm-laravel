@@ -298,9 +298,25 @@ class TaskController extends Controller
         $user = Auth::user();
 
         $query = Task::query()
-            ->with(['assignee', 'creator'])
-            ->orderByDesc('due_at')
-            ->orderByDesc('created_at');
+            ->with(['assignee', 'creator']);
+
+        // مرتب‌سازی
+        $sort = $request->get('sort', 'newest');
+        switch ($sort) {
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'due_asc':
+                $query->orderByRaw('due_at IS NULL, due_at ASC')->orderByDesc('created_at');
+                break;
+            case 'due_desc':
+                $query->orderByRaw('due_at IS NULL, due_at DESC')->orderByDesc('created_at');
+                break;
+            case 'newest':
+            default:
+                $query->orderByDesc('created_at');
+                break;
+        }
 
         // دسترسی‌ها
         if ($user->can('tasks.view.all')) {
@@ -341,6 +357,11 @@ class TaskController extends Controller
             $query->where('related_id', $relatedId);
         }
 
+        // فیلتر کاربر مسئول
+        if ($user->can('tasks.view.all') && $assigneeId = $request->get('assignee_id')) {
+            $query->where('assignee_id', $assigneeId);
+        }
+
         $perPage = config('tasks.default_items_per_page', 15);
         $tasks   = $query->paginate($perPage)->withQueryString();
 
@@ -349,11 +370,17 @@ class TaskController extends Controller
         $priorities = Task::priorityOptions();
         $types      = Task::typeOptions();
 
+        $users = [];
+        if ($user->can('tasks.view.all')) {
+            $users = \App\Models\User::select('id', 'name', 'email')->get();
+        }
+
         return view('tasks::user.tasks.index', compact(
             'tasks',
             'statuses',
             'priorities',
-            'types'
+            'types',
+            'users'
         ));
     }
 
@@ -600,8 +627,8 @@ class TaskController extends Controller
 
         $user = auth()->user();
 
-        // ۲) نوع وظیفه (اگر در فرم تغییر کرده باشد)
-        $taskType = $data['task_type'] ?? $task->task_type ?? Task::TYPE_GENERAL;
+        // ۲) نوع وظیفه (اگر در فرم تغییر کرده باشد - برای تسک‌های سیستمی تغییر داده نمی‌شود)
+        $taskType = $task->task_type === Task::TYPE_SYSTEM ? Task::TYPE_SYSTEM : ($data['task_type'] ?? $task->task_type ?? Task::TYPE_GENERAL);
 
         // ۳) تبدیل تاریخ سررسید:
         //    اولویت با due_at_view (شمسی) است، اگر نبود از due_at (میلادی) استفاده می‌کنیم،
@@ -650,7 +677,7 @@ class TaskController extends Controller
         // در غیر این صورت، اگر فرم چیزی نفرستاده، مقدار قبلی دست نخورده می‌ماند.
 
         // ۷) meta جدید از روی ورودی فرم (برای نگهداری تنظیمات پویا)
-        $meta = [
+        $newMeta = [
             'assignee_mode'             => $request->input('assignee_mode', 'single_user'),
             'assignee_role_ids'         => array_values((array) $request->input('assignee_role_ids', [])),
 
@@ -661,8 +688,8 @@ class TaskController extends Controller
             'related_client_ids'        => array_values((array) $request->input('related_client_ids', [])),
         ];
 
-        // اگر خواستی meta قبلی را هم merge کنی:
-        // $meta = array_merge($task->meta ?? [], $meta);
+        // ادغام متادیتای قبلی برای جلوگیری از حذف اطلاعات سیستمی/گردش‌کار
+        $meta = array_merge($task->meta ?? [], $newMeta);
 
         // ۸) خود Task را آپدیت می‌کنیم
         $task->update([
@@ -682,6 +709,58 @@ class TaskController extends Controller
         return redirect()
             ->route('user.tasks.show', $task)
             ->with('status', 'وظیفه با موفقیت به‌روزرسانی شد.');
+    }
+
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:tasks,id'],
+            'action' => ['required', 'string', 'in:status,delete'],
+            'status' => ['required_if:action,status', 'nullable', 'string', 'in:TODO,IN_PROGRESS,DONE,CANCELED'],
+        ]);
+
+        $ids = $request->input('ids');
+        $action = $request->input('action');
+        $user = Auth::user();
+
+        // فیلتر وظایف بر اساس دسترسی مشاهده
+        $tasksQuery = Task::whereIn('id', $ids);
+        
+        if (!$user->can('tasks.view.all')) {
+            if ($user->can('tasks.view.assigned')) {
+                $tasksQuery->where('assignee_id', $user->id);
+            } elseif ($user->can('tasks.view.own')) {
+                $tasksQuery->where('creator_id', $user->id);
+            } else {
+                abort(403);
+            }
+        }
+
+        $tasks = $tasksQuery->get();
+        $count = 0;
+
+        if ($action === 'status') {
+            $status = $request->input('status');
+            foreach ($tasks as $task) {
+                if ($user->can('tasks.edit')) {
+                    $task->update(['status' => $status]);
+                    $count++;
+                }
+            }
+            return redirect()->back()->with('status', "وضعیت {$count} وظیفه با موفقیت تغییر کرد.");
+        } elseif ($action === 'delete') {
+            if (!$user->can('tasks.delete')) {
+                abort(403);
+            }
+            foreach ($tasks as $task) {
+                $task->delete();
+                $count++;
+            }
+            return redirect()->back()->with('status', "تعداد {$count} وظیفه با موفقیت حذف شد.");
+        }
+
+        return redirect()->back();
     }
 
     public function destroy(Task $task)

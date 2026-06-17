@@ -40,7 +40,7 @@
         <path @click="toggle(28)" :class="is(28)" class="tooth-path" d="M140.081 194.4C144.841 198.979 158.325 217.128 167.307 218.357C167.32 218.712 169.29 182.564 168.731 175.757C168.363 170.67 164.583 164.428 159.88 161.577C155.147 158.744 146.295 158.232 145.17 173.056C144.045 187.88 140.986 193.044 140.081 194.4Z"/>
     </g>
 
-    <g class="pointer-events-none select-none font-bold fill-blue-600 dark:fill-blue-400"
+    <g class="pointer-events-none select-none font-bold fill-gray-700 dark:fill-gray-100"
        style="font-size:11px; font-family:sans-serif;" text-anchor="middle">
         <text x="625" y="90">۷</text>  <text x="600" y="102">۶</text>
         <text x="574" y="112">۵</text> <text x="544" y="122">۴</text>

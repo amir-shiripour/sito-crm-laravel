@@ -8,32 +8,17 @@ use Illuminate\Support\Facades\File;
 
 class ExportProjectContext extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'sito:export-context';
+    protected $description = 'Export Modules architecture, Database schema, and exact CRM state for AI context';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Export Modules architecture, Database schema, and exact WMS state for AI context';
-
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
-        $this->info('در حال جمع‌آوری نقشه دقیق پروژه، ساختار دیتابیس جدید و وضعیت نهایی سیستم انبارداری...');
+        $this->info('در حال جمع‌آوری نقشه دقیق پروژه (نسخه اصلاح شده برای Clients, ClientCalls, FollowUps)...');
 
         $data = [
             'installed_packages' => $this->getComposerDependencies(),
             'modules_list' => $this->getDirectoriesList(base_path('Modules')),
 
-            // ساختار پوشه های کلیدی app به عنوان هسته پنل
             'panel_core_structure' => [
                 'Controllers' => $this->getDirStructure(app_path('Http/Controllers')),
                 'Middleware' => $this->getDirStructure(app_path('Http/Middleware')),
@@ -41,35 +26,29 @@ class ExportProjectContext extends Command
                 'View_Components' => $this->getDirStructure(app_path('View/Components')),
             ],
 
-            // ساختار ماژول تنظیمات و مارکت
-            'settings_module_structure' => $this->getDirStructure(base_path('Modules/Settings')),
-            'market_module_structure' => $this->getDirStructure(base_path('Modules/Market')),
+            // ساختار دقیق ماژول‌های CRM بر اساس نام‌های واقعی پروژه شما
+            'client_module_structure' => $this->getDirStructure(base_path('Modules/Clients')),
+            'call_module_structure' => $this->getDirStructure(base_path('Modules/ClientCalls')),
+            'followup_module_structure' => $this->getDirStructure(base_path('Modules/FollowUps')),
+
             'global_models' => $this->getDirStructure(app_path('Models')),
             'database_schema' => $this->getDatabaseSchema(),
 
-            // خواندن زنده کدهای انبارداری که توسعه داده‌ای تا ساختار دست‌نخورده بماند
-            'wms_current_logic_code' => $this->getWMSCoreCodes(),
+            // استخراج کدهای لایه منطق ماژول‌های CRM
+            'crm_current_logic_code' => $this->getCRMCoreCodes(),
         ];
 
-        // ذخیره اطلاعات در پوشه storage
         $path = storage_path('app/sito_crm_context.json');
         File::put($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         $this->info("نقشه زنده پروژه با موفقیت در مسیر زیر ذخیره شد:");
         $this->line($path);
-        $this->info("لطفاً محتوای فایل جدید JSON را کپی کرده و برای من ارسال کنید تا فاز سفارشات را هماهنگ کنیم.");
     }
 
-    /**
-     * پکیج‌های نصب شده پروژه را برمی‌گرداند
-     */
     private function getComposerDependencies()
     {
         $composerPath = base_path('composer.json');
-        if (!File::exists($composerPath)) {
-            return 'فایل composer.json پیدا نشد.';
-        }
-
+        if (!File::exists($composerPath)) return 'فایل composer.json پیدا نشد.';
         $composerData = json_decode(File::get($composerPath), true);
         return [
             'require' => $composerData['require'] ?? [],
@@ -77,68 +56,53 @@ class ExportProjectContext extends Command
         ];
     }
 
-    /**
-     * گرفتن لیست ماژول‌های موجود
-     */
     private function getDirectoriesList($dir)
     {
-        if (!File::exists($dir)) return ['پیام' => 'پوشه Modules هنوز ایجاد نشده یا خالی است.'];
-        $dirs = File::directories($dir);
-        return array_map('basename', $dirs);
+        if (!File::exists($dir)) return ['پیام' => 'پوشه Modules خالی است.'];
+        return array_map('basename', File::directories($dir));
     }
 
-    /**
-     * گرفتن ساختار درختی فایل‌های یک پوشه
-     */
     private function getDirStructure($dir)
     {
-        if (!File::exists($dir)) return 'پوشه مورد نظر پیدا نشد.';
-
+        if (!File::exists($dir)) return null;
         $structure = [];
-        $files = File::allFiles($dir);
-
-        foreach ($files as $file) {
+        foreach (File::allFiles($dir) as $file) {
             $structure[] = $file->getRelativePathname();
         }
-
         return $structure;
     }
 
-    /**
-     * استخراج کدهای لایه انبارداری برای تسلط کامل روی متدهای توسعه داده شده توسط کاربر
-     */
-    private function getWMSCoreCodes()
+    private function getCRMCoreCodes()
     {
-        $coreFiles = [
-            'MarketSettings.php' => base_path('Modules/Market/App/Livewire/Admin/MarketSettings.php'),
-            'WarehouseStockController.php' => base_path('Modules/Market/App/Livewire/Admin/WarehouseStockController.php'),
-            'WarehouseStockService.php' => base_path('Modules/Market/Services/WarehouseStockService.php'),
-            'ProductService.php' => base_path('Modules/Market/Services/ProductService.php'),
-        ];
-
+        // نام دقیق ماژول‌های استخراج شده از خروجی شما
+        $targetModules = ['Clients', 'ClientCalls', 'FollowUps'];
         $codes = [];
-        foreach ($coreFiles as $key => $path) {
-            if (File::exists($path)) {
-                $codes[$key] = File::get($path);
-            } else {
-                // مسیر احتمالی nwidart با ساختار متفاوت
-                $alternativePath = base_path('Modules/Market/App/Http/Livewire/Admin/' . $key);
-                if (File::exists($alternativePath)) {
-                    $codes[$key] = File::get($alternativePath);
-                } else {
-                    $codes[$key] = "فایل در مسیرهای پیش‌فرض یافت نشد (احتمالاً نام یا مکان آن فرق دارد).";
+
+        foreach ($targetModules as $module) {
+            $modulePath = base_path("Modules/{$module}");
+            if (!File::exists($modulePath)) continue;
+
+            $importantDirs = [
+                $modulePath . '/App/Models',
+                $modulePath . '/Entities',
+                $modulePath . '/App/Http/Controllers',
+                $modulePath . '/App/Livewire',
+            ];
+
+            foreach ($importantDirs as $dir) {
+                if (File::exists($dir)) {
+                    foreach (File::allFiles($dir) as $file) {
+                        if ($file->getExtension() === 'php') {
+                            $key = $module . '/' . $file->getRelativePathname();
+                            $codes[$key] = File::get($file->getRealPath());
+                        }
+                    }
                 }
             }
         }
         return $codes;
     }
 
-    /**
-     * استخراج جداول و جزئیات دقیق ستون‌های دیتابیس
-     */
-    /**
-     * استخراج جداول و جزئیات دقیق ستون‌های دیتابیس
-     */
     private function getDatabaseSchema()
     {
         $schema = [];
@@ -149,10 +113,14 @@ class ExportProjectContext extends Command
             }, $tables);
 
             foreach ($tableNames as $table) {
-                // اصلاح تابع اشتباه و بهینه‌سازی شرط فیلتر جداول
-                if (!str_starts_with($table, 'market_') && !in_array($table, ['users', 'settings', 'modules'])) {
-                    continue;
-                }
+                // فیلتر کاملاً اصلاح شده برای گرفتن clients و tasks و ...
+                $isValidTable = str_starts_with($table, 'client_') ||
+                    $table === 'clients' ||
+                    str_starts_with($table, 'follow') ||
+                    $table === 'tasks' ||
+                    in_array($table, ['users', 'settings', 'modules']);
+
+                if (!$isValidTable) continue;
 
                 $columns = DB::select("SHOW COLUMNS FROM `{$table}`");
                 $schema[$table] = array_map(function($column) {
@@ -165,7 +133,7 @@ class ExportProjectContext extends Command
                 }, $columns);
             }
         } catch (\Exception $e) {
-            $schema['error'] = 'خطا در ارتباط با دیتابیس: ' . $e->getMessage();
+            $schema['error'] = 'خطا در دیتابیس: ' . $e->getMessage();
         }
 
         return $schema;

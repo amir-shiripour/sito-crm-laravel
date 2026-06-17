@@ -204,7 +204,7 @@ class CureController extends Controller
     /**
      * Show a treatment plan (read-only).
      */
-    public function show(TreatmentPlan $cure)
+    public function show(Request $request, TreatmentPlan $cure)
     {
         abort_unless(
             auth()->user()->canAny([
@@ -247,6 +247,8 @@ class CureController extends Controller
                 'email'     => $c->email ?? '',
             ]);
 
+        $workflowInstances = $this->getWorkflowInstancesData($cure);
+
         $planJs = [
             'id'              => $cure->id,
             'client'          => $cure->client ? [
@@ -259,7 +261,12 @@ class CureController extends Controller
             'discount_amount' => $cure->discount_amount,
             'discount_type'   => $cure->discount_type,
             'items'           => $cure->items ?? [],
+            'workflows'       => $workflowInstances,
         ];
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($planJs);
+        }
 
         return view('booking::user.cure.index', [
             'servicesJs' => $services,
@@ -271,9 +278,56 @@ class CureController extends Controller
     }
 
     /**
+     * Show and manage workflows for the treatment plan.
+     */
+    public function workflows(Request $request, TreatmentPlan $cure)
+    {
+        abort_unless(
+            auth()->user()->canAny([
+                'booking.cure.view',
+                'booking.cure.view.all',
+                'booking.cure.view.own',
+                'booking.cure.manage',
+            ]),
+            403
+        );
+
+        $user = auth()->user();
+        if (
+            ! $user->can('booking.cure.view.all') &&
+            ! $user->can('booking.cure.manage')
+        ) {
+            abort_unless($cure->user_id === $user->id, 403);
+        }
+
+        $workflowInstances = $this->getWorkflowInstancesData($cure);
+
+        $planJs = [
+            'id'              => $cure->id,
+            'client'          => $cure->client ? [
+                'id'        => $cure->client->id,
+                'full_name' => $cure->client->full_name ?? '',
+            ] : null,
+            'patient_name'    => $cure->patient_name,
+            'status'          => $cure->status,
+            'notes'           => $cure->notes,
+            'workflows'       => $workflowInstances,
+        ];
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($planJs);
+        }
+
+        return view('booking::user.cure.workflows', [
+            'cure'   => $cure,
+            'planJs' => $planJs,
+        ]);
+    }
+
+    /**
      * Show the edit form for a treatment plan.
      */
-    public function edit(TreatmentPlan $cure)
+    public function edit(Request $request, TreatmentPlan $cure)
     {
         $user                   = auth()->user();
         $setting                = BookingSetting::current();
@@ -317,6 +371,8 @@ class CureController extends Controller
                 'email'     => $c->email ?? '',
             ]);
 
+        $workflowInstances = $this->getWorkflowInstancesData($cure);
+
         $planJs = [
             'id'              => $cure->id,
             'client'          => $cure->client ? [
@@ -329,7 +385,12 @@ class CureController extends Controller
             'discount_amount' => $cure->discount_amount,
             'discount_type'   => $cure->discount_type,
             'items'           => $cure->items ?? [],
+            'workflows'       => $workflowInstances,
         ];
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($planJs);
+        }
 
         return view('booking::user.cure.index', [
             'servicesJs' => $services,
@@ -432,5 +493,91 @@ class CureController extends Controller
 
         return redirect()->route('user.booking.cure.list')
             ->with('success', 'طرح درمان حذف شد.');
+    }
+
+    /**
+     * Get treatment plans for a specific client.
+     */
+    public function clientPlans(Request $request, $clientId)
+    {
+        $plans = TreatmentPlan::where('client_id', $clientId)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $toothTreatments = [];
+        foreach ($plans as $plan) {
+            $items = $plan->items ?? [];
+            foreach ($items as $item) {
+                $serviceName = $item['service_name'] ?? '';
+                $teeth = $item['teeth'] ?? [];
+                $planStatus = $plan->status === 'confirmed' ? 'تایید شده' : 'پیش‌نویس';
+                foreach ($teeth as $toothId) {
+                    $toothTreatments[$toothId][] = [
+                        'plan_id' => $plan->id,
+                        'service_name' => $serviceName,
+                        'status' => $plan->status,
+                        'status_label' => $planStatus,
+                        'created_at' => $plan->created_at ? $plan->created_at->format('Y-m-d') : null,
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'tooth_treatments' => $toothTreatments,
+        ]);
+    }
+
+    protected function getWorkflowInstancesData(TreatmentPlan $cure)
+    {
+        return \Modules\Workflows\Entities\WorkflowInstance::where('related_type', 'TREATMENT_PLAN')
+            ->where('related_id', $cure->id)
+            ->with(['workflow.nodes', 'workflow.edges', 'currentNode'])
+            ->latest()
+            ->get()
+            ->map(function ($inst) {
+                $tasks = class_exists(\Modules\Tasks\Entities\Task::class)
+                    ? \Modules\Tasks\Entities\Task::where('meta->workflow_instance_id', $inst->id)
+                        ->select(['id', 'title', 'status', 'meta'])
+                        ->get()
+                        ->map(fn($t) => [
+                            'id' => $t->id,
+                            'title' => $t->title,
+                            'status' => $t->status,
+                            'node_id' => $t->meta['workflow_node_id'] ?? null,
+                            'status_label' => match ($t->status) {
+                                'TODO' => 'در صف انجام',
+                                'IN_PROGRESS' => 'در حال انجام',
+                                'DONE' => 'انجام شده',
+                                'CANCELED' => 'لغو شده',
+                                default => $t->status,
+                            }
+                        ])
+                    : collect();
+
+                return [
+                    'id' => $inst->id,
+                    'workflow_name' => $inst->workflow?->name,
+                    'current_node_id' => $inst->current_node_id,
+                    'current_node_name' => $inst->currentNode?->name,
+                    'current_node_type' => $inst->currentNode?->type,
+                    'status' => $inst->status,
+                    'started_at' => $inst->started_at?->format('Y-m-d H:i:s'),
+                    'completed_at' => $inst->completed_at?->format('Y-m-d H:i:s'),
+                    'nodes' => $inst->workflow?->nodes->map(fn($n) => [
+                        'id' => $n->id,
+                        'name' => $n->name,
+                        'type' => $n->type,
+                        'config' => $n->config,
+                    ]),
+                    'edges' => $inst->workflow?->edges->map(fn($e) => [
+                        'source_id' => $e->source_node_id,
+                        'target_id' => $e->target_node_id,
+                        'condition' => $e->condition,
+                    ]),
+                    'tasks' => $tasks,
+                ];
+            });
     }
 }

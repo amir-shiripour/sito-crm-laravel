@@ -12,9 +12,11 @@ class WorkflowInstance extends Model
 
     protected $fillable = [
         'workflow_id',
+        'parent_instance_id',
         'related_type',
         'related_id',
         'current_stage_id',
+        'current_node_id',
         'status',
         'started_at',
         'completed_at',
@@ -33,6 +35,21 @@ class WorkflowInstance extends Model
     public function workflow(): BelongsTo
     {
         return $this->belongsTo(Workflow::class);
+    }
+
+    public function parentInstance(): BelongsTo
+    {
+        return $this->belongsTo(WorkflowInstance::class, 'parent_instance_id');
+    }
+
+    public function childInstances(): HasMany
+    {
+        return $this->hasMany(WorkflowInstance::class, 'parent_instance_id');
+    }
+
+    public function currentNode(): BelongsTo
+    {
+        return $this->belongsTo(WorkflowNode::class, 'current_node_id');
     }
 
     public function currentStage(): BelongsTo

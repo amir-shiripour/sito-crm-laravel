@@ -57,6 +57,12 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
                     ->name('destroy')
                     ->middleware('permission:clients.delete');
 
+                Route::post('/bulk', [UserClientController::class, 'bulkUpdate'])
+                    ->name('bulk-update')
+                    ->middleware('permission:clients.edit');
+
+
+
                 // 🔹 این روت جدید برای "ورود به پنل مشتری در تب جدید" است
                 Route::get('/{client}/portal-login', [ClientAuthController::class, 'autoLoginFromAdmin'])
                     ->name('portal-login')
@@ -137,8 +143,10 @@ Route::prefix('clients')
             Route::get('market/orders/{id}', [ClientPaymentController::class, 'marketOrderShow'])
                 ->name('market.orders.show');
 
-            Route::get('market/interactions', \Modules\Market\App\Livewire\Client\InteractionsManager::class)
-                ->name('market.interactions');
+            if (class_exists('Modules\Market\App\Livewire\Client\InteractionsManager')) {
+                Route::get('market/interactions', \Modules\Market\App\Livewire\Client\InteractionsManager::class)
+                    ->name('market.interactions');
+            }
 
             Route::post('logout', [ClientAuthController::class, 'logout'])
                 ->name('logout');

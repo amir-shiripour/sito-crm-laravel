@@ -324,7 +324,7 @@
                                 <div class="flex gap-3">
                                     {{-- تاریخ --}}
                                     <div class="relative flex-1">
-                                        <input id="due_at_view" name="due_at_view" type="text" data-jdp autocomplete="off"
+                                        <input id="due_at_view" name="due_at_view" type="text" data-jdp-only-date autocomplete="off"
                                                placeholder="انتخاب تاریخ..."
                                                value="{{ old('due_at_view') }}"
                                                class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-center focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 dark:bg-gray-900/50 dark:border-gray-700 dark:text-white dark:focus:bg-gray-900">

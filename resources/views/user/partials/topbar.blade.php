@@ -23,14 +23,14 @@
                      showResults: false,
                      selectedIndex: -1,
                      async search() {
-                         if (this.searchQuery.length < 2) {
+                         if (this.searchQuery.trim().length < 2) {
                              this.clients = [];
                              this.showResults = false;
                              return;
                          }
                          this.isLoading = true;
                          try {
-                             const response = await fetch('{{ route('user.clients.search') }}?q=' + encodeURIComponent(this.searchQuery), {
+                             const response = await fetch('{{ route('user.clients.search') }}?q=' + encodeURIComponent(this.searchQuery.trim()), {
                                  headers: {
                                      'X-Requested-With': 'XMLHttpRequest',
                                      'Accept': 'application/json'
@@ -86,7 +86,7 @@
                        x-model="searchQuery"
                        @input.debounce.300ms="search()"
                        @keydown="handleKeydown($event)"
-                       @focus="if(searchQuery.length >= 2) showResults = true"
+                       @focus="if(searchQuery.trim().length >= 2) showResults = true"
                        class="w-full h-11 rounded-xl border-transparent bg-gray-100 dark:bg-gray-800 pr-11 pl-10 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm" />
 
                 {{-- لودینگ --}}
@@ -133,6 +133,10 @@
                                                 <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" /></svg>
                                                 <span x-text="client.national_code"></span>
                                             </span>
+                                            <span x-show="client.case_number" class="flex items-center gap-1">
+                                                 <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                                 <span>پرونده: <span x-text="client.case_number"></span></span>
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="text-gray-300 opacity-0 group-hover:opacity-100 group-hover:text-indigo-500 transition-all transform -translate-x-2 group-hover:translate-x-0">
@@ -145,7 +149,7 @@
                 </div>
 
                 {{-- پیام بدون نتیجه --}}
-                <div x-cloak x-show="showResults && clients.length === 0 && searchQuery.length >= 2 && !isLoading"
+                <div x-cloak x-show="showResults && clients.length === 0 && searchQuery.trim().length >= 2 && !isLoading"
                      x-transition
                      class="absolute top-full right-0 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl p-6 text-center z-50">
                     <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -167,62 +171,276 @@
                 <svg x-show="themeIcon==='system'" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 5a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-10z" /><path d="M7 20h10" /><path d="M9 16v4" /><path d="M15 16v4" /></svg>
             </button>
 
-            {{-- اعلانات --}}
-            <div class="relative" x-data="{open:false}">
-                <button @click="open=!open"
-                        class="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all border border-transparent dark:border-gray-700"
-                        aria-haspopup="true" :aria-expanded="open">
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                        <path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
-                        <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
-                    </svg>
-                    <span class="absolute top-2 right-2.5 flex h-2.5 w-2.5">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white dark:border-gray-800"></span>
-                    </span>
-                </button>
+            @if(Route::has('user.notifications.index') && auth()->check() && auth()->user()->can('notifications.view'))
+                @php
+                    $unreadNotificationsCount = 0;
+                    $latestNotifications = collect();
+                    if (class_exists(\Modules\Notifications\Entities\Notification::class)) {
+                        $user = auth()->user();
+                        $unreadNotificationsCount = \Modules\Notifications\Entities\Notification::where('notifiable_type', get_class($user))
+                            ->where('notifiable_id', $user->id)
+                            ->whereNull('read_at')
+                            ->count();
+                        
+                        $latestNotifications = \Modules\Notifications\Entities\Notification::where('notifiable_type', get_class($user))
+                            ->where('notifiable_id', $user->id)
+                            ->orderByDesc('created_at')
+                            ->take(5)
+                            ->get();
+                    }
+                @endphp
 
-                <div x-cloak x-show="open" @click.outside="open=false"
-                     x-transition:enter="transition ease-out duration-200"
-                     x-transition:enter-start="opacity-0 translate-y-2 scale-95"
-                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                     x-transition:leave="transition ease-in duration-100"
-                     x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                     x-transition:leave-end="opacity-0 translate-y-2 scale-95"
-                     class="absolute left-0 mt-3 w-80 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden z-50">
+                {{-- اعلانات --}}
+                <div class="relative" x-data="{
+                    open: false,
+                    unreadCount: {{ $unreadNotificationsCount }},
+                    async markAsRead(id, actionUrl, event) {
+                        if (event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        try {
+                            const response = await fetch('{{ route('user.notifications.mark-read', ['id' => 'NOTIFICATION_ID']) }}'.replace('NOTIFICATION_ID', id), {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                this.unreadCount = Math.max(0, this.unreadCount - 1);
+                                const el = document.getElementById('dropdown-notification-' + id);
+                                if (el) {
+                                    el.classList.remove('bg-indigo-50/30', 'dark:bg-indigo-950/10');
+                                    el.classList.add('hover:bg-gray-50/50', 'dark:hover:bg-gray-700/30');
+                                    const badge = el.querySelector('.unread-dot');
+                                    if (badge) badge.remove();
+                                    const btn = el.querySelector('.mark-read-btn');
+                                    if (btn) btn.remove();
+                                }
+                                if (typeof showToast === 'function') {
+                                    showToast('success', data.message);
+                                }
+                                if (actionUrl) {
+                                    window.location.href = actionUrl;
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error marking notification as read:', error);
+                        }
+                    },
+                    async markAllAsRead() {
+                        try {
+                            const response = await fetch('{{ route('user.notifications.mark-all-read') }}', {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                this.unreadCount = 0;
+                                document.querySelectorAll('[id^=\'dropdown-notification-\']').forEach(el => {
+                                    el.classList.remove('bg-indigo-50/30', 'dark:bg-indigo-950/10');
+                                    el.classList.add('hover:bg-gray-50/50', 'dark:hover:bg-gray-700/30');
+                                    const badge = el.querySelector('.unread-dot');
+                                    if (badge) badge.remove();
+                                    const btn = el.querySelector('.mark-read-btn');
+                                    if (btn) btn.remove();
+                                });
+                                if (typeof showToast === 'function') {
+                                    showToast('success', data.message);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error marking all notifications as read:', error);
+                        }
+                    },
+                    async deleteNotification(id, event) {
+                        if (event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        if (!confirm('آیا از حذف این اعلان اطمینان دارید؟')) return;
+                        try {
+                            const response = await fetch('{{ route('user.notifications.destroy', ['id' => 'NOTIFICATION_ID']) }}'.replace('NOTIFICATION_ID', id), {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                const el = document.getElementById('dropdown-notification-' + id);
+                                if (el) {
+                                    if (el.classList.contains('bg-indigo-50/30') || el.classList.contains('dark:bg-indigo-950/10')) {
+                                        this.unreadCount = Math.max(0, this.unreadCount - 1);
+                                    }
+                                    el.style.transition = 'all 0.3s ease';
+                                    el.style.opacity = '0';
+                                    el.style.transform = 'translateY(10px)';
+                                    setTimeout(() => {
+                                        el.remove();
+                                        const list = document.getElementById('dropdown-notifications-list');
+                                        const itemsCount = Array.from(list.children).filter(child => !child.classList.contains('hidden') && child.id.startsWith('dropdown-notification-')).length;
+                                        if (itemsCount === 0) {
+                                            const emptyState = document.getElementById('dropdown-notifications-empty');
+                                            if (emptyState) emptyState.classList.remove('hidden');
+                                        }
+                                    }, 300);
+                                }
+                                if (typeof showToast === 'function') {
+                                    showToast('success', data.message);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error deleting notification:', error);
+                        }
+                    }
+                }">
+                    <button @click="open=!open"
+                            class="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all border border-transparent dark:border-gray-700"
+                            aria-haspopup="true" :aria-expanded="open">
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                            <path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+                            <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+                        </svg>
+                        <span x-show="unreadCount > 0" class="absolute top-2 right-2.5 flex h-2.5 w-2.5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white dark:border-gray-800"></span>
+                        </span>
+                    </button>
 
-                    <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/30">
-                        <span class="text-sm font-bold text-gray-900 dark:text-white">اعلان‌ها</span>
-                        <span class="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 text-[10px] font-bold px-2 py-0.5 rounded-md">۳ جدید</span>
-                    </div>
+                    <div x-cloak x-show="open" @click.outside="open=false"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                         x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                         class="absolute left-0 mt-3 w-80 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden z-50">
 
-                    <div class="max-h-80 overflow-y-auto custom-scrollbar">
-                        <a href="#" class="flex gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-50 dark:border-gray-700/50 transition-colors">
-                            <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/30">
+                            <span class="text-sm font-bold text-gray-900 dark:text-white">اعلان‌ها</span>
+                            <div class="flex items-center gap-3">
+                                <span x-show="unreadCount > 0" x-text="unreadCount + ' جدید'" class="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 text-[10px] font-bold px-2 py-0.5 rounded-md"></span>
+                                <button x-show="unreadCount > 0" @click="markAllAsRead()" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors">
+                                    همه خوانده شد
+                                </button>
                             </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-800 dark:text-gray-200">پرداخت جدید ثبت شد.</p>
-                                <span class="text-[10px] text-gray-400 mt-0.5">۵ دقیقه پیش</span>
-                            </div>
-                        </a>
-                        <a href="#" class="flex gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-50 dark:border-gray-700/50 transition-colors">
-                            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 flex items-center justify-center shrink-0">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-800 dark:text-gray-200">کاربر جدید عضو شد.</p>
-                                <span class="text-[10px] text-gray-400 mt-0.5">۱ ساعت پیش</span>
-                            </div>
-                        </a>
-                    </div>
+                        </div>
 
-                    <div class="p-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 text-center">
-                        <a href="#" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">نمایش همه اعلان‌ها</a>
+                        <div id="dropdown-notifications-list" class="max-h-[24rem] overflow-y-auto custom-scrollbar divide-y divide-gray-100/60 dark:divide-gray-700/40">
+                            @forelse($latestNotifications as $n)
+                                @php
+                                    $data = $n->formatted_data;
+                                    $isUnread = is_null($n->read_at);
+                                    $isEscalation = str_contains($n->type, 'SnoozeEscalation') || str_contains($n->type, 'escalation');
+                                    
+                                    $bgColor = $isUnread 
+                                        ? 'bg-indigo-50/30 dark:bg-indigo-950/10' 
+                                        : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/40';
+
+                                    $iconBg = 'bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400';
+                                    $iconSvg = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+
+                                    if ($isEscalation) {
+                                        $iconBg = 'bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400';
+                                        $iconSvg = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>';
+                                    } elseif (isset($data['type'])) {
+                                        if ($data['type'] === 'success' || str_contains(strtolower($data['title'] ?? ''), 'پرداخت') || str_contains(strtolower($data['message'] ?? ''), 'موفق')) {
+                                            $iconBg = 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400';
+                                            $iconSvg = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                                        } elseif ($data['type'] === 'info' || str_contains(strtolower($data['title'] ?? ''), 'کاربر')) {
+                                            $iconBg = 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400';
+                                            $iconSvg = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>';
+                                        }
+                                    }
+                                    
+                                    $actionUrl = $data['action_url'] ?? null;
+                                @endphp
+
+                                <div id="dropdown-notification-{{ $n->id }}" 
+                                     class="relative flex gap-3 px-4 py-3.5 transition-all duration-200 group {{ $bgColor }}">
+                                    
+                                    @if($actionUrl)
+                                        <a href="#" @click="markAsRead('{{ $n->id }}', '{{ $actionUrl }}', $event)" class="absolute inset-0 z-0"></a>
+                                    @else
+                                        <a href="#" @click="markAsRead('{{ $n->id }}', null, $event)" class="absolute inset-0 z-0"></a>
+                                    @endif
+
+                                    <div class="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 {{ $iconBg }}">
+                                        {!! $iconSvg !!}
+                                    </div>
+
+                                    <div class="relative z-10 flex-1 min-w-0">
+                                        <div class="flex items-center justify-between gap-1">
+                                            <p class="text-xs font-bold text-gray-900 dark:text-white truncate">
+                                                {{ $data['title'] ?? 'اعلان سیستم' }}
+                                            </p>
+                                            @if($isUnread)
+                                                <span class="unread-dot w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shrink-0"></span>
+                                            @endif
+                                        </div>
+                                        <p class="text-[11px] text-gray-650 dark:text-gray-400 mt-1 leading-relaxed line-clamp-2">
+                                            {{ $data['message'] ?? $data['description'] ?? '' }}
+                                        </p>
+                                        <div class="flex items-center justify-between mt-2 gap-2">
+                                            <span class="text-[9px] text-gray-400 dark:text-gray-500 font-medium">
+                                                {{ $n->created_at->diffForHumans() }}
+                                            </span>
+                                            
+                                            <div class="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                                @if($isUnread)
+                                                    <button @click="markAsRead('{{ $n->id }}', null, $event)"
+                                                            title="علامت خوانده شده"
+                                                            class="mark-read-btn p-1 rounded-md bg-gray-100 dark:bg-gray-800 hover:bg-gray-250 dark:hover:bg-gray-700/60 text-gray-400 hover:text-gray-750 dark:hover:text-gray-200 transition-colors">
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </button>
+                                                @endif
+                                                <button @click="deleteNotification('{{ $n->id }}', $event)"
+                                                        title="حذف اعلان"
+                                                        class="p-1 rounded-md bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-gray-400 hover:text-rose-600 dark:hover:text-rose-450 transition-colors">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                {{-- Empty state dynamically handled --}}
+                            @endforelse
+
+                            <div id="dropdown-notifications-empty" class="@if($latestNotifications->isNotEmpty()) hidden @endif flex flex-col items-center justify-center py-10 px-4 text-center">
+                                <div class="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-900/30 flex items-center justify-center text-gray-300 dark:text-gray-600 mb-3">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v4.5m16 3H4" />
+                                    </svg>
+                                </div>
+                                <p class="text-xs font-bold text-gray-950 dark:text-white">هیچ اعلانی یافت نشد</p>
+                                <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1 max-w-xs">
+                                    در حال حاضر هیچ پیام یا اعلانی برای نمایش وجود ندارد.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="p-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 text-center">
+                            <a href="{{ route('user.notifications.index') }}" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">نمایش همه اعلان‌ها</a>
+                        </div>
                     </div>
                 </div>
-            </div>
+            @endif
 
             {{-- منوی کاربر --}}
             <div class="relative" x-data="{open:false}">

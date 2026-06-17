@@ -359,7 +359,7 @@
                                     <select name="task_type" x-model="taskType"
                                             class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2.5 text-sm appearance-none cursor-pointer focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 dark:bg-gray-900/50 dark:border-gray-700 dark:text-white dark:focus:bg-gray-900">
                                         @foreach($types as $value => $label)
-                                            @if($value !== Task::TYPE_SYSTEM)
+                                            @if($value !== Task::TYPE_SYSTEM || $task->task_type === Task::TYPE_SYSTEM)
                                                 <option value="{{ $value }}"
                                                         @selected(old('task_type', $task->task_type) === $value)
                                                 >
@@ -432,7 +432,7 @@
                                         <input id="due_at_view"
                                                name="due_at_view"
                                                type="text"
-                                               data-jdp
+                                               data-jdp-only-date
                                                autocomplete="off"
                                                placeholder="انتخاب تاریخ..."
                                                value="{{ old('due_at_view', $dueAtView) }}"
@@ -487,7 +487,7 @@
                             </div>
                         @endif
 
-                        <div x-show="taskType === '{{ Task::TYPE_GENERAL }}' || (taskType === '{{ Task::TYPE_FOLLOW_UP }}' && canAssign)" x-cloak class="space-y-4">
+                        <div x-show="taskType === '{{ Task::TYPE_GENERAL }}' || taskType === '{{ Task::TYPE_SYSTEM }}' || (taskType === '{{ Task::TYPE_FOLLOW_UP }}' && canAssign)" x-cloak class="space-y-4">
                             <div>
                                 <label class="block text-xs font-bold mb-1.5 text-gray-700 dark:text-gray-300">
                                     روش انتخاب مسئول

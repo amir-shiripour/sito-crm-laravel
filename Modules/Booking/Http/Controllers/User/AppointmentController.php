@@ -33,8 +33,15 @@ class AppointmentController extends Controller
             ->with(['service', 'provider', 'client']);
 
         // Permission Scope
-        if ($this->userIsProvider($user, $settings) && ! $this->isAdminUser($user)) {
-            $query->where('provider_user_id', $user->id);
+        if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.view.all')) {
+            if ($user->can('booking.appointments.view.own') || $this->userIsProvider($user, $settings)) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('provider_user_id', $user->id)
+                      ->orWhere('created_by_user_id', $user->id);
+                });
+            } else {
+                $query->where('created_by_user_id', $user->id);
+            }
         }
 
         // --- Filtering ---
@@ -456,16 +463,18 @@ class AppointmentController extends Controller
                     if (isset($field['name'])) {
                         $fieldMeta[$field['name']] = [
                             'label' => $field['label'] ?? $field['name'],
+                            'type' => $field['type'] ?? 'text',
                         ];
                     }
                 }
             }
 
             foreach ($rawFormResponses as $key => $value) {
-                $meta = $fieldMeta[$key] ?? ['label' => $key];
+                $meta = $fieldMeta[$key] ?? ['label' => $key, 'type' => 'text'];
                 $formResponses[] = [
                     'label' => $meta['label'],
                     'value' => $value,
+                    'type' => $meta['type'],
                 ];
             }
         } else if (!empty($rawFormResponses)) {
@@ -474,6 +483,7 @@ class AppointmentController extends Controller
                 $formResponses[] = [
                     'label' => $key,
                     'value' => $value,
+                    'type' => 'text',
                 ];
             }
         }
@@ -1215,6 +1225,7 @@ class AppointmentController extends Controller
             'data' => [
                 'id' => $form->id,
                 'name' => $form->name,
+                'form_type' => $form->form_type,
                 'schema_json' => $form->schema_json ?? [],
             ],
         ]);
@@ -1244,14 +1255,29 @@ class AppointmentController extends Controller
         $startUtc = $localDate->copy()->startOfDay()->timezone('UTC');
         $endUtc = $localDate->copy()->endOfDay()->timezone('UTC');
 
-        $appointments = Appointment::query()
+        $user = $request->user();
+        $settings = BookingSetting::current();
+
+        $query = Appointment::query()
             ->with(['client'])
             ->where('service_id', $serviceId)
             ->where('provider_user_id', $providerId)
             ->where('start_at_utc', '>=', $startUtc)
-            ->where('start_at_utc', '<=', $endUtc)
-            ->orderBy('start_at_utc')
-            ->get();
+            ->where('start_at_utc', '<=', $endUtc);
+
+        // Permission Scope
+        if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.view.all')) {
+            if ($user->can('booking.appointments.view.own') || $this->userIsProvider($user, $settings)) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('provider_user_id', $user->id)
+                      ->orWhere('created_by_user_id', $user->id);
+                });
+            } else {
+                $query->where('created_by_user_id', $user->id);
+            }
+        }
+
+        $appointments = $query->orderBy('start_at_utc')->get();
 
         $statusLabels = [
             Appointment::STATUS_DRAFT => 'پیش‌نویس',

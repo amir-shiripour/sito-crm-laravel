@@ -196,11 +196,16 @@
                                         </a>
                                     @endcan
                                     @can('workflows.manage')
-                                        <a href="{{ route('user.workflows.edit', $workflow) }}" class="text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" title="ویرایش">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                        </a>
+                                         <a href="{{ route('user.workflows.designer', $workflow) }}" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" title="طراحی گرافیکی (بوم)">
+                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                                             </svg>
+                                         </a>
+                                         <a href="{{ route('user.workflows.edit', $workflow) }}" class="text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" title="ویرایش">
+                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                             </svg>
+                                         </a>
                                         <form action="{{ route('user.workflows.destroy', $workflow) }}" method="POST" class="inline-block" onsubmit="return confirm('آیا از حذف این مورد اطمینان دارید؟');">
                                             @csrf
                                             @method('DELETE')

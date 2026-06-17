@@ -16,3 +16,8 @@ use Illuminate\Support\Facades\Broadcast;
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
+
+Broadcast::channel('treatment-plan.{id}', function ($user, $id) {
+    // Clinic staff check: permit any authenticated staff/user
+    return auth()->check();
+});

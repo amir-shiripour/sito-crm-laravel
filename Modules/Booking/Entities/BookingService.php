@@ -47,6 +47,7 @@ class BookingService extends Model
         'provider_can_customize',
         'custom_schedule_enabled',
         'custom_prices',
+        'installments',
     ];
 
     protected $casts = [
@@ -60,6 +61,7 @@ class BookingService extends Model
         'custom_schedule_enabled' => 'boolean',
         'auto_confirm_online_booking' => 'boolean',
         'custom_prices' => 'array',
+        'installments' => 'array',
     ];
 
     protected static function booted(): void

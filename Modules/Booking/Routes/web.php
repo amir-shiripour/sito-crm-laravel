@@ -59,17 +59,18 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::post('services/{service}/custom-prices', [UserServiceController::class, 'updateCustomPrices'])
             ->name('services.custom-prices.update');
 
-        //installment routes
-        Route::get('services/{service}/installments', [UserServiceController::class, 'editInstallments'])
+//installments routes
+        Route::get('services/{service}/installments', [UserServiceController::class, 'installments'])
             ->name('services.installments');
         Route::post('services/{service}/installments', [UserServiceController::class, 'updateInstallments'])
             ->name('services.installments.update');
-
         //cure routes
         Route::get('/cure',[CureController::class, 'index'])->name('cure.index');
+        Route::get('/cure/client-plans/{clientId}', [CureController::class, 'clientPlans'])->name('cure.client-plans');
         Route::post('/cure',[CureController::class, 'store'])->name('cure.store');
         Route::get('/cure/list',[CureController::class, 'list'])->name('cure.list');
         Route::get('/cure/{cure}',[CureController::class, 'show'])->name('cure.show');
+        Route::get('/cure/{cure}/workflows',[CureController::class, 'workflows'])->name('cure.workflows');
         Route::get('/cure/{cure}/edit',[CureController::class, 'edit'])->name('cure.edit');
         Route::put('/cure/{cure}',[CureController::class, 'update'])->name('cure.update');
         Route::delete('/cure/{cure}', [CureController::class, 'destroy'])->name('cure.destroy');

@@ -54,6 +54,8 @@ class Installer extends BaseModuleInstaller
             'reminders.edit',
             'reminders.delete',
             'reminders.manage',
+            'reminders.settings.view',
+            'reminders.settings.manage',
         ];
 
         $tracker = $this->loadTracker();

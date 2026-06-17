@@ -77,10 +77,10 @@
 
         {{-- باکس فیلترها --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
-            <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <form method="GET" class="flex flex-wrap items-end gap-4">
 
                 {{-- فیلتر وضعیت --}}
-                <div>
+                <div class="flex-1 min-w-[150px]">
                     <label class="{{ $labelClass }}">وضعیت یادآوری</label>
                     <div class="relative">
                         <select name="status" class="{{ $inputClass }} appearance-none cursor-pointer">
@@ -95,7 +95,7 @@
                 </div>
 
                 {{-- فیلتر بازه زمانی --}}
-                <div>
+                <div class="flex-1 min-w-[150px]">
                     <label class="{{ $labelClass }}">بازه زمانی</label>
                     <div class="relative">
                         <select name="period" class="{{ $inputClass }} appearance-none cursor-pointer">
@@ -109,8 +109,25 @@
                     </div>
                 </div>
 
+                {{-- فیلتر کاربر --}}
+                @if(auth()->user()->can('reminders.manage') || auth()->user()->can('reminders.view'))
+                    <div class="flex-1 min-w-[150px]">
+                        <label class="{{ $labelClass }}">کاربر</label>
+                        <div class="relative">
+                            <select name="user_id" class="{{ $inputClass }} appearance-none cursor-pointer">
+                                @foreach($users as $u)
+                                    <option value="{{ $u->id }}" @selected($selectedUserId == $u->id)>{{ $u->name }}</option>
+                                @endforeach
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-2.5 text-gray-500 dark:text-gray-400">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- فیلتر تاریخ دلخواه --}}
-                <div class="md:col-span-2 grid grid-cols-2 gap-3" x-data>
+                <div class="flex-[2] min-w-[300px] grid grid-cols-2 gap-3" x-data>
                     <div>
                         <label class="{{ $labelClass }}">از تاریخ</label>
                         <input type="text" name="from_jalali" data-jdp-only-date
@@ -128,7 +145,7 @@
                 </div>
 
                 {{-- دکمه‌های فیلتر --}}
-                <div class="md:col-span-4 flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+                <div class="w-full flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
                     @if(request()->anyFilled(['status', 'period', 'from_jalali', 'to_jalali']))
                         <a href="{{ route('user.reminders.index') }}"
                            class="inline-flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-red-500 transition-colors dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700">
@@ -191,6 +208,7 @@
                             </th>
                             <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">شرح یادآوری</th>
                             <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">وظیفه مرتبط</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">مشتری/کاربر</th>
                             <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">اولویت</th>
                             <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">زمان یادآوری</th>
                             <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">وضعیت</th>
@@ -217,9 +235,53 @@
                                 </td>
                                 <td class="px-4 py-3 align-middle">
                                     @if($task)
-                                        <a href="{{ route('user.tasks.show', $task) }}" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
-                                            {{ $task->title ?? ('Task #' . $task->id) }}
-                                        </a>
+                                        @php $rUrl = $reminder->relatedUrl(); @endphp
+                                        @if($rUrl)
+                                            <a href="{{ $rUrl }}" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
+                                                {{ $task->title ?? ('Task #' . $task->id) }}
+                                            </a>
+                                        @else
+                                            <span class="text-xs text-gray-700 dark:text-gray-300">{{ $task->title ?? ('Task #' . $task->id) }}</span>
+                                        @endif
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 align-middle">
+                                    @php
+                                        $relatedModel = null;
+                                        $relatedUrl = null;
+                                        $isClient = false;
+                                        if ($task) {
+                                            if ($task->related_type === Task::RELATED_TYPE_CLIENT && $task->relatedClient) {
+                                                if (auth()->user()->can('clients.view') && $task->relatedClient->isVisibleFor(auth()->user())) {
+                                                    $relatedModel = $task->relatedClient;
+                                                    $relatedUrl = route('user.clients.show', $task->relatedClient->id);
+                                                    $isClient = true;
+                                                }
+                                            } elseif ($task->related_type === Task::RELATED_TYPE_USER && $task->relatedUser) {
+                                                if (auth()->user()->can('users.view')) {
+                                                    $relatedModel = $task->relatedUser;
+                                                }
+                                            }
+                                        }
+                                    @endphp
+                                    @if($relatedModel)
+                                        <div class="flex flex-col">
+                                            @if($relatedUrl)
+                                                <a href="{{ $relatedUrl }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
+                                                    {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
+                                                </a>
+                                            @else
+                                                <span class="text-xs font-medium text-gray-900 dark:text-white">
+                                                    {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
+                                                </span>
+                                            @endif
+                                            
+                                            @if($isClient && $relatedModel->username)
+                                                <span class="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-0.5">@ {{ $relatedModel->username }}</span>
+                                            @endif
+                                        </div>
                                     @else
                                         <span class="text-xs text-gray-400">—</span>
                                     @endif
@@ -261,7 +323,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-12 text-center">
+                                <td colspan="8" class="px-4 py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
                                         <svg class="w-12 h-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                                         <span class="text-sm font-medium">هیچ یادآوری وظیفه‌ای در این بازه یافت نشد.</span>
@@ -310,6 +372,7 @@
                             </th>
                             <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">شرح یادآوری</th>
                             <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">مورد پیگیری</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">مشتری/کاربر</th>
                             <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">اولویت</th>
                             <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">زمان یادآوری</th>
                             <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">وضعیت</th>
@@ -339,6 +402,45 @@
                                         <a href="{{ route('user.followups.show', $followUp) }}" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
                                             {{ $followUp->title ?? ('FollowUp #' . $followUp->id) }}
                                         </a>
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 align-middle">
+                                    @php
+                                        $relatedModel = null;
+                                        $relatedUrl = null;
+                                        $isClient = false;
+                                        if ($followUp) {
+                                            if ($followUp->related_type === Task::RELATED_TYPE_CLIENT && $followUp->relatedClient) {
+                                                if (auth()->user()->can('clients.view') && $followUp->relatedClient->isVisibleFor(auth()->user())) {
+                                                    $relatedModel = $followUp->relatedClient;
+                                                    $relatedUrl = route('user.clients.show', $followUp->relatedClient->id);
+                                                    $isClient = true;
+                                                }
+                                            } elseif ($followUp->related_type === Task::RELATED_TYPE_USER && $followUp->relatedUser) {
+                                                if (auth()->user()->can('users.view')) {
+                                                    $relatedModel = $followUp->relatedUser;
+                                                }
+                                            }
+                                        }
+                                    @endphp
+                                    @if($relatedModel)
+                                        <div class="flex flex-col">
+                                            @if($relatedUrl)
+                                                <a href="{{ $relatedUrl }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
+                                                    {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
+                                                </a>
+                                            @else
+                                                <span class="text-xs font-medium text-gray-900 dark:text-white">
+                                                    {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
+                                                </span>
+                                            @endif
+                                            
+                                            @if($isClient && $relatedModel->username)
+                                                <span class="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-0.5">@ {{ $relatedModel->username }}</span>
+                                            @endif
+                                        </div>
                                     @else
                                         <span class="text-xs text-gray-400">—</span>
                                     @endif
@@ -380,7 +482,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-12 text-center">
+                                <td colspan="8" class="px-4 py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
                                         <svg class="w-12 h-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <span class="text-sm font-medium">هیچ یادآوری پیگیری‌ای در این بازه یافت نشد.</span>

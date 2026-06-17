@@ -26,6 +26,8 @@ class FollowUpsServiceProvider extends ServiceProvider
                 WidgetRegistry::register($key, $definition);
             }
         }
+
+        \Livewire\Livewire::component('followups::widgets.pulse-overview', \Modules\FollowUps\App\Livewire\Widgets\FollowUpPulseOverview::class);
     }
 
     public function register(): void

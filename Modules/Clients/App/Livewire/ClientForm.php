@@ -767,7 +767,7 @@ class ClientForm extends Component
         }
 
         // در بقیه حالت‌ها: ریدایرکت به لیست
-        return redirect()->route('user.clients.index');
+        return redirect()->to(session('clients_index_url', route('user.clients.index')));
     }
 
     // === ژنراتور یوزرنیم یکتا بر اساس تنظیمات ===

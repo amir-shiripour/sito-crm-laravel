@@ -109,52 +109,73 @@ class FormController extends Controller
 
     protected function validateFormInput(Request $request): array
     {
-        $data = $request->validate([
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'form_type' => ['nullable', Rule::in([BookingForm::TYPE_CUSTOM, BookingForm::TYPE_TOOTH_NUMBER])],
             'status' => ['nullable', Rule::in([BookingForm::STATUS_ACTIVE, BookingForm::STATUS_INACTIVE])],
-            'schema_json' => ['required', 'array'],
-            'schema_json.fields' => ['required', 'array', 'min:1'],
-            'schema_json.fields.*.name' => ['required', 'string', 'max:100'],
-            'schema_json.fields.*.label' => ['required', 'string', 'max:255'],
-            'schema_json.fields.*.type' => ['required', 'string', 'max:50'],
-            'schema_json.fields.*.required' => ['nullable'],
-            'schema_json.fields.*.collect_from_online' => ['nullable'],
-            'schema_json.fields.*.placeholder' => ['nullable', 'string', 'max:255'],
-            'schema_json.fields.*.options' => ['nullable', 'string'],
-            'schema_json.fields.*.icon' => ['nullable', 'string'],
-        ]);
+        ];
 
-        $fields = array_values($data['schema_json']['fields'] ?? []);
-        $normalized = [];
+        if ($request->input('form_type') === BookingForm::TYPE_TOOTH_NUMBER) {
+            $data = $request->validate($rules);
+            $data['schema_json'] = [
+                'fields' => [
+                    [
+                        'name' => 'tooth_numbers',
+                        'label' => 'شماره دندان',
+                        'type' => 'tooth_number',
+                        'required' => false,
+                        'collect_from_online' => false,
+                        'placeholder' => null,
+                        'options' => [],
+                        'icon' => null,
+                    ]
+                ]
+            ];
+        } else {
+            $rules['schema_json'] = ['required', 'array'];
+            $rules['schema_json.fields'] = ['required', 'array', 'min:1'];
+            $rules['schema_json.fields.*.name'] = ['required', 'string', 'max:100'];
+            $rules['schema_json.fields.*.label'] = ['required', 'string', 'max:255'];
+            $rules['schema_json.fields.*.type'] = ['required', 'string', 'max:50'];
+            $rules['schema_json.fields.*.required'] = ['nullable'];
+            $rules['schema_json.fields.*.collect_from_online'] = ['nullable'];
+            $rules['schema_json.fields.*.placeholder'] = ['nullable', 'string', 'max:255'];
+            $rules['schema_json.fields.*.options'] = ['nullable', 'string'];
+            $rules['schema_json.fields.*.icon'] = ['nullable', 'string'];
 
-        foreach ($fields as $field) {
-            $name = trim((string) ($field['name'] ?? ''));
-            $label = trim((string) ($field['label'] ?? ''));
-            $type = trim((string) ($field['type'] ?? 'text'));
-            $placeholder = trim((string) ($field['placeholder'] ?? ''));
-            $icon = trim((string) ($field['icon'] ?? ''));
+            $data = $request->validate($rules);
 
-            $optionsRaw = trim((string) ($field['options'] ?? ''));
-            $options = $optionsRaw === ''
-                ? []
-                : array_values(array_filter(array_map('trim', explode(',', $optionsRaw)), fn($v) => $v !== ''));
+            $fields = array_values($data['schema_json']['fields'] ?? []);
+            $normalized = [];
 
-            $normalized[] = [
-                'name' => $name,
-                'label' => $label,
-                'type' => $type ?: 'text',
-                'required' => ! empty($field['required']),
-                'collect_from_online' => ! empty($field['collect_from_online']),
-                'placeholder' => $placeholder ?: null,
-                'options' => $options,
-                'icon' => $icon ?: null,
+            foreach ($fields as $field) {
+                $name = trim((string) ($field['name'] ?? ''));
+                $label = trim((string) ($field['label'] ?? ''));
+                $type = trim((string) ($field['type'] ?? 'text'));
+                $placeholder = trim((string) ($field['placeholder'] ?? ''));
+                $icon = trim((string) ($field['icon'] ?? ''));
+
+                $optionsRaw = trim((string) ($field['options'] ?? ''));
+                $options = $optionsRaw === ''
+                    ? []
+                    : array_values(array_filter(array_map('trim', explode(',', $optionsRaw)), fn($v) => $v !== ''));
+
+                $normalized[] = [
+                    'name' => $name,
+                    'label' => $label,
+                    'type' => $type ?: 'text',
+                    'required' => ! empty($field['required']),
+                    'collect_from_online' => ! empty($field['collect_from_online']),
+                    'placeholder' => $placeholder ?: null,
+                    'options' => $options,
+                    'icon' => $icon ?: null,
+                ];
+            }
+
+            $data['schema_json'] = [
+                'fields' => $normalized,
             ];
         }
-
-        $data['schema_json'] = [
-            'fields' => $normalized,
-        ];
 
         // Ensure form_type is set, default to CUSTOM if not present
         $data['form_type'] = $data['form_type'] ?? BookingForm::TYPE_CUSTOM;

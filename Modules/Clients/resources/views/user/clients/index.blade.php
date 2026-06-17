@@ -27,7 +27,7 @@
 @endphp
 
 @section('content')
-    <div class="space-y-4">
+    <div class="space-y-4" x-data="{ selectedIds: [], allChecked: false, bulkStatusId: '' }">
         {{-- هدر و ابزارها --}}
         <div
             class="flex flex-col-2 sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -160,6 +160,41 @@
             </div>
         </div>
 
+        {{-- پنل عملیات گروهی --}}
+        <div x-show="selectedIds.length > 0"
+             x-transition
+             class="flex flex-wrap items-center justify-between gap-4 p-4 mb-6 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl">
+            <div class="flex items-center gap-2 text-sm text-indigo-800 dark:text-indigo-300">
+                <span class="font-bold text-base" x-text="selectedIds.length"></span>
+                <span>مشتری انتخاب شده است.</span>
+            </div>
+            
+            <form method="POST" action="{{ route('user.clients.bulk-update') }}" class="flex flex-wrap items-center gap-3">
+                @csrf
+                <template x-for="id in selectedIds" :key="id">
+                    <input type="hidden" name="ids[]" :value="id">
+                </template>
+
+                <div class="flex items-center gap-2">
+                    <select name="status_id" x-model="bulkStatusId" class="rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                        <option value="">تغییر وضعیت به...</option>
+                        @foreach($statuses ?? [] as $status)
+                            <option value="{{ $status->id }}">{{ $status->label }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" name="action" value="status" :disabled="!bulkStatusId" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-medium transition-colors">
+                        اعمال وضعیت
+                    </button>
+                </div>
+
+                <div class="h-4 w-px bg-indigo-200 dark:bg-indigo-800 hidden sm:block"></div>
+
+                <button type="submit" name="action" value="delete" onclick="return confirm('آیا از حذف گروهی مشتریان انتخاب شده مطمئن هستید؟')" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-medium transition-colors">
+                    حذف گروهی
+                </button>
+            </form>
+        </div>
+
         {{-- جدول --}}
         <div
             class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -167,6 +202,9 @@
                 <table class="min-w-full whitespace-nowrap text-sm text-right">
                     <thead class="bg-gray-50/50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
                     <tr>
+                        <th class="w-12 px-4 py-3 text-right">
+                            <input type="checkbox" x-model="allChecked" @change="selectedIds = allChecked ? [{{ implode(',', $clients->pluck('id')->toArray()) }}] : []" class="rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                        </th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">#</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">اطلاعات کاربری</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تماس</th>
@@ -189,6 +227,9 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
                     @forelse($clients as $client)
                         <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-150">
+                            <td class="w-12 px-4 py-3">
+                                <input type="checkbox" :value="{{ $client->id }}" x-model="selectedIds" @change="allChecked = (selectedIds.length === {{ $clients->count() }})" class="rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                            </td>
                             {{-- ID --}}
                             <td class="px-4 py-3 text-gray-400 font-mono text-xs">
                                 {{ $client->id }}
@@ -315,9 +356,9 @@
                                 </div>
                             </td>
                         </tr>
-                    @empty
+                        @empty
                         <tr>
-                            <td colspan="6" class="py-10 text-center"> {{-- Updated colspan to 6 --}}
+                            <td colspan="7" class="py-10 text-center"> {{-- Updated colspan to 6 --}}
                                 <div class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
                                     <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24"
                                          stroke="currentColor">

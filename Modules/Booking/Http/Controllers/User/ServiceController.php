@@ -460,6 +460,49 @@ class ServiceController extends Controller
             ->with('success', 'تنظیمات قیمت و عنوان‌ها با موفقیت ذخیره شد.');
     }
 
+    public function installments(BookingService $service)
+    {
+        $authUser = Auth::user();
+        $settings = BookingSetting::current();
+        $adminOwnerIds = $this->getAdminOwnerIds();
+
+        if (! $this->canEditServiceForUser($authUser, $service, $adminOwnerIds, $settings)) {
+            abort(403);
+        }
+
+        $customPrices = $service->custom_prices['tabs'] ?? [];
+        $savedSettings = $service->installments ?? [];
+
+        return view('booking::user.services.installments', [
+            'service' => $service,
+            'customPrices' => $customPrices,
+            'savedSettings' => $savedSettings,
+        ]);
+    }
+
+    public function updateInstallments(Request $request, BookingService $service)
+    {
+        $authUser = Auth::user();
+        $settings = BookingSetting::current();
+        $adminOwnerIds = $this->getAdminOwnerIds();
+
+        if (! $this->canEditServiceForUser($authUser, $service, $adminOwnerIds, $settings)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'installments' => ['nullable', 'array'],
+        ]);
+
+        $service->update([
+            'installments' => $validated['installments'] ?? []
+        ]);
+
+        return redirect()
+            ->route('user.booking.services.installments', $service->id)
+            ->with('success', 'تنظیمات پرداخت قسطی با موفقیت ذخیره شد.');
+    }
+
     public function toggleForMe(Request $request, BookingService $service)
     {
         $authUser = Auth::user();
@@ -721,31 +764,5 @@ class ServiceController extends Controller
         if (! $ownsCategory) {
             abort(403);
         }
-    }
-
-    public function editInstallments(BookingService $service)
-    {
-        abort_unless(auth()->user()->can('booking.services.edit'), 403);
-
-        $customPrices = $service->custom_prices ?? [];
-        $savedSettings = $service->installment_settings ?? [];
-
-        return view('booking::user.services.installments', compact('service', 'customPrices', 'savedSettings'));
-    }
-
-    public function updateInstallments(Request $request, BookingService $service)
-    {
-        abort_unless(auth()->user()->can('booking.services.edit'), 403);
-
-        $data = $request->validate([
-            'installments' => 'nullable|array',
-        ]);
-
-        $service->update([
-            'installment_settings' => $data['installments'] ?? [],
-        ]);
-
-        return redirect()->route('user.booking.services.installments', $service->id)
-            ->with('success', 'تنظیمات پرداخت قسطی با موفقیت ذخیره شد.');
     }
 }

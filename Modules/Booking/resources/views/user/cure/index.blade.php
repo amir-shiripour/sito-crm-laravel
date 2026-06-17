@@ -277,6 +277,23 @@
         .toast-success { background: linear-gradient(135deg,#10b981,#059669); }
         .toast-error   { background: linear-gradient(135deg,#ef4444,#dc2626); }
         .toast-info    { background: linear-gradient(135deg,#6366f1,#8b5cf6); }
+
+        /* New Workflow Styles */
+        .bg-grid-pattern {
+            background-size: 24px 24px;
+            background-image: radial-gradient(circle, rgba(99, 102, 241, 0.15) 1px, transparent 1px);
+        }
+        .dark .bg-grid-pattern {
+            background-image: radial-gradient(circle, rgba(99, 102, 241, 0.1) 1px, transparent 1px);
+        }
+        .edge-path-animated {
+            stroke-dasharray: 6 6;
+            animation: edgeFlow 1s linear infinite;
+        }
+        @keyframes edgeFlow {
+            from { stroke-dashoffset: 12; }
+            to { stroke-dashoffset: 0; }
+        }
     </style>
 
     <div id="cure-toast" class="toast"></div>
@@ -361,8 +378,8 @@
                         <svg class="w-4 h-4 shrink-0"
                              :class="clientId ? 'text-emerald-500' : 'text-gray-400'"
                              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                             <path stroke-linecap="round" stroke-linejoin="round"
-                                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                         </svg>
                         <div class="flex-1 truncate font-semibold">
                             <template x-if="!clientId">
@@ -497,83 +514,83 @@
 
         {{-- ══════════════════ SERVICE PICKER ══════════════════ --}}
         @if(!$isReadOnly)
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-            <div class="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700 space-y-3">
-                <div class="flex items-center justify-between gap-4 flex-wrap">
-                    <h2 class="font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                        <span class="w-2 h-5 rounded-full bg-indigo-500 shrink-0"></span>
-                        انتخاب سرویس
-                        <span x-show="servicePlanCounts && Object.keys(servicePlanCounts).length > 0"
-                              class="text-xs text-indigo-500 dark:text-indigo-400 font-normal">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700 space-y-3">
+                    <div class="flex items-center justify-between gap-4 flex-wrap">
+                        <h2 class="font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                            <span class="w-2 h-5 rounded-full bg-indigo-500 shrink-0"></span>
+                            انتخاب سرویس
+                            <span x-show="servicePlanCounts && Object.keys(servicePlanCounts).length > 0"
+                                  class="text-xs text-indigo-500 dark:text-indigo-400 font-normal">
                             (<span x-text="Object.keys(servicePlanCounts).length"></span> سرویس انتخاب شده)
                         </span>
-                    </h2>
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <div class="relative">
-                            <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
-                                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
-                            </svg>
-                            <input x-model="serviceSearch" type="text" placeholder="جستجوی سرویس…"
-                                   class="pr-9 pl-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700
+                        </h2>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <div class="relative">
+                                <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
+                                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+                                </svg>
+                                <input x-model="serviceSearch" type="text" placeholder="جستجوی سرویس…"
+                                       class="pr-9 pl-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700
                                           bg-gray-50 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100
                                           placeholder-gray-400 focus:outline-none focus:border-indigo-400
                                           focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 w-48 transition-all"/>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="flex gap-2 overflow-x-auto sc-thin pb-1">
-                    <button @click="filterCategory = null"
-                            :class="filterCategory === null
+                    <div class="flex gap-2 overflow-x-auto sc-thin pb-1">
+                        <button @click="filterCategory = null"
+                                :class="filterCategory === null
                                 ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300/40'
                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
-                            class="px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0">
-                        همه
-                    </button>
-                    @foreach($categories ?? [] as $cat)
-                        <button @click="filterCategory = {{ $cat->id }}"
-                                :class="filterCategory === {{ $cat->id }}
+                                class="px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0">
+                            همه
+                        </button>
+                        @foreach($categories ?? [] as $cat)
+                            <button @click="filterCategory = {{ $cat->id }}"
+                                    :class="filterCategory === {{ $cat->id }}
                                     ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300/40'
                                     : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
-                                class="px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0">
-                            {{ $cat->name }}
-                        </button>
-                    @endforeach
+                                    class="px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0">
+                                {{ $cat->name }}
+                            </button>
+                        @endforeach
+                    </div>
                 </div>
-            </div>
-            <div class="px-4 py-4 flex gap-3 overflow-x-auto sc-thin">
-                <template x-for="service in filteredServices" :key="service.id">
-                    <div @click="selectService(service)"
-                         :class="['svc-card', selectedService && selectedService.id === service.id ? 'svc-active' : '']">
-                        <span x-show="servicePlanCounts[service.id]" class="svc-badge" x-text="servicePlanCounts[service.id]"></span>
-                        <div class="flex items-start justify-between gap-2 mb-3">
-                            <div :class="selectedService && selectedService.id === service.id
+                <div class="px-4 py-4 flex gap-3 overflow-x-auto sc-thin">
+                    <template x-for="service in filteredServices" :key="service.id">
+                        <div @click="selectService(service)"
+                             :class="['svc-card', selectedService && selectedService.id === service.id ? 'svc-active' : '']">
+                            <span x-show="servicePlanCounts[service.id]" class="svc-badge" x-text="servicePlanCounts[service.id]"></span>
+                            <div class="flex items-start justify-between gap-2 mb-3">
+                                <div :class="selectedService && selectedService.id === service.id
                                      ? 'bg-indigo-600 shadow-md shadow-indigo-200/60'
                                      : (servicePlanCounts[service.id] ? 'bg-emerald-500 shadow-md shadow-emerald-200/60' : 'bg-gray-200 dark:bg-gray-600')"
-                                 class="w-6 h-6 rounded-full shrink-0 flex items-center justify-center transition-all mt-0.5">
-                                <svg x-show="selectedService && selectedService.id === service.id || servicePlanCounts[service.id]"
-                                     class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
+                                     class="w-6 h-6 rounded-full shrink-0 flex items-center justify-center transition-all mt-0.5">
+                                    <svg x-show="selectedService && selectedService.id === service.id || servicePlanCounts[service.id]"
+                                         class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                                <div x-show="service.custom_prices?.tabs?.length > 0"
+                                     class="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/40 shrink-0">
+                                    <svg class="w-2.5 h-2.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="text-[9px] text-amber-600 dark:text-amber-400 font-bold"
+                                          x-text="service.custom_prices.tabs.length + ' تب'"></span>
+                                </div>
                             </div>
-                            <div x-show="service.custom_prices?.tabs?.length > 0"
-                                 class="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/40 shrink-0">
-                                <svg class="w-2.5 h-2.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
-                                </svg>
-                                <span class="text-[9px] text-amber-600 dark:text-amber-400 font-bold"
-                                      x-text="service.custom_prices.tabs.length + ' تب'"></span>
-                            </div>
+                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 leading-tight mb-1 line-clamp-2"
+                               x-text="service.name"></p>
                         </div>
-                        <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 leading-tight mb-1 line-clamp-2"
-                           x-text="service.name"></p>
-                    </div>
-                </template>
-                <template x-if="filteredServices.length === 0">
-                    <div class="flex-1 py-10 text-center text-sm text-gray-400 dark:text-gray-500">سرویسی پیدا نشد</div>
-                </template>
+                    </template>
+                    <template x-if="filteredServices.length === 0">
+                        <div class="flex-1 py-10 text-center text-sm text-gray-400 dark:text-gray-500">سرویسی پیدا نشد</div>
+                    </template>
+                </div>
             </div>
-        </div>
         @endif
 
         {{-- ══════════════════ MAIN AREA ══════════════════ --}}
@@ -647,7 +664,7 @@
                     </div>
                 </div>
 
-                {{-- Per-tooth assignment panel — unchanged, all logic preserved --}}
+                {{-- Per-tooth assignment panel --}}
                 <div x-show="selectedService !== null"
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 translate-y-3"
@@ -1104,9 +1121,7 @@
                             </button>
                         </div>
                     @endcanany
-                </div>
-
-                {{-- Notes --}}
+                          {{-- Notes --}}
                 <div x-show="!isReadOnly || notes" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
                     <h3 class="font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2 mb-3 text-sm">
                         <span class="w-2 h-5 rounded-full bg-teal-500 shrink-0"></span>
@@ -1118,9 +1133,38 @@
                               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600
                                      bg-gray-50 dark:bg-gray-700/50 text-xs text-gray-800 dark:text-gray-100
                                      placeholder-gray-400 focus:outline-none focus:border-teal-400
-                                     focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/30
+                                    focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/30
                                      resize-none transition-all"></textarea>
                 </div>
+
+                {{-- NEW ADVANCED WORKFLOW MANAGEMENT REDIRECT BUTTON --}}
+                <template x-if="workflows && workflows.length > 0">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 anim-fade-up">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-900 dark:text-white text-base">مسیر هوشمند درمان</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">مشاهده و مدیریت وضعیت گردش‌کار و مراحل اجرایی فرآیند درمان</p>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="{{ route('user.booking.cure.workflows', $planJs['id'] ?? '') }}" 
+                               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-indigo-100 dark:shadow-indigo-950/40 hover:shadow-lg hover:-translate-y-0.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                مشاهده و مدیریت مسیر درمان
+                            </a>
+                        </div>
+                    </div>
+                </template>
+
+
             </div>
         </div>
     </div>
@@ -1143,9 +1187,11 @@
                 clients: clients,
                 clientId: null,
                 settings: { currency: 'IRT' },
+                workflows: existingPlan ? (existingPlan.workflows || []) : [],
                 get currencyLabel() {
                     return this.settings.currency === 'IRR' ? 'ریال' : 'تومان';
                 },
+
                 isSaving: false,
                 draftSaved: false,
                 showPerToothDetail: false,
@@ -1236,10 +1282,10 @@
                 getQuadrantClasses(id) {
                     const tooth = this.getToothLabel(id);
                     switch(tooth.pos) {
-                        case 'UR': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'UL': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'LR': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'LL': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'UR': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'UL': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LR': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LL': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
                         default:   return '';
                     }
                 },
@@ -1280,6 +1326,8 @@
                         }));
                         this.draftSaved = !!(existingPlan && existingPlan.id);
                     }
+
+
 
                     this.$watch('clientId',        () => { this.draftSaved = false; });
                     this.$watch('discountAmount',   () => { this.draftSaved = false; });

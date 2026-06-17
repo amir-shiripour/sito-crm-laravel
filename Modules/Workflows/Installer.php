@@ -41,6 +41,14 @@ class Installer extends BaseModuleInstaller
         File::put($path, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     }
 
+    public function reset(): void
+    {
+        Log::info('Workflows Installer: Starting custom reset process...');
+        parent::reset();
+        $this->install();
+        Log::info('Workflows Installer: Custom reset process finished.');
+    }
+
     /**
      * نصب ماژول: ساخت پرمیژن‌ها، نقش‌های اختصاصی و اتصال به نقش‌های سراسری
      */
@@ -50,11 +58,13 @@ class Installer extends BaseModuleInstaller
 
         $guard = config('auth.defaults.guard', 'web');
 
-        // لیست پرمیژن‌های ماژول Workflows
         $perms = [
             'workflows.view',
             'workflows.manage',
             'workflows.run',
+            'workflows.create',
+            'workflows.edit',
+            'workflows.delete',
         ];
 
         $tracker = $this->loadTracker();
@@ -89,7 +99,7 @@ class Installer extends BaseModuleInstaller
         }
 
         // نقش‌های سراسری که باید همهٔ دسترسی‌های این ماژول را داشته باشند
-        foreach (['super-admin'] as $sysRole) {
+        foreach (['super-admin', 'admin'] as $sysRole) {
             $role = Role::firstOrCreate([
                 'name'       => $sysRole,
                 'guard_name' => $guard,

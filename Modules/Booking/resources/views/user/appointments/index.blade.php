@@ -50,19 +50,23 @@
         @includeIf('partials.jalali-date-picker')
 
         {{-- Filters --}}
+        @php
+            $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800";
+            $labelClass = "block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2";
+        @endphp
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <form action="{{ route('user.booking.appointments.index') }}" method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {{-- Search --}}
                 <div class="col-span-1 sm:col-span-2 lg:col-span-1">
-                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">جستجو</label>
+                    <label class="{{ $labelClass }}">جستجو</label>
                     <input type="text" name="q" value="{{ request('q') }}" placeholder="نام، موبایل، کد ملی..."
-                           class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                           class="{{ $inputClass }}">
                 </div>
 
                 {{-- Status --}}
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">وضعیت</label>
-                    <select name="status" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <label class="{{ $labelClass }}">وضعیت</label>
+                    <select name="status" class="{{ $inputClass }}">
                         <option value="">همه وضعیت‌ها</option>
                         @foreach([
                             \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'تایید شده',
@@ -82,8 +86,8 @@
 
                 {{-- Service --}}
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">سرویس</label>
-                    <select name="service_id" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <label class="{{ $labelClass }}">سرویس</label>
+                    <select name="service_id" class="{{ $inputClass }}">
                         <option value="">همه سرویس‌ها</option>
                         @foreach($services as $srv)
                             <option value="{{ $srv->id }}" {{ (int)request('service_id') === $srv->id ? 'selected' : '' }}>{{ $srv->name }}</option>
@@ -94,8 +98,8 @@
                 {{-- Provider (Admin Only) --}}
                 @if(!empty($providers) && count($providers) > 0)
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ config('booking.labels.provider') }}</label>
-                        <select name="provider_user_id" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <label class="{{ $labelClass }}">{{ config('booking.labels.provider') }}</label>
+                        <select name="provider_user_id" class="{{ $inputClass }}">
                             <option value="">همه {{ config('booking.labels.providers') }}</option>
                             @foreach($providers as $prov)
                                 <option value="{{ $prov->id }}" {{ (int)request('provider_user_id') === $prov->id ? 'selected' : '' }}>{{ $prov->name }}</option>
@@ -106,22 +110,22 @@
 
                 {{-- Date Range --}}
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">از تاریخ</label>
+                    <label class="{{ $labelClass }}">از تاریخ</label>
                     <input type="text" name="date_from" value="{{ request('date_from') }}" placeholder="1402/01/01"
                            data-jdp
-                           class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:ring-indigo-500 focus:border-indigo-500 dir-ltr text-right">
+                           class="{{ $inputClass }} dir-ltr text-right">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">تا تاریخ</label>
+                    <label class="{{ $labelClass }}">تا تاریخ</label>
                     <input type="text" name="date_to" value="{{ request('date_to') }}" placeholder="1402/12/29"
                            data-jdp
-                           class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:ring-indigo-500 focus:border-indigo-500 dir-ltr text-right">
+                           class="{{ $inputClass }} dir-ltr text-right">
                 </div>
 
                 {{-- Sort --}}
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">مرتب‌سازی</label>
-                    <select name="sort" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <label class="{{ $labelClass }}">مرتب‌سازی</label>
+                    <select name="sort" class="{{ $inputClass }}">
                         <option value="newest" {{ request('sort') === 'newest' ? 'selected' : '' }}>جدیدترین زمان نوبت</option>
                         <option value="oldest" {{ request('sort') === 'oldest' ? 'selected' : '' }}>قدیمی‌ترین زمان نوبت</option>
                         <option value="created_desc" {{ request('sort') === 'created_desc' ? 'selected' : '' }}>جدیدترین زمان ثبت</option>
@@ -129,7 +133,7 @@
                 </div>
 
                 <div class="flex items-end">
-                    <button type="submit" class="w-full h-[42px] rounded-xl bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium text-sm transition">
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20 font-bold text-sm transition shadow-sm">
                         اعمال فیلتر
                     </button>
                 </div>
@@ -185,12 +189,12 @@
                         @endphp
 
                         <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150">
-                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 font-mono text-xs">{{ $a->id }}</td>
+                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ $a->id }}</td>
 
                             <td class="px-4 py-3">
                                 <div class="flex flex-col">
                                     <span class="font-medium text-gray-900 dark:text-gray-100">{{ optional($a->client)->full_name }}</span>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">{{ optional($a->client)->phone }}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ optional($a->client)->phone }}</span>
                                 </div>
                             </td>
 
@@ -202,14 +206,14 @@
                             </td>
 
                             <td class="px-4 py-3">
-                                <span class="text-gray-900 dark:text-gray-100 font-mono text-sm">{{ $dateJalali }}</span>
+                                <span class="text-gray-900 dark:text-gray-100 text-sm">{{ $dateJalali }}</span>
                             </td>
 
                             <td class="px-4 py-3">
-                                <span class="text-gray-500 dark:text-gray-400 font-mono text-sm">{{ $startTime }} - {{ $endTime }}</span>
+                                <span class="text-gray-500 dark:text-gray-400 text-sm">{{ $startTime }} - {{ $endTime }}</span>
                             </td>
 
-                            <td class="px-4 py-3 font-mono text-gray-800 dark:text-gray-100 text-xs">
+                            <td class="px-4 py-3 text-gray-800 dark:text-gray-100 text-xs">
                                 {{ $durationMinutes !== null ? ($durationMinutes . ' دقیقه') : '-' }}
                             </td>
 

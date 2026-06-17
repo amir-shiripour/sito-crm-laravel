@@ -2,13 +2,14 @@
     "UserManagement": true,
     "Clients": true,
     "ClientCalls": true,
-    "Tasks": false,
-    "FollowUps": false,
-    "Reminders": false,
-    "Workflows": false,
+    "Tasks": true,
+    "FollowUps": true,
+    "Reminders": true,
+    "Workflows": true,
     "Sms": true,
-    "Booking": false,
+    "Booking": true,
     "Properties": false,
     "Settings": true,
-    "Market": true
+    "Market": true,
+    "Notifications": true
 }
