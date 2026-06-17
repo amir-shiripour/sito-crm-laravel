@@ -64,6 +64,8 @@
             if (isset($authorizedWidgets[$item['key']])) {
                 $widget = $authorizedWidgets[$item['key']];
                 $widget['visible'] = $item['visible'] ?? true;
+                $widget['colSpan'] = $item['colSpan'] ?? 1;
+                $widget['rowSpan'] = $item['rowSpan'] ?? 1;
 
                 $renderList[] = $widget;
 
@@ -80,6 +82,15 @@
     // اضافه کردن ویجت‌های جدید که هنوز در چیدمان کاربر نیستند
     foreach ($authorizedWidgets as $widget) {
         $widget['visible'] = true; // پیش‌فرض نمایش داده شوند
+        
+        // تنظیمات پیش‌فرض برای عرض و ارتفاع ویجت‌ها
+        if ($widget['key'] === 'today_reminders') {
+             $widget['colSpan'] = 2;
+        } else {
+             $widget['colSpan'] = 1;
+        }
+        $widget['rowSpan'] = 1;
+
         $renderList[] = $widget;
     }
 @endphp
@@ -140,13 +151,25 @@
         {{-- شبکه ویجت‌ها --}}
         <div
             x-ref="grid"
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 grid-flow-row-dense items-start"
         >
             @foreach($renderList as $widget)
+                @php
+                    $colClass = '';
+                    if ($widget['colSpan'] == 2) $colClass = 'md:col-span-2 lg:col-span-2';
+                    elseif ($widget['colSpan'] == 3) $colClass = 'md:col-span-2 lg:col-span-3';
+                    else $colClass = 'col-span-1';
+
+                    $rowClass = '';
+                    if ($widget['rowSpan'] == 2) $rowClass = 'row-span-2';
+                    else $rowClass = 'row-span-1';
+                @endphp
                 <div
-                    class="widget-card group relative flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:shadow-md {{ !$widget['visible'] ? 'hidden' : '' }} {{ $widget['key'] === 'today_reminders' ? 'md:col-span-2 lg:col-span-2' : '' }}"
+                    class="widget-card group relative flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:shadow-md {{ !$widget['visible'] ? 'hidden' : '' }} {{ $colClass }} {{ $rowClass }}"
                     :class="{'ring-2 ring-indigo-500 ring-offset-4 ring-offset-gray-50 dark:ring-offset-gray-900 cursor-move scale-[0.98] opacity-90 hover:opacity-100 hover:scale-100': editMode}"
                     data-key="{{ $widget['key'] }}"
+                    data-colspan="{{ $widget['colSpan'] }}"
+                    data-rowspan="{{ $widget['rowSpan'] }}"
                     id="widget-{{ $widget['key'] }}"
                 >
                     {{-- لایه پوششی برای جلوگیری از تعامل با محتوای ویجت در حالت ویرایش --}}
@@ -163,9 +186,20 @@
                             <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                             <span class="text-xs font-bold">{{ $widget['label'] ?? $widget['key'] }}</span>
                         </div>
-                        <button @click="hideWidget('{{ $widget['key'] }}')" class="text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-all cursor-pointer" title="مخفی کردن">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            {{-- کنترل‌های تغییر اندازه --}}
+                            <div class="flex items-center bg-white dark:bg-gray-700 rounded-lg p-0.5 border border-gray-200 dark:border-gray-600">
+                                <button @click="changeSize('{{ $widget['key'] }}', 1, 1)" class="px-2 py-1 text-[10px] font-medium rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors" title="کوچک (1x1)">1x1</button>
+                                <button @click="changeSize('{{ $widget['key'] }}', 2, 1)" class="px-2 py-1 text-[10px] font-medium rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors" title="عریض (2x1)">2x1</button>
+                                <button @click="changeSize('{{ $widget['key'] }}', 1, 2)" class="px-2 py-1 text-[10px] font-medium rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors" title="بلند (1x2)">1x2</button>
+                                <button @click="changeSize('{{ $widget['key'] }}', 2, 2)" class="px-2 py-1 text-[10px] font-medium rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors hidden md:block" title="بزرگ (2x2)">2x2</button>
+                                <button @click="changeSize('{{ $widget['key'] }}', 3, 1)" class="px-2 py-1 text-[10px] font-medium rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors hidden lg:block" title="تمام عرض (3x1)">3x1</button>
+                            </div>
+
+                            <button @click="hideWidget('{{ $widget['key'] }}')" class="text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-all cursor-pointer" title="مخفی کردن">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="p-6 flex-1">
@@ -254,6 +288,39 @@
                     }
                 },
 
+                changeSize(key, cols, rows) {
+                    const el = document.getElementById('widget-' + key);
+                    if (el) {
+                        // حذف کلاس‌های قبلی
+                        el.classList.remove('col-span-1', 'md:col-span-2', 'lg:col-span-2', 'lg:col-span-3', 'row-span-1', 'row-span-2');
+                        
+                        // اضافه کردن کلاس‌های جدید برای ستون
+                        if (cols === 2) {
+                            el.classList.add('md:col-span-2', 'lg:col-span-2');
+                        } else if (cols === 3) {
+                            el.classList.add('md:col-span-2', 'lg:col-span-3'); // md max is 2 cols
+                        } else {
+                            el.classList.add('col-span-1');
+                        }
+                        
+                        // اضافه کردن کلاس‌های جدید برای ردیف
+                        if (rows === 2) {
+                            el.classList.add('row-span-2');
+                        } else {
+                            el.classList.add('row-span-1');
+                        }
+                        
+                        // بروزرسانی dataset برای ذخیره در هنگام saveLayout
+                        el.setAttribute('data-colspan', cols);
+                        el.setAttribute('data-rowspan', rows);
+                        
+                        // آپدیت sortable در صورت نیاز
+                        setTimeout(() => {
+                            // در مرورگرهایی که grid dense استفاده می‌شود تغییر اندازه بلافاصله اعمال می‌شود
+                        }, 50);
+                    }
+                },
+
                 saveLayout() {
                     // جمع‌آوری ترتیب فعلی از DOM
                     const grid = this.$refs.grid;
@@ -261,9 +328,13 @@
                     const layout = items.map(item => {
                         const key = item.getAttribute('data-key');
                         const isHidden = item.classList.contains('hidden');
+                        const colSpan = parseInt(item.getAttribute('data-colspan') || 1);
+                        const rowSpan = parseInt(item.getAttribute('data-rowspan') || 1);
                         return {
                             key: key,
-                            visible: !isHidden
+                            visible: !isHidden,
+                            colSpan: colSpan,
+                            rowSpan: rowSpan
                         };
                     });
 
