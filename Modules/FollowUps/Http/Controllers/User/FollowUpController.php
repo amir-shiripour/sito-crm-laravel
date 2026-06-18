@@ -131,7 +131,7 @@ class FollowUpController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user->can('followups.edit')) {
+        if (! $user->can('followups.edit') && ! $user->can('followups.manage')) {
             abort(403);
         }
     }

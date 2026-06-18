@@ -397,7 +397,7 @@ class ReminderController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user->can('reminders.edit')) {
+        if (! $user->can('reminders.edit') && ! $user->can('reminders.manage')) {
             abort(403);
         }
 

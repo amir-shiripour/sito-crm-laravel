@@ -168,333 +168,333 @@
             <input type="hidden" name="status" id="bulk-status-value">
         </form>
 
-        {{-- --- بخش ۱: وظایف (Tasks) --- --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mb-6">
+            {{-- --- بخش ۱: وظایف (Tasks) --- --}}
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mb-6">
 
-            {{-- هدر جدول وظایف --}}
-            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/30">
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 shadow-sm">
-                        <span class="text-sm font-bold font-mono">{{ $taskReminders->count() }}</span>
+                {{-- هدر جدول وظایف --}}
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/30">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 shadow-sm">
+                            <span class="text-sm font-bold font-mono">{{ $taskReminders->count() }}</span>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-bold text-gray-900 dark:text-white">وظایف (Tasks)</h2>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400">مرتب‌سازی بر اساس اولویت و زمان</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 class="text-sm font-bold text-gray-900 dark:text-white">وظایف (Tasks)</h2>
-                        <p class="text-[10px] text-gray-500 dark:text-gray-400">مرتب‌سازی بر اساس اولویت و زمان</p>
-                    </div>
+
+                    @if($taskReminders->isNotEmpty())
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="setBulkStatusAndSubmit('{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
+                                    class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors dark:bg-gray-800 dark:border-gray-600 dark:text-emerald-400 dark:hover:bg-gray-700 shadow-sm">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                انجام شد
+                            </button>
+                            <button type="button" onclick="setBulkStatusAndSubmit('{{ \Modules\Reminders\Entities\Reminder::STATUS_CANCELED }}')"
+                                    class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-medium text-gray-500 hover:bg-gray-50 hover:text-red-500 transition-colors dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 shadow-sm">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                لغو کردن
+                            </button>
+                        </div>
+                    @endif
                 </div>
 
-                @if($taskReminders->isNotEmpty())
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="setBulkStatusAndSubmit('{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
-                                class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors dark:bg-gray-800 dark:border-gray-600 dark:text-emerald-400 dark:hover:bg-gray-700 shadow-sm">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                            انجام شد
-                        </button>
-                        <button type="button" onclick="setBulkStatusAndSubmit('{{ \Modules\Reminders\Entities\Reminder::STATUS_CANCELED }}')"
-                                class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-medium text-gray-500 hover:bg-gray-50 hover:text-red-500 transition-colors dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 shadow-sm">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            لغو کردن
-                        </button>
-                    </div>
-                @endif
+                {{-- جدول وظایف --}}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-900/50">
+                        <tr>
+                            <th class="px-4 py-3 w-10 text-center">
+                                <input type="checkbox" onclick="toggleAll(this, 'task')" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
+                            </th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">شرح یادآوری</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">وظیفه مرتبط</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">مشتری/کاربر</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">اولویت</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">زمان یادآوری</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">وضعیت</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 pl-6">عملیات</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                        @forelse($taskReminders as $reminder)
+                            @php
+                                $task = $reminder->task;
+                                $statusInfo = $statusBadges[$reminder->status] ?? $statusBadges[\Modules\Reminders\Entities\Reminder::STATUS_OPEN];
+                                $remindJalali = $reminder->remind_at ? Jalalian::fromCarbon($reminder->remind_at)->format('Y/m/d H:i') : '—';
+                                $priorityInfo = $task ? taskPriorityLabel($task->priority) : ['label' => '—', 'class' => 'bg-gray-100'];
+                            @endphp
+                            <tr id="reminder-row-{{ $reminder->id }}" class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-colors">
+                                <td class="px-4 py-3 text-center align-middle">
+                                    <input type="checkbox" name="ids[]" value="{{ $reminder->id }}" form="bulk-status-form" class="reminder-checkbox reminder-checkbox-task rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
+                                </td>
+                                <td class="px-4 py-3 align-middle">
+                                    <div class="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-1" title="{{ $reminder->message }}">
+                                        {{ $reminder->message ?? ('یادآوری انجام وظیفه: ' . ($task->title ?? 'Task #'.$task->id)) }}
+                                    </div>
+                                    <div class="text-[10px] text-gray-400 font-mono mt-0.5">ID: {{ $reminder->id }}</div>
+                                </td>
+                                <td class="px-4 py-3 align-middle">
+                                    @if($task)
+                                        @php $rUrl = $reminder->relatedUrl(); @endphp
+                                        @if($rUrl)
+                                            <a href="{{ $rUrl }}" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
+                                                {{ $task->title ?? ('Task #' . $task->id) }}
+                                            </a>
+                                        @else
+                                            <span class="text-xs text-gray-700 dark:text-gray-300">{{ $task->title ?? ('Task #' . $task->id) }}</span>
+                                        @endif
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 align-middle">
+                                    @php
+                                        $relatedModel = null;
+                                        $relatedUrl = null;
+                                        $isClient = false;
+                                        if ($task) {
+                                            if ($task->related_type === Task::RELATED_TYPE_CLIENT && $task->relatedClient) {
+                                                if (auth()->user()->can('clients.view') && $task->relatedClient->isVisibleFor(auth()->user())) {
+                                                    $relatedModel = $task->relatedClient;
+                                                    $relatedUrl = route('user.clients.show', $task->relatedClient->id);
+                                                    $isClient = true;
+                                                }
+                                            } elseif ($task->related_type === Task::RELATED_TYPE_USER && $task->relatedUser) {
+                                                if (auth()->user()->can('users.view')) {
+                                                    $relatedModel = $task->relatedUser;
+                                                }
+                                            }
+                                        }
+                                    @endphp
+                                    @if($relatedModel)
+                                        <div class="flex flex-col">
+                                            @if($relatedUrl)
+                                                <a href="{{ $relatedUrl }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
+                                                    {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
+                                                </a>
+                                            @else
+                                                <span class="text-xs font-medium text-gray-900 dark:text-white">
+                                                    {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
+                                                </span>
+                                            @endif
+                                            
+                                            @if($isClient && $relatedModel->username)
+                                                <span class="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-0.5">@ {{ $relatedModel->username }}</span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 align-middle text-center">
+                                    @if($task)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border border-transparent {{ $priorityInfo['class'] }}">
+                                            {{ $priorityInfo['label'] }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 align-middle text-center">
+                                    <span class="text-xs font-mono font-medium text-gray-600 dark:text-gray-300 dir-ltr">{{ $remindJalali }}</span>
+                                </td>
+                                <td class="px-4 py-3 align-middle text-center">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border {{ $statusInfo['class'] }}">
+                                        {!! $statusInfo['icon'] !!}
+                                        {{ $statusInfo['label'] }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 align-middle text-left">
+                                    <div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                                        @if($reminder->status !== \Modules\Reminders\Entities\Reminder::STATUS_DONE)
+                                            <button type="button"
+                                                    onclick="updateSingleStatus('{{ $reminder->id }}', '{{ route('user.reminders.update-status', $reminder) }}', '{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
+                                                    class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors"
+                                                    title="انجام شد">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                            </button>
+                                        @endif
+                                        <form method="POST" action="{{ route('user.reminders.destroy', $reminder) }}" class="inline-block" onsubmit="return confirm('آیا از حذف این یادآوری اطمینان دارید؟')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors" title="حذف">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="px-4 py-12 text-center">
+                                    <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
+                                        <svg class="w-12 h-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                        <span class="text-sm font-medium">هیچ یادآوری وظیفه‌ای در این بازه یافت نشد.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            {{-- جدول وظایف --}}
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
-                    <thead class="bg-gray-50 dark:bg-gray-900/50">
-                    <tr>
-                        <th class="px-4 py-3 w-10 text-center">
-                            <input type="checkbox" onclick="toggleAll(this, 'task')" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
-                        </th>
-                        <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">شرح یادآوری</th>
-                        <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">وظیفه مرتبط</th>
-                        <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">مشتری/کاربر</th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">اولویت</th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">زمان یادآوری</th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">وضعیت</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 pl-6">عملیات</th>
-                    </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                    @forelse($taskReminders as $reminder)
-                        @php
-                            $task = $reminder->task;
-                            $statusInfo = $statusBadges[$reminder->status] ?? $statusBadges[\Modules\Reminders\Entities\Reminder::STATUS_OPEN];
-                            $remindJalali = $reminder->remind_at ? Jalalian::fromCarbon($reminder->remind_at)->format('Y/m/d H:i') : '—';
-                            $priorityInfo = $task ? taskPriorityLabel($task->priority) : ['label' => '—', 'class' => 'bg-gray-100'];
-                        @endphp
-                        <tr id="reminder-row-{{ $reminder->id }}" class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-colors">
-                            <td class="px-4 py-3 text-center align-middle">
-                                <input type="checkbox" name="ids[]" value="{{ $reminder->id }}" form="bulk-status-form" class="reminder-checkbox reminder-checkbox-task rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                <div class="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-1" title="{{ $reminder->message }}">
-                                    {{ $reminder->message ?? ('یادآوری انجام وظیفه: ' . ($task->title ?? 'Task #'.$task->id)) }}
-                                </div>
-                                <div class="text-[10px] text-gray-400 font-mono mt-0.5">ID: {{ $reminder->id }}</div>
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                @if($task)
-                                    @php $rUrl = $reminder->relatedUrl(); @endphp
-                                    @if($rUrl)
-                                        <a href="{{ $rUrl }}" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
-                                            {{ $task->title ?? ('Task #' . $task->id) }}
+            {{-- --- بخش ۲: پیگیری‌ها (FollowUps) --- --}}
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+
+                {{-- هدر جدول پیگیری‌ها --}}
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/30">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300 shadow-sm">
+                            <span class="text-sm font-bold font-mono">{{ $followUpReminders->count() }}</span>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-bold text-gray-900 dark:text-white">پیگیری‌ها (FollowUps)</h2>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400">یادآوری‌های مرتبط با تعاملات مشتری</p>
+                        </div>
+                    </div>
+
+                    @if($followUpReminders->isNotEmpty())
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="setBulkStatusAndSubmit('{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
+                                    class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors dark:bg-gray-800 dark:border-gray-600 dark:text-emerald-400 dark:hover:bg-gray-700 shadow-sm">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                انجام شد
+                            </button>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- جدول پیگیری --}}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-900/50">
+                        <tr>
+                            <th class="px-4 py-3 w-10 text-center">
+                                <input type="checkbox" onclick="toggleAll(this, 'followup')" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
+                            </th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">شرح یادآوری</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">مورد پیگیری</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">مشتری/کاربر</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">اولویت</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">زمان یادآوری</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">وضعیت</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 pl-6">عملیات</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                        @forelse($followUpReminders as $reminder)
+                            @php
+                                $followUp = $reminder->followUp ?? $reminder->task;
+                                $statusInfo = $statusBadges[$reminder->status] ?? $statusBadges[\Modules\Reminders\Entities\Reminder::STATUS_OPEN];
+                                $remindJalali = $reminder->remind_at ? Jalalian::fromCarbon($reminder->remind_at)->format('Y/m/d H:i') : '—';
+                                $priorityInfo = $followUp ? taskPriorityLabel($followUp->priority) : ['label' => '—', 'class' => 'bg-gray-100'];
+                            @endphp
+                            <tr id="reminder-row-{{ $reminder->id }}" class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-colors">
+                                <td class="px-4 py-3 text-center align-middle">
+                                    <input type="checkbox" name="ids[]" value="{{ $reminder->id }}" form="bulk-status-form" class="reminder-checkbox reminder-checkbox-followup rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
+                                </td>
+                                <td class="px-4 py-3 align-middle">
+                                    <div class="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-1" title="{{ $reminder->message }}">
+                                        {{ $reminder->message ?? ('یادآوری پیگیری: ' . ($followUp->title ?? 'FollowUp #'.$followUp->id)) }}
+                                    </div>
+                                    <div class="text-[10px] text-gray-400 font-mono mt-0.5">ID: {{ $reminder->id }}</div>
+                                </td>
+                                <td class="px-4 py-3 align-middle">
+                                    @if($followUp)
+                                        <a href="{{ route('user.followups.show', $followUp) }}" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
+                                            {{ $followUp->title ?? ('FollowUp #' . $followUp->id) }}
                                         </a>
                                     @else
-                                        <span class="text-xs text-gray-700 dark:text-gray-300">{{ $task->title ?? ('Task #' . $task->id) }}</span>
+                                        <span class="text-xs text-gray-400">—</span>
                                     @endif
-                                @else
-                                    <span class="text-xs text-gray-400">—</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                @php
-                                    $relatedModel = null;
-                                    $relatedUrl = null;
-                                    $isClient = false;
-                                    if ($task) {
-                                        if ($task->related_type === Task::RELATED_TYPE_CLIENT && $task->relatedClient) {
-                                            if (auth()->user()->can('clients.view') && $task->relatedClient->isVisibleFor(auth()->user())) {
-                                                $relatedModel = $task->relatedClient;
-                                                $relatedUrl = route('user.clients.show', $task->relatedClient->id);
-                                                $isClient = true;
-                                            }
-                                        } elseif ($task->related_type === Task::RELATED_TYPE_USER && $task->relatedUser) {
-                                            if (auth()->user()->can('users.view')) {
-                                                $relatedModel = $task->relatedUser;
+                                </td>
+                                <td class="px-4 py-3 align-middle">
+                                    @php
+                                        $relatedModel = null;
+                                        $relatedUrl = null;
+                                        $isClient = false;
+                                        if ($followUp) {
+                                            if ($followUp->related_type === Task::RELATED_TYPE_CLIENT && $followUp->relatedClient) {
+                                                if (auth()->user()->can('clients.view') && $followUp->relatedClient->isVisibleFor(auth()->user())) {
+                                                    $relatedModel = $followUp->relatedClient;
+                                                    $relatedUrl = route('user.clients.show', $followUp->relatedClient->id);
+                                                    $isClient = true;
+                                                }
+                                            } elseif ($followUp->related_type === Task::RELATED_TYPE_USER && $followUp->relatedUser) {
+                                                if (auth()->user()->can('users.view')) {
+                                                    $relatedModel = $followUp->relatedUser;
+                                                }
                                             }
                                         }
-                                    }
-                                @endphp
-                                @if($relatedModel)
-                                    <div class="flex flex-col">
-                                        @if($relatedUrl)
-                                            <a href="{{ $relatedUrl }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
-                                                {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
-                                            </a>
-                                        @else
-                                            <span class="text-xs font-medium text-gray-900 dark:text-white">
+                                    @endphp
+                                    @if($relatedModel)
+                                        <div class="flex flex-col">
+                                            @if($relatedUrl)
+                                                <a href="{{ $relatedUrl }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
+                                                    {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
+                                                </a>
+                                            @else
+                                                <span class="text-xs font-medium text-gray-900 dark:text-white">
                                                     {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
                                                 </span>
-                                        @endif
-
-                                        @if($isClient && $relatedModel->username)
-                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-0.5">@ {{ $relatedModel->username }}</span>
-                                        @endif
-                                    </div>
-                                @else
-                                    <span class="text-xs text-gray-400">—</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 align-middle text-center">
-                                @if($task)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border border-transparent {{ $priorityInfo['class'] }}">
+                                            @endif
+                                            
+                                            @if($isClient && $relatedModel->username)
+                                                <span class="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-0.5">@ {{ $relatedModel->username }}</span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 align-middle text-center">
+                                    @if($followUp)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border border-transparent {{ $priorityInfo['class'] }}">
                                             {{ $priorityInfo['label'] }}
                                         </span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 align-middle text-center">
-                                <span class="text-xs font-mono font-medium text-gray-600 dark:text-gray-300 dir-ltr">{{ $remindJalali }}</span>
-                            </td>
-                            <td class="px-4 py-3 align-middle text-center">
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 align-middle text-center">
+                                    <span class="text-xs font-mono font-medium text-gray-600 dark:text-gray-300 dir-ltr">{{ $remindJalali }}</span>
+                                </td>
+                                <td class="px-4 py-3 align-middle text-center">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border {{ $statusInfo['class'] }}">
                                         {!! $statusInfo['icon'] !!}
                                         {{ $statusInfo['label'] }}
                                     </span>
-                            </td>
-                            <td class="px-4 py-3 align-middle text-left">
-                                <div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    @if($reminder->status !== \Modules\Reminders\Entities\Reminder::STATUS_DONE)
-                                        <button type="button"
-                                                onclick="updateSingleStatus('{{ $reminder->id }}', '{{ route('user.reminders.update-status', $reminder) }}', '{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
-                                                class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors"
-                                                title="انجام شد">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                        </button>
-                                    @endif
-                                    <form method="POST" action="{{ route('user.reminders.destroy', $reminder) }}" class="inline-block" onsubmit="return confirm('آیا از حذف این یادآوری اطمینان دارید؟')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors" title="حذف">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" class="px-4 py-12 text-center">
-                                <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
-                                    <svg class="w-12 h-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                                    <span class="text-sm font-medium">هیچ یادآوری وظیفه‌ای در این بازه یافت نشد.</span>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        {{-- --- بخش ۲: پیگیری‌ها (FollowUps) --- --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-
-            {{-- هدر جدول پیگیری‌ها --}}
-            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/30">
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300 shadow-sm">
-                        <span class="text-sm font-bold font-mono">{{ $followUpReminders->count() }}</span>
-                    </div>
-                    <div>
-                        <h2 class="text-sm font-bold text-gray-900 dark:text-white">پیگیری‌ها (FollowUps)</h2>
-                        <p class="text-[10px] text-gray-500 dark:text-gray-400">یادآوری‌های مرتبط با تعاملات مشتری</p>
-                    </div>
+                                </td>
+                                <td class="px-4 py-3 align-middle text-left">
+                                    <div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                                        @if($reminder->status !== \Modules\Reminders\Entities\Reminder::STATUS_DONE)
+                                            <button type="button"
+                                                    onclick="updateSingleStatus('{{ $reminder->id }}', '{{ route('user.reminders.update-status', $reminder) }}', '{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
+                                                    class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors"
+                                                    title="انجام شد">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                            </button>
+                                        @endif
+                                        <form method="POST" action="{{ route('user.reminders.destroy', $reminder) }}" class="inline-block" onsubmit="return confirm('آیا از حذف اطمینان دارید؟')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors" title="حذف">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="px-4 py-12 text-center">
+                                    <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
+                                        <svg class="w-12 h-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <span class="text-sm font-medium">هیچ یادآوری پیگیری‌ای در این بازه یافت نشد.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
                 </div>
-
-                @if($followUpReminders->isNotEmpty())
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="setBulkStatusAndSubmit('{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
-                                class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors dark:bg-gray-800 dark:border-gray-600 dark:text-emerald-400 dark:hover:bg-gray-700 shadow-sm">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                            انجام شد
-                        </button>
-                    </div>
-                @endif
             </div>
-
-            {{-- جدول پیگیری --}}
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
-                    <thead class="bg-gray-50 dark:bg-gray-900/50">
-                    <tr>
-                        <th class="px-4 py-3 w-10 text-center">
-                            <input type="checkbox" onclick="toggleAll(this, 'followup')" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
-                        </th>
-                        <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">شرح یادآوری</th>
-                        <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">مورد پیگیری</th>
-                        <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400">مشتری/کاربر</th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">اولویت</th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">زمان یادآوری</th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400">وضعیت</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 pl-6">عملیات</th>
-                    </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                    @forelse($followUpReminders as $reminder)
-                        @php
-                            $followUp = $reminder->followUp ?? $reminder->task;
-                            $statusInfo = $statusBadges[$reminder->status] ?? $statusBadges[\Modules\Reminders\Entities\Reminder::STATUS_OPEN];
-                            $remindJalali = $reminder->remind_at ? Jalalian::fromCarbon($reminder->remind_at)->format('Y/m/d H:i') : '—';
-                            $priorityInfo = $followUp ? taskPriorityLabel($followUp->priority) : ['label' => '—', 'class' => 'bg-gray-100'];
-                        @endphp
-                        <tr id="reminder-row-{{ $reminder->id }}" class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-colors">
-                            <td class="px-4 py-3 text-center align-middle">
-                                <input type="checkbox" name="ids[]" value="{{ $reminder->id }}" form="bulk-status-form" class="reminder-checkbox reminder-checkbox-followup rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                <div class="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-1" title="{{ $reminder->message }}">
-                                    {{ $reminder->message ?? ('یادآوری پیگیری: ' . ($followUp->title ?? 'FollowUp #'.$followUp->id)) }}
-                                </div>
-                                <div class="text-[10px] text-gray-400 font-mono mt-0.5">ID: {{ $reminder->id }}</div>
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                @if($followUp)
-                                    <a href="{{ route('user.followups.show', $followUp) }}" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
-                                        {{ $followUp->title ?? ('FollowUp #' . $followUp->id) }}
-                                    </a>
-                                @else
-                                    <span class="text-xs text-gray-400">—</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 align-middle">
-                                @php
-                                    $relatedModel = null;
-                                    $relatedUrl = null;
-                                    $isClient = false;
-                                    if ($followUp) {
-                                        if ($followUp->related_type === Task::RELATED_TYPE_CLIENT && $followUp->relatedClient) {
-                                            if (auth()->user()->can('clients.view') && $followUp->relatedClient->isVisibleFor(auth()->user())) {
-                                                $relatedModel = $followUp->relatedClient;
-                                                $relatedUrl = route('user.clients.show', $followUp->relatedClient->id);
-                                                $isClient = true;
-                                            }
-                                        } elseif ($followUp->related_type === Task::RELATED_TYPE_USER && $followUp->relatedUser) {
-                                            if (auth()->user()->can('users.view')) {
-                                                $relatedModel = $followUp->relatedUser;
-                                            }
-                                        }
-                                    }
-                                @endphp
-                                @if($relatedModel)
-                                    <div class="flex flex-col">
-                                        @if($relatedUrl)
-                                            <a href="{{ $relatedUrl }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline">
-                                                {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
-                                            </a>
-                                        @else
-                                            <span class="text-xs font-medium text-gray-900 dark:text-white">
-                                                    {{ $isClient ? $relatedModel->full_name : $relatedModel->name }}
-                                                </span>
-                                        @endif
-
-                                        @if($isClient && $relatedModel->username)
-                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-0.5">@ {{ $relatedModel->username }}</span>
-                                        @endif
-                                    </div>
-                                @else
-                                    <span class="text-xs text-gray-400">—</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 align-middle text-center">
-                                @if($followUp)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border border-transparent {{ $priorityInfo['class'] }}">
-                                            {{ $priorityInfo['label'] }}
-                                        </span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 align-middle text-center">
-                                <span class="text-xs font-mono font-medium text-gray-600 dark:text-gray-300 dir-ltr">{{ $remindJalali }}</span>
-                            </td>
-                            <td class="px-4 py-3 align-middle text-center">
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border {{ $statusInfo['class'] }}">
-                                        {!! $statusInfo['icon'] !!}
-                                        {{ $statusInfo['label'] }}
-                                    </span>
-                            </td>
-                            <td class="px-4 py-3 align-middle text-left">
-                                <div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    @if($reminder->status !== \Modules\Reminders\Entities\Reminder::STATUS_DONE)
-                                        <button type="button"
-                                                onclick="updateSingleStatus('{{ $reminder->id }}', '{{ route('user.reminders.update-status', $reminder) }}', '{{ \Modules\Reminders\Entities\Reminder::STATUS_DONE }}')"
-                                                class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors"
-                                                title="انجام شد">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                        </button>
-                                    @endif
-                                    <form method="POST" action="{{ route('user.reminders.destroy', $reminder) }}" class="inline-block" onsubmit="return confirm('آیا از حذف اطمینان دارید؟')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors" title="حذف">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" class="px-4 py-12 text-center">
-                                <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
-                                    <svg class="w-12 h-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    <span class="text-sm font-medium">هیچ یادآوری پیگیری‌ای در این بازه یافت نشد.</span>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
     {{-- اسکریپت‌های مدیریت چک‌باکس و تغییر وضعیت --}}
@@ -541,35 +541,35 @@
                     status: status
                 })
             })
-                .then(response => {
-                    if (!response.ok) throw response;
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // بروزرسانی DOM
-                        const row = document.getElementById('reminder-row-' + reminderId);
-                        if (row) {
-                            // ستون وضعیت (ایندکس 5)
-                            const statusCell = row.cells[5];
-                            statusCell.innerHTML = `
+            .then(response => {
+                if (!response.ok) throw response;
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // بروزرسانی DOM
+                    const row = document.getElementById('reminder-row-' + reminderId);
+                    if (row) {
+                        // ستون وضعیت (ایندکس 5)
+                        const statusCell = row.cells[5];
+                        statusCell.innerHTML = `
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800">
                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                 انجام‌شده
                             </span>
                         `;
 
-                            // حذف دکمه انجام شد از ستون عملیات (ایندکس 6)
-                            const actionsCell = row.cells[6];
-                            const doneBtn = actionsCell.querySelector('button[onclick^="updateSingleStatus"]');
-                            if (doneBtn) doneBtn.remove();
-                        }
+                        // حذف دکمه انجام شد از ستون عملیات (ایندکس 6)
+                        const actionsCell = row.cells[6];
+                        const doneBtn = actionsCell.querySelector('button[onclick^="updateSingleStatus"]');
+                        if (doneBtn) doneBtn.remove();
                     }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('خطا در تغییر وضعیت. لطفا مجددا تلاش کنید.');
-                });
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('خطا در تغییر وضعیت. لطفا مجددا تلاش کنید.');
+            });
         }
     </script>
 @endsection

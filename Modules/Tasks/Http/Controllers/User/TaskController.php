@@ -286,7 +286,7 @@ class TaskController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user->can('tasks.edit')) {
+        if (! $user->can('tasks.edit') && ! $user->can('tasks.manage')) {
             abort(403);
         }
 
@@ -743,7 +743,7 @@ class TaskController extends Controller
         if ($action === 'status') {
             $status = $request->input('status');
             foreach ($tasks as $task) {
-                if ($user->can('tasks.edit')) {
+                if ($user->can('tasks.edit') || $user->can('tasks.manage')) {
                     $task->update(['status' => $status]);
                     $count++;
                 }

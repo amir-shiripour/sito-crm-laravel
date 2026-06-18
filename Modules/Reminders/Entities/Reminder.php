@@ -280,12 +280,12 @@ class Reminder extends Model
 
     public function canBeEditedBy(User $user): bool
     {
-        if (! $user->can('reminders.edit')) {
-            return false;
-        }
-
         if ($user->can('reminders.manage')) {
             return true;
+        }
+
+        if (! $user->can('reminders.edit')) {
+            return false;
         }
 
         return $this->user_id === $user->id;
@@ -293,12 +293,12 @@ class Reminder extends Model
 
     public function canBeDeletedBy(User $user): bool
     {
-        if (! $user->can('reminders.delete')) {
-            return false;
-        }
-
         if ($user->can('reminders.manage')) {
             return true;
+        }
+
+        if (! $user->can('reminders.delete')) {
+            return false;
         }
 
         return $this->user_id === $user->id;
