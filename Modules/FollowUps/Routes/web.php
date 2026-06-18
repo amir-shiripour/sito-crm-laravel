@@ -21,11 +21,11 @@ Route::get('followups/{followUp}', [FollowUpController::class, 'show'])
 
 Route::get('followups/{followUp}/edit', [FollowUpController::class, 'edit'])
     ->name('followups.edit')
-    ->middleware('can:followups.edit');
+    ->middleware('canAny:followups.edit,followups.manage');
 
 Route::put('followups/{followUp}', [FollowUpController::class, 'update'])
     ->name('followups.update')
-    ->middleware('can:followups.edit');
+    ->middleware('canAny:followups.edit,followups.manage');
 
 Route::delete('followups/{followUp}', [FollowUpController::class, 'destroy'])
     ->name('followups.destroy')

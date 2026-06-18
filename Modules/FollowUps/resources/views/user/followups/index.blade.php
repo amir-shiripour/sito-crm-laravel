@@ -201,12 +201,12 @@
                                        class="px-2 py-1 rounded-lg border border-gray-200 text-[11px] text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
                                         مشاهده
                                     </a>
-                                    @can('followups.edit')
+                                    @canany(['followups.edit', 'followups.manage'])
                                         <a href="{{ route('user.followups.edit', $fu) }}"
                                            class="px-2 py-1 rounded-lg border border-indigo-200 text-[11px] text-indigo-600 bg-indigo-50/40 hover:bg-indigo-100 dark:border-indigo-600 dark:text-indigo-300 dark:bg-indigo-900/30">
                                             ویرایش
                                         </a>
-                                    @endcan
+                                    @endcanany
                                     @can('followups.delete')
                                         <form method="POST"
                                               action="{{ route('user.followups.destroy', $fu) }}"

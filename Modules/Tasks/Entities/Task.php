@@ -324,16 +324,16 @@ class Task extends Model
             return;
         }
 
-        $dirty = $this->getDirty();
+        $changes = $this->getChanges();
 
         // اگر due_at یا assignee_id عوض شد → روی یادآوری‌ها اعمال کن
         $updateAll = [];
 
-        if (array_key_exists('due_at', $dirty) && $this->due_at) {
+        if (array_key_exists('due_at', $changes)) {
             $updateAll['remind_at'] = $this->due_at;
         }
 
-        if (array_key_exists('assignee_id', $dirty) && $this->assignee_id) {
+        if (array_key_exists('assignee_id', $changes)) {
             $updateAll['user_id'] = $this->assignee_id;
         }
 
@@ -342,10 +342,10 @@ class Task extends Model
         }
 
         // اگر وضعیت وظیفه DONE یا CANCELED شد → فقط روی OPENها اعمال کن
-        if (array_key_exists('status', $dirty)) {
+        if (array_key_exists('status', $changes)) {
             if ($this->status === self::STATUS_DONE) {
                 $this->reminders()
-                    ->where('status', Reminder::STATUS_OPEN)
+                    ->whereIn('status', [Reminder::STATUS_OPEN, Reminder::STATUS_ESCALATED])
                     ->update([
                         'status'  => Reminder::STATUS_DONE,
                         'is_sent' => true,
@@ -353,14 +353,14 @@ class Task extends Model
                     ]);
             } elseif ($this->status === self::STATUS_CANCELED) {
                 $this->reminders()
-                    ->where('status', Reminder::STATUS_OPEN)
+                    ->whereIn('status', [Reminder::STATUS_OPEN, Reminder::STATUS_ESCALATED])
                     ->update([
                         'status' => Reminder::STATUS_CANCELED,
                     ]);
             } elseif (in_array($this->status, [self::STATUS_TODO, self::STATUS_IN_PROGRESS])) {
                 $oldStatus = $this->getOriginal('status');
                 if (in_array($oldStatus, [self::STATUS_DONE, self::STATUS_CANCELED])) {
-                    if (! $this->reminders()->where('status', Reminder::STATUS_OPEN)->exists()) {
+                    if (! $this->reminders()->whereIn('status', [Reminder::STATUS_OPEN, Reminder::STATUS_ESCALATED])->exists()) {
                         // Reopen the most recent reminder or create a new one
                         $lastReminder = $this->reminders()->orderByDesc('id')->first();
                         if ($lastReminder) {
