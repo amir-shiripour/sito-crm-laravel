@@ -6,9 +6,24 @@
 
     // مقدار اولیه تاریخ به صورت شمسی (برای input جلالی)
     $callDateValue = old('call_date_jalali');
-    if (! $callDateValue && $call?->call_date) {
-        // تبدیل تاریخ میلادی ذخیره‌شده به شمسی برای نمایش
-        $callDateValue = jdate($call->call_date)->format('Y/m/d');
+    if (! $callDateValue) {
+        if ($call?->call_date) {
+            // تبدیل تاریخ میلادی ذخیره‌شده به شمسی برای نمایش
+            $callDateValue = jdate($call->call_date)->format('Y/m/d');
+        } else {
+            // تاریخ امروز به عنوان تاریخ پیش‌فرض
+            $callDateValue = jdate()->format('Y/m/d');
+        }
+    }
+
+    // مقدار اولیه زمان به صورت ساعت و دقیقه (بدون تاریخ)
+    $callTimeValue = old('call_time');
+    if (! $callTimeValue) {
+        if ($call?->call_time) {
+            $callTimeValue = \Carbon\Carbon::parse($call->call_time)->format('H:i');
+        } else {
+            $callTimeValue = now()->format('H:i');
+        }
     }
 
     // وضعیت فعلی
@@ -94,7 +109,7 @@
                             name="call_time"
                             id="call_time"
                             data-jdp-only-time
-                            value="{{ old('call_time', $call?->call_time) }}"
+                            value="{{ $callTimeValue }}"
                             placeholder="مثلاً 14:30"
                             required
                             class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
