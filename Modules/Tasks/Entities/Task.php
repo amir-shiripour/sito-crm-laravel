@@ -11,6 +11,8 @@ use Modules\Reminders\Entities\Reminder;
 
 class Task extends Model
 {
+    public $old_status_before_save;
+
     // انواع وظیفه (Task Type)
     public const TYPE_GENERAL    = 'GENERAL';    // وظیفه عمومی
     public const TYPE_FOLLOW_UP  = 'FOLLOW_UP';  // پیگیری (Follow-up)
@@ -121,6 +123,7 @@ class Task extends Model
         // قبل از ذخیره وظیفه (ایجاد یا ویرایش)
         static::saving(function (Task $task) {
             if ($task->isDirty('status')) {
+                $task->old_status_before_save = $task->getOriginal('status');
                 if ($task->status === self::STATUS_DONE) {
                     $task->completed_at = now();
                 } else {
@@ -319,12 +322,33 @@ class Task extends Model
             return;
         }
 
-        // اگر هیچ یادآوری‌ای برای این Task ثبت نشده، بیخیال
+        $changes = $this->getChanges();
+        $oldStatus = $this->old_status_before_save ?? $this->getOriginal('status');
+
+        // اگر وضعیت وظیفه از DONE یا CANCELED به TODO یا IN_PROGRESS برگشت → یادآوری را مجدداً باز کن یا بساز
+        if (
+            array_key_exists('status', $changes)
+            && in_array($this->status, [self::STATUS_TODO, self::STATUS_IN_PROGRESS])
+            && in_array($oldStatus, [self::STATUS_DONE, self::STATUS_CANCELED])
+        ) {
+            if ($this->reminders()->exists()) {
+                $lastReminder = $this->reminders()->orderByDesc('id')->first();
+                if ($lastReminder) {
+                    $lastReminder->update([
+                        'status'  => Reminder::STATUS_OPEN,
+                        'is_sent' => false,
+                        'sent_at' => null,
+                    ]);
+                }
+            } else {
+                $this->autoCreateReminderIfPossible();
+            }
+        }
+
+        // اگر هیچ یادآوری‌ای برای این Task ثبت نشده، دیگر تغییری روی یادآوری‌ها اعمال نمی‌کنیم
         if (! $this->reminders()->exists()) {
             return;
         }
-
-        $changes = $this->getChanges();
 
         // اگر due_at یا assignee_id عوض شد → روی یادآوری‌ها اعمال کن
         $updateAll = [];
@@ -357,23 +381,6 @@ class Task extends Model
                     ->update([
                         'status' => Reminder::STATUS_CANCELED,
                     ]);
-            } elseif (in_array($this->status, [self::STATUS_TODO, self::STATUS_IN_PROGRESS])) {
-                $oldStatus = $this->getOriginal('status');
-                if (in_array($oldStatus, [self::STATUS_DONE, self::STATUS_CANCELED])) {
-                    if (! $this->reminders()->whereIn('status', [Reminder::STATUS_OPEN, Reminder::STATUS_ESCALATED])->exists()) {
-                        // Reopen the most recent reminder or create a new one
-                        $lastReminder = $this->reminders()->orderByDesc('id')->first();
-                        if ($lastReminder) {
-                            $lastReminder->update([
-                                'status' => Reminder::STATUS_OPEN,
-                                'is_sent' => false,
-                                'sent_at' => null,
-                            ]);
-                        } else {
-                            $this->autoCreateReminderIfPossible();
-                        }
-                    }
-                }
             }
         }
     }

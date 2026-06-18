@@ -550,19 +550,29 @@
                     // بروزرسانی DOM
                     const row = document.getElementById('reminder-row-' + reminderId);
                     if (row) {
-                        // ستون وضعیت (ایندکس 5)
-                        const statusCell = row.cells[5];
-                        statusCell.innerHTML = `
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800">
-                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                انجام‌شده
-                            </span>
-                        `;
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const currentStatusFilter = urlParams.get('status') || 'open';
+                        
+                        if (currentStatusFilter === 'open') {
+                            row.classList.add('transition-all', 'duration-300', 'opacity-0', '-translate-x-4');
+                            setTimeout(() => {
+                                row.remove();
+                            }, 300);
+                        } else {
+                            // ستون وضعیت (ایندکس 6)
+                            const statusCell = row.cells[6];
+                            statusCell.innerHTML = `
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800">
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    انجام‌شده
+                                </span>
+                            `;
 
-                        // حذف دکمه انجام شد از ستون عملیات (ایندکس 6)
-                        const actionsCell = row.cells[6];
-                        const doneBtn = actionsCell.querySelector('button[onclick^="updateSingleStatus"]');
-                        if (doneBtn) doneBtn.remove();
+                            // حذف دکمه انجام شد از ستون عملیات (ایندکس 7)
+                            const actionsCell = row.cells[7];
+                            const doneBtn = actionsCell.querySelector('button[onclick^="updateSingleStatus"]');
+                            if (doneBtn) doneBtn.remove();
+                        }
                     }
                 }
             })

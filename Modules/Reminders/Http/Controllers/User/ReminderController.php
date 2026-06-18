@@ -340,6 +340,17 @@ class ReminderController extends Controller
             ])],
         ]);
 
+        // انجام وظیفه/پیگیری مرتبط در صورت تغییر وضعیت به DONE
+        if ($data['status'] === Reminder::STATUS_DONE) {
+            $related = $reminder->related();
+            if ($related && $reminder->related_type === 'TASK') {
+                if (isset($related->status)) {
+                    $related->status = Task::STATUS_DONE ?? 'DONE';
+                    $related->save();
+                }
+            }
+        }
+
         $reminder->update([
             'remind_at' => $data['remind_at'],
             'channel'   => $data['channel'] ?? $reminder->channel,
@@ -375,6 +386,15 @@ class ReminderController extends Controller
         if ($data['status'] === Reminder::STATUS_DONE) {
             $reminder->is_sent = true;
             $reminder->sent_at = now();
+
+            // انجام وظیفه/پیگیری مرتبط
+            $related = $reminder->related();
+            if ($related && $reminder->related_type === 'TASK') {
+                if (isset($related->status)) {
+                    $related->status = Task::STATUS_DONE ?? 'DONE';
+                    $related->save();
+                }
+            }
         }
 
         $reminder->save();
@@ -422,6 +442,15 @@ class ReminderController extends Controller
                 if ($data['status'] === Reminder::STATUS_DONE) {
                     $reminder->is_sent = true;
                     $reminder->sent_at = now();
+
+                    // انجام وظیفه/پیگیری مرتبط
+                    $related = $reminder->related();
+                    if ($related && $reminder->related_type === 'TASK') {
+                        if (isset($related->status)) {
+                            $related->status = Task::STATUS_DONE ?? 'DONE';
+                            $related->save();
+                        }
+                    }
                 }
 
                 $reminder->save();

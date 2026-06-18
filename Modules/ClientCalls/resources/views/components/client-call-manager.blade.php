@@ -2,6 +2,120 @@
 
 @props(['client'])
 
+@once
+<script>
+    window.clientCallManager = function (callsCount, recentCalls, clientLabel, clientId, statusMap, defaultJalaliToday) {
+        return {
+            openCallsModal: false,
+            submitting: false,
+            callsCount: callsCount,
+            recentCalls: recentCalls,
+            clientLabel: clientLabel,
+            clientId: clientId,
+            statusMap: statusMap,
+            defaultJalaliToday: defaultJalaliToday,
+
+            showFollowupPrompt: false,
+            followupUrl: null,
+
+            notify(type, text) {
+                window.dispatchEvent(new CustomEvent('notify', {
+                    detail: { type, text }
+                }));
+            },
+
+            openFollowup() {
+                window.dispatchEvent(new CustomEvent('open-client-followup', {
+                    detail: { clientId: clientId }
+                }));
+                this.openCallsModal = false;
+                this.showFollowupPrompt = false;
+            },
+
+            dismissFollowupPrompt() {
+                this.showFollowupPrompt = false;
+            },
+
+            async handleSubmit(event) {
+                this.submitting = true;
+                this.showFollowupPrompt = false;
+
+                const form = event.target;
+                const formData = new FormData(form);
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {})
+                        },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('خطا در ثبت تماس');
+                    }
+
+                    const data = await response.json();
+
+                    this.notify('success', data.message || 'تماس با موفقیت ثبت شد');
+
+                    // Increment the counter reactively
+                    this.callsCount = (this.callsCount || 0) + 1;
+
+                    // Prepend new call to history locally
+                    const statusKey = formData.get('status') || 'done';
+                    const statusInfo = statusMap[statusKey] || {
+                        label: 'نامشخص',
+                        class: 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:border-gray-600',
+                    };
+
+                    this.recentCalls.unshift({
+                        status: statusKey,
+                        status_label: statusInfo.label,
+                        status_class: statusInfo.class,
+                        date_text: formData.get('call_date_jalali') || '—',
+                        time_text: formData.get('call_time') || '—',
+                        reason: formData.get('reason'),
+                        result: formData.get('result'),
+                    });
+
+                    if (this.recentCalls.length > 5) {
+                        this.recentCalls.pop();
+                    }
+
+                    if (data.followup_url) {
+                        this.followupUrl = data.followup_url;
+                        this.showFollowupPrompt = true;
+                    }
+
+                    // ریست فرم به حالت اولیه
+                    form.reset();
+
+                    if (form.call_date_jalali) {
+                        form.call_date_jalali.value = defaultJalaliToday;
+                    }
+
+                    if (form.status) {
+                        form.status.value = 'done';
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    this.notify('error', 'خطا در ثبت تماس. دوباره تلاش کنید.');
+                } finally {
+                    this.submitting = false;
+                }
+            }
+        };
+    };
+</script>
+@endonce
+
 @php
     /** @var \Modules\Clients\Entities\Client $client */
 
@@ -39,12 +153,36 @@
             'class' => 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:border-gray-600',
         ],
     ];
+
+    $recentCallsMapped = $recentCalls->map(function ($call) use ($statusMap) {
+        $statusKey   = $call->status ?? 'unknown';
+        $statusInfo  = $statusMap[$statusKey] ?? [
+            'label' => 'نامشخص',
+            'class' => 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:border-gray-600',
+        ];
+        return [
+            'status' => $statusKey,
+            'status_label' => $statusInfo['label'],
+            'status_class' => $statusInfo['class'],
+            'date_text' => $call->call_date ? \Morilog\Jalali\Jalalian::fromCarbon($call->call_date)->format('Y/m/d') : '—',
+            'time_text' => $call->call_time ? \Carbon\Carbon::parse($call->call_time)->format('H:i') : '—',
+            'reason' => $call->reason,
+            'result' => $call->result,
+        ];
+    })->values()->all();
 @endphp
 
 {{-- اسکریپت/استایل JalaliDatePicker (یکبار در کل صفحه) --}}
 @includeIf('partials.jalali-date-picker')
 
-<div x-data="clientCallManager()">
+<div x-data="clientCallManager(
+    {{ $callsCount }},
+    {{ Js::from($recentCallsMapped) }},
+    {{ Js::from($client->full_name ?: $client->username) }},
+    {{ $client->id }},
+    {{ Js::from($statusMap) }},
+    {{ Js::from($defaultJalaliToday) }}
+)">
     {{-- دکمه باز کردن مودال --}}
     <button type="button"
             @click="openCallsModal = true"
@@ -54,7 +192,8 @@
                    transition-colors">
         <span class="inline-flex items-center justify-center w-5 h-5 rounded-full
                      bg-indigo-100 text-indigo-700 text-[10px]
-                     dark:bg-indigo-900/40 dark:text-indigo-300">
+                     dark:bg-indigo-900/40 dark:text-indigo-300"
+              x-text="callsCount">
             {{ $callsCount }}
         </span>
         <span>مدیریت تماس‌ها</span>
@@ -94,7 +233,7 @@
                             مدیریت تماس‌های {{ $client->full_name ?: $client->username }}
                         </h2>
                         <p class="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
-                            مجموع تماس‌های ثبت‌شده: <span class="font-semibold">{{ $callsCount }}</span>
+                            مجموع تماس‌های ثبت‌شده: <span class="font-semibold" x-text="callsCount">{{ $callsCount }}</span>
                         </p>
                     </div>
                 </div>
@@ -142,7 +281,7 @@
                                            class="w-full h-9 rounded-xl border-gray-200 bg-gray-50 px-3 text-xs text-gray-900
                                                   placeholder-gray-400
                                                   focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
-                                                  dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
+                                                  dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-750 dark:focus:ring-indigo-500/20">
                                 </div>
 
                                 {{-- زمان (only-time) --}}
@@ -159,7 +298,7 @@
                                            class="w-full h-9 rounded-xl border-gray-200 bg-gray-50 px-3 text-xs text-gray-900 dir-ltr
                                                   placeholder-gray-400
                                                   focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
-                                                  dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
+                                                  dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-750 dark:focus:ring-indigo-500/20">
                                 </div>
 
                                 {{-- وضعیت --}}
@@ -171,10 +310,11 @@
                                             required
                                             class="w-full h-9 rounded-xl border-gray-200 bg-gray-50 px-3 text-xs text-gray-900
                                                    focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
-                                                   dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
+                                                   dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-750 dark:focus:ring-indigo-500/20">
                                         @foreach($statusMap as $key => $info)
-                                            <option
-                                                value="{{ $key }}" @selected(old('status', 'done') === $key)>{{ $info['label'] }}</option>
+                                            <option value="{{ $key }}" @selected(old('status', 'done') === $key) class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                                                {{ $info['label'] }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -191,7 +331,7 @@
                                            class="w-full h-9 rounded-xl border-gray-200 bg-gray-50 px-3 text-xs text-gray-900
                                                   placeholder-gray-400
                                                   focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
-                                                  dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900">
+                                                  dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-750 dark:focus:ring-indigo-500/20">
                                 </div>
 
                                 {{-- نتیجه --}}
@@ -205,19 +345,19 @@
                                               class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900
                                                      placeholder-gray-400
                                                      focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
-                                                     dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900"
+                                                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-750 dark:focus:ring-indigo-500/20"
                                               placeholder="نتیجه تماس را وارد کنید...">{{ old('result') }}</textarea>
                                 </div>
                             </div>
 
                             <div class="flex items-center justify-between pt-1">
-                                <button type="button"
-                                        @click="openCallsModal = false"
-                                        class="px-3 py-1.5 rounded-xl border border-gray-300 text-[11px] text-gray-700 bg-white hover:bg-gray-50
-                                           dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800
-                                           transition-colors">
-                                    بستن
-                                </button>
+                                 <button type="button"
+                                         @click="openCallsModal = false"
+                                         class="px-3 py-1.5 rounded-xl border border-gray-300 text-[11px] text-gray-700 bg-white hover:bg-gray-50
+                                            dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700
+                                            transition-colors">
+                                     بستن
+                                 </button>
                                 <button type="submit"
                                         :disabled="submitting"
                                         class="px-4 py-1.5 rounded-xl bg-indigo-600 text-white text-[11px] font-medium
@@ -268,69 +408,44 @@
 
                     <div class="rounded-xl border border-gray-100 bg-gray-50/60 max-h-72 overflow-auto
                                 dark:border-gray-800 dark:bg-gray-900/40">
-                        @if($recentCalls->isEmpty())
-                            <div
-                                class="flex flex-col items-center justify-center py-8 text-[11px] text-gray-500 dark:text-gray-400">
-                                <svg class="w-10 h-10 text-gray-300 dark:text-gray-600 mb-2" fill="none"
-                                     viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                          d="M18 8a6 6 0 10-12 0v4a6 6 0 0012 0V8z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                          d="M13.73 21a2 2 0 01-3.46 0"/>
-                                </svg>
-                                <p>هنوز تماسی برای این مشتری ثبت نشده است.</p>
-                            </div>
-                        @else
-                            <ul class="divide-y divide-gray-100 dark:divide-gray-800">
-                                @foreach($recentCalls as $call)
-                                    @php
-                                        $statusKey   = $call->status ?? 'unknown';
-                                        $statusInfo  = $statusMap[$statusKey] ?? [
-                                            'label' => 'نامشخص',
-                                            'class' => 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:border-gray-600',
-                                        ];
-                                        $dateText = $call->call_date
-                                            ? \Morilog\Jalali\Jalalian::fromCarbon($call->call_date)->format('Y/m/d')
-                                            : '—';
-                                        $timeText = $call->call_time
-                                            ? \Carbon\Carbon::parse($call->call_time)->format('H:i')
-                                            : '—';
-                                    @endphp
-
-                                    <li class="px-3 py-2.5 text-[11px] flex items-start justify-between gap-2">
-                                        <div class="flex-1 space-y-1">
-                                            <div class="flex items-center justify-between gap-2">
-                                                <span
-                                                    class="inline-flex items-center px-2 py-0.5 rounded-full border {{ $statusInfo['class'] }}">
-                                                    {{ $statusInfo['label'] }}
-                                                </span>
-                                                <div class="text-[10px] text-gray-500 dark:text-gray-400 text-left">
-                                                    <div class="dir-ltr">
-                                                        {{ $dateText }}
-                                                    </div>
-                                                    <div class="dir-ltr">
-                                                        {{ $timeText }}
-                                                    </div>
-                                                </div>
+                        <div x-show="recentCalls.length === 0"
+                             class="flex flex-col items-center justify-center py-8 text-[11px] text-gray-500 dark:text-gray-400">
+                            <svg class="w-10 h-10 text-gray-300 dark:text-gray-600 mb-2" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M18 8a6 6 0 10-12 0v4a6 6 0 0012 0V8z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M13.73 21a2 2 0 01-3.46 0"/>
+                            </svg>
+                            <p>هنوز تماسی برای این مشتری ثبت نشده است.</p>
+                        </div>
+                        <ul x-show="recentCalls.length > 0" class="divide-y divide-gray-100 dark:divide-gray-800">
+                            <template x-for="call in recentCalls">
+                                <li class="px-3 py-2.5 text-[11px] flex items-start justify-between gap-2">
+                                    <div class="flex-1 space-y-1">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full border"
+                                                  :class="call.status_class"
+                                                  x-text="call.status_label">
+                                            </span>
+                                            <div class="text-[10px] text-gray-500 dark:text-gray-400 text-left">
+                                                <div class="dir-ltr" x-text="call.date_text"></div>
+                                                <div class="dir-ltr" x-text="call.time_text"></div>
                                             </div>
-
-                                            @if($call->reason)
-                                                <div class="text-gray-700 dark:text-gray-200 truncate"
-                                                     title="{{ $call->reason }}">
-                                                    علت: {{ $call->reason }}
-                                                </div>
-                                            @endif
-                                            @if($call->result)
-                                                <div class="text-gray-500 dark:text-gray-300 line-clamp-2"
-                                                     title="{{ $call->result }}">
-                                                    نتیجه: {{ $call->result }}
-                                                </div>
-                                            @endif
                                         </div>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @endif
+
+                                        <div x-show="call.reason" class="text-gray-700 dark:text-gray-200 truncate"
+                                             :title="call.reason">
+                                            <span>علت: </span><span x-text="call.reason"></span>
+                                        </div>
+                                        <div x-show="call.result" class="text-gray-500 dark:text-gray-300 line-clamp-2"
+                                             :title="call.result">
+                                            <span>نتیجه: </span><span x-text="call.result"></span>
+                                        </div>
+                                    </div>
+                                </li>
+                            </template>
+                        </ul>
                     </div>
                 </div>
 
@@ -389,84 +504,3 @@
         </div>
     </div>
 </div>
-<script>
-    function clientCallManager() {
-        return {
-            openCallsModal: false,
-            submitting: false,
-
-            showFollowupPrompt: false,
-            followupUrl: null,
-            clientLabel: @json($client->full_name ?: $client->username),
-
-            notify(type, text) {
-                window.dispatchEvent(new CustomEvent('notify', {
-                    detail: { type, text }
-                }));
-            },
-
-            openFollowup() {
-                if (this.followupUrl) {
-                    window.open(this.followupUrl, '_blank');
-                }
-                this.showFollowupPrompt = false;
-            },
-
-            dismissFollowupPrompt() {
-                this.showFollowupPrompt = false;
-            },
-
-            async handleSubmit(event) {
-                this.submitting = true;
-                this.showFollowupPrompt = false;
-
-                const form = event.target;
-                const formData = new FormData(form);
-
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-                try {
-                    const response = await fetch(form.action, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {})
-                        },
-                        body: formData
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('خطا در ثبت تماس');
-                    }
-
-                    const data = await response.json();
-
-                    this.notify('success', data.message || 'تماس با موفقیت ثبت شد');
-
-                    if (data.followup_url) {
-                        this.followupUrl = data.followup_url;
-                        this.showFollowupPrompt = true;
-                    }
-
-                    // ریست فرم به حالت اولیه
-                    form.reset();
-
-                    if (form.call_date_jalali) {
-                        form.call_date_jalali.value = @json($defaultJalaliToday);
-                    }
-
-                    if (form.status) {
-                        form.status.value = 'done';
-                    }
-
-                } catch (e) {
-                    console.error(e);
-                    this.notify('error', 'خطا در ثبت تماس. دوباره تلاش کنید.');
-                } finally {
-                    this.submitting = false;
-                }
-            }
-        };
-    }
-</script>
