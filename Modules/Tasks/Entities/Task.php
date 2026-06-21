@@ -135,18 +135,28 @@ class Task extends Model
         // بعد از ایجاد وظیفه
         static::created(function (Task $task) {
             $task->autoCreateReminderIfPossible();
+            $task->processCompletionIfNeeded(true);
         });
 
         // بعد از بروزرسانی وظیفه
         static::updated(function (Task $task) {
             $task->syncRemindersOnUpdate();
-            $task->advanceWorkflowIfDone();
+            $task->processCompletionIfNeeded(false);
         });
     }
 
-    public function advanceWorkflowIfDone(): void
+    public function processCompletionIfNeeded(bool $isCreation = false): void
     {
-        if ($this->wasChanged('status') && $this->status === self::STATUS_DONE) {
+        $statusChangedToDone = $isCreation
+            ? $this->status === self::STATUS_DONE
+            : ($this->wasChanged('status') && $this->status === self::STATUS_DONE);
+
+        if ($statusChangedToDone) {
+            // First execute the system action if it exists
+            if (isset($this->meta['_action_type'])) {
+                $this->executeSystemAction();
+            }
+
             $instanceId = $this->meta['workflow_instance_id'] ?? null;
             $nodeId = $this->meta['workflow_node_id'] ?? null;
             $autoAdvance = $this->meta['auto_advance'] ?? true;
@@ -175,6 +185,119 @@ class Task extends Model
                     $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
                     $engine->advance($instance);
                 }
+            }
+        }
+    }
+
+    protected function executeSystemAction(): void
+    {
+        $actionType = $this->meta['_action_type'] ?? null;
+        $config = $this->meta['_node_config'] ?? [];
+
+        if ($actionType === 'SMS') {
+            if (class_exists('Modules\\Sms\\Services\\SmsManager')) {
+                $to = null;
+                $smsTarget = $config['sms_target'] ?? ($config['target'] ?? 'PATIENT');
+                if ($smsTarget === 'CUSTOM_PHONE' || $smsTarget === 'CUSTOM') {
+                    $to = $config['sms_phone'] ?? ($config['phone'] ?? null);
+                } elseif ($smsTarget === 'SPECIFIC_USER') {
+                    $targetUserId = $config['sms_target_user_id'] ?? ($config['target_user_id'] ?? null);
+                    if ($targetUserId) {
+                        $user = \App\Models\User::find($targetUserId);
+                        $to = $user?->phone ?? $user?->email;
+                    }
+                } elseif ($smsTarget === 'APPOINTMENT_PROVIDER' || $smsTarget === 'PROVIDER') {
+                    $instanceId = $this->meta['workflow_instance_id'] ?? null;
+                    if ($instanceId && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                        $instance = \Modules\Workflows\Entities\WorkflowInstance::find($instanceId);
+                        if ($instance && $instance->related_type === 'APPOINTMENT') {
+                            $appt = \Modules\Booking\Entities\Appointment::find($instance->related_id);
+                            if ($appt && $appt->provider) {
+                                $to = $appt->provider->phone ?? $appt->provider->email;
+                            }
+                        }
+                    }
+                } else {
+                    $clientId = $this->meta['related_client_ids'][0] ?? ($this->related_type === 'CLIENT' ? $this->related_id : null);
+                    if ($clientId) {
+                        $client = \Modules\Clients\Entities\Client::find($clientId);
+                        if ($client) {
+                            $to = $client->phone;
+                        }
+                    }
+                }
+                
+                $message = $this->description ?: ($config['sms_message'] ?? 'پیامک سیستمی');
+                
+                if ($to) {
+                    try {
+                        $smsOptions = [
+                            'type' => \Modules\Sms\Entities\SmsMessage::TYPE_SYSTEM,
+                            'meta' => [
+                                'workflow_id'          => $this->meta['workflow_id'] ?? null,
+                                'workflow_name'        => $this->meta['workflow_name'] ?? null,
+                                'workflow_instance_id' => $this->meta['workflow_instance_id'] ?? null,
+                                'task_id'              => $this->id,
+                            ]
+                        ];
+                        
+                        $patternKey = $config['sms_pattern_key'] ?? ($config['pattern_key'] ?? null);
+                        $resolvedParams = $config['resolved_params'] ?? [];
+                        
+                        if ($patternKey) {
+                            app('Modules\\Sms\\Services\\SmsManager')->sendPattern($to, $patternKey, $resolvedParams, $smsOptions);
+                            logger()->info("[Workflows] Pattern SMS sent via Task {$this->id} to {$to}");
+                        } else {
+                            app('Modules\\Sms\\Services\\SmsManager')->sendText($to, $message, $smsOptions);
+                            logger()->info("[Workflows] SMS sent via Task {$this->id} to {$to}");
+                        }
+                    } catch (\Exception $e) {
+                        logger()->error("[Workflows] SMS send failed via Task {$this->id}: " . $e->getMessage());
+                    }
+                } else {
+                    logger()->warning("[Workflows] SMS skipped via Task {$this->id}: No target phone number resolved.");
+                }
+            }
+        } elseif ($actionType === 'NOTIFICATION') {
+            $notificationTarget = $config['notification_target'] ?? 'APPOINTMENT_CLIENT';
+            $recipient = null;
+
+            if ($notificationTarget === 'SPECIFIC_USER') {
+                $targetUserId = $config['notification_target_user_id'] ?? null;
+                if ($targetUserId) {
+                    $recipient = \App\Models\User::find($targetUserId);
+                }
+            } elseif ($notificationTarget === 'APPOINTMENT_PROVIDER') {
+                $instanceId = $this->meta['workflow_instance_id'] ?? null;
+                if ($instanceId && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                    $instance = \Modules\Workflows\Entities\WorkflowInstance::find($instanceId);
+                    if ($instance && $instance->related_type === 'APPOINTMENT') {
+                        $appt = \Modules\Booking\Entities\Appointment::find($instance->related_id);
+                        if ($appt && $appt->provider) {
+                            $recipient = $appt->provider;
+                        }
+                    }
+                }
+            } else {
+                $clientId = $this->meta['related_client_ids'][0] ?? ($this->related_type === 'CLIENT' ? $this->related_id : null);
+                if ($clientId) {
+                    $recipient = \Modules\Clients\Entities\Client::find($clientId);
+                }
+            }
+
+            if ($recipient) {
+                $title = $this->title;
+                $message = $this->description;
+                try {
+                    if (class_exists(\Modules\Workflows\Notifications\SystemNotification::class)) {
+                        $recipient->notify(new \Modules\Workflows\Notifications\SystemNotification($title, $message));
+                        logger()->info("[Workflows] Notification sent via Task {$this->id} to recipient");
+                    }
+                } catch (\Exception $e) {
+                    logger()->error("[Workflows] Notification send failed via Task {$this->id}: " . $e->getMessage());
+                }
+            } else {
+                logger()->warning("[Workflows] Notification skipped via Task {$this->id}: No target recipient resolved.");
             }
         }
     }
@@ -265,10 +388,7 @@ class Task extends Model
 
     public function autoCreateReminderIfPossible(): void
     {
-        // برای وظایف سیستمی، خودِ ماژول گردش‌کار Reminderهای لازم را می‌سازد
-        if ($this->task_type === self::TYPE_SYSTEM) {
-            return;
-        }
+        // Allow system tasks to create reminders just like general tasks
 
         // اگر مسئول یا تاریخ سررسید مشخص نباشد، یادآوری نمی‌سازیم
         if (empty($this->assignee_id) || empty($this->due_at)) {
@@ -297,7 +417,18 @@ class Task extends Model
             $reminder->remind_at    = $this->due_at;
             $reminder->channel      = 'IN_APP';
             $reminder->message      = 'یادآوری انجام وظیفه: ' . ($this->title ?? 'بدون عنوان');
-            $reminder->is_sent      = false;
+
+            if ($this->status === self::STATUS_DONE) {
+                $reminder->status = $reminderClass::STATUS_DONE;
+                $reminder->is_sent = true;
+                $reminder->sent_at = now();
+            } elseif ($this->status === self::STATUS_CANCELED) {
+                $reminder->status = $reminderClass::STATUS_CANCELED;
+                $reminder->is_sent = false;
+            } else {
+                $reminder->status = $reminderClass::STATUS_OPEN;
+                $reminder->is_sent = false;
+            }
 
             $reminder->save();
         } catch (\Throwable $e) {
@@ -365,7 +496,7 @@ class Task extends Model
             $this->reminders()->update($updateAll);
         }
 
-        // اگر وضعیت وظیفه DONE یا CANCELED شد → فقط روی OPENها اعمال کن
+        // اگر وضعیت وظیفه DONE یا CANCELED شد → روی یادآوری‌های غیر DONE اعمال کن
         if (array_key_exists('status', $changes)) {
             if ($this->status === self::STATUS_DONE) {
                 $this->reminders()

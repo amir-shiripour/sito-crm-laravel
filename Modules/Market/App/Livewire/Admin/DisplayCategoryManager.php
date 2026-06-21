@@ -8,7 +8,10 @@ use Illuminate\Support\Str;
 
 class DisplayCategoryManager extends Component
 {
+    use \Livewire\WithFileUploads;
+
     public $category_id, $name, $parent_id, $is_active = true;
+    public $icon, $existing_icon;
     public $parentOptions = [];
     public $isFormOpen = false;
 
@@ -27,9 +30,10 @@ class DisplayCategoryManager extends Component
             $this->category_id = $cat->id;
             $this->name = $cat->name;
             $this->parent_id = $cat->parent_id;
+            $this->existing_icon = $cat->icon;
             $this->is_active = $cat->is_active;
         } else {
-            $this->reset(['category_id', 'name', 'parent_id', 'is_active']);
+            $this->reset(['category_id', 'name', 'parent_id', 'is_active', 'icon', 'existing_icon']);
         }
         $this->isFormOpen = true;
     }
@@ -37,6 +41,7 @@ class DisplayCategoryManager extends Component
     public function closeForm()
     {
         $this->isFormOpen = false;
+        $this->reset(['icon']);
     }
 
     public function save()
@@ -44,9 +49,10 @@ class DisplayCategoryManager extends Component
         $this->validate([
             'name' => 'required|string|max:255',
             'parent_id' => 'nullable|integer|exists:market_display_categories,id',
+            'icon' => 'nullable|image|max:2048',
         ]);
 
-        DisplayCategory::updateOrCreate(
+        $category = DisplayCategory::updateOrCreate(
             ['id' => $this->category_id],
             [
                 'name' => $this->name,
@@ -55,6 +61,14 @@ class DisplayCategoryManager extends Component
                 'is_active' => $this->is_active,
             ]
         );
+
+        if ($this->icon) {
+            if ($category->icon) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($category->icon);
+            }
+            $path = $this->icon->store('display_categories', 'public');
+            $category->update(['icon' => $path]);
+        }
 
         $this->dispatch('notify', type: 'success', text: 'دسته‌بندی مجزا با موفقیت ذخیره شد.');
         $this->closeForm();

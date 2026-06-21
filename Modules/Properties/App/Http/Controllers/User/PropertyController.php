@@ -31,6 +31,10 @@ class PropertyController extends Controller
 
         // Start Query manually to control visibility logic
         $query = Property::query()
+            ->where('publication_status', 'published')
+            ->whereHas('status', function ($q) {
+                $q->where('show_in_crm', true);
+            })
             ->with('status', 'creator', 'agent', 'category', 'building');
 
         // Check for trash view
@@ -213,6 +217,7 @@ class PropertyController extends Controller
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'video' => "nullable|file|mimes:{$allowedVideoTypes}|max:{$maxVideoSize}",
             'is_special' => 'nullable|boolean',
+            'show_on_site' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
             'price' => 'nullable|numeric|min:0',
             'min_price' => 'nullable|numeric|min:0',
@@ -257,7 +262,10 @@ class PropertyController extends Controller
         }
 
         $metaRequest = $request->input('meta', []);
-        $processedMeta = ['is_special' => $request->has('is_special')];
+        $processedMeta = [
+            'is_special' => $request->has('is_special'),
+            'show_on_site' => $request->has('show_on_site'),
+        ];
         if (isset($metaRequest['details'])) foreach ($metaRequest['details'] as $k => $v) if (!empty($k)) $processedMeta['details'][$k] = $v;
         if (isset($metaRequest['features'])) foreach ($metaRequest['features'] as $f) {
             if (is_array($f) && !empty($f['value'])) $processedMeta['features'][] = $f['value'];
@@ -637,6 +645,7 @@ class PropertyController extends Controller
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'video' => "nullable|file|mimes:{$allowedVideoTypes}|max:{$maxVideoSize}",
             'is_special' => 'nullable|boolean',
+            'show_on_site' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
             'price' => 'nullable|numeric|min:0',
             'min_price' => 'nullable|numeric|min:0',
@@ -684,6 +693,7 @@ class PropertyController extends Controller
 
         $processedMeta = $property->meta ?? [];
         $processedMeta['is_special'] = $request->has('is_special');
+        $processedMeta['show_on_site'] = $request->has('show_on_site');
         $processedMeta['details'] = [];
         $processedMeta['features'] = [];
 

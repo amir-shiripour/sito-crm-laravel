@@ -25,6 +25,7 @@ class Installer extends BaseModuleInstaller
         parent::reset();
         Log::info('Properties Installer: Parent reset completed.');
         $this->syncPermissions();
+        $this->seedDefaultStatuses();
         Log::info('Properties Installer: Custom reset process finished.');
     }
 
@@ -33,7 +34,25 @@ class Installer extends BaseModuleInstaller
         parent::install();
         Log::info('Properties Installer: Starting install process...');
         $this->syncPermissions();
+        $this->seedDefaultStatuses();
         Log::info('Properties Installer: Install process finished.');
+    }
+
+    private function seedDefaultStatuses(): void
+    {
+        Log::info('Properties Installer: Seeding default statuses...');
+        \Modules\Properties\Entities\PropertyStatus::firstOrCreate(
+            ['key' => 'new'],
+            [
+                'label' => 'جدید',
+                'color' => '#10b981',
+                'is_system' => true,
+                'is_active' => true,
+                'is_default' => true,
+                'show_in_crm' => true,
+                'sort_order' => 1
+            ]
+        );
     }
 
     private function syncPermissions(): void

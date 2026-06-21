@@ -1,0 +1,17 @@
+{
+  "name": "Sales",
+  "alias": "sales",
+  "description": "Sales and Marketing module: Campaign management, KPI tracking, and Sales Cockpit.",
+  "keywords": [
+    "sales",
+    "marketing",
+    "campaign",
+    "crm"
+  ],
+  "priority": 140,
+  "providers": [
+    "Modules\\Sales\\Providers\\SalesServiceProvider",
+    "Modules\\Sales\\Providers\\RouteServiceProvider"
+  ],
+  "files": []
+}

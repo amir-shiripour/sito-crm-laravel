@@ -429,7 +429,8 @@
                                     <label class="{{ $labelClass }}">وضعیت پیش‌فرض طرح جدید</label>
                                     <div class="relative">
                                         <select name="cure_default_status" class="{{ $selectClass }}">
-                                            <option value="draft" @selected(old('cure_default_status', $settings->cure_default_status ?? 'draft') === 'draft')>پیش‌نویس</option>
+                                            <option value="draft" @selected(old('cure_default_status', $settings->cure_default_status ?? 'draft') === 'draft')>پیش‌نویس (الزام به ذخیره قبل از تأیید)</option>
+                                            <option value="draft_direct" @selected(old('cure_default_status', $settings->cure_default_status ?? 'draft') === 'draft_direct')>پیش‌نویس (با امکان تأیید مستقیم)</option>
                                             <option value="confirmed" @selected(old('cure_default_status', $settings->cure_default_status ?? 'draft') === 'confirmed')>تأیید شده</option>
                                         </select>
                                         <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">

@@ -422,6 +422,7 @@
                                     <input type="text"
                                            name="due_at_view"
                                            data-jdp-only-date
+                                           data-jdp-min-date="today"
                                            value="{{ $defaultJalaliToday }}"
                                            class="w-full h-9 rounded-xl border-gray-200 bg-gray-50 px-3 text-xs text-gray-900
                                               focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20

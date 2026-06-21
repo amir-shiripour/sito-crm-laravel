@@ -56,6 +56,44 @@
                         @error('support_phone') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                     </div>
 
+                    {{-- لوگوی فروشگاه --}}
+                    <div class="md:col-span-1">
+                        <label class="{{ $labelClass }}">لوگوی فروشگاه</label>
+                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-gray-50 border-gray-300 dark:bg-gray-800 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 overflow-hidden relative transition-colors">
+                            @if($logo && !is_string($logo))
+                                <img src="{{ $logo->temporaryUrl() }}" class="w-full h-full object-contain p-2">
+                                <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><span class="text-white text-xs font-bold">تغییر لوگو</span></div>
+                            @elseif($existing_logo)
+                                <img src="{{ Storage::url($existing_logo) }}" class="w-full h-full object-contain p-2">
+                                <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><span class="text-white text-xs font-bold">تغییر لوگو</span></div>
+                            @else
+                                <svg class="w-8 h-8 mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                <p class="text-[10px] text-gray-500 text-center px-2">برای آپلود لوگو کلیک کنید</p>
+                            @endif
+                            <input type="file" wire:model="logo" class="hidden" accept="image/*" />
+                        </label>
+                        @error('logo') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- کاور فروشگاه --}}
+                    <div class="md:col-span-1">
+                        <label class="{{ $labelClass }}">کاور فروشگاه</label>
+                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-gray-50 border-gray-300 dark:bg-gray-800 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 overflow-hidden relative transition-colors">
+                            @if($cover_image && !is_string($cover_image))
+                                <img src="{{ $cover_image->temporaryUrl() }}" class="w-full h-full object-cover">
+                                <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><span class="text-white text-xs font-bold">تغییر کاور</span></div>
+                            @elseif($existing_cover_image)
+                                <img src="{{ Storage::url($existing_cover_image) }}" class="w-full h-full object-cover">
+                                <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><span class="text-white text-xs font-bold">تغییر کاور</span></div>
+                            @else
+                                <svg class="w-8 h-8 mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                <p class="text-[10px] text-gray-500 text-center px-2">برای آپلود کاور کلیک کنید</p>
+                            @endif
+                            <input type="file" wire:model="cover_image" class="hidden" accept="image/*" />
+                        </label>
+                        @error('cover_image') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
                     <div class="md:col-span-2">
                         <label class="{{ $labelClass }}">نوع شخص <span class="text-red-500">*</span></label>
                         <div class="flex gap-4 mt-2">

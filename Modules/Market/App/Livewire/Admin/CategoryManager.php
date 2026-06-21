@@ -9,7 +9,10 @@ use Illuminate\Support\Str;
 
 class CategoryManager extends Component
 {
+    use \Livewire\WithFileUploads;
+
     public $category_id, $name, $parent_id, $brand_id, $code_offset, $is_active = true;
+    public $icon, $existing_icon;
     public $has_parent_brand = false; // جهت غیر فعال کردن ویرایش برند در صورت داشتن والد با برند
     public $parentOptions = []; // برای همگام‌سازی سریع و زنده لیست کشویی والد با ویژگی‌های برند
 
@@ -63,6 +66,7 @@ class CategoryManager extends Component
             $this->parent_id = $cat->parent_id;
             $this->brand_id = $cat->brand_id;
             $this->code_offset = $cat->code_offset;
+            $this->existing_icon = $cat->icon;
             $this->is_active = $cat->is_active;
 
             // دریافت آرایه‌ها از دیتابیس (اطمینان از ساختار آرایه‌ای)
@@ -76,7 +80,7 @@ class CategoryManager extends Component
                 }
             }
         } else {
-            $this->reset(['category_id', 'name', 'parent_id', 'brand_id', 'is_active', 'target_attributes', 'variant_fields']);
+            $this->reset(['category_id', 'name', 'parent_id', 'brand_id', 'is_active', 'target_attributes', 'variant_fields', 'icon', 'existing_icon']);
 
             // تولید خودکار کد آفست جدید
             $lastOffset = Category::max('code_offset') ?? 0;
@@ -111,6 +115,7 @@ class CategoryManager extends Component
 
     public function closeForm() {
         $this->isFormOpen = false;
+        $this->reset(['icon']);
     }
 
     public function save()
@@ -123,13 +128,14 @@ class CategoryManager extends Component
             'target_attributes.*' => 'nullable|string|max:50',
             // 💡 NEW: حالا این فیلدها آیدی از دیتابیس هستند نه متن
             'variant_fields.*' => 'nullable|integer',
+            'icon' => 'nullable|image|max:2048',
         ]);
 
         // پاکسازی اینپوت‌های خالی از آرایه‌ها تا دیتابیس کثیف نشود
         $cleanAttributes = array_values(array_filter($this->target_attributes));
         $cleanVariantFields = array_values(array_filter($this->variant_fields));
 
-        Category::updateOrCreate(
+        $category = Category::updateOrCreate(
             ['id' => $this->category_id],
             [
                 'name' => $this->name,
@@ -142,6 +148,14 @@ class CategoryManager extends Component
                 'is_active' => $this->is_active,
             ]
         );
+
+        if ($this->icon) {
+            if ($category->icon) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($category->icon);
+            }
+            $path = $this->icon->store('categories', 'public');
+            $category->update(['icon' => $path]);
+        }
 
         $this->dispatch('notify', type: 'success', text: 'دسته‌بندی با موفقیت ذخیره شد.');
         $this->closeForm();

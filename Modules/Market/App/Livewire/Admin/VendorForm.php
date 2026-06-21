@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Cache;
 
 class VendorForm extends Component
 {
+    use \Livewire\WithFileUploads;
+
     public ?Vendor $vendor = null;
 
     // اطلاعات پایه
@@ -23,6 +25,12 @@ class VendorForm extends Component
     public $status = 'pending';
     public $kyc_status = 'pending';
     public $commission_rate = '';
+
+    // تصاویر
+    public $logo;
+    public $existing_logo;
+    public $cover_image;
+    public $existing_cover_image;
 
     // اطلاعات حقوقی (KYC)
     public $legal_type = 'real';
@@ -79,6 +87,9 @@ class VendorForm extends Component
             $this->status = $this->vendor->status;
             $this->kyc_status = $this->vendor->kyc_status;
             $this->commission_rate = $this->vendor->commission_rate;
+
+            $this->existing_logo = $this->vendor->logo;
+            $this->existing_cover_image = $this->vendor->cover_image;
 
             $this->legal_type = $this->vendor->legal_type ?? 'real';
             $this->national_code = $this->vendor->national_code;
@@ -295,6 +306,8 @@ class VendorForm extends Component
             'legal_type' => 'required|in:real,legal',
             'national_code' => 'nullable|string|max:20',
             'shaba_number' => 'nullable|string|size:24', // IR حذف شده و فقط ۲۴ رقم شبا
+            'logo' => 'nullable|image|max:2048',
+            'cover_image' => 'nullable|image|max:4096',
         ]);
 
         $this->vendor->fill([
@@ -314,6 +327,26 @@ class VendorForm extends Component
             'bank_name' => $this->bank_name,
             'kyc_rejection_reason' => $this->kyc_status === 'rejected' ? $this->kyc_rejection_reason : null,
         ])->save();
+
+        if ($this->logo) {
+            if ($this->vendor->logo) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($this->vendor->logo);
+            }
+            $path = $this->logo->store('vendors/logos', 'public');
+            $this->vendor->update(['logo' => $path]);
+            $this->existing_logo = $path;
+            $this->logo = null;
+        }
+
+        if ($this->cover_image) {
+            if ($this->vendor->cover_image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($this->vendor->cover_image);
+            }
+            $path = $this->cover_image->store('vendors/covers', 'public');
+            $this->vendor->update(['cover_image' => $path]);
+            $this->existing_cover_image = $path;
+            $this->cover_image = null;
+        }
 
         // اختصاص نقش به کاربر
         $user = User::find($this->user_id);

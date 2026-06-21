@@ -15,6 +15,11 @@
             @endif
 
             <div class="flex items-center gap-2">
+                @if($category->icon)
+                    <div class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5 overflow-hidden">
+                        <img src="{{ Storage::url($category->icon) }}" class="w-full h-full object-contain">
+                    </div>
+                @endif
                 <span class="font-bold text-gray-800 dark:text-gray-100 text-sm">{{ $category->name }}</span>
             </div>
         </div>

@@ -180,6 +180,14 @@
             </div>
 
             <div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="show_on_site" value="1" {{ isset($property->meta['show_on_site']) && $property->meta['show_on_site'] ? 'checked' : '' }} class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600">
+                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300">نمایش در سایت</span>
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-7">با فعال کردن این گزینه، ملک در سایت نمایش داده می‌شود.</p>
+            </div>
+
+            <div>
                 <label class="{{ $labelClass }}">یادداشت محرمانه</label>
                 <textarea name="confidential_notes" x-model="confidentialNotes" rows="3" class="{{ $inputClass }} resize-none" placeholder="یادداشت خصوصی...">{{ old('confidential_notes', $property->confidential_notes) }}</textarea>
             </div>

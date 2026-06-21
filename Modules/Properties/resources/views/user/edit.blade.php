@@ -877,6 +877,7 @@
                 deliveryDate: '{{ $property->delivery_date_jalali }}',
                 code: '{{ $property->code }}',
                 isSpecial: {{ isset($property->meta['is_special']) && $property->meta['is_special'] ? 'true' : 'false' }},
+                showOnSite: {{ isset($property->meta['show_on_site']) && $property->meta['show_on_site'] ? 'true' : 'false' }},
                 confidentialNotes: @json($property->confidential_notes),
                 isCompletingAI: false,
 
@@ -1128,6 +1129,7 @@
                             if (data.delivery_date && !this.deliveryDate) this.deliveryDate = data.delivery_date;
                             if (data.address && !this.address) this.address = data.address;
                             if (data.is_special !== undefined && !this.isSpecial) this.isSpecial = data.is_special;
+                            if (data.show_on_site !== undefined && !this.showOnSite) this.showOnSite = data.show_on_site;
                             if (data.confidential_notes && !this.confidentialNotes) this.confidentialNotes = data.confidential_notes;
 
                             // به‌روزرسانی قیمت‌ها

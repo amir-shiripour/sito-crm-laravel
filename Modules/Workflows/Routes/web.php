@@ -27,6 +27,7 @@ Route::middleware(['web', 'auth'])
 
         // Workflow Instance Actions
         Route::post('/instances/{instance}/advance', [WorkflowController::class, 'advanceInstance'])->name('instances.advance');
+        Route::post('/instances/{instance}/go-back', [WorkflowController::class, 'goBackInstance'])->name('instances.go-back');
         Route::post('/instances/{instance}/cancel', [WorkflowController::class, 'cancelInstance'])->name('instances.cancel');
         Route::post('/instances/{instance}/restart', [WorkflowController::class, 'restartInstance'])->name('instances.restart');
     });

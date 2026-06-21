@@ -293,6 +293,14 @@
                             </div>
 
                             <div>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="show_on_site" value="1" x-model="showOnSite" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600">
+                                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300">نمایش در سایت</span>
+                                </label>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-7">با فعال کردن این گزینه، ملک در سایت نمایش داده می‌شود.</p>
+                            </div>
+
+                            <div>
                                 <label class="{{ $labelClass }}">یادداشت محرمانه</label>
                                 <textarea name="confidential_notes" x-model="confidentialNotes" rows="3" class="{{ $inputClass }} resize-none" placeholder="یادداشت خصوصی برای مدیران..."></textarea>
                             </div>
@@ -908,6 +916,7 @@
                 title: '',
                 description: '',
                 isSpecial: false,
+                showOnSite: false,
                 confidentialNotes: '',
 
                 // مقادیر تنظیمات از سرور
@@ -1033,6 +1042,7 @@
                             }
                             if (data.address) this.address = data.address;
                             if (data.is_special !== undefined) this.isSpecial = data.is_special;
+                            if (data.show_on_site !== undefined) this.showOnSite = data.show_on_site;
                             if (data.confidential_notes) this.confidentialNotes = data.confidential_notes;
 
                             // پر کردن قیمت‌ها

@@ -33,49 +33,116 @@
                 </button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div>
-                    <label class="{{ $labelClass }}">نام دسته <span class="text-red-500">*</span></label>
-                    <input type="text" wire:model.defer="name" class="{{ $inputClass }}" placeholder="مثلاً: لپ‌تاپ">
-                    @error('name') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                {{-- آیکون دسته --}}
+                <div class="md:col-span-1">
+                    <label class="{{ $labelClass }}">آیکون دسته</label>
+                    <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-gray-50 border-gray-300 dark:bg-gray-800 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 overflow-hidden relative transition-colors">
+                        @if($icon && !is_string($icon))
+                            <img src="{{ $icon->temporaryUrl() }}" class="w-full h-full object-contain p-2">
+                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><span class="text-white text-xs font-bold">تغییر آیکون</span></div>
+                        @elseif($existing_icon)
+                            <img src="{{ Storage::url($existing_icon) }}" class="w-full h-full object-contain p-2">
+                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><span class="text-white text-xs font-bold">تغییر آیکون</span></div>
+                        @else
+                            <svg class="w-8 h-8 mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                            <p class="text-[10px] text-gray-500 text-center px-2">برای آپلود آیکون کلیک کنید</p>
+                        @endif
+                        <input type="file" wire:model="icon" class="hidden" accept="image/*" />
+                    </label>
+                    @error('icon') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
-                @php
-                    $brandOptions = [];
-                    $brandOptions[] = ['value' => '', 'label' => '-- بدون برند --'];
-                    foreach($brands as $brand) {
-                        $brandOptions[] = ['value' => (string)$brand->id, 'label' => $brand->name];
-                    }
-                @endphp
+                <div class="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="{{ $labelClass }}">نام دسته <span class="text-red-500">*</span></label>
+                        <input type="text" wire:model.defer="name" class="{{ $inputClass }}" placeholder="مثلاً: لپ‌تاپ">
+                        @error('name') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
 
-                {{-- دراپ‌داون کاستوم و حرفه‌ای برای برند (بیاید اول) --}}
-                <div>
-                    <label class="{{ $labelClass }}">اتصال به برند (انتخابی)</label>
+                    @php
+                        $brandOptions = [];
+                        $brandOptions[] = ['value' => '', 'label' => '-- بدون برند --'];
+                        foreach($brands as $brand) {
+                            $brandOptions[] = ['value' => (string)$brand->id, 'label' => $brand->name];
+                        }
+                    @endphp
+
+                    {{-- دراپ‌داون کاستوم و حرفه‌ای برای برند (بیاید اول) --}}
+                    <div>
+                        <label class="{{ $labelClass }}">اتصال به برند (انتخابی)</label>
+                        <div class="relative" x-data="{
+                            open: false,
+                            selected: @entangle('brand_id').live,
+                            isLocked: @entangle('has_parent_brand'),
+                            options: {{ json_encode($brandOptions) }},
+                            get selectedLabel() {
+                                let opt = this.options.find(o => o.value == this.selected);
+                                return opt ? opt.label : '-- بدون برند --';
+                            }
+                        }" @click.away="open = false">
+                            
+                            {{-- دکمه تریگر --}}
+                            <div @click="!isLocked ? open = !open : null" 
+                                 class="{{ $inputClass }} flex justify-between items-center transition-colors select-none" 
+                                 :class="{
+                                    'bg-gray-100 dark:bg-gray-900/30 opacity-70 cursor-not-allowed text-gray-500': isLocked, 
+                                    'cursor-pointer ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-900': open && !isLocked, 
+                                    'bg-gray-50 dark:bg-gray-900/50 cursor-pointer': !open && !isLocked
+                                 }">
+                                <span x-text="selectedLabel" class="block truncate font-bold text-gray-800 dark:text-gray-200" :class="{'!text-gray-500 dark:!text-gray-400 font-normal': selected === '' || selected == null}"></span>
+                                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open && !isLocked}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+
+                            {{-- لیست کشویی --}}
+                            <div x-show="open && !isLocked"
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="transform opacity-0 scale-95"
+                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2"
+                                 style="display: none;">
+                                <template x-for="option in options" :key="option.value">
+                                    <div @click="selected = option.value; open = false"
+                                         class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group"
+                                         :class="{
+                                            'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value,
+                                            'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value
+                                         }">
+                                        <span x-text="option.label"></span>
+                                        <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    </div>
+                                </template>
+                            </div>
+                            <template x-if="isLocked">
+                                <span class="text-[10px] text-amber-600 dark:text-amber-400 mt-1 block">💡 برند از والد به ارث رسیده است.</span>
+                            </template>
+                        </div>
+                        @error('brand_id') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- دراپ‌داون کاستوم و حرفه‌ای برای دسته والد (بعد از برند بیاید) --}}
                     <div class="relative" x-data="{
                         open: false,
-                        selected: @entangle('brand_id').live,
-                        isLocked: @entangle('has_parent_brand'),
-                        options: {{ json_encode($brandOptions) }},
+                        selected: @entangle('parent_id').live,
+                        options: @entangle('parentOptions'),
                         get selectedLabel() {
-                            let opt = this.options.find(o => o.value == this.selected);
-                            return opt ? opt.label : '-- بدون برند --';
+                            let opt = (this.options || []).find(o => o.value == this.selected);
+                            return opt ? opt.label : '-- دسته اصلی (بدون والد) --';
                         }
                     }" @click.away="open = false">
-                        
+                        <label class="{{ $labelClass }}">دسته والد (زیرمجموعهِ...)</label>
+
                         {{-- دکمه تریگر --}}
-                        <div @click="!isLocked ? open = !open : null" 
-                             class="{{ $inputClass }} flex justify-between items-center transition-colors select-none" 
-                             :class="{
-                                'bg-gray-100 dark:bg-gray-900/30 opacity-70 cursor-not-allowed text-gray-500': isLocked, 
-                                'cursor-pointer ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-900': open && !isLocked, 
-                                'bg-gray-50 dark:bg-gray-900/50 cursor-pointer': !open && !isLocked
-                             }">
+                        <div @click="open = !open" class="{{ $inputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-900': open, 'bg-gray-50 dark:bg-gray-900/50': !open}">
                             <span x-text="selectedLabel" class="block truncate font-bold text-gray-800 dark:text-gray-200" :class="{'!text-gray-500 dark:!text-gray-400 font-normal': selected === '' || selected == null}"></span>
-                            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open && !isLocked}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                         </div>
 
                         {{-- لیست کشویی --}}
-                        <div x-show="open && !isLocked"
+                        <div x-show="open"
                              x-transition:enter="transition ease-out duration-100"
                              x-transition:enter-start="transform opacity-0 scale-95"
                              x-transition:enter-end="transform opacity-100 scale-100"
@@ -89,69 +156,23 @@
                                      class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group"
                                      :class="{
                                         'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value,
-                                        'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value
-                                     }">
+                                        'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value,
+                                        'text-sm border-r-2 border-transparent': option.isSub,
+                                        'border-indigo-500 dark:border-indigo-400': option.isSub && selected == option.value
+                                     }"
+                                     :style="option.isSub ? 'padding-right: ' + (option.depth * 1.25 + 0.75) + 'rem' : ''">
+                                    <span x-show="option.isSub" class="text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 transition-colors">↳</span>
                                     <span x-text="option.label"></span>
                                     <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 </div>
                             </template>
                         </div>
-                        <template x-if="isLocked">
-                            <span class="text-[10px] text-amber-600 dark:text-amber-400 mt-1 block">💡 برند از والد به ارث رسیده است.</span>
-                        </template>
-                    </div>
-                    @error('brand_id') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                {{-- دراپ‌داون کاستوم و حرفه‌ای برای دسته والد (بعد از برند بیاید) --}}
-                <div class="relative" x-data="{
-                    open: false,
-                    selected: @entangle('parent_id').live,
-                    options: @entangle('parentOptions'),
-                    get selectedLabel() {
-                        let opt = (this.options || []).find(o => o.value == this.selected);
-                        return opt ? opt.label : '-- دسته اصلی (بدون والد) --';
-                    }
-                }" @click.away="open = false">
-                    <label class="{{ $labelClass }}">دسته والد (زیرمجموعهِ...)</label>
-
-                    {{-- دکمه تریگر --}}
-                    <div @click="open = !open" class="{{ $inputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-900': open, 'bg-gray-50 dark:bg-gray-900/50': !open}">
-                        <span x-text="selectedLabel" class="block truncate font-bold text-gray-800 dark:text-gray-200" :class="{'!text-gray-500 dark:!text-gray-400 font-normal': selected === '' || selected == null}"></span>
-                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                     </div>
 
-                    {{-- لیست کشویی --}}
-                    <div x-show="open"
-                         x-transition:enter="transition ease-out duration-100"
-                         x-transition:enter-start="transform opacity-0 scale-95"
-                         x-transition:enter-end="transform opacity-100 scale-100"
-                         x-transition:leave="transition ease-in duration-75"
-                         x-transition:leave-start="transform opacity-100 scale-100"
-                         x-transition:leave-end="transform opacity-0 scale-95"
-                         class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2"
-                         style="display: none;">
-                        <template x-for="option in options" :key="option.value">
-                            <div @click="selected = option.value; open = false"
-                                 class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group"
-                                 :class="{
-                                    'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': selected == option.value,
-                                    'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': selected != option.value,
-                                    'text-sm border-r-2 border-transparent': option.isSub,
-                                    'border-indigo-500 dark:border-indigo-400': option.isSub && selected == option.value
-                                 }"
-                                 :style="option.isSub ? 'padding-right: ' + (option.depth * 1.25 + 0.75) + 'rem' : ''">
-                                <span x-show="option.isSub" class="text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 transition-colors">↳</span>
-                                <span x-text="option.label"></span>
-                                <svg x-show="selected == option.value" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                        </template>
+                    <div class="md:col-span-3">
+                        <label class="{{ $labelClass }}">آفست سیستمی (Offset Code) <span class="text-red-500">*</span></label>
+                        <input type="number" wire:model.defer="code_offset" class="{{ $inputClass }} bg-gray-100 dark:bg-gray-900 text-center font-mono font-bold text-gray-500 cursor-not-allowed" readonly>
                     </div>
-                </div>
-
-                <div class="md:col-span-3">
-                    <label class="{{ $labelClass }}">آفست سیستمی (Offset Code) <span class="text-red-500">*</span></label>
-                    <input type="number" wire:model.defer="code_offset" class="{{ $inputClass }} bg-gray-100 dark:bg-gray-900 text-center font-mono font-bold text-gray-500 cursor-not-allowed" readonly>
                 </div>
             </div>
 

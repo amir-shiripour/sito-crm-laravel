@@ -183,6 +183,15 @@ class WorkflowEngine
 
             Log::info("[Workflows] Node-based Instance created: {$instance->id}. Current node: START ({$startNode->id})");
 
+            WorkflowLog::create([
+                'instance_id' => $instance->id,
+                'from_node_id' => null,
+                'to_node_id' => $startNode->id,
+                'transition_type' => 'START',
+                'run_at' => now(),
+                'user_id' => Auth::id()
+            ]);
+
             $context = $this->buildContextData($instance, $payload);
 
             event(new NodeReached($instance, $startNode, $context));
@@ -273,7 +282,16 @@ class WorkflowEngine
             return;
         }
 
-        DB::transaction(function () use ($instance, $targetNode, $context) {
+        DB::transaction(function () use ($instance, $currentNode, $targetNode, $context) {
+            WorkflowLog::create([
+                'instance_id' => $instance->id,
+                'from_node_id' => $currentNode->id,
+                'to_node_id' => $targetNode->id,
+                'transition_type' => 'ADVANCE',
+                'run_at' => now(),
+                'user_id' => Auth::id()
+            ]);
+
             $instance->current_node_id = $targetNode->id;
             $instance->save();
             $instance->unsetRelation('currentNode');
@@ -299,6 +317,61 @@ class WorkflowEngine
 
         event(new WorkflowCompleted($instance, $context));
         event(new \Modules\Workflows\Events\PatientStageAdvanced($instance, $context));
+    }
+
+    public function goBack(WorkflowInstance $instance): void
+    {
+        if ($instance->status !== WorkflowInstance::STATUS_ACTIVE) {
+            Log::warning("[Workflows] Cannot go back on an inactive workflow instance {$instance->id}");
+            return;
+        }
+
+        $currentNode = $instance->currentNode;
+        if (!$currentNode) {
+            return;
+        }
+
+        // Find the last transition to this node
+        $lastLog = WorkflowLog::where('instance_id', $instance->id)
+            ->where('to_node_id', $currentNode->id)
+            ->where('transition_type', 'ADVANCE')
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$lastLog || !$lastLog->from_node_id) {
+            Log::warning("[Workflows] No valid previous node found for instance {$instance->id}");
+            return;
+        }
+
+        DB::transaction(function () use ($instance, $currentNode, $lastLog) {
+            // Cancel tasks created at current node
+            $tasksToCancel = \Modules\Tasks\Entities\Task::where('meta->workflow_instance_id', $instance->id)
+                ->where('meta->workflow_node_id', $currentNode->id)
+                ->whereIn('status', [\Modules\Tasks\Entities\Task::STATUS_TODO, \Modules\Tasks\Entities\Task::STATUS_IN_PROGRESS])
+                ->get();
+            
+            foreach ($tasksToCancel as $taskToCancel) {
+                $taskToCancel->update([
+                    'status' => \Modules\Tasks\Entities\Task::STATUS_CANCELED,
+                    'completed_at' => now()
+                ]);
+            }
+
+            WorkflowLog::create([
+                'instance_id' => $instance->id,
+                'from_node_id' => $currentNode->id,
+                'to_node_id' => $lastLog->from_node_id,
+                'transition_type' => 'BACK',
+                'run_at' => now(),
+                'user_id' => Auth::id()
+            ]);
+
+            $instance->current_node_id = $lastLog->from_node_id;
+            $instance->save();
+            $instance->unsetRelation('currentNode');
+
+            Log::info("[Workflows] Instance {$instance->id} reverted to node ID {$lastLog->from_node_id}");
+        });
     }
 
     public function moveToStage(WorkflowInstance $instance, WorkflowStage $stage): void

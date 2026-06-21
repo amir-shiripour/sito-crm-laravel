@@ -1,4 +1,46 @@
-@php use Morilog\Jalali\Jalalian; @endphp
+@php
+    use Morilog\Jalali\Jalalian;
+
+    // Tooth Mapping Logic for Styling (Same as index.blade.php JS)
+    $numberingSystem = $settings->cure_tooth_numbering_system ?? 'universal';
+
+    $palmerMap = [
+        1 => ['num' => 7, 'pos' => 'UR'], 2 => ['num' => 6, 'pos' => 'UR'], 3 => ['num' => 5, 'pos' => 'UR'], 4 => ['num' => 4, 'pos' => 'UR'],
+        5 => ['num' => 3, 'pos' => 'UR'], 6 => ['num' => 2, 'pos' => 'UR'], 7 => ['num' => 1, 'pos' => 'UR'],
+        8 => ['num' => 1, 'pos' => 'UL'], 9 => ['num' => 2, 'pos' => 'UL'], 10 => ['num' => 3, 'pos' => 'UL'], 11 => ['num' => 4, 'pos' => 'UL'],
+        12 => ['num' => 5, 'pos' => 'UL'], 13 => ['num' => 6, 'pos' => 'UL'], 14 => ['num' => 7, 'pos' => 'UL'],
+        15 => ['num' => 7, 'pos' => 'LR'], 16 => ['num' => 6, 'pos' => 'LR'], 17 => ['num' => 5, 'pos' => 'LR'], 18 => ['num' => 4, 'pos' => 'LR'],
+        19 => ['num' => 3, 'pos' => 'LR'], 20 => ['num' => 2, 'pos' => 'LR'], 21 => ['num' => 1, 'pos' => 'LR'],
+        22 => ['num' => 1, 'pos' => 'LL'], 23 => ['num' => 2, 'pos' => 'LL'], 24 => ['num' => 3, 'pos' => 'LL'], 25 => ['num' => 4, 'pos' => 'LL'],
+        26 => ['num' => 5, 'pos' => 'LL'], 27 => ['num' => 6, 'pos' => 'LL'], 28 => ['num' => 7, 'pos' => 'LL']
+    ];
+
+    $fdiMap = [
+        1 => ['num' => 17, 'pos' => 'UR'], 2 => ['num' => 16, 'pos' => 'UR'], 3 => ['num' => 15, 'pos' => 'UR'], 4 => ['num' => 14, 'pos' => 'UR'],
+        5 => ['num' => 13, 'pos' => 'UR'], 6 => ['num' => 12, 'pos' => 'UR'], 7 => ['num' => 11, 'pos' => 'UR'],
+        8 => ['num' => 21, 'pos' => 'UL'], 9 => ['num' => 22, 'pos' => 'UL'], 10 => ['num' => 23, 'pos' => 'UL'], 11 => ['num' => 24, 'pos' => 'UL'],
+        12 => ['num' => 25, 'pos' => 'UL'], 13 => ['num' => 26, 'pos' => 'UL'], 14 => ['num' => 27, 'pos' => 'UL'],
+        15 => ['num' => 47, 'pos' => 'LR'], 16 => ['num' => 46, 'pos' => 'LR'], 17 => ['num' => 45, 'pos' => 'LR'], 18 => ['num' => 44, 'pos' => 'LR'],
+        19 => ['num' => 43, 'pos' => 'LR'], 20 => ['num' => 42, 'pos' => 'LR'], 21 => ['num' => 41, 'pos' => 'LR'],
+        22 => ['num' => 31, 'pos' => 'LL'], 23 => ['num' => 32, 'pos' => 'LL'], 24 => ['num' => 33, 'pos' => 'LL'], 25 => ['num' => 34, 'pos' => 'LL'],
+        26 => ['num' => 35, 'pos' => 'LL'], 27 => ['num' => 36, 'pos' => 'LL'], 28 => ['num' => 37, 'pos' => 'LL']
+    ];
+
+    $toothMap = $numberingSystem === 'fdi' ? $fdiMap : $palmerMap;
+
+    if (!function_exists('getCureQuadrantClasses')) {
+        function getCureQuadrantClasses($pos) {
+            switch($pos) {
+                case 'UR': return 'border-l-4 border-b-4 border-cyan-600 dark:border-cyan-600';
+                case 'UL': return 'border-r-4 border-b-4 border-cyan-600 dark:border-cyan-600';
+                case 'LR': return 'border-l-4 border-t-4 border-cyan-600 dark:border-cyan-600';
+                case 'LL': return 'border-r-4 border-t-4 border-cyan-600 dark:border-cyan-600';
+                default: return '';
+            }
+        }
+    }
+@endphp
+
 @extends('layouts.user')
 
 @section('content')
@@ -86,7 +128,10 @@
                     $createdBy     = $plan->creator?->name ?? 'نامشخص';
                     $itemCount     = is_array($plan->items) ? count($plan->items) : 0;
                     $teethCount    = collect($plan->items ?? [])->sum(fn($i) => count($i['teeth'] ?? []));
-                    $currency      = $plan->currency === 'IRR' ? 'ریال' : 'تومان';
+
+                    // Always reflect the CURRENT system currency setting
+                    $currency      = ($settings->currency_unit ?? $plan->currency) === 'IRR' ? 'ریال' : 'تومان';
+
                     $createdJalali = Jalalian::fromDateTime($plan->created_at)->format('Y/m/d');
 
                     $statusMap = [
@@ -99,9 +144,27 @@
                     $canEdit = auth()->user()->can('booking.cure.edit') || auth()->user()->can('booking.cure.manage');
                     if ($plan->status === 'confirmed') {
                         $canEdit = $canEdit
-                            && ($cureAllowEditConfirmed ?? false)
+                            && ($settings->cure_allow_edit_confirmed ?? false)
                             && (auth()->user()->can('booking.cure.edit.confirmed') || auth()->user()->can('booking.cure.manage'));
                     }
+
+                    // Extract Warranty Data
+                    $hasWarranty = collect($plan->items ?? [])->filter(fn($i) => !empty($i['warranty']))->isNotEmpty();
+                    $warrantyLabels = collect($plan->items ?? [])
+                        ->map(fn($i) => $i['warranty'] ?? null)
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                    // Extract Installment Data
+                    $isInstallment = !empty($plan->installment_option_id) && isset($plan->installment_monthly_amount);
+                    $instTitle = $plan->installment_option_title ?? 'طرح اقساطی';
+                    $instDownPayment = $plan->installment_down_payment ?? 0;
+                    $instMonthly = $plan->installment_monthly_amount ?? 0;
+                    $instCount = $plan->installment_count ?? 0;
+                    $instMonths = $plan->installment_months ?? 0;
+                    $instFee = $plan->installment_fee_value ?? 0;
+                    $instInterval = $instCount > 0 ? round($instMonths / $instCount) : $instMonths;
                 @endphp
 
                 <div x-data="{ expanded: false }"
@@ -113,7 +176,7 @@
                         <div class="flex items-center gap-4">
                             {{-- Avatar --}}
                             <div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black shrink-0
-                                        bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40
+                                        bg-linear-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40
                                         text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700/50">
                                 {{ $initial }}
                             </div>
@@ -125,7 +188,6 @@
                                     <span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
                                     <span>{{ $createdJalali }}</span>
                                     <span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
-                                    {{-- Creator name --}}
                                     <span class="flex items-center gap-1">
                                         <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -141,7 +203,13 @@
                                 {{ $statusMeta['label'] }}
                             </span>
                             <div class="text-left hidden md:block">
-                                <div class="text-sm font-black text-emerald-600 dark:text-emerald-400">{{ number_format($plan->total) }}</div>
+                                @if($isInstallment)
+                                    <div class="text-[10px] text-indigo-400">طرح قسطی</div>
+                                    <div class="text-sm font-black text-indigo-600 dark:text-indigo-400">{{ number_format($plan->total) }}</div>
+                                @else
+                                    <div class="text-[10px] text-gray-400">قابل پرداخت</div>
+                                    <div class="text-sm font-black text-emerald-600 dark:text-emerald-400">{{ number_format($plan->total) }}</div>
+                                @endif
                                 <div class="text-[10px] text-gray-400">{{ $currency }}</div>
                             </div>
                             <svg class="w-5 h-5 text-gray-400 transition-transform duration-300"
@@ -169,7 +237,12 @@
                                     {{ $statusMeta['label'] }}
                                 </span>
                                 <div class="text-left">
-                                    <span class="text-sm font-black text-emerald-600">{{ number_format($plan->total) }}</span>
+                                    @if($isInstallment)
+                                        <span class="text-[10px] text-indigo-400 block">طرح قسطی</span>
+                                        <span class="text-sm font-black text-indigo-600">{{ number_format($plan->total) }}</span>
+                                    @else
+                                        <span class="text-sm font-black text-emerald-600">{{ number_format($plan->total) }}</span>
+                                    @endif
                                     <span class="text-[10px] text-gray-400 mr-1">{{ $currency }}</span>
                                 </div>
                             </div>
@@ -177,7 +250,7 @@
                             {{-- Financial Grid --}}
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
-                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block">جمع کل</span>
+                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block">مجموع خدمات</span>
                                     <span class="text-sm font-bold text-gray-800 dark:text-gray-200">
                                         {{ number_format($plan->subtotal) }}
                                         <span class="text-[10px] text-gray-400 font-normal">{{ $currency }}</span>
@@ -193,14 +266,60 @@
                                         @endif
                                     </span>
                                 </div>
-                                <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
-                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block">قابل پرداخت</span>
-                                    <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($plan->total) }}</span>
-                                </div>
-                                <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
-                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block">تعداد آیتم‌ها</span>
-                                    <span class="text-sm font-bold text-indigo-600 dark:text-indigo-400">{{ $itemCount }} آیتم / {{ $teethCount }} دندان</span>
-                                </div>
+
+                                @if($isInstallment)
+                                    <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 border border-indigo-100 dark:border-indigo-800">
+                                        <span class="text-[10px] text-indigo-500 dark:text-indigo-400 block">مجموع قابل پرداخت (اقساطی)</span>
+                                        <span class="text-sm font-bold text-indigo-700 dark:text-indigo-300">{{ number_format($plan->total) }}</span>
+                                        <span class="text-[10px] text-gray-400 font-normal">{{ $currency }}</span>
+                                    </div>
+                                    <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+                                        <span class="text-[10px] text-gray-500 dark:text-gray-400 block">طرح اقساطی</span>
+                                        <span class="text-sm font-bold text-indigo-700 dark:text-indigo-300 truncate block">{{ $instTitle }}</span>
+                                    </div>
+                                    <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+                                        <span class="text-[10px] text-gray-500 dark:text-gray-400 block">پیش‌پرداخت</span>
+                                        <span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{ number_format($instDownPayment) }}</span>
+                                        <span class="text-[10px] text-gray-400 font-normal">{{ $currency }}</span>
+                                    </div>
+                                    <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+                                        <span class="text-[10px] text-gray-500 dark:text-gray-400 block">مبلغ هر قسط</span>
+                                        <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($instMonthly) }}</span>
+                                        <span class="text-[10px] text-gray-400 font-normal">
+                                            {{ $currency }} ({{ $instCount }} قسط، هر {{ $instInterval }} ماه)
+                                        </span>
+                                    </div>
+                                    @if($instFee > 0)
+                                        <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 block">کارمزد/سود اقساط</span>
+                                            <span class="text-sm font-bold text-rose-600 dark:text-rose-400">{{ number_format($instFee) }}</span>
+                                            <span class="text-[10px] text-gray-400 font-normal">{{ $currency }}</span>
+                                        </div>
+                                    @endif
+                                @else
+                                    <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 border border-emerald-100 dark:border-emerald-800">
+                                        <span class="text-[10px] text-emerald-500 dark:text-emerald-400 block">مجموع قابل پرداخت (نقدی)</span>
+                                        <span class="text-sm font-bold text-emerald-700 dark:text-emerald-300">{{ number_format($plan->total) }}</span>
+                                        <span class="text-[10px] text-gray-400 font-normal">{{ $currency }}</span>
+                                    </div>
+                                    <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+                                        @if($hasWarranty)
+                                            <span class="text-[10px] text-teal-600 dark:text-teal-400 block flex items-center gap-1">
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                                دارای ضمانت
+                                            </span>
+                                            <span class="text-xs font-bold text-teal-700 dark:text-teal-300 mt-0.5 block">
+                                                {{ $warrantyLabels->first() }}
+                                                @if($warrantyLabels->count() > 1)
+                                                    <span class="text-[10px] text-gray-400 font-normal">+{{ $warrantyLabels->count() - 1 }}</span>
+                                                @endif
+                                            </span>
+                                        @else
+                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 block">تعداد آیتم‌ها</span>
+                                            <span class="text-sm font-bold text-indigo-600 dark:text-indigo-400">{{ $itemCount }} آیتم / {{ $teethCount }} دندان</span>
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
 
                             {{-- Items Details --}}
@@ -219,10 +338,24 @@
                                                 $price          = $item['price'] ?? 0;
                                                 $qty            = $item['quantity'] ?? 1;
                                                 $subtotal       = $item['subtotal'] ?? ($price * $qty);
+                                                $discountedSubtotal = $subtotal;
+                                                $planSubtotal = $plan->subtotal ?? 0;
+                                                $planDiscountType = $plan->discount_type ?? 'amount';
+                                                $planDiscountAmount = $plan->discount_amount ?? 0;
+                                                $planDiscountValue = $plan->discount_value ?? 0;
+
+                                                if ($planDiscountType === 'percent' && $planDiscountAmount > 0) {
+                                                    $discountedSubtotal = $subtotal * (1 - $planDiscountAmount / 100);
+                                                } elseif ($planDiscountType === 'amount' && $planDiscountValue > 0 && $planSubtotal > 0) {
+                                                    $proportion = $subtotal / $planSubtotal;
+                                                    $discountedSubtotal = $subtotal - ($planDiscountValue * $proportion);
+                                                }
+                                                $discountedSubtotal = max(0, round($discountedSubtotal));
+                                                $hasItemDiscount = abs($subtotal - $discountedSubtotal) > 0;
                                                 $rawTeeth       = $item['teeth'] ?? [];
                                                 $brands         = $item['brands'] ?? [];
                                                 $categoryValue  = $item['category_name'] ?? $item['category'] ?? null;
-                                                $guaranteeValue = $item['guarantee'] ?? $item['warranty'] ?? null;
+                                                $guaranteeValue = $item['warranty'] ?? null;
                                             @endphp
                                             <div class="px-4 py-4 flex flex-col gap-3 hover:bg-gray-50/50 dark:hover:bg-gray-900/40 transition">
                                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-50 dark:border-gray-700/30 pb-2">
@@ -231,18 +364,25 @@
                                                         <p class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ $serviceName }}</p>
                                                     </div>
                                                     <div class="text-left">
-                                                        <span class="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                                                            {{ number_format($subtotal) }}
-                                                            <span class="text-[10px] text-gray-400 font-normal mr-0.5">{{ $currency }}</span>
-                                                        </span>
-                                                        @if($qty > 1)
-                                                            <span class="text-[10px] text-gray-400 block sm:inline sm:mr-2">
-                                                                ({{ $qty }} واحد × {{ number_format($price) }})
+                                                        @if($hasItemDiscount)
+                                                            <span class="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                                                {{ number_format($discountedSubtotal) }}
+                                                                <span class="text-[10px] text-gray-400 font-normal mr-0.5">{{ $currency }}</span>
+                                                            </span>
+                                                            <span class="text-[11px] text-gray-400 line-through block sm:inline sm:mr-2">
+                                                                {{ number_format($subtotal) }} {{ $currency }}
+                                                            </span>
+                                                            @if($planDiscountType === 'percent')
+                                                                <span class="text-[10px] text-rose-500 font-bold">({{ $planDiscountAmount }}% تخفیف)</span>
+                                                            @endif
+                                                        @else
+                                                            <span class="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                                                {{ number_format($plan->total) }}
+                                                                <span class="text-[10px] text-gray-400 font-normal mr-0.5">{{ $currency }}</span>
                                                             </span>
                                                         @endif
                                                     </div>
                                                 </div>
-
                                                 @if(!empty($brands) || $categoryValue || $guaranteeValue)
                                                     <div class="flex flex-wrap gap-2 items-center pr-4">
                                                         @foreach($brands as $brand)
@@ -256,20 +396,25 @@
                                                             </span>
                                                         @endif
                                                         @if($guaranteeValue)
-                                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800 shadow-sm">
+                                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-teal-50 text-teal-700 border border-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800 shadow-sm">
+                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                                                                 ضمانت: {{ $guaranteeValue }}
                                                             </span>
                                                         @endif
                                                     </div>
                                                 @endif
-
                                                 <div class="mt-1 pr-4">
                                                     @if(!empty($rawTeeth) && is_array($rawTeeth))
                                                         <div class="flex flex-wrap gap-1 items-center">
                                                             <span class="text-[11px] text-gray-400 dark:text-gray-500 ml-1.5">موقعیت دندان‌ها:</span>
                                                             @foreach($rawTeeth as $tooth)
-                                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] font-bold border border-gray-200 dark:border-gray-600 shadow-sm">
-                                                                    {{ is_array($tooth) ? ($tooth['number'] ?? '-') : $tooth }}
+                                                                @php
+                                                                    $toothId = is_array($tooth) ? ($tooth['number'] ?? array_values($tooth)[0]) : $tooth;
+                                                                    $toothInfo = $toothMap[$toothId] ?? ['num' => $toothId, 'pos' => 'UR'];
+                                                                    $quadClass = getCureQuadrantClasses($toothInfo['pos']);
+                                                                @endphp
+                                                                <span class="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-lg border-2 bg-white dark:bg-gray-900 {{ $quadClass }}">
+                                                                    {{ $toothInfo['num'] }}
                                                                 </span>
                                                             @endforeach
                                                         </div>

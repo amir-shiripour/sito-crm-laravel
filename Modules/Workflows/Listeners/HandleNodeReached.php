@@ -67,22 +67,72 @@ class HandleNodeReached
         $taskRelatedId = $clientId ?: $instance->related_id;
         $creatorId = $instance->created_by ?: Auth::id();
 
+        $actionType = $config['action_type'] ?? 'TASK';
+
         // Check if multiple tasks are defined in the configuration
         $tasksTemplates = $config['tasks'] ?? [];
 
-        if (empty($tasksTemplates)) {
-            // Backward compatibility fallback
-            $tasksTemplates = [[
-                'title'         => $config['title'] ?? $node->name,
-                'description'   => $config['description'] ?? '',
-                'task_type'     => $config['task_type'] ?? Task::TYPE_GENERAL,
-                'priority'      => $config['priority'] ?? Task::PRIORITY_MEDIUM,
-                'assignee_mode' => !empty($config['role_id']) ? 'by_roles' : 'single_user',
-                'role_id'       => $config['role_id'] ?? null,
-                'assignee_id'   => $config['assignee_id'] ?? null,
-                'offset_days'   => $config['offset_days'] ?? 0,
-                'auto_advance'  => $config['auto_advance'] ?? true,
-            ]];
+        if ($actionType !== 'TASK' || empty($tasksTemplates)) {
+            if ($actionType === 'FOLLOWUP') {
+                $tasksTemplates = [[
+                    'title'           => $config['followup_title'] ?? 'پیگیری',
+                    'description'     => $config['followup_description'] ?? '',
+                    'task_type'       => Task::TYPE_FOLLOW_UP,
+                    'priority'        => $config['followup_priority'] ?? Task::PRIORITY_HIGH,
+                    'assignee_target' => $config['followup_assignee_target'] ?? 'CURRENT_USER',
+                    'assignee_id'     => $config['followup_assignee_id'] ?? null,
+                    'status'          => $config['followup_status'] ?? Task::STATUS_TODO,
+                    'offset_days'     => $config['followup_offset_days'] ?? 0,
+                    'auto_advance'    => true,
+                ]];
+            } elseif ($actionType === 'SMS') {
+                $isAutoAdvance = isset($config['auto_advance']) ? (bool)$config['auto_advance'] : true;
+                
+                // Resolve pattern parameters
+                $rawParams = $config['sms_params'] ?? ($config['params'] ?? []);
+                $resolvedParams = [];
+                $tokens = $context['tokens'] ?? [];
+                foreach ($rawParams as $paramKey) {
+                    $resolvedParams[] = $tokens[$paramKey] ?? $paramKey;
+                }
+                $config['resolved_params'] = $resolvedParams;
+
+                $tasksTemplates = [[
+                    'title'         => 'ارسال پیامک سیستمی',
+                    'description'   => $this->renderTemplate($config['sms_message'] ?? '', $context, $resolvedParams),
+                    'task_type'     => Task::TYPE_SYSTEM,
+                    'priority'      => Task::PRIORITY_LOW,
+                    'offset_days'   => 0,
+                    'auto_advance'  => $isAutoAdvance,
+                    '_immediate_done' => $isAutoAdvance,
+                    '_action_type'  => 'SMS',
+                ]];
+            } elseif ($actionType === 'NOTIFICATION') {
+                $isAutoAdvance = isset($config['auto_advance']) ? (bool)$config['auto_advance'] : true;
+                $tasksTemplates = [[
+                    'title'         => 'ارسال اعلان: ' . $this->renderTemplate($config['notification_title'] ?? '', $context),
+                    'description'   => $this->renderTemplate($config['notification_message'] ?? '', $context),
+                    'task_type'     => Task::TYPE_SYSTEM,
+                    'priority'      => Task::PRIORITY_LOW,
+                    'offset_days'   => 0,
+                    'auto_advance'  => $isAutoAdvance,
+                    '_immediate_done' => $isAutoAdvance,
+                    '_action_type'  => 'NOTIFICATION',
+                ]];
+            } else {
+                // Backward compatibility fallback for general tasks
+                $tasksTemplates = [[
+                    'title'         => $config['title'] ?? $node->name,
+                    'description'   => $config['description'] ?? '',
+                    'task_type'     => $config['task_type'] ?? Task::TYPE_GENERAL,
+                    'priority'      => $config['priority'] ?? Task::PRIORITY_MEDIUM,
+                    'assignee_mode' => !empty($config['role_id']) ? 'by_roles' : 'single_user',
+                    'role_id'       => $config['role_id'] ?? null,
+                    'assignee_id'   => $config['assignee_id'] ?? null,
+                    'offset_days'   => $config['offset_days'] ?? 0,
+                    'auto_advance'  => $config['auto_advance'] ?? true,
+                ]];
+            }
         }
 
         foreach ($tasksTemplates as $template) {
@@ -105,29 +155,45 @@ class HandleNodeReached
                 $assigneeId = $template['assignee_id'] ?? null;
             }
 
+            // Resolve target-based assignee
+            $assigneeTarget = $template['assignee_target'] ?? 'CURRENT_USER';
+            if ($assigneeTarget === 'APPOINTMENT_PROVIDER' && isset($context['appointment'])) {
+                $assigneeId = $context['appointment']->provider_user_id ?? $assigneeId;
+            } elseif ($assigneeTarget === 'SPECIFIC_USER' && !empty($template['assignee_id'])) {
+                $assigneeId = $template['assignee_id'];
+            }
+
             if (!$assigneeId) {
                 $assigneeId = Auth::id();
+            }
+            $metaData = [
+                'workflow_instance_id' => $instance->id,
+                'workflow_node_id'     => $node->id,
+                'workflow_id'          => $instance->workflow_id,
+                'workflow_name'        => $instance->workflow?->name,
+                'role_id'              => $template['role_id'] ?? null,
+                'auto_advance'         => (bool) ($template['auto_advance'] ?? true),
+                'related_target'       => $clientId ? 'client' : 'none',
+                'related_client_ids'   => $clientId ? [$clientId] : [],
+            ];
+            
+            if (isset($template['_action_type'])) {
+                $metaData['_action_type'] = $template['_action_type'];
+                $metaData['_node_config'] = $config;
             }
 
             $task = Task::create([
                 'title'        => $title,
                 'description'  => $description,
-                'task_type'    => Task::TYPE_SYSTEM, // Workflow engine task is always SYSTEM type in DB
+                'task_type'    => $template['task_type'] ?? Task::TYPE_SYSTEM,
                 'assignee_id'  => $assigneeId,
                 'creator_id'   => $creatorId,
-                'status'       => Task::STATUS_TODO,
+                'status'       => !empty($template['_immediate_done']) ? Task::STATUS_DONE : Task::STATUS_TODO,
                 'priority'     => $template['priority'] ?? Task::PRIORITY_MEDIUM,
                 'due_at'       => $dueAt,
                 'related_type' => $taskRelatedType,
                 'related_id'   => $taskRelatedId,
-                'meta'         => [
-                    'workflow_instance_id' => $instance->id,
-                    'workflow_node_id'     => $node->id,
-                    'role_id'              => $template['role_id'] ?? null,
-                    'auto_advance'         => (bool) ($template['auto_advance'] ?? true),
-                    'related_target'       => $clientId ? 'client' : 'none',
-                    'related_client_ids'   => $clientId ? [$clientId] : [],
-                ]
+                'meta'         => $metaData
             ]);
 
             Log::info("[Workflows] Created task ID {$task->id} for action node ID {$node->id} linked to client ID {$taskRelatedId}");

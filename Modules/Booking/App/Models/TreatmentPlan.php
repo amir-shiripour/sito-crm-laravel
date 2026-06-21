@@ -27,6 +27,13 @@ class TreatmentPlan extends Model
         'total',
         'currency',
         'items',
+        'installment_option_id',
+        'installment_option_title',
+        'installment_down_payment',
+        'installment_monthly_amount',
+        'installment_fee_value',
+        'installment_months',
+        'installment_count',
     ];
 
     protected $casts = [
@@ -38,6 +45,11 @@ class TreatmentPlan extends Model
         'client_id'       => 'integer',
         'patient_id'      => 'integer',
         'user_id'         => 'integer',
+        'installment_down_payment' => 'decimal:2',
+        'installment_monthly_amount' => 'decimal:2',
+        'installment_fee_value' => 'decimal:2',
+        'installment_months' => 'integer',
+        'installment_count' => 'integer',
     ];
 
     public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo

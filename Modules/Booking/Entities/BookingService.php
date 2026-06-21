@@ -116,4 +116,10 @@ class BookingService extends Model
             ->withPivot(['id', 'is_active', 'customization_enabled'])
             ->withTimestamps();
     }
+
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(BookingCategory::class, 'booking_category_service', 'service_id', 'category_id')
+            ->withTimestamps();
+    }
 }

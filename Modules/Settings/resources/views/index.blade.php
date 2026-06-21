@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@include('partials.jalali-date-picker')
 
 @section('title', 'تنظیمات سیستم')
 
@@ -25,11 +26,21 @@
         'purple' => '#9333ea', 'fuchsia' => '#c026d3', 'pink' => '#db2777', 'slate' => '#475569'
     ];
 
-    $pos_devices = isset($settings['pos_devices']) ? json_decode($settings['pos_devices'], true) : [];
-    $bank_transfer_accounts = isset($settings['bank_transfer_accounts']) ? json_decode($settings['bank_transfer_accounts'], true) : [];
+$pos_devices = isset($settings['pos_devices'])
+    ? (is_string($settings['pos_devices'])
+        ? json_decode($settings['pos_devices'], true)
+        : $settings['pos_devices'])
+    : [];
+
+$bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
+    ? (is_string($settings['bank_transfer_accounts'])
+        ? json_decode($settings['bank_transfer_accounts'], true)
+        : $settings['bank_transfer_accounts'])
+    : [];
 @endphp
 
 @section('content')
+
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         {{-- هدر صفحه --}}
@@ -69,7 +80,7 @@
             <div
                 class="rounded-2xl bg-red-50 p-4 border border-red-100 dark:bg-red-900/10 dark:border-red-800/30 text-red-700 dark:text-red-400 text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-2 shadow-sm">
                 <div
-                    class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-800/30 flex items-center justify-center flex-shrink-0">
+                    class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-800/30 flex items-center justify-center shrink-0">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -183,8 +194,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- کارت جدید و داینامیک: پالت رنگی بصری --}}
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
                     <div
@@ -202,7 +211,6 @@
                 </div>
 
                 <div class="p-6 bg-gray-50/30 dark:bg-gray-800/20">
-                    {{-- ایجاد تب‌های نامرئی برای سوئیچ قالب‌ها با JS --}}
                     @foreach($themeDefaults as $themeKey => $defaultColorName)
                         <div
                             class="theme-color-panel {{ ($settings['app_theme'] ?? 'default') === $themeKey ? 'block animate-in fade-in duration-300' : 'hidden' }}"
@@ -217,17 +225,14 @@
                             <div class="flex flex-wrap gap-4">
                                 @foreach($tailwindColors as $colorName => $hex)
                                     @php
-                                        // بررسی اینکه آیا قبلا برای این قالب رنگی ذخیره شده است؟ اگر نه، رنگ پیش‌فرض قالب انتخاب شود
                                         $activeColor = $savedColors[$themeKey] ?? $defaultColorName;
                                         $isChecked = $activeColor === $colorName;
                                     @endphp
                                     <label class="cursor-pointer relative group" title="{{ ucfirst($colorName) }}">
-                                        {{-- اینپوت رادیو نامرئی --}}
                                         <input type="radio" name="theme_colors[{{ $themeKey }}]"
                                                value="{{ $colorName }}"
                                                class="peer sr-only" {{ $isChecked ? 'checked' : '' }}>
 
-                                        {{-- دایره رنگی ویژوال --}}
                                         <div
                                             class="w-10 h-10 rounded-full border-2 peer-checked:scale-110 peer-checked:ring-2 peer-checked:ring-offset-2 dark:peer-checked:ring-offset-gray-900 transition-all shadow-sm flex items-center justify-center"
                                             style="background-color: {{ $hex }}; border-color: transparent; --tw-ring-color: {{ $hex }};">
@@ -254,8 +259,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- کارت ۲: اطلاعات تماس --}}
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
                     <div
@@ -291,8 +294,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- کارت تنظیمات ثبت نام --}}
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
                     <div
@@ -367,8 +368,6 @@
                 </div>
             </div>
 
-
-            {{-- کارت ۳: تنظیمات هوش مصنوعی (GapGPT) --}}
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
                     <div
@@ -447,7 +446,6 @@
                 </div>
             </div>
 
-            {{-- کارت ۴: تنظیمات روش‌های پرداخت --}}
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
                     <div
@@ -478,7 +476,6 @@
                         </div>
                     @endif
 
-                    {{-- تنظیمات کلی پرداخت --}}
                     <div
                         class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-gray-100 dark:border-gray-700">
                         <div>
@@ -522,13 +519,16 @@
                                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ in_array('cod', $activePaymentMethods) ? 'checked' : '' }}>
                                     <span class="text-sm text-gray-700 dark:text-gray-300">پرداخت در محل</span>
                                 </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="active_payment_methods[]" value="installment"
+                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ in_array('installment', $activePaymentMethods) ? 'checked' : '' }}>
+                                    <span class="text-sm text-gray-700 dark:text-gray-300">پرداخت قسطی</span>
+                                </label>
                             </div>
                             <p class="text-[11px] text-gray-500 mt-2">این روش‌ها در فرم‌های نوبت‌دهی و بخش‌های مختلف
                                 سیستم قابل استفاده خواهند بود.</p>
                         </div>
                     </div>
-
-                    {{-- بخش ۱: درگاه‌های پرداخت اینترنتی --}}
                     <div class="space-y-6">
                         <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
                             <div
@@ -566,8 +566,6 @@
                                 </select>
                             </div>
                         </div>
-
-                        {{-- زرین‌پال --}}
                         <div
                             class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
                             <div
@@ -641,8 +639,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        {{-- زیبال --}}
                         <div
                             class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
                             <div
@@ -701,7 +697,6 @@
                             </div>
                         </div>
 
-                        {{-- به‌پرداخت ملت --}}
                         <div
                             class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
                             <div
@@ -777,8 +772,6 @@
                             </div>
                         </div>
                     </div>
-
-                    {{-- بخش ۲: دستگاه POS --}}
                     <div class="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
                             <div
@@ -811,7 +804,6 @@
                             </div>
 
                             <div id="pos-devices-container" class="space-y-4">
-                                <!-- POS device items will be injected here by JS -->
                             </div>
 
                             <div class="flex justify-start pt-2">
@@ -867,7 +859,6 @@
                             </div>
 
                             <div id="bank-accounts-container" class="space-y-4">
-                                <!-- Bank account items will be injected here by JS -->
                             </div>
 
                             <div class="flex justify-start pt-2">
@@ -890,8 +881,6 @@
                             </div>
                         </div>
                     </div>
-
-                    {{-- بخش ۴: پرداخت در محل --}}
                     <div class="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
                             <div
@@ -905,7 +894,6 @@
                                 <h3 class="text-md font-bold text-gray-900 dark:text-white">۴. پرداخت در محل (Cash on Delivery)</h3>
                             </div>
                         </div>
-
                         <div
                             class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4">
                             <div>
@@ -931,10 +919,45 @@
                         </div>
                     </div>
 
+                    <div class="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+                            <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-md font-bold text-gray-900 dark:text-white">۵. پرداخت قسطی (Installment)</h3>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4">
+                            <div>
+                                <label for="installment_status" class="{{ $labelClass }}">وضعیت کلی پرداخت قسطی</label>
+                                <select class="{{ $inputClass }} md:w-1/3" id="installment_status" name="installment_status">
+                                    <option value="inactive" {{ ($settings['installment_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>غیرفعال</option>
+                                    <option value="active" {{ ($settings['installment_status'] ?? '') == 'active' ? 'selected' : '' }}>فعال</option>
+                                </select>
+                            </div>
+                            <div id="installment-types-container" class="space-y-4 mt-4">
+                            </div>
+                            <div class="flex justify-start pt-2">
+                                <button type="button" id="add-installment-btn" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                    </svg>
+                                    افزودن نوع اقساط
+                                </button>
+                            </div>
+
+                            <div class="mt-4">
+                                <label for="installment_guidance" class="{{ $labelClass }}">متن راهنمای کلی قسطی</label>
+                                <textarea class="{{ $inputClass }}" id="installment_guidance" name="installment_guidance" rows="2" placeholder="مثال: پرداخت اقساط از زمان ثبت سفارش فعال شده و هر ماه به صورت خودکار کسر می‌گردد.">{{ $settings['installment_guidance'] ?? '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            {{-- دکمه ذخیره --}}
             <div class="sticky bottom-4 z-40 flex justify-end">
                 <div
                     class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-2 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
@@ -949,35 +972,29 @@
             </div>
         </form>
 
-        {{-- فرم مجزا برای تست پرداخت --}}
         <form id="test-payment-form" action="{{ route('settings.payment.request') }}" method="POST" class="hidden">
             @csrf
             <input type="hidden" name="gateway" id="test-gateway-input" value="">
-            <input type="hidden" name="amount" value="1000"> {{-- Example amount in Toman --}}
+            <input type="hidden" name="amount" value="1000">
             <input type="hidden" name="description" value="تست پرداخت">
         </form>
     </div>
-
     <script>
         document.addEventListener('DOMContentLoaded', function () {
 
             const banks = @json($banks);
             const isAccountingActive = @json($isAccountingActive);
 
-            // تابع تولید ID یکتا برای آیتم‌های داینامیک
             function generateUniqueId(prefix) {
                 return prefix + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
             }
 
-            // =================================================================
-            // DYNAMIC POS DEVICES
-            // =================================================================
+            // ===================== POS Devices =====================
             const posDevicesContainer = document.getElementById('pos-devices-container');
             const addPosDeviceBtn = document.getElementById('add-pos-device-btn');
             let posDevices = @json($pos_devices);
             if (!Array.isArray(posDevices)) posDevices = [];
 
-            // اختصاص آیدی به دستگاه‌های قبلی که آیدی نداشتند
             posDevices.forEach(d => {
                 if (!d.id) d.id = generateUniqueId('pos');
             });
@@ -997,26 +1014,26 @@
                 let warningText = !isAccountingActive ? '<p class="text-xs text-red-500 mt-1">ماژول حسابداری غیرفعال است.</p>' : '';
 
                 item.innerHTML = `
-                    <input type="hidden" name="pos_devices[${index}][id]" value="${device.id}">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label for="${deviceId}_name" class="{{ $labelClass }}">نام دستگاه</label>
-                            <input type="text" data-field="name" id="${deviceId}_name" name="pos_devices[${index}][name]" value="${device.name || ''}" class="{{ $inputClass }}" placeholder="مثال: کارتخوان سامان">
-                        </div>
-                        <div>
-                            <label for="${deviceId}_bank_id" class="{{ $labelClass }}">بانک متصل</label>
-                            <select data-field="bank_id" id="${deviceId}_bank_id" name="pos_devices[${index}][bank_id]" class="{{ $inputClass }}" ${disabledAttr}>${bankOptions}</select>
-                            ${warningText}
-                        </div>
-                        <div>
-                            <label for="${deviceId}_account_number" class="{{ $labelClass }}">شماره حساب</label>
-                            <input type="text" data-field="account_number" id="${deviceId}_account_number" name="pos_devices[${index}][account_number]" value="${device.account_number || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="123-456-789">
-                        </div>
-                    </div>
-                    <button type="button" class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center remove-pos-device-btn">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" /></svg>
-                    </button>
-                `;
+        <input type="hidden" name="pos_devices[${index}][id]" value="${device.id}">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label for="${deviceId}_name" class="{{ $labelClass }}">نام دستگاه</label>
+                <input type="text" data-field="name" id="${deviceId}_name" name="pos_devices[${index}][name]" value="${device.name || ''}" class="{{ $inputClass }}" placeholder="مثال: کارتخوان سامان">
+            </div>
+            <div>
+                <label for="${deviceId}_bank_id" class="{{ $labelClass }}">بانک متصل</label>
+                <select data-field="bank_id" id="${deviceId}_bank_id" name="pos_devices[${index}][bank_id]" class="{{ $inputClass }}" ${disabledAttr}>${bankOptions}</select>
+                ${warningText}
+            </div>
+            <div>
+                <label for="${deviceId}_account_number" class="{{ $labelClass }}">شماره حساب</label>
+                <input type="text" data-field="account_number" id="${deviceId}_account_number" name="pos_devices[${index}][account_number]" value="${device.account_number || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="123-456-789">
+            </div>
+        </div>
+        <button type="button" class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center remove-pos-device-btn">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" /></svg>
+        </button>
+    `;
                 posDevicesContainer.appendChild(item);
             }
 
@@ -1025,7 +1042,6 @@
                 posDevices.forEach((device, index) => createPosDeviceItem(device, index));
             }
 
-            // همگام‌سازی تایپ کاربر با آرایه قبل از حذف (جلوگیری از پرش دیتا)
             posDevicesContainer.addEventListener('input', (e) => {
                 if (e.target.hasAttribute('data-field')) {
                     const index = e.target.closest('[data-index]').getAttribute('data-index');
@@ -1053,15 +1069,12 @@
                 }
             });
 
-            // =================================================================
-            // DYNAMIC BANK ACCOUNTS
-            // =================================================================
+            // ===================== Bank Accounts =====================
             const bankAccountsContainer = document.getElementById('bank-accounts-container');
             const addBankAccountBtn = document.getElementById('add-bank-account-btn');
             let bankAccounts = @json($bank_transfer_accounts);
             if (!Array.isArray(bankAccounts)) bankAccounts = [];
 
-            // اختصاص آیدی به دستگاه‌های قبلی
             bankAccounts.forEach(a => {
                 if (!a.id) a.id = generateUniqueId('bank');
             });
@@ -1081,30 +1094,30 @@
                 let warningText = !isAccountingActive ? '<p class="text-xs text-red-500 mt-1">ماژول حسابداری غیرفعال است.</p>' : '';
 
                 item.innerHTML = `
-                    <input type="hidden" name="bank_transfer_accounts[${index}][id]" value="${account.id}">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="${accountId}_bank_id" class="{{ $labelClass }}">نام بانک</label>
-                            <select data-field="bank_id" id="${accountId}_bank_id" name="bank_transfer_accounts[${index}][bank_id]" class="{{ $inputClass }}" ${disabledAttr}>${bankOptions}</select>
-                            ${warningText}
-                        </div>
-                        <div>
-                            <label for="${accountId}_account_number" class="{{ $labelClass }}">شماره حساب</label>
-                            <input type="text" data-field="account_number" id="${accountId}_account_number" name="bank_transfer_accounts[${index}][account_number]" value="${account.account_number || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="123-456-789">
-                        </div>
-                        <div>
-                            <label for="${accountId}_card_number" class="{{ $labelClass }}">شماره کارت</label>
-                            <input type="text" data-field="card_number" id="${accountId}_card_number" name="bank_transfer_accounts[${index}][card_number]" value="${account.card_number || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="6037-xxxx-xxxx-xxxx">
-                        </div>
-                        <div>
-                            <label for="${accountId}_iban" class="{{ $labelClass }}">شماره شبا</label>
-                            <input type="text" data-field="iban" id="${accountId}_iban" name="bank_transfer_accounts[${index}][iban]" value="${account.iban || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="IR...">
-                        </div>
-                    </div>
-                    <button type="button" class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center remove-bank-account-btn">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" /></svg>
-                    </button>
-                `;
+        <input type="hidden" name="bank_transfer_accounts[${index}][id]" value="${account.id}">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="${accountId}_bank_id" class="{{ $labelClass }}">نام بانک</label>
+                <select data-field="bank_id" id="${accountId}_bank_id" name="bank_transfer_accounts[${index}][bank_id]" class="{{ $inputClass }}" ${disabledAttr}>${bankOptions}</select>
+                ${warningText}
+            </div>
+            <div>
+                <label for="${accountId}_account_number" class="{{ $labelClass }}">شماره حساب</label>
+                <input type="text" data-field="account_number" id="${accountId}_account_number" name="bank_transfer_accounts[${index}][account_number]" value="${account.account_number || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="123-456-789">
+            </div>
+            <div>
+                <label for="${accountId}_card_number" class="{{ $labelClass }}">شماره کارت</label>
+                <input type="text" data-field="card_number" id="${accountId}_card_number" name="bank_transfer_accounts[${index}][card_number]" value="${account.card_number || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="6037-xxxx-xxxx-xxxx">
+            </div>
+            <div>
+                <label for="${accountId}_iban" class="{{ $labelClass }}">شماره شبا</label>
+                <input type="text" data-field="iban" id="${accountId}_iban" name="bank_transfer_accounts[${index}][iban]" value="${account.iban || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="IR...">
+            </div>
+        </div>
+        <button type="button" class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center remove-bank-account-btn">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" /></svg>
+        </button>
+    `;
                 bankAccountsContainer.appendChild(item);
             }
 
@@ -1113,7 +1126,6 @@
                 bankAccounts.forEach((account, index) => createBankAccountItem(account, index));
             }
 
-            // همگام‌سازی تایپ کاربر با آرایه
             bankAccountsContainer.addEventListener('input', (e) => {
                 if (e.target.hasAttribute('data-field')) {
                     const index = e.target.closest('[data-index]').getAttribute('data-index');
@@ -1141,104 +1153,467 @@
                 }
             });
 
+            // ===================== Installment Types =====================
+            const availableServices = @json($availableServices ?? []);
+            const installmentContainer = document.getElementById('installment-types-container');
+            const addInstallmentBtn = document.getElementById('add-installment-btn');
 
-            // =================================================================
-            // EVENT LISTENERS & INITIAL RENDERING
-            // =================================================================
-
-            // اسکریپت جابجایی تب‌های رنگ بر اساس قالب انتخابی
-            document.getElementById('app_theme').addEventListener('change', function () {
-                const selectedTheme = this.value;
-                document.querySelectorAll('.theme-color-panel').forEach(panel => {
-                    panel.classList.toggle('hidden', panel.id !== `panel-color-${selectedTheme}`);
-                    panel.classList.toggle('block', panel.id === `panel-color-${selectedTheme}`);
-                });
+            let installmentTypes = @json(isset($settings['installment_types']) ? (is_string($settings['installment_types']) ? json_decode($settings['installment_types'], true) : $settings['installment_types']) : []);
+            if (!Array.isArray(installmentTypes)) installmentTypes = [];
+            installmentTypes.forEach(t => {
+                if (!t.id) t.id = generateUniqueId('inst');
+                if (!t.brand_configs || typeof t.brand_configs !== 'object') t.brand_configs = {};
+                if (!Array.isArray(t.price_tiers)) t.price_tiers = [];
             });
 
-            // تابع تست پرداخت
-            window.submitTestPayment = function (gateway = 'zarinpal') {
-                document.getElementById('test-gateway-input').value = gateway;
+            function getBrandKey(serviceId, tabTitle, sectionTitle, brandName) {
+                return `${serviceId}__${tabTitle}__${sectionTitle}__${brandName}`;
+            }
 
-                if (gateway === 'zarinpal') {
-                    const merchantId = document.getElementById('zarinpal_merchant_id').value;
-                    if (!merchantId) {
-                        alert('لطفاً ابتدا کد مرچنت زرین‌پال را وارد کرده و تنظیمات را ذخیره کنید.');
-                        return;
-                    }
-                } else if (gateway === 'zibal') {
-                    const merchantId = document.getElementById('zibal_merchant_id').value;
-                    if (!merchantId) {
-                        alert('لطفاً ابتدا کد مرچنت زیبال را وارد کرده و تنظیمات را ذخیره کنید.');
-                        return;
-                    }
-                } else if (gateway === 'behpardakht') {
-                    const terminalId = document.getElementById('behpardakht_terminal_id').value;
-                    if (!terminalId) {
-                        alert('لطفاً ابتدا اطلاعات به‌پرداخت ملت را وارد کرده و تنظیمات را ذخیره کنید.');
-                        return;
-                    }
+            function isBrandSelected(item, key) {
+                return item.brand_configs && item.brand_configs[key] && item.brand_configs[key].active;
+            }
+
+            function getBrandConfig(item, key) {
+                return (item.brand_configs && item.brand_configs[key]) ? item.brand_configs[key] : {};
+            }
+
+            function syncBrandConfig(card, index) {
+                const configs = {};
+                card.querySelectorAll('[data-brand-block]').forEach(block => {
+                    const key = block.getAttribute('data-brand-block');
+                    const activeToggle = block.querySelector('[data-brand-active]');
+                    if (!activeToggle || !activeToggle.checked) return;
+                    configs[key] = {active: true};
+                    block.querySelectorAll('[data-brand-field]').forEach(input => {
+                        const field = input.getAttribute('data-brand-field');
+                        configs[key][field] = input.value;
+                    });
+                });
+                installmentTypes[index].brand_configs = configs;
+            }
+
+            function updateTabCounts(card) {
+                card.querySelectorAll('[data-tab-block]').forEach(block => {
+                    const total = block.querySelectorAll('[data-brand-active]').length;
+                    const checked = block.querySelectorAll('[data-brand-active]:checked').length;
+                    const countEl = block.querySelector('[data-tab-count]');
+                    if (countEl) countEl.textContent = `${checked} از ${total}`;
+                    const tabToggle = block.querySelector('[data-tab-toggle]');
+                    if (tabToggle) tabToggle.checked = total > 0 && checked === total;
+                });
+                const totalSelected = card.querySelectorAll('[data-brand-active]:checked').length;
+                const totalEl = card.querySelector('[data-total-brands]');
+                if (totalEl) totalEl.textContent = `${totalSelected} برند انتخاب شده`;
+            }
+
+            // =============== Price Tiers Logic (Updated with Fee & Down Payment) ===============
+            function createPriceTierHtml(tier, tierIndex, planIndex) {
+                const div = document.createElement('div');
+                div.className = 'grid grid-cols-2 md:grid-cols-7 gap-2 items-end p-3 border border-blue-100 dark:border-blue-800/30 rounded-lg bg-white dark:bg-gray-800/50 relative';
+                div.setAttribute('data-tier-index', tierIndex);
+
+                div.innerHTML = `
+            <div class="md:col-span-1">
+                <label class="block text-[11px] font-bold text-gray-600 mb-1">حداقل مبلغ</label>
+                <input type="number" min="0" data-tier-field="min_price" name="installment_types[${planIndex}][price_tiers][${tierIndex}][min_price]" value="${tier.min_price || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="50000">
+            </div>
+            <div class="md:col-span-1">
+                <label class="block text-[11px] font-bold text-gray-600 mb-1">حداکثر مبلغ</label>
+                <input type="number" min="0" data-tier-field="max_price" name="installment_types[${planIndex}][price_tiers][${tierIndex}][max_price]" value="${tier.max_price || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="52000">
+            </div>
+            <div class="md:col-span-1">
+                <label class="block text-[11px] font-bold text-gray-600 mb-1">حداکثر ماه‌ها</label>
+                <input type="number" min="1" data-tier-field="max_months" name="installment_types[${planIndex}][price_tiers][${tierIndex}][max_months]" value="${tier.max_months || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="12">
+            </div>
+            <div class="md:col-span-1">
+                <label class="block text-[11px] font-bold text-gray-600 mb-1">مراحل پرداخت</label>
+                <input type="number" min="1" data-tier-field="payment_stages" name="installment_types[${planIndex}][price_tiers][${tierIndex}][payment_stages]" value="${tier.payment_stages || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="3">
+            </div>
+            <div class="md:col-span-1">
+                <label class="block text-[11px] font-bold text-gray-600 mb-1">پیش‌پرداخت (%)</label>
+                <input type="number" min="0" max="100" data-tier-field="down_payment" name="installment_types[${planIndex}][price_tiers][${tierIndex}][down_payment]" value="${tier.down_payment || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="20">
+            </div>
+            <div class="md:col-span-1">
+                <label class="block text-[11px] font-bold text-gray-600 mb-1">کارمزد ماهانه (%)</label>
+                <input type="number" min="0" step="0.1" data-tier-field="fee_percent" name="installment_types[${planIndex}][price_tiers][${tierIndex}][fee_percent]" value="${tier.fee_percent || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="2">
+            </div>
+            <button type="button" class="remove-price-tier-btn h-9 w-9 rounded-lg bg-red-50 text-red-500 hover:bg-red-200 flex items-center justify-center justify-self-end">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        `;
+                return div;
+            }
+
+            function renderPriceTiers(card, planIndex) {
+                const tiersContainer = card.querySelector('.price-tiers-container');
+                if (!tiersContainer) return;
+                tiersContainer.innerHTML = '';
+                const tiers = installmentTypes[planIndex].price_tiers || [];
+                tiers.forEach((tier, tIdx) => {
+                    tiersContainer.appendChild(createPriceTierHtml(tier, tIdx, planIndex));
+                });
+            }
+
+            function createInstallmentItem(item = {}, index) {
+                const div = document.createElement('div');
+                div.className = 'relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm';
+                div.setAttribute('data-index', index);
+
+                const isSpecialChecked = item.is_special ? 'checked' : '';
+                const specialDisplay = item.is_special ? 'grid' : 'none';
+
+                let servicesHtml = '';
+
+                if (availableServices.length === 0) {
+                    servicesHtml = `<div class="p-6 text-center text-gray-400">سرویسی یافت نشد.</div>`;
+                } else {
+                    const tabColorClasses = [
+                        {
+                            bg: 'bg-purple-50 dark:bg-purple-900/20',
+                            text: 'text-purple-700 dark:text-purple-300',
+                            count: 'text-purple-600',
+                            border: 'border border-purple-100 dark:border-purple-800/40'
+                        },
+                        {
+                            bg: 'bg-teal-50 dark:bg-teal-900/20',
+                            text: 'text-teal-700 dark:text-teal-300',
+                            count: 'text-teal-600',
+                            border: 'border border-teal-100 dark:border-teal-800/40'
+                        },
+                        {
+                            bg: 'bg-amber-50 dark:bg-amber-900/20',
+                            text: 'text-amber-700 dark:text-amber-300',
+                            count: 'text-amber-600',
+                            border: 'border border-amber-100 dark:border-amber-800/40'
+                        },
+                        {
+                            bg: 'bg-blue-50 dark:bg-blue-900/20',
+                            text: 'text-blue-700 dark:text-blue-300',
+                            count: 'text-blue-600',
+                            border: 'border border-blue-100 dark:border-blue-800/40'
+                        },
+                        {
+                            bg: 'bg-rose-50 dark:bg-rose-900/20',
+                            text: 'text-rose-700 dark:text-rose-300',
+                            count: 'text-rose-600',
+                            border: 'border border-rose-100 dark:border-rose-800/40'
+                        },
+                    ];
+                    let tabColorIndex = 0;
+
+                    availableServices.forEach(service => {
+                        (service.tabs || []).forEach(tab => {
+                            const color = tabColorClasses[tabColorIndex % tabColorClasses.length];
+                            tabColorIndex++;
+
+                            let totalBrands = 0;
+                            let checkedBrands = 0;
+                            let sectionsHtml = '';
+
+                            (tab.sections || []).forEach(section => {
+                                const validBrands = (section.brands || []).filter(b => b.name && b.name.trim() !== '' && b.is_installment === true);
+                                if (validBrands.length === 0) return;
+
+                                let brandsHtml = '';
+                                validBrands.forEach(brand => {
+                                    const key = getBrandKey(service.id, tab.title, section.title, brand.name);
+                                    const isChecked = isBrandSelected(item, key);
+                                    const cfg = getBrandConfig(item, key);
+                                    if (isChecked) checkedBrands++;
+                                    totalBrands++;
+
+                                    const basePriceNum = brand.price ? Number(brand.price) : 0;
+                                    const basePrice = basePriceNum ? basePriceNum.toLocaleString('fa-IR') : '—';
+
+                                    brandsHtml += `
+                        <div data-brand-block="${key}" class="border-t border-gray-100 dark:border-gray-700/50">
+                            <div class="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors brand-toggle-row">
+                                <input type="checkbox" data-brand-active name="installment_types[${index}][brand_configs][${key}][active]" value="1" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0" ${isChecked ? 'checked' : ''}>
+                                <span class="text-xs flex-1 font-semibold text-gray-800 dark:text-gray-100">${brand.name}</span>
+                                <span class="text-xs font-bold text-gray-500 dir-ltr tabular-nums ml-2" data-base-price="${basePriceNum}">${basePrice}</span>
+                                <svg class="w-3.5 h-3.5 text-gray-400 brand-chevron transition-transform ${isChecked ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                            <div class="brand-detail-fields ${isChecked ? '' : 'hidden'} bg-gray-50/60 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700/40 px-4 py-3">
+                                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">قیمت ویژه</label>
+                                        <input type="number" min="0" data-brand-field="custom_price" name="installment_types[${index}][brand_configs][${key}][custom_price]" value="${cfg.custom_price || (basePriceNum || '')}" placeholder="${basePrice}" class="{{ $inputClass }} dir-ltr text-left text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">پیش‌پرداخت (%)</label>
+                                        <input type="number" min="0" max="100" data-brand-field="down_payment" name="installment_types[${index}][brand_configs][${key}][down_payment]" value="${cfg.down_payment || ''}" placeholder="پیش‌فرض بازه" class="{{ $inputClass }} dir-ltr text-left text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">اقساط (ماه)</label>
+                                        <input type="number" min="1" data-brand-field="months_limit" name="installment_types[${index}][brand_configs][${key}][months_limit]" value="${cfg.months_limit || ''}" placeholder="پیش‌فرض بازه" class="{{ $inputClass }} dir-ltr text-left text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">مراحل پرداخت</label>
+                                        <input type="number" min="1" data-brand-field="payment_stages" name="installment_types[${index}][brand_configs][${key}][payment_stages]" value="${cfg.payment_stages || ''}" placeholder="مثال: 2" class="{{ $inputClass }} dir-ltr text-left text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">کارمزد (%)</label>
+                                        <input type="number" min="0" max="100" step="0.1" data-brand-field="fee_percent" name="installment_types[${index}][brand_configs][${key}][fee_percent]" value="${cfg.fee_percent || ''}" placeholder="پیش‌فرض بازه" class="{{ $inputClass }} dir-ltr text-left text-xs">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">دوره بدون بهره (روز)</label>
+                                        <input type="number" min="0" data-brand-field="grace_period_days" name="installment_types[${index}][brand_configs][${key}][grace_period_days]" value="${cfg.grace_period_days || ''}" placeholder="مثال: ۳۰" class="{{ $inputClass }} dir-ltr text-left text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">جریمه تأخیر (تومان)</label>
+                                        <input type="number" min="0" data-brand-field="late_fee" name="installment_types[${index}][brand_configs][${key}][late_fee]" value="${cfg.late_fee || ''}" placeholder="مثال: ۵۰,۰۰۰" class="{{ $inputClass }} dir-ltr text-left text-xs">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-[11px] font-bold text-indigo-700 mb-1">توضیحات برای بیمار</label>
+                                        <input type="text" data-brand-field="notes" name="installment_types[${index}][brand_configs][${key}][notes]" value="${cfg.notes || ''}" placeholder="مثال: شامل ۳ ماه بدون بهره." class="{{ $inputClass }} text-xs">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                                });
+
+                                const allChecked = validBrands.every(b => isBrandSelected(item, getBrandKey(service.id, tab.title, section.title, b.name)));
+                                sectionsHtml += `
+                    <div class="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden mb-2 last:mb-0">
+                        <div class="px-3 py-2 bg-gray-50/70 dark:bg-gray-900/20 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-gray-800 dark:text-gray-100">${section.title}</span>
+                                <span class="text-[11px] text-gray-500">${section.type || ''}</span>
+                            </div>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" data-section-toggle class="rounded border-gray-300 text-indigo-500 focus:ring-indigo-400" ${allChecked ? 'checked' : ''}>
+                                <span class="text-[11px] text-gray-500">همه</span>
+                            </label>
+                        </div>
+                        ${brandsHtml}
+                    </div>`;
+                            });
+
+                            if (!sectionsHtml) return;
+
+                            servicesHtml += `
+                <div data-tab-block class="rounded-xl overflow-hidden mb-3 last:mb-0 ${color.border}">
+                    <div class="${color.bg} px-3 py-2.5 flex items-center justify-between">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" data-tab-toggle class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-xs font-bold ${color.text}">${tab.title}</span>
+                            <span class="text-[11px] text-gray-500">${service.name}</span>
+                        </label>
+                        <span data-tab-count class="text-[11px] font-bold ${color.count}">${checkedBrands} از ${totalBrands}</span>
+                    </div>
+                    <div class="divide-y divide-gray-50 dark:divide-gray-700/30 p-2 space-y-2">${sectionsHtml}</div>
+                </div>`;
+                        });
+                    });
                 }
 
-                document.getElementById('test-payment-form').submit();
-            };
+                div.innerHTML = `
+    <input type="hidden" name="installment_types[${index}][id]" value="${item.id}">
+    <button type="button" class="remove-inst-btn absolute -top-3 -right-3 w-8 h-8 rounded-full bg-red-50 text-red-500 border border-red-100 hover:bg-red-500 hover:text-white shadow-sm flex items-center justify-center transition-all">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
 
-            // اتصال Event Listeners به دکمه‌های تست
-            document.getElementById('test-zarinpal-btn').addEventListener('click', () => submitTestPayment('zarinpal'));
-            document.getElementById('test-zibal-btn').addEventListener('click', () => submitTestPayment('zibal'));
-            document.getElementById('test-behpardakht-btn').addEventListener('click', () => submitTestPayment('behpardakht'));
-            document.getElementById('test-ai-connection-btn').addEventListener('click', () => testConnection());
+    <div class="mb-5">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="{{ $labelClass }}">عنوان طرح</label>
+                <input type="text" data-field="title" name="installment_types[${index}][title]" value="${item.title || ''}" class="{{ $inputClass }}" placeholder="مثال: طرح لبخند">
+            </div>
+        </div>
+    </div>
 
+    <div class="p-4 bg-purple-50/60 dark:bg-purple-900/10 rounded-xl border border-purple-100 dark:border-purple-800/30 mb-4">
+        <label class="flex items-center gap-2 cursor-pointer mb-3">
+            <input type="checkbox" data-field="is_special" name="installment_types[${index}][is_special]" class="special-toggle rounded border-purple-300 text-purple-600 focus:ring-purple-500" value="1" ${isSpecialChecked}>
+            <span class="text-sm font-bold text-purple-900 dark:text-purple-300">طرح مناسبتی / محدودیت‌دار</span>
+        </label>
+        <div class="special-fields grid-cols-1 md:grid-cols-3 gap-4" style="display:${specialDisplay};">
+            <div>
+                <label class="{{ $labelClass }}">محدودیت تعداد دندان</label>
+                <input type="number" min="0" data-field="teeth_limit" name="installment_types[${index}][teeth_limit]" value="${item.teeth_limit || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="5">
+            </div>
+            <div>
+                <label class="{{ $labelClass }}">تاریخ شروع</label>
+                <input type="text" data-jdp readonly placeholder="YYYY/MM/DD" data-field="start_month" name="installment_types[${index}][start_month]" value="${item.start_month || ''}" class="{{ $inputClass }} dir-ltr text-left">
+            </div>
+            <div>
+                <label class="{{ $labelClass }}">تاریخ پایان</label>
+                <input type="text" data-jdp readonly placeholder="YYYY/MM/DD" data-field="end_month" name="installment_types[${index}][end_month]" value="${item.end_month || ''}" class="{{ $inputClass }} dir-ltr text-left">
+            </div>
+        </div>
+    </div>
 
-            // تابع تست اتصال هوش مصنوعی
-            window.testConnection = function () {
-                const btn = document.getElementById('test-ai-connection-btn');
-                const resultDiv = document.getElementById('test-result');
-                const apiKey = document.getElementById('gapgpt_api_key').value;
-                const baseUrl = document.getElementById('gapgpt_base_url').value;
+    <div class="p-4 bg-blue-50/60 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/30 mb-4">
+        <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-bold text-blue-900 dark:text-blue-300">بازه‌های قیمتی و شرایط اقساط (منطق پلکانی)</span>
+            <button type="button" class="add-price-tier-btn text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                افزودن بازه قیمتی
+            </button>
+        </div>
+        <div class="price-tiers-container space-y-3"></div>
+    </div>
 
-                if (!apiKey) {
-                    alert('لطفاً ابتدا کلید API را وارد کنید.');
+    <div>
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-bold text-gray-800 dark:text-gray-100">برندهای مشمول این طرح</span>
+            <span data-total-brands class="text-xs px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 font-bold">${Object.keys(item.brand_configs || {}).length} انتخاب شده</span>
+        </div>
+        <p class="text-[11px] text-gray-500 mb-3">برای تنظیم دقیق هر برند روی آن کلیک کنید. مقادیر خالی از تنظیمات بازه قیمتی خوانده می‌شوند.</p>
+        ${servicesHtml}
+    </div>
+    `;
+
+                installmentContainer.appendChild(div);
+                renderPriceTiers(div, index);
+            }
+
+            function renderInstallmentTypes() {
+                installmentContainer.innerHTML = '';
+                installmentTypes.forEach((type, index) => createInstallmentItem(type, index));
+            }
+
+            addInstallmentBtn.addEventListener('click', () => {
+                installmentTypes.push({id: generateUniqueId('inst'), brand_configs: {}, price_tiers: []});
+                renderInstallmentTypes();
+            });
+
+            installmentContainer.addEventListener('click', (e) => {
+                if (e.target.closest('.remove-inst-btn')) {
+                    const item = e.target.closest('[data-index]');
+                    installmentTypes.splice(parseInt(item.getAttribute('data-index')), 1);
+                    renderInstallmentTypes();
                     return;
                 }
 
-                btn.disabled = true;
-                btn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال بررسی...';
-                resultDiv.classList.add('hidden');
-                resultDiv.className = 'md:col-span-2 hidden';
+                if (e.target.closest('.add-price-tier-btn')) {
+                    const card = e.target.closest('[data-index]');
+                    const index = parseInt(card.getAttribute('data-index'));
+                    if (!Array.isArray(installmentTypes[index].price_tiers)) {
+                        installmentTypes[index].price_tiers = [];
+                    }
+                    installmentTypes[index].price_tiers.push({});
+                    renderPriceTiers(card, index);
+                    return;
+                }
 
-                fetch('{{ route('settings.test-gapgpt') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({gapgpt_api_key: apiKey, gapgpt_base_url: baseUrl})
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        resultDiv.classList.remove('hidden');
-                        if (data.success) {
-                            resultDiv.className = 'md:col-span-2 p-4 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 text-sm';
-                            resultDiv.innerHTML = `<div class="font-bold">${data.message}</div>`;
-                        } else {
-                            resultDiv.className = 'md:col-span-2 p-4 rounded-xl bg-red-50 text-red-700 border border-red-100 text-sm';
-                            resultDiv.innerHTML = `<div class="font-bold">${data.message}</div>`;
-                        }
-                    })
-                    .catch(error => {
-                        resultDiv.classList.remove('hidden');
-                        resultDiv.className = 'md:col-span-2 p-4 rounded-xl bg-red-50 text-red-700 border border-red-100 text-sm';
-                        resultDiv.innerHTML = 'خطای غیرمنتظره رخ داد.';
-                    })
-                    .finally(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> تست اتصال';
+                if (e.target.closest('.remove-price-tier-btn')) {
+                    const tierItem = e.target.closest('[data-tier-index]');
+                    const card = e.target.closest('[data-index]');
+                    const planIndex = parseInt(card.getAttribute('data-index'));
+                    const tierIndex = parseInt(tierItem.getAttribute('data-tier-index'));
+
+                    installmentTypes[planIndex].price_tiers.splice(tierIndex, 1);
+                    renderPriceTiers(card, planIndex);
+                    return;
+                }
+
+                const toggleRow = e.target.closest('.brand-toggle-row');
+                if (toggleRow && e.target.type !== 'checkbox') {
+                    const block = toggleRow.closest('[data-brand-block]');
+                    const detailFields = block.querySelector('.brand-detail-fields');
+                    const chevron = block.querySelector('.brand-chevron');
+                    const activeToggle = block.querySelector('[data-brand-active]');
+                    if (activeToggle && activeToggle.checked) {
+                        detailFields.classList.toggle('hidden');
+                        chevron.classList.toggle('rotate-180');
+                    }
+                }
+            });
+
+            installmentContainer.addEventListener('change', (e) => {
+                const card = e.target.closest('[data-index]');
+                if (!card) return;
+                const index = parseInt(card.getAttribute('data-index'));
+
+                if (e.target.classList.contains('special-toggle')) {
+                    card.querySelector('.special-fields').style.display = e.target.checked ? 'grid' : 'none';
+                    installmentTypes[index].is_special = e.target.checked;
+                    return;
+                }
+
+                if (e.target.hasAttribute('data-tab-toggle')) {
+                    const tabBlock = e.target.closest('[data-tab-block]');
+                    tabBlock.querySelectorAll('[data-brand-active]').forEach(cb => {
+                        cb.checked = e.target.checked;
+                        const block = cb.closest('[data-brand-block]');
+                        const detailFields = block.querySelector('.brand-detail-fields');
+                        const chevron = block.querySelector('.brand-chevron');
+                        detailFields.classList.toggle('hidden', !e.target.checked);
+                        chevron.classList.toggle('rotate-180', e.target.checked);
                     });
-            };
+                    tabBlock.querySelectorAll('[data-section-toggle]').forEach(cb => cb.checked = e.target.checked);
+                    syncBrandConfig(card, index);
+                    updateTabCounts(card);
+                    return;
+                }
 
-            // Initial render of dynamic fields
+                if (e.target.hasAttribute('data-section-toggle')) {
+                    const sectionBlock = e.target.closest('.border.border-gray-100');
+                    sectionBlock.querySelectorAll('[data-brand-active]').forEach(cb => {
+                        cb.checked = e.target.checked;
+                        const block = cb.closest('[data-brand-block]');
+                        const detailFields = block.querySelector('.brand-detail-fields');
+                        const chevron = block.querySelector('.brand-chevron');
+                        detailFields.classList.toggle('hidden', !e.target.checked);
+                        chevron.classList.toggle('rotate-180', e.target.checked);
+                    });
+                    syncBrandConfig(card, index);
+                    updateTabCounts(card);
+                    return;
+                }
+
+                if (e.target.hasAttribute('data-brand-active')) {
+                    const block = e.target.closest('[data-brand-block]');
+                    const detailFields = block.querySelector('.brand-detail-fields');
+                    const chevron = block.querySelector('.brand-chevron');
+                    detailFields.classList.toggle('hidden', !e.target.checked);
+                    chevron.classList.toggle('rotate-180', e.target.checked);
+                    syncBrandConfig(card, index);
+                    updateTabCounts(card);
+                    return;
+                }
+
+                if (e.target.hasAttribute('data-field')) {
+                    const fieldName = e.target.getAttribute('data-field');
+                    installmentTypes[index][fieldName] = e.target.value;
+                }
+            });
+
+            installmentContainer.addEventListener('input', (e) => {
+                const card = e.target.closest('[data-index]');
+                if (!card) return;
+                const index = parseInt(card.getAttribute('data-index'));
+
+                if (e.target.hasAttribute('data-tier-field')) {
+                    const tierItem = e.target.closest('[data-tier-index]');
+                    const tierIndex = parseInt(tierItem.getAttribute('data-tier-index'));
+                    const field = e.target.getAttribute('data-tier-field');
+
+                    if (!installmentTypes[index].price_tiers) installmentTypes[index].price_tiers = [];
+                    if (!installmentTypes[index].price_tiers[tierIndex]) installmentTypes[index].price_tiers[tierIndex] = {};
+
+                    installmentTypes[index].price_tiers[tierIndex][field] = e.target.value;
+                    return;
+                }
+
+                if (e.target.hasAttribute('data-brand-field')) {
+                    syncBrandConfig(card, index);
+                    return;
+                }
+
+                const field = e.target.getAttribute('data-field');
+                if (field && field !== 'is_special') {
+                    installmentTypes[index][field] = e.target.value;
+                }
+            });
+
             renderPosDevices();
             renderBankAccounts();
+            renderInstallmentTypes();
         });
     </script>
 @endsection

@@ -504,6 +504,21 @@ class WorkflowController extends Controller
         ]);
     }
 
+    public function goBackInstance(Request $request, \Modules\Workflows\Entities\WorkflowInstance $instance, \Modules\Workflows\Services\WorkflowEngine $engine)
+    {
+        Gate::authorize('workflows.edit');
+        if ($instance->status !== \Modules\Workflows\Entities\WorkflowInstance::STATUS_ACTIVE) {
+            return response()->json(['success' => false, 'message' => 'فرآیند غیرفعال است.'], 422);
+        }
+
+        $engine->goBack($instance);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'فرآیند یک مرحله به عقب بازگشت.'
+        ]);
+    }
+
     public function cancelInstance(\Modules\Workflows\Entities\WorkflowInstance $instance)
     {
         Gate::authorize('workflows.edit');
