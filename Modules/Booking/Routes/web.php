@@ -16,6 +16,7 @@ use Modules\Booking\Http\Controllers\User\StatementController;
 use Modules\Settings\Http\Controllers\PaymentController;
 use Modules\Booking\App\Http\Controllers\User\DoctorController;
 use Modules\Booking\App\Http\Controllers\User\CureController;
+use Modules\Booking\App\Http\Controllers\User\TreatmentPlanWorkflowController;
 
 
 
@@ -60,7 +61,7 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->name('services.custom-prices.update');
 
 //installments routes
-        Route::get('services/{service}/installments', [UserServiceController::class, 'installments'])
+        Route::get('services/{service}/installments', [UserServiceController::class, 'editInstallments'])
             ->name('services.installments');
         Route::post('services/{service}/installments', [UserServiceController::class, 'updateInstallments'])
             ->name('services.installments.update');
@@ -73,7 +74,16 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::get('/cure/{cure}/workflows',[CureController::class, 'workflows'])->name('cure.workflows');
         Route::get('/cure/{cure}/edit',[CureController::class, 'edit'])->name('cure.edit');
         Route::put('/cure/{cure}',[CureController::class, 'update'])->name('cure.update');
+        Route::post('/cure/{cure}/status',[CureController::class, 'changeStatus'])->name('cure.status');
+        Route::get('/cure/{cure}/snapshot/{snapshot}',[CureController::class, 'showSnapshot'])->name('cure.snapshot');
         Route::delete('/cure/{cure}', [CureController::class, 'destroy'])->name('cure.destroy');
+
+        // workflow bindings routes
+        Route::get('/cure/{plan}/workflow-bindings', [TreatmentPlanWorkflowController::class, 'index'])->name('cure.workflow-bindings.index');
+        Route::post('/cure/{plan}/workflow-bindings', [TreatmentPlanWorkflowController::class, 'store'])->name('cure.workflow-bindings.store');
+        Route::put('/cure/{plan}/workflow-bindings/{binding}', [TreatmentPlanWorkflowController::class, 'update'])->name('cure.workflow-bindings.update');
+        Route::delete('/cure/{plan}/workflow-bindings/{binding}', [TreatmentPlanWorkflowController::class, 'destroy'])->name('cure.workflow-bindings.destroy');
+        Route::post('/cure/{plan}/workflow-bindings/{binding}/trigger', [TreatmentPlanWorkflowController::class, 'trigger'])->name('cure.workflow-bindings.trigger');
 
         // ⚠️ این دو تا از روی middleware سلب میشن تا کنترل دست ServiceAvailabilityController باشه
         Route::get('services/{service}/availability', [UserServiceAvailabilityController::class, 'edit'])

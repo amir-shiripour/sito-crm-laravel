@@ -5,10 +5,11 @@
 
 @php
     // استایل‌های مشترک
-    $cardClass = "bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-200 hover:shadow-md";
+    $cardClass = "bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md";
     $headerClass = "px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3 bg-gray-50/50 dark:bg-gray-900/30 rounded-t-2xl";
-    $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2";
-    $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800";
+    $labelClass = "block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2";
+    $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-600";
+    $selectClass = $inputClass . " appearance-none cursor-pointer";
 
     // دیکود کردن تنظیمات رنگی برای قالب‌های مختلف
     $savedColors = isset($settings['theme_colors']) ? (is_string($settings['theme_colors']) ? json_decode($settings['theme_colors'], true) : $settings['theme_colors']) : [];
@@ -26,13 +27,13 @@
         'purple' => '#9333ea', 'fuchsia' => '#c026d3', 'pink' => '#db2777', 'slate' => '#475569'
     ];
 
-$pos_devices = isset($settings['pos_devices'])
+ $pos_devices = isset($settings['pos_devices'])
     ? (is_string($settings['pos_devices'])
         ? json_decode($settings['pos_devices'], true)
         : $settings['pos_devices'])
     : [];
 
-$bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
+ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
     ? (is_string($settings['bank_transfer_accounts'])
         ? json_decode($settings['bank_transfer_accounts'], true)
         : $settings['bank_transfer_accounts'])
@@ -41,7 +42,7 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
 
 @section('content')
 
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         {{-- هدر صفحه --}}
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -91,9 +92,52 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
         @endif
 
         <form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data"
-              class="space-y-8 pb-24" id="main-settings-form">
+              class="pb-24" id="main-settings-form">
             @csrf
+            
+            <div x-data="{ activeTab: window.location.hash ? window.location.hash.substring(1) : 'general' }" 
+                 x-init="$watch('activeTab', value => window.location.hash = value)"
+                 class="space-y-6">
+                 
+                 <!-- Horizontal Tabs -->
+                 <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl p-2 shadow-sm flex flex-wrap gap-2">
+                     <button type="button" @click="activeTab = 'general'" :class="activeTab === 'general' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                         <div :class="activeTab === 'general' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800/50 dark:text-indigo-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
+                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                         </div>
+                         اطلاعات پایه و ظاهر
+                     </button>
+                     <button type="button" @click="activeTab = 'contact'" :class="activeTab === 'contact' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                         <div :class="activeTab === 'contact' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-800/50 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
+                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                         </div>
+                         ارتباطات
+                     </button>
+                     <button type="button" @click="activeTab = 'registration'" :class="activeTab === 'registration' ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                         <div :class="activeTab === 'registration' ? 'bg-sky-100 text-sky-600 dark:bg-sky-800/50 dark:text-sky-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
+                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                         </div>
+                         کاربران و ثبت‌نام
+                     </button>
+                     <button type="button" @click="activeTab = 'ai'" :class="activeTab === 'ai' ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                         <div :class="activeTab === 'ai' ? 'bg-purple-100 text-purple-600 dark:bg-purple-800/50 dark:text-purple-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
+                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                         </div>
+                         هوش مصنوعی
+                     </button>
+                     <button type="button" @click="activeTab = 'payment'" :class="activeTab === 'payment' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                         <div :class="activeTab === 'payment' ? 'bg-blue-100 text-blue-600 dark:bg-blue-800/50 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
+                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                         </div>
+                         مالی و پرداخت
+                     </button>
+                 </div>
 
+                 <!-- Main Content Panels -->
+                 <div class="w-full relative">
+                 
+                 {{-- تب عمومی: اطلاعات پایه و پالت رنگی --}}
+                 <div x-show="activeTab === 'general'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
             {{-- کارت ۱: اطلاعات پایه --}}
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
@@ -118,43 +162,53 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
 
                     <div>
                         <label for="app_theme" class="{{ $labelClass }}">قالب اصلی سایت (Theme)</label>
-                        <select class="{{ $inputClass }}" id="app_theme" name="app_theme">
-                            <option
-                                value="default" {{ ($settings['app_theme'] ?? 'default') == 'default' ? 'selected' : '' }}>
-                                پیش‌فرض (شرکتی/خدماتی)
-                            </option>
-                            <option value="booking" {{ ($settings['app_theme'] ?? '') == 'booking' ? 'selected' : '' }}>
-                                کلینیک درمانی و پزشکی (Booking)
-                            </option>
-                            <option value="market" {{ ($settings['app_theme'] ?? '') == 'market' ? 'selected' : '' }}>
-                                فروشگاهی (Market)
-                            </option>
-                            <option
-                                value="properties" {{ ($settings['app_theme'] ?? '') == 'properties' ? 'selected' : '' }}>
-                                املاک (Properties)
-                            </option>
-                        </select>
-                        <p class="text-[11px] text-gray-400 mt-1">با تغییر این گزینه، صفحه اول و استایل‌های سایت تغییر
+                        <div class="select-wrapper relative">
+                            <select class="{{ $selectClass }} !pl-10" id="app_theme" name="app_theme">
+                                <option
+                                    value="default" {{ ($settings['app_theme'] ?? 'default') == 'default' ? 'selected' : '' }}>
+                                    پیش‌فرض (شرکتی/خدماتی)
+                                </option>
+                                <option value="booking" {{ ($settings['app_theme'] ?? '') == 'booking' ? 'selected' : '' }}>
+                                    کلینیک درمانی و پزشکی (Booking)
+                                </option>
+                                <option value="market" {{ ($settings['app_theme'] ?? '') == 'market' ? 'selected' : '' }}>
+                                    فروشگاهی (Market)
+                                </option>
+                                <option
+                                    value="properties" {{ ($settings['app_theme'] ?? '') == 'properties' ? 'selected' : '' }}>
+                                    املاک (Properties)
+                                </option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">با تغییر این گزینه، صفحه اول و استایل‌های سایت تغییر
                             خواهد کرد.</p>
                     </div>
 
                     <div>
                         <label for="site_display_type" class="{{ $labelClass }}">قالب نمایش سایت</label>
-                        <select class="{{ $inputClass }}" id="site_display_type" name="site_display_type">
-                            <option
-                                value="landing" {{ ($settings['site_display_type'] ?? 'landing') == 'landing' ? 'selected' : '' }}>
-                                لندینگ پیج
-                            </option>
-                            <option
-                                value="theme" {{ ($settings['site_display_type'] ?? '') == 'theme' ? 'selected' : '' }}>
-                                صفحه اصلی تم
-                            </option>
-                            <option
-                                value="admin" {{ ($settings['site_display_type'] ?? '') == 'admin' ? 'selected' : '' }}>
-                                پنل مدیران
-                            </option>
-                        </select>
-                        <p class="text-[11px] text-gray-400 mt-1">نحوه نمایش صفحه اول سایت را انتخاب کنید.</p>
+                        <div class="select-wrapper relative">
+                            <select class="{{ $selectClass }} !pl-10" id="site_display_type" name="site_display_type">
+                                <option
+                                    value="landing" {{ ($settings['site_display_type'] ?? 'landing') == 'landing' ? 'selected' : '' }}>
+                                    لندینگ پیج
+                                </option>
+                                <option
+                                    value="theme" {{ ($settings['site_display_type'] ?? '') == 'theme' ? 'selected' : '' }}>
+                                    صفحه اصلی تم
+                                </option>
+                                <option
+                                    value="admin" {{ ($settings['site_display_type'] ?? '') == 'admin' ? 'selected' : '' }}>
+                                    پنل مدیران
+                                </option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">نحوه نمایش صفحه اول سایت را انتخاب کنید.</p>
                     </div>
 
                     <div>
@@ -259,6 +313,11 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
                     </div>
                 </div>
             </div>
+            
+            </div> {{-- پایان تب عمومی --}}
+
+            {{-- تب ارتباطات --}}
+            <div x-show="activeTab === 'contact'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
                     <div
@@ -294,6 +353,11 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
                     </div>
                 </div>
             </div>
+            
+            </div> {{-- پایان تب ارتباطات --}}
+
+            {{-- تب کاربران و ثبت نام --}}
+            <div x-show="activeTab === 'registration'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
                     <div
@@ -322,32 +386,42 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
                                 <div>
                                     <label for="registration_{{ $role->id }}_enabled" class="{{ $labelClass }}">وضعیت
                                         ثبت نام</label>
-                                    <select name="registration[{{ $role->id }}][enabled]"
-                                            id="registration_{{ $role->id }}_enabled" class="{{ $inputClass }}">
-                                        <option value="0"
-                                                @if(!($registrationSettings[$role->id]['enabled'] ?? false)) selected @endif>
-                                            غیرفعال
-                                        </option>
-                                        <option value="1"
-                                                @if($registrationSettings[$role->id]['enabled'] ?? false) selected @endif>
-                                            فعال
-                                        </option>
-                                    </select>
+                                    <div class="select-wrapper relative">
+                                        <select name="registration[{{ $role->id }}][enabled]"
+                                                id="registration_{{ $role->id }}_enabled" class="{{ $selectClass }} !pl-10">
+                                            <option value="0"
+                                                    @if(!($registrationSettings[$role->id]['enabled'] ?? false)) selected @endif>
+                                                غیرفعال
+                                            </option>
+                                            <option value="1"
+                                                    @if($registrationSettings[$role->id]['enabled'] ?? false) selected @endif>
+                                                فعال
+                                            </option>
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div>
                                     <label for="registration_{{ $role->id }}_approval" class="{{ $labelClass }}">نوع
                                         تایید</label>
-                                    <select name="registration[{{ $role->id }}][approval]"
-                                            id="registration_{{ $role->id }}_approval" class="{{ $inputClass }}">
-                                        <option value="manual"
-                                                @if(($registrationSettings[$role->id]['approval'] ?? 'manual') == 'manual') selected @endif>
-                                            تایید دستی
-                                        </option>
-                                        <option value="automatic"
-                                                @if(($registrationSettings[$role->id]['approval'] ?? 'manual') == 'automatic') selected @endif>
-                                            تایید خودکار
-                                        </option>
-                                    </select>
+                                    <div class="select-wrapper relative">
+                                        <select name="registration[{{ $role->id }}][approval]"
+                                                id="registration_{{ $role->id }}_approval" class="{{ $selectClass }} !pl-10">
+                                            <option value="manual"
+                                                    @if(($registrationSettings[$role->id]['approval'] ?? 'manual') == 'manual') selected @endif>
+                                                تایید دستی
+                                            </option>
+                                            <option value="automatic"
+                                                    @if(($registrationSettings[$role->id]['approval'] ?? 'manual') == 'automatic') selected @endif>
+                                                تایید خودکار
+                                            </option>
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div>
                                     <label for="registration_{{ $role->id }}_approvers" class="{{ $labelClass }}">نقش‌های
@@ -367,7 +441,11 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
                     @endforeach
                 </div>
             </div>
+            
+            </div> {{-- پایان تب ثبت نام --}}
 
+            {{-- تب هوش مصنوعی --}}
+            <div x-show="activeTab === 'ai'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
             <div class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
                     <div
@@ -433,7 +511,7 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
 
                     <div class="md:col-span-2 flex items-center justify-end pt-2">
                         <button type="button" id="test-ai-connection-btn"
-                                class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm">
+                                class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm shadow-sm">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -445,520 +523,18 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
                     <div id="test-result" class="md:col-span-2 hidden"></div>
                 </div>
             </div>
+            
+            </div> {{-- پایان تب هوش مصنوعی --}}
 
-            <div class="{{ $cardClass }}">
-                <div class="{{ $headerClass }}">
-                    <div
-                        class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold text-gray-900 dark:text-white">مدیریت روش‌های پرداخت</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی روش‌ها و درگاه‌های پرداخت
-                            آنلاین و آفلاین سیستم</p>
-                    </div>
-                </div>
+            {{-- تب مالی و پرداخت --}}
+            <div x-show="activeTab === 'payment'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+                @include('settings::partials.payment_settings')
+            {{-- پایان تب مالی --}}
+            
+            </div> {{-- پایان پنل‌ها --}}
+            </div> {{-- پایان کانتینر رپ اصلی (Sidebar + Panels) --}}
 
-                <div class="p-6 space-y-10">
-
-                    @if(!$isAccountingActive)
-                        <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 text-sm font-medium flex items-center gap-3">
-                            <svg class="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <div>
-                                <p class="font-bold">ماژول حسابداری غیرفعال است!</p>
-                                <p class="text-xs mt-1">برای اتصال درگاه‌های پرداخت، دستگاه‌های POS و حساب‌های بانکی به صندوق‌های مالی، ابتدا باید ماژول حسابداری را از بخش <a href="{{ route('admin.modules.index') }}" class="underline text-yellow-900">مدیریت ماژول‌ها</a> فعال کنید.</p>
-                            </div>
-                        </div>
-                    @endif
-
-                    <div
-                        class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-gray-100 dark:border-gray-700">
-                        <div>
-                            <label for="payment_currency" class="{{ $labelClass }}">واحد پول سیستم</label>
-                            <select class="{{ $inputClass }}" id="payment_currency" name="payment_currency">
-                                <option
-                                    value="toman" {{ ($settings['payment_currency'] ?? 'toman') == 'toman' ? 'selected' : '' }}>
-                                    تومان
-                                </option>
-                                <option
-                                    value="rial" {{ ($settings['payment_currency'] ?? '') == 'rial' ? 'selected' : '' }}>
-                                    ریال
-                                </option>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">واحد پولی که مبالغ در سیستم شما با آن ثبت می‌شوند.</p>
-                        </div>
-                        <div>
-                            <label class="{{ $labelClass }}">روش‌های پرداخت فعال سیستم</label>
-                            @php
-                                $activePaymentMethods = isset($settings['active_payment_methods']) ? (is_string($settings['active_payment_methods']) ? json_decode($settings['active_payment_methods'], true) : $settings['active_payment_methods']) : ['online'];
-                                if (!is_array($activePaymentMethods)) $activePaymentMethods = ['online'];
-                            @endphp
-                            <div class="flex flex-wrap gap-4 mt-2">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="active_payment_methods[]" value="online"
-                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ in_array('online', $activePaymentMethods) ? 'checked' : '' }}>
-                                    <span class="text-sm text-gray-700 dark:text-gray-300">درگاه اینترنتی</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="active_payment_methods[]" value="pos"
-                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ in_array('pos', $activePaymentMethods) ? 'checked' : '' }}>
-                                    <span class="text-sm text-gray-700 dark:text-gray-300">دستگاه POS</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="active_payment_methods[]" value="transfer"
-                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ in_array('transfer', $activePaymentMethods) ? 'checked' : '' }}>
-                                    <span class="text-sm text-gray-700 dark:text-gray-300">انتقال بانکی</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="active_payment_methods[]" value="cod"
-                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ in_array('cod', $activePaymentMethods) ? 'checked' : '' }}>
-                                    <span class="text-sm text-gray-700 dark:text-gray-300">پرداخت در محل</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="active_payment_methods[]" value="installment"
-                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ in_array('installment', $activePaymentMethods) ? 'checked' : '' }}>
-                                    <span class="text-sm text-gray-700 dark:text-gray-300">پرداخت قسطی</span>
-                                </label>
-                            </div>
-                            <p class="text-[11px] text-gray-500 mt-2">این روش‌ها در فرم‌های نوبت‌دهی و بخش‌های مختلف
-                                سیستم قابل استفاده خواهند بود.</p>
-                        </div>
-                    </div>
-                    <div class="space-y-6">
-                        <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-                            <div
-                                class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="text-md font-bold text-gray-900 dark:text-white">۱. درگاه‌های اینترنتی</h3>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div
-                                class="md:col-span-2 bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
-                                <label for="default_payment_gateway" class="{{ $labelClass }}">درگاه اینترنتی
-                                    پیش‌فرض</label>
-                                <select class="{{ $inputClass }} md:w-1/2" id="default_payment_gateway"
-                                        name="default_payment_gateway">
-                                    <option value="">انتخاب کنید...</option>
-                                    <option
-                                        value="zarinpal" {{ ($settings['default_payment_gateway'] ?? '') == 'zarinpal' ? 'selected' : '' }}>
-                                        زرین‌پال
-                                    </option>
-                                    <option
-                                        value="zibal" {{ ($settings['default_payment_gateway'] ?? '') == 'zibal' ? 'selected' : '' }}>
-                                        زیبال
-                                    </option>
-                                    <option
-                                        value="behpardakht" {{ ($settings['default_payment_gateway'] ?? '') == 'behpardakht' ? 'selected' : '' }}>
-                                        به‌پرداخت ملت
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
-                        <div
-                            class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
-                            <div
-                                class="flex items-center gap-3 mb-4 border-b border-gray-200 dark:border-gray-700 pb-3">
-                                <div
-                                    class="w-2 h-2 rounded-full {{ ($settings['zarinpal_status'] ?? '') == 'active' ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600' }}"></div>
-                                <h4 class="text-sm font-bold text-gray-900 dark:text-white">درگاه زرین‌پال</h4>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="zarinpal_status" class="{{ $labelClass }}">وضعیت درگاه</label>
-                                    <select class="{{ $inputClass }}" id="zarinpal_status" name="zarinpal_status">
-                                        <option
-                                            value="inactive" {{ ($settings['zarinpal_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>
-                                            غیرفعال
-                                        </option>
-                                        <option
-                                            value="active" {{ ($settings['zarinpal_status'] ?? '') == 'active' ? 'selected' : '' }}>
-                                            فعال
-                                        </option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label for="zarinpal_sandbox" class="{{ $labelClass }}">حالت آزمایشی
-                                        (Sandbox)</label>
-                                    <select class="{{ $inputClass }}" id="zarinpal_sandbox" name="zarinpal_sandbox">
-                                        <option
-                                            value="0" {{ ($settings['zarinpal_sandbox'] ?? '0') == '0' ? 'selected' : '' }}>
-                                            خیر (محیط عملیاتی)
-                                        </option>
-                                        <option
-                                            value="1" {{ ($settings['zarinpal_sandbox'] ?? '') == '1' ? 'selected' : '' }}>
-                                            بله (محیط تست)
-                                        </option>
-                                    </select>
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label for="zarinpal_merchant_id" class="{{ $labelClass }}">کد مرچنت (Merchant
-                                        ID)</label>
-                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
-                                           id="zarinpal_merchant_id" name="zarinpal_merchant_id"
-                                           value="{{ $settings['zarinpal_merchant_id'] ?? '' }}"
-                                           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-                                </div>
-
-                                <div>
-                                    <label for="zarinpal_bank_id" class="{{ $labelClass }}">بانک متصل (حسابداری)</label>
-                                    <select name="zarinpal_bank_id" id="zarinpal_bank_id" class="{{ $inputClass }}" @if(!$isAccountingActive) disabled @endif>
-                                        <option value="">انتخاب کنید...</option>
-                                        @foreach($banks as $bank)
-                                            <option
-                                                value="{{ $bank->id }}" {{ ($settings['zarinpal_bank_id'] ?? '') == $bank->id ? 'selected' : '' }}>{{ $bank->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @if(!$isAccountingActive)
-                                        <p class="text-xs text-red-500 mt-1">ماژول حسابداری غیرفعال است.</p>
-                                    @endif
-                                </div>
-
-                                <div class="md:col-span-2 flex items-center justify-end pt-2">
-                                    <button type="button" id="test-zarinpal-btn"
-                                            class="px-4 py-2 rounded-xl bg-blue-100 text-blue-700 font-medium hover:bg-blue-200 transition-colors flex items-center gap-2 text-sm">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                        </svg>
-                                        تست پرداخت زرین‌پال
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div
-                            class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
-                            <div
-                                class="flex items-center gap-3 mb-4 border-b border-gray-200 dark:border-gray-700 pb-3">
-                                <div
-                                    class="w-2 h-2 rounded-full {{ ($settings['zibal_status'] ?? '') == 'active' ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600' }}"></div>
-                                <h4 class="text-sm font-bold text-gray-900 dark:text-white">درگاه زیبال</h4>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="zibal_status" class="{{ $labelClass }}">وضعیت درگاه</label>
-                                    <select class="{{ $inputClass }}" id="zibal_status" name="zibal_status">
-                                        <option
-                                            value="inactive" {{ ($settings['zibal_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>
-                                            غیرفعال
-                                        </option>
-                                        <option
-                                            value="active" {{ ($settings['zibal_status'] ?? '') == 'active' ? 'selected' : '' }}>
-                                            فعال
-                                        </option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label for="zibal_merchant_id" class="{{ $labelClass }}">کد مرچنت (Merchant)</label>
-                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
-                                           id="zibal_merchant_id" name="zibal_merchant_id"
-                                           value="{{ $settings['zibal_merchant_id'] ?? '' }}"
-                                           placeholder="zibal (برای تست)">
-                                </div>
-
-                                <div>
-                                    <label for="zibal_bank_id" class="{{ $labelClass }}">بانک متصل (حسابداری)</label>
-                                    <select name="zibal_bank_id" id="zibal_bank_id" class="{{ $inputClass }}" @if(!$isAccountingActive) disabled @endif>
-                                        <option value="">انتخاب کنید...</option>
-                                        @foreach($banks as $bank)
-                                            <option
-                                                value="{{ $bank->id }}" {{ ($settings['zibal_bank_id'] ?? '') == $bank->id ? 'selected' : '' }}>{{ $bank->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @if(!$isAccountingActive)
-                                        <p class="text-xs text-red-500 mt-1">ماژول حسابداری غیرفعال است.</p>
-                                    @endif
-                                </div>
-
-                                <div class="md:col-span-2 flex items-center justify-end pt-2">
-                                    <button type="button" id="test-zibal-btn"
-                                            class="px-4 py-2 rounded-xl bg-blue-100 text-blue-700 font-medium hover:bg-blue-200 transition-colors flex items-center gap-2 text-sm">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                        </svg>
-                                        تست پرداخت زیبال
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div
-                            class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
-                            <div
-                                class="flex items-center gap-3 mb-4 border-b border-gray-200 dark:border-gray-700 pb-3">
-                                <div
-                                    class="w-2 h-2 rounded-full {{ ($settings['behpardakht_status'] ?? '') == 'active' ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600' }}"></div>
-                                <h4 class="text-sm font-bold text-gray-900 dark:text-white">درگاه به‌پرداخت ملت</h4>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div class="md:col-span-3">
-                                    <label for="behpardakht_status" class="{{ $labelClass }}">وضعیت درگاه</label>
-                                    <select class="{{ $inputClass }} md:w-1/3" id="behpardakht_status"
-                                            name="behpardakht_status">
-                                        <option
-                                            value="inactive" {{ ($settings['behpardakht_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>
-                                            غیرفعال
-                                        </option>
-                                        <option
-                                            value="active" {{ ($settings['behpardakht_status'] ?? '') == 'active' ? 'selected' : '' }}>
-                                            فعال
-                                        </option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label for="behpardakht_terminal_id" class="{{ $labelClass }}">شماره ترمینال
-                                        (Terminal ID)</label>
-                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
-                                           id="behpardakht_terminal_id" name="behpardakht_terminal_id"
-                                           value="{{ $settings['behpardakht_terminal_id'] ?? '' }}">
-                                </div>
-                                <div>
-                                    <label for="behpardakht_username" class="{{ $labelClass }}">نام کاربری
-                                        (Username)</label>
-                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
-                                           id="behpardakht_username" name="behpardakht_username"
-                                           value="{{ $settings['behpardakht_username'] ?? '' }}">
-                                </div>
-                                <div>
-                                    <label for="behpardakht_password" class="{{ $labelClass }}">رمز عبور
-                                        (Password)</label>
-                                    <input type="password" class="{{ $inputClass }} dir-ltr text-left"
-                                           id="behpardakht_password" name="behpardakht_password"
-                                           value="{{ $settings['behpardakht_password'] ?? '' }}">
-                                </div>
-
-                                <div class="md:col-span-3">
-                                    <label for="behpardakht_bank_id" class="{{ $labelClass }}">بانک متصل
-                                        (حسابداری)</label>
-                                    <select name="behpardakht_bank_id" id="behpardakht_bank_id"
-                                            class="{{ $inputClass }} md:w-1/3" @if(!$isAccountingActive) disabled @endif>
-                                        <option value="">انتخاب کنید...</option>
-                                        @foreach($banks as $bank)
-                                            <option
-                                                value="{{ $bank->id }}" {{ ($settings['behpardakht_bank_id'] ?? '') == $bank->id ? 'selected' : '' }}>{{ $bank->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @if(!$isAccountingActive)
-                                        <p class="text-xs text-red-500 mt-1">ماژول حسابداری غیرفعال است.</p>
-                                    @endif
-                                </div>
-
-                                <div class="md:col-span-3 flex items-center justify-end pt-2">
-                                    <button type="button" id="test-behpardakht-btn"
-                                            class="px-4 py-2 rounded-xl bg-blue-100 text-blue-700 font-medium hover:bg-blue-200 transition-colors flex items-center gap-2 text-sm">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                        </svg>
-                                        تست پرداخت به‌پرداخت ملت
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-                            <div
-                                class="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="text-md font-bold text-gray-900 dark:text-white">۲. دستگاه POS
-                                    (کارتخوان)</h3>
-                            </div>
-                        </div>
-
-                        <div
-                            class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4">
-                            <div>
-                                <label for="pos_status" class="{{ $labelClass }}">وضعیت پرداخت با POS</label>
-                                <select class="{{ $inputClass }} md:w-1/3" id="pos_status" name="pos_status">
-                                    <option
-                                        value="inactive" {{ ($settings['pos_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>
-                                        غیرفعال
-                                    </option>
-                                    <option
-                                        value="active" {{ ($settings['pos_status'] ?? '') == 'active' ? 'selected' : '' }}>
-                                        فعال
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div id="pos-devices-container" class="space-y-4">
-                            </div>
-
-                            <div class="flex justify-start pt-2">
-                                <button type="button" id="add-pos-device-btn"
-                                        class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                    </svg>
-                                    افزودن دستگاه POS
-                                </button>
-                            </div>
-
-                            <div>
-                                <label for="pos_guidance" class="{{ $labelClass }}">متن راهنمای کاربر</label>
-                                <textarea class="{{ $inputClass }}" id="pos_guidance" name="pos_guidance" rows="2"
-                                          placeholder="مثال: لطفاً پس از پرداخت در محل، رسید خود را به صندوقدار تحویل دهید.">{{ $settings['pos_guidance'] ?? '' }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- بخش ۳: انتقال بانکی --}}
-                    <div class="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-                            <div
-                                class="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 dark:text-orange-400">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="text-md font-bold text-gray-900 dark:text-white">۳. انتقال بانکی (کارت به
-                                    کارت / شبا)</h3>
-                            </div>
-                        </div>
-
-                        <div
-                            class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4">
-                            <div>
-                                <label for="bank_transfer_status" class="{{ $labelClass }}">وضعیت انتقال بانکی</label>
-                                <select class="{{ $inputClass }} md:w-1/3" id="bank_transfer_status"
-                                        name="bank_transfer_status">
-                                    <option
-                                        value="inactive" {{ ($settings['bank_transfer_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>
-                                        غیرفعال
-                                    </option>
-                                    <option
-                                        value="active" {{ ($settings['bank_transfer_status'] ?? '') == 'active' ? 'selected' : '' }}>
-                                        فعال
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div id="bank-accounts-container" class="space-y-4">
-                            </div>
-
-                            <div class="flex justify-start pt-2">
-                                <button type="button" id="add-bank-account-btn"
-                                        class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                    </svg>
-                                    افزودن حساب بانکی
-                                </button>
-                            </div>
-
-                            <div>
-                                <label for="bank_transfer_guidance" class="{{ $labelClass }}">متن راهنمای آپلود
-                                    فیش</label>
-                                <textarea class="{{ $inputClass }}" id="bank_transfer_guidance"
-                                          name="bank_transfer_guidance" rows="2"
-                                          placeholder="مثال: لطفاً پس از واریز مبلغ، تصویر فیش یا کد پیگیری را در این قسمت وارد کنید.">{{ $settings['bank_transfer_guidance'] ?? '' }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-                            <div
-                                class="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600 dark:text-green-400">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="text-md font-bold text-gray-900 dark:text-white">۴. پرداخت در محل (Cash on Delivery)</h3>
-                            </div>
-                        </div>
-                        <div
-                            class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4">
-                            <div>
-                                <label for="cod_status" class="{{ $labelClass }}">وضعیت پرداخت در محل</label>
-                                <select class="{{ $inputClass }} md:w-1/3" id="cod_status" name="cod_status">
-                                    <option
-                                        value="inactive" {{ ($settings['cod_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>
-                                        غیرفعال
-                                    </option>
-                                    <option
-                                        value="active" {{ ($settings['cod_status'] ?? '') == 'active' ? 'selected' : '' }}>
-                                        فعال
-                                    </option>
-                                </select>
-                                <p class="text-xs text-gray-500 mt-1">با فعال کردن این گزینه، امکان پرداخت نقدی در محل تحویل برای مشتریان فعال می‌شود. این روش نیازی به اتصال به بانک یا درگاه پرداخت ندارد.</p>
-                            </div>
-
-                            <div>
-                                <label for="cod_guidance" class="{{ $labelClass }}">متن راهنمای کاربر</label>
-                                <textarea class="{{ $inputClass }}" id="cod_guidance" name="cod_guidance" rows="2"
-                                          placeholder="مثال: پس از تأیید سفارش، مبلغ را هنگام تحویل به پیک یا مسئول فروش پرداخت نمایید.">{{ $settings['cod_guidance'] ?? '' }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-                            <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 dark:text-purple-400">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="text-md font-bold text-gray-900 dark:text-white">۵. پرداخت قسطی (Installment)</h3>
-                            </div>
-                        </div>
-
-                        <div class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4">
-                            <div>
-                                <label for="installment_status" class="{{ $labelClass }}">وضعیت کلی پرداخت قسطی</label>
-                                <select class="{{ $inputClass }} md:w-1/3" id="installment_status" name="installment_status">
-                                    <option value="inactive" {{ ($settings['installment_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>غیرفعال</option>
-                                    <option value="active" {{ ($settings['installment_status'] ?? '') == 'active' ? 'selected' : '' }}>فعال</option>
-                                </select>
-                            </div>
-                            <div id="installment-types-container" class="space-y-4 mt-4">
-                            </div>
-                            <div class="flex justify-start pt-2">
-                                <button type="button" id="add-installment-btn" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                    </svg>
-                                    افزودن نوع اقساط
-                                </button>
-                            </div>
-
-                            <div class="mt-4">
-                                <label for="installment_guidance" class="{{ $labelClass }}">متن راهنمای کلی قسطی</label>
-                                <textarea class="{{ $inputClass }}" id="installment_guidance" name="installment_guidance" rows="2" placeholder="مثال: پرداخت اقساط از زمان ثبت سفارش فعال شده و هر ماه به صورت خودکار کسر می‌گردد.">{{ $settings['installment_guidance'] ?? '' }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="sticky bottom-4 z-40 flex justify-end">
+            <div class="sticky bottom-4 z-40 flex justify-end mt-8">
                 <div
                     class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-2 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
                     <button type="submit"
@@ -972,6 +548,9 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
             </div>
         </form>
 
+        {{-- مدیریت کلیدهای API --}}
+        @include('settings::api-keys.index')
+
         <form id="test-payment-form" action="{{ route('settings.payment.request') }}" method="POST" class="hidden">
             @csrf
             <input type="hidden" name="gateway" id="test-gateway-input" value="">
@@ -979,641 +558,6 @@ $bank_transfer_accounts = isset($settings['bank_transfer_accounts'])
             <input type="hidden" name="description" value="تست پرداخت">
         </form>
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
 
-            const banks = @json($banks);
-            const isAccountingActive = @json($isAccountingActive);
-
-            function generateUniqueId(prefix) {
-                return prefix + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-            }
-
-            // ===================== POS Devices =====================
-            const posDevicesContainer = document.getElementById('pos-devices-container');
-            const addPosDeviceBtn = document.getElementById('add-pos-device-btn');
-            let posDevices = @json($pos_devices);
-            if (!Array.isArray(posDevices)) posDevices = [];
-
-            posDevices.forEach(d => {
-                if (!d.id) d.id = generateUniqueId('pos');
-            });
-
-            function createPosDeviceItem(device = {}, index) {
-                const deviceId = `pos_device_${index}`;
-                const item = document.createElement('div');
-                item.className = 'p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 relative';
-                item.setAttribute('data-index', index);
-
-                let bankOptions = '<option value="">انتخاب بانک</option>';
-                banks.forEach(bank => {
-                    bankOptions += `<option value="${bank.id}" ${device.bank_id == bank.id ? 'selected' : ''}>${bank.name}</option>`;
-                });
-
-                let disabledAttr = !isAccountingActive ? 'disabled' : '';
-                let warningText = !isAccountingActive ? '<p class="text-xs text-red-500 mt-1">ماژول حسابداری غیرفعال است.</p>' : '';
-
-                item.innerHTML = `
-        <input type="hidden" name="pos_devices[${index}][id]" value="${device.id}">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-                <label for="${deviceId}_name" class="{{ $labelClass }}">نام دستگاه</label>
-                <input type="text" data-field="name" id="${deviceId}_name" name="pos_devices[${index}][name]" value="${device.name || ''}" class="{{ $inputClass }}" placeholder="مثال: کارتخوان سامان">
-            </div>
-            <div>
-                <label for="${deviceId}_bank_id" class="{{ $labelClass }}">بانک متصل</label>
-                <select data-field="bank_id" id="${deviceId}_bank_id" name="pos_devices[${index}][bank_id]" class="{{ $inputClass }}" ${disabledAttr}>${bankOptions}</select>
-                ${warningText}
-            </div>
-            <div>
-                <label for="${deviceId}_account_number" class="{{ $labelClass }}">شماره حساب</label>
-                <input type="text" data-field="account_number" id="${deviceId}_account_number" name="pos_devices[${index}][account_number]" value="${device.account_number || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="123-456-789">
-            </div>
-        </div>
-        <button type="button" class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center remove-pos-device-btn">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" /></svg>
-        </button>
-    `;
-                posDevicesContainer.appendChild(item);
-            }
-
-            function renderPosDevices() {
-                posDevicesContainer.innerHTML = '';
-                posDevices.forEach((device, index) => createPosDeviceItem(device, index));
-            }
-
-            posDevicesContainer.addEventListener('input', (e) => {
-                if (e.target.hasAttribute('data-field')) {
-                    const index = e.target.closest('[data-index]').getAttribute('data-index');
-                    posDevices[index][e.target.getAttribute('data-field')] = e.target.value;
-                }
-            });
-            posDevicesContainer.addEventListener('change', (e) => {
-                if (e.target.hasAttribute('data-field')) {
-                    const index = e.target.closest('[data-index]').getAttribute('data-index');
-                    posDevices[index][e.target.getAttribute('data-field')] = e.target.value;
-                }
-            });
-
-            addPosDeviceBtn.addEventListener('click', () => {
-                posDevices.push({id: generateUniqueId('pos')});
-                renderPosDevices();
-            });
-
-            posDevicesContainer.addEventListener('click', (e) => {
-                if (e.target.closest('.remove-pos-device-btn')) {
-                    const item = e.target.closest('[data-index]');
-                    const index = parseInt(item.getAttribute('data-index'));
-                    posDevices.splice(index, 1);
-                    renderPosDevices();
-                }
-            });
-
-            // ===================== Bank Accounts =====================
-            const bankAccountsContainer = document.getElementById('bank-accounts-container');
-            const addBankAccountBtn = document.getElementById('add-bank-account-btn');
-            let bankAccounts = @json($bank_transfer_accounts);
-            if (!Array.isArray(bankAccounts)) bankAccounts = [];
-
-            bankAccounts.forEach(a => {
-                if (!a.id) a.id = generateUniqueId('bank');
-            });
-
-            function createBankAccountItem(account = {}, index) {
-                const accountId = `bank_account_${index}`;
-                const item = document.createElement('div');
-                item.className = 'p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 relative';
-                item.setAttribute('data-index', index);
-
-                let bankOptions = '<option value="">انتخاب بانک</option>';
-                banks.forEach(bank => {
-                    bankOptions += `<option value="${bank.id}" ${account.bank_id == bank.id ? 'selected' : ''}>${bank.name}</option>`;
-                });
-
-                let disabledAttr = !isAccountingActive ? 'disabled' : '';
-                let warningText = !isAccountingActive ? '<p class="text-xs text-red-500 mt-1">ماژول حسابداری غیرفعال است.</p>' : '';
-
-                item.innerHTML = `
-        <input type="hidden" name="bank_transfer_accounts[${index}][id]" value="${account.id}">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label for="${accountId}_bank_id" class="{{ $labelClass }}">نام بانک</label>
-                <select data-field="bank_id" id="${accountId}_bank_id" name="bank_transfer_accounts[${index}][bank_id]" class="{{ $inputClass }}" ${disabledAttr}>${bankOptions}</select>
-                ${warningText}
-            </div>
-            <div>
-                <label for="${accountId}_account_number" class="{{ $labelClass }}">شماره حساب</label>
-                <input type="text" data-field="account_number" id="${accountId}_account_number" name="bank_transfer_accounts[${index}][account_number]" value="${account.account_number || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="123-456-789">
-            </div>
-            <div>
-                <label for="${accountId}_card_number" class="{{ $labelClass }}">شماره کارت</label>
-                <input type="text" data-field="card_number" id="${accountId}_card_number" name="bank_transfer_accounts[${index}][card_number]" value="${account.card_number || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="6037-xxxx-xxxx-xxxx">
-            </div>
-            <div>
-                <label for="${accountId}_iban" class="{{ $labelClass }}">شماره شبا</label>
-                <input type="text" data-field="iban" id="${accountId}_iban" name="bank_transfer_accounts[${index}][iban]" value="${account.iban || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="IR...">
-            </div>
-        </div>
-        <button type="button" class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center remove-bank-account-btn">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" /></svg>
-        </button>
-    `;
-                bankAccountsContainer.appendChild(item);
-            }
-
-            function renderBankAccounts() {
-                bankAccountsContainer.innerHTML = '';
-                bankAccounts.forEach((account, index) => createBankAccountItem(account, index));
-            }
-
-            bankAccountsContainer.addEventListener('input', (e) => {
-                if (e.target.hasAttribute('data-field')) {
-                    const index = e.target.closest('[data-index]').getAttribute('data-index');
-                    bankAccounts[index][e.target.getAttribute('data-field')] = e.target.value;
-                }
-            });
-            bankAccountsContainer.addEventListener('change', (e) => {
-                if (e.target.hasAttribute('data-field')) {
-                    const index = e.target.closest('[data-index]').getAttribute('data-index');
-                    bankAccounts[index][e.target.getAttribute('data-field')] = e.target.value;
-                }
-            });
-
-            addBankAccountBtn.addEventListener('click', () => {
-                bankAccounts.push({id: generateUniqueId('bank')});
-                renderBankAccounts();
-            });
-
-            bankAccountsContainer.addEventListener('click', (e) => {
-                if (e.target.closest('.remove-bank-account-btn')) {
-                    const item = e.target.closest('[data-index]');
-                    const index = parseInt(item.getAttribute('data-index'));
-                    bankAccounts.splice(index, 1);
-                    renderBankAccounts();
-                }
-            });
-
-            // ===================== Installment Types =====================
-            const availableServices = @json($availableServices ?? []);
-            const installmentContainer = document.getElementById('installment-types-container');
-            const addInstallmentBtn = document.getElementById('add-installment-btn');
-
-            let installmentTypes = @json(isset($settings['installment_types']) ? (is_string($settings['installment_types']) ? json_decode($settings['installment_types'], true) : $settings['installment_types']) : []);
-            if (!Array.isArray(installmentTypes)) installmentTypes = [];
-            installmentTypes.forEach(t => {
-                if (!t.id) t.id = generateUniqueId('inst');
-                if (!t.brand_configs || typeof t.brand_configs !== 'object') t.brand_configs = {};
-                if (!Array.isArray(t.price_tiers)) t.price_tiers = [];
-            });
-
-            function getBrandKey(serviceId, tabTitle, sectionTitle, brandName) {
-                return `${serviceId}__${tabTitle}__${sectionTitle}__${brandName}`;
-            }
-
-            function isBrandSelected(item, key) {
-                return item.brand_configs && item.brand_configs[key] && item.brand_configs[key].active;
-            }
-
-            function getBrandConfig(item, key) {
-                return (item.brand_configs && item.brand_configs[key]) ? item.brand_configs[key] : {};
-            }
-
-            function syncBrandConfig(card, index) {
-                const configs = {};
-                card.querySelectorAll('[data-brand-block]').forEach(block => {
-                    const key = block.getAttribute('data-brand-block');
-                    const activeToggle = block.querySelector('[data-brand-active]');
-                    if (!activeToggle || !activeToggle.checked) return;
-                    configs[key] = {active: true};
-                    block.querySelectorAll('[data-brand-field]').forEach(input => {
-                        const field = input.getAttribute('data-brand-field');
-                        configs[key][field] = input.value;
-                    });
-                });
-                installmentTypes[index].brand_configs = configs;
-            }
-
-            function updateTabCounts(card) {
-                card.querySelectorAll('[data-tab-block]').forEach(block => {
-                    const total = block.querySelectorAll('[data-brand-active]').length;
-                    const checked = block.querySelectorAll('[data-brand-active]:checked').length;
-                    const countEl = block.querySelector('[data-tab-count]');
-                    if (countEl) countEl.textContent = `${checked} از ${total}`;
-                    const tabToggle = block.querySelector('[data-tab-toggle]');
-                    if (tabToggle) tabToggle.checked = total > 0 && checked === total;
-                });
-                const totalSelected = card.querySelectorAll('[data-brand-active]:checked').length;
-                const totalEl = card.querySelector('[data-total-brands]');
-                if (totalEl) totalEl.textContent = `${totalSelected} برند انتخاب شده`;
-            }
-
-            // =============== Price Tiers Logic (Updated with Fee & Down Payment) ===============
-            function createPriceTierHtml(tier, tierIndex, planIndex) {
-                const div = document.createElement('div');
-                div.className = 'grid grid-cols-2 md:grid-cols-7 gap-2 items-end p-3 border border-blue-100 dark:border-blue-800/30 rounded-lg bg-white dark:bg-gray-800/50 relative';
-                div.setAttribute('data-tier-index', tierIndex);
-
-                div.innerHTML = `
-            <div class="md:col-span-1">
-                <label class="block text-[11px] font-bold text-gray-600 mb-1">حداقل مبلغ</label>
-                <input type="number" min="0" data-tier-field="min_price" name="installment_types[${planIndex}][price_tiers][${tierIndex}][min_price]" value="${tier.min_price || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="50000">
-            </div>
-            <div class="md:col-span-1">
-                <label class="block text-[11px] font-bold text-gray-600 mb-1">حداکثر مبلغ</label>
-                <input type="number" min="0" data-tier-field="max_price" name="installment_types[${planIndex}][price_tiers][${tierIndex}][max_price]" value="${tier.max_price || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="52000">
-            </div>
-            <div class="md:col-span-1">
-                <label class="block text-[11px] font-bold text-gray-600 mb-1">حداکثر ماه‌ها</label>
-                <input type="number" min="1" data-tier-field="max_months" name="installment_types[${planIndex}][price_tiers][${tierIndex}][max_months]" value="${tier.max_months || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="12">
-            </div>
-            <div class="md:col-span-1">
-                <label class="block text-[11px] font-bold text-gray-600 mb-1">مراحل پرداخت</label>
-                <input type="number" min="1" data-tier-field="payment_stages" name="installment_types[${planIndex}][price_tiers][${tierIndex}][payment_stages]" value="${tier.payment_stages || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="3">
-            </div>
-            <div class="md:col-span-1">
-                <label class="block text-[11px] font-bold text-gray-600 mb-1">پیش‌پرداخت (%)</label>
-                <input type="number" min="0" max="100" data-tier-field="down_payment" name="installment_types[${planIndex}][price_tiers][${tierIndex}][down_payment]" value="${tier.down_payment || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="20">
-            </div>
-            <div class="md:col-span-1">
-                <label class="block text-[11px] font-bold text-gray-600 mb-1">کارمزد ماهانه (%)</label>
-                <input type="number" min="0" step="0.1" data-tier-field="fee_percent" name="installment_types[${planIndex}][price_tiers][${tierIndex}][fee_percent]" value="${tier.fee_percent || ''}" class="{{ $inputClass }} dir-ltr text-left text-xs" placeholder="2">
-            </div>
-            <button type="button" class="remove-price-tier-btn h-9 w-9 rounded-lg bg-red-50 text-red-500 hover:bg-red-200 flex items-center justify-center justify-self-end">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        `;
-                return div;
-            }
-
-            function renderPriceTiers(card, planIndex) {
-                const tiersContainer = card.querySelector('.price-tiers-container');
-                if (!tiersContainer) return;
-                tiersContainer.innerHTML = '';
-                const tiers = installmentTypes[planIndex].price_tiers || [];
-                tiers.forEach((tier, tIdx) => {
-                    tiersContainer.appendChild(createPriceTierHtml(tier, tIdx, planIndex));
-                });
-            }
-
-            function createInstallmentItem(item = {}, index) {
-                const div = document.createElement('div');
-                div.className = 'relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm';
-                div.setAttribute('data-index', index);
-
-                const isSpecialChecked = item.is_special ? 'checked' : '';
-                const specialDisplay = item.is_special ? 'grid' : 'none';
-
-                let servicesHtml = '';
-
-                if (availableServices.length === 0) {
-                    servicesHtml = `<div class="p-6 text-center text-gray-400">سرویسی یافت نشد.</div>`;
-                } else {
-                    const tabColorClasses = [
-                        {
-                            bg: 'bg-purple-50 dark:bg-purple-900/20',
-                            text: 'text-purple-700 dark:text-purple-300',
-                            count: 'text-purple-600',
-                            border: 'border border-purple-100 dark:border-purple-800/40'
-                        },
-                        {
-                            bg: 'bg-teal-50 dark:bg-teal-900/20',
-                            text: 'text-teal-700 dark:text-teal-300',
-                            count: 'text-teal-600',
-                            border: 'border border-teal-100 dark:border-teal-800/40'
-                        },
-                        {
-                            bg: 'bg-amber-50 dark:bg-amber-900/20',
-                            text: 'text-amber-700 dark:text-amber-300',
-                            count: 'text-amber-600',
-                            border: 'border border-amber-100 dark:border-amber-800/40'
-                        },
-                        {
-                            bg: 'bg-blue-50 dark:bg-blue-900/20',
-                            text: 'text-blue-700 dark:text-blue-300',
-                            count: 'text-blue-600',
-                            border: 'border border-blue-100 dark:border-blue-800/40'
-                        },
-                        {
-                            bg: 'bg-rose-50 dark:bg-rose-900/20',
-                            text: 'text-rose-700 dark:text-rose-300',
-                            count: 'text-rose-600',
-                            border: 'border border-rose-100 dark:border-rose-800/40'
-                        },
-                    ];
-                    let tabColorIndex = 0;
-
-                    availableServices.forEach(service => {
-                        (service.tabs || []).forEach(tab => {
-                            const color = tabColorClasses[tabColorIndex % tabColorClasses.length];
-                            tabColorIndex++;
-
-                            let totalBrands = 0;
-                            let checkedBrands = 0;
-                            let sectionsHtml = '';
-
-                            (tab.sections || []).forEach(section => {
-                                const validBrands = (section.brands || []).filter(b => b.name && b.name.trim() !== '' && b.is_installment === true);
-                                if (validBrands.length === 0) return;
-
-                                let brandsHtml = '';
-                                validBrands.forEach(brand => {
-                                    const key = getBrandKey(service.id, tab.title, section.title, brand.name);
-                                    const isChecked = isBrandSelected(item, key);
-                                    const cfg = getBrandConfig(item, key);
-                                    if (isChecked) checkedBrands++;
-                                    totalBrands++;
-
-                                    const basePriceNum = brand.price ? Number(brand.price) : 0;
-                                    const basePrice = basePriceNum ? basePriceNum.toLocaleString('fa-IR') : '—';
-
-                                    brandsHtml += `
-                        <div data-brand-block="${key}" class="border-t border-gray-100 dark:border-gray-700/50">
-                            <div class="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors brand-toggle-row">
-                                <input type="checkbox" data-brand-active name="installment_types[${index}][brand_configs][${key}][active]" value="1" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0" ${isChecked ? 'checked' : ''}>
-                                <span class="text-xs flex-1 font-semibold text-gray-800 dark:text-gray-100">${brand.name}</span>
-                                <span class="text-xs font-bold text-gray-500 dir-ltr tabular-nums ml-2" data-base-price="${basePriceNum}">${basePrice}</span>
-                                <svg class="w-3.5 h-3.5 text-gray-400 brand-chevron transition-transform ${isChecked ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                            </div>
-                            <div class="brand-detail-fields ${isChecked ? '' : 'hidden'} bg-gray-50/60 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700/40 px-4 py-3">
-                                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">قیمت ویژه</label>
-                                        <input type="number" min="0" data-brand-field="custom_price" name="installment_types[${index}][brand_configs][${key}][custom_price]" value="${cfg.custom_price || (basePriceNum || '')}" placeholder="${basePrice}" class="{{ $inputClass }} dir-ltr text-left text-xs">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">پیش‌پرداخت (%)</label>
-                                        <input type="number" min="0" max="100" data-brand-field="down_payment" name="installment_types[${index}][brand_configs][${key}][down_payment]" value="${cfg.down_payment || ''}" placeholder="پیش‌فرض بازه" class="{{ $inputClass }} dir-ltr text-left text-xs">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">اقساط (ماه)</label>
-                                        <input type="number" min="1" data-brand-field="months_limit" name="installment_types[${index}][brand_configs][${key}][months_limit]" value="${cfg.months_limit || ''}" placeholder="پیش‌فرض بازه" class="{{ $inputClass }} dir-ltr text-left text-xs">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">مراحل پرداخت</label>
-                                        <input type="number" min="1" data-brand-field="payment_stages" name="installment_types[${index}][brand_configs][${key}][payment_stages]" value="${cfg.payment_stages || ''}" placeholder="مثال: 2" class="{{ $inputClass }} dir-ltr text-left text-xs">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">کارمزد (%)</label>
-                                        <input type="number" min="0" max="100" step="0.1" data-brand-field="fee_percent" name="installment_types[${index}][brand_configs][${key}][fee_percent]" value="${cfg.fee_percent || ''}" placeholder="پیش‌فرض بازه" class="{{ $inputClass }} dir-ltr text-left text-xs">
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">دوره بدون بهره (روز)</label>
-                                        <input type="number" min="0" data-brand-field="grace_period_days" name="installment_types[${index}][brand_configs][${key}][grace_period_days]" value="${cfg.grace_period_days || ''}" placeholder="مثال: ۳۰" class="{{ $inputClass }} dir-ltr text-left text-xs">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-gray-600 mb-1">جریمه تأخیر (تومان)</label>
-                                        <input type="number" min="0" data-brand-field="late_fee" name="installment_types[${index}][brand_configs][${key}][late_fee]" value="${cfg.late_fee || ''}" placeholder="مثال: ۵۰,۰۰۰" class="{{ $inputClass }} dir-ltr text-left text-xs">
-                                    </div>
-                                    <div class="md:col-span-2">
-                                        <label class="block text-[11px] font-bold text-indigo-700 mb-1">توضیحات برای بیمار</label>
-                                        <input type="text" data-brand-field="notes" name="installment_types[${index}][brand_configs][${key}][notes]" value="${cfg.notes || ''}" placeholder="مثال: شامل ۳ ماه بدون بهره." class="{{ $inputClass }} text-xs">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>`;
-                                });
-
-                                const allChecked = validBrands.every(b => isBrandSelected(item, getBrandKey(service.id, tab.title, section.title, b.name)));
-                                sectionsHtml += `
-                    <div class="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden mb-2 last:mb-0">
-                        <div class="px-3 py-2 bg-gray-50/70 dark:bg-gray-900/20 flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-semibold text-gray-800 dark:text-gray-100">${section.title}</span>
-                                <span class="text-[11px] text-gray-500">${section.type || ''}</span>
-                            </div>
-                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                <input type="checkbox" data-section-toggle class="rounded border-gray-300 text-indigo-500 focus:ring-indigo-400" ${allChecked ? 'checked' : ''}>
-                                <span class="text-[11px] text-gray-500">همه</span>
-                            </label>
-                        </div>
-                        ${brandsHtml}
-                    </div>`;
-                            });
-
-                            if (!sectionsHtml) return;
-
-                            servicesHtml += `
-                <div data-tab-block class="rounded-xl overflow-hidden mb-3 last:mb-0 ${color.border}">
-                    <div class="${color.bg} px-3 py-2.5 flex items-center justify-between">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" data-tab-toggle class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                            <span class="text-xs font-bold ${color.text}">${tab.title}</span>
-                            <span class="text-[11px] text-gray-500">${service.name}</span>
-                        </label>
-                        <span data-tab-count class="text-[11px] font-bold ${color.count}">${checkedBrands} از ${totalBrands}</span>
-                    </div>
-                    <div class="divide-y divide-gray-50 dark:divide-gray-700/30 p-2 space-y-2">${sectionsHtml}</div>
-                </div>`;
-                        });
-                    });
-                }
-
-                div.innerHTML = `
-    <input type="hidden" name="installment_types[${index}][id]" value="${item.id}">
-    <button type="button" class="remove-inst-btn absolute -top-3 -right-3 w-8 h-8 rounded-full bg-red-50 text-red-500 border border-red-100 hover:bg-red-500 hover:text-white shadow-sm flex items-center justify-center transition-all">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-    </button>
-
-    <div class="mb-5">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-                <label class="{{ $labelClass }}">عنوان طرح</label>
-                <input type="text" data-field="title" name="installment_types[${index}][title]" value="${item.title || ''}" class="{{ $inputClass }}" placeholder="مثال: طرح لبخند">
-            </div>
-        </div>
-    </div>
-
-    <div class="p-4 bg-purple-50/60 dark:bg-purple-900/10 rounded-xl border border-purple-100 dark:border-purple-800/30 mb-4">
-        <label class="flex items-center gap-2 cursor-pointer mb-3">
-            <input type="checkbox" data-field="is_special" name="installment_types[${index}][is_special]" class="special-toggle rounded border-purple-300 text-purple-600 focus:ring-purple-500" value="1" ${isSpecialChecked}>
-            <span class="text-sm font-bold text-purple-900 dark:text-purple-300">طرح مناسبتی / محدودیت‌دار</span>
-        </label>
-        <div class="special-fields grid-cols-1 md:grid-cols-3 gap-4" style="display:${specialDisplay};">
-            <div>
-                <label class="{{ $labelClass }}">محدودیت تعداد دندان</label>
-                <input type="number" min="0" data-field="teeth_limit" name="installment_types[${index}][teeth_limit]" value="${item.teeth_limit || ''}" class="{{ $inputClass }} dir-ltr text-left" placeholder="5">
-            </div>
-            <div>
-                <label class="{{ $labelClass }}">تاریخ شروع</label>
-                <input type="text" data-jdp readonly placeholder="YYYY/MM/DD" data-field="start_month" name="installment_types[${index}][start_month]" value="${item.start_month || ''}" class="{{ $inputClass }} dir-ltr text-left">
-            </div>
-            <div>
-                <label class="{{ $labelClass }}">تاریخ پایان</label>
-                <input type="text" data-jdp readonly placeholder="YYYY/MM/DD" data-field="end_month" name="installment_types[${index}][end_month]" value="${item.end_month || ''}" class="{{ $inputClass }} dir-ltr text-left">
-            </div>
-        </div>
-    </div>
-
-    <div class="p-4 bg-blue-50/60 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/30 mb-4">
-        <div class="flex items-center justify-between mb-3">
-            <span class="text-sm font-bold text-blue-900 dark:text-blue-300">بازه‌های قیمتی و شرایط اقساط (منطق پلکانی)</span>
-            <button type="button" class="add-price-tier-btn text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                افزودن بازه قیمتی
-            </button>
-        </div>
-        <div class="price-tiers-container space-y-3"></div>
-    </div>
-
-    <div>
-        <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-bold text-gray-800 dark:text-gray-100">برندهای مشمول این طرح</span>
-            <span data-total-brands class="text-xs px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 font-bold">${Object.keys(item.brand_configs || {}).length} انتخاب شده</span>
-        </div>
-        <p class="text-[11px] text-gray-500 mb-3">برای تنظیم دقیق هر برند روی آن کلیک کنید. مقادیر خالی از تنظیمات بازه قیمتی خوانده می‌شوند.</p>
-        ${servicesHtml}
-    </div>
-    `;
-
-                installmentContainer.appendChild(div);
-                renderPriceTiers(div, index);
-            }
-
-            function renderInstallmentTypes() {
-                installmentContainer.innerHTML = '';
-                installmentTypes.forEach((type, index) => createInstallmentItem(type, index));
-            }
-
-            addInstallmentBtn.addEventListener('click', () => {
-                installmentTypes.push({id: generateUniqueId('inst'), brand_configs: {}, price_tiers: []});
-                renderInstallmentTypes();
-            });
-
-            installmentContainer.addEventListener('click', (e) => {
-                if (e.target.closest('.remove-inst-btn')) {
-                    const item = e.target.closest('[data-index]');
-                    installmentTypes.splice(parseInt(item.getAttribute('data-index')), 1);
-                    renderInstallmentTypes();
-                    return;
-                }
-
-                if (e.target.closest('.add-price-tier-btn')) {
-                    const card = e.target.closest('[data-index]');
-                    const index = parseInt(card.getAttribute('data-index'));
-                    if (!Array.isArray(installmentTypes[index].price_tiers)) {
-                        installmentTypes[index].price_tiers = [];
-                    }
-                    installmentTypes[index].price_tiers.push({});
-                    renderPriceTiers(card, index);
-                    return;
-                }
-
-                if (e.target.closest('.remove-price-tier-btn')) {
-                    const tierItem = e.target.closest('[data-tier-index]');
-                    const card = e.target.closest('[data-index]');
-                    const planIndex = parseInt(card.getAttribute('data-index'));
-                    const tierIndex = parseInt(tierItem.getAttribute('data-tier-index'));
-
-                    installmentTypes[planIndex].price_tiers.splice(tierIndex, 1);
-                    renderPriceTiers(card, planIndex);
-                    return;
-                }
-
-                const toggleRow = e.target.closest('.brand-toggle-row');
-                if (toggleRow && e.target.type !== 'checkbox') {
-                    const block = toggleRow.closest('[data-brand-block]');
-                    const detailFields = block.querySelector('.brand-detail-fields');
-                    const chevron = block.querySelector('.brand-chevron');
-                    const activeToggle = block.querySelector('[data-brand-active]');
-                    if (activeToggle && activeToggle.checked) {
-                        detailFields.classList.toggle('hidden');
-                        chevron.classList.toggle('rotate-180');
-                    }
-                }
-            });
-
-            installmentContainer.addEventListener('change', (e) => {
-                const card = e.target.closest('[data-index]');
-                if (!card) return;
-                const index = parseInt(card.getAttribute('data-index'));
-
-                if (e.target.classList.contains('special-toggle')) {
-                    card.querySelector('.special-fields').style.display = e.target.checked ? 'grid' : 'none';
-                    installmentTypes[index].is_special = e.target.checked;
-                    return;
-                }
-
-                if (e.target.hasAttribute('data-tab-toggle')) {
-                    const tabBlock = e.target.closest('[data-tab-block]');
-                    tabBlock.querySelectorAll('[data-brand-active]').forEach(cb => {
-                        cb.checked = e.target.checked;
-                        const block = cb.closest('[data-brand-block]');
-                        const detailFields = block.querySelector('.brand-detail-fields');
-                        const chevron = block.querySelector('.brand-chevron');
-                        detailFields.classList.toggle('hidden', !e.target.checked);
-                        chevron.classList.toggle('rotate-180', e.target.checked);
-                    });
-                    tabBlock.querySelectorAll('[data-section-toggle]').forEach(cb => cb.checked = e.target.checked);
-                    syncBrandConfig(card, index);
-                    updateTabCounts(card);
-                    return;
-                }
-
-                if (e.target.hasAttribute('data-section-toggle')) {
-                    const sectionBlock = e.target.closest('.border.border-gray-100');
-                    sectionBlock.querySelectorAll('[data-brand-active]').forEach(cb => {
-                        cb.checked = e.target.checked;
-                        const block = cb.closest('[data-brand-block]');
-                        const detailFields = block.querySelector('.brand-detail-fields');
-                        const chevron = block.querySelector('.brand-chevron');
-                        detailFields.classList.toggle('hidden', !e.target.checked);
-                        chevron.classList.toggle('rotate-180', e.target.checked);
-                    });
-                    syncBrandConfig(card, index);
-                    updateTabCounts(card);
-                    return;
-                }
-
-                if (e.target.hasAttribute('data-brand-active')) {
-                    const block = e.target.closest('[data-brand-block]');
-                    const detailFields = block.querySelector('.brand-detail-fields');
-                    const chevron = block.querySelector('.brand-chevron');
-                    detailFields.classList.toggle('hidden', !e.target.checked);
-                    chevron.classList.toggle('rotate-180', e.target.checked);
-                    syncBrandConfig(card, index);
-                    updateTabCounts(card);
-                    return;
-                }
-
-                if (e.target.hasAttribute('data-field')) {
-                    const fieldName = e.target.getAttribute('data-field');
-                    installmentTypes[index][fieldName] = e.target.value;
-                }
-            });
-
-            installmentContainer.addEventListener('input', (e) => {
-                const card = e.target.closest('[data-index]');
-                if (!card) return;
-                const index = parseInt(card.getAttribute('data-index'));
-
-                if (e.target.hasAttribute('data-tier-field')) {
-                    const tierItem = e.target.closest('[data-tier-index]');
-                    const tierIndex = parseInt(tierItem.getAttribute('data-tier-index'));
-                    const field = e.target.getAttribute('data-tier-field');
-
-                    if (!installmentTypes[index].price_tiers) installmentTypes[index].price_tiers = [];
-                    if (!installmentTypes[index].price_tiers[tierIndex]) installmentTypes[index].price_tiers[tierIndex] = {};
-
-                    installmentTypes[index].price_tiers[tierIndex][field] = e.target.value;
-                    return;
-                }
-
-                if (e.target.hasAttribute('data-brand-field')) {
-                    syncBrandConfig(card, index);
-                    return;
-                }
-
-                const field = e.target.getAttribute('data-field');
-                if (field && field !== 'is_special') {
-                    installmentTypes[index][field] = e.target.value;
-                }
-            });
-
-            renderPosDevices();
-            renderBankAccounts();
-            renderInstallmentTypes();
-        });
-    </script>
+    @include('settings::partials.payment_scripts')
 @endsection

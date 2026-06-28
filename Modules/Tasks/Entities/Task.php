@@ -217,6 +217,39 @@ class Task extends Model
                             }
                         }
                     }
+                } elseif ($smsTarget === 'TREATMENT_PLAN_CLIENT') {
+                    $clientId = $this->meta['related_client_ids'][0] ?? ($this->related_type === 'CLIENT' ? $this->related_id : null);
+                    if ($clientId) {
+                        $client = \Modules\Clients\Entities\Client::find($clientId);
+                        if ($client) {
+                            $to = $client->phone;
+                        }
+                    }
+                } elseif ($smsTarget === 'TREATMENT_PLAN_CREATOR') {
+                    $instanceId = $this->meta['workflow_instance_id'] ?? null;
+                    if ($instanceId && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                        $instance = \Modules\Workflows\Entities\WorkflowInstance::find($instanceId);
+                        if ($instance && $instance->related_type === 'TREATMENT_PLAN') {
+                            $plan = \Modules\Booking\App\Models\TreatmentPlan::find($instance->related_id);
+                            if ($plan && $plan->user) {
+                                $to = $plan->user->phone ?? $plan->user->mobile;
+                            }
+                        }
+                    }
+                } elseif (str_starts_with($smsTarget, 'TREATMENT_PLAN_ROLE_')) {
+                    $instanceId = $this->meta['workflow_instance_id'] ?? null;
+                    if ($instanceId && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                        $instance = \Modules\Workflows\Entities\WorkflowInstance::find($instanceId);
+                        if ($instance && $instance->related_type === 'TREATMENT_PLAN') {
+                            $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $smsTarget);
+                            $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
+                            $context = $engine->buildContextData($instance);
+                            $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
+                            if (!empty($assignedUsers)) {
+                                $to = $assignedUsers[0]['phone'] ?? null;
+                            }
+                        }
+                    }
                 } else {
                     $clientId = $this->meta['related_client_ids'][0] ?? ($this->related_type === 'CLIENT' ? $this->related_id : null);
                     if ($clientId) {
@@ -275,6 +308,36 @@ class Task extends Model
                         $appt = \Modules\Booking\Entities\Appointment::find($instance->related_id);
                         if ($appt && $appt->provider) {
                             $recipient = $appt->provider;
+                        }
+                    }
+                }
+            } elseif ($notificationTarget === 'TREATMENT_PLAN_CLIENT') {
+                $clientId = $this->meta['related_client_ids'][0] ?? ($this->related_type === 'CLIENT' ? $this->related_id : null);
+                if ($clientId) {
+                    $recipient = \Modules\Clients\Entities\Client::find($clientId);
+                }
+            } elseif ($notificationTarget === 'TREATMENT_PLAN_CREATOR') {
+                $instanceId = $this->meta['workflow_instance_id'] ?? null;
+                if ($instanceId && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                    $instance = \Modules\Workflows\Entities\WorkflowInstance::find($instanceId);
+                    if ($instance && $instance->related_type === 'TREATMENT_PLAN') {
+                        $plan = \Modules\Booking\App\Models\TreatmentPlan::find($instance->related_id);
+                        if ($plan && $plan->user) {
+                            $recipient = $plan->user;
+                        }
+                    }
+                }
+            } elseif (str_starts_with($notificationTarget, 'TREATMENT_PLAN_ROLE_')) {
+                $instanceId = $this->meta['workflow_instance_id'] ?? null;
+                if ($instanceId && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                    $instance = \Modules\Workflows\Entities\WorkflowInstance::find($instanceId);
+                    if ($instance && $instance->related_type === 'TREATMENT_PLAN') {
+                        $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $notificationTarget);
+                        $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
+                        $context = $engine->buildContextData($instance);
+                        $assignedUsers = $context['assigned_user_models'][$roleId] ?? [];
+                        if (!empty($assignedUsers)) {
+                            $recipient = $assignedUsers[0];
                         }
                     }
                 }

@@ -129,7 +129,7 @@
                     <div class="flex items-start gap-3">
                         <!-- Priority bar indicator -->
                         <div class="w-1.5 h-12 rounded-full {{ $task->priority === 'CRITICAL' ? 'bg-red-600' : ($task->priority === 'HIGH' ? 'bg-orange-500' : ($task->priority === 'MEDIUM' ? 'bg-indigo-500' : 'bg-gray-400')) }}"></div>
-                        
+
                         <div>
                             <div class="flex items-center flex-wrap gap-2">
                                 <h4 class="text-xs font-bold text-gray-900 dark:text-white {{ $task->status === 'DONE' ? 'line-through text-gray-400 dark:text-gray-500' : '' }}">{{ $task->title }}</h4>
@@ -162,7 +162,7 @@
                             @if($task->assignee_id !== auth()->id() && $task->status !== 'DONE')
                                 <button wire:click="assignToMe({{ $task->id }})" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-bold transition-colors">من انجام می‌دهم</button>
                             @endif
-                            
+
                             <button wire:click="editTask({{ $task->id }})" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors" title="ویرایش">
                                 ✏️
                             </button>
@@ -192,8 +192,8 @@
                 <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                     <div class="fixed inset-0 bg-gray-950/60 dark:bg-gray-950/80 backdrop-blur-sm transition-opacity" x-on:click="show = false"></div>
                     <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                    
-                    <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700">
+
+                    <div class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700">
                         <div class="p-6">
                             <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-5">
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-title">

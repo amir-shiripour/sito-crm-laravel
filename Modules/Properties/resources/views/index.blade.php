@@ -247,13 +247,14 @@
                             <span class="ms-3 text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-amber-600 transition-colors">فقط آگهی‌های ویژه</span>
                         </label>
 
-                        @auth
+                        @if(auth()->check() && (auth()->user()->hasRole(['super-admin', 'admin']) || auth()->user()->can('properties.view.all') || auth()->user()->can('properties.manage')))
                             <label class="inline-flex items-center cursor-pointer group">
-                                <input type="checkbox" name="show_all" value="1" {{ request('show_all') ? 'checked' : '' }} class="sr-only peer">
+                                <input type="hidden" name="show_all" value="0">
+                                <input type="checkbox" name="show_all" value="1" {{ !request()->has('show_all') || request('show_all') == '1' ? 'checked' : '' }} class="sr-only peer">
                                 <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                                 <span class="ms-3 text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">نمایش همه املاک</span>
                             </label>
-                        @endauth
+                        @endif
                     </div>
 
                     <div class="flex w-full sm:w-auto gap-3">
@@ -649,7 +650,7 @@
                 return {
                     showAiModal: false,
                     aiQuery: '',
-                    aiShowAll: {{ request('show_all') == '1' ? 'true' : 'false' }},
+                    aiShowAll: {{ !request()->has('show_all') || request('show_all') == '1' ? 'true' : 'false' }},
                     isAiSearching: false,
                     isVoiceTyping: false,
                     isVoiceTypingSupported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),

@@ -128,10 +128,11 @@
 
 {{-- Buttons and Show All toggle --}}
 <div class="col-span-1 sm:col-span-2 lg:col-span-4 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-2">
-    @if(auth()->user()->hasRole('super-admin') || auth()->user()->can('properties.view.all') || auth()->user()->can('properties.manage'))
+    @if(auth()->user()->hasRole(['super-admin', 'admin']) || auth()->user()->can('properties.view.all') || auth()->user()->can('properties.manage'))
         <label class="inline-flex items-center cursor-pointer group">
             <div class="relative">
-                <input type="checkbox" name="show_all" value="1" class="sr-only peer" {{ request('show_all') ? 'checked' : '' }}>
+                <input type="hidden" name="show_all" value="0">
+                <input type="checkbox" name="show_all" value="1" class="sr-only peer" {{ !request()->has('show_all') || request('show_all') == '1' ? 'checked' : '' }}>
                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
             </div>
             <span class="mr-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">نمایش همه املاک</span>

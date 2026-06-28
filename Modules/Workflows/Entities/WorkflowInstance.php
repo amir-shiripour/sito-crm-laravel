@@ -21,11 +21,15 @@ class WorkflowInstance extends Model
         'started_at',
         'completed_at',
         'created_by',
+        'binding_id',
+        'tooth_context',
+        'item_context',
     ];
 
     protected $casts = [
         'started_at'   => 'datetime',
         'completed_at' => 'datetime',
+        'item_context' => 'array',
     ];
 
     public const STATUS_ACTIVE    = 'ACTIVE';
@@ -60,5 +64,10 @@ class WorkflowInstance extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(WorkflowLog::class, 'instance_id');
+    }
+
+    public function binding(): BelongsTo
+    {
+        return $this->belongsTo(\Modules\Booking\App\Models\TreatmentPlanWorkflowBinding::class, 'binding_id');
     }
 }

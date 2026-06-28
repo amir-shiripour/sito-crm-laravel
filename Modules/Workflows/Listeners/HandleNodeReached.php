@@ -146,11 +146,17 @@ class HandleNodeReached
             $assigneeMode = $template['assignee_mode'] ?? 'single_user';
 
             if ($assigneeMode === 'by_roles' && !empty($template['role_id'])) {
-                $userWithRole = \App\Models\User::whereHas('roles', function ($q) use ($template) {
-                    $q->where('id', $template['role_id'])
-                      ->orWhere('name', $template['role_id']);
-                })->first();
-                $assigneeId = $template['assignee_id'] ?? $userWithRole?->id ?? null;
+                $roleId = $template['role_id'];
+                $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
+                if (!empty($assignedUsers)) {
+                    $assigneeId = $assignedUsers[0]['user_id'];
+                } else {
+                    $userWithRole = \App\Models\User::whereHas('roles', function ($q) use ($template) {
+                        $q->where('id', $template['role_id'])
+                          ->orWhere('name', $template['role_id']);
+                    })->first();
+                    $assigneeId = $template['assignee_id'] ?? $userWithRole?->id ?? null;
+                }
             } else {
                 $assigneeId = $template['assignee_id'] ?? null;
             }
@@ -161,6 +167,16 @@ class HandleNodeReached
                 $assigneeId = $context['appointment']->provider_user_id ?? $assigneeId;
             } elseif ($assigneeTarget === 'SPECIFIC_USER' && !empty($template['assignee_id'])) {
                 $assigneeId = $template['assignee_id'];
+            } elseif ($assigneeTarget === 'TREATMENT_PLAN_CREATOR' && isset($context['treatment_plan'])) {
+                $assigneeId = $context['treatment_plan']->user_id ?? $assigneeId;
+            } elseif ($assigneeTarget === 'TREATMENT_PLAN_CLIENT_ASSIGNEE' && isset($context['treatment_plan'])) {
+                $assigneeId = $context['treatment_plan']->client_id ?? $assigneeId;
+            } elseif (str_starts_with($assigneeTarget, 'TREATMENT_PLAN_ROLE_')) {
+                $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $assigneeTarget);
+                $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
+                if (!empty($assignedUsers)) {
+                    $assigneeId = $assignedUsers[0]['user_id'];
+                }
             }
 
             if (!$assigneeId) {
@@ -175,6 +191,9 @@ class HandleNodeReached
                 'auto_advance'         => (bool) ($template['auto_advance'] ?? true),
                 'related_target'       => $clientId ? 'client' : 'none',
                 'related_client_ids'   => $clientId ? [$clientId] : [],
+                'tooth_context'        => $instance->tooth_context ?? null,
+                'item_context'         => $instance->item_context ?? null,
+                'treatment_plan_id'    => ($instance->related_type === 'TREATMENT_PLAN') ? $instance->related_id : null,
             ];
             
             if (isset($template['_action_type'])) {

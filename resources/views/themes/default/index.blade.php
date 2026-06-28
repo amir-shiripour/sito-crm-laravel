@@ -1,213 +1,271 @@
 @extends('layouts.web')
 
-@section('title', 'پلتفرم جامع مدیریت کسب‌وکار')
+@section('title', 'پلتفرم جامع اتوماسیون کسب‌وکار')
+
+@push('styles')
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --font-vazir: "Vazirmatn", sans-serif;
+        }
+        .font-vazir { font-family: var(--font-vazir); }
+
+        /* سایه دکمه اصلی */
+        .shadow-btn-primary {
+            box-shadow: inset 0px 4px 4px 0px rgba(255,255,255,0.35), 0 10px 25px -5px rgba(0, 132, 255, 0.25);
+        }
+
+        /* انیمیشن‌های ورود */
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-down { animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-slide-up-delay-1 { animation: slideUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards; opacity: 0; }
+        .animate-slide-up-delay-2 { animation: slideUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards; opacity: 0; }
+
+        /* انیمیشن‌های شناور (تطبیق یافته با محورهای X برای حالت RTL) */
+        @keyframes float-1 {
+            0%, 100% { transform: translateY(0) translateX(0) scale(1) rotate(0deg); }
+            50% { transform: translateY(-8px) translateX(-2px) scale(1) rotate(0deg); }
+        }
+        @keyframes float-2 {
+            0%, 100% { transform: translateY(0) translateX(0) scale(1) rotate(0deg); }
+            50% { transform: translateY(8px) translateX(2px) scale(1) rotate(0deg); }
+        }
+        @keyframes float-3 {
+            0%, 100% { transform: translateY(0) translateX(0) scale(1) rotate(0deg); }
+            50% { transform: translateY(-10px) translateX(1px) scale(1) rotate(0deg); }
+        }
+        .animate-float-1 { animation: float-1 5.0s ease-in-out infinite; }
+        .animate-float-2 { animation: float-2 5.5s ease-in-out infinite; }
+        .animate-float-3 { animation: float-3 4.8s ease-in-out infinite; }
+
+        /* انیمیشن پرش بج‌ها */
+        @keyframes spring-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-spring-badge-1 { animation: spring-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.6s forwards; opacity: 0; }
+        .animate-spring-badge-2 { animation: spring-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.8s forwards; opacity: 0; }
+        .animate-spring-badge-3 { animation: spring-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1.0s forwards; opacity: 0; }
+    </style>
+@endpush
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-6 w-full flex-grow flex flex-col pt-32 pb-16">
-        <div class="w-full flex flex-col gap-32">
+    <div dir="rtl" class="relative w-full min-h-screen bg-white overflow-hidden text-[#171717] font-vazir">
 
-            {{-- 1. Advanced Hero Section --}}
-            <div class="text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 max-w-4xl mx-auto pt-10">
-                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800/50 text-indigo-600 dark:text-indigo-300 text-xs font-bold mb-4 shadow-sm backdrop-blur-sm">
-                <span class="flex h-2 w-2 relative">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                </span>
-                    نسخه ۴.۰ با هوش مصنوعی منتشر شد
+        {{-- هاله‌های نورانی پس‌زمینه --}}
+        <div class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#60B1FF]/20 rounded-full blur-[120px] pointer-events-none z-0"></div>
+        <div class="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-[#319AFF]/15 rounded-full blur-[100px] pointer-events-none z-0"></div>
+
+        {{-- 1. منوی شیشه‌ای شناور --}}
+        <nav x-data="{ mobileMenuOpen: false }" class="fixed top-[30px] left-0 right-0 z-50 flex justify-center px-4 pointer-events-none animate-slide-down">
+            <div class="w-full max-w-[1280px] bg-white/60 backdrop-blur-[40px] border border-white/70 shadow-sm h-12 rounded-[16px] pointer-events-auto transition-all duration-300 flex items-center justify-between px-6 py-2 relative">
+
+                {{-- لوگوی برند --}}
+                <a href="#" class="font-vazir font-extrabold text-[20px] tracking-tight text-black flex items-center gap-2">
+                    <svg class="w-6 h-6 text-[#0084FF]" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    دستیار هوشمند
+                </a>
+
+                {{-- لینک‌های دسکتاپ --}}
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#" class="text-[14px] font-medium text-black/60 hover:text-black transition-colors">خانه</a>
+                    <a href="#" class="text-[14px] font-medium text-black/60 hover:text-black transition-colors">امکانات پلتفرم</a>
+                    <a href="#" class="text-[14px] font-medium text-black/60 hover:text-black transition-colors">مشتریان ما</a>
+                    <a href="#" class="text-[14px] font-medium text-black/60 hover:text-black transition-colors">تعرفه‌ها</a>
                 </div>
 
-                <h1 class="text-5xl md:text-7xl font-black text-gray-900 dark:text-white leading-tight tracking-tight">
-                    هسته‌ی مرکزی برای <br class="hidden md:block" />
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 relative">
-                    رشد تصاعدی
-                    <svg class="absolute -bottom-2 w-full h-3 text-indigo-200 dark:text-indigo-900/50 opacity-70" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 10 100 5" stroke="currentColor" stroke-width="3" fill="transparent"/></svg>
-                </span>
-                    تیم شما
-                </h1>
+                {{-- دکمه اقدام / منوی موبایل --}}
+                <div class="flex items-center gap-4">
+                    <a href="#" class="hidden sm:flex group h-9 px-5 rounded-[12px] bg-black/5 hover:bg-black/10 border border-black/10 text-[14px] font-semibold items-center gap-2 text-black transition-all hover:shadow-md">
+                        ورود به پنل
+                        <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                    </a>
 
-                <p class="text-lg md:text-xl text-gray-500 dark:text-gray-400 leading-relaxed max-w-3xl mx-auto">
-                    تنها با یک پلتفرم ابری یکپارچه، فروش خود را چند برابر کنید، ارتباطات مشتریان را متحول سازید و با گزارشات هوشمند، همیشه یک قدم از رقبا جلوتر باشید.
-                </p>
+                    {{-- دکمه منوی موبایل --}}
+                    <button @click="mobileMenuOpen = true" class="md:hidden p-2 text-black/60 hover:text-black">
+                        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                </div>
+            </div>
 
-                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
-                    @auth
-                        <a href="{{ auth()->user()->hasRole('super-admin') ? route('admin.dashboard') : route('user.dashboard') }}"
-                           class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-lg shadow-2xl shadow-gray-900/20 dark:shadow-white/10 hover:-translate-y-1 transition-all flex items-center justify-center gap-2 group">
-                            ورود به پنل کاربری
-                            <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+            {{-- کشوی منوی موبایل (Alpine.js) --}}
+            <div x-show="mobileMenuOpen"
+                 style="display: none;"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-x-full"
+                 x-transition:enter-end="opacity-100 translate-x-0"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-x-0"
+                 x-transition:leave-end="opacity-0 translate-x-full"
+                 class="fixed top-0 right-0 bottom-0 w-[260px] bg-white/95 backdrop-blur-[40px] border-l border-black/10 z-[100] pointer-events-auto flex flex-col p-6 shadow-2xl">
+
+                <div class="flex justify-end mb-8">
+                    <button @click="mobileMenuOpen = false" class="p-2 text-black/60 hover:text-black rounded-full hover:bg-black/5">
+                        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <div class="flex flex-col gap-6">
+                    <a href="#" class="text-[16px] font-medium text-black/80 hover:text-black">خانه</a>
+                    <a href="#" class="text-[16px] font-medium text-black/80 hover:text-black">امکانات پلتفرم</a>
+                    <a href="#" class="text-[16px] font-medium text-black/80 hover:text-black">مشتریان ما</a>
+                    <a href="#" class="text-[16px] font-medium text-black/80 hover:text-black">تعرفه‌ها</a>
+                    <hr class="border-black/10">
+                    <a href="#" class="flex justify-center group h-10 rounded-[12px] bg-[#0084FF] text-white text-[15px] font-semibold items-center gap-2 transition-all shadow-md">
+                        ورود به پنل
+                    </a>
+                </div>
+            </div>
+
+            {{-- پس‌زمینه تیره موبایل --}}
+            <div x-show="mobileMenuOpen"
+                 @click="mobileMenuOpen = false"
+                 style="display: none;"
+                 x-transition.opacity
+                 class="fixed inset-0 bg-black/20 z-[90] pointer-events-auto md:hidden"></div>
+        </nav>
+
+        {{-- محتوای اصلی بدنه --}}
+        <main class="w-full max-w-[1280px] mx-auto px-6 sm:px-12 lg:px-20 pt-[120px] md:pt-[160px] pb-24 relative z-10">
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12">
+
+                {{-- 2. ستون سمت راست: متون، تاییدیه‌های اجتماعی و دکمه‌ها --}}
+                <div class="lg:col-span-5 flex flex-col justify-center items-start text-right max-w-[620px] lg:pl-6 animate-slide-up-delay-1">
+
+                    {{-- نشان تاییدیه کاربران --}}
+                    <div class="px-3 py-1.5 rounded-full bg-black/5 border border-black/5 flex items-center gap-3 w-fit shadow-xs hover:bg-black/10 transition-colors group cursor-default">
+                        <div class="flex -space-x-2 -space-x-reverse select-none">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=face" alt="User 1" class="w-6 h-6 rounded-full border-[1.5px] border-white object-cover group-hover:scale-110 transition-transform duration-300 z-[4]">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" alt="User 2" class="w-6 h-6 rounded-full border-[1.5px] border-white object-cover group-hover:scale-110 transition-transform duration-300 delay-75 z-[3]">
+                            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face" alt="User 3" class="w-6 h-6 rounded-full border-[1.5px] border-white object-cover group-hover:scale-110 transition-transform duration-300 delay-100 z-[2]">
+                            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face" alt="User 4" class="w-6 h-6 rounded-full border-[1.5px] border-white object-cover group-hover:scale-110 transition-transform duration-300 delay-150 z-[1]">
+                        </div>
+                        <span class="text-[12px] text-black/80 font-vazir">مورد اعتماد بیش از <strong class="text-[#171717] font-semibold">۱۰,۰۰۰ کسب‌وکار</strong></span>
+                    </div>
+
+                    {{-- عنوان اصلی --}}
+                    <h1 class="font-vazir font-black text-[36px] sm:text-[44px] lg:text-[56px] leading-[1.2] tracking-tight mt-6 select-none text-black">
+                        اتوماسیون جامع <br/> مدیریت کسب‌وکار
+                    </h1>
+
+                    {{-- پاراگراف توضیحات --}}
+                    <p class="font-vazir text-[16px] sm:text-[18px] text-black/60 leading-relaxed mt-5 max-w-[480px]">
+                        با کمک هوش مصنوعی کارهای تکراری را خودکار کنید، ارتباط با مشتریان را بهبود ببخشید و بهره‌وری تیم خود را چندین برابر افزایش دهید.
+                    </p>
+
+                    {{-- دکمه‌های اقدام --}}
+                    <div class="mt-8 flex flex-wrap items-center gap-6">
+
+                        {{-- دکمه اصلی --}}
+                        <button class="group pr-6 pl-2 py-2 rounded-[16px] flex items-center gap-4 text-sm font-bold transition-all w-fit shadow-btn-primary bg-[#0084FF] hover:bg-[#0074E0] text-white hover:scale-[1.02] active:scale-[0.98]">
+                            شروع رایگان
+                            <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#0084FF] transition-transform group-hover:-translate-x-1">
+                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                            </div>
+                        </button>
+
+                        {{-- لینک مشاهده دمو --}}
+                        <a href="#" class="flex items-center gap-2 group cursor-pointer">
+                            <div class="w-9 h-9 rounded-full bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center border border-blue-100 transition-colors">
+                                <svg class="w-4 h-4 text-[#0084FF] mr-0.5 transform rotate-180" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                            </div>
+                            <span class="font-vazir font-bold text-[14px] text-[#0084FF] group-hover:text-[#0074E0] transition-colors">مشاهده دمو</span>
                         </a>
-                    @else
-                        <a href="{{ route('login') }}"
-                           class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg hover:from-indigo-700 hover:to-purple-700 shadow-xl shadow-indigo-600/30 transition-all hover:-translate-y-1 flex items-center justify-center gap-2 group">
-                            شروع رایگان ۱۴ روزه
-                            <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                        </a>
-                        <a href="#"
-                           class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 font-bold text-lg hover:border-indigo-500 dark:hover:border-indigo-500 hover:text-indigo-600 transition-all flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            مشاهده دمو
-                        </a>
-                    @endauth
+                    </div>
                 </div>
 
-                <p class="text-sm text-gray-400 dark:text-gray-500 mt-4">بدون نیاز به کارت بانکی • راه‌اندازی در ۳ دقیقه</p>
-            </div>
+                {{-- 3. ستون سمت چپ: ویدیوی ربات و کارت‌های شناور --}}
+                <div class="lg:col-span-7 relative w-full flex items-center justify-center lg:justify-start py-10 pointer-events-none animate-slide-up-delay-2 mt-10 lg:mt-0">
 
-            {{-- 2. Mockup Dashboard (Glassmorphism Effect) --}}
-            <div class="relative mx-auto w-full max-w-5xl animate-in fade-in zoom-in-95 duration-1000 delay-300 hidden md:block">
-                <div class="absolute inset-0 bg-gradient-to-b from-indigo-500/20 to-purple-500/10 blur-[100px] -z-10 rounded-full"></div>
-                <div class="rounded-[2.5rem] border border-white/40 dark:border-gray-700/40 bg-white/40 dark:bg-gray-900/40 backdrop-blur-2xl shadow-2xl shadow-indigo-500/10 p-4 overflow-hidden">
-                    <div class="rounded-[2rem] bg-gray-50 dark:bg-gray-950 border border-gray-200/50 dark:border-gray-800 w-full h-[450px] flex flex-col overflow-hidden relative shadow-inner">
-                        <!-- Header Mock -->
-                        <div class="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center px-6 justify-between bg-white/80 dark:bg-gray-900/80 backdrop-blur">
-                            <div class="flex gap-2">
-                                <div class="w-3 h-3 rounded-full bg-red-400"></div>
-                                <div class="w-3 h-3 rounded-full bg-amber-400"></div>
-                                <div class="w-3 h-3 rounded-full bg-green-400"></div>
-                            </div>
-                            <div class="flex gap-4">
-                                <div class="h-8 w-8 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
-                                <div class="h-8 w-32 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl"></div>
-                            </div>
-                        </div>
-                        <!-- Body Mock -->
-                        <div class="flex-1 p-8 grid grid-cols-12 gap-8">
-                            <!-- Sidebar -->
-                            <div class="col-span-3 space-y-4 border-r border-gray-200 dark:border-gray-800 pr-6">
-                                <div class="h-10 bg-indigo-500 text-white rounded-xl shadow-md flex items-center px-4 gap-3"><div class="w-4 h-4 bg-white/30 rounded"></div></div>
-                                <div class="h-10 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl flex items-center px-4 gap-3"><div class="w-4 h-4 bg-gray-300 dark:bg-gray-700 rounded"></div></div>
-                                <div class="h-10 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl flex items-center px-4 gap-3"><div class="w-4 h-4 bg-gray-300 dark:bg-gray-700 rounded"></div></div>
-                                <div class="h-10 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl flex items-center px-4 gap-3"><div class="w-4 h-4 bg-gray-300 dark:bg-gray-700 rounded"></div></div>
-                            </div>
-                            <!-- Main Content -->
-                            <div class="col-span-9 space-y-6">
-                                <div class="flex justify-between items-end">
-                                    <div class="space-y-2">
-                                        <div class="h-4 w-24 bg-gray-200 dark:bg-gray-800 rounded"></div>
-                                        <div class="h-8 w-48 bg-gray-300 dark:bg-gray-700 rounded"></div>
-                                    </div>
-                                    <div class="h-10 w-32 bg-indigo-600 rounded-xl"></div>
+                    {{-- افکت‌های دایره‌ای تزئینی --}}
+                    <div class="absolute top-[30%] right-[20%] w-[420px] h-[420px] bg-sky-400/15 rounded-full blur-[110px] -z-10 animate-pulse duration-[7000ms]"></div>
+
+                    {{-- حلقه‌های متمرکز --}}
+                    <div class="absolute w-[620px] h-[620px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-[52%] -z-10 opacity-35">
+                        <svg viewBox="0 0 620 620" class="w-full h-full" fill="none" stroke="url(#ring-gradient)" stroke-dasharray="12 12">
+                            <defs>
+                                <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#60B1FF" />
+                                    <stop offset="100%" stop-color="#319AFF" />
+                                </linearGradient>
+                            </defs>
+                            <circle cx="310" cy="310" r="200" stroke-width="1" />
+                            <circle cx="310" cy="310" r="260" stroke-width="1.5" />
+                            <circle cx="310" cy="310" r="310" stroke-width="0.5" />
+                        </svg>
+                    </div>
+
+                    {{-- ویدیوی مرکزی ربات --}}
+                    <div class="relative w-full max-w-[600px] z-10">
+                        <video
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            class="w-full h-auto rounded-[24px] select-none block"
+                            style="filter: brightness(1.02) contrast(1.04);"
+                        >
+                            <source src="https://strvid.nyc3.cdn.digitaloceanspaces.com/motionsite/hero_robo_video.mp4" type="video/mp4">
+                        </video>
+
+                        {{-- بج‌های شناور متحرک --}}
+
+                        {{-- بج ۱: ارسال فاکتور (بالا سمت چپ تصویر در حالت RTL) --}}
+                        <div class="absolute top-[18%] -left-4 sm:-left-10 md:-left-14 z-20 animate-spring-badge-1">
+                            <div class="animate-float-1 group bg-gradient-to-bl from-white/75 to-white/45 border border-white/70 ring-1 ring-black/5 backdrop-blur-[20px] shadow-[inset_0_2.5px_4px_rgba(255,255,255,0.8),_0_12px_32px_-4px_rgba(0,132,255,0.12)] px-5 py-3 rounded-[20px] flex items-center gap-3 pointer-events-auto hover:scale-[1.05] hover:rotate-[1deg] transition-all duration-300 cursor-pointer">
+                                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0084FF] to-[#0066CC] flex items-center justify-center shadow-[0_4px_12px_rgba(0,132,255,0.3)] shrink-0">
+                                    <svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>
                                 </div>
-                                <div class="grid grid-cols-3 gap-6">
-                                    <div class="h-28 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 flex flex-col justify-between">
-                                        <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30"></div>
-                                        <div class="h-4 w-1/2 bg-gray-200 dark:bg-gray-800 rounded"></div>
-                                    </div>
-                                    <div class="h-28 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 flex flex-col justify-between">
-                                        <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30"></div>
-                                        <div class="h-4 w-2/3 bg-gray-200 dark:bg-gray-800 rounded"></div>
-                                    </div>
-                                    <div class="h-28 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 flex flex-col justify-between">
-                                        <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30"></div>
-                                        <div class="h-4 w-1/3 bg-gray-200 dark:bg-gray-800 rounded"></div>
-                                    </div>
-                                </div>
-                                <div class="h-32 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 w-full relative overflow-hidden flex items-end">
-                                    <!-- Fake Area Chart -->
-                                    <svg class="w-full h-24 text-indigo-500/20 dark:text-indigo-500/10" preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor">
-                                        <path d="M0,100 L0,60 Q20,30 40,70 T80,40 L100,20 L100,100 Z"></path>
-                                    </svg>
-                                    <svg class="absolute w-full h-24 text-indigo-600 dark:text-indigo-500 fill-none" preserveAspectRatio="none" viewBox="0 0 100 100" stroke="currentColor" stroke-width="2">
-                                        <path d="M0,60 Q20,30 40,70 T80,40 L100,20"></path>
-                                    </svg>
+                                <div class="flex flex-col text-right leading-tight">
+                                    <span class="font-vazir font-black text-[13px] text-neutral-900 tracking-tight">ارسال پیش‌فاکتور</span>
+                                    <span class="font-vazir font-semibold text-[10px] text-neutral-500 mt-0.5">برای مشتریان جدید</span>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                {{-- Floating Decorative Elements --}}
-                <div class="absolute -right-8 top-1/4 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 flex items-center gap-4 animate-bounce" style="animation-duration: 4s;">
-                    <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center"><svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg></div>
-                    <div>
-                        <div class="text-xs text-gray-500">رشد فروش</div>
-                        <div class="font-black text-lg text-gray-900 dark:text-white">+۱۲۴٪</div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- 3. Features Section --}}
-            <div>
-                <div class="text-center mb-16">
-                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">هرآنچه برای مدیریت یک کسب‌وکار مدرن نیاز دارید</h2>
-                    <p class="text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">به جای استفاده از ده‌ها نرم‌افزار مختلف، تمامی ابزارهای فروش، پشتیبانی و اتوماسیون را در یک سیستم قدرتمند تجربه کنید.</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <!-- Feature 1 -->
-                    <div class="bg-white dark:bg-gray-800 p-8 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/20 dark:shadow-none hover:-translate-y-2 transition-transform duration-300 group relative overflow-hidden">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 dark:bg-indigo-900/20 rounded-bl-[100px] -z-10 transition-transform group-hover:scale-110"></div>
-                        <div class="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-6 dark:bg-indigo-900/50 dark:text-indigo-400">
-                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        {{-- بج ۲: خلاصه سازی (مرکز سمت راست تصویر در حالت RTL) --}}
+                        <div class="absolute top-[48%] -right-6 sm:-right-12 md:-right-16 z-20 animate-spring-badge-2">
+                            <div class="animate-float-2 group bg-gradient-to-bl from-white/75 to-white/45 border border-white/70 ring-1 ring-black/5 backdrop-blur-[20px] shadow-[inset_0_2.5px_4px_rgba(255,255,255,0.8),_0_12px_32px_-4px_rgba(16,185,129,0.12)] px-5 py-3 rounded-[20px] flex items-center gap-3 pointer-events-auto hover:scale-[1.05] hover:-rotate-[1deg] transition-all duration-300 cursor-pointer">
+                                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-[#10B981] to-[#059669] flex items-center justify-center shadow-[0_4px_12px_rgba(16,185,129,0.3)] shrink-0">
+                                    <svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                                </div>
+                                <div class="flex flex-col text-right leading-tight">
+                                    <span class="font-vazir font-black text-[13px] text-neutral-900 tracking-tight">گزارش‌گیری</span>
+                                    <span class="font-vazir font-semibold text-[10px] text-neutral-500 mt-0.5">عملکرد فروش ماهانه</span>
+                                </div>
+                            </div>
                         </div>
-                        <h3 class="font-bold text-xl mb-3 text-gray-900 dark:text-white">مدیریت ارتباطات ۳۶۰ درجه</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">سوابق تماس، پیامک‌ها، تیکت‌ها و خریدهای مشتری را در یک تایم‌لاین هوشمند مشاهده کنید و هیچ جزئیاتی را از دست ندهید.</p>
-                    </div>
 
-                    <!-- Feature 2 -->
-                    <div class="bg-white dark:bg-gray-800 p-8 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/20 dark:shadow-none hover:-translate-y-2 transition-transform duration-300 group relative overflow-hidden">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 dark:bg-emerald-900/20 rounded-bl-[100px] -z-10 transition-transform group-hover:scale-110"></div>
-                        <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6 dark:bg-emerald-900/50 dark:text-emerald-400">
-                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        {{-- بج ۳: ایجاد وظیفه (پایین سمت چپ تصویر در حالت RTL) --}}
+                        <div class="absolute bottom-[18%] -left-4 sm:-left-8 md:-left-12 z-20 animate-spring-badge-3">
+                            <div class="animate-float-3 group bg-gradient-to-bl from-white/75 to-white/45 border border-white/70 ring-1 ring-black/5 backdrop-blur-[20px] shadow-[inset_0_2.5px_4px_rgba(255,255,255,0.8),_0_12px_32px_-4px_rgba(147,51,234,0.12)] px-5 py-3 rounded-[20px] flex items-center gap-3 pointer-events-auto hover:scale-[1.05] hover:rotate-[1.5deg] transition-all duration-300 cursor-pointer">
+                                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9333EA] to-[#7E22CE] flex items-center justify-center shadow-[0_4px_12px_rgba(147,51,234,0.3)] shrink-0">
+                                    <svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                </div>
+                                <div class="flex flex-col text-right leading-tight">
+                                    <span class="font-vazir font-black text-[13px] text-neutral-900 tracking-tight">تخصیص وظیفه</span>
+                                    <span class="font-vazir font-semibold text-[10px] text-neutral-500 mt-0.5">به تیم پشتیبانی</span>
+                                </div>
+                            </div>
                         </div>
-                        <h3 class="font-bold text-xl mb-3 text-gray-900 dark:text-white">خط لوله فروش (Pipeline)</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">مراحل فروش را در قالب بردهای Kanban مدیریت کنید، وظایف را به اعضای تیم بسپارید و نرخ تبدیل (Conversion Rate) را بالا ببرید.</p>
-                    </div>
 
-                    <!-- Feature 3 -->
-                    <div class="bg-white dark:bg-gray-800 p-8 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/20 dark:shadow-none hover:-translate-y-2 transition-transform duration-300 group relative overflow-hidden">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 dark:bg-purple-900/20 rounded-bl-[100px] -z-10 transition-transform group-hover:scale-110"></div>
-                        <div class="w-14 h-14 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center mb-6 dark:bg-purple-900/50 dark:text-purple-400">
-                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                        </div>
-                        <h3 class="font-bold text-xl mb-3 text-gray-900 dark:text-white">اتوماسیون مبتنی بر هوش مصنوعی</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">کارهای تکراری مانند ارسال پیامک خوش‌آمدگویی، یادآوری فاکتور و تگ‌گذاری مشتریان را به ربات‌های هوشمند سیستم بسپارید.</p>
                     </div>
                 </div>
+
             </div>
+        </main>
 
-            {{-- 4. Integrations Section (NEW) --}}
-            <div class="bg-gray-50 dark:bg-gray-900/50 rounded-[3rem] p-10 md:p-16 border border-gray-200/60 dark:border-gray-800 text-center">
-                <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">اتصال آسان به ابزارهای محبوب شما</h3>
-                <p class="text-gray-500 dark:text-gray-400 mb-10 max-w-lg mx-auto">پلتفرم ما به راحتی با سرویس‌های پیامکی، درگاه‌های پرداخت، ایمیل مارکتینگ و حسابداری متصل می‌شود.</p>
-
-                <div class="flex flex-wrap justify-center gap-6 items-center">
-                    {{-- Mock Logos for Integrations --}}
-                    <div class="w-16 h-16 rounded-2xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-transform"><span class="font-black text-blue-500">SMS</span></div>
-                    <div class="w-16 h-16 rounded-2xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-transform"><span class="font-black text-yellow-500">Zpal</span></div>
-                    <div class="w-16 h-16 rounded-2xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-transform"><svg class="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg></div>
-                    <div class="w-16 h-16 rounded-2xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-transform"><svg class="w-8 h-8 text-indigo-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></div>
-                    <div class="w-16 h-16 rounded-2xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-transform"><span class="font-black text-rose-500">Mail</span></div>
-                </div>
-            </div>
-
-            {{-- 5. Final CTA --}}
-            <div class="w-full">
-                <div class="bg-gradient-to-br from-gray-900 to-indigo-950 rounded-[3rem] p-10 md:p-16 text-center relative overflow-hidden shadow-2xl">
-                    <div class="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl"></div>
-                    <div class="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl"></div>
-
-                    <div class="relative z-10 space-y-6">
-                        <h2 class="text-3xl md:text-5xl font-black text-white">آماده تحول در کسب‌وکار خود هستید؟</h2>
-                        <p class="text-indigo-200 text-lg max-w-2xl mx-auto">همین حالا به جمع هزاران مدیر موفقی بپیوندید که از پلتفرم ما برای توسعه تجارت خود استفاده می‌کنند.</p>
-                        <div class="pt-4 flex flex-col sm:flex-row justify-center gap-4">
-                            @auth
-                                <a href="{{ route('admin.dashboard') }}" class="px-8 py-4 rounded-2xl bg-indigo-500 text-white font-bold text-lg hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/30 border border-indigo-400">
-                                    رفتن به داشبورد
-                                </a>
-                            @else
-                                <a href="{{ route('login') }}" class="px-8 py-4 rounded-2xl bg-indigo-500 text-white font-bold text-lg hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/30 border border-indigo-400">
-                                    هم‌اکنون شروع کنید
-                                </a>
-                                <a href="#" class="px-8 py-4 rounded-2xl bg-white/10 text-white font-bold text-lg hover:bg-white/20 transition-colors backdrop-blur-sm border border-white/20">
-                                    تماس با مشاوره فروش
-                                </a>
-                            @endauth
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
     </div>
 @endsection

@@ -554,6 +554,28 @@ class TaskController extends Controller
         $allRoles = Role::select('id', 'name')->get();
         $clientStatuses = ClientStatus::active()->get();
 
+        // Load workflow context for SYSTEM tasks safely without hard dependencies
+        $workflowInstance = null;
+        $treatmentPlan = null;
+        $toothContext = $meta['tooth_context'] ?? null;
+        $itemContext = $meta['item_context'] ?? null;
+        $treatmentPlanId = $meta['treatment_plan_id'] ?? null;
+
+        if ($task->task_type === Task::TYPE_SYSTEM && !empty($meta['workflow_instance_id'])) {
+            if (class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                $workflowInstance = \Modules\Workflows\Entities\WorkflowInstance::with('workflow')
+                    ->find($meta['workflow_instance_id']);
+            }
+            if ($treatmentPlanId && class_exists(\Modules\Booking\App\Models\TreatmentPlan::class)) {
+                $treatmentPlan = \Modules\Booking\App\Models\TreatmentPlan::with(['client', 'user'])
+                    ->find($treatmentPlanId);
+            }
+        }
+
+        if (is_string($itemContext)) {
+            $itemContext = json_decode($itemContext, true);
+        }
+
         return view('tasks::user.tasks.show', compact(
             'task',
             'types',
@@ -564,7 +586,11 @@ class TaskController extends Controller
             'relatedUser',
             'relatedClient',
             'allRoles',
-            'clientStatuses'
+            'clientStatuses',
+            'workflowInstance',
+            'treatmentPlan',
+            'toothContext',
+            'itemContext'
         ));
     }
 

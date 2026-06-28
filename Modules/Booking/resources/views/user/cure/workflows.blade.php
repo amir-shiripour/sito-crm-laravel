@@ -93,12 +93,44 @@
             </div>
         </div>
 
+        <!-- Filter Bar -->
+        <div class="bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl p-4 mb-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex flex-wrap gap-4 items-center">
+                <!-- Tooth Filter -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">فیلتر دندان:</span>
+                    <select x-model="selectedToothFilter" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none">
+                        <option value="all">همه دندان‌ها و کل طرح</option>
+                        <option value="none">بدون دندان (فقط کل طرح)</option>
+                        <template x-for="t in uniqueTeeth" :key="t">
+                            <option :value="t" x-text="'دندان ' + t"></option>
+                        </template>
+                    </select>
+                </div>
+                
+                <!-- Status Filter -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">وضعیت فرآیند:</span>
+                    <select x-model="selectedStatusFilter" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none">
+                        <option value="all">همه وضعیت‌ها</option>
+                        <option value="ACTIVE">در حال اجرا</option>
+                        <option value="COMPLETED">تکمیل شده</option>
+                        <option value="CANCELED">لغو شده</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                تعداد فرآیندها: <span class="text-indigo-600 dark:text-indigo-400 font-extrabold" x-text="filteredWorkflows.length"></span> از <span x-text="workflows.length"></span>
+            </div>
+        </div>
+
         <!-- Main Workspace Grid -->
         <div class="grid grid-cols-1 gap-6">
             
-            <template x-if="workflows && workflows.length > 0">
+            <template x-if="filteredWorkflows && filteredWorkflows.length > 0">
                 <div class="space-y-8">
-                    <template x-for="(winst, wIdx) in workflows" :key="winst.id">
+                    <template x-for="(winst, wIdx) in filteredWorkflows" :key="winst.id">
                         <div class="bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
 
                             <!-- Workflow Instance Header -->
@@ -110,7 +142,18 @@
                                         </svg>
                                     </div>
                                     <div>
-                                        <h4 class="font-black text-lg text-slate-800 dark:text-slate-100 truncate tracking-tight" x-text="winst.workflow_name"></h4>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h4 class="font-black text-lg text-slate-800 dark:text-slate-100 truncate tracking-tight" x-text="winst.workflow_name"></h4>
+                                            <template x-if="winst.tooth_context">
+                                                <span class="px-2 py-0.5 text-[10px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/40" x-text="'دندان ' + winst.tooth_context"></span>
+                                            </template>
+                                            <template x-if="winst.item_context && winst.item_context.service_name">
+                                                <span class="px-2 py-0.5 text-[10px] font-black bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 rounded-md border border-purple-100 dark:border-purple-800/40" x-text="winst.item_context.service_name"></span>
+                                            </template>
+                                            <template x-if="!winst.tooth_context && (!winst.item_context || !winst.item_context.service_name)">
+                                                <span class="px-2 py-0.5 text-[10px] font-black bg-slate-50 text-slate-600 dark:bg-slate-700/20 dark:text-slate-400 rounded-md border border-slate-100 dark:border-slate-700/40">کل طرح درمان</span>
+                                            </template>
+                                        </div>
                                         <p class="text-[11px] text-slate-500 mt-0.5 font-medium flex items-center gap-1.5">
                                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                             <span x-text="'تاریخ شروع فرآیند: ' + winst.started_at"></span>
@@ -532,6 +575,29 @@
                 selectedWidgetNodes: {},
                 collapsedInstances: {},
                 pollingInterval: null,
+                selectedToothFilter: new URLSearchParams(window.location.search).get('tooth') || 'all',
+                selectedStatusFilter: 'all',
+
+                get filteredWorkflows() {
+                    return this.workflows.filter(w => {
+                        const toothMatch = this.selectedToothFilter === 'all' || 
+                            (this.selectedToothFilter === 'none' && !w.tooth_context) ||
+                            (w.tooth_context == this.selectedToothFilter);
+                        const statusMatch = this.selectedStatusFilter === 'all' || 
+                            w.status === this.selectedStatusFilter;
+                        return toothMatch && statusMatch;
+                    });
+                },
+
+                get uniqueTeeth() {
+                    const teeth = new Set();
+                    this.workflows.forEach(w => {
+                        if (w.tooth_context) {
+                            teeth.add(w.tooth_context);
+                        }
+                    });
+                    return Array.from(teeth).sort();
+                },
                 
                 // History Modal State
                 historyModalOpen: false,

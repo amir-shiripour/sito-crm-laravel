@@ -1,5 +1,10 @@
 @extends('layouts.user')
 
+@php
+    $settings = \Modules\Booking\Entities\BookingSetting::current();
+    $currencyLabel = ($settings && $settings->currency_unit === 'IRR') ? 'ریال' : 'تومان';
+@endphp
+
 @section('content')
     <style>
         [x-cloak] {
@@ -223,7 +228,6 @@
             border-color: #334155;
         }
 
-        /* تعدیل ستون‌ها برای اضافه شدن چک‌باکس اقساط */
         .brand-row {
             display: grid;
             grid-template-columns: 1.2fr 0.8fr 0.4fr auto;
@@ -254,19 +258,8 @@
             position: relative;
         }
 
-        .price-wrap::after {
-            content: 'تومان';
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: .7rem;
-            color: #94a3b8;
-            pointer-events: none;
-        }
-
         .price-input {
-            padding-left: 48px !important;
+            padding-left: 60px !important;
         }
 
         .btn {
@@ -677,7 +670,7 @@
                                         <div class="brand-row"
                                              style="padding-top:6px;padding-bottom:6px;border-bottom:1.5px solid #f1f5f9;">
                                             <span class="sec-label">نام برند / گزینه</span>
-                                            <span class="sec-label">قیمت (تومان)</span>
+                                            <span class="sec-label">قیمت ({{ $currencyLabel }})</span>
                                             <span class="sec-label text-right pr-6">اقساطی</span>
                                             <span></span>
                                         </div>
@@ -690,17 +683,23 @@
                                                    :name="`tabs[${tIdx}][sections][${sIdx}][brands][${bIdx}][name]`"
                                                    placeholder="نام برند یا گزینه"
                                                    class="cp-input"/>
-                                            <div class="price-wrap">
-                                                <input type="number"
-                                                       x-model="brand.price"
+                                            <div class="price-wrap relative">
+                                                <input type="hidden"
                                                        :name="`tabs[${tIdx}][sections][${sIdx}][brands][${bIdx}][price]`"
+                                                       :value="brand.price" />
+
+                                                <input type="text"
+                                                       inputmode="numeric"
+                                                       :value="formatPriceDisplay(brand.price)"
+                                                       @input="formatPriceInput($event, brand)"
                                                        placeholder="۰"
-                                                       step="1000"
-                                                       min="0"
-                                                       class="cp-input price-input"/>
+                                                       class="cp-input price-input" />
+
+                                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-medium text-gray-400 dark:text-gray-500 pointer-events-none select-none">
+                                                    {{ $currencyLabel }}
+                                                </span>
                                             </div>
 
-                                            {{-- چک‌باکس شمول در طرح پرداخت اقساطی --}}
                                             <div class="flex items-center justify-center">
                                                 <input type="hidden" :name="`tabs[${tIdx}][sections][${sIdx}][brands][${bIdx}][is_installment]`" value="0">
                                                 <input type="checkbox"
@@ -800,8 +799,8 @@
                                 brands: Array.isArray(s.brands)
                                     ? s.brands.map(b => ({
                                         name: b.name ?? '',
-                                        price: b.price ?? '',
-                                        is_installment: !!b.is_installment // کست کردن وضعیت پیش‌فرض از دیتابیس به Boolean
+                                        price: b.price ? String(b.price) : '',
+                                        is_installment: !!b.is_installment
                                     }))
                                     : []
                             }))
@@ -893,7 +892,6 @@
                                 break;
                             case 'چند گزینه‌ای به ازای دندان':
                             case 'چند گزینه‌ای':
-                                // برای موارد چند گزینه‌ای، ۳ ردیف خالی برای پر کردن دستی می‌دهیم
                                 defaultBrands = [
                                     { name: '', price: '', is_installment: false },
                                     { name: '', price: '', is_installment: false },
@@ -920,6 +918,22 @@
                 removeBrand(tIdx, sIdx, bIdx) {
                     this.tabs[tIdx].sections[sIdx].brands.splice(bIdx, 1);
                 },
+
+                formatPriceDisplay(val) {
+                    if (!val) return '';
+                    let num = String(val).replace(/\D/g, '');
+                    if (!num) return '';
+                    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                },
+
+                formatPriceInput(e, brand) {
+                    let rawValue = e.target.value.replace(/\D/g, '');
+                    brand.price = rawValue;
+                    e.target.value = this.formatPriceDisplay(rawValue);
+                    setTimeout(() => {
+                        e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+                    }, 0);
+                }
             };
         }
     </script>

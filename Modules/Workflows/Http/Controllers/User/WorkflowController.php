@@ -81,7 +81,11 @@ class WorkflowController extends Controller
         $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
         $tokens = config('workflows.tokens', []);
 
-        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens'));
+        $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
+        $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
+        $cureRoles = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name')->get();
+
+        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles'));
     }
 
     public function store(Request $request)
@@ -137,7 +141,11 @@ class WorkflowController extends Controller
         // Pass tokens to view
         $tokens = config('workflows.tokens', []);
 
-        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens'));
+        $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
+        $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
+        $cureRoles = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name')->get();
+
+        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles'));
     }
 
     public function update(Request $request, Workflow $workflow)
@@ -382,7 +390,11 @@ class WorkflowController extends Controller
             ->where('is_active', true)
             ->get();
 
-        return view('workflows::user.workflows.designer', compact('workflow', 'roles', 'subWorkflows', 'users'));
+        $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
+        $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
+        $cureRoles = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name')->get();
+
+        return view('workflows::user.workflows.designer', compact('workflow', 'roles', 'subWorkflows', 'users', 'cureStatuses', 'cureAssignableRoles', 'cureRoles'));
     }
 
     public function saveGraph(Request $request, Workflow $workflow)

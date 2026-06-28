@@ -31,10 +31,6 @@ class PropertyController extends Controller
 
         // Start Query manually to control visibility logic
         $query = Property::query()
-            ->where('publication_status', 'published')
-            ->whereHas('status', function ($q) {
-                $q->where('show_in_crm', true);
-            })
             ->with('status', 'creator', 'agent', 'category', 'building');
 
         // Check for trash view
@@ -43,10 +39,10 @@ class PropertyController extends Controller
         }
 
         // Visibility Logic:
-        $canViewAll = $user->hasRole('super-admin') || $user->can('properties.view.all') || $user->can('properties.manage');
+        $canViewAll = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.view.all') || $user->can('properties.manage');
 
         if ($canViewAll) {
-            if (!$request->has('show_all') || $request->show_all != '1') {
+            if ($request->has('show_all') && $request->show_all == '0') {
                 $query->where(function ($q) use ($user) {
                     $q->where('created_by', $user->id)
                         ->orWhere('agent_id', $user->id);
@@ -134,7 +130,18 @@ class PropertyController extends Controller
 
         // Data for filters
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
-        $categories = PropertyCategory::where('user_id', $user->id)->get();
+        
+        $canViewAllCategories = $user->hasRole(['super-admin', 'admin']) || 
+                                $user->can('properties.categories.view') || 
+                                $user->can('properties.categories.manage') || 
+                                $user->can('properties.view.all') || 
+                                $user->can('properties.manage');
+        if ($canViewAllCategories) {
+            $categories = PropertyCategory::all();
+        } else {
+            $categories = PropertyCategory::where('user_id', $user->id)->get();
+        }
+        
         $buildings = PropertyBuilding::latest()->get();
         $propertyAttributes = PropertyAttribute::where('is_active', true)->get()->keyBy('id');
 

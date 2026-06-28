@@ -141,6 +141,36 @@ class WorkflowEngine
                         }
                     }
                 }
+
+                // 2. Treatment Plan Filter
+                if ($relatedType === 'TREATMENT_PLAN') {
+                    $plan = \Modules\Booking\App\Models\TreatmentPlan::find($relatedId);
+                    if ($plan) {
+                        // Previous status filter
+                        $prevStatuses = $config['tp_prev_statuses'] ?? [];
+                        $prevStatuses = array_filter(array_map('strval', $prevStatuses));
+                        if (!empty($prevStatuses)) {
+                            $prevStatus = $payload['previous_status'] ?? null;
+                            if (!in_array((string)$prevStatus, $prevStatuses, true)) {
+                                Log::info("[Workflows] Skipping workflow {$wf->name} (ID: {$wf->id}) due to treatment plan previous status filter mismatch.");
+                                continue;
+                            }
+                        }
+
+                        // Amount filter
+                        $minAmount = isset($config['tp_min_amount']) && $config['tp_min_amount'] !== '' ? (float)$config['tp_min_amount'] : null;
+                        $maxAmount = isset($config['tp_max_amount']) && $config['tp_max_amount'] !== '' ? (float)$config['tp_max_amount'] : null;
+
+                        if ($minAmount !== null && $plan->final_payable < $minAmount) {
+                            Log::info("[Workflows] Skipping workflow {$wf->name} (ID: {$wf->id}) because amount {$plan->final_payable} is less than min {$minAmount}.");
+                            continue;
+                        }
+                        if ($maxAmount !== null && $plan->final_payable > $maxAmount) {
+                            Log::info("[Workflows] Skipping workflow {$wf->name} (ID: {$wf->id}) because amount {$plan->final_payable} is greater than max {$maxAmount}.");
+                            continue;
+                        }
+                    }
+                }
             }
 
             if ($wf->nodes()->exists()) {
@@ -179,6 +209,9 @@ class WorkflowEngine
                 'status'             => WorkflowInstance::STATUS_ACTIVE,
                 'started_at'         => now(),
                 'created_by'         => Auth::id(),
+                'binding_id'         => $payload['binding_id'] ?? null,
+                'tooth_context'      => $payload['tooth_context'] ?? null,
+                'item_context'       => $payload['item_context'] ?? null,
             ]);
 
             Log::info("[Workflows] Node-based Instance created: {$instance->id}. Current node: START ({$startNode->id})");
@@ -434,6 +467,16 @@ class WorkflowEngine
             $targetUserId = $context['appointment']->provider_user_id ?? $targetUserId;
         } elseif ($assigneeTarget === 'SPECIFIC_USER' && !empty($config['assignee_id'])) {
             $targetUserId = $config['assignee_id'];
+        } elseif ($assigneeTarget === 'TREATMENT_PLAN_CREATOR' && isset($context['treatment_plan'])) {
+            $targetUserId = $context['treatment_plan']->user_id ?? $targetUserId;
+        } elseif ($assigneeTarget === 'TREATMENT_PLAN_CLIENT_ASSIGNEE' && isset($context['treatment_plan'])) {
+            $targetUserId = $context['treatment_plan']->client_id ?? $targetUserId;
+        } elseif (str_starts_with($assigneeTarget, 'TREATMENT_PLAN_ROLE_')) {
+            $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $assigneeTarget);
+            $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
+            if (!empty($assignedUsers)) {
+                $targetUserId = $assignedUsers[0]['user_id'];
+            }
         }
 
         switch ($action->action_type) {
@@ -628,17 +671,83 @@ class WorkflowEngine
             $plan = \Modules\Booking\App\Models\TreatmentPlan::with(['client', 'patient', 'user'])->find($instance->related_id);
             if ($plan) {
                 $data['treatment_plan'] = $plan;
+
+                $assignedUsers = $plan->assigned_users ?? [];
+                $assignedUserModels = [];
+                $assignedByRole = [];
+                
+                $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
+                
+                foreach ($assignedUsers as $assignment) {
+                    $userId = $assignment['user_id'] ?? null;
+                    $roleId = $assignment['role_id'] ?? null;
+                    if (!$userId) continue;
+                    
+                    $userModel = \App\Models\User::find($userId);
+                    if (!$userModel) continue;
+                    
+                    $assignedUserModels[$roleId][] = $userModel;
+                    $assignedByRole[$roleId][] = [
+                        'user_id' => $userId,
+                        'name' => $userModel->name,
+                        'phone' => $userModel->phone ?? $userModel->mobile,
+                        'email' => $userModel->email,
+                    ];
+                }
+                
+                $data['assigned_users_by_role'] = $assignedByRole;
+                $data['assigned_user_models'] = $assignedUserModels;
+
+                $toothContext = $payload['tooth_context'] ?? $instance->tooth_context ?? null;
+                $itemContext = $payload['item_context'] ?? $instance->item_context ?? null;
+                if (is_string($itemContext)) {
+                    $itemContext = json_decode($itemContext, true);
+                }
+
                 $data['tokens'] = array_merge([
                     'plan_id' => $plan->id,
                     'patient_name' => $plan->patient_name ?? $plan->client?->full_name,
                     'status' => $plan->status,
+                    'status_label' => $plan->status_label,
                     'notes' => $plan->notes,
                     'total' => $plan->total,
-                ], $data['tokens']);
+                    'final_payable' => $plan->final_payable,
+                    'currency' => $plan->currency ?? 'تومان',
+                    'client_phone' => $plan->client?->phone ?? $plan->client?->mobile,
+                    'creator_name' => $plan->user?->name,
+                    'creator_phone' => $plan->user?->phone ?? $plan->user?->mobile,
+                    'tooth' => $toothContext,
+                    'item_service_name' => $itemContext['service_name'] ?? null,
+                    'item_price' => $itemContext['price'] ?? null,
+                    'item_tooth' => $itemContext['tooth'] ?? $itemContext['tooth_id'] ?? null,
+                ], $this->buildRoleTokens($assignedByRole, $cureAssignableRoles), $data['tokens']);
             }
         }
 
         return $data;
+    }
+
+    protected function buildRoleTokens(array $assignedByRole, array $cureAssignableRoles): array
+    {
+        $tokens = [];
+        $roles = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->get();
+        
+        foreach ($roles as $role) {
+            $users = $assignedByRole[$role->id] ?? [];
+            $first = $users[0] ?? null;
+            
+            $roleSlug = preg_replace('/[^a-zA-Z0-9_\x7f-\xff]/u', '_', $role->name);
+            $roleSlug = trim(preg_replace('/_+/', '_', $roleSlug), '_');
+            if (empty($roleSlug)) {
+                $roleSlug = 'role_' . $role->id;
+            }
+            
+            $tokens["plan_role_{$roleSlug}_name"] = $first['name'] ?? '';
+            $tokens["plan_role_{$roleSlug}_phone"] = $first['phone'] ?? '';
+            $tokens["plan_role_{$roleSlug}_all_names"] = implode('، ', array_column($users, 'name'));
+        }
+        
+        return $tokens;
     }
 
     protected function resolveClientId(WorkflowInstance $instance): ?int
@@ -686,6 +795,20 @@ class WorkflowEngine
 
         if ($target === 'CUSTOM_PHONE') {
             return $config['phone'] ?? null;
+        }
+
+        if ($target === 'TREATMENT_PLAN_CLIENT') {
+            return $context['tokens']['client_phone'] ?? null;
+        }
+
+        if ($target === 'TREATMENT_PLAN_CREATOR') {
+            return $context['tokens']['creator_phone'] ?? null;
+        }
+
+        if (str_starts_with($target, 'TREATMENT_PLAN_ROLE_')) {
+            $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $target);
+            $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
+            return $assignedUsers[0]['phone'] ?? null;
         }
 
         return null;

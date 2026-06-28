@@ -269,6 +269,220 @@
                     @endcan
                 </div>
 
+                @if(isset($treatmentPlan) && $treatmentPlan)
+                    @php
+                        $serviceDetails = '—';
+                        if (isset($itemContext) && $itemContext) {
+                            $serviceDetails = $itemContext['service_name'] ?? '—';
+                            if (isset($itemContext['brands']) && is_array($itemContext['brands'])) {
+                                $brandDetails = [];
+                                foreach ($itemContext['brands'] as $brand) {
+                                    $title = $brand['sectionTitle'] ?? '';
+                                    $name = $brand['name'] ?? '';
+                                    if ($title && $name) {
+                                        $brandDetails[] = "{$title} {$name}";
+                                    } elseif ($name) {
+                                        $brandDetails[] = $name;
+                                    }
+                                }
+                                if (!empty($brandDetails)) {
+                                    $serviceDetails .= ' (' . implode(' - ', $brandDetails) . ')';
+                                }
+                            }
+                        }
+
+                        $progressPercent = 0;
+                        $currentStepName = '—';
+                        if (isset($workflowInstance) && $workflowInstance) {
+                            $currentStepName = $workflowInstance->currentNode?->name ?? '—';
+                            if ($workflowInstance->workflow) {
+                                $totalNodes = $workflowInstance->workflow->nodes()->where('type', '!=', 'START')->count();
+                                if ($totalNodes > 0) {
+                                    $visitedNodes = $workflowInstance->logs()
+                                        ->whereNotNull('to_node_id')
+                                        ->distinct()
+                                        ->pluck('to_node_id')
+                                        ->toArray();
+                                    $reachedCount = count(array_unique($visitedNodes));
+                                    if ($workflowInstance->status === 'COMPLETED') {
+                                        $progressPercent = 100;
+                                    } else {
+                                        $progressPercent = min(95, round(($reachedCount / ($totalNodes ?: 1)) * 100));
+                                    }
+                                }
+                            }
+                        }
+                    @endphp
+
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4 mt-6">
+                        <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                            <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <span class="flex items-center justify-center w-6 h-6 rounded bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                    </svg>
+                                </span>
+                                اطلاعات طرح درمان مرتبط
+                            </h3>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
+                            <div class="space-y-3.5">
+                                {{-- بیمار --}}
+                                <div class="flex justify-between items-center py-2 border-b border-gray-50 dark:border-gray-700/50">
+                                    <span class="text-gray-500 dark:text-gray-400">بیمار</span>
+                                    <span class="font-bold text-gray-900 dark:text-white">
+                                        @if($treatmentPlan->client)
+                                            @if(Route::has('user.clients.show'))
+                                                <a href="{{ route('user.clients.show', $treatmentPlan->client) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                    {{ $treatmentPlan->client_name }}
+                                                </a>
+                                            @else
+                                                {{ $treatmentPlan->client_name }}
+                                            @endif
+                                        @else
+                                            {{ $treatmentPlan->client_name }}
+                                        @endif
+                                    </span>
+                                </div>
+
+                                {{-- شماره طرح درمان --}}
+                                <div class="flex justify-between items-center py-2 border-b border-gray-50 dark:border-gray-700/50">
+                                    <span class="text-gray-500 dark:text-gray-400">شناسه طرح درمان</span>
+                                    <span class="font-mono text-gray-700 dark:text-gray-300">#{{ $treatmentPlan->id }}</span>
+                                </div>
+
+                                {{-- وضعیت طرح درمان --}}
+                                <div class="flex justify-between items-center py-2 border-b border-gray-50 dark:border-gray-700/50">
+                                    <span class="text-gray-500 dark:text-gray-400">وضعیت طرح</span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border" 
+                                          style="background-color: {{ $treatmentPlan->status_color }}15; color: {{ $treatmentPlan->status_color }}; border-color: {{ $treatmentPlan->status_color }}35;">
+                                        {{ $treatmentPlan->status_label }}
+                                    </span>
+                                </div>
+
+                                {{-- گردش‌کار متصل --}}
+                                @if(isset($workflowInstance) && $workflowInstance && $workflowInstance->workflow)
+                                    <div class="flex justify-between items-center py-2 border-b border-gray-50 dark:border-gray-700/50">
+                                        <span class="text-gray-500 dark:text-gray-400">گردش‌کار متصل</span>
+                                        <span class="font-medium text-gray-900 dark:text-white">
+                                            {{ $workflowInstance->workflow->name }}
+                                        </span>
+                                    </div>
+                                @endif
+
+                                {{-- جزئیات آیتم/سرویس طرح درمان --}}
+                                @if(isset($itemContext) && $itemContext)
+                                    <div class="flex justify-between items-center py-2 border-b border-gray-50 dark:border-gray-700/50">
+                                        <span class="text-gray-500 dark:text-gray-400">آیتم طرح درمان مرتبط</span>
+                                        <span class="font-bold text-gray-900 dark:text-white text-right">
+                                            {{ $serviceDetails }}
+                                        </span>
+                                    </div>
+                                @endif
+
+                                {{-- مرحله فعلی بیمار به همراه نوار پیشرفت --}}
+                                @if(isset($workflowInstance) && $workflowInstance)
+                                    <div class="py-2.5 space-y-2">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-500 dark:text-gray-400">
+                                                @if(isset($toothContext) && $toothContext !== null && $toothContext > 0)
+                                                    مرحله فعلی درمان روی دندان {{ $toothContext }}
+                                                @else
+                                                    مرحله فعلی درمان
+                                                @endif
+                                            </span>
+                                            <span class="font-bold text-indigo-600 dark:text-indigo-400">
+                                                {{ $currentStepName }}
+                                            </span>
+                                        </div>
+                                        
+                                        {{-- Progress Bar --}}
+                                        <div class="space-y-1.5">
+                                            <div class="flex justify-between items-center text-[10px] text-gray-400 font-bold">
+                                                <span>پیشرفت کل مسیر</span>
+                                                <span>{{ $progressPercent }}%</span>
+                                            </div>
+                                            <div class="w-full bg-gray-100 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
+                                                <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-full transition-all duration-500"
+                                                     style="width: {{ $progressPercent }}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- ستون دوم (نقشه دندان) --}}
+                            <div class="flex flex-col justify-center">
+                                @if(isset($toothContext) && $toothContext !== null)
+                                    <div class="p-3 bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700/50 max-w-sm mx-auto w-full relative"
+                                         x-data="{
+                                             selected: @js($toothContext == 0 ? range(1, 28) : [(int) $toothContext]),
+                                             toggle(id) {},
+                                             is(id) {
+                                                 return this.selected.map(Number).includes(Number(id)) ? 'tooth-path tooth-selected' : 'tooth-path tooth-unselected';
+                                             }
+                                         }">
+                                        <style>
+                                            .tooth-path {
+                                                transition: fill .14s ease, stroke .14s ease, filter .14s ease;
+                                                stroke-width: 1.5px;
+                                                vector-effect: non-scaling-stroke;
+                                            }
+                                            .tooth-selected {
+                                                fill: #3b82f6 !important;
+                                                stroke: #2563eb !important;
+                                                stroke-width: 2.5px !important;
+                                                filter: drop-shadow(0 2px 6px rgba(37, 99, 235, 0.45));
+                                            }
+                                            .dark .tooth-selected {
+                                                fill: #1d4ed8 !important;
+                                                stroke: #3b82f6 !important;
+                                            }
+                                            .tooth-unselected {
+                                                fill: #ffffff !important;
+                                                stroke: #cbd5e1 !important;
+                                            }
+                                            .dark .tooth-unselected {
+                                                fill: #334155 !important;
+                                                stroke: #475569 !important;
+                                            }
+                                        </style>
+                                        <x-booking::dental-chart/>
+                                        <div class="mt-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400">
+                                            {{ $toothContext == 0 ? 'موقعیت هدف: کل دندان‌ها (همه دندان‌ها)' : 'موقعیت هدف: دندان شماره ' . $toothContext }}
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- دکمه‌های انتقال سریع --}}
+                        <div class="pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-3">
+                            @if(Route::has('user.booking.cure.workflows'))
+                                <a href="{{ route('user.booking.cure.workflows', $treatmentPlan) }}{{ (isset($toothContext) && $toothContext !== null) ? '?tooth=' . $toothContext : '' }}" 
+                                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-all duration-150">
+                                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                    </svg>
+                                    مدیریت وضعیت و مسیر درمان
+                                </a>
+                            @endif
+
+                            @if(Route::has('user.booking.cure.show'))
+                                <a href="{{ route('user.booking.cure.show', $treatmentPlan) }}" 
+                                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all duration-150">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    مشاهده طرح درمان
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 {{-- تاریخچه تعویق یادآوری‌ها --}}
                 @php
                     $snoozedReminders = $taskReminders->where('snooze_count', '>', 0);
@@ -338,6 +552,8 @@
 
             {{-- ستون کناری (راست) --}}
             <div class="space-y-6">
+
+
 
                 {{-- کارت زمان‌بندی --}}
                 <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">

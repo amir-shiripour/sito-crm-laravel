@@ -254,11 +254,23 @@
                                             </button>
                                             <div class="event-group-content p-4 grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
                                                 @php
-                                                    $tpEvents = [
-                                                        'treatment_plan_draft' => 'طرح درمان: پیش‌نویس',
-                                                        'treatment_plan_active' => 'طرح درمان: فعال شده',
-                                                        'treatment_plan_completed' => 'طرح درمان: تکمیل شده'
-                                                    ];
+                                                    $tpEvents = [];
+                                                    if (!empty($cureStatuses)) {
+                                                        foreach ($cureStatuses as $st) {
+                                                            $key = 'treatment_plan_' . strtolower($st['id']);
+                                                            $tpEvents[$key] = 'طرح درمان: ' . ($st['name'] ?? $st['id']);
+                                                        }
+                                                    } else {
+                                                        $tpEvents = [
+                                                            'treatment_plan_draft' => 'طرح درمان: پیش‌نویس',
+                                                            'treatment_plan_confirmed' => 'طرح درمان: تأیید شده',
+                                                        ];
+                                                    }
+
+                                                    // Add extra triggers
+                                                    $tpEvents['treatment_plan_created'] = 'طرح درمان: ایجاد جدید (هر وضعیتی)';
+                                                    $tpEvents['treatment_plan_item_added'] = 'طرح درمان: اضافه شدن آیتم جدید';
+                                                    $tpEvents['treatment_plan_item_removed'] = 'طرح درمان: حذف شدن آیتم';
                                                 @endphp
                                                 @foreach($tpEvents as $k => $label)
                                                     <label class="flex items-center gap-3 p-2 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-all select-none">
@@ -315,6 +327,42 @@
                                                 <span class="text-sm text-gray-700 dark:text-gray-300">{{ $user->name }}</span>
                                             </label>
                                         @endforeach
+                                    </div>
+                                </div>
+
+                                <!-- فیلترهای اختصاصی طرح درمان -->
+                                <div class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-5">
+                                    <h4 class="text-xs font-bold text-indigo-600 dark:text-indigo-400">فیلترهای اختصاصی طرح درمان (فقط برای رویدادهای طرح درمان)</h4>
+
+                                    <!-- فیلتر وضعیت قبلی -->
+                                    <div class="space-y-2">
+                                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">فقط در صورت انتقال از وضعیت(های) قبلی:</label>
+                                        @php
+                                            $selectedPrevStatuses = (array)($tConfig['tp_prev_statuses'] ?? []);
+                                        @endphp
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-50/50 dark:bg-gray-800/30 p-2.5 rounded-xl border border-gray-200 dark:border-gray-800">
+                                            @foreach($cureStatuses as $st)
+                                                <label class="flex items-center gap-2 p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
+                                                    <input type="checkbox" name="triggers[{{ $index }}][config][tp_prev_statuses][]" value="{{ $st['id'] }}" @checked(in_array($st['id'], $selectedPrevStatuses))
+                                                           class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 h-4 w-4">
+                                                    <span class="text-xs text-gray-700 dark:text-gray-300 font-medium">{{ $st['name'] }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+
+                                    <!-- فیلتر مبلغ -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50/50 dark:bg-gray-800/30 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
+                                        <div class="space-y-1">
+                                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">حداقل مبلغ طرح درمان (تومان)</label>
+                                            <input type="number" name="triggers[{{ $index }}][config][tp_min_amount]" value="{{ $tConfig['tp_min_amount'] ?? '' }}"
+                                                   class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2 px-3 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                        </div>
+                                        <div class="space-y-1">
+                                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">حداکثر مبلغ طرح درمان (تومان)</label>
+                                            <input type="number" name="triggers[{{ $index }}][config][tp_max_amount]" value="{{ $tConfig['tp_max_amount'] ?? '' }}"
+                                                   class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2 px-3 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                        </div>
                                     </div>
                                 </div>
                             </div>

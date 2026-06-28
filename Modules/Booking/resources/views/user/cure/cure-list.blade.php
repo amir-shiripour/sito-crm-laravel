@@ -99,8 +99,9 @@
                     <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">وضعیت</label>
                     <select name="status" class="p-2 w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="">همه وضعیت‌ها</option>
-                        <option value="draft"     {{ request('status') === 'draft'     ? 'selected' : '' }}>پیش‌نویس</option>
-                        <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>تأیید شده</option>
+                        @foreach($settings->cure_statuses ?? [] as $st)
+                            <option value="{{ $st['id'] }}" {{ request('status') === $st['id'] ? 'selected' : '' }}>{{ $st['name'] }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div>
@@ -129,16 +130,28 @@
                     $itemCount     = is_array($plan->items) ? count($plan->items) : 0;
                     $teethCount    = collect($plan->items ?? [])->sum(fn($i) => count($i['teeth'] ?? []));
 
-                    // Always reflect the CURRENT system currency setting
                     $currency      = ($settings->currency_unit ?? $plan->currency) === 'IRR' ? 'ریال' : 'تومان';
-
                     $createdJalali = Jalalian::fromDateTime($plan->created_at)->format('Y/m/d');
 
-                    $statusMap = [
-                        'draft'     => ['label' => 'پیش‌نویس',  'class' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800'],
-                        'confirmed' => ['label' => 'تأیید شده', 'class' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800'],
-                    ];
-                    $statusMeta = $statusMap[$plan->status] ?? ['label' => $plan->status, 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'];
+                    $statusMeta = ['label' => $plan->status, 'color' => '#6b7280', 'class' => ''];
+                    if (!empty($settings->cure_statuses)) {
+                        foreach ($settings->cure_statuses as $st) {
+                            if ($st['id'] === $plan->status) {
+                                $statusMeta = [
+                                    'label' => $st['name'],
+                                    'color' => $st['color'] ?? '#6b7280',
+                                    'class' => '',
+                                ];
+                                break;
+                            }
+                        }
+                    } else {
+                        if ($plan->status === 'draft') {
+                            $statusMeta = ['label' => 'پیش‌نویس', 'color' => '#f59e0b', 'class' => ''];
+                        } elseif ($plan->status === 'confirmed') {
+                            $statusMeta = ['label' => 'تأیید شده', 'color' => '#10b981', 'class' => ''];
+                        }
+                    }
                     $initial    = mb_substr($clientName, 0, 1);
 
                     $canEdit = auth()->user()->can('booking.cure.edit') || auth()->user()->can('booking.cure.manage');
@@ -148,7 +161,6 @@
                             && (auth()->user()->can('booking.cure.edit.confirmed') || auth()->user()->can('booking.cure.manage'));
                     }
 
-                    // Extract Warranty Data
                     $hasWarranty = collect($plan->items ?? [])->filter(fn($i) => !empty($i['warranty']))->isNotEmpty();
                     $warrantyLabels = collect($plan->items ?? [])
                         ->map(fn($i) => $i['warranty'] ?? null)
@@ -157,14 +169,27 @@
                         ->values();
 
                     // Extract Installment Data
-                    $isInstallment = !empty($plan->installment_option_id) && isset($plan->installment_monthly_amount);
+                    $isInstallment = !empty($plan->installment_option_id);
                     $instTitle = $plan->installment_option_title ?? 'طرح اقساطی';
                     $instDownPayment = $plan->installment_down_payment ?? 0;
                     $instMonthly = $plan->installment_monthly_amount ?? 0;
-                    $instCount = $plan->installment_count ?? 0;
-                    $instMonths = $plan->installment_months ?? 0;
+                    $instCount = $plan->installment_count ?? 0; // تعداد چک‌ها
+                    $instMonths = $plan->installment_months ?? 0; // مدت زمان
                     $instFee = $plan->installment_fee_value ?? 0;
-                    $instInterval = $instCount > 0 ? round($instMonths / $instCount) : $instMonths;
+                    $instInterval = $plan->installment_interval_months ?? ($instCount > 0 ? round($instMonths / $instCount) : 1);
+
+                    $instStartDate = $plan->installment_start_date ?? null;
+                    $instDueDay = $plan->installment_due_day ?? null;
+                    $instDpPercent = $plan->installment_down_payment_percent ?? 0;
+                    $instFeePercent = $plan->installment_fee_percent ?? 0;
+                    $instCashNow = $plan->installment_cash_now ?? 0;
+                    $instUncoveredTotal = $plan->installment_uncovered_total ?? 0;
+
+                    $instBreakdown = $plan->installment_breakdown;
+                    if (is_string($instBreakdown)) $instBreakdown = json_decode($instBreakdown, true);
+
+                    $generatedCheques = $plan->generated_cheques;
+                    if (is_string($generatedCheques)) $generatedCheques = json_decode($generatedCheques, true);
                 @endphp
 
                 <div x-data="{ expanded: false }"
@@ -174,43 +199,41 @@
                     <div @click="expanded = !expanded"
                          class="cursor-pointer px-5 py-4 flex items-center justify-between gap-4">
                         <div class="flex items-center gap-4">
-                            {{-- Avatar --}}
                             <div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black shrink-0
-                                        bg-linear-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40
+                                        bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40
                                         text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700/50">
                                 {{ $initial }}
                             </div>
-                            {{-- Client Info --}}
                             <div>
-                                <h3 class="font-bold text-gray-900 dark:text-white text-base">{{ $clientName }}</h3>
+                                <h3 class="font-bold text-gray-900 dark:text-white text-base flex items-center gap-2">
+                                    {{ $clientName }}
+                                    @if($isInstallment)
+                                        <span class="text-[9px] px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 font-black">اقساطی</span>
+                                    @endif
+                                </h3>
                                 <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    <span>شناسه: {{ $plan->id }}</span>
+                                    <span>#{{ $plan->id }}</span>
                                     <span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
                                     <span>{{ $createdJalali }}</span>
                                     <span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
-                                    <span class="flex items-center gap-1">
-                                        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                        </svg>
-                                        {{ $createdBy }}
-                                    </span>
+                                    <span>{{ $createdBy }}</span>
+                                    <span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                    <span>{{ $itemCount }} آیتم · {{ $teethCount }} دندان</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-4">
-                            <span class="hidden sm:inline-flex px-3 py-1 rounded-full text-[11px] font-bold border {{ $statusMeta['class'] }}">
+                            <span class="hidden sm:inline-flex px-3 py-1 rounded-full text-[11px] font-bold border"
+                                  style="background-color: {{ $statusMeta['color'] }}15; color: {{ $statusMeta['color'] }}; border-color: {{ $statusMeta['color'] }}30;">
                                 {{ $statusMeta['label'] }}
                             </span>
                             <div class="text-left hidden md:block">
-                                @if($isInstallment)
-                                    <div class="text-[10px] text-indigo-400">طرح قسطی</div>
-                                    <div class="text-sm font-black text-indigo-600 dark:text-indigo-400">{{ number_format($plan->total) }}</div>
-                                @else
-                                    <div class="text-[10px] text-gray-400">قابل پرداخت</div>
-                                    <div class="text-sm font-black text-emerald-600 dark:text-emerald-400">{{ number_format($plan->total) }}</div>
-                                @endif
-                                <div class="text-[10px] text-gray-400">{{ $currency }}</div>
+                                <div class="text-[10px] text-gray-400">{{ $isInstallment ? 'مبلغ نقدی/پیش‌پرداخت' : 'قابل پرداخت' }}</div>
+                                <div class="text-sm font-black {{ $isInstallment ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400' }}">
+                                    {{ number_format($isInstallment ? $instCashNow : $plan->total) }}
+                                    <span class="text-[10px] font-normal text-gray-400">{{ $currency }}</span>
+                                </div>
                             </div>
                             <svg class="w-5 h-5 text-gray-400 transition-transform duration-300"
                                  :class="expanded ? 'rotate-180' : ''"
@@ -231,22 +254,6 @@
 
                         <div class="border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20 p-5 space-y-5">
 
-                            {{-- Mobile Status / Total --}}
-                            <div class="flex md:hidden items-center justify-between">
-                                <span class="inline-flex px-3 py-1 rounded-full text-[11px] font-bold border {{ $statusMeta['class'] }}">
-                                    {{ $statusMeta['label'] }}
-                                </span>
-                                <div class="text-left">
-                                    @if($isInstallment)
-                                        <span class="text-[10px] text-indigo-400 block">طرح قسطی</span>
-                                        <span class="text-sm font-black text-indigo-600">{{ number_format($plan->total) }}</span>
-                                    @else
-                                        <span class="text-sm font-black text-emerald-600">{{ number_format($plan->total) }}</span>
-                                    @endif
-                                    <span class="text-[10px] text-gray-400 mr-1">{{ $currency }}</span>
-                                </div>
-                            </div>
-
                             {{-- Financial Grid --}}
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
@@ -259,68 +266,138 @@
                                 <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
                                     <span class="text-[10px] text-gray-500 dark:text-gray-400 block">تخفیف</span>
                                     <span class="text-sm font-bold text-rose-600 dark:text-rose-400">
-                                        @if($plan->discount_value > 0)
-                                            −{{ number_format($plan->discount_value) }}
-                                        @else
-                                            ۰
-                                        @endif
+                                        @if($plan->discount_value > 0) −{{ number_format($plan->discount_value) }} @else ۰ @endif
                                     </span>
                                 </div>
-
                                 @if($isInstallment)
                                     <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 border border-indigo-100 dark:border-indigo-800">
-                                        <span class="text-[10px] text-indigo-500 dark:text-indigo-400 block">مجموع قابل پرداخت (اقساطی)</span>
+                                        <span class="text-[10px] text-indigo-500 dark:text-indigo-400 block">مبلغ قابل پرداخت (اقساطی)</span>
                                         <span class="text-sm font-bold text-indigo-700 dark:text-indigo-300">{{ number_format($plan->total) }}</span>
                                         <span class="text-[10px] text-gray-400 font-normal">{{ $currency }}</span>
                                     </div>
-                                    <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
-                                        <span class="text-[10px] text-gray-500 dark:text-gray-400 block">طرح اقساطی</span>
-                                        <span class="text-sm font-bold text-indigo-700 dark:text-indigo-300 truncate block">{{ $instTitle }}</span>
-                                    </div>
-                                    <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
-                                        <span class="text-[10px] text-gray-500 dark:text-gray-400 block">پیش‌پرداخت</span>
-                                        <span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{ number_format($instDownPayment) }}</span>
-                                        <span class="text-[10px] text-gray-400 font-normal">{{ $currency }}</span>
-                                    </div>
-                                    <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
-                                        <span class="text-[10px] text-gray-500 dark:text-gray-400 block">مبلغ هر قسط</span>
-                                        <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($instMonthly) }}</span>
-                                        <span class="text-[10px] text-gray-400 font-normal">
-                                            {{ $currency }} ({{ $instCount }} قسط، هر {{ $instInterval }} ماه)
-                                        </span>
-                                    </div>
-                                    @if($instFee > 0)
-                                        <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
-                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 block">کارمزد/سود اقساط</span>
-                                            <span class="text-sm font-bold text-rose-600 dark:text-rose-400">{{ number_format($instFee) }}</span>
-                                            <span class="text-[10px] text-gray-400 font-normal">{{ $currency }}</span>
-                                        </div>
-                                    @endif
                                 @else
                                     <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 border border-emerald-100 dark:border-emerald-800">
-                                        <span class="text-[10px] text-emerald-500 dark:text-emerald-400 block">مجموع قابل پرداخت (نقدی)</span>
+                                        <span class="text-[10px] text-emerald-500 dark:text-emerald-400 block">مبلغ قابل پرداخت (نقدی)</span>
                                         <span class="text-sm font-bold text-emerald-700 dark:text-emerald-300">{{ number_format($plan->total) }}</span>
                                         <span class="text-[10px] text-gray-400 font-normal">{{ $currency }}</span>
                                     </div>
-                                    <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
-                                        @if($hasWarranty)
-                                            <span class="text-[10px] text-teal-600 dark:text-teal-400 block flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                                                دارای ضمانت
-                                            </span>
-                                            <span class="text-xs font-bold text-teal-700 dark:text-teal-300 mt-0.5 block">
-                                                {{ $warrantyLabels->first() }}
-                                                @if($warrantyLabels->count() > 1)
-                                                    <span class="text-[10px] text-gray-400 font-normal">+{{ $warrantyLabels->count() - 1 }}</span>
-                                                @endif
-                                            </span>
-                                        @else
-                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 block">تعداد آیتم‌ها</span>
-                                            <span class="text-sm font-bold text-indigo-600 dark:text-indigo-400">{{ $itemCount }} آیتم / {{ $teethCount }} دندان</span>
-                                        @endif
-                                    </div>
                                 @endif
                             </div>
+
+                            {{-- Installment Breakdown & Cheques --}}
+                            @if($isInstallment)
+                                <div class="bg-indigo-50/40 dark:bg-indigo-900/10 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800/30 space-y-4">
+                                    <div class="flex items-center justify-between border-b border-indigo-100 dark:border-indigo-800/30 pb-2">
+                                        <h4 class="text-sm font-bold text-indigo-800 dark:text-indigo-200 flex items-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                            جزئیات طرح اقساطی: {{ $instTitle }}
+                                        </h4>
+                                        @if($instStartDate)
+                                            <div class="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                                                شروع: {{ $instStartDate }}
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700">
+                                            <span class="text-[9px] text-gray-500 block">پیش‌پرداخت ({{ $instDpPercent }}%)</span>
+                                            <span class="text-xs font-bold text-amber-600">{{ number_format($instDownPayment) }} {{ $currency }}</span>
+                                        </div>
+                                        <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700">
+                                            <span class="text-[9px] text-gray-500 block">مبلغ هر چک</span>
+                                            <span class="text-xs font-bold text-emerald-600">{{ number_format($instMonthly) }} {{ $currency }}</span>
+                                        </div>
+                                        <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700">
+                                            <span class="text-[9px] text-gray-500 block">تعداد چک‌ها / مدت</span>
+                                            <span class="text-xs font-bold text-indigo-600">{{ $instCount }} چک (هر {{ $instInterval }} ماه یک‌بار، مجموعاً {{ $instMonths }} ماه)</span>
+                                        </div>
+                                        @if($instFee > 0)
+                                            <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700">
+                                                <span class="text-[9px] text-gray-500 block">سود اقساط ({{ $instFeePercent }}%)</span>
+                                                <span class="text-xs font-bold text-rose-600">{{ number_format($instFee) }} {{ $currency }}</span>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    @if(!empty($instBreakdown['covered']) || !empty($instBreakdown['uncovered']) || $instUncoveredTotal > 0)
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                                            @if(!empty($instBreakdown['covered']))
+                                                <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700">
+                                                    <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-1.5">مشمول اقساط</span>
+                                                    <div class="flex flex-wrap gap-1.5">
+                                                        @foreach($instBreakdown['covered'] as $cov)
+                                                            @php $covBrandName = $cov['brandName'] ?? $cov['brand_name'] ?? 'نامشخص'; @endphp
+                                                            <span class="inline-flex items-center gap-1 text-[10px] bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 rounded-md px-2 py-0.5 font-medium">
+                                                                {{ $covBrandName }}: {{ number_format($cov['price'] ?? 0) }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endif
+                                            @if(!empty($instBreakdown['uncovered']))
+                                                <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700">
+                                                    <span class="text-[10px] font-bold text-amber-600 dark:text-amber-400 block mb-1.5">
+                                                        غیرمشمول (نقدی)
+                                                    </span>
+                                                    <div class="flex flex-wrap gap-1.5">
+                                                        @foreach($instBreakdown['uncovered'] as $uncov)
+                                                            @php $uncovBrandName = $uncov['brandName'] ?? $uncov['brand_name'] ?? 'نامشخص'; @endphp
+                                                            <span class="inline-flex items-center gap-1 text-[10px] bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-400 rounded-md px-2 py-0.5 font-medium">
+                                                                {{ $uncovBrandName }}: {{ number_format($uncov['price'] ?? 0) }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endif
+
+                                    {{-- Cheques List --}}
+                                    @if(!empty($generatedCheques))
+                                        <div class="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700 mt-3">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 block">جدول زمانی چک‌ها</span>
+                                                <span class="text-[10px] text-gray-500 font-medium">جمع چک‌ها: {{ number_format(collect($generatedCheques)->sum('amount')) }} {{ $currency }}</span>
+                                            </div>
+                                            <div class="flex flex-col gap-1.5 max-h-48 overflow-y-auto sc-thin pr-1">
+                                                @foreach($generatedCheques as $cheque)
+                                                    @php $isManual = $cheque['isManual'] ?? false; @endphp
+                                                    <div class="flex items-center justify-between p-2 rounded-lg {{ $isManual ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border border-dashed border-emerald-200 dark:border-emerald-800/40' : 'bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700' }}">
+                                                        <div class="flex items-center gap-2">
+                                                            <div class="w-7 h-7 rounded-md {{ $isManual ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' }} text-[10px] flex items-center justify-center font-black">
+                                                                @if($isManual) د @else {{ $cheque['number'] ?? '-' }} @endif
+                                                            </div>
+                                                            <div>
+                                                                <p class="text-[11px] font-bold text-gray-700 dark:text-gray-200">
+                                                                    @if($isManual)
+                                                                        چک دستی {{ isset($cheque['number']) ? '(شماره: '.$cheque['number'].')' : '' }}
+                                                                    @else
+                                                                        قسط {{ $cheque['number'] ?? '-' }} از {{ $cheque['total'] ?? '-' }}
+                                                                    @endif
+                                                                </p>
+                                                                <p class="text-[10px] text-indigo-500 dark:text-indigo-400 mt-0.5 flex items-center flex-wrap gap-1.5">
+                                                                    <span>{{ $cheque['display_date'] ?? $cheque['date'] ?? '-' }}</span>
+                                                                    @if(!empty($cheque['bankName']))
+                                                                        <span class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold">بانک {{ $cheque['bankName'] }}</span>
+                                                                    @endif
+                                                                    @if(!empty($cheque['chequeNumber']))
+                                                                        <span class="px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 font-bold">شماره چک: {{ $cheque['chequeNumber'] }}</span>
+                                                                    @endif
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="text-left">
+                                                            <p class="text-xs font-black text-emerald-600">{{ number_format($cheque['amount'] ?? 0) }}</p>
+                                                            <p class="text-[9px] text-gray-400">{{ $currency }}</p>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
 
                             {{-- Items Details --}}
                             @if(is_array($plan->items) && count($plan->items) > 0)
@@ -357,73 +434,65 @@
                                                 $categoryValue  = $item['category_name'] ?? $item['category'] ?? null;
                                                 $guaranteeValue = $item['warranty'] ?? null;
                                             @endphp
-                                            <div class="px-4 py-4 flex flex-col gap-3 hover:bg-gray-50/50 dark:hover:bg-gray-900/40 transition">
-                                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-50 dark:border-gray-700/30 pb-2">
+                                            <div class="px-4 py-3 flex flex-col gap-2 hover:bg-gray-50/50 dark:hover:bg-gray-900/40 transition">
+                                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                                     <div class="flex items-center gap-2">
-                                                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                                                         <p class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ $serviceName }}</p>
+                                                        <span class="text-[10px] text-gray-400">({{ $qty }} عدد)</span>
                                                     </div>
                                                     <div class="text-left">
                                                         @if($hasItemDiscount)
-                                                            <span class="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                                            <span class="text-xs font-black text-emerald-600 dark:text-emerald-400">
                                                                 {{ number_format($discountedSubtotal) }}
                                                                 <span class="text-[10px] text-gray-400 font-normal mr-0.5">{{ $currency }}</span>
                                                             </span>
-                                                            <span class="text-[11px] text-gray-400 line-through block sm:inline sm:mr-2">
-                                                                {{ number_format($subtotal) }} {{ $currency }}
+                                                            <span class="text-[10px] text-gray-400 line-through block sm:inline sm:mr-2">
+                                                                {{ number_format($subtotal) }}
                                                             </span>
-                                                            @if($planDiscountType === 'percent')
-                                                                <span class="text-[10px] text-rose-500 font-bold">({{ $planDiscountAmount }}% تخفیف)</span>
-                                                            @endif
                                                         @else
-                                                            <span class="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                                                                {{ number_format($plan->total) }}
+                                                            <span class="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                                                                {{ number_format($subtotal) }}
                                                                 <span class="text-[10px] text-gray-400 font-normal mr-0.5">{{ $currency }}</span>
                                                             </span>
                                                         @endif
                                                     </div>
                                                 </div>
-                                                @if(!empty($brands) || $categoryValue || $guaranteeValue)
-                                                    <div class="flex flex-wrap gap-2 items-center pr-4">
-                                                        @foreach($brands as $brand)
-                                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 shadow-sm">
-                                                                {{ !empty($brand['sectionTitle']) ? $brand['sectionTitle'] : 'گزینه' }}: <span class="font-bold">{{ $brand['name'] ?? 'نامشخص' }}</span>
-                                                            </span>
-                                                        @endforeach
-                                                        @if($categoryValue)
-                                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 shadow-sm">
-                                                                گروه: {{ $categoryValue }}
-                                                            </span>
-                                                        @endif
-                                                        @if($guaranteeValue)
-                                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-teal-50 text-teal-700 border border-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800 shadow-sm">
-                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                                                                ضمانت: {{ $guaranteeValue }}
-                                                            </span>
-                                                        @endif
-                                                    </div>
-                                                @endif
-                                                <div class="mt-1 pr-4">
-                                                    @if(!empty($rawTeeth) && is_array($rawTeeth))
-                                                        <div class="flex flex-wrap gap-1 items-center">
-                                                            <span class="text-[11px] text-gray-400 dark:text-gray-500 ml-1.5">موقعیت دندان‌ها:</span>
-                                                            @foreach($rawTeeth as $tooth)
-                                                                @php
-                                                                    $toothId = is_array($tooth) ? ($tooth['number'] ?? array_values($tooth)[0]) : $tooth;
-                                                                    $toothInfo = $toothMap[$toothId] ?? ['num' => $toothId, 'pos' => 'UR'];
-                                                                    $quadClass = getCureQuadrantClasses($toothInfo['pos']);
-                                                                @endphp
-                                                                <span class="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-lg border-2 bg-white dark:bg-gray-900 {{ $quadClass }}">
-                                                                    {{ $toothInfo['num'] }}
-                                                                </span>
-                                                            @endforeach
-                                                        </div>
-                                                    @else
-                                                        <span class="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded">
-                                                            بدون وابستگی به موقعیت دندان (خدمات عمومی یا کلی)
+
+                                                <div class="flex flex-wrap gap-1.5 items-center pr-3">
+                                                    @foreach($brands as $brand)
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+                                                            {{ !empty($brand['sectionTitle']) ? $brand['sectionTitle'].': ' : '' }}<span class="font-bold">{{ $brand['name'] ?? 'نامشخص' }}</span>
+                                                        </span>
+                                                    @endforeach
+                                                    @if($categoryValue)
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800">
+                                                            گروه: {{ $categoryValue }}
+                                                        </span>
+                                                    @endif
+                                                    @if($guaranteeValue)
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-teal-50 text-teal-700 border border-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800">
+                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                                            ضمانت: {{ $guaranteeValue }}
                                                         </span>
                                                     @endif
                                                 </div>
+
+                                                @if(!empty($rawTeeth) && is_array($rawTeeth))
+                                                    <div class="flex flex-wrap gap-1 items-center pr-3 mt-1">
+                                                        <span class="text-[10px] text-gray-400 dark:text-gray-500 ml-1.5">دندان‌ها:</span>
+                                                        @foreach($rawTeeth as $tooth)
+                                                            @php
+                                                                $toothId = is_array($tooth) ? ($tooth['number'] ?? array_values($tooth)[0]) : $tooth;
+                                                                $toothInfo = $toothMap[$toothId] ?? ['num' => $toothId, 'pos' => 'UR'];
+                                                                $quadClass = getCureQuadrantClasses($toothInfo['pos']);
+                                                            @endphp
+                                                            <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-bold rounded border-2 bg-white dark:bg-gray-900 {{ $quadClass }}">
+                                                                {{ $toothInfo['num'] }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
                                             </div>
                                         @endforeach
                                     </div>
@@ -444,50 +513,31 @@
                                 @endif
 
                                 <div class="flex items-center gap-2 shrink-0">
-
-                                    {{-- View --}}
                                     @canany(['booking.cure.view', 'booking.cure.view.all', 'booking.cure.view.own', 'booking.cure.manage'])
                                         <a href="{{ route('user.booking.cure.show', $plan) }}"
-                                           class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-gray-100 text-gray-700
-                                                  hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:hover:bg-gray-700 transition font-medium">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                            </svg>
+                                           class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:hover:bg-gray-700 transition font-medium">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                             مشاهده
                                         </a>
                                     @endcanany
 
-                                    {{-- Edit --}}
                                     @if($canEdit)
                                         <a href="{{ route('user.booking.cure.edit', $plan) }}"
-                                           class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-indigo-600 text-white
-                                                  hover:bg-indigo-700 transition font-medium shadow-sm">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                            </svg>
+                                           class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition font-medium shadow-sm">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                             ویرایش
                                         </a>
                                     @endif
 
-                                    {{-- Delete --}}
                                     @canany(['booking.cure.delete', 'booking.cure.manage'])
-                                        <form method="POST"
-                                              action="{{ route('user.booking.cure.destroy', $plan) }}"
-                                              onsubmit="return confirm('آیا از حذف این طرح درمان اطمینان دارید؟')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                    class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-rose-50 text-rose-600
-                                                           hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/30 transition font-medium">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                </svg>
+                                        <form method="POST" action="{{ route('user.booking.cure.destroy', $plan) }}" onsubmit="return confirm('آیا از حذف این طرح درمان اطمینان دارید؟')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/30 transition font-medium">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                 حذف
                                             </button>
                                         </form>
                                     @endcanany
-
                                 </div>
                             </div>
                         </div>
@@ -503,9 +553,7 @@
                     @can('booking.cure.create')
                         <a href="{{ route('user.booking.cure.index') }}"
                            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                            </svg>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             ایجاد اولین طرح
                         </a>
                     @endcan
