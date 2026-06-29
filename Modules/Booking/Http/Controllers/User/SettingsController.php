@@ -41,8 +41,9 @@ class SettingsController extends Controller
         }
 
         $roles = Role::orderBy('name')->get();
+        $categories = \Modules\Booking\Entities\BookingCategory::orderBy('name')->get();
 
-        return view('booking::user.settings.edit', compact('settings', 'rules', 'roles'));
+        return view('booking::user.settings.edit', compact('settings', 'rules', 'roles', 'categories'));
     }
 
     public function update(Request $request)
@@ -127,6 +128,43 @@ class SettingsController extends Controller
         $settings->cure_tooth_numbering_system = $request->input('cure_tooth_numbering_system', 'universal');
         $settings->cure_auto_highlight_teeth = $request->boolean('cure_auto_highlight_teeth');
         $settings->cure_show_tooth_filter = $request->boolean('cure_show_tooth_filter');
+
+        $cureAllowedCategories = $request->input('cure_allowed_categories', []);
+        if (is_array($cureAllowedCategories)) {
+            $settings->cure_allowed_categories = array_values(array_map('intval', array_filter($cureAllowedCategories)));
+        } else {
+            $settings->cure_allowed_categories = [];
+        }
+
+        $cureStatusesInput = $request->input('cure_statuses', []);
+        if (is_array($cureStatusesInput)) {
+            usort($cureStatusesInput, fn($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99));
+            $formattedStatuses = [];
+            foreach ($cureStatusesInput as $st) {
+                if (empty($st['id']) || empty($st['name'])) continue;
+                $allowedRoles = [];
+                if (isset($st['allowed_roles'])) {
+                    $allowedRoles = $normalizeRolesToIds($st['allowed_roles']);
+                }
+                $allowedFrom = [];
+                if (isset($st['allowed_from'])) {
+                    $allowedFrom = is_array($st['allowed_from']) ? $st['allowed_from'] : array_filter(explode(',', $st['allowed_from']));
+                }
+                $formattedStatuses[] = [
+                    'id' => trim($st['id']),
+                    'name' => trim($st['name']),
+                    'color' => trim($st['color'] ?? '#6b7280'),
+                    'order' => (int) ($st['order'] ?? 1),
+                    'allowed_roles' => $allowedRoles,
+                    'allowed_from' => array_values(array_unique(array_filter($allowedFrom))),
+                ];
+            }
+            $settings->cure_statuses = $formattedStatuses;
+        } else {
+            $settings->cure_statuses = [];
+        }
+
+        $settings->cure_assignable_roles = $normalizeRolesToIds($request->input('cure_assignable_roles', []));
 
         if ($shouldLog) {
             \Log::info('[Booking][Settings] Saving cure fields', [

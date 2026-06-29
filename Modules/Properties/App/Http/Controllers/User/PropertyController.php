@@ -39,10 +39,10 @@ class PropertyController extends Controller
         }
 
         // Visibility Logic:
-        $canViewAll = $user->hasRole('super-admin') || $user->can('properties.view.all') || $user->can('properties.manage');
+        $canViewAll = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.view.all') || $user->can('properties.manage');
 
         if ($canViewAll) {
-            if (!$request->has('show_all') || $request->show_all != '1') {
+            if ($request->has('show_all') && $request->show_all == '0') {
                 $query->where(function ($q) use ($user) {
                     $q->where('created_by', $user->id)
                         ->orWhere('agent_id', $user->id);
@@ -130,7 +130,18 @@ class PropertyController extends Controller
 
         // Data for filters
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
-        $categories = PropertyCategory::where('user_id', $user->id)->get();
+        
+        $canViewAllCategories = $user->hasRole(['super-admin', 'admin']) || 
+                                $user->can('properties.categories.view') || 
+                                $user->can('properties.categories.manage') || 
+                                $user->can('properties.view.all') || 
+                                $user->can('properties.manage');
+        if ($canViewAllCategories) {
+            $categories = PropertyCategory::all();
+        } else {
+            $categories = PropertyCategory::where('user_id', $user->id)->get();
+        }
+        
         $buildings = PropertyBuilding::latest()->get();
         $propertyAttributes = PropertyAttribute::where('is_active', true)->get()->keyBy('id');
 
@@ -213,6 +224,7 @@ class PropertyController extends Controller
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'video' => "nullable|file|mimes:{$allowedVideoTypes}|max:{$maxVideoSize}",
             'is_special' => 'nullable|boolean',
+            'show_on_site' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
             'price' => 'nullable|numeric|min:0',
             'min_price' => 'nullable|numeric|min:0',
@@ -257,7 +269,10 @@ class PropertyController extends Controller
         }
 
         $metaRequest = $request->input('meta', []);
-        $processedMeta = ['is_special' => $request->has('is_special')];
+        $processedMeta = [
+            'is_special' => $request->has('is_special'),
+            'show_on_site' => $request->has('show_on_site'),
+        ];
         if (isset($metaRequest['details'])) foreach ($metaRequest['details'] as $k => $v) if (!empty($k)) $processedMeta['details'][$k] = $v;
         if (isset($metaRequest['features'])) foreach ($metaRequest['features'] as $f) {
             if (is_array($f) && !empty($f['value'])) $processedMeta['features'][] = $f['value'];
@@ -637,6 +652,7 @@ class PropertyController extends Controller
             'gallery_images.*' => "nullable|image|mimes:{$allowedTypes}|max:{$maxSize}",
             'video' => "nullable|file|mimes:{$allowedVideoTypes}|max:{$maxVideoSize}",
             'is_special' => 'nullable|boolean',
+            'show_on_site' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
             'price' => 'nullable|numeric|min:0',
             'min_price' => 'nullable|numeric|min:0',
@@ -684,6 +700,7 @@ class PropertyController extends Controller
 
         $processedMeta = $property->meta ?? [];
         $processedMeta['is_special'] = $request->has('is_special');
+        $processedMeta['show_on_site'] = $request->has('show_on_site');
         $processedMeta['details'] = [];
         $processedMeta['features'] = [];
 

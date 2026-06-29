@@ -54,12 +54,18 @@ class DoctorProfileServiceProvider extends ServiceProvider
 
     protected function registerViews(): void
     {
-        $this->loadViewsFrom(__DIR__ . '/../Resources/views', $this->moduleNameLower);
+        $path = __DIR__ . '/../Resources/views';
+        if (is_dir($path)) {
+            $this->loadViewsFrom($path, $this->moduleNameLower);
+        }
     }
 
     protected function registerMigrations(): void
     {
-        $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+        $path = __DIR__ . '/../Database/Migrations';
+        if (is_dir($path)) {
+            $this->loadMigrationsFrom($path);
+        }
     }
 
     public function register(): void

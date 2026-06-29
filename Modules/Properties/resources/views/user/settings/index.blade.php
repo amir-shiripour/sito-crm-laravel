@@ -110,6 +110,21 @@
                         <input type="checkbox" name="show_features_in_card" value="1" {{ $show_features_in_card ? 'checked' : '' }} class="{{ $checkboxClass }}">
                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">نمایش بخش ویژگی‌ها (متراژ، کد ملک و...) در کارت ملک</span>
                     </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer transition-colors hover:bg-white dark:hover:bg-gray-800">
+                        <input type="checkbox" name="show_bookmark_button" value="1" {{ ($show_bookmark_button ?? true) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">نمایش دکمه "نشان کردن" در صفحه جزئیات ملک</span>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer transition-colors hover:bg-white dark:hover:bg-gray-800">
+                        <input type="checkbox" name="restrict_public_index_guests" value="1" {{ ($restrict_public_index_guests ?? false) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">محدود کردن نمایش لیست عمومی املاک برای مهمان‌ها (نیاز به ورود به سیستم)</span>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer transition-colors hover:bg-white dark:hover:bg-gray-800">
+                        <input type="checkbox" name="restrict_public_map_guests" value="1" {{ ($restrict_public_map_guests ?? false) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">محدود کردن نمایش نقشه عمومی املاک برای مهمان‌ها (نیاز به ورود به سیستم)</span>
+                    </label>
                 </div>
             </div>
 
@@ -203,6 +218,69 @@
                             <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
                                 <input type="checkbox" name="visibility_price_info[]" value="guest"
                                        {{ in_array('guest', $visibility_price_info) ? 'checked' : '' }}
+                                       class="{{ $checkboxClass }}">
+                                <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- قیمت کف --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">مشاهده قیمت کف (اگر دارد)</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="visibility_min_price[]" value="{{ $role->name }}"
+                                           {{ in_array($role->name, $visibility_min_price ?? []) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                <input type="checkbox" name="visibility_min_price[]" value="guest"
+                                       {{ in_array('guest', $visibility_min_price ?? []) ? 'checked' : '' }}
+                                       class="{{ $checkboxClass }}">
+                                <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- قابلیت معاوضه --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">مشاهده قابلیت معاوضه</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="visibility_convertible[]" value="{{ $role->name }}"
+                                           {{ in_array($role->name, $visibility_convertible ?? []) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                <input type="checkbox" name="visibility_convertible[]" value="guest"
+                                       {{ in_array('guest', $visibility_convertible ?? []) ? 'checked' : '' }}
+                                       class="{{ $checkboxClass }}">
+                                <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- معاوضه شدن با چی --}}
+                    <div>
+                        <h3 class="{{ $labelClass }} mb-2">مشاهده معاوضه شدن با چی (جزئیات معاوضه)</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach($roles as $role)
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <input type="checkbox" name="visibility_convertible_with[]" value="{{ $role->name }}"
+                                           {{ in_array($role->name, $visibility_convertible_with ?? []) ? 'checked' : '' }}
+                                           class="{{ $checkboxClass }}">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $role->display_name ?? $role->name }}</span>
+                                </label>
+                            @endforeach
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                <input type="checkbox" name="visibility_convertible_with[]" value="guest"
+                                       {{ in_array('guest', $visibility_convertible_with ?? []) ? 'checked' : '' }}
                                        class="{{ $checkboxClass }}">
                                 <span class="text-xs text-gray-700 dark:text-gray-300">مهمان</span>
                             </label>

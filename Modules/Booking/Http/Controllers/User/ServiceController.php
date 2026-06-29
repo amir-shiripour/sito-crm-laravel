@@ -28,7 +28,7 @@ class ServiceController extends Controller
         $adminOwnerIds = $this->getAdminOwnerIds();
 
         $query = BookingService::query()
-            ->with(['category', 'appointmentForm']);
+            ->with(['category', 'categories', 'appointmentForm']);
 
         if ($authUser) {
             $query->with(['serviceProviders' => function ($q) use ($authUser) {
@@ -47,7 +47,22 @@ class ServiceController extends Controller
             });
         }
 
-        $services = $query->orderByDesc('id')->paginate(20);
+        // Apply Filters
+        if ($search = $request->input('search')) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        if ($categoryId = $request->input('category_id')) {
+            $query->whereHas('categories', function($q) use ($categoryId) {
+                $q->where('booking_categories.id', $categoryId);
+            })->orWhere('category_id', $categoryId);
+        }
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        $services = $query->orderByDesc('id')->paginate(20)->withQueryString();
 
         $editableServiceIds = [];
         foreach ($services as $srv) {
@@ -56,8 +71,11 @@ class ServiceController extends Controller
             }
         }
 
+        $categories = BookingCategory::orderBy('name')->get(); // We fetch all categories for the filter dropdown
+
         return view('booking::user.services.index', [
             'services'           => $services,
+            'categories'         => $categories,
             'settings'           => $settings,
             'isAdminUser'        => $isAdmin,
             'isProvider'         => $isProvider,
@@ -107,7 +125,8 @@ class ServiceController extends Controller
             'discount_from'  => ['nullable', 'string'],
             'discount_to'    => ['nullable', 'string'],
 
-            'category_id'         => ['nullable', 'integer', 'exists:booking_categories,id'],
+            'category_ids'        => ['nullable', 'array'],
+            'category_ids.*'      => ['integer', 'exists:booking_categories,id'],
             'online_booking_mode' => ['required', Rule::in([
                 BookingService::ONLINE_MODE_INHERIT,
                 BookingService::ONLINE_MODE_FORCE_ON,
@@ -132,7 +151,11 @@ class ServiceController extends Controller
             'custom_schedule_enabled' => ['nullable', 'boolean'],
         ]);
 
-        $this->ensureCategorySelectionAllowed($authUser, $settings, $data['category_id'] ?? null);
+        $categoryIds = $request->input('category_ids', []);
+        foreach ($categoryIds as $catId) {
+            $this->ensureCategorySelectionAllowed($authUser, $settings, $catId);
+        }
+        $data['category_id'] = !empty($categoryIds) ? $categoryIds[0] : null;
 
         // Provider اجازه تغییر این گزینه را ندارد
         if (! $isAdminUser) {
@@ -149,6 +172,10 @@ class ServiceController extends Controller
         $data['owner_user_id'] = $authUser?->id;
 
         $service = BookingService::query()->create($data);
+
+        if (!empty($categoryIds)) {
+            $service->categories()->sync($categoryIds);
+        }
 
         // اگر سازنده Provider است، سرویس خودش برای خودش فعال شود
         if ($authUser && $this->userIsProvider($authUser, $settings)) {
@@ -317,7 +344,8 @@ class ServiceController extends Controller
             'discount_from'  => ['nullable', 'string'],
             'discount_to'    => ['nullable', 'string'],
 
-            'category_id'         => ['nullable', 'integer', 'exists:booking_categories,id'],
+            'category_ids'        => ['nullable', 'array'],
+            'category_ids.*'      => ['integer', 'exists:booking_categories,id'],
             'online_booking_mode' => ['required', Rule::in([
                 BookingService::ONLINE_MODE_INHERIT,
                 BookingService::ONLINE_MODE_FORCE_ON,
@@ -348,7 +376,11 @@ class ServiceController extends Controller
 
         $data = $request->validate($rules);
 
-        $this->ensureCategorySelectionAllowed($authUser, $settings, $data['category_id'] ?? null);
+        $categoryIds = $request->input('category_ids', []);
+        foreach ($categoryIds as $catId) {
+            $this->ensureCategorySelectionAllowed($authUser, $settings, $catId);
+        }
+        $data['category_id'] = !empty($categoryIds) ? $categoryIds[0] : null;
 
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
@@ -360,6 +392,12 @@ class ServiceController extends Controller
         $data['auto_confirm_online_booking'] = (bool)($data['auto_confirm_online_booking'] ?? false);
 
         $service->fill($data)->save();
+
+        if (!empty($categoryIds)) {
+            $service->categories()->sync($categoryIds);
+        } else {
+            $service->categories()->detach();
+        }
 
         return redirect()
             ->route('user.booking.services.edit', $service)
@@ -415,6 +453,7 @@ class ServiceController extends Controller
             'tabs.*.sections.*.brands' => ['nullable', 'array'],
             'tabs.*.sections.*.brands.*.name' => ['nullable', 'string', 'max:255'],
             'tabs.*.sections.*.brands.*.price' => ['nullable', 'numeric', 'min:0'],
+            'tabs.*.sections.*.brands.*.is_installment' => ['nullable', 'in:0,1,true,false'],
         ]);
 
         $sanitizedTabs = [];
@@ -430,7 +469,7 @@ class ServiceController extends Controller
                         $brands[] = [
                             'name'  => $brand['name'] ?? '',
                             'price' => $brand['price'] !== null ? (float)$brand['price'] : 0,
-                        ];
+                            'is_installment' => isset($brand['is_installment']) ? (bool)$brand['is_installment'] : false,                        ];
                     }
                 }
 
@@ -458,49 +497,6 @@ class ServiceController extends Controller
         return redirect()
             ->route('user.booking.services.custom-prices', $service->id)
             ->with('success', 'تنظیمات قیمت و عنوان‌ها با موفقیت ذخیره شد.');
-    }
-
-    public function installments(BookingService $service)
-    {
-        $authUser = Auth::user();
-        $settings = BookingSetting::current();
-        $adminOwnerIds = $this->getAdminOwnerIds();
-
-        if (! $this->canEditServiceForUser($authUser, $service, $adminOwnerIds, $settings)) {
-            abort(403);
-        }
-
-        $customPrices = $service->custom_prices['tabs'] ?? [];
-        $savedSettings = $service->installments ?? [];
-
-        return view('booking::user.services.installments', [
-            'service' => $service,
-            'customPrices' => $customPrices,
-            'savedSettings' => $savedSettings,
-        ]);
-    }
-
-    public function updateInstallments(Request $request, BookingService $service)
-    {
-        $authUser = Auth::user();
-        $settings = BookingSetting::current();
-        $adminOwnerIds = $this->getAdminOwnerIds();
-
-        if (! $this->canEditServiceForUser($authUser, $service, $adminOwnerIds, $settings)) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'installments' => ['nullable', 'array'],
-        ]);
-
-        $service->update([
-            'installments' => $validated['installments'] ?? []
-        ]);
-
-        return redirect()
-            ->route('user.booking.services.installments', $service->id)
-            ->with('success', 'تنظیمات پرداخت قسطی با موفقیت ذخیره شد.');
     }
 
     public function toggleForMe(Request $request, BookingService $service)
@@ -764,5 +760,74 @@ class ServiceController extends Controller
         if (! $ownsCategory) {
             abort(403);
         }
+    }
+
+    public function editInstallments(BookingService $service)
+    {
+        abort_unless(auth()->user()->can('booking.services.edit'),403);
+        $customPricesRaw = $service->custom_prices ?? [];
+        $customPrices = $customPricesRaw['tabs'] ?? (is_array($customPricesRaw) ? $customPricesRaw : []);
+        $savedSettings = $service->installment_settings ?? [];
+
+        return view('booking::user.services.installments', compact('service', 'savedSettings', 'customPrices'));
+
+    }
+
+    public function updateInstallments(Request $request, BookingService $service)
+    {
+        abort_unless(auth()->user()->can('booking.services.edit'), 403);
+
+        $validated = $request->validate([
+            'installments' => 'nullable|array',
+            'installments.*.sections' => 'nullable|array',
+            'installments.*.sections.*.is_active' => 'nullable|in:0,1',
+            'installments.*.sections.*.max_months' => 'nullable|integer|min:1|max:60',
+            'installments.*.sections.*.down_payment_percent' => 'nullable|numeric|min:0|max:100',
+            'installments.*.sections.*.fee_percent' => 'nullable|numeric|min:0|max:100',
+            'installments.*.sections.*.payment_cycle' => 'nullable|in:monthly,weekly',
+            'installments.*.sections.*.grace_period_days' => 'nullable|integer|min:0',
+            'installments.*.sections.*.late_fee_percent' => 'nullable|numeric|min:0|max:100',
+
+            'installments.*.sections.*.brands' => 'nullable|array',
+            'installments.*.sections.*.brands.*.max_months' => 'nullable|integer|min:1|max:60',
+            'installments.*.sections.*.brands.*.down_payment_percent' => 'nullable|numeric|min:0|max:100',
+            'installments.*.sections.*.brands.*.fee_percent' => 'nullable|numeric|min:0|max:100',
+            'installments.*.sections.*.brands.*.excluded' => 'nullable|in:0,1',
+        ]);
+
+        $installmentsData = $validated['installments'] ?? [];
+
+        foreach ($installmentsData as $tIdx => &$tab) {
+            if (!isset($tab['sections'])) continue;
+
+            foreach ($tab['sections'] as $sIdx => &$section) {
+                $section['is_active'] = !empty($section['is_active']) ? 1 : 0;
+
+                $section['max_months'] = $section['max_months'] ?? 3;
+                $section['down_payment_percent'] = $section['down_payment_percent'] ?? 30;
+                $section['fee_percent'] = $section['fee_percent'] ?? 0;
+                $section['payment_cycle'] = $section['payment_cycle'] ?? 'monthly';
+                $section['grace_period_days'] = $section['grace_period_days'] ?? 3;
+                $section['late_fee_percent'] = $section['late_fee_percent'] ?? 0;
+
+                if (!isset($section['brands'])) continue;
+
+                foreach ($section['brands'] as $bIdx => &$brand) {
+                    $brand['excluded'] = !empty($brand['excluded']) ? 1 : 0;
+
+                    foreach (['max_months', 'down_payment_percent', 'fee_percent'] as $field) {
+                        $brand[$field] = isset($brand[$field]) && $brand[$field] !== '' ? $brand[$field] : null;
+                    }
+                }
+            }
+        }
+
+        $service->update([
+            'installment_settings' => $installmentsData,
+        ]);
+
+        return redirect()
+            ->route('user.booking.services.installments', $service->id)
+            ->with('success', 'تنظیمات پرداخت قسطی با موفقیت ذخیره شد.');
     }
 }

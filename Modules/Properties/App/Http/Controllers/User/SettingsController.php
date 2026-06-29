@@ -34,6 +34,11 @@ class SettingsController extends Controller
 
         // Card Display Settings
         $show_features_in_card = PropertySetting::get('show_features_in_card', 1);
+        $show_bookmark_button = PropertySetting::get('show_bookmark_button', 1);
+
+        // Guest Restriction Settings
+        $restrict_public_index_guests = PropertySetting::get('restrict_public_index_guests', 0);
+        $restrict_public_map_guests = PropertySetting::get('restrict_public_map_guests', 0);
 
         // AI Settings
         $ai_property_completion = PropertySetting::get('ai_property_completion', 0);
@@ -60,6 +65,9 @@ class SettingsController extends Controller
         $visibility_map_info = $getSetting('visibility_map_info', ['super-admin', 'admin', 'guest']);
         $visibility_cover_image = $getSetting('visibility_cover_image', ['super-admin', 'admin', 'guest']);
         $visibility_gallery_images = $getSetting('visibility_gallery_images', ['super-admin', 'admin', 'guest']);
+        $visibility_min_price = $getSetting('visibility_min_price', ['super-admin', 'admin', 'guest']);
+        $visibility_convertible = $getSetting('visibility_convertible', ['super-admin', 'admin', 'guest']);
+        $visibility_convertible_with = $getSetting('visibility_convertible_with', ['super-admin', 'admin', 'guest']);
 
         // Agent Roles
         $agent_roles = $getSetting('agent_roles', []);
@@ -100,6 +108,9 @@ class SettingsController extends Controller
             'property_code_include_year',
             'property_code_use_category_slug',
             'show_features_in_card',
+            'show_bookmark_button',
+            'restrict_public_index_guests',
+            'restrict_public_map_guests',
             'ai_property_completion',
             'ai_property_search',
             'formattedSize',
@@ -111,6 +122,9 @@ class SettingsController extends Controller
             'visibility_map_info',
             'visibility_cover_image',
             'visibility_gallery_images',
+            'visibility_min_price',
+            'visibility_convertible',
+            'visibility_convertible_with',
             'agent_roles',
             'office_location_lat',
             'office_location_lng',
@@ -134,6 +148,9 @@ class SettingsController extends Controller
             'property_code_include_year' => 'nullable|boolean',
             'property_code_use_category_slug' => 'nullable|boolean',
             'show_features_in_card' => 'nullable|boolean',
+            'show_bookmark_button' => 'nullable|boolean',
+            'restrict_public_index_guests' => 'nullable|boolean',
+            'restrict_public_map_guests' => 'nullable|boolean',
             'ai_property_completion' => 'nullable|boolean',
             'ai_property_search' => 'nullable|boolean',
             'visibility_owner_info' => 'nullable|array',
@@ -142,6 +159,9 @@ class SettingsController extends Controller
             'visibility_map_info' => 'nullable|array',
             'visibility_cover_image' => 'nullable|array',
             'visibility_gallery_images' => 'nullable|array',
+            'visibility_min_price' => 'nullable|array',
+            'visibility_convertible' => 'nullable|array',
+            'visibility_convertible_with' => 'nullable|array',
             'agent_roles' => 'nullable|array',
             'office_location_lat' => 'nullable|numeric',
             'office_location_lng' => 'nullable|numeric',
@@ -167,6 +187,9 @@ class SettingsController extends Controller
         PropertySetting::set('property_code_use_category_slug', $request->has('property_code_use_category_slug') ? 1 : 0);
 
         PropertySetting::set('show_features_in_card', $request->has('show_features_in_card') ? 1 : 0);
+        PropertySetting::set('show_bookmark_button', $request->has('show_bookmark_button') ? 1 : 0);
+        PropertySetting::set('restrict_public_index_guests', $request->has('restrict_public_index_guests') ? 1 : 0);
+        PropertySetting::set('restrict_public_map_guests', $request->has('restrict_public_map_guests') ? 1 : 0);
 
         // Save AI Settings
         PropertySetting::set('ai_property_completion', $request->has('ai_property_completion') ? 1 : 0);
@@ -179,6 +202,9 @@ class SettingsController extends Controller
         PropertySetting::set('visibility_map_info', json_encode($request->input('visibility_map_info', [])));
         PropertySetting::set('visibility_cover_image', json_encode($request->input('visibility_cover_image', [])));
         PropertySetting::set('visibility_gallery_images', json_encode($request->input('visibility_gallery_images', [])));
+        PropertySetting::set('visibility_min_price', json_encode($request->input('visibility_min_price', [])));
+        PropertySetting::set('visibility_convertible', json_encode($request->input('visibility_convertible', [])));
+        PropertySetting::set('visibility_convertible_with', json_encode($request->input('visibility_convertible_with', [])));
 
         // Save Agent Roles
         PropertySetting::set('agent_roles', json_encode($request->input('agent_roles', [])));

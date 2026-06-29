@@ -16,13 +16,19 @@ class KycWizard extends Component
     public $currentStep = 1;
     public ?Vendor $vendor = null;
 
-    // مرحله ۱: اطلاعات پایه
+    // مرحله 1: اطلاعات پایه
     public $store_name = '';
     public $slug = '';
     public $support_phone = '';
     public $legal_type = 'real';
     public $national_code = '';
     public $economic_code = '';
+
+    // تصاویر فروشگاه
+    public $logo;
+    public $existing_logo;
+    public $cover_image;
+    public $existing_cover_image;
 
     // مرحله ۲: مالی
     public $shaba_number = '';
@@ -65,6 +71,10 @@ class KycWizard extends Component
             $this->legal_type = $this->vendor->legal_type ?? 'real';
             $this->national_code = $this->vendor->national_code;
             $this->economic_code = $this->vendor->economic_code ?? '';
+            
+            $this->existing_logo = $this->vendor->logo;
+            $this->existing_cover_image = $this->vendor->cover_image;
+
             $this->shaba_number = $this->vendor->shaba_number;
             $this->account_owner_name = $this->vendor->account_owner_name;
             $this->bank_name = $this->vendor->bank_name;
@@ -94,6 +104,8 @@ class KycWizard extends Component
                 'support_phone' => 'required|string',
                 'legal_type' => 'required|in:real,legal',
                 'national_code' => 'required|string',
+                'logo' => 'nullable|image|max:2048',
+                'cover_image' => 'nullable|image|max:4096',
             ];
 
             // اگر شخص حقوقی بود، کد اقتصادی الزامی بشه
@@ -169,6 +181,26 @@ class KycWizard extends Component
             'kyc_status' => 'pending', // تغییر وضعیت به در حال بررسی
             'status' => 'pending',
         ])->save();
+
+        if ($this->logo) {
+            if ($this->vendor->logo) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($this->vendor->logo);
+            }
+            $path = $this->logo->store('vendors/logos', 'public');
+            $this->vendor->update(['logo' => $path]);
+            $this->existing_logo = $path;
+            $this->logo = null;
+        }
+
+        if ($this->cover_image) {
+            if ($this->vendor->cover_image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($this->vendor->cover_image);
+            }
+            $path = $this->cover_image->store('vendors/covers', 'public');
+            $this->vendor->update(['cover_image' => $path]);
+            $this->existing_cover_image = $path;
+            $this->cover_image = null;
+        }
 
         // ۲. ذخیره آدرس
         VendorAddress::updateOrCreate(

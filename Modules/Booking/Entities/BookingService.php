@@ -48,6 +48,7 @@ class BookingService extends Model
         'custom_schedule_enabled',
         'custom_prices',
         'installments',
+        'installment_settings',
     ];
 
     protected $casts = [
@@ -62,6 +63,7 @@ class BookingService extends Model
         'auto_confirm_online_booking' => 'boolean',
         'custom_prices' => 'array',
         'installments' => 'array',
+        'installment_settings' => 'array',
     ];
 
     protected static function booted(): void
@@ -114,6 +116,12 @@ class BookingService extends Model
     {
         return $this->belongsToMany(\App\Models\User::class, 'booking_service_providers', 'service_id', 'provider_user_id')
             ->withPivot(['id', 'is_active', 'customization_enabled'])
+            ->withTimestamps();
+    }
+
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(BookingCategory::class, 'booking_category_service', 'service_id', 'category_id')
             ->withTimestamps();
     }
 }

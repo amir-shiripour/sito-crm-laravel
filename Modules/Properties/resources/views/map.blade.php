@@ -280,12 +280,13 @@
                         <span class="text-sm font-bold text-gray-700 dark:text-gray-300">فقط آگهی‌های ویژه</span>
                     </label>
 
-                    @auth
+                    @if(auth()->check() && (auth()->user()->hasRole(['super-admin', 'admin']) || auth()->user()->can('properties.view.all') || auth()->user()->can('properties.manage')))
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" name="show_all" value="1" {{ request('show_all') ? 'checked' : '' }} class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600">
+                            <input type="hidden" name="show_all" value="0">
+                            <input type="checkbox" name="show_all" value="1" {{ !request()->has('show_all') || request('show_all') == '1' ? 'checked' : '' }} class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600">
                             <span class="text-sm font-bold text-gray-700 dark:text-gray-300">نمایش همه املاک</span>
                         </label>
-                    @endauth
+                    @endif
                 </div>
 
                 <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30">

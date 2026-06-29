@@ -22,11 +22,19 @@ class ClientCall extends Model
         'reason',
         'result',
         'status',
+        'direction',
+        'duration_seconds',
+        'next_action',
+        'next_action_date',
+        'contact_phone',
+        'notes',
+        'campaign_id',
     ];
 
     protected $casts = [
         'call_date' => 'date',
         'call_time' => 'datetime', // فقط زمان
+        'next_action_date' => 'date',
     ];
 
     // روابط
@@ -87,5 +95,23 @@ class ClientCall extends Model
         return static::visibleForUser($user)
             ->whereKey($this->getKey())
             ->exists();
+    }
+
+    public function scopeToday(Builder $query): Builder
+    {
+        return $query->whereDate('call_date', today());
+    }
+
+    public function scopeThisWeek(Builder $query): Builder
+    {
+        return $query->whereBetween('call_date', [
+            now()->startOfWeek(),
+            now()->endOfWeek(),
+        ]);
+    }
+
+    public function scopeAnswered(Builder $query): Builder
+    {
+        return $query->where('status', 'done');
     }
 }

@@ -83,6 +83,10 @@
                                             <span class="w-1.5 h-1.5 rounded-full {{ $status->is_active ? 'bg-emerald-500' : 'bg-gray-400' }}"></span>
                                             {{ $status->is_active ? 'فعال' : 'غیرفعال' }}
                                         </span>
+                                        <span class="inline-flex items-center gap-1">
+                                            <span class="w-1.5 h-1.5 rounded-full {{ $status->show_in_crm ? 'bg-indigo-500' : 'bg-gray-400' }}"></span>
+                                            {{ $status->show_in_crm ? 'نمایش در فرانت CRM' : 'عدم نمایش در فرانت CRM' }}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -220,6 +224,15 @@
                             wire:model.defer="is_default"
                         >
                         <span class="text-xs text-gray-700 dark:text-gray-300">وضعیت پیش‌فرض</span>
+                    </label>
+
+                    <label class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-700 dark:hover:bg-gray-700/40">
+                        <input
+                            type="checkbox"
+                            class="{{ $checkboxClass }}"
+                            wire:model.defer="show_in_crm"
+                        >
+                        <span class="text-xs text-gray-700 dark:text-gray-300">نمایش در فرانت CRM</span>
                     </label>
 
                     @if($is_system)

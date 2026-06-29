@@ -413,6 +413,132 @@
             </div>
             <div x-show="activeTab === 'cure'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="lg:col-span-2 space-y-8">
+                    {{-- کارت: مدیریت وضعیت‌های طرح درمان --}}
+                    <div class="{{ $cardClass }}" x-data="{
+                        statuses: @js(old('cure_statuses', $settings->cure_statuses ?? [])),
+                        roles: @js(($roles ?? collect())->map(fn($r) => ['id' => $r->id, 'name' => $r->name])->toArray()),
+                        addStatus() {
+                            const id = 'status_' + Date.now();
+                            this.statuses.push({
+                                id: id,
+                                name: 'وضعیت جدید',
+                                color: '#6b7280',
+                                order: this.statuses.length + 1,
+                                allowed_roles: [],
+                                allowed_from: []
+                            });
+                        },
+                        removeStatus(index) {
+                            this.statuses.splice(index, 1);
+                        }
+                    }">
+                        <div class="{{ $headerClass }}">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                            </div>
+                            <div class="flex-1 flex justify-between items-center">
+                                <div>
+                                    <h2 class="text-base font-bold text-gray-900 dark:text-white">مدیریت وضعیت‌های طرح درمان</h2>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی مراحل طرح درمان، نقش‌های مجاز و وابستگی‌های انتقال</p>
+                                </div>
+                                <button type="button" @click="addStatus()" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors text-[11px] font-semibold flex items-center gap-1 shadow-sm">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    افزودن وضعیت جدید
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div class="space-y-4">
+                                <template x-for="(status, index) in statuses" :key="status.id">
+                                    <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 space-y-4 relative">
+                                        <!-- Delete Button -->
+                                        <button type="button" @click="removeStatus(index)" class="absolute top-4 left-4 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-all" x-show="!['draft', 'confirmed'].includes(status.id)">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            <!-- ID -->
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 mb-1">شناسه وضعیت</label>
+                                                <input type="text" :name="'cure_statuses['+index+'][id]'" x-model="status.id" class="{{ $inputClass }} text-xs font-mono py-1.5" :readonly="['draft', 'confirmed'].includes(status.id)" required>
+                                            </div>
+                                            
+                                            <!-- Name -->
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 mb-1">نام وضعیت</label>
+                                                <input type="text" :name="'cure_statuses['+index+'][name]'" x-model="status.name" class="{{ $inputClass }} text-xs py-1.5" required>
+                                            </div>
+                                            
+                                            <!-- Color -->
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 mb-1">رنگ وضعیت</label>
+                                                <div class="flex gap-2">
+                                                    <input type="color" :name="'cure_statuses['+index+'][color]'" x-model="status.color" class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 cursor-pointer shrink-0">
+                                                    <input type="text" x-model="status.color" class="{{ $inputClass }} text-xs text-center font-mono py-1.5">
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Order -->
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 mb-1">ترتیب نمایش</label>
+                                                <input type="number" :name="'cure_statuses['+index+'][order]'" x-model.number="status.order" class="{{ $inputClass }} text-xs text-center py-1.5">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- Allowed Roles -->
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 mb-1">نقش‌های مجاز برای ثبت/تغییر به این وضعیت (خالی = همه)</label>
+                                                <template x-for="rId in status.allowed_roles" :key="rId">
+                                                    <input type="hidden" :name="'cure_statuses['+index+'][allowed_roles][]'" :value="rId">
+                                                </template>
+                                                <div class="flex flex-wrap gap-1 p-1.5 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 min-h-10">
+                                                    <template x-for="role in roles" :key="role.id">
+                                                        <button type="button" @click="
+                                                            const rIdNum = Number(role.id);
+                                                            if (!status.allowed_roles) status.allowed_roles = [];
+                                                            if (status.allowed_roles.map(Number).includes(rIdNum)) {
+                                                                status.allowed_roles = status.allowed_roles.map(Number).filter(r => r !== rIdNum);
+                                                            } else {
+                                                                status.allowed_roles.push(rIdNum);
+                                                            }
+                                                        " class="px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all"
+                                                        :class="status.allowed_roles && status.allowed_roles.map(Number).includes(Number(role.id)) ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300'">
+                                                            <span x-text="role.name"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Allowed From -->
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-gray-500 mb-1">تغییر وضعیت فقط از (وابستگی)</label>
+                                                <template x-for="fId in status.allowed_from" :key="fId">
+                                                    <input type="hidden" :name="'cure_statuses['+index+'][allowed_from][]'" :value="fId">
+                                                </template>
+                                                <div class="flex flex-wrap gap-1 p-1.5 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 min-h-10">
+                                                    <template x-for="otherSt in statuses.filter(s => s.id !== status.id)" :key="otherSt.id">
+                                                        <button type="button" @click="
+                                                            if (!status.allowed_from) status.allowed_from = [];
+                                                            if (status.allowed_from.includes(otherSt.id)) {
+                                                                status.allowed_from = status.allowed_from.filter(f => f !== otherSt.id);
+                                                            } else {
+                                                                status.allowed_from.push(otherSt.id);
+                                                            }
+                                                        " class="px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all"
+                                                        :class="status.allowed_from && status.allowed_from.includes(otherSt.id) ? 'bg-teal-600 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300'">
+                                                            <span x-text="otherSt.name"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="{{ $cardClass }}">
                         <div class="{{ $headerClass }}">
                             <div class="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center text-violet-600 dark:text-violet-400">
@@ -429,7 +555,8 @@
                                     <label class="{{ $labelClass }}">وضعیت پیش‌فرض طرح جدید</label>
                                     <div class="relative">
                                         <select name="cure_default_status" class="{{ $selectClass }}">
-                                            <option value="draft" @selected(old('cure_default_status', $settings->cure_default_status ?? 'draft') === 'draft')>پیش‌نویس</option>
+                                            <option value="draft" @selected(old('cure_default_status', $settings->cure_default_status ?? 'draft') === 'draft')>پیش‌نویس (الزام به ذخیره قبل از تأیید)</option>
+                                            <option value="draft_direct" @selected(old('cure_default_status', $settings->cure_default_status ?? 'draft') === 'draft_direct')>پیش‌نویس (با امکان تأیید مستقیم)</option>
                                             <option value="confirmed" @selected(old('cure_default_status', $settings->cure_default_status ?? 'draft') === 'confirmed')>تأیید شده</option>
                                         </select>
                                         <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
@@ -662,6 +789,190 @@
                                     </select>
                                 </div>
                             </div>
+
+                             <div>
+                                 <label class="{{ $labelClass }} flex justify-between">
+                                     <span>دسته‌های مجاز در طرح درمان</span>
+                                     <span class="text-[10px] font-normal text-gray-400">چند انتخابی</span>
+                                 </label>
+                                 <div x-data="{
+                                     open: false,
+                                     selected: (@js(old('cure_allowed_categories', $settings->cure_allowed_categories ?? [])) || []).map(Number),
+                                     options: @js(($categories ?? collect())->map(fn($c) => ['id' => $c->id, 'name' => $c->name])->toArray()),
+                                     search: '',
+                                     toggle(id) {
+                                         id = Number(id);
+                                         if (this.selected.includes(id)) {
+                                             this.selected = this.selected.filter(item => item !== id);
+                                         } else {
+                                             this.selected.push(id);
+                                         }
+                                     },
+                                     isSelected(id) {
+                                         return this.selected.includes(Number(id));
+                                     },
+                                     get selectedLabels() {
+                                         if (!this.selected || this.selected.length === 0) return 'همه دسته‌ها (پیش‌فرض)';
+                                         return this.options
+                                             .filter(opt => this.selected.includes(Number(opt.id)))
+                                             .map(opt => opt.name)
+                                             .join('، ');
+                                     },
+                                     get filteredOptions() {
+                                         if (!this.search) return this.options;
+                                         return this.options.filter(opt => opt.name.toLowerCase().includes(this.search.toLowerCase()));
+                                     }
+                                 }" class="relative">
+                                     <!-- Hidden inputs for form submission -->
+                                     <template x-for="id in selected" :key="id">
+                                         <input type="hidden" name="cure_allowed_categories[]" :value="id">
+                                     </template>
+                                     <!-- Fallback when none is selected to submit an empty array/value -->
+                                     <input type="hidden" name="cure_allowed_categories[]" value="" x-show="selected.length === 0">
+
+                                     <!-- Trigger Button -->
+                                     <button type="button" @click="open = !open" @click.away="open = false"
+                                             class="w-full flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 text-right">
+                                         <span class="truncate text-gray-700 dark:text-gray-300" x-text="selectedLabels"></span>
+                                         <svg class="h-5 w-5 text-gray-400 mr-2 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                         </svg>
+                                     </button>
+
+                                     <!-- Dropdown Content -->
+                                     <div x-show="open" x-cloak
+                                          x-transition:enter="transition ease-out duration-100"
+                                          x-transition:enter-start="transform opacity-0 scale-95"
+                                          x-transition:enter-end="transform opacity-100 scale-100"
+                                          x-transition:leave="transition ease-in duration-75"
+                                          x-transition:leave-start="transform opacity-100 scale-100"
+                                          x-transition:leave-end="transform opacity-0 scale-95"
+                                          class="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 max-h-72 overflow-hidden flex flex-col">
+                                         
+                                         <!-- Search input -->
+                                         <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+                                             <input type="text" x-model="search" placeholder="جستجوی دسته‌بندی..."
+                                                    class="w-full rounded-lg border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                                         </div>
+
+                                         <!-- Options list -->
+                                         <div class="overflow-y-auto flex-1 max-h-48 p-1 scrollbar-thin">
+                                             <template x-for="opt in filteredOptions" :key="opt.id">
+                                                 <button type="button" @click="toggle(opt.id)"
+                                                         class="w-full flex items-center justify-between px-3 py-2 text-right text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                                                         :class="isSelected(opt.id) ? 'bg-indigo-50/50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 font-semibold' : 'text-gray-700 dark:text-gray-300'">
+                                                     <span x-text="opt.name"></span>
+                                                     <span x-show="isSelected(opt.id)" class="text-indigo-600 dark:text-indigo-400">
+                                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                                         </svg>
+                                                     </span>
+                                                 </button>
+                                             </template>
+                                             <div x-show="filteredOptions.length === 0" class="text-center text-gray-400 text-xs py-4">
+                                                 هیچ دسته‌ای پیدا نشد.
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </div>
+                                 <p class="text-[11px] text-gray-400 mt-2">دسته‌هایی از سرویس که در طرح درمان مجاز هستند. اگر هیچ دسته‌ای انتخاب نشود، تمام سرویس‌ها در دسترس خواهند بود.</p>
+                             </div>
+
+                    {{-- کارت: نقش‌های قابل انتساب در طرح درمان --}}
+                    <div class="{{ $cardClass }}">
+                        <div class="{{ $headerClass }}">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">نقش‌های قابل انتساب</h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">کاربران دارای چه نقش‌هایی در طرح درمان منتسب شوند</p>
+                            </div>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            <div>
+                                <label class="{{ $labelClass }} flex justify-between">
+                                    <span>نقش‌های مجاز برای انتساب</span>
+                                    <span class="text-[10px] font-normal text-gray-400">چند انتخابی</span>
+                                </label>
+                                <div x-data="{
+                                    open: false,
+                                    selected: (@js(old('cure_assignable_roles', $settings->cure_assignable_roles ?? [])) || []).map(Number),
+                                    options: @js(($roles ?? collect())->map(fn($r) => ['id' => $r->id, 'name' => $r->name])->toArray()),
+                                    search: '',
+                                    toggle(id) {
+                                        id = Number(id);
+                                        if (this.selected.includes(id)) {
+                                            this.selected = this.selected.filter(item => item !== id);
+                                        } else {
+                                            this.selected.push(id);
+                                        }
+                                    },
+                                    isSelected(id) {
+                                        return this.selected.includes(Number(id));
+                                    },
+                                    get selectedLabels() {
+                                        if (!this.selected || this.selected.length === 0) return 'هیچ نقشی انتخاب نشده';
+                                        return this.options
+                                            .filter(opt => this.selected.includes(Number(opt.id)))
+                                            .map(opt => opt.name)
+                                            .join('، ');
+                                    },
+                                    get filteredOptions() {
+                                        if (!this.search) return this.options;
+                                        return this.options.filter(opt => opt.name.toLowerCase().includes(this.search.toLowerCase()));
+                                    }
+                                }" class="relative">
+                                    <!-- Hidden inputs for form submission -->
+                                    <template x-for="id in selected" :key="id">
+                                        <input type="hidden" name="cure_assignable_roles[]" :value="id">
+                                    </template>
+                                    <input type="hidden" name="cure_assignable_roles[]" value="" x-show="selected.length === 0">
+
+                                    <!-- Trigger Button -->
+                                    <button type="button" @click="open = !open" @click.away="open = false"
+                                            class="w-full flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 text-right">
+                                        <span class="truncate text-gray-700 dark:text-gray-300" x-text="selectedLabels"></span>
+                                        <svg class="h-5 w-5 text-gray-400 mr-2 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <!-- Dropdown Content -->
+                                    <div x-show="open" x-cloak
+                                         x-transition:enter="transition ease-out duration-100"
+                                         x-transition:enter-start="transform opacity-0 scale-95"
+                                         x-transition:enter-end="transform opacity-100 scale-100"
+                                         x-transition:leave="transition ease-in duration-75"
+                                         x-transition:leave-start="transform opacity-100 scale-100"
+                                         x-transition:leave-end="transform opacity-0 scale-95"
+                                         class="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 max-h-72 overflow-hidden flex flex-col">
+                                        
+                                        <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+                                            <input type="text" x-model="search" placeholder="جستجوی نقش..."
+                                                   class="w-full rounded-lg border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                                        </div>
+
+                                        <div class="overflow-y-auto flex-1 max-h-48 p-1 scrollbar-thin">
+                                            <template x-for="opt in filteredOptions" :key="opt.id">
+                                                <button type="button" @click="toggle(opt.id)"
+                                                        class="w-full flex items-center justify-between px-3 py-2 text-right text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                                                        :class="isSelected(opt.id) ? 'bg-indigo-50/50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 font-semibold' : 'text-gray-700 dark:text-gray-300'">
+                                                    <span x-text="opt.name"></span>
+                                                    <span x-show="isSelected(opt.id)" class="text-indigo-600 dark:text-indigo-400">
+                                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </span>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                         </div>
                     </div>
 

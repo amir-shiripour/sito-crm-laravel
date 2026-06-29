@@ -14,6 +14,9 @@ class SettingsServiceProvider extends ServiceProvider
         $this->registerRoutes();
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'settings');
+
+        // Register custom middleware alias
+        $this->app['router']->aliasMiddleware('validate.api.key', \Modules\Settings\Http\Middleware\ValidateApiKey::class);
     }
 
     public function register()

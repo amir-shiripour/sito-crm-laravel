@@ -25,6 +25,7 @@ class PropertyStatusesManager extends Component
     public bool $is_system = false;
     public bool $is_active = true;
     public bool $is_default = false;
+    public bool $show_in_crm = true;
 
     public int $sort_order = 0;
 
@@ -52,6 +53,7 @@ class PropertyStatusesManager extends Component
         $this->is_system     = false;
         $this->is_active     = true;
         $this->is_default    = false;
+        $this->show_in_crm   = true;
         $this->sort_order    = 0;
     }
 
@@ -73,6 +75,7 @@ class PropertyStatusesManager extends Component
         $this->is_system     = (bool)$status->is_system;
         $this->is_active     = (bool)$status->is_active;
         $this->is_default    = (bool)$status->is_default;
+        $this->show_in_crm   = (bool)$status->show_in_crm;
         $this->sort_order    = (int)($status->sort_order ?? 0);
     }
 
@@ -89,6 +92,7 @@ class PropertyStatusesManager extends Component
             'color'         => ['nullable', 'string', 'max:20'],
             'is_active'     => ['boolean'],
             'is_default'    => ['boolean'],
+            'show_in_crm'   => ['boolean'],
             'sort_order'    => ['nullable', 'integer'],
         ];
     }

@@ -41,6 +41,9 @@ class BookingSetting extends Model
         'cure_tooth_numbering_system',
         'cure_auto_highlight_teeth',
         'cure_show_tooth_filter',
+        'cure_allowed_categories',
+        'cure_statuses',
+        'cure_assignable_roles',
         'key',
         'value',
     ];
@@ -59,6 +62,9 @@ class BookingSetting extends Model
         'cure_require_notes' => 'boolean',
         'cure_auto_highlight_teeth' => 'boolean',
         'cure_show_tooth_filter' => 'boolean',
+        'cure_allowed_categories' => 'array',
+        'cure_statuses' => 'array',
+        'cure_assignable_roles' => 'array',
     ];
 
     public static function current(): self
@@ -102,6 +108,14 @@ class BookingSetting extends Model
             'cure_tooth_numbering_system' => 'universal',
             'cure_auto_highlight_teeth' => true,
             'cure_show_tooth_filter' => true,
+            'cure_allowed_categories' => [],
+            'cure_statuses' => [
+                [ 'id' => 'draft',     'name' => 'پیش‌نویس',       'color' => '#6b7280', 'order' => 1, 'allowed_roles' => [], 'allowed_from' => [] ],
+                [ 'id' => 'pricing',   'name' => 'محاسبه هزینه',   'color' => '#f59e0b', 'order' => 2, 'allowed_roles' => [], 'allowed_from' => ['draft'] ],
+                [ 'id' => 'approved1', 'name' => 'تایید اولیه',     'color' => '#3b82f6', 'order' => 3, 'allowed_roles' => [], 'allowed_from' => ['draft','pricing'] ],
+                [ 'id' => 'approved2', 'name' => 'تایید نهایی',     'color' => '#10b981', 'order' => 4, 'allowed_roles' => [], 'allowed_from' => ['approved1'] ]
+            ],
+            'cure_assignable_roles' => [],
         ]);
     }
 

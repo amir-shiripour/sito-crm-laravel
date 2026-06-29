@@ -433,6 +433,7 @@
                                                name="due_at_view"
                                                type="text"
                                                data-jdp-only-date
+                                               data-jdp-min-date="today"
                                                autocomplete="off"
                                                placeholder="انتخاب تاریخ..."
                                                value="{{ old('due_at_view', $dueAtView) }}"

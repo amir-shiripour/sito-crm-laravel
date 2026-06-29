@@ -197,7 +197,7 @@
                 <div>
                     <label class="{{ $labelClass }}">تاریخ و ساعت سررسید</label>
                     <div class="flex gap-2">
-                        <input type="text" name="due_at_view" data-jdp-only-date value="{{ $todayJalali }}"
+                        <input type="text" name="due_at_view" data-jdp-only-date data-jdp-min-date="today" value="{{ $todayJalali }}"
                                class="{{ $inputClass }} text-center flex-1">
 
                         <input type="text" data-jdp-only-time placeholder="00:00" name="due_time"

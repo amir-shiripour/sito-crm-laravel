@@ -209,11 +209,13 @@
                 // 📅 تمام فیلدهای تاریخ معمولی
                 jalaliDatepicker.startWatch({
                     selector: '[data-jdp]',
+                    minDate: 'attr',
                     // time:true,
                 });
 
                 jalaliDatepicker.startWatch({
-                    selector: '[data-jdp-only-date]'
+                    selector: '[data-jdp-only-date]',
+                    minDate: 'attr',
                 });
 
                 // ⏰ تمام فیلدهای فقط زمان
@@ -227,6 +229,7 @@
                     selector: '[data-jdp-with-time]',
                     time: true,
                     hasSecond: false,
+                    minDate: 'attr',
                 });
             }
         });

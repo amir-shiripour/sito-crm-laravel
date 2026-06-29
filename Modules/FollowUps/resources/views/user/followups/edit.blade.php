@@ -215,6 +215,7 @@
                                         <input type="text"
                                                name="due_at_view"
                                                data-jdp-only-date
+                                               data-jdp-min-date="today"
                                                value="{{ $initialDueAtView }}"
                                                placeholder="انتخاب تاریخ..."
                                                class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-center focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 dark:bg-gray-900/50 dark:border-gray-700 dark:text-white dark:focus:bg-gray-900">

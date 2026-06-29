@@ -26,8 +26,33 @@
             'appointment_time_jalali' => 'ساعت نوبت',
             'appointment_datetime_jalali' => 'تاریخ و ساعت کامل',
             'payment_link' => 'لینک پرداخت',
+        ],
+        'treatment_plan' => [
+            'plan_id' => 'شناسه طرح درمان',
+            'patient_name' => 'نام بیمار',
+            'status' => 'شناسه وضعیت',
+            'status_label' => 'نام وضعیت طرح درمان',
+            'total' => 'مبلغ کل',
+            'final_payable' => 'مبلغ قابل پرداخت',
+            'currency' => 'واحد پول',
+            'client_phone' => 'شماره بیمار',
+            'creator_name' => 'ثبت کننده طرح',
+            'creator_phone' => 'تلفن ثبت کننده',
         ]
     ];
+
+    if (isset($cureRoles)) {
+        foreach ($cureRoles as $role) {
+            $roleSlug = preg_replace('/[^a-zA-Z0-9_\x7f-\xff]/u', '_', $role->name);
+            $roleSlug = trim(preg_replace('/_+/', '_', $roleSlug), '_');
+            if (empty($roleSlug)) {
+                $roleSlug = 'role_' . $role->id;
+            }
+            $defaultTokens['treatment_plan']["plan_role_{$roleSlug}_name"] = "نام «{$role->name}»";
+            $defaultTokens['treatment_plan']["plan_role_{$roleSlug}_phone"] = "تلفن «{$role->name}»";
+            $defaultTokens['treatment_plan']["plan_role_{$roleSlug}_all_names"] = "همه «{$role->name}»ها";
+        }
+    }
 
     // Merge with tokens from config
     $configTokens = config('workflows.tokens', []);
@@ -204,6 +229,15 @@
                             <option value="STATEMENT_PROVIDER">ارائه‌دهنده صورت وضعیت</option>
                             <option value="SPECIFIC_USER">کاربر خاص سیستم</option>
                             <option value="CUSTOM_PHONE">شماره دلخواه</option>
+                            <optgroup label="طرح درمان">
+                                <option value="TREATMENT_PLAN_CLIENT">بیمار طرح درمان</option>
+                                <option value="TREATMENT_PLAN_CREATOR">ایجادکننده طرح درمان</option>
+                                @if(isset($cureRoles))
+                                    @foreach($cureRoles as $role)
+                                        <option value="TREATMENT_PLAN_ROLE_{{ $role->id }}">نقش «{{ $role->name }}» در طرح درمان</option>
+                                    @endforeach
+                                @endif
+                            </optgroup>
                         </select>
 
                         {{-- Dynamic Target Inputs --}}
@@ -331,6 +365,15 @@
                             <option value="CURRENT_USER">کاربر فعلی سیستم</option>
                             <option value="APPOINTMENT_PROVIDER">پزشک نوبت مربوطه</option>
                             <option value="SPECIFIC_USER">کاربر خاص مشخص شده</option>
+                            <optgroup label="طرح درمان">
+                                <option value="TREATMENT_PLAN_CREATOR">ایجادکننده طرح درمان</option>
+                                <option value="TREATMENT_PLAN_CLIENT_ASSIGNEE">بیمار طرح درمان</option>
+                                @if(isset($cureRoles))
+                                    @foreach($cureRoles as $role)
+                                        <option value="TREATMENT_PLAN_ROLE_{{ $role->id }}">نقش «{{ $role->name }}» در طرح درمان</option>
+                                    @endforeach
+                                @endif
+                            </optgroup>
                         </select>
                         <div x-show="assigneeTarget === 'SPECIFIC_USER'" class="mt-2">
                             <select name="config[assignee_id]"

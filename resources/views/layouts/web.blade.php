@@ -200,7 +200,7 @@
 
 {{-- استایل‌های Media Query در فایل Blade مستقیما روی تگ main اعمال شدند تا نیازی به style تگ در پایین نباشد --}}
 <style>
-    @media (min-width: 768px) { main { padding-top: 8rem !important; } }
+    @media (min-width: 768px) { main { padding-top: 5rem !important; } }
 </style>
 </body>
 

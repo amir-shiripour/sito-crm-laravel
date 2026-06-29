@@ -16,17 +16,25 @@ class PropertyController extends Controller
 {
     public function index(Request $request)
     {
-        // Start with the visibleToUser scope
-        $query = Property::visibleToUser()->with(['status', 'attributeValues', 'category', 'building'])->latest();
+        if (!auth()->check()) {
+            if (PropertySetting::get('restrict_public_index_guests', 0)) {
+                return redirect()->route('login')->with('error', 'برای مشاهده لیست املاک ابتدا باید وارد سیستم شوید.');
+            }
+        }
+
+        // Start with the visibleToUser scope and frontend filters
+        $query = Property::visibleToUser()
+            ->where('publication_status', 'published')
+            ->whereHas('status', function ($q) {
+                $q->where('show_in_crm', true);
+            })
+            ->with(['status', 'attributeValues', 'category', 'building'])
+            ->latest();
 
         // Check if user has permission to see all properties and requested to do so
         $user = auth()->user();
-        if ($user && ($user->hasRole('super-admin') || $user->can('properties.view.all'))) {
-            if ($request->has('show_all') && $request->show_all == '1') {
-                // Show all: No additional restriction needed as visibleToUser() returns all for admins.
-            } else {
-                // Default for admins/managers: Restrict to their own properties (Mine only)
-                // We need to explicitly apply this restriction because visibleToUser() returns ALL for admins.
+        if ($user && ($user->hasRole(['super-admin', 'admin']) || $user->can('properties.view.all') || $user->can('properties.manage'))) {
+            if ($request->has('show_all') && $request->show_all == '0') {
                 $query->where(function ($q) use ($user) {
                     $q->where('created_by', $user->id)
                       ->orWhere('agent_id', $user->id);
@@ -63,6 +71,9 @@ class PropertyController extends Controller
         $visibilitySettings = [
             'price_info' => json_decode(PropertySetting::get('visibility_price_info', '[]'), true),
             'cover_image' => json_decode(PropertySetting::get('visibility_cover_image', '[]'), true),
+            'min_price' => json_decode(PropertySetting::get('visibility_min_price', '[]'), true),
+            'convertible' => json_decode(PropertySetting::get('visibility_convertible', '[]'), true),
+            'convertible_with' => json_decode(PropertySetting::get('visibility_convertible_with', '[]'), true),
         ];
 
         return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings', 'visibilitySettings'));
@@ -70,16 +81,25 @@ class PropertyController extends Controller
 
     public function map(Request $request)
     {
-        // Start with the visibleToUser scope
-        $query = Property::with(['status', 'attributeValues', 'category', 'building'])->latest();
+        if (!auth()->check()) {
+            if (PropertySetting::get('restrict_public_map_guests', 0)) {
+                return redirect()->route('login')->with('error', 'برای مشاهده نقشه املاک ابتدا باید وارد سیستم شوید.');
+            }
+        }
+
+        // Start with the visibleToUser scope and frontend filters
+        $query = Property::visibleToUser()
+            ->where('publication_status', 'published')
+            ->whereHas('status', function ($q) {
+                $q->where('show_in_crm', true);
+            })
+            ->with(['status', 'attributeValues', 'category', 'building'])
+            ->latest();
 
         // Check if user has permission to see all properties and requested to do so
         $user = auth()->user();
-        if ($user && ($user->hasRole('super-admin') || $user->can('properties.view.all'))) {
-            if ($request->has('show_all') && $request->show_all == '1') {
-                // Show all
-            } else {
-                // Default for admins/managers: Restrict to their own properties (Mine only)
+        if ($user && ($user->hasRole(['super-admin', 'admin']) || $user->can('properties.view.all') || $user->can('properties.manage'))) {
+            if ($request->has('show_all') && $request->show_all == '0') {
                 $query->where(function ($q) use ($user) {
                     $q->where('created_by', $user->id)
                       ->orWhere('agent_id', $user->id);
@@ -151,6 +171,9 @@ class PropertyController extends Controller
         $visibilitySettings = [
             'price_info' => json_decode(PropertySetting::get('visibility_price_info', '[]'), true),
             'cover_image' => json_decode(PropertySetting::get('visibility_cover_image', '[]'), true),
+            'min_price' => json_decode(PropertySetting::get('visibility_min_price', '[]'), true),
+            'convertible' => json_decode(PropertySetting::get('visibility_convertible', '[]'), true),
+            'convertible_with' => json_decode(PropertySetting::get('visibility_convertible_with', '[]'), true),
         ];
 
         return view('properties::map', compact('properties', 'filterableAttributes', 'features', 'officeLocation', 'visibilitySettings'));
@@ -304,14 +327,11 @@ class PropertyController extends Controller
 
         // Check visibility
         $user = auth()->user();
-        if ($user) {
-             if (!$user->hasRole('super-admin') && !$user->can('properties.view.all')) {
-                 if ($property->created_by !== $user->id && $property->agent_id !== $user->id) {
-                     abort(403);
-                 }
-             }
-        } else {
-            if ($property->publication_status !== 'published') {
+        $isCreatorOrAgent = $user && ($property->created_by === $user->id || $property->agent_id === $user->id);
+        $isAdminOrManager = $user && ($user->hasRole(['super-admin', 'admin']) || $user->can('properties.view.all') || $user->can('properties.manage'));
+
+        if (!$isAdminOrManager && !$isCreatorOrAgent) {
+            if ($property->publication_status !== 'published' || !$property->status || !$property->status->show_in_crm) {
                 abort(404);
             }
         }
@@ -324,6 +344,9 @@ class PropertyController extends Controller
             'map_info' => json_decode(PropertySetting::get('visibility_map_info', '[]'), true),
             'cover_image' => json_decode(PropertySetting::get('visibility_cover_image', '[]'), true),
             'gallery_images' => json_decode(PropertySetting::get('visibility_gallery_images', '[]'), true),
+            'min_price' => json_decode(PropertySetting::get('visibility_min_price', '[]'), true),
+            'convertible' => json_decode(PropertySetting::get('visibility_convertible', '[]'), true),
+            'convertible_with' => json_decode(PropertySetting::get('visibility_convertible_with', '[]'), true),
         ];
 
         return view('properties::show', compact('property', 'visibilitySettings'));

@@ -18,6 +18,7 @@ class PropertyStatus extends Model
         'is_system',
         'is_active',
         'is_default',
+        'show_in_crm',
         'sort_order',
     ];
 
@@ -25,5 +26,6 @@ class PropertyStatus extends Model
         'is_system' => 'boolean',
         'is_active' => 'boolean',
         'is_default' => 'boolean',
+        'show_in_crm' => 'boolean',
     ];
 }

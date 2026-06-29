@@ -151,8 +151,8 @@ class Property extends Model
             return $query;
         }
 
-        // Super Admin or users with 'properties.view.all' permission can see everything
-        if ($user->hasRole('super-admin') || $user->can('properties.view.all')) {
+        // Super Admin, Admin or users with 'properties.view.all' or 'properties.manage' permission can see everything
+        if ($user->hasRole(['super-admin', 'admin']) || $user->can('properties.view.all') || $user->can('properties.manage')) {
             return $query;
         }
 

@@ -52,10 +52,14 @@
         $canViewMap   = $checkVisibility('map_info', false);
         $canViewCover = $checkVisibility('cover_image', false);
         $canViewGallery = $checkVisibility('gallery_images', false);
+        $canViewMinPrice = $checkVisibility('min_price', false);
+        $canViewConvertible = $checkVisibility('convertible', false);
+        $canViewConvertibleWith = $checkVisibility('convertible_with', false);
 
         $displayAgent = $property->agent ?? $property->creator;
         $mapService = \Modules\Properties\Entities\PropertySetting::get('map_service', 'leaflet');
         $mapIrApiKey = \Modules\Properties\Entities\PropertySetting::get('map_ir_api_key', '');
+        $showBookmarkButton = (bool) \Modules\Properties\Entities\PropertySetting::get('show_bookmark_button', 1);
     @endphp
 
     <div class="max-w-7xl mx-auto px-6 py-12 w-full">
@@ -173,7 +177,13 @@
                             if($property->usage_type) $specs->push(['name' => 'کاربری', 'value' => match($property->usage_type) {'residential' => 'مسکونی', 'industrial' => 'صنعتی', 'commercial' => 'تجاری', 'agricultural' => 'کشاورزی / زراعی', 'garden' => 'باغ', 'outsideTheTissue' => 'خارج از بافت', default => $property->usage_type}]);
                             if($property->building) $specs->push(['name' => 'ساختمان مجتمع', 'value' => $property->building->name]);
                             if($property->listing_type === 'presale' && $property->delivery_date) { try { $specs->push(['name' => 'تاریخ تحویل', 'value' => \Morilog\Jalali\Jalalian::fromCarbon($property->delivery_date)->format('Y/m/d')]); } catch (\Exception $e) {} }
-                            if($property->is_convertible) $specs->push(['name' => $property->listing_type == 'rent' ? 'قابل تبدیل' : 'قابل معاوضه', 'value' => 'بله' . ($property->convertible_with ? " ({$property->convertible_with})" : '')]);
+                            if($property->is_convertible && $canViewConvertible) {
+                                $value = 'بله';
+                                if($property->convertible_with && $canViewConvertibleWith) {
+                                    $value .= " ({$property->convertible_with})";
+                                }
+                                $specs->push(['name' => $property->listing_type == 'rent' ? 'قابل تبدیل' : 'قابل معاوضه', 'value' => $value]);
+                            }
                             if(isset($property->bedrooms)) $specs->push(['name' => 'تعداد خواب', 'value' => $property->bedrooms]);
                             if(isset($property->bathrooms)) $specs->push(['name' => 'سرویس بهداشتی', 'value' => $property->bathrooms]);
 
@@ -325,9 +335,16 @@
                                     <span class="text-sm font-bold text-gray-500 dark:text-gray-400">قیمت کل:</span>
                                     <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->price > 0 ? number_format($property->price) . ' تومان' : 'توافقی' }}</span>
                                 </div>
+                                @if($canViewMinPrice && $property->min_price > 0)
+                                    <div class="border-t border-gray-200/60 dark:border-gray-700/60 my-4"></div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-bold text-gray-500 dark:text-gray-400">قیمت کف:</span>
+                                        <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ number_format($property->min_price) }} تومان</span>
+                                    </div>
+                                @endif
                             @else
                                 <div class="flex justify-between items-center">
-                                    <span class="text-sm font-bold text-gray-500 dark:text-gray-400">قیمت نهایی:</span>
+                                    <span class="text-sm font-bold text-gray-500 dark:text-gray-400">قیمت کل:</span>
                                     <div class="text-right">
                                         <div class="text-3xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->price > 0 ? number_format($property->price) : 'توافقی' }}</div>
                                         @if($property->price > 0)
@@ -335,15 +352,22 @@
                                         @endif
                                     </div>
                                 </div>
+                                @if($canViewMinPrice && $property->min_price > 0)
+                                    <div class="border-t border-gray-200/60 dark:border-gray-700/60 my-4"></div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-bold text-gray-500 dark:text-gray-400">قیمت کف:</span>
+                                        <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ number_format($property->min_price) }} تومان</span>
+                                    </div>
+                                @endif
                             @endif
 
-                            @if($property->is_convertible)
+                            @if($property->is_convertible && $canViewConvertible)
                                 <div class="mt-6 pt-4 border-t border-gray-200/60 dark:border-gray-700/60 text-center">
                                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-black shadow-sm">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
                                         {{ $property->listing_type == 'rent' ? 'مبلغ قابل تبدیل است' : 'قابل معاوضه با سایر املاک' }}
                                     </span>
-                                    @if($property->convertible_with)
+                                    @if($property->convertible_with && $canViewConvertibleWith)
                                         <p class="text-xs font-bold text-gray-500 mt-2 bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700">{{ $property->convertible_with }}</p>
                                     @endif
                                 </div>
@@ -373,15 +397,87 @@
                             تماس فوری با مشاور
                         </a>
 
-                        <div class="mt-4 flex gap-2">
-                            <button class="flex-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-3 rounded-xl transition-colors border border-gray-200 dark:border-gray-700 text-sm flex items-center justify-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                                نشان کردن
-                            </button>
-                            <button class="flex-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-3 rounded-xl transition-colors border border-gray-200 dark:border-gray-700 text-sm flex items-center justify-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                                اشتراک
-                            </button>
+                        <div class="mt-4 flex gap-2" x-data="{ openShare: false }">
+                            @if($showBookmarkButton)
+                                <button class="flex-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-3 rounded-xl transition-colors border border-gray-200 dark:border-gray-700 text-sm flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                                    نشان کردن
+                                </button>
+                            @endif
+                            
+                            <div class="relative flex-1">
+                                <button @click="openShare = !openShare" class="w-full bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-3 rounded-xl transition-colors border border-gray-200 dark:border-gray-700 text-sm flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                    اشتراک
+                                </button>
+                                
+                                <div x-show="openShare" 
+                                     @click.away="openShare = false" 
+                                     x-transition:enter="transition ease-out duration-150"
+                                     x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+                                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                                     x-transition:leave="transition ease-in duration-100"
+                                     x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                                     x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+                                     class="absolute bottom-full mb-3 left-0 right-0 md:left-auto md:w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-150 dark:border-gray-800 p-4 z-50 space-y-3"
+                                     style="display: none;" dir="rtl">
+                                    <div class="flex items-center justify-between mb-1 pb-2 border-b border-gray-100 dark:border-gray-800">
+                                        <h4 class="text-sm font-black text-gray-900 dark:text-white">اشتراک‌گذاری ملک</h4>
+                                        <button @click="openShare = false" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Copy Link Button -->
+                                    <button onclick="copyToClipboard('{{ url()->current() }}')" class="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors text-right text-sm font-bold text-gray-700 dark:text-gray-200">
+                                        <span id="copy-btn-text">کپی لینک ملک</span>
+                                        <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                    </button>
+                                    
+                                    <!-- Social Links -->
+                                    <div class="grid grid-cols-4 gap-2 pt-1">
+                                        <!-- Telegram -->
+                                        <a href="https://t.me/share/url?url={{ urlencode(url()->current()) }}&text={{ urlencode($property->title) }}" target="_blank" class="flex flex-col items-center justify-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                                            <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center text-blue-500 dark:text-blue-400 group-hover:bg-blue-500 group-hover:text-white dark:group-hover:bg-blue-600 transition-all">
+                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.24-5.54 3.65-.52.36-.99.53-1.4.52-.46-.01-1.34-.26-2-.48-.8-.27-1.44-.42-1.39-.89.03-.25.38-.51 1.07-.78 4.2-1.82 7-3.03 8.4-3.61 3.99-1.66 4.82-1.95 5.36-1.96.12 0 .38.03.55.17.14.12.18.28.2.43-.02.07-.02.15-.02.22z"/></svg>
+                                            </div>
+                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 font-bold">تلگرام</span>
+                                        </a>
+                                        
+                                        <!-- WhatsApp -->
+                                        <a href="https://api.whatsapp.com/send?text={{ urlencode($property->title . ' ' . url()->current()) }}" target="_blank" class="flex flex-col items-center justify-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                                            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-500 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white dark:group-hover:bg-emerald-600 transition-all">
+                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.01 2.01C6.48 2.01 2 6.48 2 12.01c0 2.17.69 4.19 1.86 5.83L2.5 21.5l3.86-1.27c1.55.93 3.37 1.48 5.65 1.48 5.53 0 10-4.47 10-10s-4.47-10-10-10zm5.66 14.16c-.23.65-1.34 1.25-1.85 1.32-.47.06-.93.07-3.41-.92-3.12-1.25-5.11-4.38-5.27-4.59-.16-.21-1.3-1.72-1.3-3.29 0-1.57.82-2.34 1.11-2.65.29-.31.64-.39.85-.39.21 0 .42.01.6.01.19.01.44-.07.69.53.25.6 1.03 2.51 1.12 2.69.09.18.15.39.03.62-.12.23-.26.39-.42.56-.16.18-.34.39-.49.53-.16.16-.33.34-.14.66.19.32.85 1.4 1.82 2.27.97.87 1.79 1.14 2.11 1.27.32.13.51.11.7-.1.19-.22.82-.95 1.04-1.27.22-.32.44-.27.75-.16.31.11 1.99.98 2.33 1.15.34.17.57.25.65.39.09.14.09.81-.14 1.46z"/></svg>
+                                            </div>
+                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 font-bold">واتساپ</span>
+                                        </a>
+
+                                        <!-- Eitaa -->
+                                        <a href="https://eitaa.com/share/url?url={{ urlencode(url()->current()) }}&text={{ urlencode($property->title) }}" target="_blank" class="flex flex-col items-center justify-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                                            <div class="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-955/40 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:bg-orange-500 group-hover:text-white dark:group-hover:bg-orange-600 transition-all">
+                                                <span class="text-xs font-black">ایتا</span>
+                                            </div>
+                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 font-bold">ایتا</span>
+                                        </a>
+
+                                        <!-- Bale -->
+                                        <a href="https://ble.ir/share/url?url={{ urlencode(url()->current()) }}&text={{ urlencode($property->title) }}" target="_blank" class="flex flex-col items-center justify-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                                            <div class="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-955/40 flex items-center justify-center text-green-600 dark:text-green-400 group-hover:bg-green-600 group-hover:text-white dark:group-hover:bg-green-700 transition-all">
+                                                <span class="text-xs font-black">بله</span>
+                                            </div>
+                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 font-bold">بله</span>
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Web Share Button (if supported) -->
+                                    <button @click="if (navigator.share) { navigator.share({ title: '{{ addslashes($property->title) }}', url: '{{ url()->current() }}' }).catch(err => console.log(err)) }" 
+                                            x-show="navigator.share" 
+                                            class="w-full mt-2 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-indigo-100 dark:border-indigo-900/50">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                        اشتراک‌گذاری سیستمی (موبایل)
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -447,6 +543,51 @@
 
 @push('scripts')
     <script>
+        function copyToClipboard(text) {
+            const btnText = document.getElementById('copy-btn-text');
+            const oldText = btnText.innerText;
+
+            const handleSuccess = () => {
+                btnText.innerText = 'کپی شد!';
+                btnText.classList.add('text-emerald-500', 'dark:text-emerald-400');
+                setTimeout(() => {
+                    btnText.innerText = oldText;
+                    btnText.classList.remove('text-emerald-500', 'dark:text-emerald-400');
+                }, 2000);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(handleSuccess).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    fallbackCopyTextToClipboard(text, handleSuccess);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text, handleSuccess);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text, callback) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful && callback) {
+                    callback();
+                } else {
+                    console.error('Fallback: Copying text command was unsuccessful');
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
         function loadScript(src, type, callback) {
             const existing = (type === 'js') ? document.querySelector(`script[src="${src}"]`) : document.querySelector(`link[href="${src}"]`);
             if (existing) { if (callback) callback(); return; }

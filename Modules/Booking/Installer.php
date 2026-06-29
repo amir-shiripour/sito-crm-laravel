@@ -105,11 +105,9 @@ class Installer extends BaseModuleInstaller
         $permissionsToCreate = array_diff($definedPermissions, $trackedPermissions);
         $permissionsToRemove = array_diff($trackedPermissions, $definedPermissions);
 
-        if (!empty($permissionsToCreate)) {
-            Log::info('Booking Installer: Creating permissions: ' . implode(', ', $permissionsToCreate));
-            foreach ($permissionsToCreate as $name) {
-                Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
-            }
+        Log::info('Booking Installer: Ensuring all defined permissions exist...');
+        foreach ($definedPermissions as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
         }
 
         if (!empty($permissionsToRemove)) {

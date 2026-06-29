@@ -35,24 +35,45 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="md:col-span-2">
-                    <label class="{{ $labelClass }}">نام برند <span class="text-red-500">*</span></label>
-                    <input type="text" wire:model.defer="name" class="{{ $inputClass }}" placeholder="مثلاً: اپل (Apple)">
-                    @error('name') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label class="{{ $labelClass }}">کد پیش‌وند (سیستمی) <span class="text-red-500">*</span></label>
-                    <input type="number" wire:model.defer="code_prefix" class="{{ $inputClass }} text-center font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10" @if($brand_id) disabled @endif>
-                    <p class="text-[10px] text-gray-400 mt-1 block">تولید خودکار - غیرقابل تغییر</p>
-                </div>
-                <div class="flex items-center pt-5">
-                    <label class="flex items-center gap-3 cursor-pointer group">
-                        <div class="relative flex items-center">
-                            <input type="checkbox" wire:model.defer="is_active" class="peer sr-only">
-                            <div class="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                        </div>
-                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">برند فعال است</span>
+                {{-- لوگو برند --}}
+                <div class="md:col-span-1">
+                    <label class="{{ $labelClass }}">لوگو برند</label>
+                    <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-gray-50 border-gray-300 dark:bg-gray-800 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 overflow-hidden relative transition-colors">
+                        @if($logo && !is_string($logo))
+                            <img src="{{ $logo->temporaryUrl() }}" class="w-full h-full object-contain p-2">
+                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><span class="text-white text-xs font-bold">تغییر لوگو</span></div>
+                        @elseif($existing_logo)
+                            <img src="{{ Storage::url($existing_logo) }}" class="w-full h-full object-contain p-2">
+                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><span class="text-white text-xs font-bold">تغییر لوگو</span></div>
+                        @else
+                            <svg class="w-8 h-8 mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                            <p class="text-[10px] text-gray-500 text-center px-2">برای آپلود لوگو کلیک کنید</p>
+                        @endif
+                        <input type="file" wire:model="logo" class="hidden" accept="image/*" />
                     </label>
+                    @error('logo') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="{{ $labelClass }}">نام برند <span class="text-red-500">*</span></label>
+                        <input type="text" wire:model.defer="name" class="{{ $inputClass }}" placeholder="مثلاً: اپل (Apple)">
+                        @error('name') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="{{ $labelClass }}">کد پیش‌وند (سیستمی) <span class="text-red-500">*</span></label>
+                        <input type="number" wire:model.defer="code_prefix" class="{{ $inputClass }} text-center font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10" @if($brand_id) disabled @endif>
+                        <p class="text-[10px] text-gray-400 mt-1 block">تولید خودکار - غیرقابل تغییر</p>
+                    </div>
+                    <div class="flex items-center pt-5">
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <div class="relative flex items-center">
+                                <input type="checkbox" wire:model.defer="is_active" class="peer sr-only">
+                                <div class="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                            </div>
+                            <span class="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">برند فعال است</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -71,6 +92,7 @@
             <table class="min-w-full text-sm text-right">
                 <thead class="bg-gray-50/80 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
                 <tr>
+                    <th class="px-6 py-4 font-semibold text-gray-500 dark:text-gray-400">لوگو</th>
                     <th class="px-6 py-4 font-semibold text-gray-500 dark:text-gray-400">کد برند (Prefix)</th>
                     <th class="px-6 py-4 font-semibold text-gray-500 dark:text-gray-400">نام برند</th>
                     <th class="px-6 py-4 font-semibold text-gray-500 dark:text-gray-400">وضعیت</th>
@@ -80,6 +102,17 @@
                 <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
                 @forelse($brands as $brand)
                     <tr class="group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                        <td class="px-6 py-4">
+                            @if($brand->logo)
+                                <div class="w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
+                                    <img src="{{ Storage::url($brand->logo) }}" class="w-full h-full object-contain">
+                                </div>
+                            @else
+                                <div class="w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-center text-gray-400">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                </div>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-transparent">{{ $brand->code_prefix }}</td>
                         <td class="px-6 py-4 font-bold text-gray-900 dark:text-white">{{ $brand->name }}</td>
                         <td class="px-6 py-4">
@@ -106,7 +139,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">هیچ برندی تاکنون ثبت نشده است.</td>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">هیچ برندی تاکنون ثبت نشده است.</td>
                     </tr>
                 @endforelse
                 </tbody>

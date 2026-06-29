@@ -12,9 +12,15 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = PropertyCategory::where('user_id', auth()->id())
-            ->latest()
-            ->paginate(10);
+        $user = auth()->user();
+        $canViewAll = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.categories.view') || $user->can('properties.categories.manage');
+
+        $query = PropertyCategory::query();
+        if (!$canViewAll) {
+            $query->where('user_id', $user->id);
+        }
+
+        $categories = $query->latest()->paginate(10);
 
         return view('properties::user.categories.index', compact('categories'));
     }
@@ -43,7 +49,10 @@ class CategoryController extends Controller
 
     public function update(Request $request, PropertyCategory $category)
     {
-        if ($category->user_id !== auth()->id()) {
+        $user = auth()->user();
+        $canManageAll = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.categories.manage');
+
+        if ($category->user_id !== $user->id && !$canManageAll) {
             abort(403);
         }
 
@@ -68,7 +77,10 @@ class CategoryController extends Controller
 
     public function destroy(PropertyCategory $category)
     {
-        if ($category->user_id !== auth()->id()) {
+        $user = auth()->user();
+        $canManageAll = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.categories.manage');
+
+        if ($category->user_id !== $user->id && !$canManageAll) {
             abort(403);
         }
 

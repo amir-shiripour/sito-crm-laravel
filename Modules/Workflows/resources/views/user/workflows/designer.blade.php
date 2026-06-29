@@ -1,6 +1,56 @@
 @extends('layouts.user')
 
 @section('content')
+@php
+    $defaultTokens = [
+        'appointment' => [
+            'client_name' => 'نام مشتری',
+            'client_phone' => 'شماره مشتری',
+            'service_name' => 'نام سرویس',
+            'provider_name' => 'نام پزشک',
+            'appointment_date_jalali' => 'تاریخ نوبت (شمسی)',
+            'appointment_time_jalali' => 'ساعت نوبت',
+            'appointment_datetime_jalali' => 'تاریخ و ساعت کامل',
+            'payment_link' => 'لینک پرداخت',
+        ],
+        'treatment_plan' => [
+            'plan_id' => 'شناسه طرح درمان',
+            'patient_name' => 'نام بیمار',
+            'status' => 'شناسه وضعیت',
+            'status_label' => 'نام وضعیت طرح درمان',
+            'total' => 'مبلغ کل',
+            'final_payable' => 'مبلغ قابل پرداخت',
+            'currency' => 'واحد پول',
+            'client_phone' => 'شماره بیمار',
+            'creator_name' => 'ثبت کننده طرح',
+            'creator_phone' => 'تلفن ثبت کننده',
+        ]
+    ];
+
+    if (isset($cureRoles)) {
+        foreach ($cureRoles as $role) {
+            $roleSlug = preg_replace('/[^a-zA-Z0-9_\x7f-\xff]/u', '_', $role->name);
+            $roleSlug = trim(preg_replace('/_+/', '_', $roleSlug), '_');
+            if (empty($roleSlug)) {
+                $roleSlug = 'role_' . $role->id;
+            }
+            $defaultTokens['treatment_plan']["plan_role_{$roleSlug}_name"] = "نام «{$role->name}»";
+            $defaultTokens['treatment_plan']["plan_role_{$roleSlug}_phone"] = "تلفن «{$role->name}»";
+            $defaultTokens['treatment_plan']["plan_role_{$roleSlug}_all_names"] = "همه «{$role->name}»ها";
+        }
+    }
+
+    $configTokens = config('workflows.tokens', []);
+    $groupedTokens = $defaultTokens;
+    foreach ($configTokens as $group => $tokens) {
+        if (!isset($groupedTokens[$group])) {
+            $groupedTokens[$group] = [];
+        }
+        foreach ($tokens as $key => $label) {
+            $groupedTokens[$group][$key] = $label;
+        }
+    }
+@endphp
 <div class="h-screen flex flex-col overflow-hidden bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-white"
      x-data="workflowDesigner()"
      x-init="initDesigner()">
@@ -182,16 +232,38 @@
                                 <div class="p-3 text-xs text-gray-500 dark:text-gray-400 space-y-1">
                                     <template x-if="node.type === 'ACTION'">
                                         <div>
-                                            <span class="font-semibold text-[9px] text-gray-400 dark:text-gray-500 block mb-1">وظایف تعریف‌شده:</span>
-                                            <div class="space-y-0.5 max-h-16 overflow-y-auto">
-                                                <template x-for="(t, tIdx) in (node.config.tasks || [])" :key="t.id">
-                                                    <div class="text-[9px] text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                                                        <span class="w-1 h-1 rounded-full bg-blue-500 shrink-0"></span>
-                                                        <span class="font-semibold truncate max-w-[110px]" x-text="t.title || 'وظیفه ' + (tIdx + 1)"></span>
-                                                        <span class="opacity-50 truncate" x-text="t.assignee_mode === 'by_roles' ? getRoleName(t.role_id) : getUserName(t.assignee_id)"></span>
+                                            <template x-if="!node.config.action_type || node.config.action_type === 'TASK'">
+                                                <div>
+                                                    <span class="font-semibold text-[9px] text-gray-400 dark:text-gray-500 block mb-1">وظایف تعریف‌شده:</span>
+                                                    <div class="space-y-0.5 max-h-16 overflow-y-auto">
+                                                        <template x-for="(t, tIdx) in (node.config.tasks || [])" :key="t.id">
+                                                            <div class="text-[9px] text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                                                                <span class="w-1 h-1 rounded-full bg-blue-500 shrink-0"></span>
+                                                                <span class="font-semibold truncate max-w-[110px]" x-text="t.title || 'وظیفه ' + (tIdx + 1)"></span>
+                                                                <span class="opacity-50 truncate" x-text="getAssigneeLabel(t)"></span>
+                                                            </div>
+                                                        </template>
                                                     </div>
-                                                </template>
-                                            </div>
+                                                </div>
+                                            </template>
+                                            <template x-if="node.config.action_type === 'SMS'">
+                                                <div>
+                                                    <span class="font-semibold text-[9px] text-gray-400 dark:text-gray-500 block mb-1">ارسال پیامک:</span>
+                                                    <div class="text-[9px] text-gray-700 dark:text-gray-300 truncate" x-text="node.config.sms_message || 'بدون متن'"></div>
+                                                </div>
+                                            </template>
+                                            <template x-if="node.config.action_type === 'FOLLOWUP'">
+                                                <div>
+                                                    <span class="font-semibold text-[9px] text-gray-400 dark:text-gray-500 block mb-1">پیگیری:</span>
+                                                    <div class="text-[9px] text-gray-700 dark:text-gray-300 truncate" x-text="node.config.followup_title || 'بدون عنوان'"></div>
+                                                </div>
+                                            </template>
+                                            <template x-if="node.config.action_type === 'NOTIFICATION'">
+                                                <div>
+                                                    <span class="font-semibold text-[9px] text-gray-400 dark:text-gray-500 block mb-1">اعلان سیستم:</span>
+                                                    <div class="text-[9px] text-gray-700 dark:text-gray-300 truncate" x-text="node.config.notification_title || 'بدون عنوان'"></div>
+                                                </div>
+                                            </template>
                                         </div>
                                     </template>
                                     <template x-if="node.type === 'CONDITION'">
@@ -328,21 +400,36 @@
             <!-- ====== ACTION Settings ====== -->
             <template x-if="editingNode && editingNode.type === 'ACTION'">
                 <div class="space-y-4">
-                    <!-- Section header -->
-                    <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-                        <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                            <span class="w-5 h-5 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs">✓</span>
-                            لیست وظایف این گام
-                        </h3>
-                        <button @click="addTask(editingNode)" type="button"
-                                class="px-3 py-1.5 text-xs bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-semibold border border-indigo-100 dark:border-indigo-500/20 transition-all flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                            افزودن وظیفه
-                        </button>
+                    <!-- Action Type Selector -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">نوع عملیات</label>
+                        <select x-model="editingNode.config.action_type"
+                                class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all outline-none">
+                            <option value="TASK">تعریف وظیفه (Task)</option>
+                            <option value="SMS">ارسال پیامک (SMS)</option>
+                            <option value="FOLLOWUP">ایجاد پیگیری (FollowUp)</option>
+                            <option value="NOTIFICATION">ارسال اعلان سیستم (Notification)</option>
+                        </select>
                     </div>
 
-                    <!-- Task List -->
-                    <div class="space-y-4">
+                    <!-- ====== TASK ====== -->
+                    <template x-if="!editingNode.config.action_type || editingNode.config.action_type === 'TASK'">
+                        <div class="space-y-4">
+                            <!-- Section header -->
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+                                <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                    <span class="w-5 h-5 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs">✓</span>
+                                    لیست وظایف این گام
+                                </h3>
+                                <button @click="addTask(editingNode)" type="button"
+                                        class="px-3 py-1.5 text-xs bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-semibold border border-indigo-100 dark:border-indigo-500/20 transition-all flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                    افزودن وظیفه
+                                </button>
+                            </div>
+
+                            <!-- Task List -->
+                            <div class="space-y-4">
                         <template x-for="(task, taskIndex) in (editingNode.config.tasks || [])" :key="task.id">
                             <div x-data="{ isExpanded: true }" class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
                                 <!-- Task header -->
@@ -384,7 +471,6 @@
                                             </template>
                                         </div>
                                     </div>
-
                                     <!-- Description -->
                                     <div>
                                         <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1.5">توضیحات</label>
@@ -393,27 +479,29 @@
                                                   class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all outline-none"></textarea>
                                     </div>
 
-                                    <!-- Assignee Mode Tabs -->
+                                    <!-- Assignee Target Select -->
                                     <div>
-                                        <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1.5">روش انتخاب مسئول</label>
-                                        <div class="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden p-0.5 bg-gray-100 dark:bg-gray-800 gap-0.5">
-                                            <button type="button"
-                                                    @click="task.assignee_mode = 'single_user'"
-                                                    :class="task.assignee_mode === 'single_user' ? 'bg-white dark:bg-gray-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-                                                    class="flex-1 py-1.5 text-[11px] rounded-md transition-all text-center">
-                                                کاربر مشخص
-                                            </button>
-                                            <button type="button"
-                                                    @click="task.assignee_mode = 'by_roles'"
-                                                    :class="task.assignee_mode === 'by_roles' ? 'bg-white dark:bg-gray-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-                                                    class="flex-1 py-1.5 text-[11px] rounded-md transition-all text-center">
-                                                بر اساس نقش
-                                            </button>
-                                        </div>
+                                        <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1.5">مسئول انجام وظیفه</label>
+                                        <select x-model="task.assignee_target" @change="if (task.assignee_target === 'ROLE') { task.assignee_mode = 'by_roles'; } else { task.assignee_mode = 'single_user'; }"
+                                                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                            <option value="CURRENT_USER">کاربر فعلی سیستم</option>
+                                            <option value="APPOINTMENT_PROVIDER">پزشک نوبت مربوطه</option>
+                                            <option value="SPECIFIC_USER">کاربر خاص سیستم (انتخاب کاربر)</option>
+                                            <option value="ROLE">بر اساس نقش عمومی سیستم (انتخاب نقش)</option>
+                                            <optgroup label="طرح درمان">
+                                                <option value="TREATMENT_PLAN_CREATOR">ایجادکننده طرح درمان</option>
+                                                <option value="TREATMENT_PLAN_CLIENT_ASSIGNEE">بیمار طرح درمان</option>
+                                                @if(isset($cureRoles))
+                                                    @foreach($cureRoles as $role)
+                                                        <option value="TREATMENT_PLAN_ROLE_{{ $role->id }}">نقش «{{ $role->name }}» در طرح درمان</option>
+                                                    @endforeach
+                                                @endif
+                                            </optgroup>
+                                        </select>
                                     </div>
 
                                     <!-- User Selector (searchable) -->
-                                    <div x-show="task.assignee_mode === 'single_user'" class="relative"
+                                    <div x-show="task.assignee_target === 'SPECIFIC_USER'" class="relative"
                                          x-data="{
                                              open: false,
                                              search: '',
@@ -485,7 +573,7 @@
                                     </div>
 
                                     <!-- Role Selector (searchable) -->
-                                    <div x-show="task.assignee_mode === 'by_roles'" class="relative"
+                                    <div x-show="task.assignee_target === 'ROLE'" class="relative"
                                          x-data="{
                                              open: false,
                                              search: '',
@@ -590,7 +678,281 @@
                                         class="mt-2 text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">+ افزودن اولین وظیفه</button>
                             </div>
                         </template>
-                    </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- ====== SMS ====== -->
+                    <template x-if="editingNode.config.action_type === 'SMS'">
+                        <div class="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">هدف ارسال (گیرنده)</label>
+                                    <select x-model="editingNode.config.sms_target"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:border-indigo-400 outline-none">
+                                        <option value="APPOINTMENT_CLIENT">بیمار نوبت</option>
+                                        <option value="APPOINTMENT_PROVIDER">پزشک نوبت</option>
+                                        <option value="STATEMENT_PROVIDER">ارائه‌دهنده صورت وضعیت</option>
+                                        <option value="SPECIFIC_USER">کاربر خاص سیستم</option>
+                                        <option value="CUSTOM_PHONE">شماره دلخواه</option>
+                                        <optgroup label="طرح درمان">
+                                            <option value="TREATMENT_PLAN_CLIENT">بیمار طرح درمان</option>
+                                            <option value="TREATMENT_PLAN_CREATOR">ایجادکننده طرح درمان</option>
+                                            @if(isset($cureRoles))
+                                                @foreach($cureRoles as $role)
+                                                    <option value="TREATMENT_PLAN_ROLE_{{ $role->id }}">نقش «{{ $role->name }}» در طرح درمان</option>
+                                                @endforeach
+                                            @endif
+                                        </optgroup>
+                                    </select>
+                                    
+                                    <div class="mt-2 space-y-2">
+                                        <div x-show="editingNode.config.sms_target === 'CUSTOM_PHONE' || editingNode.config.sms_target === 'CUSTOM'">
+                                            <input type="text" x-model="editingNode.config.sms_phone" placeholder="شماره موبایل (مثلاً ...0912)"
+                                                   class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2 px-3 text-sm">
+                                        </div>
+                                        <div x-show="editingNode.config.sms_target === 'SPECIFIC_USER'">
+                                            <select x-model="editingNode.config.sms_target_user_id"
+                                                    class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2 px-3 text-sm">
+                                                <option value="">انتخاب کاربر...</option>
+                                                <template x-for="u in users" :key="u.id">
+                                                    <option :value="u.id" x-text="u.name" :selected="editingNode.config.sms_target_user_id == u.id"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">تاخیر ارسال (دقیقه)</label>
+                                    <div class="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm bg-white dark:bg-gray-900">
+                                        <input type="number" x-model.number="editingNode.config.sms_offset_minutes"
+                                               class="block w-full border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 text-left focus:ring-0 focus:outline-none text-sm font-semibold" dir="ltr">
+                                        <span class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-3 py-2 text-xs font-bold border-r border-gray-200 dark:border-gray-700 flex items-center">دقیقه</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-50/50 dark:bg-gray-900/10 border border-gray-200 dark:border-gray-800 rounded-xl p-4 space-y-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">کد الگوی سامانه پیامک (Pattern Code)</label>
+                                    <input type="text" x-model="editingNode.config.sms_pattern_key" placeholder="مثال: 34567 (در صورت پیامک معمولی، خالی بگذارید)"
+                                           class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2.5 px-3 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">پارامترهای الگو (به ترتیب {0}, {1}, ...)</label>
+                                    <div class="space-y-2">
+                                        <template x-for="(param, idx) in (editingNode.config.sms_params || [])" :key="idx">
+                                            <div class="flex gap-2 items-center">
+                                                <span class="text-xs text-gray-400 w-8 text-center font-bold" x-text="'{' + idx + '}'"></span>
+                                                <select x-model="editingNode.config.sms_params[idx]" class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2 px-3 text-sm">
+                                                    <option value="">-- انتخاب مقدار --</option>
+                                                    <template x-for="group in Object.keys(tokenGroups)" :key="group">
+                                                        <optgroup :label="group === 'appointment' ? 'مشخصات نوبت' : (group === 'statement' ? 'صورت وضعیت مالی' : (group === 'treatment_plan' ? 'طرح درمان' : group))">
+                                                            <template x-for="tokenKey in Object.keys(tokenGroups[group])" :key="tokenKey">
+                                                                <option :value="tokenKey" x-text="tokenGroups[group][tokenKey]" :selected="param === tokenKey"></option>
+                                                            </template>
+                                                        </optgroup>
+                                                    </template>
+                                                </select>
+                                                <button type="button" @click="editingNode.config.sms_params.splice(idx, 1)" class="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <button type="button" @click="if(!editingNode.config.sms_params) editingNode.config.sms_params = []; editingNode.config.sms_params.push('')" class="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 font-bold mt-1">
+                                        + افزودن پارامتر بعدی
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">متن پیام (در صورت عدم استفاده از الگو)</label>
+                                <div class="bg-gray-50/80 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700/60 rounded-xl p-3.5">
+                                    <span class="text-[11px] font-bold text-indigo-600/70 dark:text-indigo-400/70 tracking-wide block mb-2">کتابخانه توکن‌های پویا (جهت درج کلیک کنید)</span>
+                                    <div class="space-y-3 max-h-36 overflow-y-auto pr-1">
+                                        <template x-for="group in Object.keys(tokenGroups)" :key="group">
+                                            <div class="space-y-1">
+                                                <div class="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 border-b border-gray-200/50 dark:border-gray-700 pb-0.5 mb-1" 
+                                                     x-text="group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : (group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : (group === 'treatment_plan' ? 'اطلاعات طرح درمان' : group))">
+                                                </div>
+                                                <div class="flex flex-wrap gap-1.5">
+                                                    <template x-for="tokenKey in Object.keys(tokenGroups[group])" :key="tokenKey">
+                                                        <button type="button" @click="insertToken(tokenKey, 'sms')" 
+                                                                class="text-[9px] font-bold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 dark:hover:text-white px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 transition-all shadow-sm"
+                                                                x-text="tokenGroups[group][tokenKey]">
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                                <textarea id="sms_message_textarea" x-model="editingNode.config.sms_message" rows="3.5"
+                                          class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-3 px-4 text-sm font-medium focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+                                          placeholder="متن پیامک خود را در اینجا بنویسید..."></textarea>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
+                                <label class="text-[11px] font-bold text-gray-600 dark:text-gray-400">انجام خودکار و عبور (بدون نیاز به تایید)</label>
+                                <button type="button" @click="editingNode.config.auto_advance = !editingNode.config.auto_advance"
+                                        :class="editingNode.config.auto_advance ? 'bg-indigo-500' : 'bg-gray-200 dark:bg-gray-700'"
+                                        class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none">
+                                    <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                          :class="editingNode.config.auto_advance ? 'translate-x-4' : 'translate-x-0'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- ====== FOLLOWUP ====== -->
+                    <template x-if="editingNode.config.action_type === 'FOLLOWUP'">
+                        <div class="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">عنوان پیگیری</label>
+                                    <input type="text" x-model="editingNode.config.followup_title"
+                                           class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">منتسب به</label>
+                                    <select x-model="editingNode.config.followup_assignee_target"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none">
+                                        <option value="CURRENT_USER">کاربر فعلی سیستم</option>
+                                        <option value="APPOINTMENT_PROVIDER">پزشک نوبت مربوطه</option>
+                                        <option value="SPECIFIC_USER">کاربر خاص مشخص شده</option>
+                                        <optgroup label="طرح درمان">
+                                            <option value="TREATMENT_PLAN_CREATOR">ایجادکننده طرح درمان</option>
+                                            <option value="TREATMENT_PLAN_CLIENT_ASSIGNEE">بیمار طرح درمان</option>
+                                            @if(isset($cureRoles))
+                                                @foreach($cureRoles as $role)
+                                                    <option value="TREATMENT_PLAN_ROLE_{{ $role->id }}">نقش «{{ $role->name }}» در طرح درمان</option>
+                                                @endforeach
+                                            @endif
+                                        </optgroup>
+                                    </select>
+                                    <div x-show="editingNode.config.followup_assignee_target === 'SPECIFIC_USER'" class="mt-2">
+                                        <select x-model="editingNode.config.followup_assignee_id"
+                                                class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none">
+                                            <option value="">انتخاب کاربر...</option>
+                                            <template x-for="u in users" :key="u.id">
+                                                <option :value="u.id" x-text="u.name" :selected="editingNode.config.followup_assignee_id == u.id"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">تاخیر ایجاد (روز)</label>
+                                    <div class="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm bg-white dark:bg-gray-900">
+                                        <input type="number" min="0" x-model.number="editingNode.config.followup_offset_days"
+                                               class="block w-full border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 text-left focus:ring-0 focus:outline-none text-sm font-semibold" dir="ltr">
+                                        <span class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-3 py-2 text-xs font-bold border-r border-gray-200 dark:border-gray-700 flex items-center">روز</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">اولویت انجام</label>
+                                    <select x-model="editingNode.config.followup_priority"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none">
+                                        <option value="LOW">کم</option>
+                                        <option value="MEDIUM">معمولی</option>
+                                        <option value="HIGH">زیاد</option>
+                                        <option value="CRITICAL">بحرانی</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">وضعیت اولیه</label>
+                                    <select x-model="editingNode.config.followup_status"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none">
+                                        <option value="TODO">در صف انجام</option>
+                                        <option value="IN_PROGRESS">در حال انجام</option>
+                                        <option value="DONE">انجام شده</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">توضیحات</label>
+                                <textarea x-model="editingNode.config.followup_description" rows="3"
+                                          class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2.5 text-sm resize-none focus:ring-2 focus:ring-indigo-500/30 outline-none"></textarea>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- ====== NOTIFICATION ====== -->
+                    <template x-if="editingNode.config.action_type === 'NOTIFICATION'">
+                        <div class="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">گیرنده اعلان</label>
+                                    <select x-model="editingNode.config.notification_target"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none">
+                                        <option value="APPOINTMENT_CLIENT">بیمار نوبت</option>
+                                        <option value="APPOINTMENT_PROVIDER">پزشک نوبت</option>
+                                        <option value="SPECIFIC_USER">کاربر خاص سیستم</option>
+                                        <optgroup label="طرح درمان">
+                                            <option value="TREATMENT_PLAN_CLIENT">بیمار طرح درمان</option>
+                                            <option value="TREATMENT_PLAN_CREATOR">ایجادکننده طرح درمان</option>
+                                            @if(isset($cureRoles))
+                                                @foreach($cureRoles as $role)
+                                                    <option value="TREATMENT_PLAN_ROLE_{{ $role->id }}">نقش «{{ $role->name }}» در طرح درمان</option>
+                                                @endforeach
+                                            @endif
+                                        </optgroup>
+                                    </select>
+                                    <div x-show="editingNode.config.notification_target === 'SPECIFIC_USER'" class="mt-2">
+                                        <select x-model="editingNode.config.notification_target_user_id"
+                                                class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none">
+                                            <option value="">انتخاب کاربر...</option>
+                                            <template x-for="u in users" :key="u.id">
+                                                <option :value="u.id" x-text="u.name" :selected="editingNode.config.notification_target_user_id == u.id"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">تاخیر ارسال (دقیقه)</label>
+                                    <div class="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm bg-white dark:bg-gray-900">
+                                        <input type="number" x-model.number="editingNode.config.notification_offset_minutes"
+                                               class="block w-full border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 text-left focus:ring-0 focus:outline-none text-sm font-semibold" dir="ltr">
+                                        <span class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-3 py-2 text-xs font-bold border-r border-gray-200 dark:border-gray-700 flex items-center">دقیقه</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">عنوان اعلان</label>
+                                <input type="text" x-model="editingNode.config.notification_title"
+                                       class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">متن اعلان</label>
+                                <div class="bg-gray-50/80 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700/60 rounded-xl p-3.5">
+                                    <span class="text-[11px] font-bold text-indigo-650/70 dark:text-indigo-400/70 tracking-wide block mb-2">کتابخانه توکن‌های پویا (جهت درج کلیک کنید)</span>
+                                    <div class="space-y-3 max-h-36 overflow-y-auto pr-1">
+                                        <template x-for="group in Object.keys(tokenGroups)" :key="group">
+                                            <div class="space-y-1">
+                                                <div class="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 border-b border-gray-200/50 dark:border-gray-700 pb-0.5 mb-1" 
+                                                     x-text="group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : (group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : (group === 'treatment_plan' ? 'اطلاعات طرح درمان' : group))">
+                                                </div>
+                                                <div class="flex flex-wrap gap-1.5">
+                                                    <template x-for="tokenKey in Object.keys(tokenGroups[group])" :key="tokenKey">
+                                                        <button type="button" @click="insertToken(tokenKey, 'notification')" 
+                                                                class="text-[9px] font-bold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 dark:hover:text-white px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 transition-all shadow-sm"
+                                                                x-text="tokenGroups[group][tokenKey]">
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                                <textarea id="notification_message_textarea" x-model="editingNode.config.notification_message" rows="3"
+                                          class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2.5 text-sm resize-none focus:ring-2 focus:ring-indigo-500/30 outline-none"></textarea>
+                            </div>
+                        </div>
+                    </template>
+
                 </div>
             </template>
 
@@ -792,6 +1154,7 @@ function workflowDesigner() {
 
         draggingNode: null,
         dragOffset: { x: 0, y: 0 },
+        hasDragged: false,
 
         connectingSource: null,
         mousePos: { x: 0, y: 0 },
@@ -804,6 +1167,7 @@ function workflowDesigner() {
         roles: @json($roles),
         subWorkflows: @json($subWorkflows),
         users: @json($users),
+        tokenGroups: @json($groupedTokens),
 
         initDesigner() {
             window._wfUsers = this.users;
@@ -814,7 +1178,20 @@ function workflowDesigner() {
 
             this.nodes = backendNodes.map(node => {
                 const config = node.config || {};
-                let tasks = config.tasks || [];
+                let tasks = (config.tasks || []).map(t => {
+                    return {
+                        id: t.id || 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        title: t.title || '',
+                        description: t.description || '',
+                        priority: t.priority || 'MEDIUM',
+                        assignee_mode: t.assignee_mode || (t.role_id ? 'by_roles' : 'single_user'),
+                        assignee_target: t.assignee_target || (t.assignee_mode === 'by_roles' ? 'ROLE' : (t.assignee_id ? 'SPECIFIC_USER' : 'CURRENT_USER')),
+                        role_id: t.role_id || '',
+                        assignee_id: t.assignee_id || '',
+                        offset_days: parseInt(t.offset_days) || 0,
+                        auto_advance: t.hasOwnProperty('auto_advance') ? !!t.auto_advance : true
+                    };
+                });
                 if (node.type === 'ACTION' && tasks.length === 0) {
                     tasks = [{
                         id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -822,6 +1199,7 @@ function workflowDesigner() {
                         description: config.description || '',
                         priority: config.priority || 'MEDIUM',
                         assignee_mode: config.assignee_mode || (config.role_id ? 'by_roles' : 'single_user'),
+                        assignee_target: config.assignee_target || (config.role_id ? 'ROLE' : (config.assignee_id ? 'SPECIFIC_USER' : 'CURRENT_USER')),
                         role_id: config.role_id || '',
                         assignee_id: config.assignee_id || '',
                         offset_days: parseInt(config.offset_days) || 0,
@@ -842,6 +1220,33 @@ function workflowDesigner() {
                         condition_expression: config.condition_expression || '',
                         child_workflow_id: config.child_workflow_id || '',
                         auto_advance: config.hasOwnProperty('auto_advance') ? !!config.auto_advance : true,
+                        action_type: config.action_type || (node.type === 'ACTION' ? 'TASK' : ''),
+                        
+                        // SMS config:
+                        sms_target: config.sms_target || 'APPOINTMENT_CLIENT',
+                        sms_target_user_id: config.sms_target_user_id || '',
+                        sms_phone: config.sms_phone || '',
+                        sms_offset_minutes: parseInt(config.sms_offset_minutes) || 0,
+                        sms_pattern_key: config.sms_pattern_key || '',
+                        sms_params: config.sms_params || [''],
+                        sms_message: config.sms_message || '',
+                        
+                        // Followup config:
+                        followup_title: config.followup_title || '',
+                        followup_offset_days: parseInt(config.followup_offset_days) || 0,
+                        followup_description: config.followup_description || '',
+                        followup_priority: config.followup_priority || 'HIGH',
+                        followup_assignee_target: config.followup_assignee_target || 'CURRENT_USER',
+                        followup_assignee_id: config.followup_assignee_id || '',
+                        followup_status: config.followup_status || 'TODO',
+                        
+                        // Notification config:
+                        notification_target: config.notification_target || 'APPOINTMENT_CLIENT',
+                        notification_target_user_id: config.notification_target_user_id || '',
+                        notification_title: config.notification_title || '',
+                        notification_message: config.notification_message || '',
+                        notification_offset_minutes: parseInt(config.notification_offset_minutes) || 0,
+                        
                         tasks: tasks
                     }
                 };
@@ -876,6 +1281,10 @@ function workflowDesigner() {
 
         openNodeEditor(node) {
             // Don't open editor if user was dragging
+            if (this.hasDragged) {
+                this.hasDragged = false;
+                return;
+            }
             this.selectedEdgeIdx = null;
             this.edgeEditorOpen = false;
             this.selectedNodeId = node.id;
@@ -887,6 +1296,37 @@ function workflowDesigner() {
         closeNodeEditor() {
             this.nodeEditorOpen = false;
             // Keep selectedNodeId for highlighting
+        },
+
+        insertToken(token, field) {
+            let textarea = null;
+            if (field === 'sms') {
+                textarea = document.getElementById('sms_message_textarea');
+            } else if (field === 'notification') {
+                textarea = document.getElementById('notification_message_textarea');
+            }
+            if (!textarea) return;
+
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const before = text.substring(0, start);
+            const after = text.substring(end, text.length);
+
+            const insertedText = '{' + token + '}';
+            const newValue = before + insertedText + after;
+            
+            if (field === 'sms') {
+                this.editingNode.config.sms_message = newValue;
+            } else if (field === 'notification') {
+                this.editingNode.config.notification_message = newValue;
+            }
+
+            this.$nextTick(() => {
+                textarea.value = newValue;
+                textarea.selectionStart = textarea.selectionEnd = start + insertedText.length;
+                textarea.focus();
+            });
         },
 
         deleteEditingNode() {
@@ -905,6 +1345,7 @@ function workflowDesigner() {
                 description: '',
                 priority: 'MEDIUM',
                 assignee_mode: 'single_user',
+                assignee_target: 'CURRENT_USER',
                 role_id: '',
                 assignee_id: '',
                 offset_days: 0,
@@ -1013,6 +1454,13 @@ function workflowDesigner() {
                     condition_expression: '',
                     child_workflow_id: '',
                     auto_advance: true,
+                    action_type: type === 'ACTION' ? 'TASK' : '',
+                    followup_title: '',
+                    followup_description: '',
+                    followup_offset_days: 0,
+                    sms_message: '',
+                    notification_title: '',
+                    notification_message: '',
                     tasks: type === 'ACTION' ? [{
                         id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                         title: name,
@@ -1060,6 +1508,7 @@ function workflowDesigner() {
         startDrag(e, node) {
             if (e.target.closest('.cursor-pointer')) return;
             this.draggingNode = node;
+            this.hasDragged = false;
             const rect = document.getElementById('canvas-viewport').getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
@@ -1081,6 +1530,7 @@ function workflowDesigner() {
             if (this.draggingNode) {
                 this.draggingNode.x = canvasMouseX - this.dragOffset.x;
                 this.draggingNode.y = canvasMouseY - this.dragOffset.y;
+                this.hasDragged = true;
             } else if (this.isPanning) {
                 this.pan.x = e.clientX - this.panStart.x;
                 this.pan.y = e.clientY - this.panStart.y;
@@ -1171,6 +1621,33 @@ function workflowDesigner() {
             if (!roleId) return 'ثبت نشده';
             const role = this.roles.find(r => r.id == roleId);
             return role ? role.name : 'نامعلوم';
+        },
+
+        getAssigneeLabel(t) {
+            const target = t.assignee_target || 'CURRENT_USER';
+            if (target === 'SPECIFIC_USER') {
+                return this.getUserName(t.assignee_id);
+            }
+            if (target === 'ROLE') {
+                return 'نقش: ' + this.getRoleName(t.role_id);
+            }
+            if (target === 'CURRENT_USER') {
+                return 'کاربر فعلی';
+            }
+            if (target === 'APPOINTMENT_PROVIDER') {
+                return 'پزشک نوبت';
+            }
+            if (target === 'TREATMENT_PLAN_CREATOR') {
+                return 'ثبت‌کننده طرح';
+            }
+            if (target === 'TREATMENT_PLAN_CLIENT_ASSIGNEE') {
+                return 'بیمار طرح';
+            }
+            if (target.startsWith('TREATMENT_PLAN_ROLE_')) {
+                const roleId = target.replace('TREATMENT_PLAN_ROLE_', '');
+                return 'طرح: ' + this.getRoleName(roleId);
+            }
+            return 'نامعلوم';
         },
 
         getSubWorkflowName(subId) {
