@@ -17,6 +17,14 @@ class PropertyApiController extends Controller
      */
     public function index(Request $request)
     {
+        $isPropertiesActive = \Nwidart\Modules\Facades\Module::has('Properties') && \Nwidart\Modules\Facades\Module::isEnabled('Properties');
+        if (!$isPropertiesActive) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Properties module is not active.'
+            ], 404);
+        }
+
         /** @var ApiKey $apiKey */
         $apiKey = $request->get('authenticated_api_key');
 
@@ -158,6 +166,14 @@ class PropertyApiController extends Controller
      */
     public function show(Request $request, string $idOrCode)
     {
+        $isPropertiesActive = \Nwidart\Modules\Facades\Module::has('Properties') && \Nwidart\Modules\Facades\Module::isEnabled('Properties');
+        if (!$isPropertiesActive) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Properties module is not active.'
+            ], 404);
+        }
+
         /** @var ApiKey $apiKey */
         $apiKey = $request->get('authenticated_api_key');
 

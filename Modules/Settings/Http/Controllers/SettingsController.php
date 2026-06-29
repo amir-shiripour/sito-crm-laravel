@@ -103,17 +103,40 @@ class SettingsController extends Controller
         }
 
         $apiKeys = \Modules\Settings\Entities\ApiKey::with('creator')->latest()->get();
-        $propertyStatuses = \Modules\Properties\Entities\PropertyStatus::all();
-        $propertyCategories = \Modules\Properties\Entities\PropertyCategory::all();
+
+        $isPropertiesActive = NModule::has('Properties') && NModule::isEnabled('Properties');
+        $propertyStatuses = collect();
+        $propertyCategories = collect();
+
+        if ($isPropertiesActive) {
+            if (Schema::hasTable('property_statuses')) {
+                $propertyStatuses = \Modules\Properties\Entities\PropertyStatus::all();
+            }
+            if (Schema::hasTable('property_categories')) {
+                $propertyCategories = \Modules\Properties\Entities\PropertyCategory::all();
+            }
+        }
+
+        $isBookingActive = NModule::has('Booking') && NModule::isEnabled('Booking');
+        $bookingCategories = collect();
+
+        if ($isBookingActive) {
+            if (Schema::hasTable('booking_categories')) {
+                $bookingCategories = \Modules\Booking\Entities\BookingCategory::all();
+            }
+        }
 
         return view('settings::index', compact(
             'settings',
             'banks',
             'isAccountingActive',
+            'isPropertiesActive',
+            'isBookingActive',
             'availableServices',
             'apiKeys',
             'propertyStatuses',
-            'propertyCategories'
+            'propertyCategories',
+            'bookingCategories'
         ));
     }
     public function update(Request $request)

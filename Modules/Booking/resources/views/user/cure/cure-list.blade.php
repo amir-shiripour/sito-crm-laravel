@@ -521,6 +521,35 @@
                                         </a>
                                     @endcanany
 
+                                    @if(class_exists(\Modules\ContractForge\App\Models\Contract::class))
+                                        @php
+                                            $firstContract = \Modules\ContractForge\App\Models\Contract::where('contractable_type', get_class($plan))->where('contractable_id', $plan->id)->first();
+                                        @endphp
+                                        @if($firstContract)
+                                            <a href="{{ route('user.contracts.show', $firstContract->id) }}"
+                                               class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-teal-50 text-teal-600 hover:bg-teal-100 dark:bg-teal-900/25 dark:text-teal-400 dark:hover:bg-teal-900/40 transition font-medium">
+                                                مشاهده قرارداد
+                                            </a>
+                                        @else
+                                            @if(auth()->user()->can('contractforge.manage'))
+                                                @php
+                                                    $templateId = \Modules\ContractForge\App\Models\ContractTemplate::where('is_active', true)->where('entity_type', 'treatment_plan')->first()?->id;
+                                                @endphp
+                                                @if($templateId)
+                                                    <form action="{{ route('user.contracts.generate_manual') }}" method="POST" class="inline">
+                                                        @csrf
+                                                        <input type="hidden" name="template_id" value="{{ $templateId }}">
+                                                        <input type="hidden" name="entity_id" value="{{ $plan->id }}">
+                                                        <input type="hidden" name="entity_type" value="treatment_plan">
+                                                        <button type="submit" class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-900/25 dark:text-amber-400 dark:hover:bg-amber-900/40 transition font-medium">
+                                                            صدور قرارداد
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            @endif
+                                        @endif
+                                    @endif
+
                                     @if($canEdit)
                                         <a href="{{ route('user.booking.cure.edit', $plan) }}"
                                            class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition font-medium shadow-sm">

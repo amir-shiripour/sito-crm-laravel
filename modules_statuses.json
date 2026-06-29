@@ -8,9 +8,10 @@
     "Workflows": true,
     "Sms": true,
     "Booking": true,
-    "Properties": false,
+    "Properties": true,
     "Settings": true,
     "Market": false,
     "Notifications": true,
-    "Sales": false
+    "Sales": false,
+    "ContractForge": true
 }

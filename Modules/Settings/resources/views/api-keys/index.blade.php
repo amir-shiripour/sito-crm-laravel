@@ -78,6 +78,7 @@
                         <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-900/30 rounded-lg">
                             <tr>
                                 <th scope="col" class="px-6 py-4 rounded-r-xl">نام کلید</th>
+                                <th scope="col" class="px-6 py-4">ماژول</th>
                                 <th scope="col" class="px-6 py-4">محدودیت نرخ (ساعت)</th>
                                 <th scope="col" class="px-6 py-4">انقضا</th>
                                 <th scope="col" class="px-6 py-4">تعداد درخواست</th>
@@ -96,6 +97,17 @@
                                             </span>
                                         </div>
                                     </th>
+                                    <td class="px-6 py-4 text-xs font-semibold">
+                                        @if($key->module === 'booking')
+                                            <span class="px-2.5 py-1 bg-purple-50 dark:bg-purple-900/10 text-purple-700 dark:text-purple-400 rounded-lg">
+                                                نوبت‌دهی (Booking)
+                                            </span>
+                                        @else
+                                            <span class="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-400 rounded-lg">
+                                                املاک (Properties)
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4">
                                         @if($key->rate_limit_per_hour)
                                             <span class="px-2.5 py-1 bg-yellow-50 dark:bg-yellow-900/10 text-yellow-700 dark:text-yellow-400 rounded-lg text-xs font-semibold">
@@ -194,10 +206,22 @@
         <form action="{{ route('settings.api-keys.store') }}" method="POST" class="p-6 space-y-6">
             @csrf
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
                     <label for="key_name" class="{{ $labelClass }}">نام کلید (مثال: سایت وردپرس اصلی)</label>
                     <input type="text" class="{{ $inputClass }}" id="key_name" name="name" required placeholder="مثال: سایت وردپرس">
+                </div>
+
+                <div>
+                    <label for="key_module" class="{{ $labelClass }}">انتخاب ماژول</label>
+                    <select name="module" id="key_module" class="{{ $inputClass }}" onchange="toggleModuleFilters(this.value)">
+                        @if($isPropertiesActive)
+                            <option value="properties" selected>املاک (Properties)</option>
+                        @endif
+                        @if($isBookingActive)
+                            <option value="booking" {{ !$isPropertiesActive ? 'selected' : '' }}>نوبت‌دهی (Booking)</option>
+                        @endif
+                    </select>
                 </div>
 
                 <div>
@@ -211,8 +235,8 @@
                 </div>
             </div>
 
-            {{-- فیلترها --}}
-            <div class="border-t border-gray-100 dark:border-gray-700 pt-6">
+            {{-- فیلترهای ماژول املاک --}}
+            <div class="border-t border-gray-100 dark:border-gray-700 pt-6" id="properties-filters-section">
                 <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4">فیلترهای پیش‌فرض خروجی (ماژول املاک)</h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -318,31 +342,105 @@
                         <p class="text-[10px] text-gray-400 mt-3">انتخاب نکنید تا همه وضعیت‌ها مجاز باشند.</p>
                     </div>
                 </div>
-            </div>
 
-            {{-- دسترسی اطلاعات حساس --}}
-            <div class="border-t border-gray-100 dark:border-gray-700 pt-6">
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4">دسترسی و حریم خصوصی داده‌ها</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="p-4 bg-gray-50/30 dark:bg-gray-950/10 rounded-xl border border-gray-100 dark:border-gray-800 flex items-start gap-3">
-                        <input type="checkbox" name="permissions[include_owner]" id="perm_include_owner" value="1"
-                               class="mt-1 rounded text-indigo-600 focus:ring-indigo-500">
-                        <div>
-                            <label for="perm_include_owner" class="text-xs font-bold text-gray-900 dark:text-white cursor-pointer select-none">
-                                ارسال اطلاعات تماس مالکین در خروجی API
-                            </label>
-                            <p class="text-[10px] text-gray-400 mt-1">با فعال کردن این گزینه، اطلاعات تماس مالکین (شامل نام و تلفن) در پاسخ‌های API ارسال خواهد شد. (پیش‌فرض: غیرفعال)</p>
+                {{-- دسترسی اطلاعات حساس املاک --}}
+                <div class="border-t border-gray-100 dark:border-gray-700 pt-6 mt-6">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4">دسترسی و حریم خصوصی داده‌ها</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-4 bg-gray-50/30 dark:bg-gray-950/10 rounded-xl border border-gray-100 dark:border-gray-800 flex items-start gap-3">
+                            <input type="checkbox" name="permissions[include_owner]" id="perm_include_owner" value="1"
+                                   class="mt-1 rounded text-indigo-600 focus:ring-indigo-500">
+                            <div>
+                                <label for="perm_include_owner" class="text-xs font-bold text-gray-900 dark:text-white cursor-pointer select-none">
+                                    ارسال اطلاعات تماس مالکین در خروجی API
+                                </label>
+                                <p class="text-[10px] text-gray-400 mt-1">با فعال کردن این گزینه، اطلاعات تماس مالکین (شامل نام و تلفن) در پاسخ‌های API ارسال خواهد شد. (پیش‌فرض: غیرفعال)</p>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-gray-50/30 dark:bg-gray-950/10 rounded-xl border border-gray-100 dark:border-gray-800 flex items-start gap-3">
+                            <input type="checkbox" name="permissions[include_confidential_notes]" id="perm_include_notes" value="1"
+                                   class="mt-1 rounded text-indigo-600 focus:ring-indigo-500">
+                            <div>
+                                <label for="perm_include_notes" class="text-xs font-bold text-gray-900 dark:text-white cursor-pointer select-none">
+                                    ارسال یادداشت‌های محرمانه ملک در خروجی API
+                                </label>
+                                <p class="text-[10px] text-gray-400 mt-1">با فعال کردن این گزینه، متن فیلد یادداشت‌های محرمانه املاک در خروجی API ارسال خواهد شد. (پیش‌فرض: غیرفعال)</p>
+                            </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="p-4 bg-gray-50/30 dark:bg-gray-950/10 rounded-xl border border-gray-100 dark:border-gray-800 flex items-start gap-3">
-                        <input type="checkbox" name="permissions[include_confidential_notes]" id="perm_include_notes" value="1"
-                               class="mt-1 rounded text-indigo-600 focus:ring-indigo-500">
-                        <div>
-                            <label for="perm_include_notes" class="text-xs font-bold text-gray-900 dark:text-white cursor-pointer select-none">
-                                ارسال یادداشت‌های محرمانه ملک در خروجی API
-                            </label>
-                            <p class="text-[10px] text-gray-400 mt-1">با فعال کردن این گزینه، متن فیلد یادداشت‌های محرمانه املاک در خروجی API ارسال خواهد شد. (پیش‌فرض: غیرفعال)</p>
+            {{-- فیلترهای ماژول نوبت‌دهی --}}
+            <div class="border-t border-gray-100 dark:border-gray-700 pt-6" id="booking-filters-section" style="display: none;">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4">فیلترهای پیش‌فرض خروجی (ماژول نوبت‌دهی)</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="service_status" class="{{ $labelClass }}">وضعیت سرویس‌ها</label>
+                        <select name="filters[service_status]" id="service_status" class="{{ $inputClass }}">
+                            <option value="active" selected>فقط سرویس‌های فعال (Active)</option>
+                            <option value="inactive">فقط سرویس‌های غیرفعال (Inactive)</option>
+                            <option value="all">همه سرویس‌ها</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="b_per_page_max" class="{{ $labelClass }}">حداکثر تعداد در هر صفحه</label>
+                        <input type="number" class="{{ $inputClass }}" id="b_per_page_max" name="filters[per_page_max]" value="100" min="1" max="500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div>
+                        <label for="b_order_by" class="{{ $labelClass }}">مرتب‌سازی بر اساس</label>
+                        <select name="filters[order_by]" id="b_order_by" class="{{ $inputClass }}">
+                            <option value="created_at" selected>تاریخ ثبت</option>
+                            <option value="updated_at">آخرین بروزرسانی</option>
+                            <option value="name">نام سرویس</option>
+                            <option value="base_price">قیمت پایه</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="b_order_direction" class="{{ $labelClass }}">جهت مرتب‌سازی</label>
+                        <select name="filters[order_direction]" id="b_order_direction" class="{{ $inputClass }}">
+                            <option value="desc" selected>نزولی (جدیدترین / بالاترین)</option>
+                            <option value="asc">صعودی (قدیمی‌ترین / پایین‌ترین)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6 mt-6">
+                    {{-- دسته‌بندی‌های مجاز سرویس --}}
+                    <div class="p-4 bg-gray-50/50 dark:bg-gray-900/30 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <label class="{{ $labelClass }}">دسته‌بندی‌های مجاز سرویس نوبت‌دهی</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2 max-h-[150px] overflow-y-auto pr-1">
+                            @foreach($bookingCategories as $bCat)
+                                <label class="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer">
+                                    <input type="checkbox" name="filters[category_ids][]" value="{{ $bCat->id }}" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                    <span>{{ $bCat->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-3">انتخاب نکنید تا سرویس‌های همه دسته‌بندی‌ها مجاز باشند.</p>
+                    </div>
+                </div>
+
+                {{-- دسترسی اطلاعات حساس نوبت‌دهی --}}
+                <div class="border-t border-gray-100 dark:border-gray-700 pt-6 mt-6">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4">دسترسی و حریم خصوصی داده‌ها (نوبت‌دهی)</h3>
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="p-4 bg-gray-50/30 dark:bg-gray-950/10 rounded-xl border border-gray-100 dark:border-gray-800 flex items-start gap-3">
+                            <input type="checkbox" name="permissions[include_providers]" id="perm_include_providers" value="1" checked
+                                   class="mt-1 rounded text-indigo-600 focus:ring-indigo-500">
+                            <div>
+                                <label for="perm_include_providers" class="text-xs font-bold text-gray-900 dark:text-white cursor-pointer select-none">
+                                    ارسال اطلاعات پزشکان / ارائه‌دهندگان سرویس نوبت‌دهی
+                                </label>
+                                <p class="text-[10px] text-gray-400 mt-1">با فعال کردن این گزینه، مشخصات پزشکان و ارائه‌دهندگان مرتبط با هر سرویس نوبت‌دهی در پاسخ‌های API ارسال خواهد شد. (پیش‌فرض: فعال)</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -358,4 +456,27 @@
             </div>
         </form>
     </div>
+
+    <script>
+        function toggleModuleFilters(module) {
+            const propSec = document.getElementById('properties-filters-section');
+            const bookingSec = document.getElementById('booking-filters-section');
+            
+            if (module === 'booking') {
+                if (propSec) propSec.style.display = 'none';
+                if (bookingSec) bookingSec.style.display = 'block';
+            } else {
+                if (propSec) propSec.style.display = 'block';
+                if (bookingSec) bookingSec.style.display = 'none';
+            }
+        }
+        
+        // Trigger onload to set initial state
+        document.addEventListener('DOMContentLoaded', function() {
+            const moduleSelect = document.getElementById('key_module');
+            if (moduleSelect) {
+                toggleModuleFilters(moduleSelect.value);
+            }
+        });
+    </script>
 </div>

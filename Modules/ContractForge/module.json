@@ -1,0 +1,15 @@
+{
+  "name": "ContractForge",
+  "alias": "contractforge",
+  "description": "مدیریت قراردادها و تولید خودکار بر اساس شرط‌ها برای ماژول‌های سیستم.",
+  "keywords": [
+    "contract",
+    "crm",
+    "contractforge"
+  ],
+  "priority": 140,
+  "providers": [
+    "Modules\\ContractForge\\Providers\\ContractForgeServiceProvider"
+  ],
+  "files": []
+}

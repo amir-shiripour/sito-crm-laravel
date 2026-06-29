@@ -549,7 +549,9 @@
         </form>
 
         {{-- مدیریت کلیدهای API --}}
-        @include('settings::api-keys.index')
+        @if($isPropertiesActive ?? false)
+            @include('settings::api-keys.index')
+        @endif
 
         <form id="test-payment-form" action="{{ route('settings.payment.request') }}" method="POST" class="hidden">
             @csrf

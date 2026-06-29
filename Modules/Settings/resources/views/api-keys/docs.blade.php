@@ -126,82 +126,122 @@
                     <div class="space-y-3 pt-2">
                         <span class="text-xs text-slate-400 block">فیلترهای خروجی اجباری روی این کلید:</span>
                         
-                        <ul class="text-xs space-y-2 text-slate-300">
-                            <li class="flex items-center justify-between">
-                                <span>وضعیت انتشار ملک:</span>
-                                <strong class="text-white">
-                                    @if(($apiKey->filters['publication_status'] ?? '') == 'published') فقط منتشر شده
-                                    @elseif(($apiKey->filters['publication_status'] ?? '') == 'draft') فقط پیش‌نویس
-                                    @else همه املاک @endif
-                                </strong>
-                            </li>
-                            <li class="flex items-center justify-between">
-                                <span>نمایش در سایت فعال باشد؟</span>
-                                <strong class="text-white">
-                                    {{ ($apiKey->filters['require_show_in_crm'] ?? true) ? 'بله' : 'خیر' }}
-                                </strong>
-                            </li>
-                            <li class="flex items-center justify-between">
-                                <span>حداکثر آیتم در هر صفحه:</span>
-                                <strong class="text-white">{{ $apiKey->filters['per_page_max'] ?? 100 }}</strong>
-                            </li>
-                            @if(!empty($apiKey->filters['listing_types']))
-                                <li class="flex flex-col gap-1">
-                                    <span>نوع معامله‌های مجاز:</span>
-                                    <div class="flex flex-wrap gap-1 mt-1">
-                                        @foreach($apiKey->filters['listing_types'] as $t)
-                                            <span class="bg-slate-850 px-2 py-0.5 rounded text-[10px] border border-slate-800 text-indigo-300">
-                                                {{ $t === 'sale' ? 'فروش' : ($t === 'rent' ? 'اجاره' : 'پیش‌فروش') }}
-                                            </span>
-                                        @endforeach
-                                    </div>
+                        @if($apiKey->module === 'booking')
+                            <ul class="text-xs space-y-2 text-slate-300">
+                                <li class="flex items-center justify-between">
+                                    <span>وضعیت سرویس‌ها:</span>
+                                    <strong class="text-white">
+                                        @if(($apiKey->filters['service_status'] ?? '') == 'active') فقط فعال
+                                        @elseif(($apiKey->filters['service_status'] ?? '') == 'inactive') فقط غیرفعال
+                                        @else همه سرویس‌ها @endif
+                                    </strong>
                                 </li>
-                            @endif
-                            @if(!empty($apiKey->filters['property_types']))
-                                <li class="flex flex-col gap-1">
-                                    <span>نوع ملک‌های مجاز:</span>
-                                    <div class="flex flex-wrap gap-1 mt-1">
-                                        @foreach($apiKey->filters['property_types'] as $t)
-                                            <span class="bg-slate-850 px-2 py-0.5 rounded text-[10px] border border-slate-800 text-indigo-300">
-                                                {{ $t === 'apartment' ? 'آپارتمان' : ($t === 'villa' ? 'ویلا' : ($t === 'land' ? 'زمین' : 'اداری/تجاری')) }}
-                                            </span>
-                                        @endforeach
-                                    </div>
+                                <li class="flex items-center justify-between">
+                                    <span>حداکثر آیتم در هر صفحه:</span>
+                                    <strong class="text-white">{{ $apiKey->filters['per_page_max'] ?? 100 }}</strong>
                                 </li>
-                            @endif
-                            @if(!empty($apiKey->filters['status_ids']))
-                                <li class="flex flex-col gap-1">
-                                    <span>وضعیت‌های مجاز ملک:</span>
-                                    <div class="flex flex-wrap gap-1 mt-1">
-                                        @foreach($statuses as $status)
-                                            @if(in_array($status->id, $apiKey->filters['status_ids']))
-                                                <span class="bg-slate-850 px-2 py-0.5 rounded text-[10px] border border-slate-800 text-white" style="border-color: {{ $status->color }}50">
-                                                    {{ $status->label }}
+                                @if(!empty($apiKey->filters['category_ids']))
+                                    <li class="flex flex-col gap-1">
+                                        <span>دسته‌بندی‌های مجاز:</span>
+                                        <div class="flex flex-wrap gap-1 mt-1">
+                                            @foreach($bookingCategories as $cat)
+                                                @if(in_array($cat->id, $apiKey->filters['category_ids']))
+                                                    <span class="bg-slate-850 px-2 py-0.5 rounded text-[10px] border border-slate-800 text-indigo-300">
+                                                        {{ $cat->name }}
+                                                    </span>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    </li>
+                                @endif
+                            </ul>
+                        @else
+                            <ul class="text-xs space-y-2 text-slate-300">
+                                <li class="flex items-center justify-between">
+                                    <span>وضعیت انتشار ملک:</span>
+                                    <strong class="text-white">
+                                        @if(($apiKey->filters['publication_status'] ?? '') == 'published') فقط منتشر شده
+                                        @elseif(($apiKey->filters['publication_status'] ?? '') == 'draft') فقط پیش‌نویس
+                                        @else همه املاک @endif
+                                    </strong>
+                                </li>
+                                <li class="flex items-center justify-between">
+                                    <span>نمایش در سایت فعال باشد؟</span>
+                                    <strong class="text-white">
+                                        {{ ($apiKey->filters['require_show_in_crm'] ?? true) ? 'بله' : 'خیر' }}
+                                    </strong>
+                                </li>
+                                <li class="flex items-center justify-between">
+                                    <span>حداکثر آیتم در هر صفحه:</span>
+                                    <strong class="text-white">{{ $apiKey->filters['per_page_max'] ?? 100 }}</strong>
+                                </li>
+                                @if(!empty($apiKey->filters['listing_types']))
+                                    <li class="flex flex-col gap-1">
+                                        <span>نوع معامله‌های مجاز:</span>
+                                        <div class="flex flex-wrap gap-1 mt-1">
+                                            @foreach($apiKey->filters['listing_types'] as $t)
+                                                <span class="bg-slate-850 px-2 py-0.5 rounded text-[10px] border border-slate-800 text-indigo-300">
+                                                    {{ $t === 'sale' ? 'فروش' : ($t === 'rent' ? 'اجاره' : 'پیش‌فروش') }}
                                                 </span>
-                                            @endif
-                                        @endforeach
-                                    </div>
-                                </li>
-                            @endif
-                        </ul>
+                                            @endforeach
+                                        </div>
+                                    </li>
+                                @endif
+                                @if(!empty($apiKey->filters['property_types']))
+                                    <li class="flex flex-col gap-1">
+                                        <span>نوع ملک‌های مجاز:</span>
+                                        <div class="flex flex-wrap gap-1 mt-1">
+                                            @foreach($apiKey->filters['property_types'] as $t)
+                                                <span class="bg-slate-850 px-2 py-0.5 rounded text-[10px] border border-slate-800 text-indigo-300">
+                                                    {{ $t === 'apartment' ? 'آپارتمان' : ($t === 'villa' ? 'ویلا' : ($t === 'land' ? 'زمین' : 'اداری/تجاری')) }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    </li>
+                                @endif
+                                @if(!empty($apiKey->filters['status_ids']))
+                                    <li class="flex flex-col gap-1">
+                                        <span>وضعیت‌های مجاز ملک:</span>
+                                        <div class="flex flex-wrap gap-1 mt-1">
+                                            @foreach($statuses as $status)
+                                                @if(in_array($status->id, $apiKey->filters['status_ids']))
+                                                    <span class="bg-slate-850 px-2 py-0.5 rounded text-[10px] border border-slate-800 text-white" style="border-color: {{ $status->color }}50">
+                                                        {{ $status->label }}
+                                                    </span>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    </li>
+                                @endif
+                            </ul>
+                        @endif
                     </div>
 
                     <!-- دسترسی‌های ویژه حریم خصوصی -->
                     <div class="space-y-3 pt-4 border-t border-slate-850">
                         <span class="text-xs text-slate-400 block">دسترسی به فیلد‌های حساس:</span>
                         <ul class="text-xs space-y-2">
-                            <li class="flex items-center justify-between">
-                                <span>ارسال اطلاعات تماس مالکین:</span>
-                                <strong class="{{ ($apiKey->permissions['include_owner'] ?? false) ? 'text-emerald-400' : 'text-red-400' }}">
-                                    {{ ($apiKey->permissions['include_owner'] ?? false) ? 'فعال' : 'غیرفعال' }}
-                                </strong>
-                            </li>
-                            <li class="flex items-center justify-between">
-                                <span>ارسال یادداشت‌های محرمانه:</span>
-                                <strong class="{{ ($apiKey->permissions['include_confidential_notes'] ?? false) ? 'text-emerald-400' : 'text-red-400' }}">
-                                    {{ ($apiKey->permissions['include_confidential_notes'] ?? false) ? 'فعال' : 'غیرفعال' }}
-                                </strong>
-                            </li>
+                            @if($apiKey->module === 'booking')
+                                <li class="flex items-center justify-between">
+                                    <span>ارسال اطلاعات پزشکان/ارائه‌دهندگان:</span>
+                                    <strong class="{{ ($apiKey->permissions['include_providers'] ?? true) ? 'text-emerald-400' : 'text-red-400' }}">
+                                        {{ ($apiKey->permissions['include_providers'] ?? true) ? 'فعال' : 'غیرفعال' }}
+                                    </strong>
+                                </li>
+                            @else
+                                <li class="flex items-center justify-between">
+                                    <span>ارسال اطلاعات تماس مالکین:</span>
+                                    <strong class="{{ ($apiKey->permissions['include_owner'] ?? false) ? 'text-emerald-400' : 'text-red-400' }}">
+                                        {{ ($apiKey->permissions['include_owner'] ?? false) ? 'فعال' : 'غیرفعال' }}
+                                    </strong>
+                                </li>
+                                <li class="flex items-center justify-between">
+                                    <span>ارسال یادداشت‌های محرمانه:</span>
+                                    <strong class="{{ ($apiKey->permissions['include_confidential_notes'] ?? false) ? 'text-emerald-400' : 'text-red-400' }}">
+                                        {{ ($apiKey->permissions['include_confidential_notes'] ?? false) ? 'فعال' : 'غیرفعال' }}
+                                    </strong>
+                                </li>
+                            @endif
                         </ul>
                     </div>
                 </div>
@@ -219,7 +259,11 @@
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                     <h2 class="text-base font-bold text-white mb-3">شروع کار با وب‌سرویس</h2>
                     <p class="text-sm text-slate-300 leading-relaxed mb-4">
-                        این وب‌سرویس به شما امکان می‌دهد تا املاک ثبت شده در سیستم CRM خود را در قالب ساختار استاندارد JSON در سایت‌های دیگر (مانند وب‌سایت وردپرسی خود) نمایش دهید. کلیه درخواست‌ها باید با هدر احراز هویت یا از طریق پارامتر URL ارسال شوند.
+                        @if($apiKey->module === 'booking')
+                            این وب‌سرویس به شما امکان می‌دهد تا سرویس‌های نوبت‌دهی و قیمت‌گذاری پیشرفته تعریف‌شده در سیستم CRM خود را در قالب ساختار استاندارد JSON در سایت‌های دیگر نمایش دهید. کلیه درخواست‌ها باید با هدر احراز هویت یا از طریق پارامتر URL ارسال شوند.
+                        @else
+                            این وب‌سرویس به شما امکان می‌دهد تا املاک ثبت شده در سیستم CRM خود را در قالب ساختار استاندارد JSON در سایت‌های دیگر (مانند وب‌سایت وردپرسی خود) نمایش دهید. کلیه درخواست‌ها باید با هدر احراز هویت یا از طریق پارامتر URL ارسال شوند.
+                        @endif
                     </p>
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-2 text-xs">
                         <div class="flex items-center gap-3">
@@ -228,7 +272,7 @@
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="text-slate-400 w-24">روش دوم (URL):</span>
-                            <span class="font-mono text-indigo-400"><span class="text-slate-450">{{ url('/external-api/properties') }}</span>?api=<span class="text-white">{{ $apiKey->key }}</span></span>
+                            <span class="font-mono text-indigo-400"><span class="text-slate-450">{{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services' : 'properties')) }}</span>?api=<span class="text-white">{{ $apiKey->key }}</span></span>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="text-slate-400 w-24">فرمت خروجی:</span>
@@ -237,21 +281,31 @@
                     </div>
                 </div>
 
-                <!-- متد ۱: دریافت لیست املاک -->
+                <!-- متد ۱: دریافت لیست -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
                     <div class="p-6 border-b border-slate-800 flex items-center justify-between flex-wrap gap-4">
                         <div>
                             <span class="px-2.5 py-1 bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-bold rounded-lg font-mono">GET</span>
-                            <h2 class="inline-block text-base font-bold text-white mr-3">لیست املاک</h2>
+                            <h2 class="inline-block text-base font-bold text-white mr-3">
+                                @if($apiKey->module === 'booking')
+                                    لیست سرویس‌های نوبت‌دهی
+                                @else
+                                    لیست املاک
+                                @endif
+                            </h2>
                         </div>
                         <span class="font-mono text-xs text-indigo-400 bg-slate-950 px-3 py-1.5 rounded-lg select-all">
-                            {{ url('/external-api/properties') }}
+                            {{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services' : 'properties')) }}
                         </span>
                     </div>
-
+ 
                     <div class="p-6 space-y-6">
                         <p class="text-sm text-slate-300 leading-relaxed">
-                            دریافت لیست املاک ثبت‌شده فیلتر شده بر اساس محدودیت‌های این کلید API. می‌توانید با پارامترهای اختیاری زیر خروجی را دقیق‌تر فیلتر کنید.
+                            @if($apiKey->module === 'booking')
+                                دریافت لیست سرویس‌های نوبت‌دهی و قیمت‌گذاری پیشرفته فیلتر شده بر اساس محدودیت‌های این کلید API. می‌توانید با پارامترهای اختیاری زیر خروجی را دقیق‌تر فیلتر کنید.
+                            @else
+                                دریافت لیست املاک ثبت‌شده فیلتر شده بر اساس محدودیت‌های این کلید API. می‌توانید با پارامترهای اختیاری زیر خروجی را دقیق‌تر فیلتر کنید.
+                            @endif
                         </p>
 
                         <!-- جدول پارامترها -->
@@ -267,66 +321,94 @@
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-850 text-slate-400">
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">per_page</td>
-                                            <td class="px-4 py-3">integer</td>
-                                            <td class="px-4 py-3">تعداد آیتم‌ها در صفحه (حداکثر {{ $apiKey->filters['per_page_max'] ?? 100 }})</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">page</td>
-                                            <td class="px-4 py-3">integer</td>
-                                            <td class="px-4 py-3">شماره صفحه جاری برای صفحه‌بندی</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">search</td>
-                                            <td class="px-4 py-3">string</td>
-                                            <td class="px-4 py-3">جستجو در عنوان، کد ملک، آدرس و توضیحات ملک</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">listing_type</td>
-                                            <td class="px-4 py-3">string</td>
-                                            <td class="px-4 py-3">نوع معامله: <code class="text-slate-300">sale</code> (فروش)، <code class="text-slate-300">rent</code> (رهن و اجاره)، <code class="text-slate-300">presale</code> (پیش فروش)</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">property_type</td>
-                                            <td class="px-4 py-3">string</td>
-                                            <td class="px-4 py-3">نوع ملک: <code class="text-slate-300">apartment</code> (آپارتمان)، <code class="text-slate-300">villa</code> (ویلا)، <code class="text-slate-300">land</code> (زمین)، <code class="text-slate-300">office</code> (اداری/تجاری)</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">category_id</td>
-                                            <td class="px-4 py-3">integer</td>
-                                            <td class="px-4 py-3">فیلتر بر اساس شناسه دسته‌بندی ملک</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">status_id</td>
-                                            <td class="px-4 py-3">integer</td>
-                                            <td class="px-4 py-3">فیلتر بر اساس شناسه وضعیت ملک</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">min_price / max_price</td>
-                                            <td class="px-4 py-3">number</td>
-                                            <td class="px-4 py-3">حداقل/حداکثر قیمت کل خرید (تومان)</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">min_deposit_price / max_deposit_price</td>
-                                            <td class="px-4 py-3">number</td>
-                                            <td class="px-4 py-3">حداقل/حداکثر مبلغ رهن (تومان)</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">min_rent_price / max_rent_price</td>
-                                            <td class="px-4 py-3">number</td>
-                                            <td class="px-4 py-3">حداقل/حداکثر مبلغ اجاره ماهیانه (تومان)</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 font-mono text-indigo-400">min_area / max_area</td>
-                                            <td class="px-4 py-3">integer</td>
-                                            <td class="px-4 py-3">حداقل/حداکثر متراژ (متر مربع)</td>
-                                        </tr>
+                                        @if($apiKey->module === 'booking')
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">per_page</td>
+                                                <td class="px-4 py-3">integer</td>
+                                                <td class="px-4 py-3">تعداد آیتم‌ها در صفحه (حداکثر {{ $apiKey->filters['per_page_max'] ?? 100 }})</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">page</td>
+                                                <td class="px-4 py-3">integer</td>
+                                                <td class="px-4 py-3">شماره صفحه جاری برای صفحه‌بندی</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">search</td>
+                                                <td class="px-4 py-3">string</td>
+                                                <td class="px-4 py-3">جستجو در نام و اسلاگ سرویس نوبت‌دهی</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">category_id</td>
+                                                <td class="px-4 py-3">integer</td>
+                                                <td class="px-4 py-3">فیلتر بر اساس شناسه دسته‌بندی سرویس نوبت‌دهی</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">status</td>
+                                                <td class="px-4 py-3">string</td>
+                                                <td class="px-4 py-3">فیلتر بر اساس وضعیت سرویس: <code class="text-slate-300">ACTIVE</code> یا <code class="text-slate-300">INACTIVE</code></td>
+                                            </tr>
+                                        @else
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">per_page</td>
+                                                <td class="px-4 py-3">integer</td>
+                                                <td class="px-4 py-3">تعداد آیتم‌ها در صفحه (حداکثر {{ $apiKey->filters['per_page_max'] ?? 100 }})</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">page</td>
+                                                <td class="px-4 py-3">integer</td>
+                                                <td class="px-4 py-3">شماره صفحه جاری برای صفحه‌بندی</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">search</td>
+                                                <td class="px-4 py-3">string</td>
+                                                <td class="px-4 py-3">جستجو در عنوان، کد ملک، آدرس و توضیحات ملک</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">listing_type</td>
+                                                <td class="px-4 py-3">string</td>
+                                                <td class="px-4 py-3">نوع معامله: <code class="text-slate-300">sale</code> (فروش)، <code class="text-slate-300">rent</code> (رهن و اجاره)، <code class="text-slate-300">presale</code> (پیش فروش)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">property_type</td>
+                                                <td class="px-4 py-3">string</td>
+                                                <td class="px-4 py-3">نوع ملک: <code class="text-slate-300">apartment</code> (آپارتمان)، <code class="text-slate-300">villa</code> (ویلا)، <code class="text-slate-300">land</code> (زمین)، <code class="text-slate-300">office</code> (اداری/تجاری)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">category_id</td>
+                                                <td class="px-4 py-3">integer</td>
+                                                <td class="px-4 py-3">فیلتر بر اساس شناسه دسته‌بندی ملک</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">status_id</td>
+                                                <td class="px-4 py-3">integer</td>
+                                                <td class="px-4 py-3">فیلتر بر اساس شناسه وضعیت ملک</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">min_price / max_price</td>
+                                                <td class="px-4 py-3">number</td>
+                                                <td class="px-4 py-3">حداقل/حداکثر قیمت کل خرید (تومان)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">min_deposit_price / max_deposit_price</td>
+                                                <td class="px-4 py-3">number</td>
+                                                <td class="px-4 py-3">حداقل/حداکثر مبلغ رهن (تومان)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">min_rent_price / max_rent_price</td>
+                                                <td class="px-4 py-3">number</td>
+                                                <td class="px-4 py-3">حداقل/حداکثر مبلغ اجاره ماهیانه (تومان)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-4 py-3 font-mono text-indigo-400">min_area / max_area</td>
+                                                <td class="px-4 py-3">integer</td>
+                                                <td class="px-4 py-3">حداقل/حداکثر متراژ (متر مربع)</td>
+                                            </tr>
+                                        @endif
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-
+ 
                         <!-- تب نمونه کدها -->
                         <div>
                             <h3 class="text-xs font-bold text-white mb-3">نمونه کدهای فرستادن درخواست (GET LIST)</h3>
@@ -337,7 +419,7 @@
                                 <button onclick="switchTab('tab-js', 'btn-js')" id="btn-js" class="tab-btn px-4 py-2 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white focus:outline-none">JavaScript</button>
                                 <button onclick="switchTab('tab-wp', 'btn-wp')" id="btn-wp" class="tab-btn px-4 py-2 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white focus:outline-none">وردپرس (WordPress PHP)</button>
                             </div>
-
+ 
                             <!-- محتوای تب‌ها -->
                             <div class="code-container p-4 rounded-xl border border-slate-800 text-left dir-ltr font-mono text-xs overflow-x-auto relative">
                                 <button onclick="copyCodeContent()" class="absolute top-3 right-3 text-slate-400 hover:text-white transition-colors" title="کپی کد">
@@ -348,13 +430,13 @@
                                 
                                 <div id="tab-curl" class="tab-content block">
                                     <pre id="code-curl">curl --request GET \
-  --url '{{ url('/external-api/properties?per_page=10') }}' \
+  --url '{{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services?per_page=10' : 'properties?per_page=10')) }}' \
   --header 'Authorization: Bearer {{ $apiKey->key }}' \
   --header 'Accept: application/json'</pre>
                                 </div>
-
+ 
                                 <div id="tab-js" class="tab-content hidden">
-                                    <pre id="code-js">fetch('{{ url('/external-api/properties?per_page=10') }}', {
+                                    <pre id="code-js">fetch('{{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services?per_page=10' : 'properties?per_page=10')) }}', {
   method: 'GET',
   headers: {
     'Authorization': 'Bearer {{ $apiKey->key }}',
@@ -365,70 +447,40 @@
 .then(data => console.log(data))
 .catch(error => console.error('خطا:', error));</pre>
                                 </div>
-
+ 
                                 <div id="tab-wp" class="tab-content hidden">
                                     <pre id="code-wp">&lt;?php
 /**
- * نمونه کد PHP وردپرس جهت دریافت و ایجاد پست تایپ ملک در وردپرس
+ * نمونه کد PHP وردپرس جهت دریافت اطلاعات از وب‌سرویس CRM
  */
-$api_url = '{{ url('/external-api/properties') }}';
+$api_url = '{{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services' : 'properties')) }}';
 $api_key = '{{ $apiKey->key }}';
-
+ 
 // اضافه کردن توکن به انتهای آدرس جهت دور زدن محدودیت‌های هاست در حذف هدر Authorization
 $request_url = add_query_arg('api', $api_key, $api_url);
-
+ 
 $response = wp_remote_get($request_url, [
     'headers' => [
         'Accept' => 'application/json',
     ],
     'timeout' => 15
 ]);
-
+ 
 if (is_wp_error($response)) {
-    error_log('خطا در فراخوانی وب‌سرویس املاک: ' . $response->get_error_message());
+    error_log('خطا در فراخوانی وب‌سرویس: ' . $response->get_error_message());
     return;
 }
-
+ 
 $body = wp_remote_retrieve_body($response);
 $result = json_decode($body, true);
-
+ 
 if (isset($result['success']) && $result['success'] === true) {
-    $properties = $result['data'];
+    $items = $result['data'];
     
-    foreach ($properties as $property) {
-        // برای مثال ایجاد یک پست تایپ سفارشی در وردپرس
-        $post_data = [
-            'post_title'    => sanitize_text_field($property['title']),
-            'post_content'  => wp_kses_post($property['description'] ?? ''),
-            'post_status'   => 'publish',
-            'post_type'     => 'properties', // نام پست تایپ ملک در وردپرس شما
-            'meta_input'    => [
-                '_crm_property_id'    => $property['id'],
-                '_property_code'      => $property['code'],
-                '_property_price'     => $property['price'],
-                '_property_area'      => $property['area'],
-                '_property_address'   => $property['address'],
-                '_property_slug'      => $property['slug'],
-                '_property_crm_url'   => $property['crm_url'],
-            ]
-        ];
-
-        // چک کردن برای جلوگیری از ایجاد مجدد پست‌های تکراری
-        $existing_post = get_posts([
-            'post_type'  => 'properties',
-            'meta_key'   => '_crm_property_id',
-            'meta_value' => $property['id'],
-            'fields'     => 'ids'
-        ]);
-
-        if (empty($existing_post)) {
-            $post_id = wp_insert_post($post_data);
-            
-            // دانلود تصویر کاور و تنظیم به عنوان تصویر شاخص
-            if (!empty($property['cover_image_url'])) {
-                // کد مربوط به دانلود تصویر شاخص و الصاق به $post_id
-            }
-        }
+    foreach ($items as $item) {
+        // پردازش داده‌ها در وردپرس
+        // برای مثال چاپ عنوان آیتم:
+        echo esc_html($item['title'] ?? $item['name'] ?? '');
     }
 }</pre>
                                 </div>
@@ -437,27 +489,42 @@ if (isset($result['success']) && $result['success'] === true) {
                     </div>
                 </div>
 
-                <!-- متد ۲: جزئیات یک ملک -->
+                <!-- متد ۲: جزئیات تکی -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
                     <div class="p-6 border-b border-slate-800 flex items-center justify-between flex-wrap gap-4">
                         <div>
                             <span class="px-2.5 py-1 bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-bold rounded-lg font-mono">GET</span>
-                            <h2 class="inline-block text-base font-bold text-white mr-3">جزئیات کامل یک ملک</h2>
+                            <h2 class="inline-block text-base font-bold text-white mr-3">
+                                @if($apiKey->module === 'booking')
+                                    جزئیات کامل یک سرویس نوبت‌دهی
+                                @else
+                                    جزئیات کامل یک ملک
+                                @endif
+                            </h2>
                         </div>
                         <span class="font-mono text-xs text-indigo-400 bg-slate-950 px-3 py-1.5 rounded-lg select-all">
-                            {{ url('/external-api/properties/{id_or_code_or_slug}') }}
+                            {{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services/{id_or_slug}' : 'properties/{id_or_code_or_slug}')) }}
                         </span>
                     </div>
 
                     <div class="p-6 space-y-6">
                         <p class="text-sm text-slate-300 leading-relaxed">
-                            دریافت مشخصات کامل یک ملک با شناسه عددی (ID)، کد ملک (مثال: P-1001) یا اسلاگ ملک.
+                            @if($apiKey->module === 'booking')
+                                دریافت مشخصات کامل یک سرویس نوبت‌دهی با شناسه عددی (ID) یا اسلاگ سرویس.
+                            @else
+                                دریافت مشخصات کامل یک ملک با شناسه عددی (ID)، کد ملک (مثال: P-1001) یا اسلاگ ملک.
+                            @endif
                         </p>
                         
                         <div class="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-2 text-xs font-mono">
-                            <div>مثال با شناسه: <span class="text-indigo-400">{{ url('/external-api/properties/42') }}</span></div>
-                            <div>مثال با کد ملک: <span class="text-indigo-400">{{ url('/external-api/properties/P-1001') }}</span></div>
-                            <div>مثال با اسلاگ: <span class="text-indigo-400">{{ url('/external-api/properties/20260621100000-P-1001') }}</span></div>
+                            @if($apiKey->module === 'booking')
+                                <div>مثال با شناسه: <span class="text-indigo-400">{{ url('/external-api/services/1') }}</span></div>
+                                <div>مثال با اسلاگ: <span class="text-indigo-400">{{ url('/external-api/services/dental-implant') }}</span></div>
+                            @else
+                                <div>مثال با شناسه: <span class="text-indigo-400">{{ url('/external-api/properties/42') }}</span></div>
+                                <div>مثال با کد ملک: <span class="text-indigo-400">{{ url('/external-api/properties/P-1001') }}</span></div>
+                                <div>مثال با اسلاگ: <span class="text-indigo-400">{{ url('/external-api/properties/20260621100000-P-1001') }}</span></div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -470,7 +537,96 @@ if (isset($result['success']) && $result['success'] === true) {
                     </p>
                     
                     <div class="code-container p-4 rounded-xl border border-slate-800 text-left dir-ltr font-mono text-xs overflow-x-auto">
-                        <pre>{
+                        @if($apiKey->module === 'booking')
+                            <pre>{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "ایمپلنت دندان",
+      "slug": "dental-implant",
+      "status": "ACTIVE",
+      "category": {
+        "id": 2,
+        "name": "دندانپزشکی",
+        "slug": "dentistry"
+      },
+      "pricing": {
+        "base_price": 120000000,
+        "discount_price": 90000000,
+        "discount_active": true,
+        "discount_from": "2026-06-01T00:00:00Z",
+        "discount_to": "2026-07-01T00:00:00Z",
+        "effective_price": 90000000,
+        "payment_mode": "REQUIRED",
+        "payment_amount_type": "DEPOSIT",
+        "payment_amount_value": 30000000
+      },
+      "custom_prices": {
+        "tabs": [
+          {
+            "title": "موارد تکمیلی",
+            "sections": [
+              {
+                "title": "برند",
+                "type": "به ازای هر دندان",
+                "installments": {
+                  "is_active": true,
+                  "max_months": 12,
+                  "down_payment_percent": 30,
+                  "fee_percent": 0,
+                  "payment_cycle": "monthly",
+                  "grace_period_days": 3,
+                  "late_fee_percent": 0
+                },
+                "options": [
+                  {
+                    "name": "آلمانی",
+                    "price": 200000000,
+                    "is_installment": true,
+                    "installments": {
+                      "excluded": false,
+                      "max_months": 6,
+                      "down_payment_percent": 40,
+                      "fee_percent": 0
+                    }
+                  },
+                  {
+                    "name": "ایرانی",
+                    "price": 100000000,
+                    "is_installment": true,
+                    "installments": null
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "online_booking": {
+        "enabled": true,
+        "auto_confirm": false
+      },
+      "providers": [
+        {
+          "id": 5,
+          "name": "دکتر محمدی",
+          "effective_price": 85000000
+        }
+      ],
+      "created_at": "2026-06-01T12:00:00Z",
+      "updated_at": "2026-06-20T09:00:00Z"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "last_page": 1,
+    "per_page": 15,
+    "total": 1
+  }
+}</pre>
+                        @else
+                            <pre>{
   "success": true,
   "data": [
     {
@@ -583,6 +739,7 @@ if (isset($result['success']) && $result['success'] === true) {
     "total": 38
   }
 }</pre>
+                        @endif
                     </div>
                 </div>
 

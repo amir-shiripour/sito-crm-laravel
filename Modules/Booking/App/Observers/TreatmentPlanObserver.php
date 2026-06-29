@@ -31,6 +31,14 @@ class TreatmentPlanObserver
 
         $this->checkAndTriggerWorkflow($treatmentPlan, null);
         $this->triggerBindings($treatmentPlan, null);
+
+        try {
+            if (class_exists(\Modules\ContractForge\Services\ContractEngine::class)) {
+                \Modules\ContractForge\Services\ContractEngine::autoTrigger('treatment_plan', $treatmentPlan, 'created');
+            }
+        } catch (\Throwable $e) {
+            Log::error("[ContractForge] Auto-trigger on created failed: " . $e->getMessage());
+        }
     }
 
     public function updated(TreatmentPlan $treatmentPlan): void
@@ -39,6 +47,14 @@ class TreatmentPlanObserver
             $previousStatus = $treatmentPlan->getOriginal('status');
             $this->checkAndTriggerWorkflow($treatmentPlan, $previousStatus);
             $this->triggerBindings($treatmentPlan, $previousStatus);
+
+            try {
+                if (class_exists(\Modules\ContractForge\Services\ContractEngine::class)) {
+                    \Modules\ContractForge\Services\ContractEngine::autoTrigger('treatment_plan', $treatmentPlan, 'status_changed', $previousStatus);
+                }
+            } catch (\Throwable $e) {
+                Log::error("[ContractForge] Auto-trigger on status_changed failed: " . $e->getMessage());
+            }
         }
 
         if ($treatmentPlan->isDirty('items')) {
