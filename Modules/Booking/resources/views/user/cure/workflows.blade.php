@@ -103,7 +103,7 @@
                         <option value="all">همه دندان‌ها و کل طرح</option>
                         <option value="none">بدون دندان (فقط کل طرح)</option>
                         <template x-for="t in uniqueTeeth" :key="t">
-                            <option :value="t" x-text="'دندان ' + t"></option>
+                            <option :value="t" x-text="'دندان ' + getToothLabel(t).num"></option>
                         </template>
                     </select>
                 </div>
@@ -145,7 +145,7 @@
                                         <div class="flex flex-wrap items-center gap-2">
                                             <h4 class="font-black text-lg text-slate-800 dark:text-slate-100 truncate tracking-tight" x-text="winst.workflow_name"></h4>
                                             <template x-if="winst.tooth_context">
-                                                <span class="px-2 py-0.5 text-[10px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/40" x-text="'دندان ' + winst.tooth_context"></span>
+                                                <span class="px-2 py-0.5 text-[10px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/40" x-text="'دندان ' + getToothLabel(winst.tooth_context).num"></span>
                                             </template>
                                             <template x-if="winst.item_context && winst.item_context.service_name">
                                                 <span class="px-2 py-0.5 text-[10px] font-black bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 rounded-md border border-purple-100 dark:border-purple-800/40" x-text="winst.item_context.service_name"></span>
@@ -571,6 +571,12 @@
         function workflowManagerApp(existingPlan = null) {
             return {
                 patientName: existingPlan?.patient_name || 'نامشخص',
+                toothSystem: existingPlan?.tooth_numbering_system || 'palmer',
+                getToothLabel(id) {
+                    const palmerMap = {1:{num:7,pos:'UR'},2:{num:6,pos:'UR'},3:{num:5,pos:'UR'},4:{num:4,pos:'UR'},5:{num:3,pos:'UR'},6:{num:2,pos:'UR'},7:{num:1,pos:'UR'},8:{num:1,pos:'UL'},9:{num:2,pos:'UL'},10:{num:3,pos:'UL'},11:{num:4,pos:'UL'},12:{num:5,pos:'UL'},13:{num:6,pos:'UL'},14:{num:7,pos:'UL'},15:{num:7,pos:'LR'},16:{num:6,pos:'LR'},17:{num:5,pos:'LR'},18:{num:4,pos:'LR'},19:{num:3,pos:'LR'},20:{num:2,pos:'LR'},21:{num:1,pos:'LR'},22:{num:1,pos:'LL'},23:{num:2,pos:'LL'},24:{num:3,pos:'LL'},25:{num:4,pos:'LL'},26:{num:5,pos:'LL'},27:{num:6,pos:'LL'},28:{num:7,pos:'LL'}};
+                    const fdiMap = {1:{num:17,pos:'UR'},2:{num:16,pos:'UR'},3:{num:15,pos:'UR'},4:{num:14,pos:'UR'},5:{num:13,pos:'UR'},6:{num:12,pos:'UR'},7:{num:11,pos:'UR'},8:{num:21,pos:'UL'},9:{num:22,pos:'UL'},10:{num:23,pos:'UL'},11:{num:24,pos:'UL'},12:{num:25,pos:'UL'},13:{num:26,pos:'UL'},14:{num:27,pos:'UL'},15:{num:47,pos:'LR'},16:{num:46,pos:'LR'},17:{num:45,pos:'LR'},18:{num:44,pos:'LR'},19:{num:43,pos:'LR'},20:{num:42,pos:'LR'},21:{num:41,pos:'LR'},22:{num:31,pos:'LL'},23:{num:32,pos:'LL'},24:{num:33,pos:'LL'},25:{num:34,pos:'LL'},26:{num:35,pos:'LL'},27:{num:36,pos:'LL'},28:{num:37,pos:'LL'}};
+                    return (this.toothSystem === 'fdi' ? fdiMap : palmerMap)[id] ?? { num: id, pos: 'UR' };
+                },
                 workflows: existingPlan ? (existingPlan.workflows || []) : [],
                 selectedWidgetNodes: {},
                 collapsedInstances: {},

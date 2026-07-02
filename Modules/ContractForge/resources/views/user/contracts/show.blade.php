@@ -1,6 +1,36 @@
 @extends('layouts.user')
 
 @section('content')
+    <style>
+        .prose table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.875rem;
+            text-align: right;
+        }
+        .prose table th {
+            background-color: #f3f4f6 !important;
+            color: #111827 !important;
+            font-weight: 600;
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb !important;
+        }
+        .prose table td {
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb !important;
+            color: #374151 !important;
+        }
+        .dark .prose table th {
+            background-color: rgba(17, 24, 39, 0.6) !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+        .dark .prose table td {
+            border-color: #4b5563 !important;
+            color: #e5e7eb !important;
+        }
+    </style>
     <div class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
             <div>
@@ -26,6 +56,16 @@
                 </a>
                 
                 @if($contract->status !== 'signed' && $contract->status !== 'cancelled')
+                    <form action="{{ route('user.contracts.regenerate', $contract->id) }}" method="POST" class="inline" onsubmit="return confirm('آیا از بروزرسانی اطلاعات قرارداد بر اساس آخرین اطلاعات طرح درمان و تغییرات قالب اطمینان دارید؟');">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-medium hover:bg-amber-650 hover:shadow-lg hover:shadow-amber-500/30 transition-all duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5" />
+                            </svg>
+                            بروزرسانی از طرح درمان
+                        </button>
+                    </form>
+
                     <form action="{{ route('user.contracts.sign', $contract->id) }}" method="POST" class="inline">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-200">
@@ -108,13 +148,13 @@
 
                         <div class="flex justify-between py-2.5">
                             <span class="text-gray-500">تاریخ صدور:</span>
-                            <span class="text-gray-900 dark:text-gray-100">{{ $contract->created_at->format('Y/m/d H:i') }}</span>
+                            <span class="text-gray-900 dark:text-gray-100">{{ \Morilog\Jalali\Jalalian::fromCarbon($contract->created_at)->format('Y/m/d H:i') }}</span>
                         </div>
 
                         @if($contract->signed_at)
                             <div class="flex justify-between py-2.5">
                                 <span class="text-gray-500">تاریخ امضا:</span>
-                                <span class="text-gray-900 dark:text-gray-100 font-mono">{{ $contract->signed_at->format('Y/m/d H:i') }}</span>
+                                <span class="text-gray-900 dark:text-gray-100 font-mono">{{ \Morilog\Jalali\Jalalian::fromCarbon($contract->signed_at)->format('Y/m/d H:i') }}</span>
                             </div>
                         @endif
 

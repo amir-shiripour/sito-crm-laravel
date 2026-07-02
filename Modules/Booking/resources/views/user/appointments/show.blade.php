@@ -261,110 +261,167 @@
                 فرم اطلاعات تکمیلی نوبت
             </h2>
 
-            @if(!empty($formResponses))
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    @foreach($formResponses as $response)
-                        @php
-                            $value = $response['value'];
-                            $isToothNumber = isset($response['type']) && $response['type'] === 'tooth_number';
-                        @endphp
+            @if(!empty($formResponses) || !empty($legacyResponses))
+                @if(!empty($formResponses))
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        @foreach($formResponses as $response)
+                            @php
+                                $value = $response['value'];
+                                $isToothNumber = isset($response['type']) && $response['type'] === 'tooth_number';
+                            @endphp
 
-                        <div class="flex flex-col gap-2 {{ $isToothNumber ? 'col-span-1 md:col-span-2' : '' }}">
-                            <div class="text-sm text-gray-500 dark:text-gray-400 font-medium">{{ $response['label'] }}</div>
+                            <div class="flex flex-col gap-2 {{ $isToothNumber ? 'col-span-1 md:col-span-2' : '' }}">
+                                <div class="text-sm text-gray-500 dark:text-gray-400 font-medium">{{ $response['label'] }}</div>
 
-                            @if($isToothNumber)
-                                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mt-1"
-                                     x-data="{
-                                         selected: @js(is_array($value) ? array_map('intval', $value) : (is_string($value) && $value !== '' ? array_map('intval', explode(',', $value)) : [])),
-                                         isReadOnly: true,
-                                         getToothLabel(id) {
-                                             const mapping = {
-                                                 1:  { num: 7, pos: 'UR' }, 2:  { num: 6, pos: 'UR' }, 3:  { num: 5, pos: 'UR' }, 4:  { num: 4, pos: 'UR' },
-                                                 5:  { num: 3, pos: 'UR' }, 6:  { num: 2, pos: 'UR' }, 7:  { num: 1, pos: 'UR' },
-                                                 8:  { num: 1, pos: 'UL' }, 9:  { num: 2, pos: 'UL' }, 10: { num: 3, pos: 'UL' }, 11: { num: 4, pos: 'UL' },
-                                                 12: { num: 5, pos: 'UL' }, 13: { num: 6, pos: 'UL' }, 14: { num: 7, pos: 'UL' },
-                                                 15: { num: 7, pos: 'LR' }, 16: { num: 6, pos: 'LR' }, 17: { num: 5, pos: 'LR' }, 18: { num: 4, pos: 'LR' },
-                                                 19: { num: 3, pos: 'LR' }, 20: { num: 2, pos: 'LR' }, 21: { num: 1, pos: 'LR' },
-                                                 22: { num: 1, pos: 'LL' }, 23: { num: 2, pos: 'LL' }, 24: { num: 3, pos: 'LL' }, 25: { num: 4, pos: 'LL' },
-                                                 26: { num: 5, pos: 'LL' }, 27: { num: 6, pos: 'LL' }, 28: { num: 7, pos: 'LL' }
-                                             };
-                                             return mapping[id] ?? { num: id, pos: 'UR' };
-                                         },
-                                         getQuadrantClasses(id) {
-                                             const tooth = this.getToothLabel(id);
-                                             switch(tooth.pos) {
-                                                 case 'UR': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
-                                                 case 'UL': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
-                                                 case 'LR': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
-                                                 case 'LL': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
-                                                 default:   return '';
+                                @if($isToothNumber)
+                                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mt-1"
+                                         x-data="{
+                                             selected: @js(is_array($value) ? array_map('intval', $value) : (is_string($value) && $value !== '' ? array_map('intval', explode(',', $value)) : [])),
+                                             isReadOnly: true,
+                                             getToothLabel(id) {
+                                                 const mapping = {
+                                                     1:  { num: 7, pos: 'UR' }, 2:  { num: 6, pos: 'UR' }, 3:  { num: 5, pos: 'UR' }, 4:  { num: 4, pos: 'UR' },
+                                                     5:  { num: 3, pos: 'UR' }, 6:  { num: 2, pos: 'UR' }, 7:  { num: 1, pos: 'UR' },
+                                                     8:  { num: 1, pos: 'UL' }, 9:  { num: 2, pos: 'UL' }, 10: { num: 3, pos: 'UL' }, 11: { num: 4, pos: 'UL' },
+                                                     12: { num: 5, pos: 'UL' }, 13: { num: 6, pos: 'UL' }, 14: { num: 7, pos: 'UL' },
+                                                     15: { num: 7, pos: 'LR' }, 16: { num: 6, pos: 'LR' }, 17: { num: 5, pos: 'LR' }, 18: { num: 4, pos: 'LR' },
+                                                     19: { num: 3, pos: 'LR' }, 20: { num: 2, pos: 'LR' }, 21: { num: 1, pos: 'LR' },
+                                                     22: { num: 1, pos: 'LL' }, 23: { num: 2, pos: 'LL' }, 24: { num: 3, pos: 'LL' }, 25: { num: 4, pos: 'LL' },
+                                                     26: { num: 5, pos: 'LL' }, 27: { num: 6, pos: 'LL' }, 28: { num: 7, pos: 'LL' }
+                                                 };
+                                                 return mapping[id] ?? { num: id, pos: 'UR' };
+                                             },
+                                             getQuadrantClasses(id) {
+                                                 const tooth = this.getToothLabel(id);
+                                                 switch(tooth.pos) {
+                                                     case 'UR': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                                                     case 'UL': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                                                     case 'LR': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                                                     case 'LL': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                                                     default:   return '';
+                                                 }
+                                             },
+                                             getQuadrantTeeth(teethArray, pos) {
+                                                 return (teethArray || []).map(Number).filter(t => this.getToothLabel(t).pos === pos).sort((a,b) => a - b);
+                                             },
+                                             toggle(id) {},
+                                             is(id) {
+                                                 return this.selected.includes(id) ? 'tooth-path tooth-selected' : 'tooth-path tooth-unselected';
                                              }
-                                         },
-                                         get groupedTeeth() {
-                                             const sorted = [...this.selected].sort((a, b) => {
-                                                 const posOrder = { 'UR': 1, 'UL': 2, 'LR': 3, 'LL': 4 };
-                                                 return posOrder[this.getToothLabel(a).pos] - posOrder[this.getToothLabel(b).pos];
-                                             });
-                                             const groups = { 'UR': [], 'UL': [], 'LR': [], 'LL': [] };
-                                             sorted.forEach(t => groups[this.getToothLabel(t).pos].push(t));
-                                             return Object.entries(groups).filter(([key, val]) => val.length > 0);
-                                         },
-                                         toggle(id) {},
-                                         is(id) {
-                                             return this.selected.includes(id) ? 'tooth-path tooth-selected' : 'tooth-path tooth-unselected';
-                                         }
-                                     }">
-                                    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40">
-                                        <div class="flex items-center gap-2.5">
-                                            <span class="w-2.5 h-6 rounded-full bg-rose-500 shrink-0"></span>
-                                            <h2 class="font-bold text-gray-800 dark:text-gray-100 text-sm">نقشه دندانی (مشاهده نوبت)</h2>
+                                         }">
+                                        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40">
+                                            <div class="flex items-center gap-2.5">
+                                                <span class="w-2.5 h-6 rounded-full bg-rose-500 shrink-0"></span>
+                                                <h2 class="font-bold text-gray-800 dark:text-gray-100 text-sm">نقشه دندانی (مشاهده نوبت)</h2>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="px-4 pt-5 pb-2 relative">
-                                        <div class="absolute top-6 left-6 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
-                                                    px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
-                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold block mb-0.5">تعداد انتخاب</span>
-                                            <span class="text-xl font-black text-indigo-600 dark:text-indigo-400"
-                                                  x-text="selected.length"></span>
+                                        <div class="px-4 pt-5 pb-2 relative">
+                                            <div class="absolute top-6 left-6 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
+                                                        px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
+                                                <span class="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold block mb-0.5">تعداد انتخاب</span>
+                                                <span class="text-xl font-black text-indigo-600 dark:text-indigo-400"
+                                                      x-text="selected.length">0</span>
+                                            </div>
+                                            <div class="flex justify-center select-none dental-chart-wrapper max-w-lg mx-auto mb-4">
+                                                <x-booking::dental-chart/>
+                                            </div>
                                         </div>
-                                        <x-booking::dental-chart/>
-                                    </div>
-                                    <div class="px-5 py-3.5 flex flex-wrap gap-1.5 min-h-[3.5rem] border-t border-gray-100
-                                                dark:border-gray-700/50 bg-gray-50/60 dark:bg-gray-900/20">
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <template x-for="([pos, teeth], idx) in groupedTeeth" :key="pos">
-                                                <div class="flex items-center border-l-2 border-gray-200 dark:border-gray-700 pl-2 ml-1 last:border-0 last:pl-0 last:ml-0">
-                                                    <template x-for="t in teeth" :key="t">
-                                                        <div class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black border-solid pointer-events-none rounded-sm"
-                                                             :class="getQuadrantClasses(t)"
-                                                             x-text="getToothLabel(t).num">
+                                        <div class="px-5 py-3.5 flex items-center gap-3 min-h-14 border-t border-gray-150 dark:border-gray-700/50 bg-gray-50/60 dark:bg-gray-900/20">
+                                            <template x-if="selected.length > 0">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs text-gray-400 dark:text-gray-500 font-bold shrink-0">دندان‌های انتخابی:</span>
+                                                    <div class="inline-grid grid-cols-2 select-none">
+                                                        <!-- Row 1: UR | UL -->
+                                                        <!-- UR -->
+                                                        <div class="border-l-2 border-b-2 border-slate-300 dark:border-slate-700 pb-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[36px]">
+                                                            <template x-for="t in getQuadrantTeeth(selected, 'UR')" :key="t">
+                                                                <div class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black border-0 border-solid rounded-none pointer-events-none"
+                                                                     :class="[getQuadrantClasses(t)]"
+                                                                     x-text="getToothLabel(t).num">
+                                                                </div>
+                                                            </template>
                                                         </div>
-                                                    </template>
+                                                        <!-- UL -->
+                                                        <div class="border-b-2 border-slate-300 dark:border-slate-700 pb-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[36px]">
+                                                            <template x-for="t in getQuadrantTeeth(selected, 'UL')" :key="t">
+                                                                <div class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black border-0 border-solid rounded-none pointer-events-none"
+                                                                     :class="[getQuadrantClasses(t)]"
+                                                                     x-text="getToothLabel(t).num">
+                                                                </div>
+                                                            </template>
+                                                        </div>
+
+                                                        <!-- Row 2: LR | LL -->
+                                                        <!-- LR -->
+                                                        <div class="border-l-2 border-slate-300 dark:border-slate-700 pt-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[36px]">
+                                                            <template x-for="t in getQuadrantTeeth(selected, 'LR')" :key="t">
+                                                                <div class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black border-0 border-solid rounded-none pointer-events-none"
+                                                                     :class="[getQuadrantClasses(t)]"
+                                                                     x-text="getToothLabel(t).num">
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                        <!-- LL -->
+                                                        <div class="pt-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[36px]">
+                                                            <template x-for="t in getQuadrantTeeth(selected, 'LL')" :key="t">
+                                                                <div class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black border-0 border-solid rounded-none pointer-events-none"
+                                                                     :class="[getQuadrantClasses(t)]"
+                                                                     x-text="getToothLabel(t).num">
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </template>
+                                            <template x-if="selected.length === 0">
+                                                <span class="text-xs text-gray-400 dark:text-gray-500 self-center flex items-center gap-1.5">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    </svg>
+                                                    هیچ دندانی انتخاب نشده است
+                                                </span>
+                                            </template>
                                         </div>
-                                        <template x-if="selected.length === 0">
-                                            <span class="text-xs text-gray-400 dark:text-gray-500 self-center flex items-center gap-1.5">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
-                                                هیچ دندانی انتخاب نشده است
-                                            </span>
-                                        </template>
+                                    </div>
+                                @else
+                                    <div class="text-base text-gray-900 dark:text-gray-100 font-semibold p-3.5 bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-100 dark:border-gray-700/60 inline-block w-full">
+                                        @if(is_array($value))
+                                            {{ implode('، ', array_filter(array_map('strval', $value))) ?: '—' }}
+                                        @else
+                                            {{ $value !== null && $value !== '' ? $value : '—' }}
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                @if(!empty($legacyResponses))
+                    <div class="mt-8 border-t border-gray-150 dark:border-gray-700/50 pt-6">
+                        <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
+                            <span class="w-1.5 h-4 bg-amber-500 rounded-full"></span>
+                            اطلاعات قدیمی (مربوط به نسخه قبل)
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            @foreach($legacyResponses as $response)
+                                @php
+                                    $val = $response['value'];
+                                @endphp
+                                <div class="flex flex-col gap-2">
+                                    <div class="text-xs text-gray-400 dark:text-gray-500 font-medium">{{ $response['label'] }}</div>
+                                    <div class="text-sm text-gray-900 dark:text-gray-100 font-semibold p-3.5 bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-100 dark:border-gray-700/60 inline-block w-full">
+                                        @if(is_array($val))
+                                            {{ implode('، ', array_filter(array_map('strval', $val))) ?: '—' }}
+                                        @else
+                                            {{ $val !== null && $val !== '' ? $val : '—' }}
+                                        @endif
                                     </div>
                                 </div>
-                            @else
-                                <div class="text-base text-gray-900 dark:text-gray-100 font-semibold p-3.5 bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-100 dark:border-gray-700/60 inline-block w-full">
-                                    @if(is_array($value))
-                                        {{ implode('، ', array_filter(array_map('strval', $value))) ?: '—' }}
-                                    @else
-                                        {{ $value !== null && $value !== '' ? $value : '—' }}
-                                    @endif
-                                </div>
-                            @endif
+                            @endforeach
                         </div>
-                    @endforeach
-                </div>
+                    </div>
+                @endif
             @else
                 <div class="flex flex-col items-center justify-center py-8 text-gray-400 dark:text-gray-500">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mb-3 opacity-50">

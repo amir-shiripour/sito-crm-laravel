@@ -5,6 +5,8 @@ namespace Modules\Booking\App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Modules\Clients\Entities\Client;
+use App\Models\User;
+
 class TreatmentPlan extends Model
 {
     use HasFactory;
@@ -192,6 +194,15 @@ class TreatmentPlan extends Model
             return false;
         }
 
+        // Check allowed roles for the new status. If empty, anyone is allowed.
+        $allowedRoles = $newStatusData['allowed_roles'] ?? [];
+        if (!empty($allowedRoles)) {
+            $userRoleIds = $user->roles->pluck('id')->toArray();
+            if (empty(array_intersect($userRoleIds, $allowedRoles))) {
+                return false;
+            }
+        }
+
         // If it's the same status, allow it (e.g. updating notes or items without changing status)
         if ($this->status === $newStatus) {
             return true;
@@ -201,15 +212,6 @@ class TreatmentPlan extends Model
         $allowedFrom = $newStatusData['allowed_from'] ?? [];
         if (!empty($allowedFrom) && !in_array($this->status, $allowedFrom)) {
             return false;
-        }
-
-        // Check allowed roles for the new status. If empty, anyone is allowed.
-        $allowedRoles = $newStatusData['allowed_roles'] ?? [];
-        if (!empty($allowedRoles)) {
-            $userRoleIds = $user->roles->pluck('id')->toArray();
-            if (empty(array_intersect($userRoleIds, $allowedRoles))) {
-                return false;
-            }
         }
 
         return true;
@@ -239,78 +241,111 @@ class TreatmentPlan extends Model
 
     public function getContractTokens(): array
     {
+        $sysCurrency = function_exists('get_setting') ? get_setting('payment_currency', 'toman') : 'toman';
+        $factor = ($sysCurrency === 'toman') ? 10 : 1;
+        $formatMoney = function($amount) use ($factor) {
+            return number_format((float)$amount * $factor) . ' ریال';
+        };
+
         $tokens = [
             'patient_name' => $this->client_name,
             'plan_id' => (string) $this->id,
             'plan_status' => $this->status_label,
-            'plan_total' => number_format((float) $this->total) . ' ' . ($this->currency ?: 'تومان'),
-            'plan_final_payable' => number_format((float) $this->final_payable) . ' ' . ($this->currency ?: 'تومان'),
-            'plan_discount' => number_format((float) $this->discount_value) . ' ' . ($this->currency ?: 'تومان'),
-            'plan_tax' => number_format((float) $this->tax_value) . ' ' . ($this->currency ?: 'تومان'),
+            'plan_total' => $formatMoney($this->total),
+            'plan_final_payable' => $formatMoney($this->final_payable),
+            'plan_discount' => $formatMoney($this->discount_value),
+            'plan_tax' => $formatMoney($this->tax_value),
             'plan_notes' => $this->notes ?: '-',
             'today_jalali' => \Morilog\Jalali\Jalalian::now()->format('Y/m/d'),
             
+            'system_currency' => $sysCurrency === 'toman' ? 'تومان' : 'ریال',
+            'total_cheques' => (string) (is_array($this->generated_cheques) ? count($this->generated_cheques) : 0),
+            'total_installment_stages' => (string) (is_array($this->generated_cheques) ? count($this->generated_cheques) : 0),
+            
             // Installment properties
             'installment_option_title' => $this->installment_option_title ?: 'نقدی',
-            'installment_down_payment' => number_format((float) $this->installment_down_payment) . ' ' . ($this->currency ?: 'تومان'),
-            'installment_monthly_amount' => number_format((float) $this->installment_monthly_amount) . ' ' . ($this->currency ?: 'تومان'),
+            'installment_down_payment' => $formatMoney($this->installment_down_payment),
+            'installment_monthly_amount' => $formatMoney($this->installment_monthly_amount),
             'installment_months' => (string) $this->installment_months,
             'installment_due_day' => (string) $this->installment_due_day,
             'installment_start_date' => $this->installment_start_date ?: '-',
         ];
 
         // Items table
-        $itemsHtml = '<table class="w-full border-collapse border border-gray-300 text-sm text-right" style="width: 100%; border-collapse: collapse; text-align: right; font-family: inherit; margin: 15px 0;">';
-        $itemsHtml .= '<thead><tr class="bg-gray-100"><th class="border p-2">عنوان خدمت</th><th class="border p-2">قیمت واحد</th><th class="border p-2">تعداد</th><th class="border p-2">تخفیف</th><th class="border p-2">قیمت کل</th></tr></thead>';
+        $itemsHtml = '<table class="w-full border-collapse border border-gray-300 dark:border-gray-700 text-sm text-right text-gray-800 dark:text-gray-200" style="width: 100%; border-collapse: collapse; text-align: right; font-family: inherit; margin: 15px 0;">';
+        $itemsHtml .= '<thead><tr class="bg-gray-100 dark:bg-gray-900/50"><th class="border border-gray-300 dark:border-gray-700 p-2">عنوان خدمت</th><th class="border border-gray-300 dark:border-gray-700 p-2">قیمت واحد</th><th class="border border-gray-300 dark:border-gray-700 p-2">تعداد</th><th class="border border-gray-300 dark:border-gray-700 p-2">تخفیف</th><th class="border border-gray-300 dark:border-gray-700 p-2">قیمت کل</th></tr></thead>';
         $itemsHtml .= '<tbody>';
         if (is_array($this->items)) {
             foreach ($this->items as $item) {
-                $price = number_format((float) ($item['price'] ?? 0));
-                $qty = $item['quantity'] ?? 1;
-                $discount = number_format((float) ($item['discount'] ?? 0));
-                $total = number_format((float) ($item['total'] ?? 0));
+                $itemPrice = (float) ($item['price'] ?? 0);
+                $qty = (float) ($item['quantity'] ?? 1);
+                $discountVal = (float) ($item['discount'] ?? 0);
+                $itemTotal = (float) ($item['total'] ?? (($itemPrice * $qty) - $discountVal));
+
+                $price = $formatMoney($itemPrice);
+                $qtyFormatted = $qty;
+                $discount = $formatMoney($discountVal);
+                $total = $formatMoney($itemTotal);
+                
                 $title = $item['title'] ?? ($item['service_name'] ?? '-');
-                $itemsHtml .= "<tr><td class='border p-2'>{$title}</td><td class='border p-2'>{$price}</td><td class='border p-2'>{$qty}</td><td class='border p-2'>{$discount}</td><td class='border p-2'>{$total}</td></tr>";
+                
+                $details = [];
+                if (!empty($item['brands']) && is_array($item['brands'])) {
+                    $brandNames = [];
+                    foreach ($item['brands'] as $br) {
+                        if (!empty($br['name'])) {
+                            $brandNames[] = $br['name'];
+                        }
+                    }
+                    if (!empty($brandNames)) {
+                        $details[] = 'برند: ' . implode('، ', $brandNames);
+                    }
+                }
+                
+                if (!empty($details)) {
+                    $title .= ' (' . implode(' - ', $details) . ')';
+                }
+
+                $itemsHtml .= "<tr><td class='border border-gray-300 dark:border-gray-700 p-2'>{$title}</td><td class='border border-gray-300 dark:border-gray-700 p-2'>{$price}</td><td class='border border-gray-300 dark:border-gray-700 p-2'>{$qtyFormatted}</td><td class='border border-gray-300 dark:border-gray-700 p-2'>{$discount}</td><td class='border border-gray-300 dark:border-gray-700 p-2'>{$total}</td></tr>";
             }
         } else {
-            $itemsHtml .= "<tr><td colspan='5' class='border p-2 text-center'>هیچ آیتمی وجود ندارد</td></tr>";
+            $itemsHtml .= "<tr><td colspan='5' class='border border-gray-300 dark:border-gray-700 p-2 text-center'>هیچ آیتمی وجود ندارد</td></tr>";
         }
         $itemsHtml .= '</tbody></table>';
         $tokens['plan_items_table'] = $itemsHtml;
 
         // Installment breakdown table
-        $breakdownHtml = '<table class="w-full border-collapse border border-gray-300 text-sm text-right" style="width: 100%; border-collapse: collapse; text-align: right; font-family: inherit; margin: 15px 0;">';
-        $breakdownHtml .= '<thead><tr class="bg-gray-100"><th class="border p-2">شماره قسط</th><th class="border p-2">مبلغ قسط</th><th class="border p-2">تاریخ سررسید</th><th class="border p-2">وضعیت پرداخت</th></tr></thead>';
+        $breakdownHtml = '<table class="w-full border-collapse border border-gray-300 dark:border-gray-700 text-sm text-right text-gray-800 dark:text-gray-200" style="width: 100%; border-collapse: collapse; text-align: right; font-family: inherit; margin: 15px 0;">';
+        $breakdownHtml .= '<thead><tr class="bg-gray-100 dark:bg-gray-900/50"><th class="border border-gray-300 dark:border-gray-700 p-2">شماره قسط</th><th class="border border-gray-300 dark:border-gray-700 p-2">مبلغ قسط</th><th class="border border-gray-300 dark:border-gray-700 p-2">تاریخ سررسید</th></tr></thead>';
         $breakdownHtml .= '<tbody>';
-        if (is_array($this->installment_breakdown)) {
-            foreach ($this->installment_breakdown as $index => $inst) {
-                $num = $index + 1;
-                $amount = number_format((float) ($inst['amount'] ?? 0)) . ' ' . ($this->currency ?: 'تومان');
-                $dueDate = $inst['due_date'] ?? '-';
-                $status = ($inst['is_paid'] ?? false) ? 'پرداخت شده' : 'معوق/در انتظار';
-                $breakdownHtml .= "<tr><td class='border p-2'>قسط {$num}</td><td class='border p-2'>{$amount}</td><td class='border p-2'>{$dueDate}</td><td class='border p-2'>{$status}</td></tr>";
+        if (is_array($this->generated_cheques) && !empty($this->generated_cheques)) {
+            $instIndex = 1;
+            foreach ($this->generated_cheques as $inst) {
+                $num = $instIndex++;
+                $amount = $formatMoney($inst['amount'] ?? 0);
+                $dueDate = $inst['date'] ?? ($inst['due_date'] ?? ($inst['display_date'] ?? '-'));
+                $breakdownHtml .= "<tr><td class='border border-gray-300 dark:border-gray-700 p-2'>قسط {$num}</td><td class='border border-gray-300 dark:border-gray-700 p-2'>{$amount}</td><td class='border border-gray-300 dark:border-gray-700 p-2'>{$dueDate}</td></tr>";
             }
         } else {
-            $breakdownHtml .= "<tr><td colspan='4' class='border p-2 text-center'>جزئیات اقساط یافت نشد</td></tr>";
+            $breakdownHtml .= "<tr><td colspan='3' class='border border-gray-300 dark:border-gray-700 p-2 text-center'>جزئیات اقساط یافت نشد</td></tr>";
         }
         $breakdownHtml .= '</tbody></table>';
         $tokens['installment_breakdown_table'] = $breakdownHtml;
 
         // Cheques table
-        $chequesHtml = '<table class="w-full border-collapse border border-gray-300 text-sm text-right" style="width: 100%; border-collapse: collapse; text-align: right; font-family: inherit; margin: 15px 0;">';
-        $chequesHtml .= '<thead><tr class="bg-gray-100"><th class="border p-2">شماره چک</th><th class="border p-2">مبلغ چک</th><th class="border p-2">تاریخ سررسید</th><th class="border p-2">بانک صادرکننده</th><th class="border p-2">وضعیت</th></tr></thead>';
+        $chequesHtml = '<table class="w-full border-collapse border border-gray-300 dark:border-gray-700 text-sm text-right text-gray-800 dark:text-gray-200" style="width: 100%; border-collapse: collapse; text-align: right; font-family: inherit; margin: 15px 0;">';
+        $chequesHtml .= '<thead><tr class="bg-gray-100 dark:bg-gray-900/50"><th class="border border-gray-300 dark:border-gray-700 p-2">تاریخ سررسید</th><th class="border border-gray-300 dark:border-gray-700 p-2">مبلغ چک</th><th class="border border-gray-300 dark:border-gray-700 p-2">بانک صادرکننده</th><th class="border border-gray-300 dark:border-gray-700 p-2">شماره چک</th></tr></thead>';
         $chequesHtml .= '<tbody>';
-        if (is_array($this->generated_cheques)) {
+        if (is_array($this->generated_cheques) && !empty($this->generated_cheques)) {
             foreach ($this->generated_cheques as $cheque) {
-                $chNum = $cheque['cheque_number'] ?? '-';
-                $amount = number_format((float) ($cheque['amount'] ?? 0)) . ' ' . ($this->currency ?: 'تومان');
-                $dueDate = $cheque['due_date'] ?? '-';
-                $bank = $cheque['bank_name'] ?? '-';
-                $status = ($cheque['is_passed'] ?? false) ? 'پاس شده' : 'در جریان';
-                $chequesHtml .= "<tr><td class='border p-2'>{$chNum}</td><td class='border p-2'>{$amount}</td><td class='border p-2'>{$dueDate}</td><td class='border p-2'>{$bank}</td><td class='border p-2'>{$status}</td></tr>";
+                $chNum = !empty($cheque['chequeNumber']) ? $cheque['chequeNumber'] : (!empty($cheque['cheque_number']) ? $cheque['cheque_number'] : '-');
+                $amount = $formatMoney($cheque['amount'] ?? 0);
+                $dueDate = $cheque['date'] ?? ($cheque['due_date'] ?? ($cheque['display_date'] ?? '-'));
+                $bank = !empty($cheque['bankName']) ? $cheque['bankName'] : (!empty($cheque['bank_name']) ? $cheque['bank_name'] : '-');
+                $chequesHtml .= "<tr><td class='border border-gray-300 dark:border-gray-700 p-2'>{$dueDate}</td><td class='border border-gray-300 dark:border-gray-700 p-2'>{$amount}</td><td class='border border-gray-300 dark:border-gray-700 p-2'>{$bank}</td><td class='border border-gray-300 dark:border-gray-700 p-2'>{$chNum}</td></tr>";
             }
         } else {
-            $chequesHtml .= "<tr><td colspan='5' class='border p-2 text-center'>چکی ثبت نشده است</td></tr>";
+            $chequesHtml .= "<tr><td colspan='4' class='border border-gray-300 dark:border-gray-700 p-2 text-center'>چکی ثبت نشده است</td></tr>";
         }
         $chequesHtml .= '</tbody></table>';
         $tokens['cheques_table'] = $chequesHtml;

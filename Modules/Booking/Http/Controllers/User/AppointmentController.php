@@ -452,6 +452,7 @@ class AppointmentController extends Controller
 
         $rawFormResponses = $appointment->appointment_form_response_json ?? [];
         $formResponses = [];
+        $legacyResponses = [];
 
         if (!empty($rawFormResponses) && $appointment->service && $appointment->service->appointmentForm) {
             $form = $appointment->service->appointmentForm;
@@ -470,18 +471,37 @@ class AppointmentController extends Controller
             }
 
             foreach ($rawFormResponses as $key => $value) {
-                $meta = $fieldMeta[$key] ?? ['label' => $key, 'type' => 'text'];
-                $formResponses[] = [
-                    'label' => $meta['label'],
-                    'value' => $value,
-                    'type' => $meta['type'],
-                ];
+                if (isset($fieldMeta[$key])) {
+                    $formResponses[] = [
+                        'label' => $fieldMeta[$key]['label'],
+                        'value' => $value,
+                        'type' => $fieldMeta[$key]['type'],
+                    ];
+                } else {
+                    $label = $key;
+                    if ($key === 'UR') $label = 'شماره دندان (UR)';
+                    elseif ($key === 'UL') $label = 'شماره دندان (UL)';
+                    elseif ($key === 'DR' || $key === 'LR') $label = 'شماره دندان (LR)';
+                    elseif ($key === 'DL' || $key === 'LL') $label = 'شماره دندان (LL)';
+
+                    $legacyResponses[] = [
+                        'label' => $label,
+                        'value' => $value,
+                        'type' => 'text',
+                    ];
+                }
             }
         } else if (!empty($rawFormResponses)) {
             // Fallback if form is not available, just use keys
             foreach ($rawFormResponses as $key => $value) {
-                $formResponses[] = [
-                    'label' => $key,
+                $label = $key;
+                if ($key === 'UR') $label = 'شماره دندان (UR)';
+                elseif ($key === 'UL') $label = 'شماره دندان (UL)';
+                elseif ($key === 'DR' || $key === 'LR') $label = 'شماره دندان (LR)';
+                elseif ($key === 'DL' || $key === 'LL') $label = 'شماره دندان (LL)';
+
+                $legacyResponses[] = [
+                    'label' => $label,
                     'value' => $value,
                     'type' => 'text',
                 ];
@@ -506,7 +526,7 @@ class AppointmentController extends Controller
 
         return view('booking::user.appointments.show', compact(
             'appointment', 'settings', 'dateJalali', 'startTime', 'endTime',
-            'statusMeta', 'entryValue', 'exitValue', 'formResponses',
+            'statusMeta', 'entryValue', 'exitValue', 'formResponses', 'legacyResponses',
             'payments', 'paymentStatusMap', 'paymentModeMap'
         ));
     }

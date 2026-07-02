@@ -31,10 +31,10 @@
     if (!function_exists('getCureQuadrantClasses')) {
         function getCureQuadrantClasses($pos) {
             switch($pos) {
-                case 'UR': return 'border-l-4 border-b-4 border-cyan-600 dark:border-cyan-600';
-                case 'UL': return 'border-r-4 border-b-4 border-cyan-600 dark:border-cyan-600';
-                case 'LR': return 'border-l-4 border-t-4 border-cyan-600 dark:border-cyan-600';
-                case 'LL': return 'border-r-4 border-t-4 border-cyan-600 dark:border-cyan-600';
+                case 'UR': return 'border-r-4 border-t-4 border-cyan-600 dark:border-cyan-600';
+                case 'UL': return 'border-l-4 border-t-4 border-cyan-600 dark:border-cyan-600';
+                case 'LR': return 'border-r-4 border-b-4 border-cyan-600 dark:border-cyan-600';
+                case 'LL': return 'border-l-4 border-b-4 border-cyan-600 dark:border-cyan-600';
                 default: return '';
             }
         }
@@ -479,18 +479,56 @@
                                                 </div>
 
                                                 @if(!empty($rawTeeth) && is_array($rawTeeth))
-                                                    <div class="flex flex-wrap gap-1 items-center pr-3 mt-1">
-                                                        <span class="text-[10px] text-gray-400 dark:text-gray-500 ml-1.5">دندان‌ها:</span>
-                                                        @foreach($rawTeeth as $tooth)
-                                                            @php
-                                                                $toothId = is_array($tooth) ? ($tooth['number'] ?? array_values($tooth)[0]) : $tooth;
-                                                                $toothInfo = $toothMap[$toothId] ?? ['num' => $toothId, 'pos' => 'UR'];
-                                                                $quadClass = getCureQuadrantClasses($toothInfo['pos']);
-                                                            @endphp
-                                                            <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-bold rounded border-2 bg-white dark:bg-gray-900 {{ $quadClass }}">
-                                                                {{ $toothInfo['num'] }}
-                                                            </span>
-                                                        @endforeach
+                                                    @php
+                                                        $groupedTeeth = ['UR' => [], 'UL' => [], 'LR' => [], 'LL' => []];
+                                                        foreach ($rawTeeth as $tooth) {
+                                                            $toothId = is_array($tooth) ? ($tooth['number'] ?? array_values($tooth)[0]) : $tooth;
+                                                            $toothInfo = $toothMap[$toothId] ?? ['num' => $toothId, 'pos' => 'UR'];
+                                                            $groupedTeeth[$toothInfo['pos']][] = [
+                                                                'num' => $toothInfo['num'],
+                                                                'quadClass' => getCureQuadrantClasses($toothInfo['pos'])
+                                                            ];
+                                                        }
+                                                    @endphp
+                                                    <div class="flex items-center gap-2 pr-3 mt-1.5">
+                                                        <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold shrink-0">دندان‌ها:</span>
+                                                        <div class="inline-grid grid-cols-2 select-none">
+                                                            <!-- Row 1: UR | UL -->
+                                                            <!-- UR -->
+                                                            <div class="border-l-2 border-b-2 border-slate-300 dark:border-slate-700 pb-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[28px]">
+                                                                @foreach($groupedTeeth['UR'] as $toothData)
+                                                                    <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 border-solid {{ $toothData['quadClass'] }}">
+                                                                        {{ $toothData['num'] }}
+                                                                    </span>
+                                                                @endforeach
+                                                            </div>
+                                                            <!-- UL -->
+                                                            <div class="border-b-2 border-slate-300 dark:border-slate-700 pb-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[28px]">
+                                                                @foreach($groupedTeeth['UL'] as $toothData)
+                                                                    <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 border-solid {{ $toothData['quadClass'] }}">
+                                                                        {{ $toothData['num'] }}
+                                                                    </span>
+                                                                @endforeach
+                                                            </div>
+
+                                                            <!-- Row 2: LR | LL -->
+                                                            <!-- LR -->
+                                                            <div class="border-l-2 border-slate-300 dark:border-slate-700 pt-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[28px]">
+                                                                @foreach($groupedTeeth['LR'] as $toothData)
+                                                                    <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 border-solid {{ $toothData['quadClass'] }}">
+                                                                        {{ $toothData['num'] }}
+                                                                    </span>
+                                                                @endforeach
+                                                            </div>
+                                                            <!-- LL -->
+                                                            <div class="pt-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[28px]">
+                                                                @foreach($groupedTeeth['LL'] as $toothData)
+                                                                    <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 border-solid {{ $toothData['quadClass'] }}">
+                                                                        {{ $toothData['num'] }}
+                                                                    </span>
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 @endif
                                             </div>
@@ -533,12 +571,12 @@
                                         @else
                                             @if(auth()->user()->can('contractforge.manage'))
                                                 @php
-                                                    $templateId = \Modules\ContractForge\App\Models\ContractTemplate::where('is_active', true)->where('entity_type', 'treatment_plan')->first()?->id;
+                                                    $matchingTemplate = \Modules\ContractForge\Services\ContractEngine::findMatchingTemplate('treatment_plan', $plan);
                                                 @endphp
-                                                @if($templateId)
+                                                @if($matchingTemplate)
                                                     <form action="{{ route('user.contracts.generate_manual') }}" method="POST" class="inline">
                                                         @csrf
-                                                        <input type="hidden" name="template_id" value="{{ $templateId }}">
+                                                        <input type="hidden" name="template_id" value="{{ $matchingTemplate->id }}">
                                                         <input type="hidden" name="entity_id" value="{{ $plan->id }}">
                                                         <input type="hidden" name="entity_type" value="treatment_plan">
                                                         <button type="submit" class="flex items-center gap-1.5 px-4 py-2 text-xs rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-900/25 dark:text-amber-400 dark:hover:bg-amber-900/40 transition font-medium">

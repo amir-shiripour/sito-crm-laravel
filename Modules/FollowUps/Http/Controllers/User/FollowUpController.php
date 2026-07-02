@@ -197,7 +197,13 @@ class FollowUpController extends Controller
 
         $users = [];
         if ($user->can('followups.view.all')) {
-            $users = \App\Models\User::select('id', 'name', 'email')->get();
+            $usersQuery = \App\Models\User::select('id', 'name', 'email');
+            if (!$user->hasRole('super-admin')) {
+                $usersQuery->whereDoesntHave('roles', function ($q) {
+                    $q->where('name', 'super-admin');
+                });
+            }
+            $users = $usersQuery->get();
         }
 
         return view('followups::user.followups.index', compact(
@@ -221,7 +227,13 @@ class FollowUpController extends Controller
         $priorities = Task::priorityOptions();
 
         // لیست کاربران برای انتخاب مسئول
-        $users = \App\Models\User::select('id', 'name', 'email')->get();
+        $usersQuery = \App\Models\User::select('id', 'name', 'email');
+        if (!$user->hasRole('super-admin')) {
+            $usersQuery->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'super-admin');
+            });
+        }
+        $users = $usersQuery->get();
 
         // لیست مشتری‌ها برای انتخاب موجودیت مرتبط
         $clients = \Modules\Clients\Entities\Client::select('id', 'full_name', 'phone')->get();
@@ -273,6 +285,18 @@ class FollowUpController extends Controller
             'related_type' => ['nullable', 'string', 'max:100'],
             'related_id'   => ['nullable', 'integer'],
         ]);
+
+        if (!$user->hasRole('super-admin')) {
+            $assigneeId = $data['assignee_id'] ?? null;
+            if ($assigneeId) {
+                $u = \App\Models\User::find($assigneeId);
+                if ($u && $u->hasRole('super-admin')) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'assignee_id' => ['شما مجاز به انتخاب کاربر سوپر ادمین نیستید.']
+                    ]);
+                }
+            }
+        }
 
         // تبدیل تاریخ شمسی به میلادی
         $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null, $request->input('due_time'))
@@ -350,6 +374,18 @@ class FollowUpController extends Controller
             'client_id'    => ['required', 'integer', 'exists:clients,id'],
         ]);
 
+        if (!$user->hasRole('super-admin')) {
+            $assigneeId = $data['assignee_id'] ?? null;
+            if ($assigneeId) {
+                $u = \App\Models\User::find($assigneeId);
+                if ($u && $u->hasRole('super-admin')) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'assignee_id' => ['شما مجاز به انتخاب کاربر سوپر ادمین نیستید.']
+                    ]);
+                }
+            }
+        }
+
         // تبدیل تاریخ شمسی
         $dueAt = $this->convertJalaliDate($data['due_at_view'] ?? null, $request->input('due_time'));
 
@@ -401,7 +437,13 @@ class FollowUpController extends Controller
         $priorities = Task::priorityOptions();
 
         // لیست کاربران برای انتخاب مسئول
-        $users = \App\Models\User::select('id', 'name', 'email')->get();
+        $usersQuery = \App\Models\User::select('id', 'name', 'email');
+        if (!$user->hasRole('super-admin')) {
+            $usersQuery->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'super-admin');
+            });
+        }
+        $users = $usersQuery->get();
 
         // لیست مشتری‌ها برای موجودیت مرتبط
         $clients = \Modules\Clients\Entities\Client::select('id', 'full_name', 'phone')->get();
@@ -433,6 +475,18 @@ class FollowUpController extends Controller
         $data = $this->validateRequest($request);
 
         $user = Auth::user();
+
+        if (!$user->hasRole('super-admin')) {
+            $assigneeIdInput = $data['assignee_id'] ?? null;
+            if ($assigneeIdInput) {
+                $u = \App\Models\User::find($assigneeIdInput);
+                if ($u && $u->hasRole('super-admin')) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'assignee_id' => ['شما مجاز به انتخاب کاربر سوپر ادمین نیستید.']
+                    ]);
+                }
+            }
+        }
 
         // مجوز انتخاب/تغییر مسئول
         $canAssign = $user->can('followups.manage') || $user->hasRole('super-admin');

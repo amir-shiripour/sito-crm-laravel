@@ -34,7 +34,7 @@ class ContractTemplateController extends Controller
         ]);
 
         // Default block structure if none provided
-        $blocks = $request->blocks ?: [
+        $blocks = $request->blocks ? array_values($request->blocks) : [
             ['type' => 'header', 'title' => 'قرارداد درمان'],
             ['type' => 'text', 'content' => "این قرارداد فی‌مابین طرفین منعقد گردید.\nنام بیمار: {patient_name}\nتاریخ: {today_jalali}"],
             ['type' => 'table', 'content' => 'plan_items_table'],
@@ -76,7 +76,7 @@ class ContractTemplateController extends Controller
         $template->update([
             'name' => $request->name,
             'entity_type' => $request->entity_type,
-            'blocks' => $request->blocks ?: [],
+            'blocks' => $request->blocks ? array_values($request->blocks) : [],
             'css_style' => $request->css_style,
         ]);
 
@@ -104,6 +104,9 @@ class ContractTemplateController extends Controller
                 'plan_tax' => 'مبلغ مالیات',
                 'plan_notes' => 'یادداشت‌های طرح درمان',
                 'today_jalali' => 'تاریخ امروز (جلالی)',
+                'system_currency' => 'واحد پول سیستم (تومان/ریال)',
+                'total_cheques' => 'تعداد چک‌های دریافتی',
+                'total_installment_stages' => 'تعداد مراحل پرداخت',
                 'installment_option_title' => 'عنوان روش پرداخت اقساطی',
                 'installment_down_payment' => 'مبلغ پیش‌پرداخت',
                 'installment_monthly_amount' => 'مبلغ اقساط ماهیانه',

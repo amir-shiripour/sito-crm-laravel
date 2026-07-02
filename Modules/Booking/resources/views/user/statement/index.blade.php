@@ -1,3 +1,43 @@
+@php
+    $bookingSettings = \Modules\Booking\Entities\BookingSetting::current();
+    $numberingSystem = $bookingSettings->cure_tooth_numbering_system ?? 'universal';
+
+    $palmerMap = [
+        1 => ['num' => 7, 'pos' => 'UR'], 2 => ['num' => 6, 'pos' => 'UR'], 3 => ['num' => 5, 'pos' => 'UR'], 4 => ['num' => 4, 'pos' => 'UR'],
+        5 => ['num' => 3, 'pos' => 'UR'], 6 => ['num' => 2, 'pos' => 'UR'], 7 => ['num' => 1, 'pos' => 'UR'],
+        8 => ['num' => 1, 'pos' => 'UL'], 9 => ['num' => 2, 'pos' => 'UL'], 10 => ['num' => 3, 'pos' => 'UL'], 11 => ['num' => 4, 'pos' => 'UL'],
+        12 => ['num' => 5, 'pos' => 'UL'], 13 => ['num' => 6, 'pos' => 'UL'], 14 => ['num' => 7, 'pos' => 'UL'],
+        15 => ['num' => 7, 'pos' => 'LR'], 16 => ['num' => 6, 'pos' => 'LR'], 17 => ['num' => 5, 'pos' => 'LR'], 18 => ['num' => 4, 'pos' => 'LR'],
+        19 => ['num' => 3, 'pos' => 'LR'], 20 => ['num' => 2, 'pos' => 'LR'], 21 => ['num' => 1, 'pos' => 'LR'],
+        22 => ['num' => 1, 'pos' => 'LL'], 23 => ['num' => 2, 'pos' => 'LL'], 24 => ['num' => 3, 'pos' => 'LL'], 25 => ['num' => 4, 'pos' => 'LL'],
+        26 => ['num' => 5, 'pos' => 'LL'], 27 => ['num' => 6, 'pos' => 'LL'], 28 => ['num' => 7, 'pos' => 'LL']
+    ];
+
+    $fdiMap = [
+        1 => ['num' => 17, 'pos' => 'UR'], 2 => ['num' => 16, 'pos' => 'UR'], 3 => ['num' => 15, 'pos' => 'UR'], 4 => ['num' => 14, 'pos' => 'UR'],
+        5 => ['num' => 13, 'pos' => 'UR'], 6 => ['num' => 12, 'pos' => 'UR'], 7 => ['num' => 11, 'pos' => 'UR'],
+        8 => ['num' => 21, 'pos' => 'UL'], 9 => ['num' => 22, 'pos' => 'UL'], 10 => ['num' => 23, 'pos' => 'UL'], 11 => ['num' => 24, 'pos' => 'UL'],
+        12 => ['num' => 25, 'pos' => 'UL'], 13 => ['num' => 26, 'pos' => 'UL'], 14 => ['num' => 27, 'pos' => 'UL'],
+        15 => ['num' => 47, 'pos' => 'LR'], 16 => ['num' => 46, 'pos' => 'LR'], 17 => ['num' => 45, 'pos' => 'LR'], 18 => ['num' => 44, 'pos' => 'LR'],
+        19 => ['num' => 43, 'pos' => 'LR'], 20 => ['num' => 42, 'pos' => 'LR'], 21 => ['num' => 41, 'pos' => 'LR'],
+        22 => ['num' => 31, 'pos' => 'LL'], 23 => ['num' => 32, 'pos' => 'LL'], 24 => ['num' => 33, 'pos' => 'LL'], 25 => ['num' => 34, 'pos' => 'LL'],
+        26 => ['num' => 35, 'pos' => 'LL'], 27 => ['num' => 36, 'pos' => 'LL'], 28 => ['num' => 37, 'pos' => 'LL']
+    ];
+
+    $toothMap = $numberingSystem === 'fdi' ? $fdiMap : $palmerMap;
+
+    if (!function_exists('getCureQuadrantClasses')) {
+        function getCureQuadrantClasses($pos) {
+            switch($pos) {
+                case 'UR': return 'border-r-4 border-t-4 border-cyan-600 dark:border-cyan-600';
+                case 'UL': return 'border-l-4 border-t-4 border-cyan-600 dark:border-cyan-600';
+                case 'LR': return 'border-r-4 border-b-4 border-cyan-600 dark:border-cyan-600';
+                case 'LL': return 'border-l-4 border-b-4 border-cyan-600 dark:border-cyan-600';
+                default: return '';
+            }
+        }
+    }
+@endphp
 @extends('layouts.user')
 
 @section('content')
@@ -91,11 +131,11 @@
 
                 <div>
                     <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاریخ شروع</label>
-                    <input type="text" name="start_date" id="start_date" data-jdp class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" value="{{ $startDateLocal }}" autocomplete="off">
+                    <input type="text" name="start_date" id="start_date" data-jdp-only-date class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" value="{{ $startDateLocal }}" autocomplete="off">
                 </div>
                 <div>
                     <label for="end_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاریخ پایان</label>
-                    <input type="text" name="end_date" id="end_date" data-jdp class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" value="{{ $endDateLocal }}" autocomplete="off">
+                    <input type="text" name="end_date" id="end_date" data-jdp-only-date class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" value="{{ $endDateLocal }}" autocomplete="off">
                 </div>
                 <div class="flex items-end">
                     <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition">
@@ -313,14 +353,91 @@
                                                     <div class="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-3 items-center">
                                                         @foreach($appointment->processed_form_response as $item)
                                                             @if(!empty($item['value']))
-                                                                <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
-                                                                    @if(!empty($item['icon']))
-                                                                        <span class="text-gray-500 dark:text-gray-400" style="width: 24px; height: 24px;" title="{{ $item['label'] }}">{!! $item['icon'] !!}</span>
-                                                                    @else
-                                                                        <span class="font-medium">{{ $item['label'] }}:</span>
-                                                                    @endif
-                                                                    <span>{{ is_array($item['value']) ? implode(' / ', $item['value']) : str_replace(',', ' / ', $item['value']) }}</span>
-                                                                </div>
+                                                                @php
+                                                                    $isToothNumber = (
+                                                                        (!empty($item['type']) && strtolower($item['type']) === 'tooth_number') ||
+                                                                        str_contains($item['key'] ?? '', 'tooth') ||
+                                                                        ($item['label'] ?? '') === 'شماره دندان'
+                                                                    );
+                                                                @endphp
+                                                                @if($isToothNumber)
+                                                                    @php
+                                                                        if (is_array($item['value'])) {
+                                                                            $rawTeeth = $item['value'];
+                                                                        } else {
+                                                                            $rawTeeth = array_filter(array_map('trim', explode(',', (string)$item['value'])), fn($v) => $v !== '');
+                                                                        }
+                                                                        
+                                                                        $groupedTeeth = ['UR' => [], 'UL' => [], 'LR' => [], 'LL' => []];
+                                                                        foreach ($rawTeeth as $tooth) {
+                                                                            $toothId = is_array($tooth) ? ($tooth['number'] ?? array_values($tooth)[0]) : $tooth;
+                                                                            $toothInfo = $toothMap[$toothId] ?? ['num' => $toothId, 'pos' => 'UR'];
+                                                                            $groupedTeeth[$toothInfo['pos']][] = [
+                                                                                'num' => $toothInfo['num']
+                                                                            ];
+                                                                        }
+                                                                        
+                                                                        // Sort UR/LR descending so they grow outwards from midline (left to right)
+                                                                        usort($groupedTeeth['UR'], fn($a, $b) => $b['num'] - $a['num']);
+                                                                        usort($groupedTeeth['LR'], fn($a, $b) => $b['num'] - $a['num']);
+                                                                        
+                                                                        // Sort UL/LL ascending so they grow outwards from midline (right to left)
+                                                                        usort($groupedTeeth['UL'], fn($a, $b) => $a['num'] - $b['num']);
+                                                                        usort($groupedTeeth['LL'], fn($a, $b) => $a['num'] - $b['num']);
+                                                                    @endphp
+                                                                    <div class="flex items-center gap-2.5 border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800/40 px-2.5 py-1.5 rounded-lg shadow-sm">
+                                                                        @if(!empty($item['icon']))
+                                                                            <span class="text-gray-500 dark:text-gray-400" style="width: 24px; height: 24px;" title="{{ $item['label'] }}">{!! $item['icon'] !!}</span>
+                                                                        @else
+                                                                            <span class="font-bold text-gray-400 dark:text-gray-500 text-[11px] select-none">{{ $item['label'] }}:</span>
+                                                                        @endif
+                                                                        
+                                                                        <!-- Palmer Cross Grid -->
+                                                                        <div class="inline-grid grid-cols-2 select-none shrink-0 align-middle">
+                                                                            <!-- UR -->
+                                                                            <div class="border-l-2 border-b-2 border-slate-300 dark:border-slate-500 pb-0.5 pl-2 flex items-center justify-end gap-1 min-w-[32px] min-h-[24px]">
+                                                                                @foreach($groupedTeeth['UR'] as $toothData)
+                                                                                    <span class="inline-flex items-center justify-center min-w-[14px] text-[13px] font-black text-indigo-600 dark:text-indigo-400">
+                                                                                        {{ $toothData['num'] }}
+                                                                                    </span>
+                                                                                @endforeach
+                                                                            </div>
+                                                                            <!-- UL -->
+                                                                            <div class="border-b-2 border-slate-300 dark:border-slate-500 pb-0.5 pr-2 flex items-center justify-start gap-1 min-w-[32px] min-h-[24px]">
+                                                                                @foreach($groupedTeeth['UL'] as $toothData)
+                                                                                    <span class="inline-flex items-center justify-center min-w-[14px] text-[13px] font-black text-indigo-600 dark:text-indigo-400">
+                                                                                        {{ $toothData['num'] }}
+                                                                                    </span>
+                                                                                @endforeach
+                                                                            </div>
+                                                                            <!-- LR -->
+                                                                            <div class="border-l-2 border-slate-300 dark:border-slate-500 pt-0.5 pl-2 flex items-center justify-end gap-1 min-w-[32px] min-h-[24px]">
+                                                                                @foreach($groupedTeeth['LR'] as $toothData)
+                                                                                    <span class="inline-flex items-center justify-center min-w-[14px] text-[13px] font-black text-indigo-600 dark:text-indigo-400">
+                                                                                        {{ $toothData['num'] }}
+                                                                                    </span>
+                                                                                @endforeach
+                                                                            </div>
+                                                                            <!-- LL -->
+                                                                            <div class="pt-0.5 pr-2 flex items-center justify-start gap-1 min-w-[32px] min-h-[24px]">
+                                                                                @foreach($groupedTeeth['LL'] as $toothData)
+                                                                                    <span class="inline-flex items-center justify-center min-w-[14px] text-[13px] font-black text-indigo-600 dark:text-indigo-400">
+                                                                                        {{ $toothData['num'] }}
+                                                                                    </span>
+                                                                                @endforeach
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                @else
+                                                                    <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
+                                                                        @if(!empty($item['icon']))
+                                                                            <span class="text-gray-500 dark:text-gray-400" style="width: 24px; height: 24px;" title="{{ $item['label'] }}">{!! $item['icon'] !!}</span>
+                                                                        @else
+                                                                            <span class="font-medium">{{ $item['label'] }}:</span>
+                                                                        @endif
+                                                                        <span>{{ is_array($item['value']) ? implode(' / ', $item['value']) : str_replace(',', ' / ', $item['value']) }}</span>
+                                                                    </div>
+                                                                @endif
                                                             @endif
                                                         @endforeach
                                                     </div>

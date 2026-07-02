@@ -121,23 +121,23 @@
             if (type === 'header') {
                 contentHtml = `
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-gray-500">عنوان سربرگ</label>
-                        <input type="text" name="blocks[${blockCounter}][title]" value="${data.title || ''}" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm" placeholder="مثال: قرارداد درمان عمومی">
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400">عنوان سربرگ</label>
+                        <input type="text" name="blocks[${blockCounter}][title]" value="${data.title || ''}" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 focus:outline-none placeholder-gray-400 dark:placeholder-gray-500 transition-colors" placeholder="مثال: قرارداد درمان عمومی">
                     </div>
                 `;
             } else if (type === 'text') {
                 contentHtml = `
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-gray-500">محتوای متنی قرارداد (امکان استفاده از توکن‌ها)</label>
-                        <textarea name="blocks[${blockCounter}][content]" rows="4" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-3 text-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="متن قرارداد خود را در این بخش بنویسید...">${data.content || ''}</textarea>
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400">محتوای متنی قرارداد (امکان استفاده از توکن‌ها)</label>
+                        <textarea name="blocks[${blockCounter}][content]" rows="4" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-3 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 focus:outline-none placeholder-gray-400 dark:placeholder-gray-500 transition-colors" placeholder="متن قرارداد خود را در این بخش بنویسید...">${data.content || ''}</textarea>
                     </div>
                 `;
             } else if (type === 'table') {
                 const selected = data.content || '';
                 contentHtml = `
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-gray-500">انتخاب جدول داده‌های داینامیک</label>
-                        <select name="blocks[${blockCounter}][content]" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm">
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400">انتخاب جدول داده‌های داینامیک</label>
+                        <select name="blocks[${blockCounter}][content]" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 focus:outline-none transition-colors">
                             <option value="plan_items_table" ${selected === 'plan_items_table' ? 'selected' : ''}>جدول خدمات طرح درمان</option>
                             <option value="installment_breakdown_table" ${selected === 'installment_breakdown_table' ? 'selected' : ''}>جدول اقساط و زمان پرداخت</option>
                             <option value="cheques_table" ${selected === 'cheques_table' ? 'selected' : ''}>جدول چک‌های دریافتی</option>
@@ -146,37 +146,40 @@
                 `;
             } else if (type === 'page_break') {
                 contentHtml = `
-                    <div class="py-2 text-center text-xs font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg border border-dashed">
-                        --- شکست صفحه (هنگام پرینت به صفحه جدید منتقل می‌شود) ---
+                    <div class="py-4 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 dark:text-gray-550" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V4a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                        </svg>
+                        <span>شکست صفحه (شروع صفحه جدید هنگام چاپ قرارداد)</span>
                         <input type="hidden" name="blocks[${blockCounter}][content]" value="page_break">
                     </div>
                 `;
             } else if (type === 'footer') {
                 contentHtml = `
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-gray-500">پاورقی (بخش امضا و توضیحات نهایی)</label>
-                        <textarea name="blocks[${blockCounter}][content]" rows="2" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-3 text-sm" placeholder="مثال: مهر و امضای کلینیک / امضای بیمار">${data.content || ''}</textarea>
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400">پاورقی (بخش امضا و توضیحات نهایی)</label>
+                        <textarea name="blocks[${blockCounter}][content]" rows="2" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-3 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 focus:outline-none placeholder-gray-400 dark:placeholder-gray-500 transition-colors" placeholder="مثال: مهر و امضای کلینیک / امضای بیمار">${data.content || ''}</textarea>
                     </div>
                 `;
             }
 
             const wrapper = document.createElement('div');
-            wrapper.className = 'block-wrapper p-4 bg-white dark:bg-gray-850 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative group transition-all duration-200';
+            wrapper.className = 'block-wrapper p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm relative group transition-all duration-200';
             wrapper.id = `block_wrap_${blockCounter}`;
             wrapper.innerHTML = `
                 <input type="hidden" name="blocks[${blockCounter}][type]" value="${type}">
-                <div class="flex items-center justify-between border-b border-gray-150 dark:border-gray-700 pb-2 mb-3">
-                    <span class="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                        # بلوک ${type === 'header' ? 'سربرگ' : type === 'text' ? 'متنی' : type === 'table' ? 'جدول' : type === 'page_break' ? 'شکست صفحه' : 'پاورقی'}
+                <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                        ${type === 'header' ? 'سربرگ' : type === 'text' ? 'متن قرارداد' : type === 'table' ? 'جدول اطلاعاتی' : type === 'page_break' ? 'شکست صفحه' : 'پاورقی'}
                     </span>
                     <div class="flex gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <button type="button" onclick="moveUp('${wrapper.id}')" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-850 rounded text-gray-500">
+                        <button type="button" onclick="moveUp('${wrapper.id}')" class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
                             ▲
                         </button>
-                        <button type="button" onclick="moveDown('${wrapper.id}')" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-850 rounded text-gray-500">
+                        <button type="button" onclick="moveDown('${wrapper.id}')" class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
                             ▼
                         </button>
-                        <button type="button" onclick="removeBlock('${wrapper.id}')" class="p-1 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded">
+                        <button type="button" onclick="removeBlock('${wrapper.id}')" class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
@@ -210,10 +213,43 @@
             }
         }
 
+        let lastFocusedElement = null;
+        document.addEventListener('focusin', (e) => {
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+                lastFocusedElement = e.target;
+            }
+        });
+
         function copyToken(token) {
-            navigator.clipboard.writeText('{' + token + '}').then(() => {
-                alert('توکن {' + token + '} در کلیپ‌بورد کپی شد.');
-            });
+            const tokenText = '{' + token + '}';
+            
+            if (lastFocusedElement && (lastFocusedElement.tagName === 'TEXTAREA' || lastFocusedElement.tagName === 'INPUT')) {
+                const start = lastFocusedElement.selectionStart;
+                const end = lastFocusedElement.selectionEnd;
+                const text = lastFocusedElement.value;
+                lastFocusedElement.value = text.substring(0, start) + tokenText + text.substring(end);
+                lastFocusedElement.focus();
+                lastFocusedElement.selectionStart = lastFocusedElement.selectionEnd = start + tokenText.length;
+                
+                showToast('توکن ' + tokenText + ' در محل قرار گرفت و کپی شد.');
+            } else {
+                showToast('توکن ' + tokenText + ' کپی شد. در متن مورد نظر Paste کنید.');
+            }
+            
+            navigator.clipboard.writeText(tokenText);
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-6 right-6 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-5 py-3 rounded-xl shadow-2xl text-sm font-medium z-50 transition-all duration-300 transform translate-y-0 opacity-100';
+            toast.innerText = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
         }
 
         // Initialize with default blocks

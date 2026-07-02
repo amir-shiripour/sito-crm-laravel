@@ -347,6 +347,13 @@
                 </div>
                 <input type="hidden" name="appointment_form_response_json" id="appointment_form_response_json" value="{{ json_encode($appointment->appointment_form_response_json ?? new \stdClass) }}">
                 <div id="appointment-form-container" class="space-y-4"></div>
+                <div id="legacy-form-container" class="hidden mt-6 border-t border-dashed border-gray-200 dark:border-gray-700 pt-6">
+                    <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
+                        <span class="w-1.5 h-3.5 bg-amber-500 rounded-full"></span>
+                        اطلاعات قدیمی (مربوط به نسخه قبل - غیرقابل ویرایش)
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="legacy-form-fields"></div>
+                </div>
                 <div id="dental-chart-editor-container" class="hidden bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mx-auto"
                      x-data="{
                           selectedTeeth: [],
@@ -452,6 +459,9 @@
                                   default:   return '';
                               }
                           },
+                          getQuadrantTeeth(teethArray, pos) {
+                              return (teethArray || []).map(Number).filter(t => this.getToothLabel(t).pos === pos).sort((a,b) => a - b);
+                          },
                           get groupedTeeth() {
                               const sorted = [...this.selectedTeeth].sort((a, b) => {
                                   const posOrder = { 'UR': 1, 'UL': 2, 'LR': 3, 'LL': 4 };
@@ -509,22 +519,57 @@
                         </div>
                         <x-booking::dental-chart/>
                     </div>
-                    <div class="px-5 py-3 flex flex-wrap gap-1.5 min-h-12 border-t border-gray-50
-                                  dark:border-gray-700/50 bg-gray-50/60 dark:bg-gray-900/20">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <template x-for="([pos, teeth], idx) in groupedTeeth" :key="pos">
-                                <div class="flex items-center" :class="idx !== groupedTeeth.length - 1 ? 'border-l-2 border-gray-400 dark:border-gray-500 pl-2 ml-1' : ''">
-                                    <template x-for="t in teeth" :key="t">
-                                        <div role="button"
-                                             @click="toggle(t)"
-                                             class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-solid cursor-pointer"
-                                             :class="getQuadrantClasses(t)"
-                                             x-text="getToothLabel(t).num">
-                                        </div>
-                                    </template>
+                    <div class="px-5 py-3.5 flex items-center gap-3 min-h-14 border-t border-gray-150 dark:border-gray-700/50 bg-gray-50/60 dark:bg-gray-900/20">
+                        <template x-if="selectedTeeth.length > 0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-400 dark:text-gray-500 font-bold shrink-0">دندان‌های انتخابی:</span>
+                                <div class="inline-grid grid-cols-2 select-none">
+                                    <!-- Row 1: UR | UL -->
+                                    <!-- UR -->
+                                    <div class="border-l-2 border-b-2 border-slate-300 dark:border-slate-700 pb-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[36px]">
+                                        <template x-for="t in getQuadrantTeeth(selectedTeeth, 'UR')" :key="t">
+                                            <div role="button" @click="toggle(t)"
+                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                 :class="[getQuadrantClasses(t)]"
+                                                 x-text="getToothLabel(t).num">
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <!-- UL -->
+                                    <div class="border-b-2 border-slate-300 dark:border-slate-700 pb-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[36px]">
+                                        <template x-for="t in getQuadrantTeeth(selectedTeeth, 'UL')" :key="t">
+                                            <div role="button" @click="toggle(t)"
+                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                 :class="[getQuadrantClasses(t)]"
+                                                 x-text="getToothLabel(t).num">
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <!-- Row 2: LR | LL -->
+                                    <!-- LR -->
+                                    <div class="border-l-2 border-slate-300 dark:border-slate-700 pt-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[36px]">
+                                        <template x-for="t in getQuadrantTeeth(selectedTeeth, 'LR')" :key="t">
+                                            <div role="button" @click="toggle(t)"
+                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                 :class="[getQuadrantClasses(t)]"
+                                                 x-text="getToothLabel(t).num">
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <!-- LL -->
+                                    <div class="pt-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[36px]">
+                                        <template x-for="t in getQuadrantTeeth(selectedTeeth, 'LL')" :key="t">
+                                            <div role="button" @click="toggle(t)"
+                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                 :class="[getQuadrantClasses(t)]"
+                                                 x-text="getToothLabel(t).num">
+                                            </div>
+                                        </template>
+                                    </div>
                                 </div>
-                            </template>
-                        </div>
+                            </div>
+                        </template>
                         <template x-if="selectedTeeth.length === 0">
                               <span class="text-xs text-gray-400 dark:text-gray-500 self-center">
                                   روی دندان کلیک کنید تا انتخاب شود
@@ -943,7 +988,7 @@
 
             // Expose globally for Alpine to call
             window.collectFormValues = () => {
-                const values = {};
+                const values = (initialFormValues && !Array.isArray(initialFormValues)) ? Object.assign({}, initialFormValues) : {};
                 const elements = [
                     ...formContainer.querySelectorAll('[data-field-name]'),
                     ...document.querySelectorAll('#dental-chart-editor-container [data-field-name]')
@@ -969,6 +1014,55 @@
                 return values;
             };
 
+            const renderLegacyFields = (schema) => {
+                const legacyFormContainer = document.getElementById('legacy-form-container');
+                const legacyFormFields = document.getElementById('legacy-form-fields');
+                if (!legacyFormContainer || !legacyFormFields) return;
+                
+                legacyFormFields.innerHTML = '';
+                if (!initialFormValues || typeof initialFormValues !== 'object' || Array.isArray(initialFormValues)) {
+                    legacyFormContainer.classList.add('hidden');
+                    return;
+                }
+
+                const schemaFieldNames = schema && Array.isArray(schema.fields) ? schema.fields.map(f => f.name) : [];
+                let hasLegacy = false;
+                
+                for (const key in initialFormValues) {
+                    if (!schemaFieldNames.includes(key)) {
+                        hasLegacy = true;
+                        let label = key;
+                        if (key === 'UR') label = 'شماره دندان (UR)';
+                        else if (key === 'UL') label = 'شماره دندان (UL)';
+                        else if (key === 'DR' || key === 'LR') label = 'شماره دندان (LR)';
+                        else if (key === 'DL' || key === 'LL') label = 'شماره دندان (LL)';
+
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'flex flex-col gap-1';
+                        
+                        const labelEl = document.createElement('label');
+                        labelEl.className = 'text-xs text-gray-500 dark:text-gray-400 font-bold';
+                        labelEl.textContent = label;
+                        
+                        const valEl = document.createElement('div');
+                        valEl.className = 'w-full bg-gray-50 dark:bg-gray-900/60 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700/80 rounded-lg p-2 text-sm font-semibold select-none';
+                        
+                        const val = initialFormValues[key];
+                        valEl.textContent = Array.isArray(val) ? val.join('، ') : (val !== null && val !== undefined ? val : '—');
+                        
+                        wrapper.appendChild(labelEl);
+                        wrapper.appendChild(valEl);
+                        legacyFormFields.appendChild(wrapper);
+                    }
+                }
+                
+                if (hasLegacy) {
+                    legacyFormContainer.classList.remove('hidden');
+                } else {
+                    legacyFormContainer.classList.add('hidden');
+                }
+            };
+
             const loadAppointmentForm = async (serviceId) => {
                 const formId = serviceFormMap?.[serviceId] || null;
                 const dentalChartContainer = document.getElementById('dental-chart-editor-container');
@@ -976,6 +1070,7 @@
                     formContainer.innerHTML = '';
                     dentalChartContainer?.classList.add('hidden');
                     formEmpty?.classList.remove('hidden');
+                    renderLegacyFields(null);
                     return;
                 }
                 const params = new URLSearchParams({ form_id: formId });
@@ -984,6 +1079,7 @@
                 });
                 const json = await res.json();
                 const schema = json.data?.schema_json || null;
+                renderLegacyFields(schema);
                 formContainer.innerHTML = '';
 
                 // Show/hide dental chart based on form type / fields schema

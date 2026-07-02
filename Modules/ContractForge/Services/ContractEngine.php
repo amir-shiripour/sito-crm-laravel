@@ -161,4 +161,44 @@ class ContractEngine
 
         return $number;
     }
+
+    /**
+     * Find a matching template based on active rules.
+     */
+    public static function findMatchingTemplate(string $entityType, object $entity): ?ContractTemplate
+    {
+        // Get all active rules for this entity type, ordered by priority
+        $rules = ContractRule::where('entity_type', $entityType)
+            ->where('is_active', true)
+            ->orderBy('priority', 'desc')
+            ->get();
+
+        foreach ($rules as $rule) {
+            // Check status if filter is defined
+            if (!empty($rule->trigger_statuses)) {
+                $status = $entity->status ?? null;
+                if (!in_array($status, $rule->trigger_statuses)) {
+                    continue;
+                }
+            }
+
+            // Evaluate conditions
+            if (ConditionEvaluator::evaluate($rule->conditions, $entity)) {
+                // Load the template relationship
+                return $rule->template;
+            }
+        }
+
+        // Fallback: If no matching rule, check if rules exist.
+        // If rules exist but none match, we should return null (i.e. do not issue).
+        // If NO rules exist at all, we can fallback to the first active template.
+        $hasRules = ContractRule::where('entity_type', $entityType)->where('is_active', true)->exists();
+        if ($hasRules) {
+            return null;
+        }
+
+        return ContractTemplate::where('entity_type', $entityType)
+            ->where('is_active', true)
+            ->first();
+    }
 }

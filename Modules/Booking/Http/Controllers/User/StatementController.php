@@ -632,7 +632,8 @@ class StatementController extends Controller
                         if (isset($field['name'])) {
                             $fieldMeta[$field['name']] = [
                                 'label' => $field['label'] ?? $field['name'],
-                                'icon' => $field['icon'] ?? null
+                                'icon' => $field['icon'] ?? null,
+                                'type' => $field['type'] ?? null
                             ];
                         }
                     }
@@ -642,16 +643,35 @@ class StatementController extends Controller
                 $totalUnits = 0;
 
                 foreach ($appointment->appointment_form_response_json as $key => $value) {
-                    $meta = $fieldMeta[$key] ?? ['label' => $key, 'icon' => null];
+                    $meta = $fieldMeta[$key] ?? ['label' => $key, 'icon' => null, 'type' => null];
+                    $fieldType = $meta['type'] ?? (
+                        ($form->form_type === BookingForm::TYPE_TOOTH_NUMBER && $key === 'tooth_numbers')
+                            ? 'tooth_number'
+                            : null
+                    );
+                    
+                    $label = $meta['label'];
+                    if (!isset($fieldMeta[$key])) {
+                        if ($key === 'UR') $label = 'شماره دندان (UR)';
+                        elseif ($key === 'UL') $label = 'شماره دندان (UL)';
+                        elseif ($key === 'DR' || $key === 'LR') $label = 'شماره دندان (LR)';
+                        elseif ($key === 'DL' || $key === 'LL') $label = 'شماره دندان (LL)';
+                    }
+
                     $newResponse[] = [
                         'key' => $key,
-                        'label' => $meta['label'],
+                        'label' => $label,
                         'icon' => $meta['icon'],
+                        'type' => $fieldType,
                         'value' => $value
                     ];
 
                     if ($form->form_type === BookingForm::TYPE_TOOTH_NUMBER && !empty($value)) {
-                        $items = array_filter(array_map('trim', explode(',', (string)$value)), fn($v) => $v !== '');
+                        if (is_array($value)) {
+                            $items = array_filter(array_map('trim', $value), fn($v) => $v !== '');
+                        } else {
+                            $items = array_filter(array_map('trim', explode(',', (string)$value)), fn($v) => $v !== '');
+                        }
                         $totalUnits += count($items);
                     }
                 }
@@ -669,6 +689,7 @@ class StatementController extends Controller
                             'key' => $key,
                             'label' => $key,
                             'icon' => null,
+                            'type' => null,
                             'value' => $value
                         ];
                     }

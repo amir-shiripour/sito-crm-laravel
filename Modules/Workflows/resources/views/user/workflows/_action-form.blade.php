@@ -394,6 +394,9 @@
                                    class="block w-full border-0 bg-transparent text-gray-900 dark:text-white py-2.5 px-3 text-left focus:ring-0 focus:outline-none text-sm font-semibold" dir="ltr">
                             <span class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-3 py-2.5 text-xs font-bold border-r border-gray-300 dark:border-gray-700 flex items-center">روز</span>
                         </div>
+                        <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-normal">
+                            در صورت وجود برنامه زمانی برای مسئول انتخابی، محاسبه سررسید بر اساس روزهای کاری وی انجام می‌شود؛ در غیر این صورت روزهای عادی ملاک خواهد بود.
+                        </p>
                     </div>
                 </div>
 

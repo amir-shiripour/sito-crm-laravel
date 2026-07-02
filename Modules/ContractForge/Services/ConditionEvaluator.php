@@ -68,6 +68,20 @@ class ConditionEvaluator
             $actualValue = $entity[$field] ?? null;
         }
 
+        // Normalize installment/payment option comparison if target contains standard prefixes
+        if ($field === 'installment_option_title') {
+            $prefixes = ['اقساطی - ', 'کارتخوان - ', 'کارت به کارت - '];
+            foreach ($prefixes as $prefix) {
+                if ($targetValue && str_starts_with($targetValue, $prefix)) {
+                    $cleanTarget = mb_substr($targetValue, mb_strlen($prefix));
+                    if ($actualValue == $cleanTarget) {
+                        $actualValue = $targetValue;
+                        break;
+                    }
+                }
+            }
+        }
+
         // Compare
         switch ($op) {
             case 'equals':

@@ -77,13 +77,23 @@ class WorkflowController extends Controller
         Gate::authorize('workflows.create');
 
         $triggerOptions = $this->getTriggerOptions();
-        $users = User::query()->select(['id', 'name'])->orderBy('name')->get();
+        $usersQuery = User::query()->select(['id', 'name'])->orderBy('name');
         $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
         $tokens = config('workflows.tokens', []);
 
         $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
         $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
-        $cureRoles = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name')->get();
+        $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name');
+
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $usersQuery->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'super-admin');
+            });
+            $cureRolesQuery->where('name', '!=', 'super-admin');
+        }
+
+        $users = $usersQuery->get();
+        $cureRoles = $cureRolesQuery->get();
 
         return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles'));
     }
@@ -135,7 +145,7 @@ class WorkflowController extends Controller
 
         $workflow->load(['stages.actions', 'triggers']);
         $triggerOptions = $this->getTriggerOptions();
-        $users = User::query()->select(['id', 'name'])->orderBy('name')->get();
+        $usersQuery = User::query()->select(['id', 'name'])->orderBy('name');
         $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
 
         // Pass tokens to view
@@ -143,7 +153,17 @@ class WorkflowController extends Controller
 
         $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
         $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
-        $cureRoles = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name')->get();
+        $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name');
+
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $usersQuery->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'super-admin');
+            });
+            $cureRolesQuery->where('name', '!=', 'super-admin');
+        }
+
+        $users = $usersQuery->get();
+        $cureRoles = $cureRolesQuery->get();
 
         return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles'));
     }
@@ -348,6 +368,33 @@ class WorkflowController extends Controller
 
         $config = $data['config'] ?? [];
 
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            if ($data['action_type'] === WorkflowAction::TYPE_SEND_SMS) {
+                $targetUserId = $config['target_user_id'] ?? null;
+                if ($targetUserId) {
+                    $u = \App\Models\User::find($targetUserId);
+                    if ($u && $u->hasRole('super-admin')) {
+                        abort(403, 'شما مجاز به انتخاب کاربر سوپر ادمین نیستید.');
+                    }
+                }
+            } elseif (in_array($data['action_type'], [WorkflowAction::TYPE_CREATE_TASK, WorkflowAction::TYPE_CREATE_FOLLOWUP])) {
+                $assigneeId = $config['assignee_id'] ?? null;
+                if ($assigneeId) {
+                    $u = \App\Models\User::find($assigneeId);
+                    if ($u && $u->hasRole('super-admin')) {
+                        abort(403, 'شما مجاز به انتخاب کاربر سوپر ادمین نیستید.');
+                    }
+                }
+                $assigneeTarget = $config['assignee_target'] ?? '';
+                if (str_starts_with($assigneeTarget, 'TREATMENT_PLAN_ROLE_')) {
+                    $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $assigneeTarget);
+                    if (\Spatie\Permission\Models\Role::where('id', $roleId)->where('name', 'super-admin')->exists()) {
+                        abort(403, 'شما مجاز به انتخاب نقش سوپر ادمین نیستید.');
+                    }
+                }
+            }
+        }
+
         if ($data['action_type'] === WorkflowAction::TYPE_SEND_SMS) {
             $config = [
                 'target'         => $config['target'] ?? 'APPOINTMENT_CLIENT',
@@ -383,8 +430,8 @@ class WorkflowController extends Controller
 
         $workflow->load(['nodes', 'edges']);
 
-        $roles = \Spatie\Permission\Models\Role::orderBy('name')->get();
-        $users = \App\Models\User::select('id', 'name', 'email')->orderBy('name')->get();
+        $rolesQuery = \Spatie\Permission\Models\Role::orderBy('name');
+        $usersQuery = \App\Models\User::select('id', 'name', 'email')->orderBy('name');
         
         $subWorkflows = Workflow::where('id', '!=', $workflow->id)
             ->where('is_active', true)
@@ -392,7 +439,19 @@ class WorkflowController extends Controller
 
         $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
         $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
-        $cureRoles = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name')->get();
+        $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name');
+
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $rolesQuery->where('name', '!=', 'super-admin');
+            $usersQuery->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'super-admin');
+            });
+            $cureRolesQuery->where('name', '!=', 'super-admin');
+        }
+
+        $roles = $rolesQuery->get();
+        $users = $usersQuery->get();
+        $cureRoles = $cureRolesQuery->get();
 
         return view('workflows::user.workflows.designer', compact('workflow', 'roles', 'subWorkflows', 'users', 'cureStatuses', 'cureAssignableRoles', 'cureRoles'));
     }
@@ -415,9 +474,76 @@ class WorkflowController extends Controller
             'edges.*.condition' => ['nullable', 'string'],
         ]);
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($workflow, $data) {
+        $incomingNodes = $data['nodes'];
+
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $superAdminRole = \Spatie\Permission\Models\Role::where('name', 'super-admin')->first();
+            $superAdminRoleId = $superAdminRole?->id;
+
+            $isSuperAdminUser = function ($userId) {
+                if (!$userId) return false;
+                $u = \App\Models\User::find($userId);
+                return $u && $u->hasRole('super-admin');
+            };
+
+            $isSuperAdminRole = function ($roleIdOrName) use ($superAdminRoleId) {
+                if (!$roleIdOrName) return false;
+                return $roleIdOrName === 'super-admin' || $roleIdOrName == $superAdminRoleId;
+            };
+
+            $isSuperAdminTarget = function ($target) use ($isSuperAdminRole) {
+                if (is_string($target) && str_starts_with($target, 'TREATMENT_PLAN_ROLE_')) {
+                    $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $target);
+                    return $isSuperAdminRole($roleId);
+                }
+                return false;
+            };
+
+            foreach ($incomingNodes as $nodeData) {
+                $config = $nodeData['config'] ?? [];
+                
+                // Check direct fields
+                if (isset($config['role_id']) && $isSuperAdminRole($config['role_id'])) {
+                    return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب نقش سوپر ادمین نیستید.'], 422);
+                }
+                if (isset($config['assignee_id']) && $isSuperAdminUser($config['assignee_id'])) {
+                    return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب کاربر سوپر ادمین نیستید.'], 422);
+                }
+                if (isset($config['target_user_id']) && $isSuperAdminUser($config['target_user_id'])) {
+                    return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب کاربر سوپر ادمین نیستید.'], 422);
+                }
+                if (isset($config['followup_assignee_id']) && $isSuperAdminUser($config['followup_assignee_id'])) {
+                    return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب کاربر سوپر ادمین نیستید.'], 422);
+                }
+                if (isset($config['sms_target_user_id']) && $isSuperAdminUser($config['sms_target_user_id'])) {
+                    return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب کاربر سوپر ادمین نیستید.'], 422);
+                }
+                if (isset($config['assignee_target']) && $isSuperAdminTarget($config['assignee_target'])) {
+                    return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب نقش سوپر ادمین نیستید.'], 422);
+                }
+                if (isset($config['followup_assignee_target']) && $isSuperAdminTarget($config['followup_assignee_target'])) {
+                    return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب نقش سوپر ادمین نیستید.'], 422);
+                }
+
+                // Check tasks array
+                if (isset($config['tasks']) && is_array($config['tasks'])) {
+                    foreach ($config['tasks'] as $t) {
+                        if (isset($t['assignee_id']) && $isSuperAdminUser($t['assignee_id'])) {
+                            return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب کاربر سوپر ادمین نیستید.'], 422);
+                        }
+                        if (isset($t['role_id']) && $isSuperAdminRole($t['role_id'])) {
+                            return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب نقش سوپر ادمین نیستید.'], 422);
+                        }
+                        if (isset($t['assignee_target']) && $isSuperAdminTarget($t['assignee_target'])) {
+                            return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب نقش سوپر ادمین نیستید.'], 422);
+                        }
+                    }
+                }
+            }
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($workflow, $incomingNodes, $data) {
             $existingNodes = $workflow->nodes()->get();
-            $incomingNodes = $data['nodes'];
 
             $incomingIds = [];
             foreach ($incomingNodes as $nodeData) {
