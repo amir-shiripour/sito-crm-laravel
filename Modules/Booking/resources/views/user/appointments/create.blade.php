@@ -1004,22 +1004,57 @@
                                                         </div>
                                                         <x-booking::dental-chart/>
                                                     </div>
-                                                    <div class="px-5 py-3 flex flex-wrap gap-1.5 min-h-12 border-t border-gray-50
-                                                                dark:border-gray-700/50 bg-gray-50/60 dark:bg-gray-900/20">
-                                                        <div class="flex flex-wrap items-center gap-2">
-                                                            <template x-for="([pos, teeth], idx) in groupedTeeth" :key="pos">
-                                                                <div class="flex items-center" :class="idx !== groupedTeeth.length - 1 ? 'border-l-2 border-gray-400 dark:border-gray-500 pl-2 ml-1' : ''">
-                                                                    <template x-for="t in teeth" :key="t">
-                                                                        <div role="button"
-                                                                             @click="toggle(t)"
-                                                                             class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-solid cursor-pointer"
-                                                                             :class="getQuadrantClasses(t)"
-                                                                             x-text="getToothLabel(t).num">
-                                                                        </div>
-                                                                    </template>
+                                                    <div class="px-5 py-3.5 flex items-center gap-3 min-h-14 border-t border-gray-150 dark:border-gray-700/50 bg-gray-50/60 dark:bg-gray-900/20">
+                                                        <template x-if="appointmentFormValues[field.name] && appointmentFormValues[field.name].length > 0">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-xs text-gray-400 dark:text-gray-500 font-bold shrink-0">دندان‌های انتخابی:</span>
+                                                                <div class="inline-grid grid-cols-2 select-none">
+                                                                    <!-- Row 1: UR | UL -->
+                                                                    <!-- UR -->
+                                                                    <div class="border-l-2 border-b-2 border-slate-300 dark:border-slate-700 pb-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[36px]">
+                                                                        <template x-for="t in getQuadrantTeeth(appointmentFormValues[field.name], 'UR')" :key="t">
+                                                                            <div role="button" @click="toggle(t)"
+                                                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                                                 :class="[getQuadrantClasses(t)]"
+                                                                                 x-text="getToothLabel(t).num">
+                                                                            </div>
+                                                                        </template>
+                                                                    </div>
+                                                                    <!-- UL -->
+                                                                    <div class="border-b-2 border-slate-300 dark:border-slate-700 pb-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[36px]">
+                                                                        <template x-for="t in getQuadrantTeeth(appointmentFormValues[field.name], 'UL')" :key="t">
+                                                                            <div role="button" @click="toggle(t)"
+                                                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                                                 :class="[getQuadrantClasses(t)]"
+                                                                                 x-text="getToothLabel(t).num">
+                                                                            </div>
+                                                                        </template>
+                                                                    </div>
+
+                                                                    <!-- Row 2: LR | LL -->
+                                                                    <!-- LR -->
+                                                                    <div class="border-l-2 border-slate-300 dark:border-slate-700 pt-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[36px]">
+                                                                        <template x-for="t in getQuadrantTeeth(appointmentFormValues[field.name], 'LR')" :key="t">
+                                                                            <div role="button" @click="toggle(t)"
+                                                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                                                 :class="[getQuadrantClasses(t)]"
+                                                                                 x-text="getToothLabel(t).num">
+                                                                            </div>
+                                                                        </template>
+                                                                    </div>
+                                                                    <!-- LL -->
+                                                                    <div class="pt-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[36px]">
+                                                                        <template x-for="t in getQuadrantTeeth(appointmentFormValues[field.name], 'LL')" :key="t">
+                                                                            <div role="button" @click="toggle(t)"
+                                                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                                                 :class="[getQuadrantClasses(t)]"
+                                                                                 x-text="getToothLabel(t).num">
+                                                                            </div>
+                                                                        </template>
+                                                                    </div>
                                                                 </div>
-                                                            </template>
-                                                        </div>
+                                                            </div>
+                                                        </template>
                                                         <template x-if="!appointmentFormValues[field.name] || appointmentFormValues[field.name].length === 0">
                                                             <span class="text-xs text-gray-400 dark:text-gray-500 self-center">
                                                                 روی دندان کلیک کنید تا انتخاب شود
@@ -1746,6 +1781,10 @@
                         case 'LL': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
                         default:   return '';
                     }
+                },
+
+                getQuadrantTeeth(teethArray, pos) {
+                    return (teethArray || []).map(Number).filter(t => this.getToothLabel(t).pos === pos).sort((a,b) => a - b);
                 },
 
                 get groupedTeeth() {

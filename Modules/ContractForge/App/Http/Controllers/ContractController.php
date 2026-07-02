@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Modules\ContractForge\App\Models\Contract;
 use Modules\ContractForge\App\Models\ContractTemplate;
 use Modules\ContractForge\Services\ContractEngine;
+use Modules\ContractForge\Services\TokenResolver;
 use Modules\Booking\App\Models\TreatmentPlan;
 use Spatie\Browsershot\Browsershot;
 
@@ -126,6 +127,46 @@ class ContractController extends Controller
                 ->with('success', 'قرارداد جدید با موفقیت ایجاد شد.');
         } catch (\Exception $e) {
             return back()->with('error', 'خطا در ایجاد قرارداد: ' . $e->getMessage());
+        }
+    }
+
+    public function regenerate(Contract $contract)
+    {
+        if ($contract->status === 'signed') {
+            return back()->with('error', 'قرارداد امضا شده قابل بروزرسانی نیست.');
+        }
+
+        $template = $contract->template;
+        $entity = $contract->contractable;
+
+        if (!$template || !$entity) {
+            return back()->with('error', 'قالب قرارداد یا موجودیت مرتبط یافت نشد.');
+        }
+
+        try {
+            $blocks = $template->blocks ?: [];
+
+            if (!empty($blocks)) {
+                $renderedBody = ContractEngine::renderBlocks($blocks, $entity);
+            } else {
+                $renderedBody = TokenResolver::resolve($template->body ?? '', $entity);
+            }
+
+            if (!empty($template->css_style)) {
+                $renderedBody = "<style>{$template->css_style}</style>\n" . $renderedBody;
+            }
+
+            $title = $template->name . ' - ' . (method_exists($entity, 'getContractTitle') ? $entity->getContractTitle() : '');
+
+            $contract->update([
+                'blocks_data' => $blocks,
+                'rendered_body' => $renderedBody,
+                'title' => $title,
+            ]);
+
+            return back()->with('success', 'محتوای قرارداد بر اساس آخرین تغییرات طرح درمان و قالب قرارداد بروزرسانی شد.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'خطا در بروزرسانی قرارداد: ' . $e->getMessage());
         }
     }
 }

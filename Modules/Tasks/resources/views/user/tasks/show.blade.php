@@ -7,6 +7,18 @@
         use Modules\Reminders\Entities\Reminder;
         use Illuminate\Support\Str;
 
+        $settings = \Modules\Booking\Entities\BookingSetting::current();
+        $numberingSystem = $settings->cure['tooth_numbering_system'] ?? 'palmer';
+
+        $palmerMap = [1=>7,2=>6,3=>5,4=>4,5=>3,6=>2,7=>1,8=>1,9=>2,10=>3,11=>4,12=>5,13=>6,14=>7,15=>7,16=>6,17=>5,18=>4,19=>3,20=>2,21=>1,22=>1,23=>2,24=>3,25=>4,26=>5,27=>6,28=>7];
+        $fdiMap = [1=>17,2=>16,3=>15,4=>14,5=>13,6=>12,7=>11,8=>21,9=>22,10=>23,11=>24,12=>25,13=>26,14=>27,15=>47,16=>46,17=>45,18=>44,19=>43,20=>42,21=>41,22=>31,23=>32,24=>33,25=>34,26=>35,27=>36,28=>37];
+        
+        $mappedToothContext = '-';
+        if (isset($toothContext) && $toothContext !== null) {
+            $map = ($numberingSystem === 'fdi' ? $fdiMap : $palmerMap);
+            $mappedToothContext = $map[$toothContext] ?? $toothContext;
+        }
+
         // دریافت آپشن‌ها
         $statuses   = $statuses   ?? Task::statusOptions();
         $priorities = $priorities ?? Task::priorityOptions();
@@ -387,7 +399,7 @@
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-500 dark:text-gray-400">
                                                 @if(isset($toothContext) && $toothContext !== null && $toothContext > 0)
-                                                    مرحله فعلی درمان روی دندان {{ $toothContext }}
+                                                    مرحله فعلی درمان روی دندان {{ $mappedToothContext }}
                                                 @else
                                                     مرحله فعلی درمان
                                                 @endif
@@ -450,7 +462,7 @@
                                         </style>
                                         <x-booking::dental-chart/>
                                         <div class="mt-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400">
-                                            {{ $toothContext == 0 ? 'موقعیت هدف: کل دندان‌ها (همه دندان‌ها)' : 'موقعیت هدف: دندان شماره ' . $toothContext }}
+                                            {{ $toothContext == 0 ? 'موقعیت هدف: کل دندان‌ها (همه دندان‌ها)' : 'موقعیت هدف: دندان شماره ' . $mappedToothContext }}
                                         </div>
                                     </div>
                                 @endif

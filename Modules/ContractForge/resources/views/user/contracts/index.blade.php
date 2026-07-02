@@ -103,7 +103,7 @@
                                     {{ $contract->user->name ?? '-' }}
                                 </td>
                                 <td class="p-4 text-xs text-gray-500 dark:text-gray-400">
-                                    {{ $contract->created_at->format('Y/m/d H:i') }}
+                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($contract->created_at)->format('Y/m/d H:i') }}
                                 </td>
                                 <td class="p-4">
                                     <div class="flex items-center justify-center gap-2">

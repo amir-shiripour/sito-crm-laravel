@@ -40,7 +40,11 @@ class SettingsController extends Controller
             $rules[$weekday] = $rule;
         }
 
-        $roles = Role::orderBy('name')->get();
+        $rolesQuery = Role::orderBy('name');
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $rolesQuery->where('name', '!=', 'super-admin');
+        }
+        $roles = $rolesQuery->get();
         $categories = \Modules\Booking\Entities\BookingCategory::orderBy('name')->get();
 
         return view('booking::user.settings.edit', compact('settings', 'rules', 'roles', 'categories'));
@@ -72,6 +76,25 @@ class SettingsController extends Controller
                 }
             }
             return array_values(array_unique($ids));
+        };
+
+        $isSuperAdmin = auth()->user() && auth()->user()->hasRole('super-admin');
+        $superAdminRole = \Spatie\Permission\Models\Role::where('name', 'super-admin')->first();
+        $superAdminRoleId = $superAdminRole?->id;
+
+        $syncRoleInput = function ($inputRoles, $oldRoles) use ($isSuperAdmin, $superAdminRoleId) {
+            if ($isSuperAdmin || !$superAdminRoleId) {
+                return $inputRoles;
+            }
+            $containsOldSuper = in_array($superAdminRoleId, $oldRoles);
+            
+            // Filter out super-admin from input
+            $filteredInput = array_diff($inputRoles, [$superAdminRoleId]);
+            
+            if ($containsOldSuper) {
+                $filteredInput[] = $superAdminRoleId;
+            }
+            return array_values($filteredInput);
         };
 
         $oldAllowedRoles = $normalizeRolesToIds($settings->allowed_roles ?? []);
@@ -106,8 +129,8 @@ class SettingsController extends Controller
         $generalData['tax_enabled'] = $request->boolean('tax_enabled');
 
         $settings->fill($generalData);
-        $settings->allowed_roles = $normalizeRolesToIds($request->input('allowed_roles', []));
-        $settings->statement_roles = $normalizeRolesToIds($request->input('statement_roles', []));
+        $settings->allowed_roles = $syncRoleInput($normalizeRolesToIds($request->input('allowed_roles', [])), $oldAllowedRoles);
+        $settings->statement_roles = $syncRoleInput($normalizeRolesToIds($request->input('statement_roles', [])), $normalizeRolesToIds($settings->statement_roles ?? []));
 
         // ═══════════════════════════════════════
         //  PART 2: Save Cure Settings DIRECTLY
@@ -140,12 +163,25 @@ class SettingsController extends Controller
         if (is_array($cureStatusesInput)) {
             usort($cureStatusesInput, fn($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99));
             $formattedStatuses = [];
+            
+            $oldStatuses = $settings->cure_statuses ?? [];
+            $oldStatusRolesMap = [];
+            foreach ($oldStatuses as $os) {
+                if (!empty($os['id'])) {
+                    $oldStatusRolesMap[$os['id']] = $os['allowed_roles'] ?? [];
+                }
+            }
+
             foreach ($cureStatusesInput as $st) {
                 if (empty($st['id']) || empty($st['name'])) continue;
                 $allowedRoles = [];
                 if (isset($st['allowed_roles'])) {
                     $allowedRoles = $normalizeRolesToIds($st['allowed_roles']);
                 }
+                
+                $oldRoles = $oldStatusRolesMap[trim($st['id'])] ?? [];
+                $allowedRoles = $syncRoleInput($allowedRoles, $oldRoles);
+
                 $allowedFrom = [];
                 if (isset($st['allowed_from'])) {
                     $allowedFrom = is_array($st['allowed_from']) ? $st['allowed_from'] : array_filter(explode(',', $st['allowed_from']));
@@ -164,7 +200,7 @@ class SettingsController extends Controller
             $settings->cure_statuses = [];
         }
 
-        $settings->cure_assignable_roles = $normalizeRolesToIds($request->input('cure_assignable_roles', []));
+        $settings->cure_assignable_roles = $syncRoleInput($normalizeRolesToIds($request->input('cure_assignable_roles', [])), $normalizeRolesToIds($settings->cure_assignable_roles ?? []));
 
         if ($shouldLog) {
             \Log::info('[Booking][Settings] Saving cure fields', [

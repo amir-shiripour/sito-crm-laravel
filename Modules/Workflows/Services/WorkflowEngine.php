@@ -489,7 +489,7 @@ class WorkflowEngine
                 if ($this->isModuleEnabled($module) && class_exists($class)) {
                     $Model = $class;
 
-                    $dueAt = $this->calcOffsetDate($config['offset_days'] ?? 0, $baseDate);
+                    $dueAt = $this->calcTaskDueAt($targetUserId, (int)($config['offset_days'] ?? 0), $baseDate);
                     $title = $this->renderTemplate($config['title'] ?? $stage->name, $context);
                     $description = $this->renderTemplate($config['description'] ?? '', $context);
 
@@ -843,5 +843,94 @@ class WorkflowEngine
         }
 
         return $template;
+    }
+
+    public function calcTaskDueAt(?int $assigneeId, int $offsetDays, $baseDate): \Illuminate\Support\Carbon
+    {
+        $base = $baseDate ? \Illuminate\Support\Carbon::parse($baseDate) : now();
+
+        $bookingEnabled = $this->isModuleEnabled('Booking')
+            && class_exists('\Modules\Booking\Entities\BookingAvailabilityRule')
+            && class_exists('\Modules\Booking\Entities\BookingAvailabilityException');
+
+        if ($bookingEnabled && $assigneeId) {
+            // Check if provider has schedule rules
+            $hasSchedule = \Modules\Booking\Entities\BookingAvailabilityRule::query()
+                ->where('scope_type', \Modules\Booking\Entities\BookingAvailabilityRule::SCOPE_SERVICE_PROVIDER)
+                ->where('scope_id', $assigneeId)
+                ->exists();
+
+            if ($hasSchedule) {
+                $current = $base->copy();
+
+                if ($offsetDays <= 0) {
+                    // Check if open on base date
+                    if ($this->isProviderOpenOnDate($assigneeId, $current)) {
+                        return $current;
+                    }
+                    // Otherwise search for the first open day
+                    $safetyCounter = 0;
+                    while ($safetyCounter < 365) {
+                        $current->addDay();
+                        $safetyCounter++;
+                        if ($this->isProviderOpenOnDate($assigneeId, $current)) {
+                            return $current;
+                        }
+                    }
+                    return $base->copy();
+                }
+
+                $workDaysRemaining = $offsetDays;
+                $safetyCounter = 0;
+
+                while ($workDaysRemaining > 0 && $safetyCounter < 365) {
+                    $current->addDay();
+                    $safetyCounter++;
+
+                    // Check if open on this day
+                    $isOpen = $this->isProviderOpenOnDate($assigneeId, $current);
+                    if ($isOpen) {
+                        $workDaysRemaining--;
+                    }
+                }
+
+                return $current;
+            }
+        }
+
+        return $offsetDays <= 0 ? $base : $base->copy()->addDays($offsetDays);
+    }
+
+    /**
+     * Check if a provider is open on a specific date based on rules and exceptions.
+     */
+    protected function isProviderOpenOnDate(int $providerUserId, \Illuminate\Support\Carbon $date): bool
+    {
+        $localDateStr = $date->toDateString();
+
+        // 1. Check Exception
+        $exception = \Modules\Booking\Entities\BookingAvailabilityException::query()
+            ->where('scope_type', \Modules\Booking\Entities\BookingAvailabilityException::SCOPE_SERVICE_PROVIDER)
+            ->where('scope_id', $providerUserId)
+            ->whereDate('local_date', $localDateStr)
+            ->first();
+
+        if ($exception) {
+            return !$exception->is_closed;
+        }
+
+        // 2. Check Rule
+        $weekday = ((int)$date->dayOfWeek + 1) % 7; // 0=Sat .. 6=Fri
+        $rule = \Modules\Booking\Entities\BookingAvailabilityRule::query()
+            ->where('scope_type', \Modules\Booking\Entities\BookingAvailabilityRule::SCOPE_SERVICE_PROVIDER)
+            ->where('scope_id', $providerUserId)
+            ->where('weekday', $weekday)
+            ->first();
+
+        if ($rule) {
+            return !$rule->is_closed;
+        }
+
+        return false;
     }
 }

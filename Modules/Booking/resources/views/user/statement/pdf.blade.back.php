@@ -145,52 +145,69 @@
             display: inline-block;
         }
 
-        /* Nested Palmer Cross Table for PDF */
-        .palmer-pdf-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            border: none !important;
-            margin: 0 !important;
-            background: transparent !important;
+        /* Dental Map Palmer Cross Grid */
+        .palmer-cross-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #d8d8d8;
+            background-color: #fff;
+            padding: 3px 6px;
+            border-radius: 4px;
+            margin: 2px 0;
         }
-        .palmer-pdf-table tr {
-            border: none !important;
-            background: transparent !important;
+        .palmer-cross-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 8pt;
         }
-        .palmer-pdf-table td.palmer-pdf-cell {
-            width: 50% !important;
-            height: 22px !important;
-            padding: 2px 4px !important;
-            font-size: 9pt !important;
-            font-weight: bold !important;
-            color: #4f46e5 !important;
-            background: transparent !important;
-            box-sizing: border-box !important;
+        .palmer-grid {
+            display: grid;
+            grid-template-cols: repeat(2, minmax(0, 1fr));
+            direction: rtl;
+            width: 100%;
         }
-        /* Borders for Palmer Cross */
-        .palmer-pdf-table td.palmer-pdf-cell.ur {
-            border: none !important;
-            border-left: 1.5px solid #888 !important;
-            border-bottom: 1.5px solid #888 !important;
-            text-align: left !important;
+        .palmer-cell {
+            min-width: 24px;
+            min-height: 18px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
         }
-        .palmer-pdf-table td.palmer-pdf-cell.ul {
-            border: none !important;
-            border-bottom: 1.5px solid #888 !important;
-            text-align: right !important;
+        .palmer-cell.ur {
+            border-left: 1.5px solid #888;
+            border-bottom: 1.5px solid #888;
+            padding-bottom: 1px;
+            padding-left: 3px;
+            justify-content: flex-end;
         }
-        .palmer-pdf-table td.palmer-pdf-cell.lr {
-            border: none !important;
-            border-left: 1.5px solid #888 !important;
-            text-align: left !important;
+        .palmer-cell.ul {
+            border-bottom: 1.5px solid #888;
+            padding-bottom: 1px;
+            padding-right: 3px;
+            justify-content: flex-start;
         }
-        .palmer-pdf-table td.palmer-pdf-cell.ll {
-            border: none !important;
-            text-align: right !important;
+        .palmer-cell.lr {
+            border-left: 1.5px solid #888;
+            padding-top: 1px;
+            padding-left: 3px;
+            justify-content: flex-end;
         }
-        .palmer-pdf-tooth {
-            margin: 0 2px !important;
-            display: inline-block !important;
+        .palmer-cell.ll {
+            padding-top: 1px;
+            padding-right: 3px;
+            justify-content: flex-start;
+        }
+        .palmer-tooth {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 10px;
+            font-size: 8pt;
+            font-weight: bold;
+            color: #4f46e5; /* Indigo */
         }
     </style>
 </head>
@@ -325,47 +342,40 @@
                                             usort($groupedTeeth['UL'], fn($a, $b) => $a - $b);
                                             usort($groupedTeeth['LL'], fn($a, $b) => $a - $b);
                                             
-                                            // Build Palmer Cross HTML using nested table for robust print alignment
-                                            $html = '<table class="palmer-pdf-table">';
+                                            // Build Palmer Cross HTML
+                                            $html = '<div class="palmer-cross-container">';
+                                            $html .= '<div class="palmer-grid">';
                                             
-                                            // Row 1: UR | UL
-                                            $html .= '<tr>';
-                                            
-                                            // UR (Right side of midline, aligned left)
-                                            $html .= '<td class="palmer-pdf-cell ur">';
+                                            // UR
+                                            $html .= '<div class="palmer-cell ur">';
                                             foreach($groupedTeeth['UR'] as $num) {
-                                                $html .= '<span class="palmer-pdf-tooth">' . e($num) . '</span>';
+                                                $html .= '<span class="palmer-tooth">' . e($num) . '</span>';
                                             }
-                                            $html .= '</td>';
+                                            $html .= '</div>';
                                             
-                                            // UL (Left side of midline, aligned right)
-                                            $html .= '<td class="palmer-pdf-cell ul">';
+                                            // UL
+                                            $html .= '<div class="palmer-cell ul">';
                                             foreach($groupedTeeth['UL'] as $num) {
-                                                $html .= '<span class="palmer-pdf-tooth">' . e($num) . '</span>';
+                                                $html .= '<span class="palmer-tooth">' . e($num) . '</span>';
                                             }
-                                            $html .= '</td>';
+                                            $html .= '</div>';
                                             
-                                            $html .= '</tr>';
-                                            
-                                            // Row 2: LR | LL
-                                            $html .= '<tr>';
-                                            
-                                            // LR (Right side of midline, aligned left)
-                                            $html .= '<td class="palmer-pdf-cell lr">';
+                                            // LR
+                                            $html .= '<div class="palmer-cell lr">';
                                             foreach($groupedTeeth['LR'] as $num) {
-                                                $html .= '<span class="palmer-pdf-tooth">' . e($num) . '</span>';
+                                                $html .= '<span class="palmer-tooth">' . e($num) . '</span>';
                                             }
-                                            $html .= '</td>';
+                                            $html .= '</div>';
                                             
-                                            // LL (Left side of midline, aligned right)
-                                            $html .= '<td class="palmer-pdf-cell ll">';
+                                            // LL
+                                            $html .= '<div class="palmer-cell ll">';
                                             foreach($groupedTeeth['LL'] as $num) {
-                                                $html .= '<span class="palmer-pdf-tooth">' . e($num) . '</span>';
+                                                $html .= '<span class="palmer-tooth">' . e($num) . '</span>';
                                             }
-                                            $html .= '</td>';
+                                            $html .= '</div>';
                                             
-                                            $html .= '</tr>';
-                                            $html .= '</table>';
+                                            $html .= '</div>'; // palmer-grid
+                                            $html .= '</div>'; // palmer-cross-container
                                             
                                             $parts[] = $html;
                                         } else {

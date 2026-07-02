@@ -166,6 +166,27 @@ class PermissionCatalog
                 'matchers' => ['market.questions.'],
             ],
 
+            'registration' => [
+                'title'    => 'درخواست‌های ثبت‌نام',
+                'matchers' => ['registration-requests.', 'menu.see.registration-requests'],
+            ],
+            'settings' => [
+                'title'    => 'تنظیمات سیستم',
+                'matchers' => ['settings.payment.'],
+            ],
+            'notifications' => [
+                'title'    => 'اطلاعیه‌ها و نوتیفیکیشن‌ها',
+                'matchers' => ['notifications.'],
+            ],
+            'contractforge' => [
+                'title'    => 'طراحی قرارداد (ContractForge)',
+                'matchers' => ['contractforge.'],
+            ],
+            'booking_cure' => [
+                'title'    => 'نوبت‌دهی: طرح درمان (Cure)',
+                'matchers' => ['booking.cure.'],
+            ],
+
             'other' => [
                 'title'    => 'سایر',
                 'matchers' => [''], // fallback
@@ -380,6 +401,40 @@ class PermissionCatalog
             'market.settings.manage'        => 'مدیریت تنظیمات فروشگاه',
             'market.checkout-forms.manage'  => 'مدیریت فرم‌های تسویه حساب',
             'market.order-statuses.manage'  => 'مدیریت وضعیت‌های سفارش',
+
+            // Registration Requests
+            'registration-requests.view' => 'مشاهده درخواست‌های ثبت‌نام',
+            'registration-requests.approve' => 'تایید درخواست ثبت‌نام',
+            'registration-requests.reject' => 'رد درخواست ثبت‌نام',
+            'menu.see.registration-requests' => 'نمایش منوی درخواست‌های ثبت‌نام',
+
+            // Settings
+            'settings.payment.manage' => 'مدیریت تنظیمات پرداخت',
+
+            // Notifications
+            'notifications.view' => 'مشاهده نوتیفیکیشن‌ها',
+            'notifications.manage' => 'مدیریت نوتیفیکیشن‌ها',
+
+            // ContractForge
+            'contractforge.view' => 'مشاهده قراردادها و قالب‌ها',
+            'contractforge.manage' => 'مدیریت قراردادها و قالب‌ها',
+            'contractforge.settings.manage' => 'مدیریت تنظیمات قراردادها',
+
+            // Booking Cure (Treatment Plans)
+            'booking.cure.view' => 'مشاهده طرح‌های درمان',
+            'booking.cure.view.all' => 'مشاهده همه طرح‌های درمان',
+            'booking.cure.view.own' => 'مشاهده طرح‌های درمان خود',
+            'booking.cure.view.assigned' => 'مشاهده طرح‌های درمان منتسب شده',
+            'booking.cure.create' => 'ایجاد طرح درمان',
+            'booking.cure.edit' => 'ویرایش طرح درمان',
+            'booking.cure.edit.own' => 'ویرایش طرح درمان خود',
+            'booking.cure.edit.assigned' => 'ویرایش طرح درمان منتسب شده',
+            'booking.cure.edit.confirmed' => 'ویرایش طرح درمان تایید شده',
+            'booking.cure.delete' => 'حذف طرح درمان',
+            'booking.cure.delete.own' => 'حذف طرح درمان خود',
+            'booking.cure.delete.assigned' => 'حذف طرح درمان منتسب شده',
+            'booking.cure.confirm' => 'تایید طرح درمان',
+            'booking.cure.manage' => 'مدیریت طرح‌های درمان',
         ];
 
         // اگر ترجمه صریح نداریم، یک تبدیل خوانا بساز:

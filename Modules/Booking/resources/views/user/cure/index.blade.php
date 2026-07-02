@@ -368,7 +368,7 @@
         .timeline-node-card:hover {
             transform: translateX(-4px);
         }
-        
+
         /* Financial Summary card premium styling */
         .receipt-row {
             display: flex;
@@ -489,7 +489,7 @@
                     </p>
                 </div>
             </div>
-            
+
             @if(isset($planJs['id']))
             <div class="shrink-0 relative">
                 <a href="{{ route('user.booking.cure.edit', $planJs['id']) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-black rounded-xl border border-white/10 backdrop-blur-md shadow-lg transition-all">
@@ -701,8 +701,8 @@
 
                 @canany(['booking.cure.create', 'booking.cure.edit', 'booking.cure.manage'])
                     <button x-show="!isReadOnly" @click="savePlan(status)"
-                            :disabled="planItems.length === 0 || !clientId || isSaving || isReadOnly || !hasChanges()"
-                            :class="(planItems.length === 0 || !clientId || isSaving || !hasChanges()) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg hover:shadow-indigo-200/50 dark:hover:shadow-indigo-900/30 hover:scale-[1.02]'"
+                            :disabled="planItems.length === 0 || !clientId || isSaving || isReadOnly || !hasChanges() || !hasPermissionForCurrentStatus"
+                            :class="(planItems.length === 0 || !clientId || isSaving || !hasChanges() || !hasPermissionForCurrentStatus) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg hover:shadow-indigo-200/50 dark:hover:shadow-indigo-900/30 hover:scale-[1.02]'"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-bold transition-all"
                             style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -711,6 +711,15 @@
                         <span x-text="isSaving ? 'در حال ذخیره…' : (existingPlan ? 'بروزرسانی طرح درمان' : 'ذخیره طرح درمان')"></span>
                     </button>
                 @endcanany
+            </div>
+        </div>
+
+        <div x-show="!isReadOnly && !hasPermissionForCurrentStatus" x-cloak class="mt-4 p-4 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 text-sm flex items-center gap-3">
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <div>
+                <span class="font-bold">هشدار عدم دسترسی کافی:</span> شما مجاز به ثبت طرح درمان در وضعیت <span class="font-bold" x-text="'«' + getStatusName(status) + '»'"></span> نیستید. برای امکان ذخیره تغییرات، لطفا وضعیت طرح درمان را به وضعیت دیگری تغییر دهید.
             </div>
         </div>
 
@@ -782,7 +791,7 @@
         {{-- نوار وضعیت (Status Stepper) --}}
         <div x-show="existingPlan" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 overflow-hidden relative">
             <div class="absolute inset-0 bg-gradient-to-l from-indigo-50/50 to-transparent dark:from-indigo-900/10 pointer-events-none"></div>
-            
+
             <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
                 <!-- Timeline Visual -->
                 <div class="flex-1 overflow-x-auto sc-thin">
@@ -792,7 +801,7 @@
                             <div class="h-full bg-gradient-to-l from-indigo-500 to-violet-500 rounded-full transition-all duration-500"
                                  :style="{ width: getStatusProgressPercent() + '%' }"></div>
                         </div>
-                        
+
                         <template x-for="(st, index) in cureStatuses.sort((a, b) => a.order - b.order)" :key="st.id">
                             <div class="flex flex-col items-center relative z-10 w-24">
                                 <div class="w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm transition-all duration-500 shadow-sm"
@@ -846,20 +855,57 @@
                         </div>
                         <x-booking::dental-chart/>
                     </div>
-                    <div class="px-5 py-3 flex flex-wrap gap-1.5 min-h-12 border-t border-gray-50 dark:border-gray-700/50 bg-gray-50/60 dark:bg-gray-900/20">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <template x-for="([pos, teeth], idx) in groupedTeeth" :key="pos">
-                                <div class="flex items-center" :class="idx !== groupedTeeth.length - 1 ? 'border-l-2 border-gray-400 dark:border-gray-500 pl-2 ml-1' : ''">
-                                    <template x-for="t in teeth" :key="t">
-                                        <div role="button" @click="toggle(t)"
-                                             class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-solid cursor-pointer"
-                                             :class="[getQuadrantClasses(t)]"
-                                             x-text="getToothLabel(t).num">
-                                        </div>
-                                    </template>
+                    <div class="px-5 py-3.5 flex items-center gap-3 min-h-14 border-t border-gray-150 dark:border-gray-700/50 bg-gray-50/60 dark:bg-gray-900/20">
+                        <template x-if="selectedTeeth.length > 0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-400 dark:text-gray-500 font-bold shrink-0">دندان‌های انتخابی:</span>
+                                <div class="inline-grid grid-cols-2 select-none">
+                                    <!-- Row 1: UR | UL -->
+                                    <!-- UR -->
+                                    <div class="border-l-2 border-b-2 border-slate-300 dark:border-slate-700 pb-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[36px]">
+                                        <template x-for="t in getQuadrantTeeth(selectedTeeth, 'UR')" :key="t">
+                                            <div role="button" @click="toggle(t)"
+                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                 :class="[getQuadrantClasses(t)]"
+                                                 x-text="getToothLabel(t).num">
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <!-- UL -->
+                                    <div class="border-b-2 border-slate-300 dark:border-slate-700 pb-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[36px]">
+                                        <template x-for="t in getQuadrantTeeth(selectedTeeth, 'UL')" :key="t">
+                                            <div role="button" @click="toggle(t)"
+                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                 :class="[getQuadrantClasses(t)]"
+                                                 x-text="getToothLabel(t).num">
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <!-- Row 2: LR | LL -->
+                                    <!-- LR -->
+                                    <div class="border-l-2 border-slate-300 dark:border-slate-700 pt-1 pl-2 flex items-center justify-end gap-1 min-w-[36px] min-h-[36px]">
+                                        <template x-for="t in getQuadrantTeeth(selectedTeeth, 'LR')" :key="t">
+                                            <div role="button" @click="toggle(t)"
+                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                 :class="[getQuadrantClasses(t)]"
+                                                 x-text="getToothLabel(t).num">
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <!-- LL -->
+                                    <div class="pt-1 pr-2 flex items-center justify-start gap-1 min-w-[36px] min-h-[36px]">
+                                        <template x-for="t in getQuadrantTeeth(selectedTeeth, 'LL')" :key="t">
+                                            <div role="button" @click="toggle(t)"
+                                                 class="inline-flex items-center justify-center w-8 h-8 m-0.5 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-sm font-black transition-all border-0 border-solid rounded-none cursor-pointer"
+                                                 :class="[getQuadrantClasses(t)]"
+                                                 x-text="getToothLabel(t).num">
+                                            </div>
+                                        </template>
+                                    </div>
                                 </div>
-                            </template>
-                        </div>
+                            </div>
+                        </template>
                         <template x-if="selectedTeeth.length === 0">
                             <span class="text-xs text-gray-400 dark:text-gray-500 self-center" x-text="isReadOnly ? 'هیچ دندانی انتخاب نشده است' : 'روی دندان کلیک کنید تا انتخاب شود'"></span>
                         </template>
@@ -883,7 +929,7 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                                <h4 class="font-black text-xs text-indigo-900 dark:text-indigo-200" x-text="'جزئیات و گردش‌کارهای دندان ' + selectedToothForWorkflow"></h4>
+                                <h4 class="font-black text-xs text-indigo-900 dark:text-indigo-200" x-text="'جزئیات و گردش‌کارهای دندان ' + (selectedToothForWorkflow ? getToothLabel(selectedToothForWorkflow).num : '')"></h4>
                             </div>
                             <button type="button" @click="selectedToothForWorkflow = null" class="text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">بستن</button>
                         </div>
@@ -894,7 +940,7 @@
                                 + اتصال گردش‌کار به این دندان
                             </button>
                             <a x-show="existingPlan" :href="existingPlan ? '/user/booking/cure/' + existingPlan.id + '/workflows?tooth=' + selectedToothForWorkflow : '#'" class="px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold hover:bg-indigo-700 transition-all">
-                                مشاهده بوم فرآیندهای دندان <span x-text="selectedToothForWorkflow"></span>
+                                مشاهده بوم فرآیندهای دندان <span x-text="selectedToothForWorkflow ? getToothLabel(selectedToothForWorkflow).num : ''"></span>
                             </a>
                         </div>
 
@@ -939,7 +985,7 @@
                                         <td class="py-3">
                                             <span x-show="binding.scope === 'plan'" class="px-2 py-0.5 text-[10px] font-black bg-slate-50 dark:bg-slate-700/30 text-slate-600 dark:text-slate-400 rounded-md">کل طرح درمان</span>
                                             <span x-show="binding.scope === 'item'" class="px-2 py-0.5 text-[10px] font-black bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 rounded-md">یک آیتم خاص</span>
-                                            <span x-show="binding.scope === 'tooth'" class="px-2 py-0.5 text-[10px] font-black bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 rounded-md" x-text="binding.tooth === 'all' ? 'همه دندان‌ها' : 'دندان ' + binding.tooth"></span>
+                                            <span x-show="binding.scope === 'tooth'" class="px-2 py-0.5 text-[10px] font-black bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 rounded-md" x-text="binding.tooth === 'all' ? 'همه دندان‌ها' : 'دندان ' + (binding.tooth ? getToothLabel(binding.tooth).num : '')"></span>
                                         </td>
                                         <td class="py-3">
                                             <div class="flex flex-wrap gap-1">
@@ -1128,8 +1174,8 @@
                                 <template x-for="(assignment, aIdx) in perToothAssignments" :key="assignment.toothId">
                                     <div class="bg-white dark:bg-gray-800 border rounded-3xl p-5 transition-all hover:shadow-md" :class="assignment.modified ? 'border-violet-300 dark:border-violet-700/50 bg-violet-50/30' : 'border-gray-200 dark:border-gray-700'">
                                         <div class="flex items-center gap-4 mb-6">
-                                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl bg-gray-50 dark:bg-gray-900 border-2 shadow-sm relative shrink-0" :class="getQuadrantClasses(assignment.toothId)">
-                                                <span class="text-gray-700 dark:text-gray-200" x-text="getToothLabel(assignment.toothId).num"></span>
+                                            <div class="w-12 h-12 rounded-none flex items-center justify-center font-black text-xl bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 border-0 shadow-sm relative shrink-0 border-solid" :class="getQuadrantClasses(assignment.toothId)">
+                                                <span x-text="getToothLabel(assignment.toothId).num"></span>
                                                 <span x-show="assignment.modified" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-violet-500 border-2 border-white dark:border-gray-800"></span>
                                             </div>
                                             <div class="flex-1">
@@ -1321,10 +1367,37 @@
                                                 </button>
                                             </div>
 
-                                            <div class="flex flex-wrap gap-1.5 mb-3">
-                                                <template x-for="t in item.teeth" :key="t">
-                                                    <span class="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-lg border-2 bg-white dark:bg-gray-900" :class="getQuadrantClasses(t)" x-text="getToothLabel(t).num"></span>
-                                                </template>
+                                            <div class="flex items-center gap-2 mb-3">
+                                                <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold shrink-0">دندان‌ها:</span>
+                                                <div class="inline-grid grid-cols-2 select-none">
+                                                    <!-- Row 1: UR | UL -->
+                                                    <!-- UR -->
+                                                    <div class="border-l-2 border-b-2 border-slate-300 dark:border-slate-700 pb-1 pl-2 flex items-center justify-end gap-1 min-w-[28px] min-h-[24px]">
+                                                        <template x-for="t in getQuadrantTeeth(item.teeth, 'UR')" :key="t">
+                                                            <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 transition-all border-solid" :class="getQuadrantClasses(t)" x-text="getToothLabel(t).num"></span>
+                                                        </template>
+                                                    </div>
+                                                    <!-- UL -->
+                                                    <div class="border-b-2 border-slate-300 dark:border-slate-700 pb-1 pr-2 flex items-center justify-start gap-1 min-w-[28px] min-h-[24px]">
+                                                        <template x-for="t in getQuadrantTeeth(item.teeth, 'UL')" :key="t">
+                                                            <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 transition-all border-solid" :class="getQuadrantClasses(t)" x-text="getToothLabel(t).num"></span>
+                                                        </template>
+                                                    </div>
+
+                                                    <!-- Row 2: LR | LL -->
+                                                    <!-- LR -->
+                                                    <div class="border-l-2 border-slate-300 dark:border-slate-700 pt-1 pl-2 flex items-center justify-end gap-1 min-w-[28px] min-h-[24px]">
+                                                        <template x-for="t in getQuadrantTeeth(item.teeth, 'LR')" :key="t">
+                                                            <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 transition-all border-solid" :class="getQuadrantClasses(t)" x-text="getToothLabel(t).num"></span>
+                                                        </template>
+                                                    </div>
+                                                    <!-- LL -->
+                                                    <div class="pt-1 pr-2 flex items-center justify-start gap-1 min-w-[28px] min-h-[24px]">
+                                                        <template x-for="t in getQuadrantTeeth(item.teeth, 'LL')" :key="t">
+                                                            <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 transition-all border-solid" :class="getQuadrantClasses(t)" x-text="getToothLabel(t).num"></span>
+                                                        </template>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             <template x-if="item.brands && item.brands.length > 0">
@@ -1420,10 +1493,10 @@
                     <h2 class="font-bold text-gray-800 dark:text-white">جزئیات و تاریخچه تغییرات طرح درمان</h2>
                 </div>
             </div>
-            
+
             <div class="p-6">
                 <div class="flex flex-col lg:flex-row gap-8 items-start">
-                    
+
                     <!-- ستون سمت راست: کادر درمان و یادداشت‌ها -->
                     <div class="flex-1 lg:max-w-md w-full space-y-6">
                         <!-- بخش انتساب کادر درمان -->
@@ -1437,23 +1510,23 @@
                                     <div>
                                         <label class="block text-[11px] font-bold text-gray-500 mb-1.5" x-text="'انتخاب ' + role.role_label"></label>
                                         <div x-show="isReadOnly" class="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700" x-text="getAssignedUserName(role.role_id)"></div>
-                                        <div x-show="!isReadOnly" 
-                                             x-data="{ 
-                                                 open: false, 
+                                        <div x-show="!isReadOnly"
+                                             x-data="{
+                                                 open: false,
                                                  search: '',
                                                  get selectedUserId() { return getAssignedUserId(role.role_id); },
                                                  get selectedUser() { return role.users.find(u => Number(u.id) === Number(this.selectedUserId)); },
-                                                 get filteredUsers() { 
-                                                     if(!this.search) return role.users; 
-                                                     return role.users.filter(u => u.name.toLowerCase().includes(this.search.toLowerCase())); 
+                                                 get filteredUsers() {
+                                                     if(!this.search) return role.users;
+                                                     return role.users.filter(u => u.name.toLowerCase().includes(this.search.toLowerCase()));
                                                  }
-                                             }" 
+                                             }"
                                              class="relative">
-                                             
+
                                             <!-- Trigger -->
                                             <button type="button" @click="open = !open" @click.away="open = false"
                                                     class="w-full flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs shadow-sm hover:border-indigo-300 dark:hover:border-indigo-600 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30">
-                                                
+
                                                 <div class="flex items-center gap-2 overflow-hidden">
                                                     <template x-if="selectedUser">
                                                         <div class="flex items-center gap-2">
@@ -1472,7 +1545,7 @@
                                                 </div>
                                                 <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                                             </button>
-    
+
                                             <!-- Dropdown Menu -->
                                             <div x-show="open" x-cloak
                                                  x-transition:enter="transition ease-out duration-150"
@@ -1482,20 +1555,20 @@
                                                  x-transition:leave-start="opacity-100"
                                                  x-transition:leave-end="opacity-0"
                                                  class="absolute z-50 mt-1.5 w-full rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl shadow-indigo-100/30 dark:shadow-black/50 overflow-hidden">
-                                                
+
                                                 <!-- Search -->
                                                 <div class="p-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
                                                     <div class="relative">
-                                                        <input type="text" x-model="search" @click.stop placeholder="جستجوی همکار..." 
+                                                        <input type="text" x-model="search" @click.stop placeholder="جستجوی همکار..."
                                                                class="w-full pl-2 pr-8 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 dark:text-gray-200 transition-all placeholder-gray-400">
                                                         <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                                     </div>
                                                 </div>
-    
+
                                                 <!-- Options list -->
                                                 <div class="max-h-48 overflow-y-auto sc-thin p-1.5">
                                                     <!-- None option -->
-                                                    <button type="button" @click="setAssignedUser(role.role_id, role.role_name, '', role.users); open = false; search = ''" 
+                                                    <button type="button" @click="setAssignedUser(role.role_id, role.role_name, '', role.users); open = false; search = ''"
                                                             class="w-full text-right px-3 py-2 text-xs rounded-xl transition-all flex items-center justify-between border border-transparent"
                                                             :class="!selectedUserId ? 'bg-rose-50 border-rose-100 text-rose-700 dark:bg-rose-900/20 dark:border-rose-800/30 dark:text-rose-400' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'">
                                                         <div class="flex items-center gap-2">
@@ -1506,10 +1579,10 @@
                                                         </div>
                                                         <svg x-show="!selectedUserId" class="w-4 h-4 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                                                     </button>
-                                                    
+
                                                     <!-- User options -->
                                                     <template x-for="u in filteredUsers" :key="u.id">
-                                                        <button type="button" @click="setAssignedUser(role.role_id, role.role_name, u.id, role.users); open = false; search = ''" 
+                                                        <button type="button" @click="setAssignedUser(role.role_id, role.role_name, u.id, role.users); open = false; search = ''"
                                                                 class="w-full text-right px-3 py-2 mt-1 text-xs rounded-xl transition-all flex items-center justify-between border border-transparent"
                                                                 :class="Number(selectedUserId) === Number(u.id) ? 'bg-indigo-50 border-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800/30 dark:text-indigo-300' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700'">
                                                             <div class="flex items-center gap-2">
@@ -1521,7 +1594,7 @@
                                                             <svg x-show="Number(selectedUserId) === Number(u.id)" class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                                                         </button>
                                                     </template>
-                                                    
+
                                                     <div x-show="filteredUsers.length === 0" class="py-4 text-center text-[11px] text-gray-400 dark:text-gray-500 font-medium">
                                                         کاربری یافت نشد
                                                     </div>
@@ -1532,7 +1605,7 @@
                                 </template>
                             </div>
                         </div>
-    
+
                         <!-- بخش یادداشت‌ها -->
                         <div x-show="!isReadOnly || notes" class="space-y-4">
                             <h3 class="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2 text-sm border-b border-gray-100 dark:border-gray-700 pb-2">
@@ -1562,7 +1635,7 @@
                                     <!-- Timeline Dot Node -->
                                     <div class="absolute -right-[19px] top-[18px] w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 timeline-glow-dot z-10 transition-all duration-300"
                                          :style="{ backgroundColor: getStatusColor(snap.status_to), boxShadow: '0 0 0 4px ' + getStatusColor(snap.status_to) + '25' }"></div>
-                                    
+
                                     <!-- Timeline Card Trigger -->
                                     <div class="timeline-node-card flex items-center justify-between gap-4 cursor-pointer p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-800 shadow-sm hover:shadow-md transition-all duration-300" @click="open = !open">
                                         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -1616,7 +1689,7 @@
                                             </svg>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Mobile View Button -->
                                     <div x-show="open" class="sm:hidden mt-2 px-4">
                                         <a :href="'{{ route('user.booking.cure.snapshot', ['cure' => '__CURE__', 'snapshot' => '__SNAP__']) }}'.replace('__CURE__', existingPlan?.id).replace('__SNAP__', snap.id)" target="_blank" class="flex w-full justify-center items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 font-black text-sm border border-indigo-200">
@@ -1624,10 +1697,10 @@
                                             <span>مشاهده کامل نسخه این وضعیت</span>
                                         </a>
                                     </div>
-                                    
+
                                     <!-- Expanded detail sheet -->
                                     <div x-show="open" x-collapse class="mt-3 p-5 rounded-2xl bg-slate-50/30 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700 shadow-inner space-y-6">
-                                        
+
                                         <!-- Notes -->
                                         <div x-show="snap.notes" class="bg-indigo-50/50 dark:bg-indigo-950/20 p-4 rounded-xl border border-indigo-100/50 dark:border-indigo-900/30">
                                             <h4 class="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 mb-1.5 flex items-center gap-2">
@@ -1636,12 +1709,12 @@
                                             </h4>
                                             <p class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium" x-text="snap.notes"></p>
                                         </div>
-                                        
+
                                         <!-- Financial Summary Grid -->
                                         <div x-data="{
-                                                get rawTotal() { 
+                                                get rawTotal() {
                                                     if (!snap.items) return 0;
-                                                    return snap.items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity || 1)), 0); 
+                                                    return snap.items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity || 1)), 0);
                                                 },
                                                 get discountVal() {
                                                     if (snap.discount_type === 'percent') {
@@ -1651,12 +1724,12 @@
                                                 },
                                                 get finalTotal() { return Math.max(0, this.rawTotal - this.discountVal); }
                                             }">
-                                            
+
                                             <h4 class="text-xs font-black text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 pb-2">
                                                 <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                                 <span>خلاصه مالی و نحوه تسویه</span>
                                             </h4>
-                                            
+
                                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
                                                 <!-- Raw Total -->
                                                 <div class="bg-white dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex flex-col justify-between">
@@ -1675,7 +1748,7 @@
                                                     <span class="font-mono text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 relative" x-text="formatPrice(finalTotal) + ' ' + currencyLabel"></span>
                                                 </div>
                                             </div>
-                                            
+
                                             <!-- Installment Details (If any) -->
                                             <template x-if="snap.installment_option_title || snap.installment_months > 0">
                                                 <div class="bg-indigo-50/30 dark:bg-indigo-950/20 p-4 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30 mb-5">
@@ -1706,7 +1779,7 @@
                                                 </div>
                                             </template>
                                         </div>
-                                        
+
                                         <!-- Services Table -->
                                         <div>
                                             <h4 class="text-xs font-black text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
@@ -1729,10 +1802,36 @@
                                                                 <td class="px-5 py-3.5 font-bold" x-text="item.service_name"></td>
                                                                 <td class="px-5 py-3.5 text-center">
                                                                     <template x-if="item.teeth && item.teeth.length > 0">
-                                                                        <div class="flex flex-wrap justify-center gap-1">
-                                                                            <template x-for="t in item.teeth" :key="t">
-                                                                                <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-md text-[10px] font-mono font-bold" x-text="t"></span>
-                                                                            </template>
+                                                                        <div class="flex justify-center mt-1">
+                                                                            <div class="inline-grid grid-cols-2 select-none">
+                                                                                <!-- Row 1: UR | UL -->
+                                                                                <!-- UR -->
+                                                                                <div class="border-l-2 border-b-2 border-slate-300 dark:border-slate-700 pb-1 pl-2 flex items-center justify-end gap-1 min-w-[24px] min-h-[22px]">
+                                                                                    <template x-for="t in getQuadrantTeeth(item.teeth, 'UR')" :key="t">
+                                                                                        <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 transition-all border-solid" :class="getQuadrantClasses(t)" x-text="getToothLabel(t).num"></span>
+                                                                                    </template>
+                                                                                </div>
+                                                                                <!-- UL -->
+                                                                                <div class="border-b-2 border-slate-300 dark:border-slate-700 pb-1 pr-2 flex items-center justify-start gap-1 min-w-[24px] min-h-[22px]">
+                                                                                    <template x-for="t in getQuadrantTeeth(item.teeth, 'UL')" :key="t">
+                                                                                        <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 transition-all border-solid" :class="getQuadrantClasses(t)" x-text="getToothLabel(t).num"></span>
+                                                                                    </template>
+                                                                                </div>
+
+                                                                                <!-- Row 2: LR | LL -->
+                                                                                <!-- LR -->
+                                                                                <div class="border-l-2 border-slate-300 dark:border-slate-700 pt-1 pl-2 flex items-center justify-end gap-1 min-w-[24px] min-h-[22px]">
+                                                                                    <template x-for="t in getQuadrantTeeth(item.teeth, 'LR')" :key="t">
+                                                                                        <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 transition-all border-solid" :class="getQuadrantClasses(t)" x-text="getToothLabel(t).num"></span>
+                                                                                    </template>
+                                                                                </div>
+                                                                                <!-- LL -->
+                                                                                <div class="pt-1 pr-2 flex items-center justify-start gap-1 min-w-[24px] min-h-[22px]">
+                                                                                    <template x-for="t in getQuadrantTeeth(item.teeth, 'LL')" :key="t">
+                                                                                        <span class="inline-flex items-center justify-center w-6 h-6 text-[10px] font-black rounded-none border-0 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 transition-all border-solid" :class="getQuadrantClasses(t)" x-text="getToothLabel(t).num"></span>
+                                                                                    </template>
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
                                                                     </template>
                                                                     <span x-show="!item.teeth || item.teeth.length === 0" class="text-gray-400">-</span>
@@ -1781,14 +1880,14 @@
                                  :class="!useInstallment ? 'right-[6px] bg-emerald-600 shadow-emerald-500/25 dark:shadow-emerald-950/50' : 'left-[6px] bg-indigo-600 shadow-indigo-500/25 dark:shadow-indigo-950/50'">
                             </div>
 
-                            <button type="button" @click="useInstallment = false; selectedInstallmentOptionId = null" 
-                                    class="payment-pill-btn" 
+                            <button type="button" @click="useInstallment = false; selectedInstallmentOptionId = null"
+                                    class="payment-pill-btn"
                                     :class="!useInstallment ? 'text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
                                 <svg class="w-4 h-4 transition-transform duration-300" :class="!useInstallment ? 'scale-110' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                                 <span class="relative font-bold text-xs md:text-sm">نقدی</span>
                             </button>
-                            <button type="button" @click="useInstallment = true" 
-                                    class="payment-pill-btn relative" 
+                            <button type="button" @click="useInstallment = true"
+                                    class="payment-pill-btn relative"
                                     :class="useInstallment ? 'text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
                                 <span x-show="installmentTypes.length > 0" class="absolute -top-1.5 -left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white border border-white dark:border-gray-800" x-text="installmentTypes.length"></span>
                                 <svg class="w-4 h-4 transition-transform duration-300" :class="useInstallment ? 'scale-110' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
@@ -2315,7 +2414,7 @@
                                 <span class="text-xs font-black">طرح درمان</span>
                                 <span class="text-[9px] mt-1 text-center">اجرا برای کل طرح</span>
                             </label>
-                            
+
                             <label class="flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all animate-none"
                                    :class="bindingForm.scope === 'item' ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10 text-indigo-600 dark:text-indigo-400' : 'border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-200'">
                                 <input type="radio" x-model="bindingForm.scope" value="item" class="sr-only">
@@ -2345,31 +2444,31 @@
                         <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">انتخاب آیتم طرح درمان مربوطه <span class="text-rose-500">*</span></label>
                         <select :value="bindingForm.item_key" @change="bindingForm.item_key = $event.target.value" x-html="getItemOptionsHtml(false)" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:border-indigo-500">
                         </select>
-                        
+
                         <!-- Tooth checkboxes list -->
                         <div x-show="bindingForm.item_key" class="space-y-2 mt-3 bg-gray-50 dark:bg-gray-900/50 p-3.5 rounded-xl border border-gray-200 dark:border-gray-700/60">
                             <label class="block text-[11px] font-black text-gray-600 dark:text-gray-400 mb-1">انتخاب دندان‌های هدف این گردش‌کار:</label>
                             <div class="flex flex-col gap-2">
                                 <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-indigo-700 dark:text-indigo-400">
-                                    <input type="checkbox" value="all" 
-                                           x-model="selectedTeethForBinding" 
+                                    <input type="checkbox" value="all"
+                                           x-model="selectedTeethForBinding"
                                            @change="if (selectedTeethForBinding.includes('all')) selectedTeethForBinding = ['all']"
                                            class="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300">
                                     <span>کل دندان‌های این آیتم (اجرا به صورت مجزا برای هر دندان)</span>
                                 </label>
-                                
+
                                 <div class="grid grid-cols-4 gap-2 mt-1 pt-2 border-t border-gray-100 dark:border-gray-800">
                                     <template x-for="t in (planItems.find(i => i.item_uuid === bindingForm.item_key)?.teeth || [])" :key="t">
                                         <label class="flex items-center gap-1.5 cursor-pointer text-xs text-gray-700 dark:text-gray-300">
-                                            <input type="checkbox" :value="String(t)" 
-                                                   x-model="selectedTeethForBinding" 
+                                            <input type="checkbox" :value="String(t)"
+                                                   x-model="selectedTeethForBinding"
                                                    @change="selectedTeethForBinding = selectedTeethForBinding.filter(val => val !== 'all')"
                                                    class="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                            <span x-text="'دندان ' + t"></span>
+                                            <span x-text="'دندان ' + getToothLabel(t).num"></span>
                                         </label>
                                     </template>
                                 </div>
-                                
+
                                 <template x-if="!(planItems.find(i => i.item_uuid === bindingForm.item_key)?.teeth || []).length">
                                     <p class="text-[10px] text-amber-600 dark:text-amber-400 italic">این آیتم فاقد شماره دندان اختصاصی است. گردش‌کار به صورت عمومی روی آیتم اجرا خواهد شد.</p>
                                 </template>
@@ -2476,7 +2575,7 @@
                 cureStatuses: cureStatuses,
                 status: existingPlan?.status || appSettings?.cure_default_status || 'draft',
                 assignedUsers: existingPlan?.assigned_users || [],
-                snapshots: existingPlan?.snapshots || [],
+snapshots: existingPlan?.snapshots || [],
 
                 // ── Workflow Bindings State ──
                 workflowBindings: [],
@@ -2526,18 +2625,29 @@
                     const originalStatus = this.existingPlan?.status || this.settings?.cure?.default_status || 'draft';
                     return this.cureStatuses.filter(st => {
                         if (st.id === originalStatus) return false;
-                        
+
                         const allowedFrom = st.allowed_from || [];
                         if (allowedFrom.length > 0 && !allowedFrom.includes(originalStatus)) return false;
-                        
+
                         const allowedRoles = st.allowed_roles || [];
                         if (allowedRoles.length > 0) {
                             const intersection = allowedRoles.filter(rId => userRoleIds.map(Number).includes(Number(rId)));
                             if (intersection.length === 0) return false;
                         }
-                        
+
                         return true;
                     });
+                },
+                get hasPermissionForCurrentStatus() {
+                    const currentStatusData = this.cureStatuses.find(s => s.id === this.status);
+                    if (!currentStatusData) return true;
+                    const allowedRoles = currentStatusData.allowed_roles || [];
+                    if (allowedRoles.length > 0) {
+                        const userRoleIds = this.currentUserRoleIds || [];
+                        const intersection = allowedRoles.filter(rId => userRoleIds.map(Number).includes(Number(rId)));
+                        if (intersection.length === 0) return false;
+                    }
+                    return true;
                 },
                 availableStatusesForSelection() {
                     const originalStatus = this.existingPlan?.status || this.settings?.cure?.default_status || 'draft';
@@ -2545,7 +2655,16 @@
                     const transitions = this.getAvailableTransitions();
                     const list = [];
                     if (current) {
-                        list.push(current);
+                        const userRoleIds = this.currentUserRoleIds || [];
+                        const allowedRoles = current.allowed_roles || [];
+                        let isAllowed = true;
+                        if (allowedRoles.length > 0) {
+                            const intersection = allowedRoles.filter(rId => userRoleIds.map(Number).includes(Number(rId)));
+                            if (intersection.length === 0) isAllowed = false;
+                        }
+                        if (isAllowed) {
+                            list.push(current);
+                        }
                     }
                     transitions.forEach(tr => {
                         if (!list.some(item => item.id === tr.id)) {
@@ -2584,6 +2703,7 @@
                 discountType: 'amount',
                 highlightedItemId: null,
                 showPerToothDetail: false,
+                editingItemId: null,
 
                 // ── Teeth ────────────────────────────────────────────────────
                 selectedTeeth: [],
@@ -2906,7 +3026,7 @@
                         if (eligibleKeys.length === 0) return false;
                         return true;
                     });
-                    
+
                     return eligible;
                 },
 
@@ -2943,7 +3063,7 @@
                             });
                             if (matchKey) cfg = configs[matchKey];
                         }
-                        
+
                         const effectiveTier = this.getEffectiveTierForBrand(option, b.key, this.finalPayable);
                         const isActive = cfg !== undefined ? cfg.active : true;
 
@@ -3696,7 +3816,7 @@
                             const svc = this.services.find(s => String(s.id) === String(item.service_id));
                             return {
                                 id: Date.now() + index + Math.random(),
-                                teeth: Array.isArray(item.teeth) ? item.teeth : [],
+                                teeth: Array.isArray(item.teeth) ? item.teeth.map(Number) : [],
                                 service: { id: item.service_id, name: item.service_name },
                                 brands: Array.isArray(item.brands) ? item.brands : [],
                                 brandSelections: item.brand_selections || item.brandSelections || {},
@@ -3890,7 +4010,7 @@
                     }
 
                     this.isSubmittingBinding = true;
-                    const url = this.editingBinding 
+                    const url = this.editingBinding
                         ? `/user/booking/cure/${this.existingPlan.id}/workflow-bindings/${this.editingBinding.id}`
                         : `/user/booking/cure/${this.existingPlan.id}/workflow-bindings`;
                     const method = this.editingBinding ? 'PUT' : 'POST';
@@ -3924,7 +4044,7 @@
 
                 deleteWorkflowBinding(bindingId) {
                     if (!confirm('آیا از حذف این اتصال گردش‌کار مطمئن هستید؟')) return;
-                    
+
                     if (!this.existingPlan) {
                         this.workflowBindings = this.workflowBindings.filter(b => b.id !== bindingId);
                         showToast('اتصال با موفقیت حذف شد', 'success');
@@ -4011,10 +4131,10 @@
                 is(id) {
                     if (this.isReadOnly) {
                         if (this.selectedToothForWorkflow === id) return 'tooth-path tooth-selected-wf';
-                        
+
                         const hasActive = this.workflowsCountForTooth(id, 'ACTIVE') > 0;
                         const hasBinding = this.bindingsCountForTooth(id) > 0;
-                        
+
                         if (hasActive) return 'tooth-path tooth-active-wf';
                         if (hasBinding) return 'tooth-path tooth-bound-wf';
                         if (this.settings.cure.auto_highlight_teeth && this.planItems.some(i => i.teeth.includes(id))) return 'tooth-path tooth-in-plan';
@@ -4025,7 +4145,7 @@
                         return highlightedItem?.teeth?.includes(id) ? 'tooth-path tooth-highlighted' : 'tooth-path tooth-unselected';
                     }
                     if (this.selectedTeeth.includes(id)) return 'tooth-path tooth-selected';
-                    if (this.settings.cure.auto_highlight_teeth && this.planItems.some(i => i.teeth.includes(id))) return 'tooth-path tooth-in-plan';
+                    if (this.settings.cure.auto_highlight_teeth && this.planItems.some(i => i.id !== this.editingItemId && i.teeth.includes(id))) return 'tooth-path tooth-in-plan';
                     return 'tooth-path tooth-unselected';
                 },
 
@@ -4075,10 +4195,10 @@
 
                 getQuadrantClasses(id) {
                     switch(this.getToothLabel(id).pos) {
-                        case 'UR': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'UL': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'LR': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'LL': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'UR': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'UL': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LR': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LL': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
                         default: return '';
                     }
                 },
@@ -4089,6 +4209,21 @@
                     const groups = { 'UR':[], 'UL':[], 'LR':[], 'LL':[] };
                     sorted.forEach(t => groups[this.getToothLabel(t).pos].push(t));
                     return Object.entries(groups).filter(([,v]) => v.length > 0);
+                },
+
+                groupTeethList(teethArray) {
+                    const posOrder = { 'UR':1, 'UL':2, 'LR':3, 'LL':4 };
+                    const sorted = [...(teethArray || [])].map(Number).sort((a,b) => posOrder[this.getToothLabel(a).pos] - posOrder[this.getToothLabel(b).pos]);
+                    const groups = { 'UR':[], 'UL':[], 'LR':[], 'LL':[] };
+                    sorted.forEach(t => groups[this.getToothLabel(t).pos].push(t));
+                    return Object.entries(groups).filter(([,v]) => v.length > 0);
+                },
+
+                getQuadrantTeeth(teethArray, pos) {
+                    return (teethArray || [])
+                        .map(Number)
+                        .filter(t => this.getToothLabel(t).pos === pos)
+                        .sort((a,b) => a - b);
                 },
 
                 get filteredServices() {
@@ -4113,6 +4248,7 @@
                     this.perToothAssignments = [];
                     this.batchBrandSelections = {};
                     this.batchManualPrice = 0;
+                    this.editingItemId = null;
                 },
 
                 get servicePlanCounts() {
@@ -4131,7 +4267,7 @@
 
                 isBrandSelectedForTooth(aIdx, tabIdx, sectionIdx, brandIdx) {
                     const a = this.perToothAssignments[aIdx];
-                    return (a?.brandSelections?.[`${tabIdx}-${sectionIdx}`] || []).includes(brandIdx);
+                    return (a?.brandSelections?.[`${tabIdx}-${sectionIdx}`] || []).map(Number).includes(Number(brandIdx));
                 },
 
                 getToothSelectedCountForTabAndSection(aIdx, tabIdx, sectionIdx) {
@@ -4143,14 +4279,14 @@
                     const a = this.perToothAssignments[aIdx];
                     if (!a.brandSelections) a.brandSelections = {};
                     const key = `${tabIdx}-${sectionIdx}`;
-                    let sel = [...(a.brandSelections[key] || [])];
+                    let sel = [...(a.brandSelections[key] || [])].map(Number);
                     const section = this.selectedService?.custom_prices?.tabs?.[tabIdx]?.sections?.[sectionIdx];
                     const isSingle = this.isSingleChoiceType(section?.type);
 
                     if (isSingle) {
-                        sel = sel.includes(brandIdx) ? [] : [brandIdx];
+                        sel = sel.includes(Number(brandIdx)) ? [] : [Number(brandIdx)];
                     } else {
-                        sel = sel.includes(brandIdx) ? sel.filter(i => i !== brandIdx) : [...sel, brandIdx];
+                        sel = sel.includes(Number(brandIdx)) ? sel.filter(i => i !== Number(brandIdx)) : [...sel, Number(brandIdx)];
                     }
 
                     a.brandSelections[key] = sel;
@@ -4165,7 +4301,7 @@
                     (this.selectedService?.custom_prices?.tabs ?? []).forEach((tab, tIdx) => {
                         const sections = tab.sections || [];
                         sections.forEach((section, sIdx) => {
-                            const sel = (a.brandSelections?.[`${tIdx}-${sIdx}`]) || [];
+                            const sel = ((a.brandSelections?.[`${tIdx}-${sIdx}`]) || []).map(Number);
                             sel.forEach(bIdx => {
                                 const brand = section.brands?.[bIdx];
                                 if (brand) {
@@ -4187,22 +4323,23 @@
                 },
 
                 isBrandSelectedInBatch(tabIdx, sectionIdx, brandIdx) {
-                    return (this.batchBrandSelections[`${tabIdx}-${sectionIdx}`] || []).includes(brandIdx);
+                    return (this.batchBrandSelections[`${tabIdx}-${sectionIdx}`] || []).map(Number).includes(Number(brandIdx));
                 },
 
                 toggleBatchBrand(tabIdx, sectionIdx, brandIdx) {
                     const key = `${tabIdx}-${sectionIdx}`;
-                    let sel = [...(this.batchBrandSelections[key] || [])];
+                    let sel = [...(this.batchBrandSelections[key] || [])].map(Number);
                     const section = this.selectedService?.custom_prices?.tabs?.[tabIdx]?.sections?.[sectionIdx];
                     const isSingle = this.isSingleChoiceType(section?.type);
 
                     if (isSingle) {
-                        sel = sel.includes(brandIdx) ? [] : [brandIdx];
+                        sel = sel.includes(Number(brandIdx)) ? [] : [Number(brandIdx)];
                     } else {
-                        sel = sel.includes(brandIdx) ? sel.filter(i => i !== brandIdx) : [...sel, brandIdx];
+                        sel = sel.includes(Number(brandIdx)) ? sel.filter(i => i !== Number(brandIdx)) : [...sel, Number(brandIdx)];
                     }
 
                     this.batchBrandSelections[key] = sel;
+                    this.batchBrandSelections = { ...this.batchBrandSelections };
                     this.recalculateBatchPrice();
                 },
 
@@ -4216,7 +4353,7 @@
                     (this.selectedService?.custom_prices?.tabs ?? []).forEach((tab, tIdx) => {
                         const sections = tab.sections || [];
                         sections.forEach((section, sIdx) => {
-                            const sel = this.batchBrandSelections[`${tIdx}-${sIdx}`] || [];
+                            const sel = (this.batchBrandSelections[`${tIdx}-${sIdx}`] || []).map(Number);
                             sel.forEach(bIdx => {
                                 const brand = section.brands?.[bIdx];
                                 if (brand) total += Number(brand.price || 0);
@@ -4234,6 +4371,7 @@
                         this.perToothAssignments[aIdx].brandSelections = JSON.parse(JSON.stringify(this.batchBrandSelections));
                         this.recalculateToothPrice(aIdx);
                     });
+                    this.perToothAssignments = [...this.perToothAssignments];
                     showToast(`برندهای انتخابی روی ${this.selectedTeeth.length} دندان اعمال شد`, 'success');
                 },
 
@@ -4272,9 +4410,14 @@
                     for (const grp of this.assignmentGroups) {
                         for (const t of grp.teeth) {
                             const curBrands = grp.brands?.map(b => b.name).sort().join(',') || '';
-                            const dup = this.planItems.some(item => item.service.id === this.selectedService.id && item.teeth.includes(t) && (item.brands?.map(b => b.name).sort().join(',') || '') === curBrands);
+                            const dup = this.planItems.some(item => item.id !== this.editingItemId && item.service.id === this.selectedService.id && item.teeth.includes(t) && (item.brands?.map(b => b.name).sort().join(',') || '') === curBrands);
                             if (dup) { showToast(`دندان ${this.getToothLabel(t).num} قبلاً با همین مشخصات ثبت شده است`, 'error'); return; }
                         }
+                    }
+
+                    if (this.editingItemId) {
+                        this.planItems = this.planItems.filter(i => i.id !== this.editingItemId);
+                        this.editingItemId = null;
                     }
 
                     let warrantyStr = null;
@@ -4312,21 +4455,30 @@
                     if (this.isReadOnly) return;
                     this.planItems = this.planItems.filter(i => i.id !== id);
                     this.draftSaved = false;
+                    if (this.editingItemId === id) {
+                        this.cancelAssignment();
+                    }
                 },
 
                 editItem(id) {
                     if (this.isReadOnly) return;
                     const item = this.planItems.find(i => i.id === id);
                     if (!item) return;
-                    this.removeItem(id);
-                    this.selectedTeeth = [...item.teeth];
+                    this.selectedTeeth = [...item.teeth].map(Number);
                     this.preset = 'none';
-                    this.selectedService = this.services.find(s => s.id === item.service.id) || null;
+                    this.selectedService = this.services.find(s => String(s.id) === String(item.service.id)) || null;
+                    this.editingItemId = id;
                     setTimeout(() => {
                         this.buildPerToothAssignments();
                         const bs = item.brandSelections || {};
                         this.batchBrandSelections = JSON.parse(JSON.stringify(bs));
+                        this.perToothAssignments.forEach((assignment, aIdx) => {
+                            this.perToothAssignments[aIdx].brandSelections = JSON.parse(JSON.stringify(bs));
+                            this.recalculateToothPrice(aIdx);
+                        });
                         this.recalculateBatchPrice();
+                        this.batchBrandSelections = { ...this.batchBrandSelections };
+                        this.perToothAssignments = [...this.perToothAssignments];
                     }, 200);
                 },
 
@@ -4484,27 +4636,27 @@
 
                 hasChanges() {
                     if (!this.existingPlan) return true;
-                    
+
                     const originalStatus = this.existingPlan.status || this.settings?.cure?.default_status || 'draft';
                     const statusChanged = (this.status !== originalStatus);
-                    
+
                     const clientChanged = Number(this.clientId) !== Number(this.existingPlan.client?.id || 0);
                     const nameChanged = (this.patientName || '').trim() !== (this.existingPlan.patient_name || '').trim();
                     const notesChanged = (this.notes || '').trim() !== (this.existingPlan.notes || '').trim();
                     const discountAmountChanged = Number(this.discountAmount) !== Number(this.existingPlan.discount_amount || 0);
                     const discountTypeChanged = (this.discountType || 'amount') !== (this.existingPlan.discount_type || 'amount');
-                    
+
                     const currentUseInst = !!(this.useInstallment && this.selectedInstallmentOptionId);
                     const oldUseInst = !!this.existingPlan.installment_option_id;
                     const useInstChanged = currentUseInst !== oldUseInst;
-                    
+
                     let installmentDetailsChanged = false;
                     if (currentUseInst && !useInstChanged) {
                         const optionIdChanged = this.selectedInstallmentOptionId !== this.existingPlan.installment_option_id;
                         const monthsChanged = Number(this.selectedInstallmentMonths) !== Number(this.existingPlan.installment_months);
                         const chequesCountChanged = Number(this.numberOfCheques) !== Number(this.existingPlan.installment_count);
                         const startDateChanged = (this.installmentStartDate || '') !== (this.existingPlan.installment_start_date || '');
-                        
+
                         const serializeCheques = (cheques) => {
                             return JSON.stringify((cheques || []).map(c => ({
                                 amount: Number(c.amount) || 0,
@@ -4514,10 +4666,10 @@
                             })));
                         };
                         const chequesChanged = serializeCheques(this.generatedCheques) !== serializeCheques(this.existingPlan.generated_cheques);
-                        
+
                         installmentDetailsChanged = optionIdChanged || monthsChanged || chequesCountChanged || startDateChanged || chequesChanged;
                     }
-                    
+
                     const serializeUsers = (users) => {
                         return JSON.stringify((users || []).map(u => ({
                             role_id: Number(u.role_id),
@@ -4525,9 +4677,9 @@
                         })).sort((a,b) => a.role_id - b.role_id));
                     };
                     const usersChanged = serializeUsers(this.assignedUsers) !== serializeUsers(this.existingPlan.assigned_users);
-                    
+
                     const itemsChanged = this.serializeItemsForComparison(this.planItems) !== this.serializeItemsForComparison(this.existingPlan.items);
-                    
+
                     return statusChanged || clientChanged || nameChanged || notesChanged || discountAmountChanged || discountTypeChanged || useInstChanged || installmentDetailsChanged || usersChanged || itemsChanged;
                 },
 
@@ -4629,13 +4781,13 @@
                         if (res.ok && data.success) {
                             showToast('تغییرات با موفقیت ذخیره شد', 'success');
                             if (status === 'draft') this.draftSaved = true;
-                            
+
                             // Redirect to edit page for new plans
                             if (!isEdit && data.id) {
                                 window.location.href = `{{ route('user.booking.cure.edit', ':id') }}`.replace(':id', data.id);
                                 return;
                             }
-                            
+
                             if (data.redirect && shouldRedirect) {
                                 window.location.href = data.redirect;
                             } else {

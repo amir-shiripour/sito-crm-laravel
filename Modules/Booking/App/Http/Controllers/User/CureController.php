@@ -299,6 +299,7 @@ class CureController extends Controller
                 'booking.cure.view',
                 'booking.cure.view.all',
                 'booking.cure.view.own',
+                'booking.cure.view.assigned',
                 'booking.cure.manage',
             ]),
             403
@@ -310,13 +311,23 @@ class CureController extends Controller
         $user = auth()->user();
         $query = TreatmentPlan::with('client', 'creator');
 
-        // Scope to own plans if user only has view.own
-        if (
-            !$user->can('booking.cure.view.all') &&
-            !$user->can('booking.cure.manage') &&
-            $user->can('booking.cure.view.own')
-        ) {
-            $query->where('user_id', $user->id);
+        // Scope to own/assigned plans
+        if (!$user->hasRole('super-admin') && !$user->can('booking.cure.view.all') && !$user->can('booking.cure.manage')) {
+            $query->where(function ($q) use ($user) {
+                $hasOwn = $user->can('booking.cure.view.own') || $user->can('booking.cure.view');
+                $hasAssigned = $user->can('booking.cure.view.assigned');
+
+                if ($hasOwn && $hasAssigned) {
+                    $q->where('user_id', $user->id)
+                      ->orWhereJsonContains('assigned_users', ['user_id' => $user->id]);
+                } elseif ($hasOwn) {
+                    $q->where('user_id', $user->id);
+                } elseif ($hasAssigned) {
+                    $q->whereJsonContains('assigned_users', ['user_id' => $user->id]);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
         }
 
         // Search
@@ -349,12 +360,22 @@ class CureController extends Controller
 
         // Stats
         $statsQuery = TreatmentPlan::query();
-        if (
-            !$user->can('booking.cure.view.all') &&
-            !$user->can('booking.cure.manage') &&
-            $user->can('booking.cure.view.own')
-        ) {
-            $statsQuery->where('user_id', $user->id);
+        if (!$user->hasRole('super-admin') && !$user->can('booking.cure.view.all') && !$user->can('booking.cure.manage')) {
+            $statsQuery->where(function ($q) use ($user) {
+                $hasOwn = $user->can('booking.cure.view.own') || $user->can('booking.cure.view');
+                $hasAssigned = $user->can('booking.cure.view.assigned');
+
+                if ($hasOwn && $hasAssigned) {
+                    $q->where('user_id', $user->id)
+                      ->orWhereJsonContains('assigned_users', ['user_id' => $user->id]);
+                } elseif ($hasOwn) {
+                    $q->where('user_id', $user->id);
+                } elseif ($hasAssigned) {
+                    $q->whereJsonContains('assigned_users', ['user_id' => $user->id]);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
         }
 
         $totalCount = $statsQuery->count();
@@ -481,6 +502,7 @@ class CureController extends Controller
                 'booking.cure.view',
                 'booking.cure.view.all',
                 'booking.cure.view.own',
+                'booking.cure.view.assigned',
                 'booking.cure.manage',
             ]),
             403
@@ -488,10 +510,28 @@ class CureController extends Controller
 
         $user = auth()->user();
         if (
+            !$user->hasRole('super-admin') &&
             !$user->can('booking.cure.view.all') &&
             !$user->can('booking.cure.manage')
         ) {
-            abort_unless($cure->user_id === $user->id, 403);
+            $isCreator = ($cure->user_id === $user->id);
+            $isAssigned = false;
+            $assignedUsers = $cure->assigned_users ?? [];
+            if (is_array($assignedUsers)) {
+                foreach ($assignedUsers as $au) {
+                    if (isset($au['user_id']) && (int)$au['user_id'] === $user->id) {
+                        $isAssigned = true;
+                        break;
+                    }
+                }
+            }
+            if ($isCreator && $user->canAny(['booking.cure.view.own', 'booking.cure.view'])) {
+                // Allowed
+            } elseif ($isAssigned && $user->can('booking.cure.view.assigned')) {
+                // Allowed
+            } else {
+                abort(403);
+            }
         }
 
         $settings = BookingSetting::current();
@@ -572,6 +612,7 @@ class CureController extends Controller
                 'booking.cure.view',
                 'booking.cure.view.all',
                 'booking.cure.view.own',
+                'booking.cure.view.assigned',
                 'booking.cure.manage',
             ]),
             403
@@ -579,10 +620,28 @@ class CureController extends Controller
 
         $user = auth()->user();
         if (
+            !$user->hasRole('super-admin') &&
             !$user->can('booking.cure.view.all') &&
             !$user->can('booking.cure.manage')
         ) {
-            abort_unless($cure->user_id === $user->id, 403);
+            $isCreator = ($cure->user_id === $user->id);
+            $isAssigned = false;
+            $assignedUsers = $cure->assigned_users ?? [];
+            if (is_array($assignedUsers)) {
+                foreach ($assignedUsers as $au) {
+                    if (isset($au['user_id']) && (int)$au['user_id'] === $user->id) {
+                        $isAssigned = true;
+                        break;
+                    }
+                }
+            }
+            if ($isCreator && $user->canAny(['booking.cure.view.own', 'booking.cure.view'])) {
+                // Allowed
+            } elseif ($isAssigned && $user->can('booking.cure.view.assigned')) {
+                // Allowed
+            } else {
+                abort(403);
+            }
         }
 
         $workflowInstances = $this->getWorkflowInstancesData($cure);
@@ -597,6 +656,7 @@ class CureController extends Controller
             'status' => $cure->status,
             'notes' => $cure->notes,
             'workflows' => $workflowInstances,
+            'tooth_numbering_system' => BookingSetting::current()->cure['tooth_numbering_system'] ?? 'palmer',
         ];
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -619,6 +679,7 @@ class CureController extends Controller
                 'booking.cure.view',
                 'booking.cure.view.all',
                 'booking.cure.view.own',
+                'booking.cure.view.assigned',
                 'booking.cure.manage',
             ]),
             403
@@ -626,10 +687,28 @@ class CureController extends Controller
 
         $user = auth()->user();
         if (
+            !$user->hasRole('super-admin') &&
             !$user->can('booking.cure.view.all') &&
             !$user->can('booking.cure.manage')
         ) {
-            abort_unless($cure->user_id === $user->id, 403);
+            $isCreator = ($cure->user_id === $user->id);
+            $isAssigned = false;
+            $assignedUsers = $cure->assigned_users ?? [];
+            if (is_array($assignedUsers)) {
+                foreach ($assignedUsers as $au) {
+                    if (isset($au['user_id']) && (int)$au['user_id'] === $user->id) {
+                        $isAssigned = true;
+                        break;
+                    }
+                }
+            }
+            if ($isCreator && $user->canAny(['booking.cure.view.own', 'booking.cure.view'])) {
+                // Allowed
+            } elseif ($isAssigned && $user->can('booking.cure.view.assigned')) {
+                // Allowed
+            } else {
+                abort(403);
+            }
         }
 
         abort_unless($snapshot->treatment_plan_id === $cure->id, 404);
@@ -739,9 +818,37 @@ class CureController extends Controller
         $cureAllowEditConfirmed = (bool)($settings->cure_allow_edit_confirmed ?? false);
 
         abort_unless(
-            $user->can('booking.cure.edit') || $user->can('booking.cure.manage'),
+            $user->can('booking.cure.edit') ||
+            $user->can('booking.cure.edit.own') ||
+            $user->can('booking.cure.edit.assigned') ||
+            $user->can('booking.cure.manage'),
             403
         );
+
+        if (
+            !$user->hasRole('super-admin') &&
+            !$user->can('booking.cure.edit') &&
+            !$user->can('booking.cure.manage')
+        ) {
+            $isCreator = ($cure->user_id === $user->id);
+            $isAssigned = false;
+            $assignedUsers = $cure->assigned_users ?? [];
+            if (is_array($assignedUsers)) {
+                foreach ($assignedUsers as $au) {
+                    if (isset($au['user_id']) && (int)$au['user_id'] === $user->id) {
+                        $isAssigned = true;
+                        break;
+                    }
+                }
+            }
+            if ($isCreator && $user->can('booking.cure.edit.own')) {
+                // Allowed
+            } elseif ($isAssigned && $user->can('booking.cure.edit.assigned')) {
+                // Allowed
+            } else {
+                abort(403);
+            }
+        }
 
         if ($cure->status === 'confirmed') {
             abort_unless(
@@ -823,9 +930,37 @@ class CureController extends Controller
         $cureAllowEditConfirmed = (bool)($setting->cure_allow_edit_confirmed ?? false);
 
         abort_unless(
-            $user->can('booking.cure.edit') || $user->can('booking.cure.manage'),
+            $user->can('booking.cure.edit') ||
+            $user->can('booking.cure.edit.own') ||
+            $user->can('booking.cure.edit.assigned') ||
+            $user->can('booking.cure.manage'),
             403
         );
+
+        if (
+            !$user->hasRole('super-admin') &&
+            !$user->can('booking.cure.edit') &&
+            !$user->can('booking.cure.manage')
+        ) {
+            $isCreator = ($cure->user_id === $user->id);
+            $isAssigned = false;
+            $assignedUsers = $cure->assigned_users ?? [];
+            if (is_array($assignedUsers)) {
+                foreach ($assignedUsers as $au) {
+                    if (isset($au['user_id']) && (int)$au['user_id'] === $user->id) {
+                        $isAssigned = true;
+                        break;
+                    }
+                }
+            }
+            if ($isCreator && $user->can('booking.cure.edit.own')) {
+                // Allowed
+            } elseif ($isAssigned && $user->can('booking.cure.edit.assigned')) {
+                // Allowed
+            } else {
+                abort(403);
+            }
+        }
 
         if ($cure->status === 'confirmed') {
             abort_unless(
@@ -849,13 +984,18 @@ class CureController extends Controller
         $oldStatus = $cure->status;
         $statusChanged = ($oldStatus !== $targetStatus);
 
-        if ($statusChanged) {
-            if (!$cure->canTransitionTo($targetStatus, $user)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'شما دسترسی کافی برای تغییر وضعیت طرح درمان به "' . $targetStatus . '" را ندارید.'
-                ], 403);
+        if (!$cure->canTransitionTo($targetStatus, $user)) {
+            $statusName = $targetStatus;
+            foreach (($setting->cure_statuses ?? []) as $st) {
+                if ($st['id'] === $targetStatus) {
+                    $statusName = $st['name'];
+                    break;
+                }
             }
+            return response()->json([
+                'success' => false,
+                'message' => 'شما دسترسی کافی برای ثبت/تغییر وضعیت طرح درمان به "' . $statusName . '" را ندارید.'
+            ], 403);
         }
 
         $planData = $this->buildPlanData($data);
@@ -891,10 +1031,39 @@ class CureController extends Controller
      */
     public function destroy(TreatmentPlan $cure)
     {
+        $user = auth()->user();
         abort_unless(
-            auth()->user()->can('booking.cure.delete') || auth()->user()->can('booking.cure.manage'),
+            $user->can('booking.cure.delete') ||
+            $user->can('booking.cure.delete.own') ||
+            $user->can('booking.cure.delete.assigned') ||
+            $user->can('booking.cure.manage'),
             403
         );
+
+        if (
+            !$user->hasRole('super-admin') &&
+            !$user->can('booking.cure.delete') &&
+            !$user->can('booking.cure.manage')
+        ) {
+            $isCreator = ($cure->user_id === $user->id);
+            $isAssigned = false;
+            $assignedUsers = $cure->assigned_users ?? [];
+            if (is_array($assignedUsers)) {
+                foreach ($assignedUsers as $au) {
+                    if (isset($au['user_id']) && (int)$au['user_id'] === $user->id) {
+                        $isAssigned = true;
+                        break;
+                    }
+                }
+            }
+            if ($isCreator && $user->can('booking.cure.delete.own')) {
+                // Allowed
+            } elseif ($isAssigned && $user->can('booking.cure.delete.assigned')) {
+                // Allowed
+            } else {
+                abort(403);
+            }
+        }
 
         $cure->delete();
 
@@ -1024,6 +1193,42 @@ class CureController extends Controller
     public function changeStatus(Request $request, TreatmentPlan $cure)
     {
         $user = auth()->user();
+
+        abort_unless(
+            $user->can('booking.cure.edit') ||
+            $user->can('booking.cure.edit.own') ||
+            $user->can('booking.cure.edit.assigned') ||
+            $user->can('booking.cure.manage'),
+            403
+        );
+
+        if (
+            !$user->hasRole('super-admin') &&
+            !$user->can('booking.cure.edit') &&
+            !$user->can('booking.cure.manage')
+        ) {
+            $isCreator = ($cure->user_id === $user->id);
+            $isAssigned = false;
+            $assignedUsers = $cure->assigned_users ?? [];
+            if (is_array($assignedUsers)) {
+                foreach ($assignedUsers as $au) {
+                    if (isset($au['user_id']) && (int)$au['user_id'] === $user->id) {
+                        $isAssigned = true;
+                        break;
+                    }
+                }
+            }
+            if ($isCreator && $user->can('booking.cure.edit.own')) {
+                // Allowed
+            } elseif ($isAssigned && $user->can('booking.cure.edit.assigned')) {
+                // Allowed
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'شما دسترسی ویرایش این طرح درمان را ندارید.'
+                ], 403);
+            }
+        }
         $request->validate([
             'status' => ['required', 'string'],
         ]);

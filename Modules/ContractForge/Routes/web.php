@@ -15,6 +15,7 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::get('/{contract}/pdf', [ContractController::class, 'pdf'])->name('pdf')->middleware('can:contractforge.view');
         Route::post('/{contract}/sign', [ContractController::class, 'sign'])->name('sign')->middleware('can:contractforge.manage');
         Route::post('/{contract}/cancel', [ContractController::class, 'cancel'])->name('cancel')->middleware('can:contractforge.manage');
+        Route::post('/{contract}/regenerate', [ContractController::class, 'regenerate'])->name('regenerate')->middleware('can:contractforge.manage');
         Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('destroy')->middleware('can:contractforge.manage');
         Route::post('/generate-manual', [ContractController::class, 'generateManual'])->name('generate_manual')->middleware('can:contractforge.manage');
 
@@ -22,6 +23,7 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::resource('templates', ContractTemplateController::class)->names('templates')->middleware('can:contractforge.manage');
 
         // Rule Management Routes
+        Route::get('/rules/search-clients', [ContractRuleController::class, 'searchClients'])->name('rules.search_clients')->middleware('can:contractforge.manage');
         Route::resource('rules', ContractRuleController::class)->names('rules')->middleware('can:contractforge.manage');
 
         // Settings Route

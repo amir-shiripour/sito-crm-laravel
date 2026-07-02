@@ -372,7 +372,13 @@ class TaskController extends Controller
 
         $users = [];
         if ($user->can('tasks.view.all')) {
-            $users = \App\Models\User::select('id', 'name', 'email')->get();
+            $usersQuery = \App\Models\User::select('id', 'name', 'email');
+            if (!$user->hasRole('super-admin')) {
+                $usersQuery->whereDoesntHave('roles', function ($q) {
+                    $q->where('name', 'super-admin');
+                });
+            }
+            $users = $usersQuery->get();
         }
 
         return view('tasks::user.tasks.index', compact(
@@ -397,8 +403,18 @@ class TaskController extends Controller
         $priorities = Task::priorityOptions();
         $types      = Task::typeOptions();
 
-        $users      = \App\Models\User::select('id', 'name', 'email')->get();
-        $roles      = \Spatie\Permission\Models\Role::select('id', 'name')->get();
+        $usersQuery = \App\Models\User::select('id', 'name', 'email');
+        $rolesQuery = \Spatie\Permission\Models\Role::select('id', 'name');
+
+        if (!$user->hasRole('super-admin')) {
+            $usersQuery->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'super-admin');
+            });
+            $rolesQuery->where('name', '!=', 'super-admin');
+        }
+
+        $users = $usersQuery->get();
+        $roles = $rolesQuery->get();
 
         // ماژول کلاینت
         $clients        = \Modules\Clients\Entities\Client::select('id', 'full_name', 'phone', 'status_id')->get();
@@ -425,6 +441,52 @@ class TaskController extends Controller
 
         // ۱) اعتبارسنجی
         $data = $this->validateRequest($request);
+
+        if (!$user->hasRole('super-admin')) {
+            // Check assignee_user_ids
+            $assigneeUserIds = (array) $request->input('assignee_user_ids', []);
+            if (!empty($assigneeUserIds)) {
+                $hasSuper = \App\Models\User::whereIn('id', $assigneeUserIds)
+                    ->whereHas('roles', function ($q) {
+                        $q->where('name', 'super-admin');
+                    })
+                    ->exists();
+                if ($hasSuper) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'assignee_user_ids' => ['شما مجاز به انتخاب کاربر سوپر ادمین نیستید.']
+                    ]);
+                }
+            }
+
+            // Check assignee_role_ids
+            $assigneeRoleIds = (array) $request->input('assignee_role_ids', []);
+            if (!empty($assigneeRoleIds)) {
+                $saRole = \Spatie\Permission\Models\Role::where('name', 'super-admin')->first();
+                $saRoleId = $saRole?->id;
+                foreach ($assigneeRoleIds as $rid) {
+                    if ($rid === 'super-admin' || $rid == $saRoleId) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'assignee_role_ids' => ['شما مجاز به انتخاب نقش سوپر ادمین نیستید.']
+                        ]);
+                    }
+                }
+            }
+
+            // Check related_user_ids
+            $relatedUserIds = (array) $request->input('related_user_ids', []);
+            if (!empty($relatedUserIds)) {
+                $hasSuper = \App\Models\User::whereIn('id', $relatedUserIds)
+                    ->whereHas('roles', function ($q) {
+                        $q->where('name', 'super-admin');
+                    })
+                    ->exists();
+                if ($hasSuper) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'related_user_ids' => ['شما مجاز به انتخاب کاربر سوپر ادمین نیستید.']
+                    ]);
+                }
+            }
+        }
 
         // نوع وظیفه (عمومی / پیگیری / سیستمی)
         $taskType = $data['task_type'] ?? Task::TYPE_GENERAL;
@@ -551,7 +613,11 @@ class TaskController extends Controller
         }
 
         // برای نمایش roleها در بخش meta
-        $allRoles = Role::select('id', 'name')->get();
+        $allRolesQuery = Role::select('id', 'name');
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $allRolesQuery->where('name', '!=', 'super-admin');
+        }
+        $allRoles = $allRolesQuery->get();
         $clientStatuses = ClientStatus::active()->get();
 
         // Load workflow context for SYSTEM tasks safely without hard dependencies
@@ -598,21 +664,31 @@ class TaskController extends Controller
     {
         $this->authorizeEdit($task);
 
+        $currentUser = auth()->user();
+
         // لیست گزینه‌ها از روی مدل Task
         $statuses   = Task::statusOptions();
         $priorities = Task::priorityOptions();
         $types      = Task::typeOptions();
 
         // کاربران همراه با نقش‌ها (برای فیلتر در multi-select)
-        $users = User::query()
+        $usersQuery = User::query()
             ->select('id', 'name', 'email')
-            ->with('roles:id,name') // برای userOptions در view
-            ->get();
+            ->with('roles:id,name'); // برای userOptions در view
 
         // نقش‌ها
-        $roles = Role::query()
-            ->select('id', 'name')
-            ->get();
+        $rolesQuery = Role::query()
+            ->select('id', 'name');
+
+        if (!$currentUser || !$currentUser->hasRole('super-admin')) {
+            $usersQuery->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'super-admin');
+            });
+            $rolesQuery->where('name', '!=', 'super-admin');
+        }
+
+        $users = $usersQuery->get();
+        $roles = $rolesQuery->get();
 
         // کلاینت‌ها + وضعیتشان
         $clients = Client::query()
@@ -623,7 +699,6 @@ class TaskController extends Controller
         $clientStatuses = ClientStatus::active()->get();
 
         // برای view، بهتر است canAssign را هم پاس بدهیم (هرچند خودش هم می‌تواند محاسبه کند)
-        $currentUser = auth()->user();
         $canAssign = $currentUser && (
                 $currentUser->can('tasks.assign')
                 || $currentUser->can('tasks.manage')
@@ -652,6 +727,52 @@ class TaskController extends Controller
         $data = $this->validateRequest($request, $task);
 
         $user = auth()->user();
+
+        if (!$user->hasRole('super-admin')) {
+            // Check assignee_user_ids
+            $assigneeUserIds = (array) $request->input('assignee_user_ids', []);
+            if (!empty($assigneeUserIds)) {
+                $hasSuper = \App\Models\User::whereIn('id', $assigneeUserIds)
+                    ->whereHas('roles', function ($q) {
+                        $q->where('name', 'super-admin');
+                    })
+                    ->exists();
+                if ($hasSuper) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'assignee_user_ids' => ['شما مجاز به انتخاب کاربر سوپر ادمین نیستید.']
+                    ]);
+                }
+            }
+
+            // Check assignee_role_ids
+            $assigneeRoleIds = (array) $request->input('assignee_role_ids', []);
+            if (!empty($assigneeRoleIds)) {
+                $saRole = \Spatie\Permission\Models\Role::where('name', 'super-admin')->first();
+                $saRoleId = $saRole?->id;
+                foreach ($assigneeRoleIds as $rid) {
+                    if ($rid === 'super-admin' || $rid == $saRoleId) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'assignee_role_ids' => ['شما مجاز به انتخاب نقش سوپر ادمین نیستید.']
+                        ]);
+                    }
+                }
+            }
+
+            // Check related_user_ids
+            $relatedUserIds = (array) $request->input('related_user_ids', []);
+            if (!empty($relatedUserIds)) {
+                $hasSuper = \App\Models\User::whereIn('id', $relatedUserIds)
+                    ->whereHas('roles', function ($q) {
+                        $q->where('name', 'super-admin');
+                    })
+                    ->exists();
+                if ($hasSuper) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'related_user_ids' => ['شما مجاز به انتخاب کاربر سوپر ادمین نیستید.']
+                    ]);
+                }
+            }
+        }
 
         // ۲) نوع وظیفه (اگر در فرم تغییر کرده باشد - برای تسک‌های سیستمی تغییر داده نمی‌شود)
         $taskType = $task->task_type === Task::TYPE_SYSTEM ? Task::TYPE_SYSTEM : ($data['task_type'] ?? $task->task_type ?? Task::TYPE_GENERAL);

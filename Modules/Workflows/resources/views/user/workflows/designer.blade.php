@@ -75,11 +75,109 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <button @click="loadImplantTemplate()"
-                    class="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-lg text-xs font-semibold border border-amber-200 dark:border-amber-500/30 flex items-center gap-1.5 transition-all">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-                الگوی ایمپلنت
-            </button>
+            <!-- الگوی ایمپلنت -->
+            <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                <div class="inline-flex rounded-lg shadow-sm">
+                    <button @click="loadImplantTemplate(false)"
+                            class="px-2.5 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-r-lg text-xs font-semibold border-y border-r border-amber-200 dark:border-amber-500/30 flex items-center gap-1.5 transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                        الگوی ایمپلنت
+                    </button>
+                    <button @click="open = !open"
+                            class="px-1.5 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-l-lg text-xs font-semibold border-y border-l border-r-0 border-amber-200 dark:border-amber-500/30 flex items-center justify-center transition-all">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                </div>
+                <div x-show="open" x-cloak x-transition
+                     class="absolute right-0 mt-1.5 w-44 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl z-50 overflow-hidden py-1">
+                    <button @click="loadImplantTemplate(false); open = false"
+                            class="w-full text-right px-4 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        جایگزینی کل بوم
+                    </button>
+                    <button @click="loadImplantTemplate(true); open = false"
+                            class="w-full text-right px-4 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-t border-gray-100 dark:border-gray-800">
+                        افزودن به انتهای بوم
+                    </button>
+                </div>
+            </div>
+
+            <!-- الگوی ایمپلنت / روکش -->
+            <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                <div class="inline-flex rounded-lg shadow-sm">
+                    <button @click="loadImplantCrownTemplate(false)"
+                            class="px-2.5 py-2 bg-teal-50 hover:bg-teal-100 dark:bg-teal-500/10 dark:hover:bg-teal-500/20 text-teal-700 dark:text-teal-400 rounded-r-lg text-xs font-semibold border-y border-r border-teal-200 dark:border-teal-500/30 flex items-center gap-1.5 transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+                        الگوی ایمپلنت / روکش
+                    </button>
+                    <button @click="open = !open"
+                            class="px-1.5 py-2 bg-teal-50 hover:bg-teal-100 dark:bg-teal-500/10 dark:hover:bg-teal-500/20 text-teal-700 dark:text-teal-400 rounded-l-lg text-xs font-semibold border-y border-l border-r-0 border-teal-200 dark:border-teal-500/30 flex items-center justify-center transition-all">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                </div>
+                <div x-show="open" x-cloak x-transition
+                     class="absolute right-0 mt-1.5 w-44 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl z-50 overflow-hidden py-1">
+                    <button @click="loadImplantCrownTemplate(false); open = false"
+                            class="w-full text-right px-4 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        جایگزینی کل بوم
+                    </button>
+                    <button @click="loadImplantCrownTemplate(true); open = false"
+                            class="w-full text-right px-4 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-t border-gray-100 dark:border-gray-800">
+                        افزودن به انتهای بوم
+                    </button>
+                </div>
+            </div>
+
+            <!-- الگوی ایمپلنت / اوردنچر -->
+            <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                <div class="inline-flex rounded-lg shadow-sm">
+                    <button @click="loadImplantOverdentureTemplate(false)"
+                            class="px-2.5 py-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 text-purple-700 dark:text-purple-400 rounded-r-lg text-xs font-semibold border-y border-r border-purple-200 dark:border-purple-500/30 flex items-center gap-1.5 transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        الگوی ایمپلنت / اوردنچر
+                    </button>
+                    <button @click="open = !open"
+                            class="px-1.5 py-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 text-purple-700 dark:text-purple-400 rounded-l-lg text-xs font-semibold border-y border-l border-r-0 border-purple-200 dark:border-purple-500/30 flex items-center justify-center transition-all">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                </div>
+                <div x-show="open" x-cloak x-transition
+                     class="absolute right-0 mt-1.5 w-44 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl z-50 overflow-hidden py-1">
+                    <button @click="loadImplantOverdentureTemplate(false); open = false"
+                            class="w-full text-right px-4 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        جایگزینی کل بوم
+                    </button>
+                    <button @click="loadImplantOverdentureTemplate(true); open = false"
+                            class="w-full text-right px-4 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-t border-gray-100 dark:border-gray-800">
+                        افزودن به انتهای بوم
+                    </button>
+                </div>
+            </div>
+
+            <!-- الگوی لمینت -->
+            <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                <div class="inline-flex rounded-lg shadow-sm">
+                    <button @click="loadLaminateTemplate(false)"
+                            class="px-2.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 rounded-r-lg text-xs font-semibold border-y border-r border-rose-200 dark:border-rose-500/30 flex items-center gap-1.5 transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                        الگوی لمینت
+                    </button>
+                    <button @click="open = !open"
+                            class="px-1.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 rounded-l-lg text-xs font-semibold border-y border-l border-r-0 border-rose-200 dark:border-rose-500/30 flex items-center justify-center transition-all">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                </div>
+                <div x-show="open" x-cloak x-transition
+                     class="absolute right-0 mt-1.5 w-44 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl z-50 overflow-hidden py-1">
+                    <button @click="loadLaminateTemplate(false); open = false"
+                            class="w-full text-right px-4 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        جایگزینی کل بوم
+                    </button>
+                    <button @click="loadLaminateTemplate(true); open = false"
+                            class="w-full text-right px-4 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-t border-gray-100 dark:border-gray-800">
+                        افزودن به انتهای بوم
+                    </button>
+                </div>
+            </div>
             <button @click="saveGraph()"
                     class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm shadow-indigo-500/30 flex items-center gap-1.5 transition-all active:scale-95">
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
@@ -166,8 +264,8 @@
 
                 <!-- Content wrapper -->
                 <div class="absolute inset-0 pointer-events-none z-10">
-                    <!-- SVG Defs -->
-                    <svg class="absolute w-0 h-0 pointer-events-none">
+                    <!-- SVG defs + temp connecting line (static, no x-for) -->
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none z-0" style="overflow: visible;">
                         <defs>
                             <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                                 <path d="M 0 0 L 10 5 L 0 10 z" class="fill-gray-400 dark:fill-gray-500" />
@@ -176,37 +274,32 @@
                                 <path d="M 0 0 L 10 5 L 0 10 z" class="fill-indigo-500" />
                             </marker>
                         </defs>
-                    </svg>
-
-                    <!-- Edge Connections -->
-                    <div class="absolute inset-0 pointer-events-none z-0">
-                        <template x-for="(edge, idx) in edges" :key="idx">
-                            <svg class="absolute inset-0 w-full h-full pointer-events-none">
-                                <g class="pointer-events-auto cursor-pointer" @click="selectEdge(idx)">
-                                    <path :d="getBezierPath(edge)"
-                                          stroke-width="2.5"
-                                          fill="none"
-                                          :class="selectedEdgeIdx === idx ? 'stroke-indigo-500' : 'stroke-gray-300 dark:stroke-gray-600 hover:stroke-indigo-400'"
-                                          :marker-end="selectedEdgeIdx === idx ? 'url(#arrow-selected)' : 'url(#arrow)'" />
-                                    <text x-show="edge.condition" :x="getEdgeLabelX(edge)" :y="getEdgeLabelY(edge)"
-                                          fill="currentColor"
-                                          class="text-[10px] font-bold text-gray-500 dark:text-gray-400"
-                                          text-anchor="middle"
-                                          x-text="edge.condition"></text>
-                                </g>
-                            </svg>
-                        </template>
-                    </div>
-
-                    <!-- Temp connecting line -->
-                    <div class="absolute inset-0 pointer-events-none z-0" x-show="connectingSource">
-                        <svg class="absolute inset-0 w-full h-full pointer-events-none">
+                        <!-- Temp connecting line -->
+                        <g x-show="connectingSource">
                             <line :x1="connectingSource ? connectingSource.x + 112 : 0"
                                   :y1="connectingSource ? connectingSource.y + 100 : 0"
                                   :x2="mousePos.x" :y2="mousePos.y"
                                   stroke="#6366f1" stroke-width="2" stroke-dasharray="5,5" />
+                        </g>
+                    </svg>
+
+                    <!-- Edge connections: one SVG per edge so Alpine x-for scope is correct -->
+                    <template x-for="(edge, idx) in edges" :key="idx">
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none z-0" style="overflow: visible;">
+                            <g class="pointer-events-auto cursor-pointer" @click="selectEdge(idx)">
+                                <path :d="getBezierPath(edge)"
+                                      stroke-width="2.5"
+                                      fill="none"
+                                      :class="selectedEdgeIdx === idx ? 'stroke-indigo-500' : 'stroke-gray-300 dark:stroke-gray-600 hover:stroke-indigo-400'"
+                                      :marker-end="selectedEdgeIdx === idx ? 'url(#arrow-selected)' : 'url(#arrow)'" />
+                                <text x-show="edge.condition" :x="getEdgeLabelX(edge)" :y="getEdgeLabelY(edge)"
+                                      fill="currentColor"
+                                      class="text-[10px] font-bold text-gray-500 dark:text-gray-400"
+                                      text-anchor="middle"
+                                      x-text="edge.condition"></text>
+                            </g>
                         </svg>
-                    </div>
+                    </template>
 
                     <!-- Render Nodes -->
                     <div class="absolute inset-0 pointer-events-none z-10">
@@ -651,6 +744,9 @@
                                                        class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all outline-none">
                                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none">روز</span>
                                             </div>
+                                            <p class="text-[9px] text-gray-400 dark:text-gray-500 mt-1 leading-normal">
+                                                در صورت وجود برنامه زمانی برای مسئول، محاسبه سررسید بر اساس روزهای کاری وی انجام می‌شود.
+                                            </p>
                                         </div>
                                         <div class="flex flex-col justify-end">
                                             <label class="flex items-center gap-2 cursor-pointer group">
@@ -851,6 +947,9 @@
                                                class="block w-full border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 text-left focus:ring-0 focus:outline-none text-sm font-semibold" dir="ltr">
                                         <span class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-3 py-2 text-xs font-bold border-r border-gray-200 dark:border-gray-700 flex items-center">روز</span>
                                     </div>
+                                    <p class="text-[9px] text-gray-400 dark:text-gray-500 mt-1 leading-normal">
+                                        در صورت وجود برنامه زمانی برای مسئول، محاسبه بر اساس روزهای کاری وی انجام می‌شود.
+                                    </p>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">اولویت انجام</label>
@@ -1367,12 +1466,72 @@ function workflowDesigner() {
             return user ? user.name : 'نامعلوم';
         },
 
-        loadImplantTemplate() {
-            if (this.nodes.length > 0 && !confirm('آیا مطمئن هستید که می‌خواهید الگوی روند درمان ایمپلنت را بارگذاری کنید؟ تغییرات فعلی بوم پاک خواهند شد.')) {
+        loadTemplateHelper(newNodes, newEdges, appendMode, confirmMessage) {
+            if (!appendMode && this.nodes.length > 0 && !confirm(confirmMessage)) {
                 return;
             }
 
-            this.nodes = [
+            if (!appendMode) {
+                this.nodes = newNodes;
+                this.edges = newEdges;
+                this.selectedNodeId = null;
+                this.selectedNode = null;
+                this.editingNode = null;
+                this.nodeEditorOpen = false;
+                this.selectedEdgeIdx = null;
+                this.edgeEditorOpen = false;
+                this.zoom = 1.0;
+                this.pan = { x: 0, y: 0 };
+
+                this.$nextTick(() => {
+                    const viewport = document.getElementById('canvas-viewport');
+                    if (viewport) {
+                        const rect = viewport.getBoundingClientRect();
+                        this.pan.x = (rect.width / 2) - 440;
+                        this.pan.y = 40;
+                    }
+                });
+            } else {
+                const maxX = this.nodes.length > 0 ? Math.max(...this.nodes.map(n => n.x)) : 0;
+                const offsetX = maxX + 400;
+
+                const suffix = '_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 5);
+                const idMap = {};
+                newNodes.forEach(n => {
+                    idMap[n.id] = n.id + suffix;
+                });
+
+                const processedNodes = newNodes.map(n => {
+                    const config = JSON.parse(JSON.stringify(n.config || {}));
+                    if (config.tasks) {
+                        config.tasks.forEach(t => {
+                            t.id = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                        });
+                    }
+                    return {
+                        ...n,
+                        id: idMap[n.id],
+                        x: n.x + offsetX,
+                        config: config
+                    };
+                });
+
+                const processedEdges = newEdges.map(e => {
+                    return {
+                        ...e,
+                        source_id: idMap[e.source_id] || e.source_id,
+                        target_id: idMap[e.target_id] || e.target_id
+                    };
+                });
+
+                this.nodes.push(...processedNodes);
+                this.edges.push(...processedEdges);
+            }
+        },
+
+        loadImplantTemplate(appendMode = false) {
+            const confirmMessage = 'آیا مطمئن هستید که می‌خواهید الگوی روند درمان ایمپلنت را بارگذاری کنید؟ تغییرات فعلی بوم پاک خواهند شد.';
+            const nodes = [
                 { id: 'node_start', name: 'شروع: ویزیت + طرح درمان', type: 'START', x: 300, y: 50, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [] } },
                 { id: 'node_needs_other', name: 'نیاز به سایر درمان‌ها؟', type: 'CONDITION', x: 300, y: 180, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'needs_other_treatments=true', child_workflow_id: '', auto_advance: true, tasks: [] } },
                 { id: 'node_refer_clinic', name: 'ارجاع به کلینیک', type: 'ACTION', x: 580, y: 180, config: { role_id: '', title: 'ارجاع بیمار به کلینیک', description: 'بیمار برای انجام درمان‌های پیش‌نیاز ارجاع داده شده.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_1', title: 'ارجاع بیمار به کلینیک', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
@@ -1389,7 +1548,7 @@ function workflowDesigner() {
                 { id: 'node_end', name: 'پایان فرآیند', type: 'END', x: 300, y: 1220, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [] } }
             ];
 
-            this.edges = [
+            const edges = [
                 { source_id: 'node_start', target_id: 'node_needs_other', condition: '' },
                 { source_id: 'node_needs_other', target_id: 'node_refer_clinic', condition: 'بله' },
                 { source_id: 'node_needs_other', target_id: 'node_scan', condition: 'خیر' },
@@ -1409,23 +1568,133 @@ function workflowDesigner() {
                 { source_id: 'node_crown', target_id: 'node_end', condition: '' }
             ];
 
-            this.selectedNodeId = null;
-            this.selectedNode = null;
-            this.editingNode = null;
-            this.nodeEditorOpen = false;
-            this.selectedEdgeIdx = null;
-            this.edgeEditorOpen = false;
-            this.zoom = 1.0;
-            this.pan = { x: 0, y: 0 };
+            this.loadTemplateHelper(nodes, edges, appendMode, confirmMessage);
+        },
 
-            this.$nextTick(() => {
-                const viewport = document.getElementById('canvas-viewport');
-                if (viewport) {
-                    const rect = viewport.getBoundingClientRect();
-                    this.pan.x = (rect.width / 2) - 440;
-                    this.pan.y = 40;
-                }
-            });
+        loadImplantCrownTemplate(appendMode = false) {
+            const confirmMessage = 'آیا مطمئن هستید که می‌خواهید الگوی روند درمان ایمپلنت / روکش را بارگذاری کنید؟ تغییرات فعلی بوم پاک خواهند شد.';
+            const nodes = [
+                { id: 'node_ic_start', name: 'شروع: روکش', type: 'START', x: 300, y: 50, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_ic_unit_count', name: 'تعداد واحد روکش؟', type: 'CONDITION', x: 300, y: 180, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'unit_count > 5', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_ic_scan_simple', name: 'اسکن (۵ واحد و کمتر)', type: 'ACTION', x: 120, y: 310, config: { role_id: '', title: 'اسکن داخل دهانی', description: 'اسکن داخل دهانی برای ۵ واحد و کمتر انجام شود.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic1', title: 'اسکن ۵ واحد و کمتر', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_deliver_simple', name: 'تحویل روکش (۵ واحد و کمتر)', type: 'ACTION', x: 120, y: 440, config: { role_id: '', title: 'تحویل روکش', description: 'تحویل نهایی روکش به بیمار.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic2', title: 'تحویل روکش بیمار', description: '', priority: 'HIGH', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_consult', name: 'صلاح دید پزشک و لابراتوار (بیشتر از ۵ واحد)', type: 'ACTION', x: 480, y: 310, config: { role_id: '', title: 'بررسی صلاح دید پزشک و لابراتوار', description: 'مشورت درباره نحوه قالب‌گیری یا اسکن انجام شود.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic3', title: 'مشورت پزشک و لابراتوار', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_approach', name: 'روش کار؟ (اسکن یا قالب‌گیری)', type: 'CONDITION', x: 480, y: 440, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'approach=scan', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_ic_scan_complex', name: 'اسکن (بیشتر از ۵ واحد)', type: 'ACTION', x: 380, y: 570, config: { role_id: '', title: 'تهیه اسکن داخل دهانی', description: 'اسکن برای موارد بیشتر از ۵ واحد.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic4', title: 'اسکن بیشتر از ۵ واحد', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_impression', name: 'قالب‌گیری', type: 'ACTION', x: 580, y: 570, config: { role_id: '', title: 'انجام قالب‌گیری دهانی', description: 'قالب‌گیری برای موارد بیشتر از ۵ واحد.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic5', title: 'قالب‌گیری دهانی', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_try_gum', name: 'امتحان لثه', type: 'ACTION', x: 480, y: 700, config: { role_id: '', title: 'امتحان لثه', description: 'بررسی وضعیت لثه و انطباق اولیه.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic6', title: 'امتحان لثه', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_try_gum_ok', name: 'امتحان لثه موفق؟', type: 'CONDITION', x: 480, y: 830, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'gum_try_ok=true', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_ic_second_impression', name: 'قالب‌گیری ثانویه', type: 'ACTION', x: 700, y: 830, config: { role_id: '', title: 'قالب‌گیری ثانویه', description: 'تکرار قالب‌گیری به دلیل عدم تطابق مناسب لثه.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic7', title: 'قالب‌گیری ثانویه مجدد', description: '', priority: 'HIGH', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_try_substructure', name: 'امتحان زیرساخت روکش‌ها', type: 'ACTION', x: 480, y: 960, config: { role_id: '', title: 'امتحان فریم زیرساخت روکش', description: 'بررسی فریم فلزی/زیرکونیا روی مدل دندانی.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic8', title: 'امتحان زیرساخت روکش‌ها', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_try_crown', name: 'امتحان روکش‌ها', type: 'ACTION', x: 480, y: 1090, config: { role_id: '', title: 'امتحان نهایی روکش‌ها', description: 'تست نهایی روکش از نظر فرم، رنگ و بایت.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic9', title: 'امتحان روکش‌ها', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_crown_ok', name: 'روکش بدون اشکال؟', type: 'CONDITION', x: 480, y: 1220, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'crown_ok=true', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_ic_lab_fix', name: 'لابراتوار جهت اصلاح', type: 'ACTION', x: 700, y: 1090, config: { role_id: '', title: 'ارسال مجدد به لابراتوار جهت اصلاح', description: 'ارجاع روکش برای اعمال اصلاحات لازم.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_ic10', title: 'ارسال به لابراتوار جهت اصلاح', description: '', priority: 'HIGH', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_ic_end', name: 'تحویل نهایی فرآیند', type: 'END', x: 300, y: 1350, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [] } }
+            ];
+
+            const edges = [
+                { source_id: 'node_ic_start', target_id: 'node_ic_unit_count', condition: '' },
+                { source_id: 'node_ic_unit_count', target_id: 'node_ic_scan_simple', condition: 'خیر' },
+                { source_id: 'node_ic_unit_count', target_id: 'node_ic_consult', condition: 'بله' },
+                { source_id: 'node_ic_scan_simple', target_id: 'node_ic_deliver_simple', condition: '' },
+                { source_id: 'node_ic_deliver_simple', target_id: 'node_ic_end', condition: '' },
+                { source_id: 'node_ic_consult', target_id: 'node_ic_approach', condition: '' },
+                { source_id: 'node_ic_approach', target_id: 'node_ic_scan_complex', condition: 'اسکن' },
+                { source_id: 'node_ic_approach', target_id: 'node_ic_impression', condition: 'قالب‌گیری' },
+                { source_id: 'node_ic_scan_complex', target_id: 'node_ic_try_gum', condition: '' },
+                { source_id: 'node_ic_impression', target_id: 'node_ic_try_gum', condition: '' },
+                { source_id: 'node_ic_try_gum', target_id: 'node_ic_try_gum_ok', condition: '' },
+                { source_id: 'node_ic_try_gum_ok', target_id: 'node_ic_try_substructure', condition: 'بله' },
+                { source_id: 'node_ic_try_gum_ok', target_id: 'node_ic_second_impression', condition: 'خیر' },
+                { source_id: 'node_ic_second_impression', target_id: 'node_ic_try_gum', condition: '' },
+                { source_id: 'node_ic_try_substructure', target_id: 'node_ic_try_crown', condition: '' },
+                { source_id: 'node_ic_try_crown', target_id: 'node_ic_crown_ok', condition: '' },
+                { source_id: 'node_ic_crown_ok', target_id: 'node_ic_end', condition: 'بله' },
+                { source_id: 'node_ic_crown_ok', target_id: 'node_ic_lab_fix', condition: 'خیر' },
+                { source_id: 'node_ic_lab_fix', target_id: 'node_ic_try_crown', condition: '' }
+            ];
+
+            this.loadTemplateHelper(nodes, edges, appendMode, confirmMessage);
+        },
+
+        loadImplantOverdentureTemplate(appendMode = false) {
+            const confirmMessage = 'آیا مطمئن هستید که می‌خواهید الگوی روند درمان ایمپلنت / اوردنچر را بارگذاری کنید؟ تغییرات فعلی بوم پاک خواهند شد.';
+            const nodes = [
+                { id: 'node_io_start', name: 'شروع: اوردنچر', type: 'START', x: 300, y: 50, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_io_first_impression', name: 'قالب‌گیری اولیه', type: 'ACTION', x: 300, y: 180, config: { role_id: '', title: 'انجام قالب‌گیری اولیه', description: 'تهیه قالب اولیه برای اوردنچر.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_io1', title: 'قالب‌گیری اولیه اوردنچر', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_io_second_impression', name: 'قالب‌گیری ثانویه', type: 'ACTION', x: 300, y: 310, config: { role_id: '', title: 'انجام قالب‌گیری ثانویه (اختصاصی)', description: 'تهیه قالب دقیق با تری اختصاصی.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_io2', title: 'قالب‌گیری ثانویه اوردنچر', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_io_try_gum', name: 'امتحان لثه', type: 'ACTION', x: 300, y: 440, config: { role_id: '', title: 'امتحان لثه بیمار', description: 'بررسی وضعیت بیس پروتز روی لثه.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_io3', title: 'امتحان لثه اوردنچر', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_io_try_teeth', name: 'امتحان دندان', type: 'ACTION', x: 300, y: 570, config: { role_id: '', title: 'امتحان چیدمان دندان‌ها', description: 'بررسی زیبایی، اکلوژن و بایت دندان‌ها در موم.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_io4', title: 'امتحان دندان اوردنچر', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_io_try_teeth_ok', name: 'امتحان دندان تایید شد؟', type: 'CONDITION', x: 300, y: 700, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'teeth_try_ok=true', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_io_teeth_lab_fix', name: 'لابراتوار جهت اصلاح دندان', type: 'ACTION', x: 520, y: 570, config: { role_id: '', title: 'ارسال به لابراتوار جهت اصلاح چیدمان دندان', description: 'اعمال تغییرات مورد نظر بر روی چیدمان دندانی.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_io5', title: 'ارسال جهت اصلاح دندان به لابراتوار', description: '', priority: 'HIGH', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_io_try_substructure', name: 'امتحان زیرساخت اوردنچر', type: 'ACTION', x: 300, y: 830, config: { role_id: '', title: 'امتحان فریم فلزی/زیرساخت', description: 'بررسی و تست فریم فلزی و اتصالات اوردنچر.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_io6', title: 'امتحان زیرساخت اوردنچر', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_io_substructure_ok', name: 'زیرساخت تایید شد؟', type: 'CONDITION', x: 300, y: 960, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'substructure_try_ok=true', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_io_sub_lab_fix', name: 'لابراتوار جهت اصلاح زیرساخت', type: 'ACTION', x: 520, y: 830, config: { role_id: '', title: 'ارسال به لابراتوار جهت اصلاح فریم زیرساخت', description: 'اعمال اصلاحات بر روی بیس فلزی یا اتصالات.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_io7', title: 'ارسال جهت اصلاح زیرساخت به لابراتوار', description: '', priority: 'HIGH', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_io_deliver', name: 'تحویل نهایی', type: 'END', x: 300, y: 1090, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [] } }
+            ];
+
+            const edges = [
+                { source_id: 'node_io_start', target_id: 'node_io_first_impression', condition: '' },
+                { source_id: 'node_io_first_impression', target_id: 'node_io_second_impression', condition: '' },
+                { source_id: 'node_io_second_impression', target_id: 'node_io_try_gum', condition: '' },
+                { source_id: 'node_io_try_gum', target_id: 'node_io_try_teeth', condition: '' },
+                { source_id: 'node_io_try_teeth', target_id: 'node_io_try_teeth_ok', condition: '' },
+                { source_id: 'node_io_try_teeth_ok', target_id: 'node_io_try_substructure', condition: 'بله' },
+                { source_id: 'node_io_try_teeth_ok', target_id: 'node_io_teeth_lab_fix', condition: 'خیر' },
+                { source_id: 'node_io_teeth_lab_fix', target_id: 'node_io_try_teeth', condition: '' },
+                { source_id: 'node_io_try_substructure', target_id: 'node_io_substructure_ok', condition: '' },
+                { source_id: 'node_io_substructure_ok', target_id: 'node_io_deliver', condition: 'بله' },
+                { source_id: 'node_io_substructure_ok', target_id: 'node_io_sub_lab_fix', condition: 'خیر' },
+                { source_id: 'node_io_sub_lab_fix', target_id: 'node_io_try_substructure', condition: '' }
+            ];
+
+            this.loadTemplateHelper(nodes, edges, appendMode, confirmMessage);
+        },
+
+        loadLaminateTemplate(appendMode = false) {
+            const confirmMessage = 'آیا مطمئن هستید که می‌خواهید الگوی روند درمان لمینت را بارگذاری کنید؟ تغییرات فعلی بوم پاک خواهند شد.';
+            const nodes = [
+                { id: 'node_lam_start_visit', name: 'شروع: ویزیت + طرح درمان', type: 'START', x: 300, y: 50, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_lam_needs_prep', name: 'نیاز به زیرسازی؟', type: 'CONDITION', x: 300, y: 180, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'needs_preparation=true', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_lam_clinic', name: 'ارجاع به کلینیک', type: 'ACTION', x: 480, y: 180, config: { role_id: '', title: 'ارجاع بیمار به کلینیک', description: 'انجام درمان‌های پیش‌نیاز زیرسازی دندان.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_lam1', title: 'ارجاع بیمار به کلینیک زیرسازی', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_smile_design', name: 'طراحی لبخند', type: 'ACTION', x: 300, y: 310, config: { role_id: '', title: 'طراحی لبخند بیمار', description: 'انجام بررسی زیبایی شناختی و طراحی لبخند.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_lam2', title: 'طراحی لبخند (صلاح دید پزشک)', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_design_change', name: 'نیاز به تغییر طراحی؟', type: 'CONDITION', x: 300, y: 440, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'design_needs_change=true', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_lam_start_process', name: 'شروع پروسه درمان لمینت', type: 'ACTION', x: 300, y: 570, config: { role_id: '', title: 'آغاز رسمی درمان لمینت', description: 'شروع مراحل فنی لمینت.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_lam3', title: 'شروع پروسه درمان لمینت', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_needs_mockup', name: 'نیاز به موکاپ؟', type: 'CONDITION', x: 300, y: 700, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'needs_mockup=true', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_lam_prep_simple', name: 'آماده‌سازی دندان‌ها و تهیه اسکن/قالب', type: 'ACTION', x: 120, y: 830, config: { role_id: '', title: 'آماده‌سازی مستقیم دندان‌ها', description: 'تراش دندان و قالب‌گیری جهت ساخت لمینت نهایی.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_lam4', title: 'آماده‌سازی و قالب‌گیری مستقیم لمینت', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_deliver', name: 'تحویل لمینت', type: 'ACTION', x: 120, y: 960, config: { role_id: '', title: 'چسباندن و تحویل لمینت', description: 'تحویل نهایی پوسته لمینت به بیمار.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_lam5', title: 'تحویل لمینت به بیمار', description: '', priority: 'HIGH', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_mockup_prep', name: 'تهیه اسکن و ساخت موکاپ', type: 'ACTION', x: 480, y: 830, config: { role_id: '', title: 'ساخت موکاپ تشخیصی', description: 'تهیه اسکن و ساخت پروتز موقت موکاپ.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_lam6', title: 'تهیه اسکن و ساخت موکاپ', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_mockup_try', name: 'امتحان موکاپ', type: 'ACTION', x: 480, y: 960, config: { role_id: '', title: 'تست موکاپ در دهان بیمار', description: 'بررسی زیبایی و رضایت اولیه روی موکاپ.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_lam7', title: 'امتحان موکاپ در دهان', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_patient_approve', name: 'تایید بیمار', type: 'ACTION', x: 480, y: 1090, config: { role_id: '', title: 'دریافت تایید نهایی بیمار', description: 'ثبت رضایت بیمار از طرح موکاپ.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_lam8', title: 'تایید نهایی بیمار', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_approve_check', name: 'بیمار تایید کرد؟', type: 'CONDITION', x: 480, y: 1220, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: 'patient_approved=true', child_workflow_id: '', auto_advance: true, tasks: [] } },
+                { id: 'node_lam_end_fail', name: 'پایان پروسه درمان', type: 'ACTION', x: 380, y: 1350, config: { role_id: '', title: 'توقف و خاتمه درمان', description: 'عدم تایید بیمار و پایان پروسه درمان.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: false, tasks: [{ id: 'task_' + Date.now() + '_lam9', title: 'پایان پروسه درمان لمینت (انصراف)', description: '', priority: 'LOW', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_prep_complex', name: 'آماده‌سازی دندان جهت ساخت لمینت', type: 'ACTION', x: 580, y: 1350, config: { role_id: '', title: 'آماده‌سازی دندان‌ها بعد از موکاپ', description: 'آماده‌سازی دندان جهت ساخت قالب اصلی لمینت.', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [{ id: 'task_' + Date.now() + '_lam10', title: 'آماده‌سازی دندان جهت ساخت لمینت', description: '', priority: 'MEDIUM', assignee_mode: 'single_user', role_id: '', assignee_id: '', offset_days: 0, auto_advance: true }] } },
+                { id: 'node_lam_end', name: 'پایان فرآیند درمان', type: 'END', x: 300, y: 1480, config: { role_id: '', title: '', description: '', offset_days: 0, condition_expression: '', child_workflow_id: '', auto_advance: true, tasks: [] } }
+            ];
+
+            const edges = [
+                { source_id: 'node_lam_start_visit', target_id: 'node_lam_needs_prep', condition: '' },
+                { source_id: 'node_lam_needs_prep', target_id: 'node_lam_clinic', condition: 'بله' },
+                { source_id: 'node_lam_needs_prep', target_id: 'node_lam_smile_design', condition: 'خیر' },
+                { source_id: 'node_lam_clinic', target_id: 'node_lam_smile_design', condition: '' },
+                { source_id: 'node_lam_smile_design', target_id: 'node_lam_design_change', condition: '' },
+                { source_id: 'node_lam_design_change', target_id: 'node_lam_smile_design', condition: 'بله' },
+                { source_id: 'node_lam_design_change', target_id: 'node_lam_start_process', condition: 'خیر' },
+                { source_id: 'node_lam_start_process', target_id: 'node_lam_needs_mockup', condition: '' },
+                { source_id: 'node_lam_needs_mockup', target_id: 'node_lam_prep_simple', condition: 'خیر' },
+                { source_id: 'node_lam_needs_mockup', target_id: 'node_lam_mockup_prep', condition: 'بله' },
+                { source_id: 'node_lam_prep_simple', target_id: 'node_lam_deliver', condition: '' },
+                { source_id: 'node_lam_deliver', target_id: 'node_lam_end', condition: '' },
+                { source_id: 'node_lam_mockup_prep', target_id: 'node_lam_mockup_try', condition: '' },
+                { source_id: 'node_lam_mockup_try', target_id: 'node_lam_patient_approve', condition: '' },
+                { source_id: 'node_lam_patient_approve', target_id: 'node_lam_approve_check', condition: '' },
+                { source_id: 'node_lam_approve_check', target_id: 'node_lam_end_fail', condition: 'خیر' },
+                { source_id: 'node_lam_approve_check', target_id: 'node_lam_prep_complex', condition: 'بله' },
+                { source_id: 'node_lam_prep_complex', target_id: 'node_lam_deliver', condition: '' },
+                { source_id: 'node_lam_end_fail', target_id: 'node_lam_end', condition: '' }
+            ];
+
+            this.loadTemplateHelper(nodes, edges, appendMode, confirmMessage);
         },
 
         addNode(type) {

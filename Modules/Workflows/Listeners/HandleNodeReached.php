@@ -137,7 +137,6 @@ class HandleNodeReached
 
         foreach ($tasksTemplates as $template) {
             $offsetDays = (int) ($template['offset_days'] ?? 0);
-            $dueAt = $offsetDays ? $baseDate->copy()->addDays($offsetDays) : $baseDate;
 
             $title = $this->renderTemplate($template['title'] ?? $node->name, $context);
             $description = $this->renderTemplate($template['description'] ?? '', $context);
@@ -182,6 +181,8 @@ class HandleNodeReached
             if (!$assigneeId) {
                 $assigneeId = Auth::id();
             }
+
+            $dueAt = $this->engine->calcTaskDueAt($assigneeId, $offsetDays, $baseDate);
             $metaData = [
                 'workflow_instance_id' => $instance->id,
                 'workflow_node_id'     => $node->id,

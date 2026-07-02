@@ -66,7 +66,7 @@
                                     @endif
                                 </td>
                                 <td class="p-4 text-gray-500 dark:text-gray-400 text-xs">
-                                    {{ $template->created_at->format('Y/m/d H:i') }}
+                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($template->created_at)->format('Y/m/d H:i') }}
                                 </td>
                                 <td class="p-4">
                                     <div class="flex items-center justify-center gap-2">
