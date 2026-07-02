@@ -286,11 +286,12 @@ class PermissionCatalog
             'tasks.delete'            => 'حذف وظیفه',
 
             // Workflows
-            'workflows.manage'        => 'مدیریت گردش کار',
+            'workflows.manage'        => 'مدیریت و تنظیمات کلان گردش کار',
             'workflows.view'          => 'مشاهده گردش کارها',
-            'workflows.create'        => 'ایجاد گردش کار',
+            'workflows.create'        => 'ایجاد گردش کار جدید',
             'workflows.edit'          => 'ویرایش گردش کار',
             'workflows.delete'        => 'حذف گردش کار',
+            'workflows.run'           => 'اجرای گردش کار',
 
             // Modules
             'modules.manage'          => 'مدیریت ماژول‌ها (نصب/حذف)',
