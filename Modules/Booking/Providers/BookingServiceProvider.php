@@ -25,9 +25,9 @@ class BookingServiceProvider extends ServiceProvider
         // Load migrations unconditionally
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
 
-        // Load dynamic labels from DB if table exists - REMOVED BaseModuleInstaller check
-        if (Schema::hasTable('booking_settings')) {
-            try {
+        try {
+            // Load dynamic labels from DB if table exists - REMOVED BaseModuleInstaller check
+            if (Schema::hasTable('booking_settings')) {
                 $labelProvider = BookingSetting::getValue('label_provider');
                 $labelProviders = BookingSetting::getValue('label_providers');
 
@@ -37,9 +37,9 @@ class BookingServiceProvider extends ServiceProvider
                 if ($labelProviders) {
                     config(['booking.labels.providers' => $labelProviders]);
                 }
-            } catch (\Exception $e) {
-                // Ignore errors during boot
             }
+        } catch (\Throwable $e) {
+            // Ignore errors during boot or if database is not yet set up
         }
 
         if ($this->app->runningInConsole()) {
