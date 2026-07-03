@@ -32,17 +32,21 @@ class ClientsServiceProvider extends ServiceProvider
 
         $router->aliasMiddleware('clients.installed.enabled', \Modules\Clients\Middleware\EnsureClientsModuleEnabled::class);
 
-        if (Schema::hasTable('client_settings')) {
-            config([
-                'clients.labels.singular' => ClientSetting::getValue(
-                    'label_singular',
-                    config('clients.labels.singular') // مقدار پیش‌فرض از فایل config
-                ),
-                'clients.labels.plural' => ClientSetting::getValue(
-                    'label_plural',
-                    config('clients.labels.plural')
-                ),
-            ]);
+        try {
+            if (Schema::hasTable('client_settings')) {
+                config([
+                    'clients.labels.singular' => ClientSetting::getValue(
+                        'label_singular',
+                        config('clients.labels.singular') // مقدار پیش‌فرض از فایل config
+                    ),
+                    'clients.labels.plural' => ClientSetting::getValue(
+                        'label_plural',
+                        config('clients.labels.plural')
+                    ),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // Database connection is not established yet (e.g., during installation)
         }
 
         Livewire::component('clients.form-builder', \Modules\Clients\App\Livewire\Settings\ClientFormBuilder::class);
