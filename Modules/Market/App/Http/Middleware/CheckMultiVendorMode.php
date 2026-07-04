@@ -17,7 +17,7 @@ class CheckMultiVendorMode
      */
     public function handle(Request $request, Closure $next)
     {
-        if ($request->user() && $request->user()->hasAnyRole(['super-admin', 'admin'])) {
+        if ($request->user() && ($request->user()->hasAnyRole(['super-admin', 'admin']) || $request->user()->can('market.vendors.view') || $request->user()->can('market.vendors.manage'))) {
             return $next($request);
         }
 

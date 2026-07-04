@@ -29,7 +29,7 @@
             تنظیمات نمایشی (UI)
         </button>
 
-        @if($store_type === 'multi')
+        @if($store_type === 'multi' || auth()->user()->can('market.vendors.manage') || auth()->user()->can('market.vendors.view'))
             <button @click="tab = 'vendors'" :class="tab === 'vendors' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="animate-in fade-in flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 سیاست فروشندگان
@@ -430,7 +430,7 @@
         </div>
 
         {{-- 4. تب فروشندگان (فقط Multi Vendor) --}}
-        @if($store_type === 'multi')
+        @if($store_type === 'multi' || auth()->user()->can('market.vendors.manage') || auth()->user()->can('market.vendors.view'))
             <div x-show="tab === 'vendors'" x-cloak class="{{ $cardClass }}">
                 <div class="{{ $headerClass }}">
                     <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
