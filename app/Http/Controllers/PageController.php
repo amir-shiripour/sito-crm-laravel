@@ -22,12 +22,15 @@ class PageController extends Controller
 
         // خواندن قالب انتخاب شده از تنظیمات
         $appTheme = Setting::where('key', 'app_theme')->value('value') ?? 'default';
+        $appThemeLower = strtolower($appTheme);
 
-        $data = compact('appTheme');
+        $data = [
+            'appTheme' => $appThemeLower,
+        ];
 
         // [Architecture Note]: واکشی دیتای واقعی برای تم‌هایی که نیاز به لیست سرویس‌های رزرو دارند
         // استفاده از class_exists برای جلوگیری از خطای سیستمی در صورت غیرفعال بودن ماژول Booking
-        if (in_array($appTheme, ['booking', 'default'])) {
+        if (in_array($appThemeLower, ['booking', 'default'])) {
             if (class_exists(\Modules\Booking\Entities\BookingService::class) && \App\Services\Modules\BaseModuleInstaller::isInstalled('Booking') && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
 
                 $engine = app(\Modules\Booking\Services\BookingEngine::class);
@@ -101,7 +104,7 @@ class PageController extends Controller
         }
 
         // [Architecture Note]: واکشی دیتای واقعی برای تم املاک (Properties)
-        if ($appTheme === 'properties') {
+        if ($appThemeLower === 'properties') {
             if (class_exists(\Modules\Properties\Entities\Property::class)) {
                 // دریافت ۶ ملک آخر برای نمایش در صفحه اصلی
                 // با اضافه کردن attributeValues.attribute از N+1 Query جلوگیری می‌کنیم
@@ -135,11 +138,11 @@ class PageController extends Controller
         }
 
         if ($siteDisplayType === 'theme') {
-            if ($appTheme === 'booking') {
+            if ($appThemeLower === 'booking') {
                 return redirect()->route('booking.public.index');
-            } elseif ($appTheme === 'properties') {
+            } elseif ($appThemeLower === 'properties') {
                 return redirect()->route('properties.index');
-            } elseif ($appTheme === 'market' || $appTheme === 'shop') {
+            } elseif ($appThemeLower === 'market' || $appThemeLower === 'shop') {
                 if (Route::has('market.public.index')) {
                     return redirect()->route('market.public.index');
                 }
@@ -151,10 +154,10 @@ class PageController extends Controller
         }
 
         // --- اینجا رفتار قبلی برای 'landing' حفظ می‌شود ---
-        if (!view()->exists("themes.{$appTheme}.index")) {
-            $appTheme = 'default';
+        if (!view()->exists("themes.{$appThemeLower}.index")) {
+            $appThemeLower = 'default';
         }
 
-        return view("themes.{$appTheme}.index", $data);
+        return view("themes.{$appThemeLower}.index", $data);
     }
 }
