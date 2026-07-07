@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/contentforge",
+    "description": "ContentForge module for pages, blog posts, themes, SEO, and AI assistant",
+    "authors": [
+        {
+            "name": "Antigravity",
+            "email": "antigravity@google.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\ContentForge\\": "app/",
+            "Modules\\ContentForge\\Database\\Factories\\": "database/factories/",
+            "Modules\\ContentForge\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\ContentForge\\Tests\\": "tests/"
+        }
+    }
+}

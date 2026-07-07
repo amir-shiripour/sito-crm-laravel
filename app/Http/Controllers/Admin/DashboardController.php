@@ -28,11 +28,10 @@ class DashboardController extends Controller
      */
     public function optimizerReport()
     {
-        $directories = [
+        $directories = config('image_optimizer.directories', [
             'properties/covers',
             'properties/gallery',
-            // Add other relevant directories here
-        ];
+        ]);
 
         $stats = [];
         $totalOriginalSize = 0;
@@ -92,6 +91,13 @@ class DashboardController extends Controller
             Property::class => 'cover_image',
             PropertyImage::class => 'path',
         ];
+
+        if (class_exists(\Modules\ContentForge\App\Models\ContentPost::class)) {
+            $modelsToProcess[\Modules\ContentForge\App\Models\ContentPost::class] = 'cover_image';
+        }
+        if (class_exists(\Modules\ContentForge\App\Models\ContentCategory::class)) {
+            $modelsToProcess[\Modules\ContentForge\App\Models\ContentCategory::class] = 'cover_image';
+        }
 
         $processedCount = 0;
         $errorCount = 0;
