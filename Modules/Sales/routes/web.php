@@ -8,6 +8,15 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         // Cockpit
         Route::get('cockpit', [\Modules\Sales\App\Http\Controllers\CockpitController::class, 'index'])->name('cockpit')->middleware('can:sales.cockpit.view');
         
+        // Pipeline Kanban
+        Route::get('pipeline', [\Modules\Sales\App\Http\Controllers\PipelineController::class, 'index'])->name('pipeline')->middleware('can:sales.pipelines.view');
+        
+        // Deals 360-View
+        Route::get('deals/{deal}', [\Modules\Sales\App\Http\Controllers\DealController::class, 'show'])->name('deals.show')->middleware('can:sales.deals.view');
+        
+        // Lead Manager
+        Route::get('leads', [\Modules\Sales\App\Http\Controllers\LeadManagerController::class, 'index'])->name('leads.index')->middleware('can:sales.leads.view');
+        
         // Campaigns
         Route::get('campaigns', [\Modules\Sales\App\Http\Controllers\CampaignController::class, 'index'])->name('campaigns.index')->middleware('can:sales.campaigns.view');
         Route::get('campaigns/create', [\Modules\Sales\App\Http\Controllers\CampaignController::class, 'create'])->name('campaigns.create')->middleware('can:sales.campaigns.create');

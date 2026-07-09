@@ -79,6 +79,15 @@ class Installer extends BaseModuleInstaller
             'sales.campaigns.export' => 'خروجی گزارش کمپین',
             'sales.reports.view' => 'مشاهده گزارشات فروش',
             'sales.manage' => 'مدیریت تنظیمات فروش',
+            'sales.deals.view' => 'مشاهده پرونده‌های فروش',
+            'sales.deals.view.all' => 'همه پرونده‌های فروش',
+            'sales.deals.view.own' => 'فقط پرونده‌های خود',
+            'sales.deals.create' => 'ایجاد پرونده فروش',
+            'sales.deals.edit' => 'ویرایش پرونده فروش',
+            'sales.deals.delete' => 'حذف پرونده فروش',
+            'sales.deals.manage' => 'مدیریت پرونده‌های فروش',
+            'sales.pipelines.view' => 'مشاهده بورد کانبان',
+            'sales.leads.view' => 'مشاهده مدیریت سرنخ‌ها',
         ];
 
         $tracker = $this->loadTracker();

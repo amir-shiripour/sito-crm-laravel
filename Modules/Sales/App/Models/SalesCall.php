@@ -11,7 +11,7 @@ class SalesCall extends Model
     protected $table = 'sales_calls';
 
     protected $fillable = [
-        'client_id', 'campaign_id', 'user_id', 'call_date',
+        'client_id', 'campaign_id', 'deal_id', 'user_id', 'call_date',
         'call_time', 'duration_seconds', 'direction', 'status',
         'reason', 'result', 'next_action', 'next_action_date',
         'contact_phone', 'notes'
@@ -25,6 +25,11 @@ class SalesCall extends Model
     public function campaign(): BelongsTo
     {
         return $this->belongsTo(Campaign::class, 'campaign_id');
+    }
+
+    public function deal(): BelongsTo
+    {
+        return $this->belongsTo(SalesDeal::class, 'deal_id');
     }
 
     public function user(): BelongsTo

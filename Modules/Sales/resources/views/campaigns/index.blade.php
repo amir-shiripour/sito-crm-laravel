@@ -33,21 +33,71 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                            <td class="px-6 py-4 font-bold text-gray-900 dark:text-white">کمپین پیامکی یلدا</td>
-                            <td class="px-6 py-4">
-                                <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-md dark:bg-blue-900 dark:text-blue-300">پیامک</span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-md dark:bg-green-900 dark:text-green-300">فعال</span>
-                            </td>
-                            <td class="px-6 py-4 dir-ltr text-right">
-                                ۱۴۰۳/۰۹/۲۵ - ۱۴۰۳/۰۹/۳۰
-                            </td>
-                            <td class="px-6 py-4 text-center">
-                                <button class="px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/50 transition-colors">مشاهده</button>
-                            </td>
-                        </tr>
+                        @forelse($campaigns as $campaign)
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                <td class="px-6 py-4 font-bold text-gray-900 dark:text-white">
+                                    {{ $campaign->name }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    @switch($campaign->type)
+                                        @case('sms')
+                                            <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-blue-900/40 dark:text-blue-300">پیامکی</span>
+                                            @break
+                                        @case('email')
+                                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-purple-900/40 dark:text-purple-300">ایمیلی</span>
+                                            @break
+                                        @case('call')
+                                            <span class="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-indigo-900/40 dark:text-indigo-300">تلفنی</span>
+                                            @break
+                                        @case('social')
+                                            <span class="bg-pink-100 text-pink-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-pink-900/40 dark:text-pink-300">شبکه‌های اجتماعی</span>
+                                            @break
+                                        @default
+                                            <span class="bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-gray-700 dark:text-gray-300">{{ $campaign->type }}</span>
+                                    @endswitch
+                                </td>
+                                <td class="px-6 py-4">
+                                    @switch($campaign->status)
+                                        @case('active')
+                                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-emerald-950/40 dark:text-emerald-400">فعال</span>
+                                            @break
+                                        @case('draft')
+                                            <span class="bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-gray-700 dark:text-gray-400">پیش‌نویس</span>
+                                            @break
+                                        @case('paused')
+                                            <span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-amber-950/40 dark:text-amber-400">متوقف‌شده</span>
+                                            @break
+                                        @case('completed')
+                                            <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-blue-950/40 dark:text-blue-400">تکمیل‌نشده</span>
+                                            @break
+                                        @case('cancelled')
+                                            <span class="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-red-950/40 dark:text-red-400">لغوشده</span>
+                                            @break
+                                        @default
+                                            <span class="bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-md dark:bg-gray-700 dark:text-gray-300">فعال</span>
+                                    @endswitch
+                                </td>
+                                <td class="px-6 py-4 dir-ltr text-right text-xs">
+                                    {{ $campaign->start_date ? \Morilog\Jalali\Jalalian::fromCarbon($campaign->start_date)->format('Y/m/d') : '---' }}
+                                    تا
+                                    {{ $campaign->end_date ? \Morilog\Jalali\Jalalian::fromCarbon($campaign->end_date)->format('Y/m/d') : '---' }}
+                                </td>
+                                <td class="px-6 py-4 text-center flex items-center justify-center gap-2">
+                                    <a href="{{ route('user.sales.campaigns.show', $campaign) }}" class="px-2.5 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/50 transition-colors">
+                                        مشاهده
+                                    </a>
+                                    <a href="{{ route('user.sales.campaigns.edit', $campaign) }}" class="px-2.5 py-1.5 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/50 transition-colors">
+                                        ویرایش
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                                    هیچ کمپین فعالی ثبت نشده است. همین حالا اولین کمپین خود را تعریف کنید.
+                                </td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>

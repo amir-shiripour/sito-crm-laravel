@@ -14,60 +14,64 @@
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 </div>
                 <div>
-                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 block">مشتریان کل</span>
+                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 block">لیدها / مشتریان</span>
                     <span class="text-lg font-black tracking-tight text-gray-900 dark:text-white">{{ number_format($stats['total_clients'] ?? 0) }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Card 2: Calls Today -->
+        <!-- Card 2: Open Deals (Pipeline Value) -->
         <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="p-2.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2"/></svg>
+                </div>
+                <div>
+                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 block">ارزش کاریز (موزون)</span>
+                    <span class="text-sm font-black tracking-tight text-indigo-600 dark:text-indigo-400 block">{{ number_format((float) ($stats['weighted_revenue'] ?? 0)) }} ریال</span>
+                    <span class="text-[10px] text-gray-400 block">{{ $stats['open_deals_count'] ?? 0 }} پرونده باز</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: Monthly Won Revenue -->
+        <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 block">فروش موفق ماه</span>
+                    <span class="text-sm font-black tracking-tight text-emerald-600 dark:text-emerald-400 block">{{ number_format((float) ($stats['won_revenue'] ?? 0)) }} ریال</span>
+                    <span class="text-[10px] text-gray-400 block">{{ $stats['won_deals_count'] ?? 0 }} موفق</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Calls Today -->
+        <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 rounded-xl">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
                 </div>
                 <div>
                     <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 block">تماس‌های امروز</span>
-                    <span class="text-lg font-black tracking-tight text-gray-900 dark:text-white">{{ number_format($stats['calls_today'] ?? 0) }}</span>
+                    <span class="text-sm font-black tracking-tight text-gray-900 dark:text-white block">{{ number_format($stats['calls_today'] ?? 0) }}</span>
+                    <span class="text-[10px] text-gray-400 block">{{ number_format($stats['answered_today'] ?? 0) }} پاسخ‌داده‌شده</span>
                 </div>
             </div>
         </div>
 
-        <!-- Card 3: Answered Calls Today -->
+        <!-- Card 5: My Tasks -->
         <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-xl">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </div>
-                <div>
-                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 block">تماس موفق امروز</span>
-                    <span class="text-lg font-black tracking-tight text-gray-900 dark:text-white">{{ number_format($stats['answered_today'] ?? 0) }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 4: Active Tasks -->
-        <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="p-2.5 bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 rounded-xl">
+                <div class="p-2.5 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-xl">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                 </div>
                 <div>
                     <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 block">تسک‌های باز من</span>
-                    <span class="text-lg font-black tracking-tight text-gray-900 dark:text-white">{{ number_format($stats['pending_tasks'] ?? 0) }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 5: Overdue Tasks -->
-        <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="p-2.5 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-xl">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </div>
-                <div>
-                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 block">معوق سررسید گذشته</span>
-                    <span class="text-lg font-black tracking-tight text-gray-900 dark:text-white">{{ number_format($stats['overdue_tasks'] ?? 0) }}</span>
+                    <span class="text-sm font-black tracking-tight text-red-600 dark:text-red-400 block">{{ number_format($stats['pending_tasks'] ?? 0) }} تسک</span>
+                    <span class="text-[10px] text-gray-400 block">{{ number_format($stats['overdue_tasks'] ?? 0) }} گذشته</span>
                 </div>
             </div>
         </div>
@@ -144,6 +148,12 @@
                             📅 امروز من
                         </button>
                     </li>
+                    <li class="me-2">
+                        <button wire:click="switchTab('campaign_leads')" class="inline-flex items-center gap-2 p-4 border-b-2 rounded-t-xl transition-all duration-200 {{ $activeTab == 'campaign_leads' ? 'text-indigo-600 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400 bg-white dark:bg-gray-800' : 'border-transparent hover:text-gray-700 hover:bg-white/60 dark:hover:bg-gray-700/50 dark:hover:text-gray-300' }}">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            🎯 سرنخ‌های کمپین
+                        </button>
+                    </li>
                 </ul>
             </div>
             
@@ -157,6 +167,8 @@
                     @livewire('sales::task-tab', ['selectedClientId' => $selectedClientId], key('task-tab-'.($selectedClientId ?: 'none')))
                 @elseif($activeTab === 'today')
                     @livewire('sales::today-tab', ['selectedClientId' => $selectedClientId], key('today-tab-'.($selectedClientId ?: 'none')))
+                @elseif($activeTab === 'campaign_leads')
+                    @livewire('sales::campaign-leads-tab', [], key('camp-leads-tab'))
                 @endif
             </div>
         </div>

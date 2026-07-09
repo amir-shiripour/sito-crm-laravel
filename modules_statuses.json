@@ -7,11 +7,12 @@
     "Reminders": true,
     "Workflows": true,
     "Sms": true,
-    "Booking": true,
+    "Booking": false,
     "Properties": true,
     "Settings": true,
     "Market": false,
     "Notifications": true,
-    "Sales": false,
-    "ContractForge": true
+    "Sales": true,
+    "ContractForge": false,
+    "ContentForge": true
 }

@@ -36,12 +36,15 @@ L.Icon.Default.mergeOptions({
     shadowUrl: markerShadow,
 });
 
+import Chart from 'chart.js/auto';
+
 // Make libraries available globally
 window.L = L;
 window.GeoSearchControl = GeoSearchControl;
 window.OpenStreetMapProvider = OpenStreetMapProvider;
 window.Quill = Quill;
 window.Sortable = Sortable;
+window.Chart = Chart;
 
 // import Alpine from 'alpinejs'
 // window.Alpine = Alpine

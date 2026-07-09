@@ -27,6 +27,10 @@ class CockpitMain extends Component
         'overdue_tasks'      => 0,
         'my_calls_today'     => 0,
         'my_answered_today'  => 0,
+        'open_deals_count'   => 0,
+        'weighted_revenue'   => 0,
+        'won_deals_count'    => 0,
+        'won_revenue'        => 0,
     ];
 
     public string $globalSearch = '';
@@ -38,7 +42,7 @@ class CockpitMain extends Component
 
     public function mount()
     {
-        if (!in_array($this->activeTab, ['customers', 'calls', 'tasks', 'today'])) {
+        if (!in_array($this->activeTab, ['customers', 'calls', 'tasks', 'today', 'campaign_leads'])) {
             $this->activeTab = 'customers';
         }
         $this->loadStats();
@@ -57,17 +61,25 @@ class CockpitMain extends Component
                 $totalClients = \Modules\Clients\Entities\Client::visibleForUser($user)->count();
             }
 
+            // Calls calculation (with security check)
             $callsToday = 0;
             $answeredToday = 0;
             $myCallsToday = 0;
             $myAnsweredToday = 0;
             if (class_exists(ClientCall::class)) {
-                $callsToday = ClientCall::today()->count();
-                $answeredToday = ClientCall::today()->answered()->count();
                 $myCallsToday = ClientCall::where('user_id', $userId)->today()->count();
                 $myAnsweredToday = ClientCall::where('user_id', $userId)->today()->answered()->count();
+                
+                if ($user->hasRole('super-admin') || $user->can('sales.calls.view.all') || $user->can('sales.manage')) {
+                    $callsToday = ClientCall::today()->count();
+                    $answeredToday = ClientCall::today()->answered()->count();
+                } else {
+                    $callsToday = $myCallsToday;
+                    $answeredToday = $myAnsweredToday;
+                }
             }
 
+            // Tasks calculation
             $pendingTasks = 0;
             $overdueTasks = 0;
             if (class_exists(Task::class)) {
@@ -81,6 +93,40 @@ class CockpitMain extends Component
                     ->count();
             }
 
+            // Deals metrics calculation (with security checks)
+            $openDealsCount = 0;
+            $weightedRevenue = 0.0;
+            $wonDealsCount = 0;
+            $wonRevenue = 0.0;
+
+            $dealsQuery = \Modules\Sales\App\Models\SalesDeal::query();
+            
+            // Apply security scoping
+            if (!$user->hasRole('super-admin') && !$user->can('sales.deals.view.all') && !$user->can('sales.manage')) {
+                $dealsQuery->where(function($q) use ($userId) {
+                    $q->where('user_id', $userId)->orWhere('created_by', $userId);
+                });
+            }
+
+            $deals = $dealsQuery->get();
+
+            // Open Deals
+            $openDeals = $deals->where('status', 'open');
+            $openDealsCount = $openDeals->count();
+            
+            foreach ($openDeals as $deal) {
+                $prob = $deal->probability ?? 0;
+                $weightedRevenue += ($deal->expected_revenue * ($prob / 100));
+            }
+
+            // Won Deals this month
+            $startOfMonth = now()->startOfMonth();
+            $wonDeals = $deals->where('status', 'won')->filter(function($deal) use ($startOfMonth) {
+                return $deal->updated_at >= $startOfMonth;
+            });
+            $wonDealsCount = $wonDeals->count();
+            $wonRevenue = (float) $wonDeals->sum('actual_revenue');
+
             return [
                 'total_clients' => $totalClients,
                 'calls_today' => $callsToday,
@@ -89,6 +135,10 @@ class CockpitMain extends Component
                 'overdue_tasks' => $overdueTasks,
                 'my_calls_today' => $myCallsToday,
                 'my_answered_today' => $myAnsweredToday,
+                'open_deals_count' => $openDealsCount,
+                'weighted_revenue' => $weightedRevenue,
+                'won_deals_count' => $wonDealsCount,
+                'won_revenue' => $wonRevenue,
             ];
         });
     }
@@ -127,7 +177,7 @@ class CockpitMain extends Component
     #[On('transferTab')]
     public function switchTab($tab)
     {
-        if (in_array($tab, ['customers', 'calls', 'tasks', 'today'])) {
+        if (in_array($tab, ['customers', 'calls', 'tasks', 'today', 'campaign_leads'])) {
             $this->activeTab = $tab;
         }
     }

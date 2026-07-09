@@ -1,0 +1,13 @@
+{
+    "name": "ContentForge",
+    "alias": "contentforge",
+    "description": "ContentForge module for pages, blog posts, themes, SEO, and AI assistant",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\ContentForge\\App\\Providers\\RouteServiceProvider",
+        "Modules\\ContentForge\\App\\Providers\\ContentForgeServiceProvider",
+        "Modules\\ContentForge\\Providers\\ContentForgeServiceProvider"
+    ],
+    "files": []
+}

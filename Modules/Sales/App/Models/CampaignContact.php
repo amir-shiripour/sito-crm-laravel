@@ -10,7 +10,7 @@ class CampaignContact extends Model
     protected $table = 'sales_campaign_contacts';
 
     protected $fillable = [
-        'campaign_id', 'client_id', 'name', 'phone', 'email',
+        'campaign_id', 'client_id', 'assigned_to', 'assigned_role', 'name', 'phone', 'email',
         'status', 'source', 'added_at'
     ];
 
@@ -21,6 +21,11 @@ class CampaignContact extends Model
     public function campaign(): BelongsTo
     {
         return $this->belongsTo(Campaign::class, 'campaign_id');
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'assigned_to');
     }
 
     // Dynamic relationship if Clients module is available

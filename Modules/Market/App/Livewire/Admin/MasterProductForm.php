@@ -14,11 +14,12 @@ use Modules\Market\Entities\MarketSetting;
 use Modules\Market\App\Services\ProductService;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Traits\FileUploadTrait;
 use Illuminate\Validation\Rule;
 
 class MasterProductForm extends Component
 {
-    use WithFileUploads;
+    use WithFileUploads, FileUploadTrait;
 
     public ?MasterProduct $product = null;
 
@@ -400,14 +401,14 @@ class MasterProductForm extends Component
         $imagePath = $this->existing_main_image;
         if ($this->main_image && !is_string($this->main_image)) {
             if ($this->existing_main_image) Storage::disk('public')->delete($this->existing_main_image);
-            $imagePath = $this->main_image->store('products/masters', 'public');
+            $imagePath = $this->uploadFile($this->main_image, 'products/masters', 'public');
         }
 
         $finalGallery = $this->existing_gallery;
         if (!empty($this->gallery_images)) {
             foreach ($this->gallery_images as $img) {
                 if ($img && !is_string($img)) {
-                    $finalGallery[] = $img->store('products/gallery', 'public');
+                    $finalGallery[] = $this->uploadFile($img, 'products/gallery', 'public');
                 }
             }
         }

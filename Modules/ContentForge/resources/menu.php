@@ -1,0 +1,88 @@
+<?php
+
+use Modules\ContentForge\Entities\ContentSetting;
+
+return [
+    [
+        'title'      => 'داشبورد محتوا',
+        'route'      => 'user.content.dashboard',
+        'permission' => 'content.dashboard.view',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-layout-dashboard"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h6v8h-6z" /><path d="M4 16h6v4h-6z" /><path d="M14 12h6v8h-6z" /><path d="M14 4h6v4h-6z" /></svg>',
+        'group'      => 'content',
+        'position'   => 50,
+    ],
+    [
+        'title'      => 'برگه‌ها',
+        'route'      => 'user.content.pages.index',
+        'permission' => 'content.posts.view',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-file"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /></svg>',
+        'group'      => 'content',
+        'position'   => 51,
+    ],
+    [
+        'title'      => 'نوشته‌های وبلاگ',
+        'route'      => 'user.content.posts.index',
+        'permission' => 'content.posts.view',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-pencil"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" /><path d="M13.5 6.5l4 4" /></svg>',
+        'group'      => 'content',
+        'position'   => 52,
+    ],
+    [
+        'title'      => 'نظرات',
+        'route'      => 'user.content.comments.index',
+        'permission' => 'content.comments.manage',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-message-circle"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9a9 8 0 1 1 3.4 2.9l-4.7 1" /></svg>',
+        'group'      => 'content',
+        'position'   => 53,
+        'show'       => fn() => ContentSetting::getValue('general.enable_comments', 'true') === 'true',
+    ],
+    [
+        'title'      => 'دسته‌بندی‌ها',
+        'route'      => 'user.content.categories.index',
+        'permission' => 'content.categories.manage',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-folder"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2z" /></svg>',
+        'group'      => 'content-settings',
+        'position'   => 54,
+    ],
+    [
+        'title'      => 'برچسب‌ها',
+        'route'      => 'user.content.tags.index',
+        'permission' => 'content.tags.manage',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-tag"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3z" /></svg>',
+        'group'      => 'content-settings',
+        'position'   => 55,
+        'show'       => fn() => ContentSetting::getValue('general.enable_tags', 'true') === 'true',
+    ],
+    [
+        'title'      => 'لینک‌های کوتاه',
+        'route'      => 'user.content.short-links.index',
+        'permission' => 'content.shortlinks.manage',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-link"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5" /><path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5" /></svg>',
+        'group'      => 'content-settings',
+        'position'   => 56,
+    ],
+    [
+        'title'      => 'ریدایرکت‌ها',
+        'route'      => 'user.content.redirects.index',
+        'permission' => 'content.redirects.manage',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-arrow-right"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0" /><path d="M13 18l6 -6l-6 -6" /></svg>',
+        'group'      => 'content-settings',
+        'position'   => 57,
+    ],
+    [
+        'title'      => 'موجودیت‌های محتوا',
+        'route'      => 'user.content.entities.index',
+        'permission' => 'content.entities.manage',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-layers-difference"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M16 16m-8 0a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /><path d="M8 8m-8 0a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /></svg>',
+        'group'      => 'content-settings',
+        'position'   => 58,
+    ],
+    [
+        'title'      => 'تنظیمات محتوا',
+        'route'      => 'user.content.settings',
+        'permission' => 'content.settings.manage',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-settings"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>',
+        'group'      => 'content-settings',
+        'position'   => 59,
+    ],
+];
