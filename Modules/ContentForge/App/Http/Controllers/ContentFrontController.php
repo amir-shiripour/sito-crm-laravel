@@ -25,78 +25,23 @@ final class ContentFrontController extends Controller
         $this->themeResolver = $themeResolver;
     }
 
-    protected function getEntity(string $entitySlug): ContentEntity
+    protected function getEntity(?string $entitySlug = null): ContentEntity
     {
+        if (empty($entitySlug)) {
+            return ContentEntity::where('is_default', true)->first() 
+                ?? ContentEntity::where('is_active', true)->firstOrFail();
+        }
+
         return ContentEntity::where('slug', $entitySlug)
             ->where('is_active', true)
-            ->firstOrFail();
+            ->first() 
+            ?? ContentEntity::where('is_default', true)->first()
+            ?? ContentEntity::where('is_active', true)->firstOrFail();
     }
 
-    public function archive(string $entitySlug, Request $request)
+    // --- Core Show Method ---
+    public function renderPost(ContentEntity $entity, ContentPost $post, Request $request)
     {
-        $entity = $this->getEntity($entitySlug);
-        $perPage = (int) ContentSetting::getValue('general.posts_per_page', 12);
-
-        $posts = ContentPost::published()
-            ->where('entity_id', $entity->id)
-            ->where('type', \Modules\ContentForge\App\Enums\PostType::Post)
-            ->orderBy('sort_order')
-            ->orderBy('published_at', 'desc')
-            ->paginate($perPage);
-
-        $view = $this->themeResolver->resolveForArchive($entity, 'archive');
-        return view($view, compact('entity', 'posts'));
-    }
-
-    public function category(string $entitySlug, string $categorySlug, Request $request)
-    {
-        $entity = $this->getEntity($entitySlug);
-        $category = ContentCategory::where('entity_id', $entity->id)
-            ->where('slug', $categorySlug)
-            ->where('is_active', true)
-            ->firstOrFail();
-
-        $perPage = (int) ContentSetting::getValue('general.posts_per_page', 12);
-
-        $posts = ContentPost::published()
-            ->where('entity_id', $entity->id)
-            ->where('category_id', $category->id)
-            ->orderBy('sort_order')
-            ->orderBy('published_at', 'desc')
-            ->paginate($perPage);
-
-        $view = $this->themeResolver->resolveForPost(new ContentPost(['entity_id' => $entity->id, 'category_id' => $category->id]), 'category');
-        return view($view, compact('entity', 'category', 'posts'));
-    }
-
-    public function tag(string $entitySlug, string $tagSlug, Request $request)
-    {
-        $entity = $this->getEntity($entitySlug);
-        $tag = ContentTag::where('entity_id', $entity->id)
-            ->where('slug', $tagSlug)
-            ->firstOrFail();
-
-        $perPage = (int) ContentSetting::getValue('general.posts_per_page', 12);
-
-        $posts = ContentPost::published()
-            ->where('entity_id', $entity->id)
-            ->whereHas('tags', fn($q) => $q->where('id', $tag->id))
-            ->orderBy('sort_order')
-            ->orderBy('published_at', 'desc')
-            ->paginate($perPage);
-
-        $view = $this->themeResolver->resolveForArchive($entity, 'tag');
-        return view($view, compact('entity', 'tag', 'posts'));
-    }
-
-    public function show(string $entitySlug, string $slug, Request $request)
-    {
-        $entity = $this->getEntity($entitySlug);
-        $post = ContentPost::where('entity_id', $entity->id)
-            ->where('slug', $slug)
-            ->whereIn('status', [PostStatus::Published, PostStatus::Archived])
-            ->firstOrFail();
-
         // 1. Check Private visibility
         if ($post->visibility === PostVisibility::Private) {
             $this->middleware('auth');
@@ -122,14 +67,91 @@ final class ContentFrontController extends Controller
             }
         }
 
-        // Increment view count (safely using database transaction)
+        // Increment view count
         $post->increment('view_count');
 
         $view = $this->themeResolver->resolveForPost($post, $post->type->value);
         return view($view, compact('entity', 'post'));
     }
 
-    public function sitemap(string $entitySlug)
+    // --- Standard Actions ---
+
+    public function archive(?string $entitySlug = null, ?Request $request = null)
+    {
+        $entity = $this->getEntity($entitySlug);
+        $perPage = (int) ContentSetting::getValue('general.posts_per_page', 12);
+
+        $posts = ContentPost::published()
+            ->where('entity_id', $entity->id)
+            ->where('type', \Modules\ContentForge\App\Enums\PostType::Post)
+            ->orderBy('sort_order')
+            ->orderBy('published_at', 'desc')
+            ->paginate($perPage);
+
+        $view = $this->themeResolver->resolveForArchive($entity, 'archive');
+        return view($view, compact('entity', 'posts'));
+    }
+
+    public function category(?string $entitySlug = null, ?string $categorySlug = null, ?Request $request = null)
+    {
+        $category = ContentCategory::where('slug', $categorySlug)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $entity = $category->entity;
+        $perPage = (int) ContentSetting::getValue('general.posts_per_page', 12);
+
+        $posts = ContentPost::published()
+            ->where('entity_id', $entity->id)
+            ->where('category_id', $category->id)
+            ->orderBy('sort_order')
+            ->orderBy('published_at', 'desc')
+            ->paginate($perPage);
+
+        $view = $this->themeResolver->resolveForPost(new ContentPost(['entity_id' => $entity->id, 'category_id' => $category->id]), 'category');
+        return view($view, compact('entity', 'category', 'posts'));
+    }
+
+    public function tag(?string $entitySlug = null, ?string $tagSlug = null, ?Request $request = null)
+    {
+        $tag = ContentTag::where('slug', $tagSlug)->firstOrFail();
+        $entity = $tag->entity;
+        $perPage = (int) ContentSetting::getValue('general.posts_per_page', 12);
+
+        $posts = ContentPost::published()
+            ->where('entity_id', $entity->id)
+            ->whereHas('tags', fn($q) => $q->where('id', $tag->id))
+            ->orderBy('sort_order')
+            ->orderBy('published_at', 'desc')
+            ->paginate($perPage);
+
+        $view = $this->themeResolver->resolveForArchive($entity, 'tag');
+        return view($view, compact('entity', 'tag', 'posts'));
+    }
+
+    public function show(string $entitySlug, string $slug, Request $request)
+    {
+        $entity = $this->getEntity($entitySlug);
+
+        // SEO Redirect: If this slug belongs to the default entity, redirect permanently to the root
+        if ($entity->is_default) {
+            return redirect()->to(url('/' . $slug), 301);
+        }
+
+        $postQuery = ContentPost::where('entity_id', $entity->id)
+            ->where('slug', $slug);
+
+        // Allow previewing draft/scheduled posts for logged-in admins
+        if (!auth()->check() || !auth()->user()->can('content.posts.view')) {
+            $postQuery->whereIn('status', [PostStatus::Published, PostStatus::Archived]);
+        }
+
+        $post = $postQuery->firstOrFail();
+
+        return $this->renderPost($entity, $post, $request);
+    }
+
+    public function sitemap(?string $entitySlug = null)
     {
         $entity = $this->getEntity($entitySlug);
         $posts = ContentPost::published()
@@ -141,7 +163,7 @@ final class ContentFrontController extends Controller
         return Response::make($content, 200, ['Content-Type' => 'application/xml']);
     }
 
-    public function feed(string $entitySlug)
+    public function feed(?string $entitySlug = null)
     {
         $entity = $this->getEntity($entitySlug);
         $posts = ContentPost::published()
@@ -153,5 +175,62 @@ final class ContentFrontController extends Controller
 
         $content = view('contentforge::web.rss', compact('entity', 'posts'))->render();
         return Response::make($content, 200, ['Content-Type' => 'application/rss+xml']);
+    }
+
+    // --- Default Entity Root Route Handlers ---
+
+    public function archiveDefault(Request $request)
+    {
+        return $this->archive(null, $request);
+    }
+
+    public function categoryDefault(string $categorySlug, Request $request)
+    {
+        return $this->category(null, $categorySlug, $request);
+    }
+
+    public function tagDefault(string $tagSlug, Request $request)
+    {
+        return $this->tag(null, $tagSlug, $request);
+    }
+
+    public function showDefault(string $slug, Request $request)
+    {
+        // 1. Try to find a post/page with this slug
+        $postQuery = ContentPost::where('slug', $slug);
+
+        // Allow previewing draft/scheduled posts for logged-in admins
+        if (!auth()->check() || !auth()->user()->can('content.posts.view')) {
+            $postQuery->whereIn('status', [PostStatus::Published, PostStatus::Archived]);
+        }
+
+        $post = $postQuery->first();
+
+        if ($post) {
+            $entity = $post->entity;
+            return $this->renderPost($entity, $post, $request);
+        }
+
+        // 2. Try to find an active entity with this slug to show its blog archive
+        $entity = ContentEntity::where('slug', $slug)
+            ->where('is_active', true)
+            ->first();
+
+        if ($entity) {
+            return $this->archive($entity->slug, $request);
+        }
+
+        // 3. Fallback: Not found
+        abort(404);
+    }
+
+    public function sitemapDefault()
+    {
+        return $this->sitemap(null);
+    }
+
+    public function feedDefault()
+    {
+        return $this->feed(null);
     }
 }

@@ -28,6 +28,11 @@ final class ContentEntity extends Model
         'is_active'  => 'boolean',
     ];
 
+    public function getUrlAttribute(): string
+    {
+        return $this->is_default ? url('/blog') : url('/' . $this->slug);
+    }
+
     public function posts(): HasMany
     {
         return $this->hasMany(ContentPost::class, 'entity_id');

@@ -36,6 +36,11 @@ final class ContentCategory extends Model
         'sort_order' => 'integer',
     ];
 
+    public function getUrlAttribute(): string
+    {
+        return url('/blog/category/' . $this->slug);
+    }
+
     public function entity(): BelongsTo
     {
         return $this->belongsTo(ContentEntity::class, 'entity_id');

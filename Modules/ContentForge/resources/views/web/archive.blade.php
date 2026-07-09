@@ -37,7 +37,7 @@
                             <span>{{ $post->reading_time ?? 5 }} دقیقه مطالعه</span>
                         </div>
                         <h3 class="font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 transition-colors">
-                            <a href="{{ url('/' . $entity->slug . '/' . $post->slug) }}">{{ $post->title }}</a>
+                            <a href="{{ $post->url }}">{{ $post->title }}</a>
                         </h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-3 leading-relaxed">
                             {{ $post->excerpt }}
@@ -51,7 +51,7 @@
                             </div>
                             <span>{{ $post->author->name ?? 'مدیر سیستم' }}</span>
                         </div>
-                        <a href="{{ url('/' . $entity->slug . '/' . $post->slug) }}" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 group">
+                        <a href="{{ $post->url }}" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 group">
                             <span>ادامه مطلب</span>
                             <svg class="w-3 h-3 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                         </a>

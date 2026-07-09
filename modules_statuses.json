@@ -12,7 +12,7 @@
     "Settings": true,
     "Market": false,
     "Notifications": true,
-    "Sales": false,
+    "Sales": true,
     "ContractForge": false,
     "ContentForge": true
 }

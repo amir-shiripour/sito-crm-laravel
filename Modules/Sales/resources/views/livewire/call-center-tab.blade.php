@@ -53,7 +53,7 @@
             <div class="relative">
                 <!-- Timeline Dot -->
                 <div class="absolute -right-[22px] sm:-right-[30px] top-1.5 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 {{ $call->direction == 'inbound' ? 'bg-teal-500' : 'bg-indigo-500' }} shadow-sm"></div>
-
+                
                 <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                         <div class="flex items-center gap-2">
@@ -92,7 +92,7 @@
                         <span class="font-bold text-gray-800 dark:text-gray-100 block mb-1">موضوع: {{ $call->reason ?: '-' }}</span>
                         {{ $call->result ?: ($call->notes ?: 'بدون یادداشت و نتیجه') }}
                     </p>
-
+                    
                     <div class="flex items-center justify-between pt-3 border-t border-gray-50 dark:border-gray-700/50">
                         <div class="flex items-center gap-3">
                             @if($call->status == 'answered')
@@ -108,7 +108,7 @@
                             @else
                                 <span class="bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 text-[10px] font-bold px-2 py-1 rounded-lg">⚠️ ناموفق</span>
                             @endif
-
+                            
                             <span class="text-[10px] text-gray-400">ثبت‌کننده: <span class="font-semibold text-gray-600 dark:text-gray-300">{{ $call->user ? $call->user->name : '-' }}</span></span>
                         </div>
 
@@ -146,8 +146,8 @@
                 <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                     <div class="fixed inset-0 bg-gray-950/60 dark:bg-gray-950/80 backdrop-blur-sm transition-opacity" x-on:click="$wire.cancelEditing()"></div>
                     <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-                    <div class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700">
+                    
+                    <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700">
                         <div class="p-6">
                             <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-5">
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-title">

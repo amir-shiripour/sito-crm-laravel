@@ -36,12 +36,24 @@ class ContentSetting extends Model
 
     public static function getValue(string $key, $default = null)
     {
-        return Cache::rememberForever("content_setting_{$key}", function () use ($key, $default) {
-            $setting = self::where('key', $key)->first();
-            if ($setting) {
-                return $setting->value;
-            }
+        try {
+            return Cache::rememberForever("content_setting_{$key}", function () use ($key, $default) {
+                $setting = self::where('key', $key)->first();
+                if ($setting) {
+                    return $setting->value;
+                }
 
+                $keys = explode('.', $key);
+                $value = self::DEFAULTS;
+                foreach ($keys as $k) {
+                    if (!isset($value[$k])) {
+                        return $default;
+                    }
+                    $value = $value[$k];
+                }
+                return $value;
+            });
+        } catch (\Throwable $e) {
             $keys = explode('.', $key);
             $value = self::DEFAULTS;
             foreach ($keys as $k) {
@@ -51,7 +63,7 @@ class ContentSetting extends Model
                 $value = $value[$k];
             }
             return $value;
-        });
+        }
     }
 
     public static function setValue(string $key, $value)

@@ -59,6 +59,13 @@
                 @error('slug') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
             </div>
 
+            {{-- Theme Key --}}
+            <div class="space-y-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400">قالب اختصاصی (Theme Key)</label>
+                <input type="text" wire:model.live="themeKey" placeholder="مثلاً: category-special-theme" class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-mono text-left focus:outline-none focus:border-indigo-500">
+                @error('themeKey') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+            </div>
+
             {{-- Description --}}
             <div class="space-y-1">
                 <label class="text-xs text-gray-500 dark:text-gray-400">توضیحات کوتاه</label>

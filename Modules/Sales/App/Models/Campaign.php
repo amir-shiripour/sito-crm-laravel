@@ -14,7 +14,7 @@ class Campaign extends Model
     protected $fillable = [
         'name', 'type', 'status', 'goal', 'target_audience',
         'budget', 'actual_cost', 'start_date', 'end_date',
-        'description', 'settings', 'created_by', 'assigned_to'
+        'description', 'settings', 'created_by', 'assigned_to', 'assigned_role'
     ];
 
     protected $casts = [

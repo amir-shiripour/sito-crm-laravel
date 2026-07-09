@@ -19,16 +19,21 @@ Route::middleware(['web'])->group(function() {
          ->name('content.short-link');
 });
 
-// --- Public Frontend Routes (Multi-Tenant Entities) ---
+// --- Public Frontend Routes (Flat & Clean SEO Structure) ---
 Route::middleware(['web'])->group(function() {
-    Route::prefix('{entitySlug}')->group(function () {
-        Route::get('/', [ContentFrontController::class, 'archive'])->name('content.archive');
-        Route::get('/category/{categorySlug}', [ContentFrontController::class, 'category'])->name('content.category');
-        Route::get('/tag/{tagSlug}', [ContentFrontController::class, 'tag'])->name('content.tag');
-        Route::get('/sitemap.xml', [ContentFrontController::class, 'sitemap'])->name('content.sitemap');
-        Route::get('/feed.xml', [ContentFrontController::class, 'feed'])->name('content.feed');
-        Route::match(['get', 'post'], '/{slug}', [ContentFrontController::class, 'show'])->name('content.show');
-    });
+    
+    // 1. Core Blog and Feed Routes
+    Route::get('/blog', [ContentFrontController::class, 'archiveDefault'])->name('content.archive.default');
+    Route::get('/blog/category/{categorySlug}', [ContentFrontController::class, 'categoryDefault'])->name('content.category.default');
+    Route::get('/blog/tag/{tagSlug}', [ContentFrontController::class, 'tagDefault'])->name('content.tag.default');
+    Route::get('/sitemap.xml', [ContentFrontController::class, 'sitemapDefault'])->name('content.sitemap.default');
+    Route::get('/feed.xml', [ContentFrontController::class, 'feedDefault'])->name('content.feed.default');
+
+    // 2. Fallback direct root route for posts, pages, and entity archives
+    // Constrained to avoid matching system keywords
+    Route::match(['get', 'post'], '/{slug}', [ContentFrontController::class, 'showDefault'])
+         ->where('slug', '^(?!(user|admin|api|login|logout|register|storage|js|css|fonts|images|sitemap\.xml|feed\.xml|blog|s/|livewire)).*')
+         ->name('content.show.default');
 });
 
 // --- Authenticated User Panel Routes (/user/content) ---

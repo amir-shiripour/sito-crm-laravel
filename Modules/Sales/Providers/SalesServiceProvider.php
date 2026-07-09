@@ -25,6 +25,25 @@ class SalesServiceProvider extends ServiceProvider
         \Livewire\Livewire::component('sales::task-tab', \Modules\Sales\App\Livewire\TaskTab::class);
         \Livewire\Livewire::component('sales::today-tab', \Modules\Sales\App\Livewire\TodayTab::class);
         \Livewire\Livewire::component('sales::cockpit-goal-manager', \Modules\Sales\App\Livewire\CockpitGoalManager::class);
+        \Livewire\Livewire::component('sales::pipeline-kanban', \Modules\Sales\App\Livewire\PipelineKanban::class);
+        \Livewire\Livewire::component('sales::deal-360-view', \Modules\Sales\App\Livewire\Deal360View::class);
+        \Livewire\Livewire::component('sales::campaign-lead-manager', \Modules\Sales\App\Livewire\CampaignLeadManager::class);
+        \Livewire\Livewire::component('sales::sales-report', \Modules\Sales\App\Livewire\SalesReport::class);
+        \Livewire\Livewire::component('sales::campaign-contact-manager', \Modules\Sales\App\Livewire\CampaignContactManager::class);
+        \Livewire\Livewire::component('sales::campaign-leads-tab', \Modules\Sales\App\Livewire\CampaignLeadsTab::class);
+
+        // ثبت هوک‌های اتوماسیون تماس‌ها برای ساخت خودکار پیگیری‌ها به صورت غیرهمگام (Queue)
+        if (class_exists(\Modules\ClientCalls\Entities\ClientCall::class)) {
+            \Modules\ClientCalls\Entities\ClientCall::created(function ($clientCall) {
+                \Modules\Sales\App\Jobs\CreateFollowupTaskJob::dispatch($clientCall);
+            });
+        }
+
+        if (class_exists(\Modules\Sales\App\Models\SalesCall::class)) {
+            \Modules\Sales\App\Models\SalesCall::created(function ($salesCall) {
+                \Modules\Sales\App\Jobs\CreateFollowupTaskJob::dispatch($salesCall);
+            });
+        }
     }
 
     public function register(): void

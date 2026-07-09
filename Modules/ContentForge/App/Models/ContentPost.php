@@ -73,6 +73,11 @@ final class ContentPost extends Model
         'sort_order'     => 'integer',
     ];
 
+    public function getUrlAttribute(): string
+    {
+        return url('/' . $this->slug);
+    }
+
     // Relationships
     public function entity(): BelongsTo
     {

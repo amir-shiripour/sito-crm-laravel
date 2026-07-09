@@ -6,7 +6,7 @@
 <article class="max-w-4xl mx-auto px-6 w-full pt-32 pb-16 space-y-12">
     <div class="space-y-6 text-center">
         @if($post->category)
-            <a href="{{ url('/' . $entity->slug . '/category/' . $post->category->slug) }}" class="text-xs font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-3.5 py-1.5 rounded-full">
+            <a href="{{ $post->category->url }}" class="text-xs font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-3.5 py-1.5 rounded-full">
                 {{ $post->category->name }}
             </a>
         @endif
@@ -57,7 +57,7 @@
     @if($post->tags->isNotEmpty())
         <div class="flex flex-wrap gap-2 pt-6 border-t border-gray-100 dark:border-gray-700">
             @foreach($post->tags as $tag)
-                <a href="{{ url('/' . $entity->slug . '/tag/' . $tag->slug) }}" class="text-xs text-gray-500 bg-gray-50 dark:bg-gray-850 dark:text-gray-400 hover:text-indigo-600 px-3 py-1.5 rounded-lg border transition-colors">
+                <a href="{{ $tag->url }}" class="text-xs text-gray-500 bg-gray-50 dark:bg-gray-850 dark:text-gray-400 hover:text-indigo-600 px-3 py-1.5 rounded-lg border transition-colors">
                     #{{ $tag->name }}
                 </a>
             @endforeach

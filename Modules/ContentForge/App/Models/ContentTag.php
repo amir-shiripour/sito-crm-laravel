@@ -18,6 +18,11 @@ final class ContentTag extends Model
         'slug',
     ];
 
+    public function getUrlAttribute(): string
+    {
+        return url('/blog/tag/' . $this->slug);
+    }
+
     public function entity(): BelongsTo
     {
         return $this->belongsTo(ContentEntity::class, 'entity_id');
