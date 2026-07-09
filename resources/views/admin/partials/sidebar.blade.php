@@ -109,14 +109,16 @@
                     </li>
                 @endif
 
-                <li>
-                    <a href="{{ route('settings.index') }}"
-                       class="group flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all
-{{ request()->routeIs('settings.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white' }}">
-                        <svg class="w-5 h-5 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        <span>تنظیمات عمومی</span>
-                    </a>
-                </li>
+                @if(Route::has('settings.index'))
+                    <li>
+                        <a href="{{ route('settings.index') }}"
+                           class="group flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all
+    {{ request()->routeIs('settings.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white' }}">
+                            <svg class="w-5 h-5 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            <span>تنظیمات عمومی</span>
+                        </a>
+                    </li>
+                @endif
             </ul>
         </div>
     </nav>
