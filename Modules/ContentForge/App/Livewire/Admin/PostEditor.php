@@ -251,6 +251,11 @@ class PostEditor extends Component
 
     public function save()
     {
+        if (empty($this->slug) && !empty($this->title)) {
+            $postId = $this->isEdit && $this->post ? (int)$this->post->id : null;
+            $this->slug = \Modules\ContentForge\App\Services\SlugService::generate($this->title, 'content_posts', $postId);
+        }
+
         $this->validate();
 
         $data = [

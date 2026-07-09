@@ -109,6 +109,10 @@
                 $variant->calculated_stock = $variantStock;
                 $variant->calculated_min_price = $variantMinPrice;
                 $variant->best_vendor_product = $activeVp;
+
+                if ($variantStock <= 0) {
+                    continue;
+                }
                 $attrs = is_array($variant->variant_attributes) ? $variant->variant_attributes : [];
 
                 foreach ($attrs as $key => $val) {
@@ -1045,6 +1049,38 @@
         let selectedAttributes = @json($initialSelectedAttributes);
         const requestedVariantId = @json($requestedVariantId);
 
+        function updateAttributeOptionsState() {
+            const allBtns = document.querySelectorAll('button[data-key]');
+            allBtns.forEach(btn => {
+                const key = btn.dataset.key;
+                const val = btn.dataset.val;
+
+                const tempSelection = { ...selectedAttributes };
+                tempSelection[key] = val;
+
+                const hasValidVariant = productVariants.some(v => {
+                    if (v.stock <= 0) return false;
+                    for (const k in tempSelection) {
+                        const targetVal = tempSelection[k];
+                        const variantVal = v.attributes[k];
+                        if (variantVal === targetVal) continue;
+                        if (variantVal && typeof variantVal === 'string' && variantVal.startsWith('هر ')) continue;
+                        return false;
+                    }
+                    return true;
+                });
+
+                const wrapper = btn.closest('.relative.group');
+                if (wrapper) {
+                    if (!hasValidVariant) {
+                        wrapper.style.display = 'none';
+                    } else {
+                        wrapper.style.display = 'block';
+                    }
+                }
+            });
+        }
+
         // تبدیل بومی آرایه خالی لاراول به شیء در جاوا اسکریپت جهت جلوگیری از اخلال در تخصیص کلیدهای رشته‌ای
         let rawCart = @json(Session::get('market_cart', []));
         let cart = (Array.isArray(rawCart) && rawCart.length === 0) ? {} : rawCart;
@@ -1472,6 +1508,7 @@
             });
 
             updateBuyBoxDOM(matchedVariant);
+            updateAttributeOptionsState();
         }
 
         // به‌روزرسانی اطلاعات قیمت و وضعیت دسکتاپ و موبایل در DOM
@@ -1892,6 +1929,7 @@
                 });
             }
             updateBuyBoxDOM(initialVariant || productVariants[0]);
+            updateAttributeOptionsState();
 
             // Scrollspy for sticky nav
             const scrollspyLinks = document.querySelectorAll('.scrollspy-link');
