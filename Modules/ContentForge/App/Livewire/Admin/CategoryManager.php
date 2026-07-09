@@ -53,6 +53,10 @@ class CategoryManager extends Component
 
     public function save(): void
     {
+        if (empty($this->slug)) {
+            $this->slug = \Modules\ContentForge\App\Services\SlugService::generate($this->name, 'content_categories', $this->editingCategoryId);
+        }
+
         $this->validate();
 
         $data = [

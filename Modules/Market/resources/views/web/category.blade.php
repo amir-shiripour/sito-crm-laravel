@@ -517,8 +517,14 @@
                                         <div class="border-t border-gray-50 dark:border-gray-800/50 pt-4">
                                             @if($hasStock && $minPrice !== null)
                                                 <div class="flex items-end justify-between">
-                                                    {{-- دکمه سبد خرید جدید --}}
-                                                    @livewire('market::web.add-to-cart-button', ['variantId' => $targetVariantId, 'vendorProductId' => $bestVpId, 't' => $t], key($targetVariantId . '-' . $bestVpId))
+                                                     {{-- دکمه سبد خرید جدید --}}
+                                                     @if($variantMode === 'grouped' && $activeVariantsCount > 1)
+                                                         <a href="{{ $productUrl }}" class="inline-flex items-center justify-center px-4 h-11 text-xs font-bold text-indigo-700 bg-indigo-50 dark:bg-indigo-950/20 dark:text-indigo-400 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-100 transition-colors whitespace-nowrap">
+                                                             انتخاب تنوع
+                                                         </a>
+                                                     @else
+                                                         @livewire('market::web.add-to-cart-button', ['variantId' => $targetVariantId, 'vendorProductId' => $bestVpId, 't' => $t], key($targetVariantId . '-' . $bestVpId))
+                                                     @endif
 
                                                     <div class="flex flex-col text-left">
                                                         @if($discountPercent > 0)
