@@ -138,7 +138,7 @@
     <!-- Create Deal Modal -->
     @if($showCreateModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-            <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-gray-700 p-6 flex flex-col gap-6">
+            <div class="bg-white dark:bg-gray-800 relative rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-gray-700 p-6 flex flex-col gap-6">
                 <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">ایجاد پرونده فروش جدید</h3>
                     <button wire:click="$set('showCreateModal', false)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -236,7 +236,7 @@
     <!-- Loss Reason Modal -->
     @if($showLossReasonModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-            <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 p-6 flex flex-col gap-5">
+            <div class="bg-white dark:bg-gray-800 relative rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 p-6 flex flex-col gap-5">
                 <div>
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">دلیل شکست پرونده چیست؟</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">لطفاً دلیل بسته شدن پرونده با وضعیت ناموفق را انتخاب کنید.</p>

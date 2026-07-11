@@ -42,7 +42,7 @@ class CockpitMain extends Component
 
     public function mount()
     {
-        if (!in_array($this->activeTab, ['customers', 'calls', 'tasks', 'today', 'campaign_leads'])) {
+        if (!in_array($this->activeTab, ['customers', 'calls', 'tasks', 'today', 'campaign_leads', 'goals'])) {
             $this->activeTab = 'customers';
         }
         $this->loadStats();
@@ -177,7 +177,7 @@ class CockpitMain extends Component
     #[On('transferTab')]
     public function switchTab($tab)
     {
-        if (in_array($tab, ['customers', 'calls', 'tasks', 'today', 'campaign_leads'])) {
+        if (in_array($tab, ['customers', 'calls', 'tasks', 'today', 'campaign_leads', 'goals'])) {
             $this->activeTab = $tab;
         }
     }

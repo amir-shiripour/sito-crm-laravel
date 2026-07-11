@@ -11,6 +11,9 @@ class CockpitGoalManager extends Component
     public bool $showCreateModal = false;
     public ?int $editingGoalId = null;
 
+    public ?int $selectedUserId = null;
+    public bool $isManager = false;
+
     #[Validate('required|in:daily_calls,daily_answered,weekly_followups,monthly_clients,conversion_rate,talk_time_minutes')]
     public string $goal_type = 'daily_calls';
 
@@ -32,6 +35,9 @@ class CockpitGoalManager extends Component
     public function mount()
     {
         $this->active_from = today()->format('Y-m-d');
+        $user = auth()->user();
+        $this->isManager = $user->hasRole('super-admin') || $user->can('sales.manage');
+        $this->selectedUserId = auth()->id();
     }
 
     public function openCreateModal()
@@ -64,8 +70,10 @@ class CockpitGoalManager extends Component
     {
         $this->validate();
 
+        $targetUser = $this->isManager ? ($this->selectedUserId ?? auth()->id()) : auth()->id();
+
         $data = [
-            'user_id' => auth()->id(),
+            'user_id' => $targetUser,
             'goal_type' => $this->goal_type,
             'target_value' => $this->target_value,
             'period' => $this->period,
@@ -112,14 +120,19 @@ class CockpitGoalManager extends Component
 
     public function render()
     {
-        $goals = CockpitGoal::where('user_id', auth()->id())
+        $targetUser = $this->isManager ? ($this->selectedUserId ?? auth()->id()) : auth()->id();
+
+        $goals = CockpitGoal::where('user_id', $targetUser)
             ->orderBy('is_active', 'desc')
             ->orderBy('id', 'desc')
             ->get();
 
+        $usersList = $this->isManager ? \App\Models\User::orderBy('name')->get() : collect();
+
         return view('sales::livewire.goal-manager', [
             'goals' => $goals,
             'goalTypes' => CockpitGoal::goalTypeLabels(),
+            'usersList' => $usersList,
         ]);
     }
 }

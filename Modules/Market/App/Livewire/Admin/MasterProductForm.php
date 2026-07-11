@@ -380,12 +380,17 @@ class MasterProductForm extends Component
             }
         }
 
+        if (!$this->product->exists) {
+            $this->generateCode();
+        }
+
         $rules = [
             'title' => 'required|string|max:255',
             'slug' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'slug')->ignore($this->product->id)],
             'brand_id' => 'required', 'category_id' => 'required', 'status' => 'required|in:draft,active,archived',
+            'crm_code' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'crm_code')->ignore($this->product->id)],
             'barcode' => ['nullable', 'string', 'max:255', Rule::unique('market_master_products', 'barcode')->ignore($this->product->id)],
-            'gtin' => 'nullable|string|max:255',
+            'gtin' => ['nullable', 'string', 'max:255', Rule::unique('market_master_products', 'gtin')->ignore($this->product->id)],
         ];
         if ($this->main_image && !is_string($this->main_image)) {
             $rules['main_image'] = 'image|max:5120';
@@ -395,8 +400,6 @@ class MasterProductForm extends Component
         }
         $this->validate($rules);
 
-
-        if (!$this->product->exists) $this->generateCode();
 
         $imagePath = $this->existing_main_image;
         if ($this->main_image && !is_string($this->main_image)) {
@@ -415,7 +418,10 @@ class MasterProductForm extends Component
 
         $this->product->fill([
             'title' => $this->title, 'slug' => $this->slug, 'brand_id' => $this->brand_id, 'category_id' => $this->category_id,
-            'crm_code' => $this->crm_code, 'gtin' => $this->gtin, 'barcode' => $this->barcode, 'short_description' => $this->short_description,
+            'crm_code' => $this->crm_code,
+            'gtin' => empty($this->gtin) ? null : $this->gtin,
+            'barcode' => empty($this->barcode) ? null : $this->barcode,
+            'short_description' => $this->short_description,
             'description' => $this->description, 'single_sell' => $this->single_sell, 'enable_reviews' => $this->enable_reviews,
             'enable_questions' => $this->enable_questions,
             'weight' => empty($this->weight) ? null : $this->weight, 'length' => empty($this->length) ? null : $this->length,

@@ -241,7 +241,7 @@
     <!-- Close Deal Modal -->
     @if($showCloseModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm" dir="rtl">
-            <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 p-6 flex flex-col gap-5">
+            <div class="bg-white dark:bg-gray-800 relative rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 p-6 flex flex-col gap-5">
                 <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
                     <h3 class="text-base font-bold text-gray-900 dark:text-white">
                         {{ $closeType === 'won' ? 'ثبت موفقیت پرونده فروش' : 'ثبت شکست پرونده فروش' }}
