@@ -104,6 +104,7 @@
                         <div>
                             <label class="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-2">شناسه هوشمند (Smart SKU)</label>
                             <div class="{{ $inputClass }} bg-indigo-50 text-indigo-700 font-mono text-center font-bold dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 cursor-not-allowed">{{ $crm_code }}</div>
+                            @error('crm_code') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -3,9 +3,25 @@
     $labelClass = "block text-xs font-bold text-gray-600 dark:text-gray-400 mb-2";
 @endphp
 <div class="space-y-4 text-right" dir="rtl">
+    @if($isManager)
+        <div class="bg-gray-50 dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-150 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-gray-700 dark:text-gray-300">مدیریت اهداف کارشناس:</span>
+                <select wire:model.live="selectedUserId" class="rounded-xl border border-gray-200 bg-white dark:bg-gray-950 px-3 py-1.5 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-gray-700 dark:text-gray-100 transition-colors w-52">
+                    @foreach($usersList as $u)
+                        <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->getRoleNames()->first() ?? 'کاربر' }})</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="text-[10px] text-gray-400">
+                در این بخش می‌توانید برای کارشناس انتخابی، هدف تماس یا پرونده جدید تعریف کنید.
+            </div>
+        </div>
+    @endif
+
     <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
         <h3 class="text-xs font-black text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-            🎯 اهداف عملکردی من
+            🎯 {{ $isManager ? 'مدیریت اهداف کارشناسان' : 'اهداف عملکردی من' }}
         </h3>
         <button wire:click="openCreateModal" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold shadow-sm transition-colors">
             ＋ تعریف هدف
@@ -62,7 +78,7 @@
                     <div class="fixed inset-0 bg-gray-950/60 dark:bg-gray-950/80 backdrop-blur-sm transition-opacity" x-on:click="show = false"></div>
                     <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
                     
-                    <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700">
+                    <div class="inline-block align-bottom relative bg-white dark:bg-gray-800 rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700">
                         <div class="p-6">
                             <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-5">
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-title">
