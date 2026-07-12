@@ -68,6 +68,35 @@ class WorkflowController extends Controller
             $triggerOptions['APPOINTMENT'] = $svc::workflowTriggerOptions();
         }
 
+        $clientSvc = \Modules\Clients\App\Services\ClientWorkflowService::class;
+        if (class_exists($clientSvc) && method_exists($clientSvc, 'workflowTriggerOptions')) {
+            $triggerOptions['CLIENT'] = $clientSvc::workflowTriggerOptions();
+        }
+
+        if (class_exists(\Modules\ClientCalls\Entities\ClientCall::class)) {
+            $triggerOptions['CLIENT_CALL'] = [
+                'call_created' => 'ثبت تماس جدید',
+                'call_updated' => 'بروزرسانی اطلاعات تماس',
+                'call_status_changed' => 'تغییر وضعیت تماس',
+            ];
+        }
+
+        if (class_exists(\Modules\Tasks\Entities\Task::class)) {
+            $triggerOptions['TASK'] = [
+                'task_created' => 'ایجاد وظیفه جدید',
+                'task_updated' => 'بروزرسانی وظیفه',
+                'task_status_changed' => 'تغییر وضعیت وظیفه',
+            ];
+        }
+
+        if (class_exists(\Modules\FollowUps\Entities\FollowUp::class)) {
+            $triggerOptions['FOLLOW_UP'] = [
+                'followup_created' => 'ایجاد پیگیری جدید',
+                'followup_updated' => 'بروزرسانی پیگیری',
+                'followup_status_changed' => 'تغییر وضعیت پیگیری',
+            ];
+        }
+
         return $triggerOptions;
     }
 
@@ -95,7 +124,11 @@ class WorkflowController extends Controller
         $users = $usersQuery->get();
         $cureRoles = $cureRolesQuery->get();
 
-        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles'));
+        $clientStatuses = class_exists(\Modules\Clients\Entities\ClientStatus::class)
+            ? \Modules\Clients\Entities\ClientStatus::active()->get()
+            : collect();
+
+        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses'));
     }
 
     public function store(Request $request)
@@ -165,7 +198,11 @@ class WorkflowController extends Controller
         $users = $usersQuery->get();
         $cureRoles = $cureRolesQuery->get();
 
-        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles'));
+        $clientStatuses = class_exists(\Modules\Clients\Entities\ClientStatus::class)
+            ? \Modules\Clients\Entities\ClientStatus::active()->get()
+            : collect();
+
+        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses'));
     }
 
     public function update(Request $request, Workflow $workflow)
@@ -453,7 +490,11 @@ class WorkflowController extends Controller
         $users = $usersQuery->get();
         $cureRoles = $cureRolesQuery->get();
 
-        return view('workflows::user.workflows.designer', compact('workflow', 'roles', 'subWorkflows', 'users', 'cureStatuses', 'cureAssignableRoles', 'cureRoles'));
+        $clientStatuses = class_exists(\Modules\Clients\Entities\ClientStatus::class)
+            ? \Modules\Clients\Entities\ClientStatus::active()->get()
+            : collect();
+
+        return view('workflows::user.workflows.designer', compact('workflow', 'roles', 'subWorkflows', 'users', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses'));
     }
 
     public function saveGraph(Request $request, Workflow $workflow)

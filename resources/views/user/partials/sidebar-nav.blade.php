@@ -108,9 +108,11 @@
 {{-- نمایش گروه‌های ماژول‌ها --}}
 @foreach($menuGroups as $group)
     @php
+        $validGroupItems = collect($group['items'])->filter(fn($i) => !$i['route'] || \Illuminate\Support\Facades\Route::has($i['route']))->values()->all();
         $isGroupActive = request()->routeIs($group['module'] . '.*');
         $groupTitle = $group['module'] === 'admin' ? __('menu.system_management') : __($group['module'] . '::menu.group_title');
     @endphp
+    @if(count($validGroupItems) > 0)
 
     <div x-data="{ open: isMenuOpen('{{ $group['module'] }}') || {{ $isGroupActive ? 'true' : 'false' }} }" class="mt-1">
         <button @click="toggleMenu('{{ $group['module'] }}'); open = !open"
@@ -142,6 +144,7 @@
 
         <div x-show="open && !sidebarCollapsed" x-collapse class="mt-1 space-y-1 relative before:absolute before:right-5 before:top-2 before:bottom-2 before:w-px before:bg-gray-200 dark:before:bg-gray-700">
             @foreach($group['items'] as $item)
+                @if(!$item['route'] || \Illuminate\Support\Facades\Route::has($item['route']))
                 @php
                     $isItemActive = request()->routeIs($item['route'] . '*');
                 @endphp
@@ -154,9 +157,11 @@
 
                     <span x-show="!sidebarCollapsed" x-transition class="truncate">{{ $item['title'] }}</span>
                 </a>
+                @endif
             @endforeach
         </div>
     </div>
+    @endif
 @endforeach
 
 {{-- دیوایدر تنظیمات و مشتریان --}}
@@ -196,6 +201,7 @@
 
         <div x-show="open && !sidebarCollapsed" x-collapse class="mt-1 space-y-1 relative before:absolute before:right-5 before:top-2 before:bottom-2 before:w-px before:bg-gray-200 dark:before:bg-gray-700">
             @foreach($settingsItems as $item)
+                @if(!$item['route'] || \Illuminate\Support\Facades\Route::has($item['route']))
                 @php $isItemActive = request()->routeIs($item['route'] . '*'); @endphp
                 <a href="{{ $item['route'] ? route($item['route']) : '#' }}"
                    class="flex items-center pr-10 pl-3 py-2 text-sm rounded-xl font-medium transition-all duration-200 relative group/child
@@ -204,6 +210,7 @@
                     <span class="absolute right-[18px] top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full transition-colors {{ $isItemActive ? 'bg-indigo-600 dark:bg-indigo-400 ring-4 ring-indigo-50 dark:ring-indigo-900/30' : 'bg-gray-300 dark:bg-gray-600 group-hover/child:bg-gray-400 dark:group-hover/child:bg-gray-500' }}"></span>
                     <span x-show="!sidebarCollapsed" x-transition class="truncate">{{ $item['title'] }}</span>
                 </a>
+                @endif
             @endforeach
         </div>
     </div>

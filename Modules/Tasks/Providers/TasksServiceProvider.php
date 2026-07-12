@@ -16,6 +16,10 @@ class TasksServiceProvider extends ServiceProvider
         $this->registerViews();
 
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        if (class_exists(\Modules\Tasks\Entities\Task::class) && class_exists(\Modules\Tasks\App\Observers\TaskObserver::class)) {
+            \Modules\Tasks\Entities\Task::observe(\Modules\Tasks\App\Observers\TaskObserver::class);
+        }
     }
 
     public function register(): void

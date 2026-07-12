@@ -24,8 +24,35 @@
             'client_phone' => 'شماره بیمار',
             'creator_name' => 'ثبت کننده طرح',
             'creator_phone' => 'تلفن ثبت کننده',
+        ],
+        'client' => [
+            'client_id' => 'شناسه بیمار/کلاینت',
+            'client_name' => 'نام بیمار',
+            'client_username' => 'نام کاربری',
+            'client_phone' => 'شماره بیمار',
+            'client_email' => 'ایمیل بیمار',
+            'client_national_code' => 'کد ملی بیمار',
+            'client_case_number' => 'شماره پرونده',
+            'client_notes' => 'یادداشت پرونده',
+            'client_status' => 'وضعیت پرونده',
+            'client_created_at_jalali' => 'تاریخ ایجاد پرونده (شمسی)',
+            'client_creator_name' => 'نام ثبت‌کننده پرونده',
         ]
     ];
+
+    if (class_exists(\Modules\Clients\Entities\ClientForm::class)) {
+        $clientForm = \Modules\Clients\Entities\ClientForm::default();
+        if ($clientForm) {
+            $fields = $clientForm->schema['fields'] ?? [];
+            foreach ($fields as $field) {
+                $fieldId = $field['id'] ?? null;
+                $label = $field['label'] ?? $fieldId;
+                if ($fieldId && !\Modules\Clients\Entities\ClientForm::isSystemFieldId($fieldId)) {
+                    $defaultTokens['client']["client_custom_{$fieldId}"] = $label . ' (فیلد سفارشی)';
+                }
+            }
+        }
+    }
 
     if (isset($cureRoles)) {
         foreach ($cureRoles as $role) {
@@ -590,6 +617,17 @@
                                                     @endforeach
                                                 @endif
                                             </optgroup>
+                                            <optgroup label="پرونده کلاینت">
+                                                <option value="CLIENT_CREATOR">ایجادکننده پرونده کلاینت</option>
+                                                <option value="CLIENT_ASSIGNED_USER">کاربر منتسب به پرونده کلاینت</option>
+                                            </optgroup>
+                                            <optgroup label="تماس کلاینت">
+                                                <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                                            </optgroup>
+                                            <optgroup label="وظیفه و پیگیری">
+                                                <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
+                                                <option value="TASK_ASSIGNEE">ارجاع‌شونده وظیفه/پیگیری</option>
+                                            </optgroup>
                                         </select>
                                     </div>
 
@@ -800,6 +838,17 @@
                                                 @endforeach
                                             @endif
                                         </optgroup>
+                                        <optgroup label="پرونده کلاینت">
+                                            <option value="CLIENT">بیمار پرونده</option>
+                                            <option value="CLIENT_CREATOR">ایجادکننده پرونده کلاینت</option>
+                                        </optgroup>
+                                        <optgroup label="تماس کلاینت">
+                                            <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                                        </optgroup>
+                                        <optgroup label="وظیفه و پیگیری">
+                                            <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
+                                            <option value="TASK_ASSIGNEE">ارجاع‌شونده وظیفه/پیگیری</option>
+                                        </optgroup>
                                     </select>
                                     
                                     <div class="mt-2 space-y-2">
@@ -927,6 +976,17 @@
                                                 @endforeach
                                             @endif
                                         </optgroup>
+                                        <optgroup label="پرونده کلاینت">
+                                            <option value="CLIENT_CREATOR">ایجادکننده پرونده کلاینت</option>
+                                            <option value="CLIENT_ASSIGNED_USER">کاربر منتسب به پرونده کلاینت</option>
+                                        </optgroup>
+                                        <optgroup label="تماس کلاینت">
+                                            <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                                        </optgroup>
+                                        <optgroup label="وظیفه و پیگیری">
+                                            <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
+                                            <option value="TASK_ASSIGNEE">ارجاع‌شونده وظیفه/پیگیری</option>
+                                        </optgroup>
                                     </select>
                                     <div x-show="editingNode.config.followup_assignee_target === 'SPECIFIC_USER'" class="mt-2">
                                         <select x-model="editingNode.config.followup_assignee_id"
@@ -998,6 +1058,17 @@
                                                     <option value="TREATMENT_PLAN_ROLE_{{ $role->id }}">نقش «{{ $role->name }}» در طرح درمان</option>
                                                 @endforeach
                                             @endif
+                                        </optgroup>
+                                        <optgroup label="پرونده کلاینت">
+                                            <option value="CLIENT">بیمار پرونده</option>
+                                            <option value="CLIENT_CREATOR">ایجادکننده پرونده کلاینت</option>
+                                        </optgroup>
+                                        <optgroup label="تماس کلاینت">
+                                            <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                                        </optgroup>
+                                        <optgroup label="وظیفه و پیگیری">
+                                            <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
+                                            <option value="TASK_ASSIGNEE">ارجاع‌شونده وظیفه/پیگیری</option>
                                         </optgroup>
                                     </select>
                                     <div x-show="editingNode.config.notification_target === 'SPECIFIC_USER'" class="mt-2">
@@ -1915,6 +1986,21 @@ function workflowDesigner() {
             if (target.startsWith('TREATMENT_PLAN_ROLE_')) {
                 const roleId = target.replace('TREATMENT_PLAN_ROLE_', '');
                 return 'طرح: ' + this.getRoleName(roleId);
+            }
+            if (target === 'CLIENT_CREATOR') {
+                return 'ایجادکننده کلاینت';
+            }
+            if (target === 'CLIENT_ASSIGNED_USER') {
+                return 'کاربر منتسب کلاینت';
+            }
+            if (target === 'CALL_CREATOR') {
+                return 'ثبت‌کننده تماس';
+            }
+            if (target === 'TASK_CREATOR') {
+                return 'ایجادکننده کار/پیگیری';
+            }
+            if (target === 'TASK_ASSIGNEE') {
+                return 'ارجاع‌شونده کار/پیگیری';
             }
             return 'نامعلوم';
         },

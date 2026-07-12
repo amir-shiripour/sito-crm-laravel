@@ -32,6 +32,10 @@ class ClientsServiceProvider extends ServiceProvider
 
         $router->aliasMiddleware('clients.installed.enabled', \Modules\Clients\Middleware\EnsureClientsModuleEnabled::class);
 
+        if (class_exists(\Modules\Clients\Entities\Client::class)) {
+            \Modules\Clients\Entities\Client::observe(\Modules\Clients\App\Observers\ClientObserver::class);
+        }
+
         try {
             if (Schema::hasTable('client_settings')) {
                 config([
