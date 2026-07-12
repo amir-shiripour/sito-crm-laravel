@@ -47,6 +47,20 @@ class HandleNodeReached
                 $appt = \Modules\Booking\Entities\Appointment::find($instance->related_id);
                 return $appt?->client_id;
             }
+        } elseif ($instance->related_type === 'CLIENT') {
+            return $instance->related_id;
+        } elseif ($instance->related_type === 'CLIENT_CALL') {
+            if (class_exists(\Modules\ClientCalls\Entities\ClientCall::class)) {
+                $call = \Modules\ClientCalls\Entities\ClientCall::find($instance->related_id);
+                return $call?->client_id;
+            }
+        } elseif ($instance->related_type === 'TASK' || $instance->related_type === 'FOLLOW_UP') {
+            if (class_exists(\Modules\Tasks\Entities\Task::class)) {
+                $task = \Modules\Tasks\Entities\Task::find($instance->related_id);
+                if ($task && $task->related_type === 'CLIENT') {
+                    return $task->related_id;
+                }
+            }
         }
         return null;
     }
@@ -176,6 +190,19 @@ class HandleNodeReached
                 if (!empty($assignedUsers)) {
                     $assigneeId = $assignedUsers[0]['user_id'];
                 }
+            } elseif ($assigneeTarget === 'CLIENT_CREATOR' && isset($context['client'])) {
+                $assigneeId = $context['client']->created_by ?? $assigneeId;
+            } elseif ($assigneeTarget === 'CLIENT_ASSIGNED_USER' && isset($context['client'])) {
+                $assignedUser = $context['client']->users()->first();
+                $assigneeId = $assignedUser?->id ?? $assigneeId;
+            } elseif ($assigneeTarget === 'CALL_CREATOR' && isset($context['call'])) {
+                $assigneeId = $context['call']->user_id ?? $assigneeId;
+            } elseif (($assigneeTarget === 'TASK_CREATOR' || $assigneeTarget === 'FOLLOWUP_CREATOR') && (isset($context['task']) || isset($context['followup']))) {
+                $taskObj = $context['task'] ?? $context['followup'];
+                $assigneeId = $taskObj->creator_id ?? $assigneeId;
+            } elseif (($assigneeTarget === 'TASK_ASSIGNEE' || $assigneeTarget === 'FOLLOWUP_ASSIGNEE') && (isset($context['task']) || isset($context['followup']))) {
+                $taskObj = $context['task'] ?? $context['followup'];
+                $assigneeId = $taskObj->assignee_id ?? $assigneeId;
             }
 
             if (!$assigneeId) {

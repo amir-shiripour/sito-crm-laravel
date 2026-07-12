@@ -171,6 +171,108 @@ class WorkflowEngine
                         }
                     }
                 }
+
+                // 3. Client Filter
+                if ($relatedType === 'CLIENT') {
+                    $client = \Modules\Clients\Entities\Client::find($relatedId);
+                    if ($client) {
+                        // 3.1 Current Status Filter
+                        $currentStatuses = $config['client_current_statuses'] ?? [];
+                        $currentStatuses = array_filter(array_map('strval', $currentStatuses));
+                        if (!empty($currentStatuses)) {
+                            $currentStatus = $payload['current_status'] ?? ($client->status?->key ?? null);
+                            $currentStatus = $currentStatus !== null ? (string)$currentStatus : '';
+                            $currentOperator = $config['client_current_status_operator'] ?? 'IN';
+                            $inArray = in_array($currentStatus, $currentStatuses, true);
+                            if (($currentOperator === 'IN' && !$inArray) || ($currentOperator === 'NOT_IN' && $inArray)) {
+                                Log::info("[Workflows] Skipping workflow {$wf->name} (ID: {$wf->id}) due to client current status filter mismatch (Operator: {$currentOperator}).");
+                                continue;
+                            }
+                        }
+
+                        // 3.2 Previous Status Filter
+                        $prevStatuses = $config['client_prev_statuses'] ?? [];
+                        $prevStatuses = array_filter(array_map('strval', $prevStatuses));
+                        if (!empty($prevStatuses)) {
+                            $prevStatus = $payload['previous_status'] ?? null;
+                            $prevStatus = $prevStatus !== null ? (string)$prevStatus : null;
+                            $prevOperator = $config['client_prev_status_operator'] ?? 'IN';
+                            
+                            if ($prevStatus === null) {
+                                if ($prevOperator === 'IN') {
+                                    Log::info("[Workflows] Skipping workflow {$wf->name} (ID: {$wf->id}) due to client previous status filter mismatch (Operator: IN but previous status is null).");
+                                    continue;
+                                }
+                            } else {
+                                $inArray = in_array($prevStatus, $prevStatuses, true);
+                                if (($prevOperator === 'IN' && !$inArray) || ($prevOperator === 'NOT_IN' && $inArray)) {
+                                    Log::info("[Workflows] Skipping workflow {$wf->name} (ID: {$wf->id}) due to client previous status filter mismatch (Operator: {$prevOperator}).");
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 4. Call Filter
+                if ($relatedType === 'CLIENT_CALL' && class_exists(\Modules\ClientCalls\Entities\ClientCall::class)) {
+                    $call = \Modules\ClientCalls\Entities\ClientCall::find($relatedId);
+                    if ($call) {
+                        // Direction filter
+                        $directions = $config['call_directions'] ?? [];
+                        if (!empty($directions) && !in_array($call->direction, $directions, true)) {
+                            Log::info("[Workflows] Skipping workflow {$wf->name} due to call direction filter mismatch.");
+                            continue;
+                        }
+                        
+                        // Status filter
+                        $callStatuses = $config['call_statuses'] ?? [];
+                        $callStatuses = array_filter(array_map('strval', $callStatuses));
+                        if (!empty($callStatuses)) {
+                            $callStatus = (string)$call->status;
+                            $callOperator = $config['call_status_operator'] ?? 'IN';
+                            $inArray = in_array($callStatus, $callStatuses, true);
+                            if (($callOperator === 'IN' && !$inArray) || ($callOperator === 'NOT_IN' && $inArray)) {
+                                Log::info("[Workflows] Skipping workflow {$wf->name} due to call status filter mismatch.");
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                // 5. Task / FollowUp Filter
+                if (($relatedType === 'TASK' || $relatedType === 'FOLLOW_UP') && class_exists(\Modules\Tasks\Entities\Task::class)) {
+                    $task = \Modules\Tasks\Entities\Task::find($relatedId);
+                    if ($task) {
+                        $prefix = $relatedType === 'FOLLOW_UP' ? 'followup' : 'task';
+                        
+                        // Status filter
+                        $taskStatuses = $config["{$prefix}_statuses"] ?? [];
+                        $taskStatuses = array_filter(array_map('strval', $taskStatuses));
+                        if (!empty($taskStatuses)) {
+                            $taskStatus = (string)$task->status;
+                            $taskOperator = $config["{$prefix}_status_operator"] ?? 'IN';
+                            $inArray = in_array($taskStatus, $taskStatuses, true);
+                            if (($taskOperator === 'IN' && !$inArray) || ($taskOperator === 'NOT_IN' && $inArray)) {
+                                Log::info("[Workflows] Skipping workflow {$wf->name} due to {$relatedType} status filter mismatch.");
+                                continue;
+                            }
+                        }
+
+                        // Priority filter
+                        $taskPriorities = $config["{$prefix}_priorities"] ?? [];
+                        $taskPriorities = array_filter(array_map('strval', $taskPriorities));
+                        if (!empty($taskPriorities)) {
+                            $taskPriority = (string)$task->priority;
+                            $taskOperator = $config["{$prefix}_priority_operator"] ?? 'IN';
+                            $inArray = in_array($taskPriority, $taskPriorities, true);
+                            if (($taskOperator === 'IN' && !$inArray) || ($taskOperator === 'NOT_IN' && $inArray)) {
+                                Log::info("[Workflows] Skipping workflow {$wf->name} due to {$relatedType} priority filter mismatch.");
+                                continue;
+                            }
+                        }
+                    }
+                }
             }
 
             if ($wf->nodes()->exists()) {
@@ -477,6 +579,19 @@ class WorkflowEngine
             if (!empty($assignedUsers)) {
                 $targetUserId = $assignedUsers[0]['user_id'];
             }
+        } elseif ($assigneeTarget === 'CLIENT_CREATOR' && isset($context['client'])) {
+            $targetUserId = $context['client']->created_by ?? $targetUserId;
+        } elseif ($assigneeTarget === 'CLIENT_ASSIGNED_USER' && isset($context['client'])) {
+            $assignedUser = $context['client']->users()->first();
+            $targetUserId = $assignedUser?->id ?? $targetUserId;
+        } elseif ($assigneeTarget === 'CALL_CREATOR' && isset($context['call'])) {
+            $targetUserId = $context['call']->user_id ?? $targetUserId;
+        } elseif (($assigneeTarget === 'TASK_CREATOR' || $assigneeTarget === 'FOLLOWUP_CREATOR') && (isset($context['task']) || isset($context['followup']))) {
+            $taskObj = $context['task'] ?? $context['followup'];
+            $targetUserId = $taskObj->creator_id ?? $targetUserId;
+        } elseif (($assigneeTarget === 'TASK_ASSIGNEE' || $assigneeTarget === 'FOLLOWUP_ASSIGNEE') && (isset($context['task']) || isset($context['followup']))) {
+            $taskObj = $context['task'] ?? $context['followup'];
+            $targetUserId = $taskObj->assignee_id ?? $targetUserId;
         }
 
         switch ($action->action_type) {
@@ -529,11 +644,54 @@ class WorkflowEngine
 
             case WorkflowAction::TYPE_SEND_NOTIFICATION:
                 $message = $this->renderTemplate($config['message'] ?? ('اجرای مرحله '.$stage->name), $context);
-                Log::info('[Workflows] notification', [
+                Log::info('[Workflows] notification template rendered', [
                     'instance_id' => $instance->id,
                     'message'     => $message,
                 ]);
-                $result = ['status' => 'logged'];
+
+                $notifTarget = $config['notification_target'] ?? 'CURRENT_USER';
+                $notifUserId = Auth::id() ?: ($instance->created_by ?? null);
+
+                if ($notifTarget === 'APPOINTMENT_PROVIDER' && isset($context['appointment'])) {
+                    $notifUserId = $context['appointment']->provider_user_id ?? $notifUserId;
+                } elseif ($notifTarget === 'SPECIFIC_USER' && !empty($config['notification_target_user_id'])) {
+                    $notifUserId = $config['notification_target_user_id'];
+                } elseif ($notifTarget === 'TREATMENT_PLAN_CREATOR' && isset($context['treatment_plan'])) {
+                    $notifUserId = $context['treatment_plan']->user_id ?? $notifUserId;
+                } elseif ($notifTarget === 'TREATMENT_PLAN_CLIENT_ASSIGNEE' && isset($context['treatment_plan'])) {
+                    $notifUserId = $context['treatment_plan']->client_id ?? $notifUserId;
+                } elseif (str_starts_with($notifTarget, 'TREATMENT_PLAN_ROLE_')) {
+                    $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $notifTarget);
+                    $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
+                    if (!empty($assignedUsers)) {
+                        $notifUserId = $assignedUsers[0]['user_id'];
+                    }
+                } elseif ($notifTarget === 'CLIENT_CREATOR' && isset($context['client'])) {
+                    $notifUserId = $context['client']->created_by ?? $notifUserId;
+                } elseif ($notifTarget === 'CLIENT_ASSIGNED_USER' && isset($context['client'])) {
+                    $assignedUser = $context['client']->users()->first();
+                    $notifUserId = $assignedUser?->id ?? $notifUserId;
+                } elseif ($notifTarget === 'CALL_CREATOR' && isset($context['call'])) {
+                    $notifUserId = $context['call']->user_id ?? $notifUserId;
+                } elseif (($notifTarget === 'TASK_CREATOR' || $notifTarget === 'FOLLOWUP_CREATOR') && (isset($context['task']) || isset($context['followup']))) {
+                    $taskObj = $context['task'] ?? $context['followup'];
+                    $notifUserId = $taskObj->creator_id ?? $notifUserId;
+                } elseif (($notifTarget === 'TASK_ASSIGNEE' || $notifTarget === 'FOLLOWUP_ASSIGNEE') && (isset($context['task']) || isset($context['followup']))) {
+                    $taskObj = $context['task'] ?? $context['followup'];
+                    $notifUserId = $taskObj->assignee_id ?? $notifUserId;
+                }
+
+                $recipient = $notifUserId ? \App\Models\User::find($notifUserId) : null;
+
+                if ($recipient && class_exists(\Modules\Workflows\Notifications\SystemNotification::class)) {
+                    $title = 'گردش کار: ' . ($instance->workflow->name ?? 'اعلان سیستم');
+                    $recipient->notify(new \Modules\Workflows\Notifications\SystemNotification($title, $message));
+                    Log::info("[Workflows] Sent system notification to User ID {$recipient->id}");
+                    $result = ['status' => 'sent', 'user_id' => $recipient->id];
+                } else {
+                    Log::warning("[Workflows] Recipient not found or SystemNotification class does not exist. Target: {$notifTarget}, Resolved User ID: {$notifUserId}");
+                    $result = ['status' => 'logged_only'];
+                }
                 break;
 
             case WorkflowAction::TYPE_SEND_SMS:
@@ -724,6 +882,111 @@ class WorkflowEngine
             }
         }
 
+        // Handle CLIENT_CALL context
+        if ($instance->related_type === 'CLIENT_CALL' && class_exists(\Modules\ClientCalls\Entities\ClientCall::class)) {
+            $call = \Modules\ClientCalls\Entities\ClientCall::with(['client', 'user'])->find($instance->related_id);
+            if ($call) {
+                $data['call'] = $call;
+                if ($call->client) {
+                    $data['client'] = $call->client;
+                }
+                
+                $callTokens = [
+                    'call_id' => $call->id,
+                    'call_date' => $call->call_date?->format('Y-m-d') ?? '',
+                    'call_time' => $call->call_time?->format('H:i') ?? '',
+                    'call_reason' => $call->reason ?? '',
+                    'call_result' => $call->result ?? '',
+                    'call_status' => $call->status ?? '',
+                    'call_direction' => $call->direction === 'inbound' ? 'ورودی' : 'خروجی',
+                    'call_duration' => $call->duration_seconds ?? 0,
+                    'call_notes' => $call->notes ?? '',
+                    'call_next_action' => $call->next_action ?? '',
+                    'call_next_action_date' => $call->next_action_date?->format('Y-m-d') ?? '',
+                    'call_phone' => $call->contact_phone ?? '',
+                ];
+                
+                $data['tokens'] = array_merge($data['tokens'], $callTokens);
+            }
+        }
+
+        // Handle TASK / FOLLOW_UP context
+        if (($instance->related_type === 'TASK' || $instance->related_type === 'FOLLOW_UP') && class_exists(\Modules\Tasks\Entities\Task::class)) {
+            $task = \Modules\Tasks\Entities\Task::find($instance->related_id);
+            if ($task) {
+                $taskTypeKey = $instance->related_type === 'FOLLOW_UP' ? 'followup' : 'task';
+                $data[$taskTypeKey] = $task;
+                
+                if ($task->related_type === 'CLIENT' && class_exists(\Modules\Clients\Entities\Client::class)) {
+                    $client = \Modules\Clients\Entities\Client::with(['creator', 'status'])->find($task->related_id);
+                    if ($client) {
+                        $data['client'] = $client;
+                    }
+                }
+                
+                $assigneeName = $task->assignee_id ? (\App\Models\User::find($task->assignee_id)?->name ?? '') : '';
+                $assigneePhone = $task->assignee_id ? (\App\Models\User::find($task->assignee_id)?->phone ?? '') : '';
+                
+                $taskTokens = [
+                    "{$taskTypeKey}_id" => $task->id,
+                    "{$taskTypeKey}_title" => $task->title ?? '',
+                    "{$taskTypeKey}_description" => $task->description ?? '',
+                    "{$taskTypeKey}_type" => $task->task_type ?? '',
+                    "{$taskTypeKey}_status" => $task->status ?? '',
+                    "{$taskTypeKey}_priority" => $task->priority ?? '',
+                    "{$taskTypeKey}_due_at" => $task->due_at?->format('Y-m-d H:i') ?? '',
+                    "{$taskTypeKey}_completed_at" => $task->completed_at?->format('Y-m-d H:i') ?? '',
+                    "{$taskTypeKey}_assignee_name" => $assigneeName,
+                    "{$taskTypeKey}_assignee_phone" => $assigneePhone,
+                    "{$taskTypeKey}_creator_name" => $task->creator_id ? (\App\Models\User::find($task->creator_id)?->name ?? '') : '',
+                ];
+                
+                $data['tokens'] = array_merge($data['tokens'], $taskTokens);
+            }
+        }
+
+        // Handle CLIENT context
+        if (isset($data['client']) || ($instance->related_type === 'CLIENT' && class_exists('Modules\\Clients\\Entities\\Client'))) {
+            $client = $data['client'] ?? \Modules\Clients\Entities\Client::with(['creator', 'status'])->find($instance->related_id);
+            if ($client) {
+                $data['client'] = $client;
+                
+                $clientTokens = [
+                    'client_id' => $client->id,
+                    'client_name' => $client->full_name,
+                    'client_username' => $client->username,
+                    'client_phone' => $client->phone,
+                    'client_email' => $client->email,
+                    'client_national_code' => $client->national_code,
+                    'client_case_number' => $client->case_number,
+                    'client_notes' => $client->notes,
+                    'client_status' => $client->status?->label ?? $client->status?->key,
+                    'client_created_at_jalali' => $client->created_at ? \Morilog\Jalali\Jalalian::fromCarbon($client->created_at)->format('Y/m/d H:i') : null,
+                    'client_creator_name' => $client->creator?->name,
+                ];
+
+                // Expose custom fields from Form Builder schema
+                if (class_exists('Modules\\Clients\\Entities\\ClientForm')) {
+                    $form = \Modules\Clients\Entities\ClientForm::default();
+                    if ($form) {
+                        $fields = $form->schema['fields'] ?? [];
+                        foreach ($fields as $field) {
+                            $fieldId = $field['id'] ?? null;
+                            if ($fieldId && !\Modules\Clients\Entities\ClientForm::isSystemFieldId($fieldId)) {
+                                $metaVal = $client->meta[$fieldId] ?? null;
+                                if (is_array($metaVal)) {
+                                    $metaVal = implode('، ', $metaVal);
+                                }
+                                $clientTokens["client_custom_{$fieldId}"] = $metaVal;
+                            }
+                        }
+                    }
+                }
+
+                $data['tokens'] = array_merge($clientTokens, $data['tokens']);
+            }
+        }
+
         return $data;
     }
 
@@ -761,6 +1024,20 @@ class WorkflowEngine
             if (class_exists(\Modules\Booking\Entities\Appointment::class)) {
                 $appt = \Modules\Booking\Entities\Appointment::find($instance->related_id);
                 return $appt?->client_id;
+            }
+        } elseif ($instance->related_type === 'CLIENT') {
+            return $instance->related_id;
+        } elseif ($instance->related_type === 'CLIENT_CALL') {
+            if (class_exists(\Modules\ClientCalls\Entities\ClientCall::class)) {
+                $call = \Modules\ClientCalls\Entities\ClientCall::find($instance->related_id);
+                return $call?->client_id;
+            }
+        } elseif ($instance->related_type === 'TASK' || $instance->related_type === 'FOLLOW_UP') {
+            if (class_exists(\Modules\Tasks\Entities\Task::class)) {
+                $task = \Modules\Tasks\Entities\Task::find($instance->related_id);
+                if ($task && $task->related_type === 'CLIENT') {
+                    return $task->related_id;
+                }
             }
         }
         return null;
@@ -809,6 +1086,32 @@ class WorkflowEngine
             $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $target);
             $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
             return $assignedUsers[0]['phone'] ?? null;
+        }
+
+        if ($target === 'CLIENT') {
+            return $context['tokens']['client_phone'] ?? null;
+        }
+
+        if ($target === 'CLIENT_CREATOR') {
+            $creator = $context['client']->creator ?? null;
+            return $creator?->phone ?? $creator?->mobile ?? null;
+        }
+
+        if ($target === 'CALL_CREATOR' && isset($context['call'])) {
+            $user = $context['call']->user ?? null;
+            return $user?->phone ?? $user?->mobile ?? null;
+        }
+
+        if (($target === 'TASK_CREATOR' || $target === 'FOLLOWUP_CREATOR') && (isset($context['task']) || isset($context['followup']))) {
+            $taskObj = $context['task'] ?? $context['followup'];
+            $user = \App\Models\User::find($taskObj->creator_id);
+            return $user?->phone ?? $user?->mobile ?? null;
+        }
+
+        if (($target === 'TASK_ASSIGNEE' || $target === 'FOLLOWUP_ASSIGNEE') && (isset($context['task']) || isset($context['followup']))) {
+            $taskObj = $context['task'] ?? $context['followup'];
+            $user = \App\Models\User::find($taskObj->assignee_id);
+            return $user?->phone ?? $user?->mobile ?? null;
         }
 
         return null;

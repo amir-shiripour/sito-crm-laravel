@@ -25,14 +25,16 @@ class PatientStageAdvanced implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        $treatmentPlanId = 0;
+        $channels = [];
         if ($this->instance->related_type === 'TREATMENT_PLAN') {
-            $treatmentPlanId = $this->instance->related_id;
+            $channels[] = new PrivateChannel('treatment-plan.' . $this->instance->related_id);
+        } elseif ($this->instance->related_type === 'CLIENT') {
+            $channels[] = new PrivateChannel('client.' . $this->instance->related_id);
+        } else {
+            $channels[] = new PrivateChannel('workflow.' . $this->instance->id);
         }
 
-        return [
-            new PrivateChannel('treatment-plan.' . $treatmentPlanId),
-        ];
+        return $channels;
     }
 
     public function broadcastWith(): array

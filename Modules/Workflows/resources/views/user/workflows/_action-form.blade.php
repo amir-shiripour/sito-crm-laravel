@@ -38,8 +38,35 @@
             'client_phone' => 'شماره بیمار',
             'creator_name' => 'ثبت کننده طرح',
             'creator_phone' => 'تلفن ثبت کننده',
+        ],
+        'client' => [
+            'client_id' => 'شناسه بیمار/کلاینت',
+            'client_name' => 'نام بیمار',
+            'client_username' => 'نام کاربری',
+            'client_phone' => 'شماره بیمار',
+            'client_email' => 'ایمیل بیمار',
+            'client_national_code' => 'کد ملی بیمار',
+            'client_case_number' => 'شماره پرونده',
+            'client_notes' => 'یادداشت پرونده',
+            'client_status' => 'وضعیت پرونده',
+            'client_created_at_jalali' => 'تاریخ ایجاد پرونده (شمسی)',
+            'client_creator_name' => 'نام ثبت‌کننده پرونده',
         ]
     ];
+
+    if (class_exists(\Modules\Clients\Entities\ClientForm::class)) {
+        $clientForm = \Modules\Clients\Entities\ClientForm::default();
+        if ($clientForm) {
+            $fields = $clientForm->schema['fields'] ?? [];
+            foreach ($fields as $field) {
+                $fieldId = $field['id'] ?? null;
+                $label = $field['label'] ?? $fieldId;
+                if ($fieldId && !\Modules\Clients\Entities\ClientForm::isSystemFieldId($fieldId)) {
+                    $defaultTokens['client']["client_custom_{$fieldId}"] = $label . ' (فیلد سفارشی)';
+                }
+            }
+        }
+    }
 
     if (isset($cureRoles)) {
         foreach ($cureRoles as $role) {
@@ -73,6 +100,7 @@
          actionType: '{{ $isEdit ? $actionInstance->action_type : \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_SMS }}',
          assigneeTarget: '{{ $cfg['assignee_target'] ?? 'CURRENT_USER' }}',
          smsTarget: '{{ $cfg['target'] ?? 'APPOINTMENT_CLIENT' }}',
+         notificationTarget: '{{ $cfg['notification_target'] ?? 'CURRENT_USER' }}',
          isOpen: false,
 
          insertToken(token) {
@@ -238,6 +266,17 @@
                                     @endforeach
                                 @endif
                             </optgroup>
+                            <optgroup label="پرونده کلاینت">
+                                <option value="CLIENT">بیمار پرونده</option>
+                                <option value="CLIENT_CREATOR">ایجادکننده پرونده کلاینت</option>
+                            </optgroup>
+                            <optgroup label="تماس کلاینت">
+                                <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                            </optgroup>
+                            <optgroup label="وظیفه و پیگیری">
+                                <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
+                                <option value="TASK_ASSIGNEE">ارجاع‌شونده وظیفه/پیگیری</option>
+                            </optgroup>
                         </select>
 
                         {{-- Dynamic Target Inputs --}}
@@ -374,6 +413,17 @@
                                     @endforeach
                                 @endif
                             </optgroup>
+                            <optgroup label="پرونده کلاینت">
+                                <option value="CLIENT_CREATOR">ایجادکننده پرونده کلاینت</option>
+                                <option value="CLIENT_ASSIGNED_USER">کاربر منتسب به پرونده کلاینت</option>
+                            </optgroup>
+                            <optgroup label="تماس کلاینت">
+                                <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                            </optgroup>
+                            <optgroup label="وظیفه و پیگیری">
+                                <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
+                                <option value="TASK_ASSIGNEE">ارجاع‌شونده وظیفه/پیگیری</option>
+                            </optgroup>
                         </select>
                         <div x-show="assigneeTarget === 'SPECIFIC_USER'" class="mt-2">
                             <select name="config[assignee_id]"
@@ -435,6 +485,49 @@
 
             {{-- System Notification Fields --}}
             <div class="space-y-5" x-show="actionType === '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_NOTIFICATION }}'">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">گیرنده اعلان (کاربر سیستم)</label>
+                        <select name="config[notification_target]" x-model="notificationTarget"
+                                :disabled="actionType !== '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_NOTIFICATION }}'"
+                                class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2.5 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-sm">
+                            <option value="CURRENT_USER">کاربر فعلی سیستم</option>
+                            <option value="APPOINTMENT_PROVIDER">پزشک نوبت مربوطه</option>
+                            <option value="SPECIFIC_USER">کاربر خاص مشخص شده</option>
+                            <optgroup label="طرح درمان">
+                                <option value="TREATMENT_PLAN_CREATOR">ایجادکننده طرح درمان</option>
+                                <option value="TREATMENT_PLAN_CLIENT_ASSIGNEE">بیمار طرح درمان</option>
+                                @if(isset($cureRoles))
+                                    @foreach($cureRoles as $role)
+                                        <option value="TREATMENT_PLAN_ROLE_{{ $role->id }}">نقش «{{ $role->name }}» در طرح درمان</option>
+                                    @endforeach
+                                @endif
+                            </optgroup>
+                            <optgroup label="پرونده کلاینت">
+                                <option value="CLIENT_CREATOR">ایجادکننده پرونده کلاینت</option>
+                                <option value="CLIENT_ASSIGNED_USER">کاربر منتسب به پرونده کلاینت</option>
+                            </optgroup>
+                            <optgroup label="تماس کلاینت">
+                                <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                            </optgroup>
+                            <optgroup label="وظیفه و پیگیری">
+                                <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
+                                <option value="TASK_ASSIGNEE">ارجاع‌شونده وظیفه/پیگیری</option>
+                            </optgroup>
+                        </select>
+                        <div x-show="notificationTarget === 'SPECIFIC_USER'" class="mt-2">
+                            <select name="config[notification_target_user_id]"
+                                    :disabled="actionType !== '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_NOTIFICATION }}'"
+                                    class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2.5 px-3 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="">انتخاب کاربر...</option>
+                                @foreach($users as $user)
+                                    <option value="{{ $user->id }}" @selected(($cfg['notification_target_user_id'] ?? '') == $user->id)>{{ $user->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="space-y-1">
                     <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">پیام اعلان سیستم</label>
                     

@@ -40,6 +40,9 @@ class ClientCallsServiceProvider extends ServiceProvider
         \Livewire\Livewire::component('clientcalls::widgets.daily-overview', \Modules\ClientCalls\App\Livewire\Widgets\DailyCallOverview::class);
         \Livewire\Livewire::component('clientcalls::widgets.agent-performance', \Modules\ClientCalls\App\Livewire\Widgets\AgentCallPerformance::class);
 
+        if (class_exists(\Modules\ClientCalls\Entities\ClientCall::class) && class_exists(\Modules\ClientCalls\App\Observers\ClientCallObserver::class)) {
+            \Modules\ClientCalls\Entities\ClientCall::observe(\Modules\ClientCalls\App\Observers\ClientCallObserver::class);
+        }
     }
 
     /**

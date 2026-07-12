@@ -23,6 +23,7 @@ class WorkflowTrigger extends Model
     public const TYPE_SCHEDULE = 'SCHEDULE';
     public const TYPE_APPOINTMENT_STATUS = 'APPOINTMENT_STATUS';
     public const TYPE_APPOINTMENT_REMINDER = 'APPOINTMENT_REMINDER';
+    public const TYPE_CLIENT_STATUS = 'CLIENT_STATUS';
 
     public function workflow(): BelongsTo
     {
