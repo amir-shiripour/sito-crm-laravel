@@ -12,8 +12,9 @@ use Modules\Sales\App\Models\CockpitGoal;
 
 class CockpitMain extends Component
 {
-    public string $activeTab = 'customers'; // 'customers', 'calls', 'tasks', 'today'
+    public string $activeTab = 'deals'; // 'deals', 'calls', 'tasks', 'today'
     public ?int $selectedClientId = null;
+    public ?int $selectedDealId = null;
     public bool $showNewClientModal = false;
     public bool $showNewCallModal = false;
     public bool $showNewFollowupModal = false;
@@ -38,12 +39,21 @@ class CockpitMain extends Component
     public bool $showSmsPanel = false;
     public string $smsText = '';
 
-    protected $queryString = ['activeTab', 'selectedClientId'];
+    protected $queryString = ['activeTab', 'selectedClientId', 'selectedDealId'];
 
     public function mount()
     {
-        if (!in_array($this->activeTab, ['customers', 'calls', 'tasks', 'today', 'campaign_leads', 'goals'])) {
-            $this->activeTab = 'customers';
+        if (!in_array($this->activeTab, ['deals', 'calls', 'tasks', 'today', 'campaign_leads', 'goals'])) {
+            $this->activeTab = 'deals';
+        }
+        if ($this->selectedDealId) {
+            $deal = \Modules\Sales\App\Models\SalesDeal::find($this->selectedDealId);
+            if ($deal) {
+                $this->selectedClientId = $deal->client_id;
+                if ($deal->client) {
+                    $this->quickNote = $deal->client->notes;
+                }
+            }
         }
         $this->loadStats();
     }
@@ -151,6 +161,27 @@ class CockpitMain extends Component
         $this->loadStats();
     }
 
+    #[On('dealSelected')]
+    public function selectDeal($dealId)
+    {
+        $this->selectedDealId = $dealId;
+        $this->selectedClientId = null;
+        $this->quickNote = null;
+
+        if ($dealId) {
+            $deal = \Modules\Sales\App\Models\SalesDeal::with('client')->find($dealId);
+            if ($deal) {
+                $this->selectedClientId = $deal->client_id;
+                if ($deal->client) {
+                    $this->quickNote = $deal->client->notes;
+                }
+            }
+        }
+
+        $this->dispatch('clientChanged', clientId: $this->selectedClientId);
+        $this->dispatch('dealChanged', dealId: $this->selectedDealId);
+    }
+
     #[On('clientSelected')]
     public function selectClient($clientId)
     {
@@ -164,20 +195,31 @@ class CockpitMain extends Component
             }
         }
         
+        // Find latest deal for this client if any
+        if ($clientId) {
+            $latestDeal = \Modules\Sales\App\Models\SalesDeal::where('client_id', $clientId)->latest()->first();
+            $this->selectedDealId = $latestDeal ? $latestDeal->id : null;
+        } else {
+            $this->selectedDealId = null;
+        }
+        
         $this->dispatch('clientChanged', clientId: $clientId);
+        $this->dispatch('dealChanged', dealId: $this->selectedDealId);
     }
 
     public function clearSelection()
     {
         $this->selectedClientId = null;
+        $this->selectedDealId = null;
         $this->quickNote = null;
         $this->dispatch('clientChanged', clientId: null);
+        $this->dispatch('dealChanged', dealId: null);
     }
 
     #[On('transferTab')]
     public function switchTab($tab)
     {
-        if (in_array($tab, ['customers', 'calls', 'tasks', 'today', 'campaign_leads', 'goals'])) {
+        if (in_array($tab, ['deals', 'calls', 'tasks', 'today', 'campaign_leads', 'goals'])) {
             $this->activeTab = $tab;
         }
     }
@@ -274,9 +316,14 @@ class CockpitMain extends Component
     public function render()
     {
         $selectedClient = null;
+        $selectedDeal = null;
         $lastCalls = collect();
         $pendingFollowups = collect();
         $activeReminders = collect();
+
+        if ($this->selectedDealId) {
+            $selectedDeal = \Modules\Sales\App\Models\SalesDeal::with('stage')->find($this->selectedDealId);
+        }
 
         if ($this->selectedClientId && class_exists(\Modules\Clients\Entities\Client::class)) {
             $selectedClient = \Modules\Clients\Entities\Client::find($this->selectedClientId);
@@ -326,6 +373,7 @@ class CockpitMain extends Component
 
         return view('sales::livewire.cockpit-main', [
             'selectedClient' => $selectedClient,
+            'selectedDeal' => $selectedDeal,
             'lastCalls' => $lastCalls,
             'pendingFollowups' => $pendingFollowups,
             'activeReminders' => $activeReminders,

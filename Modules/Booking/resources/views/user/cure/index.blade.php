@@ -620,8 +620,13 @@
                                 <span class="text-sm text-gray-400 dark:text-gray-500">انتخاب بیمار</span>
                             </template>
                             <template x-if="clientId">
-                                <span class="text-sm font-medium text-gray-800 dark:text-gray-100"
-                                      x-text="clients.find(c => c.id === clientId)?.full_name || 'مشتری'"></span>
+                                <div class="flex flex-col text-right">
+                                    <span class="text-sm font-bold text-gray-800 dark:text-gray-100"
+                                          x-text="clients.find(c => c.id === clientId)?.full_name || 'بیمار'"></span>
+                                    <span class="text-[10px] text-gray-400 dark:text-gray-500 font-normal mt-0.5"
+                                          x-show="clients.find(c => c.id === clientId)?.national_code || clients.find(c => c.id === clientId)?.case_number"
+                                          x-text="(clients.find(c => c.id === clientId)?.case_number ? 'پرونده: ' + clients.find(c => c.id === clientId).case_number : '') + (clients.find(c => c.id === clientId)?.national_code ? ' | کد ملی: ' + clients.find(c => c.id === clientId).national_code : '')"></span>
+                                </div>
                             </template>
                         </div>
                         <svg x-show="!isReadOnly" class="w-3.5 h-3.5 text-gray-400 transition-transform shrink-0"
@@ -648,7 +653,7 @@
                                      fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                 </svg>
-                                <input x-model="clientSearch" type="text" placeholder="جستجوی بیمار..." @click.stop
+                                <input x-model="clientSearch" @input.debounce.300ms="searchClientsBackend($el.value)" type="text" placeholder="جستجوی بیمار..." @click.stop
                                        class="w-full pr-9 pl-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-600
                                               bg-gray-50 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100
                                               placeholder-gray-400 focus:outline-none focus:border-indigo-400
@@ -656,6 +661,14 @@
                             </div>
                         </div>
                         <div class="max-h-56 overflow-y-auto sc-thin">
+                            <!-- Loading Indicator -->
+                            <div x-show="clientSearchLoading" class="py-3 text-center text-xs text-gray-400 dark:text-gray-500 flex items-center justify-center gap-2">
+                                <svg class="animate-spin h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                در حال جستجو...
+                            </div>
                             <template x-for="client in filteredClients(clientSearch)" :key="client.id">
                                 <button @click="clientId = client.id; patientName = client.full_name || ''; clientDdOpen = false; clientSearch = ''"
                                         class="w-full flex items-center gap-3 px-4 py-3 text-right transition-all hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border-b border-gray-100 dark:border-gray-700 last:border-0"
@@ -668,7 +681,7 @@
                                            :class="clientId === client.id ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-800 dark:text-gray-100'"
                                            x-text="client.full_name"></p>
                                         <p class="text-[11px] text-gray-400 dark:text-gray-500 truncate"
-                                           x-text="client.phone || client.email || ''"></p>
+                                           x-text="(client.phone ? 'تلفن: ' + client.phone : '') + (client.national_code ? ' | کد ملی: ' + client.national_code : '') + (client.case_number ? ' | پرونده: ' + client.case_number : '')"></p>
                                     </div>
                                     <svg x-show="clientId === client.id" class="w-5 h-5 text-indigo-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -745,6 +758,7 @@
                             </div>
                         </div>
                     </div>
+                    @if(count($categories ?? []) > 1)
                     <div class="flex gap-2 overflow-x-auto sc-thin pb-1">
                         <button @click="filterCategory = null"
                                 :class="filterCategory === null ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300/40' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
@@ -759,6 +773,7 @@
                             </button>
                         @endforeach
                     </div>
+                    @endif
                 </div>
                 <div class="px-4 py-4 flex gap-3 overflow-x-auto sc-thin">
                     <template x-for="service in filteredServices" :key="service.id">
@@ -909,121 +924,6 @@
                         <template x-if="selectedTeeth.length === 0">
                             <span class="text-xs text-gray-400 dark:text-gray-500 self-center" x-text="isReadOnly ? 'هیچ دندانی انتخاب نشده است' : 'روی دندان کلیک کنید تا انتخاب شود'"></span>
                         </template>
-                    </div>
-                </div>
-
-                <!-- Workflow Bindings and Tooth Details Panel -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden p-5 space-y-4">
-                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-5 rounded-full bg-indigo-500 shrink-0"></span>
-                            <h3 class="font-bold text-gray-800 dark:text-gray-100 text-sm">گردش‌کارهای متصل</h3>
-                        </div>
-                        <button x-show="!isReadOnly" type="button" @click="openAddBindingModal('plan')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all">
-                            اتصال گردش‌کار جدید
-                        </button>
-                    </div>
-
-                    <!-- Selected Tooth Detail Card (Slide-down/fade) -->
-                    <div x-show="selectedToothForWorkflow" x-transition class="bg-indigo-50/50 dark:bg-indigo-950/15 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-4 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                                <h4 class="font-black text-xs text-indigo-900 dark:text-indigo-200" x-text="'جزئیات و گردش‌کارهای دندان ' + (selectedToothForWorkflow ? getToothLabel(selectedToothForWorkflow).num : '')"></h4>
-                            </div>
-                            <button type="button" @click="selectedToothForWorkflow = null" class="text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">بستن</button>
-                        </div>
-
-                        <!-- Actions for this tooth -->
-                        <div class="flex flex-wrap gap-2">
-                            <button x-show="!isReadOnly" type="button" @click="openAddBindingModal('tooth', selectedToothForWorkflow)" class="px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/25 transition-all">
-                                + اتصال گردش‌کار به این دندان
-                            </button>
-                            <a x-show="existingPlan" :href="existingPlan ? '/user/booking/cure/' + existingPlan.id + '/workflows?tooth=' + selectedToothForWorkflow : '#'" class="px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold hover:bg-indigo-700 transition-all">
-                                مشاهده بوم فرآیندهای دندان <span x-text="selectedToothForWorkflow ? getToothLabel(selectedToothForWorkflow).num : ''"></span>
-                            </a>
-                        </div>
-
-                        <!-- Active instances for this tooth -->
-                        <div x-show="existingPlan" class="space-y-1.5 mt-2">
-                            <p class="text-[10px] font-black text-gray-400 dark:text-gray-500 font-bold">فرآیندهای در حال اجرا روی این دندان:</p>
-                            <div class="space-y-1">
-                                <template x-for="winst in (existingPlan?.workflows || []).filter(w => w.tooth_context == selectedToothForWorkflow)" :key="winst.id">
-                                    <div class="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2.5 rounded-xl">
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            <span class="text-[11px] font-bold text-gray-800 dark:text-gray-200" x-text="winst.workflow_name"></span>
-                                        </div>
-                                        <span class="text-[10px] font-black text-slate-500" x-text="winst.current_node_name || 'مرحله شروع'"></span>
-                                    </div>
-                                </template>
-                                <template x-if="!(existingPlan?.workflows || []).some(w => w.tooth_context == selectedToothForWorkflow)">
-                                    <p class="text-[10px] text-gray-400 dark:text-gray-500 italic">هیچ فرآیند فعالی برای این دندان وجود ندارد.</p>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Workflow Bindings Table/List -->
-                    <div class="overflow-x-auto sc-thin">
-                        <table class="w-full text-right text-xs">
-                            <thead>
-                                <tr class="text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                                    <th class="py-2.5 font-bold">گردش‌کار</th>
-                                    <th class="py-2.5 font-bold">سطح اتصال</th>
-                                    <th class="py-2.5 font-bold">شرایط شروع</th>
-                                    <th class="py-2.5 font-bold">اجرای خودکار</th>
-                                    <th class="py-2.5 font-bold text-center">عملیات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="binding in workflowBindings" :key="binding.id">
-                                    <tr class="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
-                                        <td class="py-3">
-                                            <div class="font-bold text-gray-800 dark:text-gray-200" x-text="binding.workflow?.name"></div>
-                                        </td>
-                                        <td class="py-3">
-                                            <span x-show="binding.scope === 'plan'" class="px-2 py-0.5 text-[10px] font-black bg-slate-50 dark:bg-slate-700/30 text-slate-600 dark:text-slate-400 rounded-md">کل طرح درمان</span>
-                                            <span x-show="binding.scope === 'item'" class="px-2 py-0.5 text-[10px] font-black bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 rounded-md">یک آیتم خاص</span>
-                                            <span x-show="binding.scope === 'tooth'" class="px-2 py-0.5 text-[10px] font-black bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 rounded-md" x-text="binding.tooth === 'all' ? 'همه دندان‌ها' : 'دندان ' + (binding.tooth ? getToothLabel(binding.tooth).num : '')"></span>
-                                        </td>
-                                        <td class="py-3">
-                                            <div class="flex flex-wrap gap-1">
-                                                <template x-for="st in (binding.trigger_statuses || [])" :key="st">
-                                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400" x-text="getStatusName(st)"></span>
-                                                </template>
-                                                <template x-if="!(binding.trigger_statuses || []).length">
-                                                    <span class="text-gray-400 dark:text-gray-500">همه وضعیت‌ها</span>
-                                                </template>
-                                            </div>
-                                        </td>
-                                        <td class="py-3">
-                                            <span :class="binding.auto_trigger ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'" class="font-bold" x-text="binding.auto_trigger ? 'بله' : 'خیر'"></span>
-                                        </td>
-                                        <td class="py-3">
-                                            <div class="flex items-center justify-center gap-1.5">
-                                                <button x-show="existingPlan" type="button" @click="triggerWorkflowBinding(binding.id)" title="اجرای دستی فرآیند" class="p-1 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                </button>
-                                                <button x-show="!isReadOnly" type="button" @click="openEditBindingModal(binding)" title="ویرایش" class="p-1 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                </button>
-                                                <button x-show="!isReadOnly" type="button" @click="deleteWorkflowBinding(binding.id)" title="حذف" class="p-1 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </template>
-                                <template x-if="workflowBindings.length === 0">
-                                    <tr>
-                                        <td colspan="5" class="py-8 text-center text-gray-400 dark:text-gray-500 italic">
-                                            هیچ گردش‌کاری به این طرح درمان متصل نشده است.
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
                     </div>
                 </div>
 
@@ -1319,6 +1219,121 @@
                                 <span x-text="assignmentGroups.length > 1 ? 'افزودن ' + assignmentGroups.length + ' آیتم به طرح' : 'افزودن به طرح'"></span>
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Workflow Bindings and Tooth Details Panel -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden p-5 space-y-4 mt-4">
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-5 rounded-full bg-indigo-500 shrink-0"></span>
+                            <h3 class="font-bold text-gray-800 dark:text-gray-100 text-sm">گردش‌کارهای متصل</h3>
+                        </div>
+                        <button x-show="!isReadOnly" type="button" @click="openAddBindingModal('plan')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all">
+                            اتصال گردش‌کار جدید
+                        </button>
+                    </div>
+
+                    <!-- Selected Tooth Detail Card (Slide-down/fade) -->
+                    <div x-show="selectedToothForWorkflow" x-transition class="bg-indigo-50/50 dark:bg-indigo-950/15 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                <h4 class="font-black text-xs text-indigo-900 dark:text-indigo-200" x-text="'جزئیات و گردش‌کارهای دندان ' + (selectedToothForWorkflow ? getToothLabel(selectedToothForWorkflow).num : '')"></h4>
+                            </div>
+                            <button type="button" @click="selectedToothForWorkflow = null" class="text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">بستن</button>
+                        </div>
+
+                        <!-- Actions for this tooth -->
+                        <div class="flex flex-wrap gap-2">
+                            <button x-show="!isReadOnly" type="button" @click="openAddBindingModal('tooth', selectedToothForWorkflow)" class="px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/25 transition-all">
+                                + اتصال گردش‌کار به این دندان
+                            </button>
+                            <a x-show="existingPlan" :href="existingPlan ? '/user/booking/cure/' + existingPlan.id + '/workflows?tooth=' + selectedToothForWorkflow : '#'" class="px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold hover:bg-indigo-700 transition-all">
+                                مشاهده بوم فرآیندهای دندان <span x-text="selectedToothForWorkflow ? getToothLabel(selectedToothForWorkflow).num : ''"></span>
+                            </a>
+                        </div>
+
+                        <!-- Active instances for this tooth -->
+                        <div x-show="existingPlan" class="space-y-1.5 mt-2">
+                            <p class="text-[10px] font-black text-gray-400 dark:text-gray-500 font-bold">فرآیندهای در حال اجرا روی این دندان:</p>
+                            <div class="space-y-1">
+                                <template x-for="winst in (existingPlan?.workflows || []).filter(w => w.tooth_context == selectedToothForWorkflow)" :key="winst.id">
+                                    <div class="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2.5 rounded-xl">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            <span class="text-[11px] font-bold text-gray-800 dark:text-gray-200" x-text="winst.workflow_name"></span>
+                                        </div>
+                                        <span class="text-[10px] font-black text-slate-500" x-text="winst.current_node_name || 'مرحله شروع'"></span>
+                                    </div>
+                                </template>
+                                <template x-if="!(existingPlan?.workflows || []).some(w => w.tooth_context == selectedToothForWorkflow)">
+                                    <p class="text-[10px] text-gray-400 dark:text-gray-500 italic">هیچ فرآیند فعالی برای این دندان وجود ندارد.</p>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Workflow Bindings Table/List -->
+                    <div class="overflow-x-auto sc-thin">
+                        <table class="w-full text-right text-xs">
+                            <thead>
+                                <tr class="text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                                    <th class="py-2.5 font-bold">گردش‌کار</th>
+                                    <th class="py-2.5 font-bold">سطح اتصال</th>
+                                    <th class="py-2.5 font-bold">شرایط شروع</th>
+                                    <th class="py-2.5 font-bold">اجرای خودکار</th>
+                                    <th class="py-2.5 font-bold text-center">عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="binding in workflowBindings" :key="binding.id">
+                                    <tr class="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
+                                        <td class="py-3">
+                                            <div class="font-bold text-gray-800 dark:text-gray-200" x-text="binding.workflow?.name"></div>
+                                        </td>
+                                        <td class="py-3">
+                                            <span x-show="binding.scope === 'plan'" class="px-2 py-0.5 text-[10px] font-black bg-slate-50 dark:bg-slate-700/30 text-slate-600 dark:text-slate-400 rounded-md">کل طرح درمان</span>
+                                            <span x-show="binding.scope === 'item'" class="px-2 py-0.5 text-[10px] font-black bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 rounded-md">یک آیتم خاص</span>
+                                            <span x-show="binding.scope === 'tooth'" class="px-2 py-0.5 text-[10px] font-black bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 rounded-md" x-text="binding.tooth === 'all' ? 'همه دندان‌ها' : 'دندان ' + (binding.tooth ? getToothLabel(binding.tooth).num : '')"></span>
+                                        </td>
+                                        <td class="py-3">
+                                            <div class="flex flex-wrap gap-1">
+                                                <template x-for="st in (binding.trigger_statuses || [])" :key="st">
+                                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400" x-text="getStatusName(st)"></span>
+                                                </template>
+                                                <template x-if="!(binding.trigger_statuses || []).length">
+                                                    <span class="text-gray-400 dark:text-gray-500">همه وضعیت‌ها</span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="py-3">
+                                            <span :class="binding.auto_trigger ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'" class="font-bold" x-text="binding.auto_trigger ? 'بله' : 'خیر'"></span>
+                                        </td>
+                                        <td class="py-3">
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                <button x-show="existingPlan" type="button" @click="triggerWorkflowBinding(binding.id)" title="اجرای دستی فرآیند" class="p-1 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                </button>
+                                                <button x-show="!isReadOnly" type="button" @click="openEditBindingModal(binding)" title="ویرایش" class="p-1 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                </button>
+                                                <button x-show="!isReadOnly" type="button" @click="deleteWorkflowBinding(binding.id)" title="حذف" class="p-1 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template x-if="workflowBindings.length === 0">
+                                    <tr>
+                                        <td colspan="5" class="py-8 text-center text-gray-400 dark:text-gray-500 italic">
+                                            هیچ گردش‌کاری به این طرح درمان متصل نشده است.
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -2694,6 +2709,7 @@ snapshots: existingPlan?.snapshots || [],
                     }
                 },
                 clients: clients,
+                clientSearchLoading: false,
                 clientId: null,
                 patientName: '',
                 planItems: [],
@@ -4228,13 +4244,50 @@ snapshots: existingPlan?.snapshots || [],
 
                 get filteredServices() {
                     const q = this.serviceSearch.toLowerCase();
-                    return this.services.filter(s => (!q || s.name.toLowerCase().includes(q)) && (this.filterCategory === null || s.category_id === this.filterCategory));
+                    return this.services.filter(s => (!q || s.name.toLowerCase().includes(q)) && (this.filterCategory === null || (s.category_ids && s.category_ids.includes(this.filterCategory)) || s.category_id === this.filterCategory));
                 },
 
                 filteredClients(search = '') {
                     const q = search.toLowerCase().trim();
                     if (!q) return this.clients;
-                    return this.clients.filter(c => (c.full_name && c.full_name.toLowerCase().includes(q)) || (c.phone && c.phone.includes(q)) || (c.email && c.email.toLowerCase().includes(q)));
+                    return this.clients.filter(c => 
+                        (c.full_name && c.full_name.toLowerCase().includes(q)) || 
+                        (c.phone && c.phone.includes(q)) || 
+                        (c.email && c.email.toLowerCase().includes(q)) ||
+                        (c.national_code && String(c.national_code).includes(q)) ||
+                        (c.case_number && String(c.case_number).includes(q))
+                    );
+                },
+
+                searchClientsBackend(query) {
+                    const q = query.trim();
+                    if (q.length < 2) {
+                        return;
+                    }
+                    this.clientSearchLoading = true;
+                    fetch(`/user/clients/search?q=${encodeURIComponent(q)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data && data.results) {
+                                const current = this.clients.find(c => c.id === this.clientId);
+                                const newClients = data.results.map(c => ({
+                                    id: c.id,
+                                    full_name: c.full_name,
+                                    phone: c.phone,
+                                    email: c.email,
+                                    national_code: c.national_code,
+                                    case_number: c.case_number
+                                }));
+                                if (current && !newClients.some(c => c.id === current.id)) {
+                                    newClients.push(current);
+                                }
+                                this.clients = newClients;
+                            }
+                        })
+                        .catch(err => console.error(err))
+                        .finally(() => {
+                            this.clientSearchLoading = false;
+                        });
                 },
 
                 selectService(service) {

@@ -41,7 +41,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('user.booking.services.index') }}"
+                <a href="{{ session('services_index_url', route('user.booking.services.index')) }}"
                    class="flex-1 sm:flex-none justify-center px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     بازگشت

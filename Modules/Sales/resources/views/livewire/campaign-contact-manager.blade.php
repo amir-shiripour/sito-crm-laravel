@@ -211,22 +211,33 @@
                                     </select>
                                 </td>
                                 <td class="p-4 text-center flex items-center justify-center gap-2">
-                                    @if($contact->status !== 'converted')
-                                        <button wire:click="convertToDeal({{ $contact->id }})" 
-                                                title="تبدیل به پرونده فروش (Deal)"
-                                                class="text-emerald-600 hover:text-emerald-800 transition-colors p-1.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 flex items-center gap-1 font-bold">
-                                            <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                            </svg>
-                                            <span>تبدیل به پرونده</span>
-                                        </button>
+                                    @if(!\Modules\Sales\App\Models\SalesSetting::getValue('auto_create_deal', false))
+                                        @if($contact->status !== 'converted')
+                                            <button wire:click="convertToDeal({{ $contact->id }})" 
+                                                    title="تبدیل به پرونده فروش (Deal)"
+                                                    class="text-emerald-600 hover:text-emerald-800 transition-colors p-1.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 flex items-center gap-1 font-bold">
+                                                <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                </svg>
+                                                <span>تبدیل به پرونده</span>
+                                            </button>
+                                        @else
+                                            <span class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 text-[11px] bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-lg">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                پرونده فعال
+                                            </span>
+                                        @endif
                                     @else
-                                        <span class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 text-[11px] bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-lg">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            پرونده فعال
-                                        </span>
+                                        @if($contact->status === 'converted')
+                                            <span class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 text-[11px] bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-lg">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                پرونده فعال
+                                            </span>
+                                        @endif
                                     @endif
 
                                     <button wire:click="deleteContact({{ $contact->id }})" 

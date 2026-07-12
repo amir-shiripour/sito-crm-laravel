@@ -9,7 +9,7 @@
                 <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">تنظیمات قسطی: {{ $service->name }}</h1>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">مدیریت شرایط پرداخت برای آیتم‌ها و برندهای قیمت‌گذاری پیشرفته</p>
             </div>
-            <a href="{{ route('user.booking.services.index') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-all dark:bg-gray-700 dark:text-gray-200">
+            <a href="{{ session('services_index_url', route('user.booking.services.index')) }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-all dark:bg-gray-700 dark:text-gray-200">
                 بازگشت به لیست
             </a>
         </div>

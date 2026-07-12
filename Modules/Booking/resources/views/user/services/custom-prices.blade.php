@@ -537,6 +537,12 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
+                <a href="{{ session('services_index_url', route('user.booking.services.index')) }}" class="btn btn-ghost">
+                    <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
+                    </svg>
+                    بازگشت
+                </a>
                 <button type="button" @click="addTab()" class="btn btn-emerald">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
