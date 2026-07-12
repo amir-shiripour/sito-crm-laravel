@@ -47,15 +47,15 @@
                     امروز من
                 </button>
 
-                <!-- Customers -->
-                <button wire:click="switchTab('customers')" 
-                        class="relative px-5 py-2.5 rounded-[1.25rem] text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap {{ $activeTab == 'customers' ? 'text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/30' }}">
-                    @if($activeTab == 'customers')
+                <!-- Deals (Briefcase icon) -->
+                <button wire:click="switchTab('deals')" 
+                        class="relative px-5 py-2.5 rounded-[1.25rem] text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap {{ $activeTab == 'deals' ? 'text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/30' }}">
+                    @if($activeTab == 'deals')
                         <div class="absolute inset-0 bg-white dark:bg-gray-800 rounded-[1.25rem] shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 transition-all"></div>
                         <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                     @endif
-                    <svg class="w-4 h-4 {{ $activeTab == 'customers' ? 'text-blue-500' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                    مشتریان
+                    <svg class="w-4 h-4 {{ $activeTab == 'deals' ? 'text-blue-500' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    پرونده‌ها
                 </button>
 
                 <!-- Calls -->
@@ -145,8 +145,8 @@
         </div>
 
         <div class="h-full flex flex-col" dir="rtl">
-            @if($activeTab === 'customers')
-                @livewire('sales::customer-tab', ['selectedClientId' => $selectedClientId], key('cust-tab'))
+            @if($activeTab === 'deals')
+                @livewire('sales::deal-tab', ['selectedDealId' => $selectedDealId], key('deal-tab'))
             @elseif($activeTab === 'calls')
                 @livewire('sales::call-center-tab', ['selectedClientId' => $selectedClientId], key('call-tab-'.($selectedClientId ?: 'none')))
             @elseif($activeTab === 'tasks')
@@ -186,19 +186,34 @@
             <div class="flex-shrink-0 px-6 py-5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800/80 sticky top-0 z-10 flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/40 border border-indigo-100/50 dark:border-indigo-900/50 flex items-center justify-center font-black text-xl text-indigo-600 dark:text-indigo-400 shadow-sm">
-                        {{ mb_substr($selectedClient->full_name, 0, 1) }}
+                        {{ $selectedDeal ? '💼' : mb_substr($selectedClient->full_name, 0, 1) }}
                     </div>
                     <div>
-                        <h2 class="text-base font-extrabold text-gray-900 dark:text-white leading-tight">{{ $selectedClient->full_name }}</h2>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="text-[10px] text-gray-500 dark:text-gray-400 font-medium">پرونده: <span class="tabular-nums font-bold">{{ $selectedClient->case_number ?: $selectedClient->id }}</span></span>
-                            @if($selectedClient->status)
-                                <span class="w-1 h-1 rounded-full bg-gray-300"></span>
-                                <span class="text-[10px] font-bold flex items-center gap-1" style="color: {{ $selectedClient->status->color }}">
-                                    <span class="w-1.5 h-1.5 rounded-full" style="background-color: {{ $selectedClient->status->color }}"></span>
-                                    {{ $selectedClient->status->label }}
+                        <h2 class="text-base font-extrabold text-gray-900 dark:text-white leading-tight">
+                            {{ $selectedDeal ? $selectedDeal->title : $selectedClient->full_name }}
+                        </h2>
+                        <div class="flex flex-col gap-0.5 mt-1">
+                            @if($selectedDeal)
+                                <span class="text-[10px] text-gray-500 dark:text-gray-400 font-semibold">
+                                    مشتری: <span class="font-bold text-gray-700 dark:text-gray-300">{{ $selectedClient->full_name }}</span>
                                 </span>
                             @endif
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-gray-500 dark:text-gray-400 font-medium">پرونده: <span class="tabular-nums font-bold">{{ $selectedClient->case_number ?: $selectedClient->id }}</span></span>
+                                @if($selectedDeal && $selectedDeal->stage)
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                    <span class="text-[10px] font-bold flex items-center gap-1" style="color: {{ $selectedDeal->stage->color }}">
+                                        <span class="w-1.5 h-1.5 rounded-full" style="background-color: {{ $selectedDeal->stage->color }}"></span>
+                                        {{ $selectedDeal->stage->name }}
+                                    </span>
+                                @elseif($selectedClient->status)
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                    <span class="text-[10px] font-bold flex items-center gap-1" style="color: {{ $selectedClient->status->color }}">
+                                        <span class="w-1.5 h-1.5 rounded-full" style="background-color: {{ $selectedClient->status->color }}"></span>
+                                        {{ $selectedClient->status->label }}
+                                    </span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -253,6 +268,33 @@
                             <span class="text-[10px] font-black">ایجاد تسک</span>
                         </button>
                     </div>
+
+                    <!-- Deal Details Card (if selected) -->
+                    @if($selectedDeal)
+                        <div class="bg-indigo-50/30 dark:bg-indigo-950/10 rounded-[2rem] border border-indigo-100/30 dark:border-indigo-900/30 p-4 space-y-4 shadow-2xs">
+                            <h3 class="text-xs font-black text-indigo-900 dark:text-indigo-400">اطلاعات پرونده فروش</h3>
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div class="bg-white dark:bg-gray-900 p-3 rounded-xl border border-gray-100 dark:border-gray-800 shadow-3xs">
+                                    <span class="block text-[10px] text-gray-400 font-bold mb-1">مبلغ پیش‌بینی‌شده</span>
+                                    <span class="font-extrabold text-indigo-600 dark:text-indigo-400 tabular-nums">
+                                        {{ number_format($selectedDeal->expected_revenue) }} <span class="text-[9px] font-normal text-gray-500">ریال</span>
+                                    </span>
+                                </div>
+                                <div class="bg-white dark:bg-gray-900 p-3 rounded-xl border border-gray-100 dark:border-gray-800 shadow-3xs">
+                                    <span class="block text-[10px] text-gray-400 font-bold mb-1">تاریخ بسته‌شدن</span>
+                                    <span class="font-extrabold text-gray-700 dark:text-gray-300 tabular-nums">
+                                        {{ $selectedDeal->expected_close_date ? $selectedDeal->expected_close_date->format('Y/m/d') : 'تعیین نشده' }}
+                                    </span>
+                                </div>
+                            </div>
+                            @if($selectedDeal->description)
+                                <div class="bg-white dark:bg-gray-900 p-3 rounded-xl border border-gray-100 dark:border-gray-800 shadow-3xs">
+                                    <span class="block text-[10px] text-gray-400 font-bold mb-1">توضیحات پرونده</span>
+                                    <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{{ $selectedDeal->description }}</p>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
                     <!-- Contact Details Card -->
                     <div class="bg-gray-50 dark:bg-gray-800/40 rounded-[2rem] border border-gray-100 dark:border-gray-800 p-4 space-y-4">
@@ -401,7 +443,7 @@
                             </div>
                         @endif
                     </div>
-                </section>
+                </div>
                 
                 <!-- Bottom padding space for scrolling -->
                 <div class="h-8"></div>

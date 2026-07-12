@@ -114,7 +114,7 @@ class Client extends Authenticatable
 
     public function isVisibleFor(User $user): bool
     {
-        return static::query()
+        return static::withTrashed()
             ->visibleForUser($user)
             ->whereKey($this->getKey())
             ->exists();

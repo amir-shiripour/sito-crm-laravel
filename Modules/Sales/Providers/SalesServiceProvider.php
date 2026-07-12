@@ -20,6 +20,8 @@ class SalesServiceProvider extends ServiceProvider
 
         \Livewire\Livewire::component('sales::cockpit-main', \Modules\Sales\App\Livewire\CockpitMain::class);
         \Livewire\Livewire::component('sales::customer-tab', \Modules\Sales\App\Livewire\CustomerTab::class);
+        \Livewire\Livewire::component('sales::deal-tab', \Modules\Sales\App\Livewire\DealTab::class);
+        \Livewire\Livewire::component('sales::sales-settings', \Modules\Sales\App\Livewire\SalesSettings::class);
         \Livewire\Livewire::component('sales::call-center-tab', \Modules\Sales\App\Livewire\CallCenterTab::class);
         \Livewire\Livewire::component('sales::follow-up-tab', \Modules\Sales\App\Livewire\FollowUpTab::class);
         \Livewire\Livewire::component('sales::task-tab', \Modules\Sales\App\Livewire\TaskTab::class);

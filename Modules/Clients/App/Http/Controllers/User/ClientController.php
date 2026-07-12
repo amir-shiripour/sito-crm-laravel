@@ -18,7 +18,7 @@ class ClientController extends Controller
         $this->middleware('permission:clients.view')->only(['index', 'show']);
         $this->middleware('permission:clients.create')->only(['create', 'store']);
         $this->middleware('permission:clients.edit')->only(['edit', 'update']);
-        $this->middleware('permission:clients.delete')->only(['destroy']);
+        $this->middleware('permission:clients.delete')->only(['destroy', 'restore', 'forceDelete']);
     }
 
     /**
@@ -29,8 +29,14 @@ class ClientController extends Controller
         session(['clients_index_url' => $request->fullUrl()]);
 
         $user = auth()->user();
+        $isTrash = $request->has('trashed') && $request->trashed == '1';
+
         $query = Client::visibleForUser($user)
             ->with(['creator', 'status', 'calls.user']);
+
+        if ($isTrash) {
+            $query->onlyTrashed();
+        }
 
         // فیلتر بر اساس جستجوی متنی
         if ($request->filled('search')) {
@@ -177,11 +183,29 @@ class ClientController extends Controller
     {
         $this->ensureVisible($client);
 
-        // بسته به منطق پروژه: soft delete یا force delete
-        // $client->delete();
+        $client->delete();
+
+        return back()->with('success', 'مشتری با موفقیت به سطل زباله منتقل شد.');
+    }
+
+    public function restore($id)
+    {
+        $client = Client::onlyTrashed()->findOrFail($id);
+        $this->ensureVisible($client);
+
+        $client->restore();
+
+        return redirect()->route('user.clients.index', ['trashed' => 1])->with('success', 'مشتری با موفقیت بازیابی شد.');
+    }
+
+    public function forceDelete($id)
+    {
+        $client = Client::onlyTrashed()->findOrFail($id);
+        $this->ensureVisible($client);
+
         $client->forceDelete();
 
-        return back()->with('success', 'Client deleted.');
+        return redirect()->route('user.clients.index', ['trashed' => 1])->with('success', 'مشتری برای همیشه حذف شد.');
     }
 
     public function bulkUpdate(Request $request)
@@ -216,10 +240,10 @@ class ClientController extends Controller
                 abort(403);
             }
             foreach ($clients as $client) {
-                $client->forceDelete();
+                $client->delete();
                 $count++;
             }
-            return redirect()->to(session('clients_index_url', route('user.clients.index')))->with('success', "تعداد {$count} مشتری با موفقیت حذف شد.");
+            return redirect()->to(session('clients_index_url', route('user.clients.index')))->with('success', "تعداد {$count} مشتری با موفقیت به سطل زباله منتقل شد.");
         }
 
         return redirect()->to(session('clients_index_url', route('user.clients.index')));

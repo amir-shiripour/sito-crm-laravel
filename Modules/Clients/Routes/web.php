@@ -57,6 +57,14 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
                     ->name('destroy')
                     ->middleware('permission:clients.delete');
 
+                // Trash Management
+                Route::post('/{id}/restore', [UserClientController::class, 'restore'])
+                    ->name('restore')
+                    ->middleware('permission:clients.delete');
+                Route::delete('/{id}/force-delete', [UserClientController::class, 'forceDelete'])
+                    ->name('force-delete')
+                    ->middleware('permission:clients.delete');
+
                 Route::post('/bulk', [UserClientController::class, 'bulkUpdate'])
                     ->name('bulk-update')
                     ->middleware('permission:clients.edit');

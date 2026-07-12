@@ -233,7 +233,7 @@ class CureController extends Controller
         $installmentTypes = $this->getInstallmentTypes($settings);
 
         $allowedCategories = $settings->cure_allowed_categories ?? [];
-        $servicesQuery = BookingService::with('category')->orderBy('name');
+        $servicesQuery = BookingService::with(['category', 'categories'])->orderBy('name');
         if (!empty($allowedCategories)) {
             $servicesQuery->where(function ($q) use ($allowedCategories) {
                 $q->whereIn('category_id', $allowedCategories)
@@ -249,11 +249,18 @@ class CureController extends Controller
                 if (!isset($cp['tabs']) && !isset($cp->tabs)) {
                     $cp = ['tabs' => []];
                 }
+                
+                $categoryIds = $s->categories->pluck('id')->toArray();
+                if ($s->category_id && !in_array((int)$s->category_id, $categoryIds)) {
+                    $categoryIds[] = (int)$s->category_id;
+                }
+
                 return [
                     'id' => $s->id,
                     'name' => $s->name,
                     'base_price' => (float)$s->base_price,
                     'category_id' => $s->category_id,
+                    'category_ids' => $categoryIds,
                     'category_name' => $s->category?->name,
                     'custom_prices' => $cp,
                 ];
@@ -265,14 +272,7 @@ class CureController extends Controller
         }
         $categories = $categoriesQuery->get();
 
-        $clients = Client::orderBy('full_name')
-            ->get()
-            ->map(fn($c) => [
-                'id' => $c->id,
-                'full_name' => $c->full_name ?? '',
-                'phone' => $c->phone ?? '',
-                'email' => $c->email ?? '',
-            ]);
+        $clients = [];
 
         $assignableRolesWithUsers = $this->getAssignableRolesWithUsers($settings);
 
@@ -571,14 +571,17 @@ class CureController extends Controller
         }
         $categories = $categoriesQuery->get();
 
-        $clients = Client::orderBy('full_name')
-            ->get()
-            ->map(fn($c) => [
-                'id' => $c->id,
-                'full_name' => $c->full_name ?? '',
-                'phone' => $c->phone ?? '',
-                'email' => $c->email ?? '',
-            ]);
+        $clients = [];
+        if ($cure->client) {
+            $clients = [[
+                'id' => $cure->client->id,
+                'full_name' => $cure->client->full_name ?? '',
+                'phone' => $cure->client->phone ?? '',
+                'email' => $cure->client->email ?? '',
+                'national_code' => $cure->client->national_code ?? '',
+                'case_number' => $cure->client->case_number ?? '',
+            ]];
+        }
 
         $workflowInstances = $this->getWorkflowInstancesData($cure);
 
@@ -751,14 +754,17 @@ class CureController extends Controller
         }
         $categories = $categoriesQuery->get();
 
-        $clients = Client::orderBy('full_name')
-            ->get()
-            ->map(fn($c) => [
-                'id' => $c->id,
-                'full_name' => $c->full_name ?? '',
-                'phone' => $c->phone ?? '',
-                'email' => $c->email ?? '',
-            ]);
+        $clients = [];
+        if ($cure->client) {
+            $clients = [[
+                'id' => $cure->client->id,
+                'full_name' => $cure->client->full_name ?? '',
+                'phone' => $cure->client->phone ?? '',
+                'email' => $cure->client->email ?? '',
+                'national_code' => $cure->client->national_code ?? '',
+                'case_number' => $cure->client->case_number ?? '',
+            ]];
+        }
 
         $assignableRolesWithUsers = $this->getAssignableRolesWithUsers($settings);
 
@@ -895,14 +901,17 @@ class CureController extends Controller
         }
         $categories = $categoriesQuery->get();
 
-        $clients = Client::orderBy('full_name')
-            ->get()
-            ->map(fn($c) => [
-                'id' => $c->id,
-                'full_name' => $c->full_name ?? '',
-                'phone' => $c->phone ?? '',
-                'email' => $c->email ?? '',
-            ]);
+        $clients = [];
+        if ($cure->client) {
+            $clients = [[
+                'id' => $cure->client->id,
+                'full_name' => $cure->client->full_name ?? '',
+                'phone' => $cure->client->phone ?? '',
+                'email' => $cure->client->email ?? '',
+                'national_code' => $cure->client->national_code ?? '',
+                'case_number' => $cure->client->case_number ?? '',
+            ]];
+        }
 
         $planJs = $this->mapPlanToJs($cure);
         $assignableRolesWithUsers = $this->getAssignableRolesWithUsers($settings);
@@ -1117,6 +1126,10 @@ class CureController extends Controller
             'client' => $cure->client ? [
                 'id' => $cure->client->id,
                 'full_name' => $cure->client->full_name ?? '',
+                'phone' => $cure->client->phone ?? '',
+                'email' => $cure->client->email ?? '',
+                'national_code' => $cure->client->national_code ?? '',
+                'case_number' => $cure->client->case_number ?? '',
             ] : null,
             'patient_name' => $cure->patient_name,
             'status' => $cure->status,

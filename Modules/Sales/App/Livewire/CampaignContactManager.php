@@ -181,30 +181,9 @@ class CampaignContactManager extends Component
             return;
         }
 
-        $clientId = $contact->client_id;
-        if (!$clientId && class_exists(Client::class)) {
-            $client = Client::where('phone', $contact->phone)->first();
-            if (!$client) {
-                $clientName = $contact->name ?: $this->campaign->name . ' (' . substr($contact->phone, -4) . ')';
-                $username = 'client_' . ($contact->phone ?: \Illuminate\Support\Str::random(10));
-                
-                $counter = 1;
-                while (Client::where('username', $username)->exists()) {
-                    $username = 'client_' . ($contact->phone ?: \Illuminate\Support\Str::random(10)) . '_' . $counter;
-                    $counter++;
-                }
-
-                $client = Client::create([
-                    'full_name' => $clientName,
-                    'phone' => $contact->phone,
-                    'email' => $contact->email,
-                    'username' => $username,
-                    'created_by' => auth()->id(),
-                ]);
-            }
-            $clientId = $client->id;
-            $contact->update(['client_id' => $clientId]);
-        }
+        $userId = auth()->id() ? (int) auth()->id() : null;
+        $client = $contact->ensureClientCreated($userId);
+        $clientId = $client ? $client->id : null;
 
         $firstStage = \Modules\Sales\App\Models\SalesPipeline::orderBy('order')->first();
         if (!$firstStage) {
@@ -219,7 +198,7 @@ class CampaignContactManager extends Component
             'title' => 'پرونده: ' . $contact->name,
             'client_id' => $clientId,
             'pipeline_stage_id' => $firstStage->id,
-            'user_id' => auth()->id(),
+            'user_id' => $userId,
             'expected_revenue' => 0.0,
             'probability' => 10,
             'status' => 'open',
@@ -251,12 +230,20 @@ class CampaignContactManager extends Component
             }
         }
 
-        CampaignContact::where('campaign_id', $this->campaign->id)
+        $contacts = CampaignContact::where('campaign_id', $this->campaign->id)
             ->whereIn('id', $this->selectedContactIds)
-            ->update([
+            ->get();
+
+        foreach ($contacts as $contact) {
+            $contact->update([
                 'assigned_to' => $assigned_to,
                 'assigned_role' => $assigned_role,
             ]);
+
+            if ($assigned_to) {
+                $contact->ensureClientCreated((int) $assigned_to);
+            }
+        }
 
         $this->selectedContactIds = [];
         $this->assigneeValue = null;

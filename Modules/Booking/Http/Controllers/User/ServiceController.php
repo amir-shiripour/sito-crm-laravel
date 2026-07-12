@@ -28,6 +28,8 @@ class ServiceController extends Controller
         $adminOwnerIds = $this->getAdminOwnerIds();
 
         $query = BookingService::query()
+            ->leftJoin('booking_categories', 'booking_services.category_id', '=', 'booking_categories.id')
+            ->select('booking_services.*')
             ->with(['category', 'categories', 'appointmentForm']);
 
         if ($authUser) {
@@ -38,31 +40,37 @@ class ServiceController extends Controller
 
         if (! $isAdmin) {
             $query->where(function ($q) use ($authUser, $isProvider, $settings, $adminOwnerIds) {
-                $q->whereNull('owner_user_id')
-                    ->orWhereIn('owner_user_id', $adminOwnerIds);
+                $q->whereNull('booking_services.owner_user_id')
+                    ->orWhereIn('booking_services.owner_user_id', $adminOwnerIds);
 
                 if ($isProvider && $settings->allow_role_service_creation && $authUser) {
-                    $q->orWhere('owner_user_id', $authUser->id);
+                    $q->orWhere('booking_services.owner_user_id', $authUser->id);
                 }
             });
         }
 
         // Apply Filters
         if ($search = $request->input('search')) {
-            $query->where('name', 'like', "%{$search}%");
+            $query->where('booking_services.name', 'like', "%{$search}%");
         }
 
         if ($categoryId = $request->input('category_id')) {
-            $query->whereHas('categories', function($q) use ($categoryId) {
-                $q->where('booking_categories.id', $categoryId);
-            })->orWhere('category_id', $categoryId);
+            $query->where(function ($q) use ($categoryId) {
+                $q->whereHas('categories', function ($subQ) use ($categoryId) {
+                    $subQ->where('booking_categories.id', $categoryId);
+                })->orWhere('booking_services.category_id', $categoryId);
+            });
         }
 
         if ($status = $request->input('status')) {
-            $query->where('status', $status);
+            $query->where('booking_services.status', $status);
         }
 
-        $services = $query->orderByDesc('id')->paginate(20)->withQueryString();
+        $services = $query->orderByRaw('CASE WHEN booking_categories.name IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('booking_categories.name', 'asc')
+            ->orderByDesc('booking_services.id')
+            ->paginate(20)
+            ->withQueryString();
 
         $editableServiceIds = [];
         foreach ($services as $srv) {
@@ -72,6 +80,8 @@ class ServiceController extends Controller
         }
 
         $categories = BookingCategory::orderBy('name')->get(); // We fetch all categories for the filter dropdown
+
+        session(['services_index_url' => $request->fullUrl()]);
 
         return view('booking::user.services.index', [
             'services'           => $services,
@@ -534,7 +544,7 @@ class ServiceController extends Controller
         $sp->save();
 
         return redirect()
-            ->route('user.booking.services.index')
+            ->to(session('services_index_url', route('user.booking.services.index')))
             ->with('success', $sp->is_active ? 'سرویس برای شما فعال شد.' : 'سرویس برای شما غیرفعال شد.');
     }
 
