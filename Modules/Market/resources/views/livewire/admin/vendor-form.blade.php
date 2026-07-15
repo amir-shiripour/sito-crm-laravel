@@ -111,6 +111,98 @@
                         @error('user_id') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                     </div>
 
+                    <div x-data="{
+                        open: false,
+                        search: '',
+                        selected: @entangle('additional_owners'),
+                        users: @js($users),
+                        toggle(id) {
+                            id = id.toString();
+                            let idx = this.selected.indexOf(id);
+                            if (idx > -1) {
+                                this.selected.splice(idx, 1);
+                            } else {
+                                this.selected.push(id);
+                            }
+                        },
+                        isSelected(id) {
+                            return this.selected.includes(id.toString());
+                        },
+                        get selectedUsers() {
+                            return this.users.filter(u => this.isSelected(u.id));
+                        },
+                        get filteredUsers() {
+                            let primaryOwnerId = '{{ $user_id }}';
+                            if (!this.search) return this.users.filter(u => u.id.toString() !== primaryOwnerId);
+                            let s = this.search.toLowerCase();
+                            return this.users.filter(u => 
+                                u.id.toString() !== primaryOwnerId && 
+                                ((u.name && u.name.toLowerCase().includes(s)) || (u.mobile && u.mobile.includes(s)))
+                            );
+                        }
+                    }" class="relative">
+                        <label class="{{ $labelClass }}">سایر مالکان (دسترسی همزمان)</label>
+                        
+                        <!-- Select Box Wrapper -->
+                        <div @click="open = !open" 
+                             @click.away="open = false" 
+                             class="min-h-[44px] w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-2xl p-2 flex flex-wrap gap-2 items-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors">
+                            
+                            <template x-if="selectedUsers.length === 0">
+                                <span class="text-sm text-gray-400 dark:text-gray-500 pr-2">انتخاب سایر مالکان...</span>
+                            </template>
+                            
+                            <!-- Tags/Badges -->
+                            <template x-for="user in selectedUsers" :key="user.id">
+                                <span class="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 text-xs font-bold px-2.5 py-1 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
+                                    <span x-text="user.name"></span>
+                                    <button type="button" @click.stop="toggle(user.id)" class="hover:text-red-500 focus:outline-none transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </span>
+                            </template>
+                        </div>
+
+                        <!-- Dropdown Menu -->
+                        <div x-show="open" 
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 scale-100"
+                             x-transition:leave-end="opacity-0 scale-95"
+                             class="absolute x-dropdown z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-3 max-h-72 overflow-y-auto">
+                            
+                            <!-- Search Input -->
+                            <input type="text" 
+                                   x-model="search" 
+                                   @click.stop=""
+                                   placeholder="جستجو بر اساس نام یا شماره موبایل..." 
+                                   class="w-full h-10 px-3 text-sm bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors mb-3 outline-none text-gray-950 dark:text-white" />
+                            
+                            <!-- Options List -->
+                            <div class="flex flex-col gap-1">
+                                <template x-for="user in filteredUsers" :key="user.id">
+                                    <div @click.stop="toggle(user.id)" 
+                                         class="flex items-center justify-between p-2 rounded-xl text-sm transition-colors cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/30"
+                                         :class="isSelected(user.id) ? 'bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 font-semibold' : ''">
+                                        <div class="flex flex-col">
+                                            <span x-text="user.name"></span>
+                                            <span class="text-[10px] text-gray-400 dark:text-gray-500 font-mono mt-0.5" x-text="user.mobile"></span>
+                                        </div>
+                                        <template x-if="isSelected(user.id)">
+                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="filteredUsers.length === 0">
+                                    <span class="text-xs text-gray-400 dark:text-gray-500 text-center py-4">کاربری یافت نشد.</span>
+                                </template>
+                            </div>
+                        </div>
+                        @error('additional_owners') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
                     <div>
                         <label class="{{ $labelClass }}">نام فروشگاه <span class="text-red-500">*</span></label>
                         <input type="text" wire:model.defer="store_name" class="{{ $baseInputClass }}" placeholder="مثال: فروشگاه امید">

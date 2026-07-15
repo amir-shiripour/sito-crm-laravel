@@ -1010,8 +1010,25 @@ class AppointmentService
                 $config = $trigger->config ?? [];
 
                 // Check Service ID constraint
-                if (!empty($config['service_id'])) {
-                    if ((int)$config['service_id'] !== (int)$appointment->service_id) {
+                $serviceIds = $config['service_ids'] ?? (isset($config['service_id']) ? [$config['service_id']] : []);
+                $serviceIds = array_filter(array_map('intval', $serviceIds));
+                $serviceOperator = $config['service_operator'] ?? 'IN';
+
+                if (!empty($serviceIds)) {
+                    $inArray = in_array((int)$appointment->service_id, $serviceIds, true);
+                    if (($serviceOperator === 'IN' && !$inArray) || ($serviceOperator === 'NOT_IN' && $inArray)) {
+                        continue;
+                    }
+                }
+
+                // Check Provider ID constraint
+                $providerIds = $config['provider_ids'] ?? (isset($config['provider_id']) ? [$config['provider_id']] : []);
+                $providerIds = array_filter(array_map('intval', $providerIds));
+                $providerOperator = $config['provider_operator'] ?? 'IN';
+
+                if (!empty($providerIds)) {
+                    $inArray = in_array((int)$appointment->provider_user_id, $providerIds, true);
+                    if (($providerOperator === 'IN' && !$inArray) || (($providerOperator === 'NOT_IN' || $providerOperator === 'NOT') && $inArray)) {
                         continue;
                     }
                 }
@@ -1020,8 +1037,19 @@ class AppointmentService
                 if ($type === $WorkflowTriggerClass::TYPE_EVENT) {
                     $eventKey = $config['event_key'] ?? null;
 
-                    // Case-insensitive comparison
-                    if (strcasecmp($eventKey, $key) === 0) {
+                    $isMatched = false;
+                    if (is_array($eventKey)) {
+                        foreach ($eventKey as $ek) {
+                            if (is_string($ek) && strcasecmp($ek, $key) === 0) {
+                                $isMatched = true;
+                                break;
+                            }
+                        }
+                    } elseif (is_string($eventKey)) {
+                        $isMatched = (strcasecmp($eventKey, $key) === 0);
+                    }
+
+                    if ($isMatched) {
                         $matchedWorkflows[] = $wf;
                         break; // Found a match in this workflow
                     }
@@ -1032,8 +1060,19 @@ class AppointmentService
                     $targetStatus = substr($key, 7); // remove 'status_'
                     $configStatus = $config['status'] ?? null;
 
-                    // Case-insensitive comparison
-                    if (strcasecmp($configStatus, $targetStatus) === 0) {
+                    $isMatched = false;
+                    if (is_array($configStatus)) {
+                        foreach ($configStatus as $cs) {
+                            if (is_string($cs) && strcasecmp($cs, $targetStatus) === 0) {
+                                $isMatched = true;
+                                break;
+                            }
+                        }
+                    } elseif (is_string($configStatus)) {
+                        $isMatched = (strcasecmp($configStatus, $targetStatus) === 0);
+                    }
+
+                    if ($isMatched) {
                         $matchedWorkflows[] = $wf;
                         break; // Found a match
                     }

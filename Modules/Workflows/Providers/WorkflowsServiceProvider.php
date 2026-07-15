@@ -26,6 +26,13 @@ class WorkflowsServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'workflows');
 
+        $langPath = resource_path('lang/modules/workflows');
+        if (is_dir($langPath)) {
+            $this->loadTranslationsFrom($langPath, 'workflows');
+        } else {
+            $this->loadTranslationsFrom(module_path('Workflows', 'lang'), 'workflows');
+        }
+
         // Register workflow event listeners
         Event::listen(NodeReached::class, HandleNodeReached::class);
         Event::listen(WorkflowCompleted::class, HandleSubWorkflowCompletion::class);
@@ -38,6 +45,14 @@ class WorkflowsServiceProvider extends ServiceProvider
             $this->commands([
                 ProcessWorkflowsCommand::class,
             ]);
+        }
+
+        $widgetsFile = __DIR__ . '/../Config/widgets.php';
+        if (file_exists($widgetsFile)) {
+            $widgets = require $widgetsFile;
+            foreach ($widgets as $key => $definition) {
+                \App\Support\WidgetRegistry::register($key, $definition);
+            }
         }
     }
 }

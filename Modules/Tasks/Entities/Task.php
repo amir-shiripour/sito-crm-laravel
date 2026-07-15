@@ -11,6 +11,8 @@ use Modules\Reminders\Entities\Reminder;
 
 class Task extends Model
 {
+    public static $skipWorkflowAdvance = false;
+
     public $old_status_before_save;
 
     // انواع وظیفه (Task Type)
@@ -147,6 +149,11 @@ class Task extends Model
 
     public function processCompletionIfNeeded(bool $isCreation = false): void
     {
+        if (self::$skipWorkflowAdvance) {
+            logger()->info("[Workflows] Task {$this->id} completed, but skipWorkflowAdvance is active. Skipping auto-advance.");
+            return;
+        }
+
         $statusChangedToDone = $isCreation
             ? $this->status === self::STATUS_DONE
             : ($this->wasChanged('status') && $this->status === self::STATUS_DONE);
@@ -168,6 +175,19 @@ class Task extends Model
 
             if ($instanceId && class_exists(\Modules\Workflows\Services\WorkflowEngine::class) && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
                 if ($nodeId) {
+                    // Check if node exists and has auto_advance === false
+                    if (class_exists(\Modules\Workflows\Entities\WorkflowNode::class)) {
+                        $node = \Modules\Workflows\Entities\WorkflowNode::find($nodeId);
+                        if ($node) {
+                            $nodeConfig = $node->config ?? [];
+                            $nodeAutoAdvance = isset($nodeConfig['auto_advance']) ? (bool) $nodeConfig['auto_advance'] : true;
+                            if (!$nodeAutoAdvance) {
+                                logger()->info("[Workflows] Task {$this->id} completed, but node-level auto_advance is disabled. Pausing.");
+                                return;
+                            }
+                        }
+                    }
+
                     // Check if there are other tasks for this same node of this workflow instance that are not DONE.
                     $pendingTasksCount = self::where('meta->workflow_instance_id', $instanceId)
                         ->where('meta->workflow_node_id', $nodeId)
@@ -176,6 +196,17 @@ class Task extends Model
 
                     if ($pendingTasksCount > 0) {
                         logger()->info("[Workflows] Task {$this->id} completed, but {$pendingTasksCount} other tasks for node {$nodeId} are still pending.");
+                        return;
+                    }
+
+                    // Also check if any task in this node has auto_advance = false
+                    $hasManualAdvanceTask = self::where('meta->workflow_instance_id', $instanceId)
+                        ->where('meta->workflow_node_id', $nodeId)
+                        ->where('meta->auto_advance', false)
+                        ->exists();
+
+                    if ($hasManualAdvanceTask) {
+                        logger()->info("[Workflows] Task {$this->id} completed, but at least one task in this node has auto_advance = false. Pausing.");
                         return;
                     }
                 }
@@ -341,6 +372,36 @@ class Task extends Model
                         }
                     }
                 }
+            } elseif ($notificationTarget === 'CLIENT_CREATOR') {
+                $instanceId = $this->meta['workflow_instance_id'] ?? null;
+                if ($instanceId && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                    $instance = \Modules\Workflows\Entities\WorkflowInstance::find($instanceId);
+                    if ($instance) {
+                        $clientId = $this->meta['related_client_ids'][0] ?? ($instance->related_type === 'CLIENT' ? $instance->related_id : null);
+                        if ($clientId && class_exists(\Modules\Clients\Entities\Client::class)) {
+                            $client = \Modules\Clients\Entities\Client::find($clientId);
+                            if ($client && $client->creator) {
+                                $recipient = $client->creator;
+                            }
+                        }
+                    }
+                }
+            } elseif ($notificationTarget === 'CLIENT_ASSIGNED_USER') {
+                $instanceId = $this->meta['workflow_instance_id'] ?? null;
+                if ($instanceId && class_exists(\Modules\Workflows\Entities\WorkflowInstance::class)) {
+                    $instance = \Modules\Workflows\Entities\WorkflowInstance::find($instanceId);
+                    if ($instance) {
+                        $clientId = $this->meta['related_client_ids'][0] ?? ($instance->related_type === 'CLIENT' ? $instance->related_id : null);
+                        if ($clientId && class_exists(\Modules\Clients\Entities\Client::class)) {
+                            $client = \Modules\Clients\Entities\Client::find($clientId);
+                            if ($client) {
+                                $recipient = $client->users()->first();
+                            }
+                        }
+                    }
+                }
+            } elseif ($notificationTarget === 'CURRENT_USER') {
+                $recipient = \App\Models\User::find(\Illuminate\Support\Facades\Auth::id() ?: ($this->creator_id ?? null));
             } else {
                 $clientId = $this->meta['related_client_ids'][0] ?? ($this->related_type === 'CLIENT' ? $this->related_id : null);
                 if ($clientId) {
@@ -349,8 +410,8 @@ class Task extends Model
             }
 
             if ($recipient) {
-                $title = $this->title;
-                $message = $this->description;
+                $title = $this->title ?: 'اعلان فرآیند';
+                $message = $this->description ?: 'پیام فرآیند';
                 try {
                     if (class_exists(\Modules\Workflows\Notifications\SystemNotification::class)) {
                         $recipient->notify(new \Modules\Workflows\Notifications\SystemNotification($title, $message));
