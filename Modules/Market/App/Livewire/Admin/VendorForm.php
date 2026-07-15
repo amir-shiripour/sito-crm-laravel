@@ -18,6 +18,7 @@ class VendorForm extends Component
 
     // اطلاعات پایه
     public $user_id = '';
+    public array $additional_owners = [];
     public $store_name = '';
     public $slug = '';
     public $support_phone = '';
@@ -80,6 +81,11 @@ class VendorForm extends Component
 
         if ($this->vendor->exists) {
             $this->user_id = $this->vendor->user_id;
+            $this->additional_owners = $this->vendor->owners()
+                ->where('users.id', '!=', $this->vendor->user_id)
+                ->pluck('users.id')
+                ->map(fn($id) => (string)$id)
+                ->toArray();
             $this->store_name = $this->vendor->store_name;
             $this->slug = $this->vendor->slug;
             $this->support_phone = $this->vendor->support_phone;
@@ -296,8 +302,13 @@ class VendorForm extends Component
 
     public function save()
     {
+        // Filter out primary owner from additional owners
+        $this->additional_owners = array_diff($this->additional_owners ?: [], [$this->user_id]);
+
         $this->validate([
             'user_id' => 'required|exists:users,id|unique:market_vendors,user_id,' . ($this->vendor->id ?? 'NULL'),
+            'additional_owners' => 'nullable|array',
+            'additional_owners.*' => 'exists:users,id',
             'store_name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:market_vendors,slug,' . ($this->vendor->id ?? 'NULL'),
             'status' => 'required|in:pending,active,suspended',
@@ -348,10 +359,16 @@ class VendorForm extends Component
             $this->cover_image = null;
         }
 
-        // اختصاص نقش به کاربر
-        $user = User::find($this->user_id);
-        if ($user && !$user->hasRole('vendor')) {
-            $user->assignRole('vendor');
+        // همگام‌سازی مالکان در جدول واسط
+        $allOwners = array_merge([$this->user_id], $this->additional_owners);
+        $this->vendor->owners()->sync($allOwners);
+
+        // اختصاص نقش به همه مالکان
+        foreach ($allOwners as $ownerId) {
+            $user = User::find($ownerId);
+            if ($user && !$user->hasRole('vendor')) {
+                $user->assignRole('vendor');
+            }
         }
 
         $this->dispatch('notify', type: 'success', text: 'اطلاعات فروشگاه با موفقیت ذخیره شد.');

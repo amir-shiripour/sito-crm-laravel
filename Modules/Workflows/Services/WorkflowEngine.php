@@ -371,8 +371,8 @@ class WorkflowEngine
         if ($currentNode->type === WorkflowNode::TYPE_CONDITION) {
             $nodeExpr = $currentNode->config['condition_expression'] ?? null;
             
-            $varName = $nodeExpr;
-            if (str_contains($nodeExpr, '=')) {
+            $varName = $nodeExpr ?: 'condition_result';
+            if ($nodeExpr && str_contains($nodeExpr, '=')) {
                 $varName = trim(explode('=', $nodeExpr, 2)[0]);
             }
             
@@ -382,9 +382,27 @@ class WorkflowEngine
                 return;
             }
 
-            $nodeResult = $evaluator->evaluate($nodeExpr, $context);
+            if (empty($nodeExpr)) {
+                $nodeResult = in_array($resolvedValue, [true, 'true', 1, '1'], true);
+            } else {
+                $nodeResult = $evaluator->evaluate($nodeExpr, $context);
+            }
 
-            Log::info("[Workflows] Node ID {$currentNode->id} condition expression '{$nodeExpr}' evaluated to " . ($nodeResult ? 'TRUE' : 'FALSE'));
+            Log::info("[Workflows] Node ID {$currentNode->id} condition expression '" . ($nodeExpr ?: 'NULL') . "' evaluated to " . ($nodeResult ? 'TRUE' : 'FALSE'));
+
+            // Clean transient choice from context to prevent state pollution in chained condition nodes
+            if (isset($context['tokens'][$varName])) {
+                unset($context['tokens'][$varName]);
+            }
+            if (isset($context['tokens']['condition_result'])) {
+                unset($context['tokens']['condition_result']);
+            }
+            if (isset($context[$varName])) {
+                unset($context[$varName]);
+            }
+            if (isset($context['condition_result'])) {
+                unset($context['condition_result']);
+            }
 
             foreach ($edges as $edge) {
                 $edgeCond = trim($edge->condition);
@@ -440,6 +458,12 @@ class WorkflowEngine
                 $this->completeWorkflow($instance, $context);
             }
         });
+
+        // Chained auto-advance for CONDITION or START nodes
+        if ($targetNode->type === WorkflowNode::TYPE_CONDITION || $targetNode->type === WorkflowNode::TYPE_START) {
+            Log::info("[Workflows] Chaining auto-advance for node ID {$targetNode->id} (Type: {$targetNode->type})");
+            $this->advance($instance, $context);
+        }
     }
 
     protected function completeWorkflow(WorkflowInstance $instance, array $context): void

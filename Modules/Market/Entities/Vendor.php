@@ -20,9 +20,25 @@ class Vendor extends Model
         'contract_accepted_at' => 'datetime',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($vendor) {
+            if ($vendor->user_id) {
+                $vendor->owners()->syncWithoutDetaching([$vendor->user_id]);
+            }
+        });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function owners()
+    {
+        return $this->belongsToMany(User::class, 'market_vendor_user', 'vendor_id', 'user_id')->withTimestamps();
     }
 
     public function products()

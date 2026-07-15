@@ -149,101 +149,121 @@ class HandleNodeReached
             }
         }
 
-        foreach ($tasksTemplates as $template) {
-            $offsetDays = (int) ($template['offset_days'] ?? 0);
+        $createdTasks = [];
+        Task::$skipWorkflowAdvance = true;
+        try {
+            foreach ($tasksTemplates as $template) {
+                $offsetDays = (int) ($template['offset_days'] ?? 0);
 
-            $title = $this->renderTemplate($template['title'] ?? $node->name, $context);
-            $description = $this->renderTemplate($template['description'] ?? '', $context);
+                $title = $this->renderTemplate($template['title'] ?? $node->name, $context);
+                $description = $this->renderTemplate($template['description'] ?? '', $context);
 
-            $assigneeId = null;
-            $assigneeMode = $template['assignee_mode'] ?? 'single_user';
+                $assigneeId = null;
+                $assigneeMode = $template['assignee_mode'] ?? 'single_user';
 
-            if ($assigneeMode === 'by_roles' && !empty($template['role_id'])) {
-                $roleId = $template['role_id'];
-                $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
-                if (!empty($assignedUsers)) {
-                    $assigneeId = $assignedUsers[0]['user_id'];
+                if ($assigneeMode === 'by_roles' && !empty($template['role_id'])) {
+                    $roleId = $template['role_id'];
+                    $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
+                    if (!empty($assignedUsers)) {
+                        $assigneeId = $assignedUsers[0]['user_id'];
+                    } else {
+                        $userWithRole = \App\Models\User::whereHas('roles', function ($q) use ($template) {
+                            $q->where('id', $template['role_id'])
+                              ->orWhere('name', $template['role_id']);
+                        })->first();
+                        $assigneeId = $template['assignee_id'] ?? $userWithRole?->id ?? null;
+                    }
                 } else {
-                    $userWithRole = \App\Models\User::whereHas('roles', function ($q) use ($template) {
-                        $q->where('id', $template['role_id'])
-                          ->orWhere('name', $template['role_id']);
-                    })->first();
-                    $assigneeId = $template['assignee_id'] ?? $userWithRole?->id ?? null;
+                    $assigneeId = $template['assignee_id'] ?? null;
                 }
-            } else {
-                $assigneeId = $template['assignee_id'] ?? null;
-            }
 
-            // Resolve target-based assignee
-            $assigneeTarget = $template['assignee_target'] ?? 'CURRENT_USER';
-            if ($assigneeTarget === 'APPOINTMENT_PROVIDER' && isset($context['appointment'])) {
-                $assigneeId = $context['appointment']->provider_user_id ?? $assigneeId;
-            } elseif ($assigneeTarget === 'SPECIFIC_USER' && !empty($template['assignee_id'])) {
-                $assigneeId = $template['assignee_id'];
-            } elseif ($assigneeTarget === 'TREATMENT_PLAN_CREATOR' && isset($context['treatment_plan'])) {
-                $assigneeId = $context['treatment_plan']->user_id ?? $assigneeId;
-            } elseif ($assigneeTarget === 'TREATMENT_PLAN_CLIENT_ASSIGNEE' && isset($context['treatment_plan'])) {
-                $assigneeId = $context['treatment_plan']->client_id ?? $assigneeId;
-            } elseif (str_starts_with($assigneeTarget, 'TREATMENT_PLAN_ROLE_')) {
-                $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $assigneeTarget);
-                $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
-                if (!empty($assignedUsers)) {
-                    $assigneeId = $assignedUsers[0]['user_id'];
+                // Resolve target-based assignee
+                $assigneeTarget = $template['assignee_target'] ?? 'CURRENT_USER';
+                if ($assigneeTarget === 'APPOINTMENT_PROVIDER' && isset($context['appointment'])) {
+                    $assigneeId = $context['appointment']->provider_user_id ?? $assigneeId;
+                } elseif ($assigneeTarget === 'SPECIFIC_USER' && !empty($template['assignee_id'])) {
+                    $assigneeId = $template['assignee_id'];
+                } elseif ($assigneeTarget === 'TREATMENT_PLAN_CREATOR' && isset($context['treatment_plan'])) {
+                    $assigneeId = $context['treatment_plan']->user_id ?? $assigneeId;
+                } elseif ($assigneeTarget === 'TREATMENT_PLAN_CLIENT_ASSIGNEE' && isset($context['treatment_plan'])) {
+                    $assigneeId = $context['treatment_plan']->client_id ?? $assigneeId;
+                } elseif (str_starts_with($assigneeTarget, 'TREATMENT_PLAN_ROLE_')) {
+                    $roleId = (int) str_replace('TREATMENT_PLAN_ROLE_', '', $assigneeTarget);
+                    $assignedUsers = $context['assigned_users_by_role'][$roleId] ?? [];
+                    if (!empty($assignedUsers)) {
+                        $assigneeId = $assignedUsers[0]['user_id'];
+                    }
+                } elseif ($assigneeTarget === 'CLIENT_CREATOR' && isset($context['client'])) {
+                    $assigneeId = $context['client']->created_by ?? $assigneeId;
+                } elseif ($assigneeTarget === 'CLIENT_ASSIGNED_USER' && isset($context['client'])) {
+                    $assignedUser = $context['client']->users()->first();
+                    $assigneeId = $assignedUser?->id ?? $assigneeId;
+                } elseif ($assigneeTarget === 'CALL_CREATOR' && isset($context['call'])) {
+                    $assigneeId = $context['call']->user_id ?? $assigneeId;
+                } elseif (($assigneeTarget === 'TASK_CREATOR' || $assigneeTarget === 'FOLLOWUP_CREATOR') && (isset($context['task']) || isset($context['followup']))) {
+                    $taskObj = $context['task'] ?? $context['followup'];
+                    $assigneeId = $taskObj->creator_id ?? $assigneeId;
+                } elseif (($assigneeTarget === 'TASK_ASSIGNEE' || $assigneeTarget === 'FOLLOWUP_ASSIGNEE') && (isset($context['task']) || isset($context['followup']))) {
+                    $taskObj = $context['task'] ?? $context['followup'];
+                    $assigneeId = $taskObj->assignee_id ?? $assigneeId;
                 }
-            } elseif ($assigneeTarget === 'CLIENT_CREATOR' && isset($context['client'])) {
-                $assigneeId = $context['client']->created_by ?? $assigneeId;
-            } elseif ($assigneeTarget === 'CLIENT_ASSIGNED_USER' && isset($context['client'])) {
-                $assignedUser = $context['client']->users()->first();
-                $assigneeId = $assignedUser?->id ?? $assigneeId;
-            } elseif ($assigneeTarget === 'CALL_CREATOR' && isset($context['call'])) {
-                $assigneeId = $context['call']->user_id ?? $assigneeId;
-            } elseif (($assigneeTarget === 'TASK_CREATOR' || $assigneeTarget === 'FOLLOWUP_CREATOR') && (isset($context['task']) || isset($context['followup']))) {
-                $taskObj = $context['task'] ?? $context['followup'];
-                $assigneeId = $taskObj->creator_id ?? $assigneeId;
-            } elseif (($assigneeTarget === 'TASK_ASSIGNEE' || $assigneeTarget === 'FOLLOWUP_ASSIGNEE') && (isset($context['task']) || isset($context['followup']))) {
-                $taskObj = $context['task'] ?? $context['followup'];
-                $assigneeId = $taskObj->assignee_id ?? $assigneeId;
+
+                if (!$assigneeId) {
+                    $assigneeId = Auth::id();
+                }
+
+                $dueAt = $this->engine->calcTaskDueAt($assigneeId, $offsetDays, $baseDate);
+                $metaData = [
+                    'workflow_instance_id' => $instance->id,
+                    'workflow_node_id'     => $node->id,
+                    'workflow_id'          => $instance->workflow_id,
+                    'workflow_name'        => $instance->workflow?->name,
+                    'role_id'              => $template['role_id'] ?? null,
+                    'auto_advance'         => (bool) ($template['auto_advance'] ?? true),
+                    'related_target'       => $clientId ? 'client' : 'none',
+                    'related_client_ids'   => $clientId ? [$clientId] : [],
+                    'tooth_context'        => $instance->tooth_context ?? null,
+                    'item_context'         => $instance->item_context ?? null,
+                    'treatment_plan_id'    => ($instance->related_type === 'TREATMENT_PLAN') ? $instance->related_id : null,
+                ];
+                
+                if (isset($template['_action_type'])) {
+                    $metaData['_action_type'] = $template['_action_type'];
+                    $metaData['_node_config'] = $config;
+                }
+
+                $task = Task::create([
+                    'title'        => $title,
+                    'description'  => $description,
+                    'task_type'    => $template['task_type'] ?? Task::TYPE_SYSTEM,
+                    'assignee_id'  => $assigneeId,
+                    'creator_id'   => $creatorId,
+                    'status'       => !empty($template['_immediate_done']) ? Task::STATUS_DONE : Task::STATUS_TODO,
+                    'priority'     => $template['priority'] ?? Task::PRIORITY_MEDIUM,
+                    'due_at'       => $dueAt,
+                    'related_type' => $taskRelatedType,
+                    'related_id'   => $taskRelatedId,
+                    'meta'         => $metaData
+                ]);
+
+                $createdTasks[] = $task;
+                Log::info("[Workflows] Created task ID {$task->id} for action node ID {$node->id} linked to client ID {$taskRelatedId}");
             }
+        } finally {
+            Task::$skipWorkflowAdvance = false;
+        }
 
-            if (!$assigneeId) {
-                $assigneeId = Auth::id();
+        if (!empty($createdTasks)) {
+            $hasDoneAndAuto = false;
+            foreach ($createdTasks as $t) {
+                if ($t->status === Task::STATUS_DONE && ($t->meta['auto_advance'] ?? true)) {
+                    $hasDoneAndAuto = true;
+                }
             }
-
-            $dueAt = $this->engine->calcTaskDueAt($assigneeId, $offsetDays, $baseDate);
-            $metaData = [
-                'workflow_instance_id' => $instance->id,
-                'workflow_node_id'     => $node->id,
-                'workflow_id'          => $instance->workflow_id,
-                'workflow_name'        => $instance->workflow?->name,
-                'role_id'              => $template['role_id'] ?? null,
-                'auto_advance'         => (bool) ($template['auto_advance'] ?? true),
-                'related_target'       => $clientId ? 'client' : 'none',
-                'related_client_ids'   => $clientId ? [$clientId] : [],
-                'tooth_context'        => $instance->tooth_context ?? null,
-                'item_context'         => $instance->item_context ?? null,
-                'treatment_plan_id'    => ($instance->related_type === 'TREATMENT_PLAN') ? $instance->related_id : null,
-            ];
-            
-            if (isset($template['_action_type'])) {
-                $metaData['_action_type'] = $template['_action_type'];
-                $metaData['_node_config'] = $config;
+            if ($hasDoneAndAuto) {
+                // Trigger completion check for one of the tasks
+                $createdTasks[0]->processCompletionIfNeeded(true);
             }
-
-            $task = Task::create([
-                'title'        => $title,
-                'description'  => $description,
-                'task_type'    => $template['task_type'] ?? Task::TYPE_SYSTEM,
-                'assignee_id'  => $assigneeId,
-                'creator_id'   => $creatorId,
-                'status'       => !empty($template['_immediate_done']) ? Task::STATUS_DONE : Task::STATUS_TODO,
-                'priority'     => $template['priority'] ?? Task::PRIORITY_MEDIUM,
-                'due_at'       => $dueAt,
-                'related_type' => $taskRelatedType,
-                'related_id'   => $taskRelatedId,
-                'meta'         => $metaData
-            ]);
-
-            Log::info("[Workflows] Created task ID {$task->id} for action node ID {$node->id} linked to client ID {$taskRelatedId}");
         }
     }
 

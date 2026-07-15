@@ -16,6 +16,7 @@ use Modules\Market\App\Models\Order;
 use Nwidart\Modules\Facades\Module;
 use Spatie\Permission\Traits\HasRoles;
 use Modules\Booking\App\Models\DoctorMedia;
+use Modules\Market\Traits\HasMarketVendor;
 
 class User extends Authenticatable
 {
@@ -23,6 +24,7 @@ class User extends Authenticatable
     use HasFactory;
     use HasProfilePhoto;
     use Notifiable;
+    use HasMarketVendor;
     use TwoFactorAuthenticatable;
     use HasRoles;
 
@@ -84,10 +86,7 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\UserCustomValue::class);
     }
 
-    public function marketVendor()
-    {
-        return $this->hasOne(\Modules\Market\Entities\Vendor::class, 'user_id');
-    }
+    // Relationships and accessors for market vendor are loaded via HasMarketVendor trait.
 
     /**
      * کاربرانی که این کاربر به آن‌ها متصل است (مثلاً پزشکانی که پذیرش به آن‌ها وصل است)

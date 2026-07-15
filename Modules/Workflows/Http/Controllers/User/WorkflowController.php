@@ -735,5 +735,376 @@ class WorkflowController extends Controller
             'instance' => $new
         ]);
     }
+
+    public function getInstances(Request $request)
+    {
+        Gate::authorize('workflows.view');
+        
+        $request->validate([
+            'related_type' => 'required|string',
+            'related_id' => 'required|integer',
+        ]);
+        
+        $instances = \Modules\Workflows\Entities\WorkflowInstance::where('related_type', $request->related_type)
+            ->where('related_id', $request->related_id)
+            ->with([
+                'workflow.nodes', 
+                'workflow.edges', 
+                'currentNode', 
+                'logs.user'
+            ])
+            ->get();
+            
+        // Map current node information and return JSON
+        $instancesMapped = $instances->map(function($inst) {
+            $currentNode = $inst->currentNode;
+            
+            // Fetch active tasks for this instance
+            $tasks = \Modules\Tasks\Entities\Task::where('meta->workflow_instance_id', $inst->id)
+                ->with('assignee')
+                ->get();
+                
+            return [
+                'id' => $inst->id,
+                'workflow_id' => $inst->workflow_id,
+                'workflow_name' => $inst->workflow?->name,
+                'status' => $inst->status,
+                'current_node_id' => $inst->current_node_id,
+                'current_node_name' => $currentNode?->name,
+                'current_node_type' => $currentNode?->type,
+                'current_node_expression' => $currentNode?->config['condition_expression'] ?? null,
+                'currentNode' => $currentNode,
+                'nodes' => $inst->workflow?->nodes ?? collect(),
+                'edges' => $inst->workflow?->edges ?? collect(),
+                'tasks' => $tasks->map(function($task) {
+                    return [
+                        'id' => $task->id,
+                        'title' => $task->title,
+                        'status' => $task->status,
+                        'assignee_name' => $task->assignee?->name ?? 'نامشخص',
+                        'auto_advance' => $task->meta['auto_advance'] ?? true,
+                        'workflow_node_id' => $task->meta['workflow_node_id'] ?? null,
+                    ];
+                }),
+                'logs' => $inst->logs->sortByDesc('id')->values()->map(function($log) {
+                    return [
+                        'id' => $log->id,
+                        'from_node_id' => $log->from_node_id,
+                        'to_node_id' => $log->to_node_id,
+                        'transition_type' => $log->transition_type,
+                        'run_at' => $log->run_at ? $log->run_at->toIso8601String() : null,
+                        'user_name' => $log->user?->name ?? 'سیستم',
+                    ];
+                })
+            ];
+        });
+            
+        return response()->json([
+            'success' => true,
+            'instances' => $instancesMapped
+        ]);
+    }
+
+    public function toggleTask(Request $request, \Modules\Tasks\Entities\Task $task)
+    {
+        Gate::authorize('workflows.edit');
+        
+        $newStatus = $task->status === \Modules\Tasks\Entities\Task::STATUS_DONE 
+            ? \Modules\Tasks\Entities\Task::STATUS_TODO 
+            : \Modules\Tasks\Entities\Task::STATUS_DONE;
+            
+        $task->update([
+            'status' => $newStatus,
+            'completed_at' => $newStatus === \Modules\Tasks\Entities\Task::STATUS_DONE ? now() : null,
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'وضعیت وظیفه با موفقیت تغییر کرد.',
+            'task_status' => $newStatus
+        ]);
+    }
+
+    public function startInstance(Request $request, \Modules\Workflows\Services\WorkflowEngine $engine)
+    {
+        Gate::authorize('workflows.edit');
+        
+        $request->validate([
+            'workflow_id' => 'required|exists:workflows,id',
+            'related_type' => 'required|string',
+            'related_id' => 'required|integer',
+        ]);
+        
+        $workflow = Workflow::findOrFail($request->workflow_id);
+        
+        if ($workflow->nodes()->exists()) {
+            $instance = $engine->startNodeWorkflow($workflow, $request->related_type, $request->related_id);
+        } else {
+            $instance = $engine->startWorkflow($workflow, $request->related_type, $request->related_id);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'گردش‌کار با موفقیت آغاز شد.',
+            'instance' => $instance
+        ]);
+    }
+
+    public function kanban(Request $request)
+    {
+        Gate::authorize('workflows.view');
+
+        // Load all active workflows that have nodes
+        $workflows = Workflow::where('is_active', true)
+            ->whereHas('nodes')
+            ->orderBy('name')
+            ->get();
+
+        $selectedWorkflowId = $request->get('workflow_id');
+        $selectedWorkflow = null;
+        $columns = [];
+        $instances = [];
+
+        if ($selectedWorkflowId) {
+            $selectedWorkflow = Workflow::with(['nodes' => function($q) {
+                $q->whereIn('type', ['ACTION', 'CONDITION', 'SUB_WORKFLOW'])->orderBy('id');
+            }])->findOrFail($selectedWorkflowId);
+
+            $columns = $selectedWorkflow->nodes;
+
+            // Fetch active instances of this workflow
+            $instances = \Modules\Workflows\Entities\WorkflowInstance::where('workflow_id', $selectedWorkflowId)
+                ->where('status', \Modules\Workflows\Entities\WorkflowInstance::STATUS_ACTIVE)
+                ->with(['currentNode'])
+                ->get();
+                
+            // For each instance, load the related subject (e.g. Client)
+            foreach ($instances as $inst) {
+                if ($inst->related_type === 'CLIENT') {
+                    $inst->subject = \Modules\Clients\Entities\Client::find($inst->related_id);
+                } elseif ($inst->related_type === 'APPOINTMENT') {
+                    $inst->subject = \Modules\Booking\Entities\Appointment::with('client')->find($inst->related_id);
+                } elseif ($inst->related_type === 'TREATMENT_PLAN') {
+                    $inst->subject = \Modules\Booking\App\Models\TreatmentPlan::with('client')->find($inst->related_id);
+                }
+            }
+        } else {
+            // Select the first one by default if available
+            if ($workflows->isNotEmpty()) {
+                return redirect()->route('user.workflows.kanban', ['workflow_id' => $workflows->first()->id]);
+            }
+        }
+
+        return view('workflows::user.workflows.kanban', compact('workflows', 'selectedWorkflow', 'columns', 'instances', 'selectedWorkflowId'));
+    }
+
+    public function getCanvasData(Request $request)
+    {
+        Gate::authorize('workflows.view');
+
+        $user = auth()->user();
+        
+        // 1. Build search query for clients visible to user
+        $search = $request->get('q');
+        $visibleClientsQuery = \Modules\Clients\Entities\Client::visibleForUser($user);
+        if ($search) {
+            $visibleClientsQuery->where(function($qq) use ($search) {
+                $qq->where('full_name', 'like', "%{$search}%")
+                   ->orWhere('phone', 'like', "%{$search}%")
+                   ->orWhere('national_code', 'like', "%{$search}%")
+                   ->orWhere('case_number', 'like', "%{$search}%");
+            });
+        }
+        $clientIdsSubquery = $visibleClientsQuery->select('id');
+
+        // 2. Fetch workflow instances related to these clients
+        $query = \Modules\Workflows\Entities\WorkflowInstance::query()
+            ->where(function($q) use ($clientIdsSubquery) {
+                $q->where(function($q1) use ($clientIdsSubquery) {
+                    $q1->where('related_type', 'CLIENT')
+                       ->whereIn('related_id', $clientIdsSubquery);
+                })
+                ->orWhere(function($q2) use ($clientIdsSubquery) {
+                    $q2->where('related_type', 'APPOINTMENT')
+                       ->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                           $sub->select('id')
+                               ->from('appointments')
+                               ->whereIn('client_id', $clientIdsSubquery);
+                       });
+                })
+                ->orWhere(function($q3) use ($clientIdsSubquery) {
+                    $q3->where('related_type', 'TREATMENT_PLAN')
+                       ->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                           $sub->select('id')
+                               ->from('treatment_plans')
+                               ->whereIn('client_id', $clientIdsSubquery);
+                       });
+                });
+            });
+
+        // Filters
+        if ($request->filled('workflow_id')) {
+            $query->where('workflow_id', $request->workflow_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        } else {
+            $query->where('status', 'ACTIVE');
+        }
+
+        $query->with([
+            'workflow.nodes',
+            'workflow.edges',
+            'currentNode',
+            'logs.user'
+        ]);
+
+        $instances = $query->orderBy('updated_at', 'desc')->paginate(10);
+
+        // 3. Batch load clients and tasks to avoid N+1 queries
+        $instancesGrouped = $instances->getCollection()->groupBy('related_type');
+        
+        $clients = collect();
+        $appointments = collect();
+        $treatmentPlans = collect();
+        
+        if (isset($instancesGrouped['CLIENT'])) {
+            $clients = \Modules\Clients\Entities\Client::whereIn('id', $instancesGrouped['CLIENT']->pluck('related_id'))->get()->keyBy('id');
+        }
+        if (isset($instancesGrouped['APPOINTMENT'])) {
+            $appointments = \Modules\Booking\Entities\Appointment::with('client')->whereIn('id', $instancesGrouped['APPOINTMENT']->pluck('related_id'))->get()->keyBy('id');
+        }
+        if (isset($instancesGrouped['TREATMENT_PLAN'])) {
+            $treatmentPlans = \Modules\Booking\App\Models\TreatmentPlan::with('client')->whereIn('id', $instancesGrouped['TREATMENT_PLAN']->pluck('related_id'))->get()->keyBy('id');
+        }
+
+        $instanceIds = $instances->pluck('id');
+        $allTasks = \Modules\Tasks\Entities\Task::whereIn('meta->workflow_instance_id', $instanceIds)
+            ->with('assignee')
+            ->get()
+            ->groupBy(function($task) {
+                return $task->meta['workflow_instance_id'] ?? null;
+            });
+
+        // 4. Map instances to rich JSON representation
+        $instancesMapped = $instances->getCollection()->map(function($inst) use ($clients, $appointments, $treatmentPlans, $allTasks) {
+            $currentNode = $inst->currentNode;
+            
+            // Get client
+            $client = null;
+            if ($inst->related_type === 'CLIENT') {
+                $client = $clients->get($inst->related_id);
+            } elseif ($inst->related_type === 'APPOINTMENT') {
+                $appt = $appointments->get($inst->related_id);
+                $client = $appt?->client;
+            } elseif ($inst->related_type === 'TREATMENT_PLAN') {
+                $plan = $treatmentPlans->get($inst->related_id);
+                $client = $plan?->client;
+            }
+
+            $tasks = $allTasks->get($inst->id) ?: collect();
+
+            return [
+                'id' => $inst->id,
+                'workflow_id' => $inst->workflow_id,
+                'workflow_name' => $inst->workflow?->name,
+                'status' => $inst->status,
+                'current_node_id' => $inst->current_node_id,
+                'current_node_name' => $currentNode?->name,
+                'current_node_type' => $currentNode?->type,
+                'current_node_expression' => $currentNode?->config['condition_expression'] ?? null,
+                'currentNode' => $currentNode,
+                'nodes' => $inst->workflow?->nodes ?? collect(),
+                'edges' => $inst->workflow?->edges ?? collect(),
+                'tasks' => $tasks->map(function($task) {
+                    return [
+                        'id' => $task->id,
+                        'title' => $task->title,
+                        'status' => $task->status,
+                        'assignee_name' => $task->assignee?->name ?? 'نامشخص',
+                        'auto_advance' => $task->meta['auto_advance'] ?? true,
+                        'workflow_node_id' => $task->meta['workflow_node_id'] ?? null,
+                    ];
+                }),
+                'logs' => $inst->logs->sortByDesc('id')->values()->map(function($log) {
+                    return [
+                        'id' => $log->id,
+                        'from_node_id' => $log->from_node_id,
+                        'to_node_id' => $log->to_node_id,
+                        'transition_type' => $log->transition_type,
+                        'run_at' => $log->run_at ? $log->run_at->toIso8601String() : null,
+                        'user_name' => $log->user?->name ?? 'سیستم',
+                    ];
+                }),
+                'client' => $client ? [
+                    'id' => $client->id,
+                    'full_name' => $client->full_name,
+                    'phone' => $client->phone,
+                    'national_code' => $client->national_code,
+                    'case_number' => $client->case_number,
+                ] : null,
+            ];
+        });
+
+        // Get total stats for the active filters
+        $stats = [
+            'active' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'ACTIVE')->where(function($q) use ($clientIdsSubquery) {
+                $q->where(function($q1) use ($clientIdsSubquery) {
+                    $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
+                })->orWhere(function($q2) use ($clientIdsSubquery) {
+                    $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                        $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
+                    });
+                })->orWhere(function($q3) use ($clientIdsSubquery) {
+                    $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                        $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
+                    });
+                });
+            })->count(),
+            'completed' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'COMPLETED')->where(function($q) use ($clientIdsSubquery) {
+                $q->where(function($q1) use ($clientIdsSubquery) {
+                    $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
+                })->orWhere(function($q2) use ($clientIdsSubquery) {
+                    $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                        $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
+                    });
+                })->orWhere(function($q3) use ($clientIdsSubquery) {
+                    $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                        $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
+                    });
+                });
+            })->count(),
+            'canceled' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'CANCELED')->where(function($q) use ($clientIdsSubquery) {
+                $q->where(function($q1) use ($clientIdsSubquery) {
+                    $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
+                })->orWhere(function($q2) use ($clientIdsSubquery) {
+                    $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                        $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
+                    });
+                })->orWhere(function($q3) use ($clientIdsSubquery) {
+                    $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                        $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
+                    });
+                });
+            })->count(),
+        ];
+
+        // Available workflows for dropdown
+        $workflows = \Modules\Workflows\Entities\Workflow::where('is_active', true)->select(['id', 'name'])->get();
+
+        return response()->json([
+            'success' => true,
+            'instances' => $instancesMapped,
+            'stats' => $stats,
+            'workflows' => $workflows,
+            'pagination' => [
+                'total' => $instances->total(),
+                'per_page' => $instances->perPage(),
+                'current_page' => $instances->currentPage(),
+                'last_page' => $instances->lastPage(),
+            ],
+        ]);
+    }
 }
 
