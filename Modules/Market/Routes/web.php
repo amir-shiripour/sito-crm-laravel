@@ -81,7 +81,9 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
         // Catalog Management
         Route::get('master-products', [MasterProductController::class, 'index'])->name('master-products.index')->middleware('permission:market.products.view');
         Route::get('master-products/create', [MasterProductController::class, 'create'])->name('master-products.create')->middleware('permission:market.master-products.manage');
+        Route::get('master-products/import', [MasterProductController::class, 'import'])->name('master-products.import')->middleware('permission:market.master-products.manage');
         Route::post('master-products', [MasterProductController::class, 'store'])->name('master-products.store')->middleware('permission:market.master-products.manage');
+        Route::post('master-products/bulk', [MasterProductController::class, 'bulkAction'])->name('master-products.bulk')->middleware('permission:market.master-products.manage');
         Route::get('master-products/{master_product}/edit', [MasterProductController::class, 'edit'])->name('master-products.edit')->middleware('permission:market.master-products.manage');
         Route::put('master-products/{master_product}', [MasterProductController::class, 'update'])->name('master-products.update')->middleware('permission:market.master-products.manage');
         Route::delete('master-products/{master_product}', [MasterProductController::class, 'destroy'])->name('master-products.destroy')->middleware('permission:market.master-products.manage');

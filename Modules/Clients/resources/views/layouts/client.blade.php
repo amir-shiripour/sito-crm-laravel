@@ -93,6 +93,22 @@
         </div>
     </footer>
 </div>
+@php
+    $isSmartBotActive = false;
+    try {
+        if (class_exists(\App\Models\Module::class)) {
+            $isSmartBotActive = \App\Models\Module::where('slug', 'smartbot')
+                ->where('installed', true)
+                ->where('active', true)
+                ->exists();
+        }
+    } catch (\Throwable $e) {}
+@endphp
+
+@if($isSmartBotActive && \Modules\SmartBot\App\Models\BotSetting::getValue('is_widget_enabled', true))
+    @livewire('smartbot.widget.chat-widget')
+@endif
+
 @livewireScripts
 @livewireScriptConfig
 </body>

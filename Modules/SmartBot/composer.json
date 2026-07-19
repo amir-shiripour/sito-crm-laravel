@@ -1,0 +1,28 @@
+{
+    "name": "nwidart/smartbot",
+    "description": "Smart AI Chat, Sales Assistant, and Q&A Module.",
+    "authors": [
+        {
+            "name": "Antigravity",
+            "email": "antigravity@google.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\SmartBot\\": "App/",
+            "Modules\\SmartBot\\Database\\Factories\\": "Database/factories/",
+            "Modules\\SmartBot\\Database\\Seeders\\": "Database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\SmartBot\\Tests\\": "tests/"
+        }
+    }
+}

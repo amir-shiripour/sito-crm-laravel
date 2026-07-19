@@ -23,4 +23,10 @@ class DisplayCategory extends Model
     {
         return $this->hasMany(DisplayCategory::class, 'parent_id');
     }
+
+    // رابطه با محصولات
+    public function masterProducts()
+    {
+        return $this->belongsToMany(MasterProduct::class, 'market_product_display_category', 'display_category_id', 'master_product_id');
+    }
 }

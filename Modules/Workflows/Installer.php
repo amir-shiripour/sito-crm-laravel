@@ -44,6 +44,13 @@ class Installer extends BaseModuleInstaller
     public function reset(): void
     {
         Log::info('Workflows Installer: Starting custom reset process...');
+        
+        try {
+            \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+        } catch (\Throwable $e) {
+            Log::warning('Workflows Installer: failed to clear cache before reset: '.$e->getMessage());
+        }
+
         parent::reset();
         $this->install();
         Log::info('Workflows Installer: Custom reset process finished.');

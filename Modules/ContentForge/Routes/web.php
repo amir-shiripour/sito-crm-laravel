@@ -32,7 +32,7 @@ Route::middleware(['web'])->group(function() {
     // 2. Fallback direct root route for posts, pages, and entity archives
     // Constrained to avoid matching system keywords
     Route::match(['get', 'post'], '/{slug}', [ContentFrontController::class, 'showDefault'])
-         ->where('slug', '^(?!(user|admin|api|login|logout|register|storage|js|css|fonts|images|sitemap\.xml|feed\.xml|blog|s/|livewire|settings|booking|shop|cart|checkout|install|ping)).*')
+         ->where('slug', '^(?!(user|admin|api|login|logout|register|storage|js|css|fonts|images|sitemap\.xml|feed\.xml|blog|s/|livewire|settings|booking|shop|cart|checkout|install|ping|chat)).*')
          ->name('content.show.default');
 });
 

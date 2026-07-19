@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\FileUploadTrait;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class MasterProductForm extends Component
 {
@@ -188,12 +189,20 @@ class MasterProductForm extends Component
 
     private function validateStep($step)
     {
+        if ($step === 1) {
+            $this->slug = $this->makeSlugUnique($this->slug, $this->product->id);
+            $this->barcode = empty($this->barcode) ? null : $this->barcode;
+            $this->gtin = empty($this->gtin) ? null : $this->gtin;
+        }
+
         $rules = [
             1 => [
                 'title' => 'required|string|max:255',
                 'slug' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'slug')->ignore($this->product->id)],
                 'brand_id' => 'required',
                 'category_id' => 'required',
+                'barcode' => ['nullable', 'string', 'max:255', Rule::unique('market_master_products', 'barcode')->ignore($this->product->id)],
+                'gtin' => ['nullable', 'string', 'max:255', Rule::unique('market_master_products', 'gtin')->ignore($this->product->id)],
             ],
             2 => ['status' => 'required|in:draft,active,archived'],
             3 => [
@@ -384,6 +393,13 @@ class MasterProductForm extends Component
             $this->generateCode();
         }
 
+        // Make slug unique automatically before validation
+        $this->slug = $this->makeSlugUnique($this->slug, $this->product->id);
+
+        // Convert empty strings to null for nullable unique check
+        $this->barcode = empty($this->barcode) ? null : $this->barcode;
+        $this->gtin = empty($this->gtin) ? null : $this->gtin;
+
         $rules = [
             'title' => 'required|string|max:255',
             'slug' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'slug')->ignore($this->product->id)],
@@ -552,5 +568,38 @@ class MasterProductForm extends Component
         }
 
         return $options;
+    }
+
+    protected function makeSlugUnique($slug, $ignoreId = null)
+    {
+        $slug = mb_strtolower($slug, 'UTF-8');
+        // Replace non-alphanumeric/Persian/dash/spaces with empty string
+        $slug = preg_replace('/[^a-z0-9\x{0600}-\x{06FF}\s-]/u', '', $slug);
+        $slug = trim($slug);
+        $slug = preg_replace('/\s+/u', '-', $slug);
+        $slug = preg_replace('/-+/u', '-', $slug);
+
+        if (empty($slug)) {
+            $slug = 'product';
+        }
+
+        $originalSlug = $slug;
+        $count = 1;
+
+        while (true) {
+            $query = DB::table('market_master_products')->where('slug', $slug);
+            if ($ignoreId) {
+                $query->where('id', '!=', $ignoreId);
+            }
+
+            if (!$query->exists()) {
+                break;
+            }
+
+            $slug = $originalSlug . '-' . $count;
+            $count++;
+        }
+
+        return $slug;
     }
 }

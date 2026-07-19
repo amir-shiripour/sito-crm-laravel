@@ -404,4 +404,109 @@
             </div>
         @endif
     </div>
+
+    {{-- مدال حذف پیشرفته دسته‌بندی دارای محصول --}}
+    @if($confirmingDeletion)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-md transition-opacity" wire:click="closeDeleteModal"></div>
+
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-3xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100 dark:border-gray-700 relative">
+                    <div class="p-6 sm:p-8">
+                        <div class="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-4 mb-6">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/20 text-amber-500 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-black text-gray-900 dark:text-white" id="modal-title">تأیید عملیات حذف دسته‌بندی</h3>
+                                <p class="text-[10px] text-gray-400 mt-0.5">دسته‌بندی «{{ $deleteTargetName }}» دارای وابستگی در سیستم است.</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-5">
+                            {{-- آمار وابستگی‌ها --}}
+                            <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs space-y-2">
+                                <div class="flex justify-between text-gray-700 dark:text-gray-300">
+                                    <span>تعداد محصولات متصل به این شاخه:</span>
+                                    <span class="font-bold text-gray-900 dark:text-white">{{ $deleteProductCount }} محصول</span>
+                                </div>
+                                @if($deleteSubCategoryCount > 0)
+                                    <div class="flex justify-between text-gray-700 dark:text-gray-300">
+                                        <span>تعداد زیردسته‌های مرتبط:</span>
+                                        <span class="font-bold text-gray-900 dark:text-white">{{ $deleteSubCategoryCount }} زیردسته</span>
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- گزینه‌های تصمیم‌گیری --}}
+                            <div class="space-y-3">
+                                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">نحوه برخورد با داده‌ها را انتخاب کنید:</label>
+                                
+                                <div class="grid grid-cols-1 gap-3">
+                                    {{-- گزینه ۱: انتقال محصولات --}}
+                                    <label class="flex items-start gap-3 p-3.5 border rounded-2xl cursor-pointer transition-all duration-200 {{ $deleteActionType === 'move' ? 'border-fuchsia-500 bg-fuchsia-50/10 dark:bg-fuchsia-950/5' : 'border-gray-200 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750/30' }}">
+                                        <input type="radio" wire:model.live="deleteActionType" value="move" class="mt-0.5 text-fuchsia-600 border-gray-300 focus:ring-fuchsia-500">
+                                        <div class="text-xs">
+                                            <span class="font-bold text-gray-850 dark:text-gray-200">انتقال محصولات به دسته‌بندی دیگر</span>
+                                            <p class="text-[10px] text-gray-400 mt-1">محصولات به دسته‌بندی جدید منتقل شده و خود دسته‌بندی حذف می‌گردد.</p>
+                                        </div>
+                                    </label>
+
+                                    {{-- گزینه ۲: حذف همه --}}
+                                    <label class="flex items-start gap-3 p-3.5 border rounded-2xl cursor-pointer transition-all duration-200 {{ $deleteActionType === 'delete_all' ? 'border-red-500 bg-red-50/10 dark:bg-red-950/5' : 'border-gray-200 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750/30' }}">
+                                        <input type="radio" wire:model.live="deleteActionType" value="delete_all" class="mt-0.5 text-red-650 border-gray-300 focus:ring-red-500">
+                                        <div class="text-xs">
+                                            <span class="font-bold text-red-650 dark:text-red-400">حذف کامل دسته‌بندی و تمام محصولات مرتبط</span>
+                                            <p class="text-[10px] text-gray-400 mt-1">دسته‌بندی، زیردسته‌ها و تمامی محصولات متصل به آن‌ها به طور کامل حذف می‌شوند.</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {{-- بخش فیلدهای وابسته به گزینه انتخابی --}}
+                            @if($deleteActionType === 'move')
+                                <div class="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <label class="block text-xs font-bold text-gray-850 dark:text-gray-300">دسته‌بندی مقصد را انتخاب کنید <span class="text-red-500">*</span></label>
+                                    <select wire:model="deleteMoveToCategoryId" class="w-full h-10 px-3 text-xs bg-gray-50 dark:bg-gray-850 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-fuchsia-500 focus:ring-1 focus:ring-fuchsia-500 transition-all outline-none">
+                                        <option value="">-- انتخاب دسته‌بندی مقصد --</option>
+                                        @foreach($deleteMoveOptions as $option)
+                                            <option value="{{ $option['id'] }}">{!! $option['name'] !!}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('deleteMoveToCategoryId') <span class="text-xs text-red-500 block mt-1 font-semibold">{{ $message }}</span> @enderror
+                                </div>
+                            @endif
+
+                            @if($deleteActionType === 'delete_all')
+                                <div class="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div class="p-3 bg-red-50 dark:bg-red-950/20 border border-red-150 dark:border-red-900/30 rounded-2xl text-[11px] leading-relaxed text-red-700 dark:text-red-400 font-semibold">
+                                        هشدار غیرقابل بازگشت: تمام محصولات متصل به این شاخه نیز حذف خواهند شد.
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <label class="block text-xs font-bold text-gray-850 dark:text-gray-300">جهت تأیید، نام دقیق دسته‌بندی را بنویسید ({{ $deleteTargetName }}):</label>
+                                        <input type="text" wire:model="deleteConfirmName" class="w-full h-10 px-3 text-xs bg-gray-50 dark:bg-gray-850 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all outline-none dir-ltr text-left" placeholder="نام دسته بندی را وارد کنید">
+                                        @error('deleteConfirmName') <span class="text-xs text-red-500 block mt-1 font-semibold">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- دکمه‌های کنترل مدال حذف --}}
+                        <div class="flex items-center justify-end gap-3 border-t border-gray-150 dark:border-gray-700 pt-5 mt-6">
+                            <button type="button" wire:click="closeDeleteModal" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-250 text-gray-600 dark:bg-gray-700 dark:hover:bg-gray-650 dark:text-gray-300 rounded-xl text-xs font-bold transition-all">
+                                انصراف
+                            </button>
+                            <button type="button" wire:click="confirmDelete" class="px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg transition-all {{ $deleteActionType === 'delete_all' ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/20' : 'bg-fuchsia-600 hover:bg-fuchsia-700 text-white shadow-fuchsia-500/20' }}">
+                                تأیید و اجرای عملیات
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

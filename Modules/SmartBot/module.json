@@ -1,0 +1,12 @@
+{
+    "name": "SmartBot",
+    "alias": "smartbot",
+    "description": "Smart AI Chat, Sales Assistant, and Q&A Module.",
+    "keywords": [],
+    "priority": 1,
+    "providers": [
+        "Modules\\SmartBot\\App\\Providers\\RouteServiceProvider",
+        "Modules\\SmartBot\\App\\Providers\\SmartBotServiceProvider"
+    ],
+    "files": []
+}
