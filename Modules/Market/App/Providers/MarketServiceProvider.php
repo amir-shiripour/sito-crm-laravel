@@ -29,6 +29,7 @@ use Modules\Market\App\Livewire\Admin\ProductVariantSelector;
 use Modules\Market\App\Livewire\Admin\CheckoutFormManager;
 use Modules\Market\App\Livewire\Admin\ReviewManager;
 use Modules\Market\App\Livewire\Admin\QuestionManager;
+use Modules\Market\App\Livewire\Admin\CatalogImporter;
 use Modules\Market\App\Livewire\Web\ProductQuestions;
 use Modules\Market\App\Livewire\Web\CartManager;
 use Modules\Market\App\Livewire\Web\PopupCart;
@@ -96,6 +97,7 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::admin.order-status-manager', OrderStatusManager::class);
         Livewire::component('market::admin.review-manager', ReviewManager::class);
         Livewire::component('market::admin.question-manager', QuestionManager::class);
+        Livewire::component('market::admin.catalog-importer', CatalogImporter::class);
         Livewire::component('market::web.product-questions', ProductQuestions::class);
         Livewire::component('market::web.cart-manager', CartManager::class);
         Livewire::component('market::web.popup-cart', PopupCart::class);

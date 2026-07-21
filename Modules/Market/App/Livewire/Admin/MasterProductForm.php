@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\FileUploadTrait;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class MasterProductForm extends Component
 {
@@ -100,10 +101,17 @@ class MasterProductForm extends Component
             $this->loadCategoryFields($this->category_id);
 
             foreach ($this->product->variants as $var) {
+                $priceVal = $var->price;
+                if ($this->storeType === 'single') {
+                    $vp = $var->vendorProducts()->first();
+                    if ($vp) {
+                        $priceVal = $vp->price;
+                    }
+                }
                 $this->variants[] = [
                     'id' => $var->id,
                     'values' => $var->variant_attributes ?? [],
-                    'price' => $var->price ? number_format($var->price) : '',
+                    'price' => $priceVal ? number_format($priceVal) : '',
                     'is_active' => (bool)$var->is_active,
                 ];
             }
@@ -188,12 +196,20 @@ class MasterProductForm extends Component
 
     private function validateStep($step)
     {
+        if ($step === 1) {
+            $this->slug = $this->makeSlugUnique($this->slug, $this->product->id);
+            $this->barcode = empty($this->barcode) ? null : $this->barcode;
+            $this->gtin = empty($this->gtin) ? null : $this->gtin;
+        }
+
         $rules = [
             1 => [
                 'title' => 'required|string|max:255',
                 'slug' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'slug')->ignore($this->product->id)],
                 'brand_id' => 'required',
                 'category_id' => 'required',
+                'barcode' => ['nullable', 'string', 'max:255', Rule::unique('market_master_products', 'barcode')->ignore($this->product->id)],
+                'gtin' => ['nullable', 'string', 'max:255', Rule::unique('market_master_products', 'gtin')->ignore($this->product->id)],
             ],
             2 => ['status' => 'required|in:draft,active,archived'],
             3 => [
@@ -384,6 +400,13 @@ class MasterProductForm extends Component
             $this->generateCode();
         }
 
+        // Make slug unique automatically before validation
+        $this->slug = $this->makeSlugUnique($this->slug, $this->product->id);
+
+        // Convert empty strings to null for nullable unique check
+        $this->barcode = empty($this->barcode) ? null : $this->barcode;
+        $this->gtin = empty($this->gtin) ? null : $this->gtin;
+
         $rules = [
             'title' => 'required|string|max:255',
             'slug' => ['required', 'string', 'max:255', Rule::unique('market_master_products', 'slug')->ignore($this->product->id)],
@@ -436,7 +459,17 @@ class MasterProductForm extends Component
             $this->product->displayCategories()->sync($this->selectedDisplayCategories);
         }
 
-        $maxVariantSerial = ProductVariant::where('master_product_id', $this->product->id)->count();
+        $maxVariantSerial = 0;
+        $existingCodes = ProductVariant::where('master_product_id', $this->product->id)
+            ->pluck('variant_code')
+            ->toArray();
+        foreach ($existingCodes as $code) {
+            $parts = explode('-', $code);
+            $suffix = end($parts);
+            if (is_numeric($suffix)) {
+                $maxVariantSerial = max($maxVariantSerial, (int)$suffix);
+            }
+        }
         $keptVariantIds = [];
 
         if (empty($this->variantAxes) && empty($this->variants)) {
@@ -493,8 +526,61 @@ class MasterProductForm extends Component
             ProductVariant::where('master_product_id', $this->product->id)->whereNotIn('id', $keptVariantIds)->delete();
         }
 
+        // --- Single-Vendor Seeding Logic ---
+        if ($this->storeType === 'single') {
+            $vendor = \Modules\Market\Entities\Vendor::where('status', 'active')->first() 
+                ?? \Modules\Market\Entities\Vendor::first();
+
+            if ($vendor) {
+                $activeSavedVariants = ProductVariant::where('master_product_id', $this->product->id)
+                    ->whereIn('id', $keptVariantIds)
+                    ->where('is_active', true)
+                    ->get();
+
+                foreach ($activeSavedVariants as $varObj) {
+                    $existingVp = \Modules\Market\Entities\VendorProduct::where('vendor_id', $vendor->id)
+                        ->where('product_variant_id', $varObj->id)
+                        ->first();
+
+                    $payload = [
+                        'status' => 'published',
+                    ];
+
+                    if (!$existingVp) {
+                        $payload['price'] = $varObj->price ?? 0;
+                        $payload['stock'] = 0;
+                        $payload['min_purchase_qty'] = 1;
+                        $payload['reorder_point'] = 5;
+                    } else {
+                        if (!is_null($varObj->price)) {
+                            $payload['price'] = $varObj->price;
+                        }
+                    }
+
+                    \Modules\Market\Entities\VendorProduct::updateOrCreate(
+                        ['vendor_id' => $vendor->id, 'product_variant_id' => $varObj->id],
+                        $payload
+                    );
+                }
+
+                // Delete vendor products for variants that were removed
+                \Modules\Market\Entities\VendorProduct::where('vendor_id', $vendor->id)
+                    ->whereHas('variant', function($q) {
+                        $q->where('master_product_id', $this->product->id);
+                    })
+                    ->whereNotIn('product_variant_id', $keptVariantIds)
+                    ->delete();
+            }
+        }
+
         $this->dispatch('notify', type: 'success', text: 'محصول و تنوع‌های انتخابی با موفقیت در کاتالوگ ثبت شد.');
-        return redirect()->route('user.market.master-products.index');
+
+        $redirectTarget = MarketSetting::getValue('general.single_vendor_redirect_after_save', 'catalog');
+        if ($this->storeType === 'single' && $redirectTarget === 'pricing') {
+            return redirect()->to(route('user.market.vendor.products.create', ['master_id' => $this->product->id]));
+        }
+
+        return redirect()->to(session('master_products_index_url', route('user.market.master-products.index')));
     }
 
     public function render()
@@ -552,5 +638,38 @@ class MasterProductForm extends Component
         }
 
         return $options;
+    }
+
+    protected function makeSlugUnique($slug, $ignoreId = null)
+    {
+        $slug = mb_strtolower($slug, 'UTF-8');
+        // Replace non-alphanumeric/Persian/dash/spaces with empty string
+        $slug = preg_replace('/[^a-z0-9\x{0600}-\x{06FF}\s-]/u', '', $slug);
+        $slug = trim($slug);
+        $slug = preg_replace('/\s+/u', '-', $slug);
+        $slug = preg_replace('/-+/u', '-', $slug);
+
+        if (empty($slug)) {
+            $slug = 'product';
+        }
+
+        $originalSlug = $slug;
+        $count = 1;
+
+        while (true) {
+            $query = DB::table('market_master_products')->where('slug', $slug);
+            if ($ignoreId) {
+                $query->where('id', '!=', $ignoreId);
+            }
+
+            if (!$query->exists()) {
+                break;
+            }
+
+            $slug = $originalSlug . '-' . $count;
+            $count++;
+        }
+
+        return $slug;
     }
 }

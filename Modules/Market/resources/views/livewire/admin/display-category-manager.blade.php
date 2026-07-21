@@ -108,6 +108,236 @@
                 </div>
             </div>
 
+            {{-- بخش انتخاب محصولات برای دسته نمایشی --}}
+            <div class="mt-8 border-t border-gray-150 dark:border-gray-700 pt-6">
+                <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                    محصولات این دسته بندی نمایشی
+                </h3>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {{-- ستون چپ: افزودن گروهی --}}
+                    <div class="p-5 bg-gray-50 dark:bg-gray-900/30 rounded-2xl border border-gray-150 dark:border-gray-700/80 space-y-4">
+                        <span class="block text-xs font-bold text-indigo-650 dark:text-indigo-400">افزودن گروهی محصولات (بر اساس برند و دسته بندی اصلی)</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {{-- دراپ‌داون پیشرفته انتخاب برند با پشتیبانی از جستجو --}}
+                            <div class="relative" x-data="{
+                                open: false,
+                                search: '',
+                                selected: @entangle('bulkBrandId').live,
+                                options: @entangle('brandOptions'),
+                                get filteredOptions() {
+                                    if (this.search === '') return this.options;
+                                    return this.options.filter(i => i.label.toLowerCase().includes(this.search.toLowerCase()));
+                                },
+                                get selectedLabel() {
+                                    let opt = (this.options || []).find(o => o.value == this.selected);
+                                    return opt && opt.value !== '' ? opt.label : 'همه برندها';
+                                }
+                            }" @click.away="open = false">
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">انتخاب برند</label>
+                                <div @click="open = !open" class="w-full h-10 px-3 flex justify-between items-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer text-xs focus:ring-1 focus:ring-indigo-500 transition-all" :class="open ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                    <span x-text="selectedLabel" class="text-gray-800 dark:text-gray-200 truncate font-bold" :class="{'!text-gray-400 font-normal': !selected}"></span>
+                                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                                <div x-show="open"
+                                     x-transition:enter="transition ease-out duration-100"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-75"
+                                     x-transition:leave-start="opacity-100 scale-100"
+                                     x-transition:leave-end="opacity-0 scale-95"
+                                     class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+                                     style="display: none;">
+                                    <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+                                        <input type="text" x-model="search" placeholder="جستجوی برند..." class="w-full h-8 px-3 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:border-indigo-500 outline-none transition-all text-gray-800 dark:text-gray-200">
+                                    </div>
+                                    <div class="max-h-48 overflow-y-auto custom-scrollbar py-1">
+                                        <template x-for="option in filteredOptions" :key="option.value">
+                                            <div @click="selected = option.value; open = false; search = ''"
+                                                 class="px-4 py-2 cursor-pointer transition-colors flex items-center justify-between group"
+                                                 :class="selected == option.value ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'">
+                                                <span x-text="option.label" class="text-xs"></span>
+                                                <svg x-show="selected == option.value" class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0" class="px-4 py-3 text-center text-xs text-gray-400">نتیجه‌ای یافت نشد.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- دراپ‌داون پیشرفته انتخاب دسته با پشتیبانی از جستجو و ساختار درختی --}}
+                            <div class="relative" x-data="{
+                                open: false,
+                                search: '',
+                                selected: @entangle('bulkCategoryId').live,
+                                options: @entangle('categoryOptions'),
+                                get filteredOptions() {
+                                    if (this.search === '') return this.options;
+                                    return this.options.filter(i => i.label.toLowerCase().includes(this.search.toLowerCase()));
+                                },
+                                get selectedLabel() {
+                                    let opt = (this.options || []).find(o => o.value == this.selected);
+                                    return opt && opt.value !== '' ? opt.label : 'همه دسته‌بندی‌ها';
+                                }
+                            }" @click.away="open = false">
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">دسته‌بندی اصلی</label>
+                                <div @click="open = !open" class="w-full h-10 px-3 flex justify-between items-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer text-xs focus:ring-1 focus:ring-indigo-500 transition-all" :class="open ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                    <span x-text="selectedLabel" class="text-gray-800 dark:text-gray-200 truncate font-bold" :class="{'!text-gray-400 font-normal': !selected}"></span>
+                                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                                <div x-show="open"
+                                     x-transition:enter="transition ease-out duration-100"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-75"
+                                     x-transition:leave-start="opacity-100 scale-100"
+                                     x-transition:leave-end="opacity-0 scale-95"
+                                     class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+                                     style="display: none;">
+                                    <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+                                        <input type="text" x-model="search" placeholder="جستجوی دسته‌بندی..." class="w-full h-8 px-3 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:border-indigo-500 outline-none transition-all text-gray-800 dark:text-gray-200">
+                                    </div>
+                                    <div class="max-h-48 overflow-y-auto custom-scrollbar py-1">
+                                        <template x-for="option in filteredOptions" :key="option.value">
+                                            <div @click="selected = option.value; open = false; search = ''"
+                                                 class="px-4 py-2 cursor-pointer transition-colors flex items-center justify-between group"
+                                                 :class="[
+                                                    selected == option.value ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700',
+                                                    option.isSub ? 'border-r-2 ' + (selected == option.value ? 'border-indigo-500 dark:border-indigo-400' : 'border-transparent') : ''
+                                                 ]"
+                                                 :style="option.isSub ? 'padding-right: ' + (option.depth * 1 + 0.5) + 'rem' : ''">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="option.isSub" class="text-gray-300 dark:text-gray-600 transition-colors">↳</span>
+                                                    <span x-text="option.label" class="text-xs truncate"></span>
+                                                </div>
+                                                <svg x-show="selected == option.value" class="w-3.5 h-3.5 ml-1 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0" class="px-4 py-3 text-center text-xs text-gray-400">نتیجه‌ای یافت نشد.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @error('bulk_selection')
+                            <span class="text-xs text-red-500 block">{{ $message }}</span>
+                        @enderror
+                        <button type="button" wire:click="addBulkProducts" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95">
+                            افزودن گروهی به لیست انتخابی
+                        </button>
+                    </div>
+
+                    <div class="p-5 bg-gray-50 dark:bg-gray-900/30 rounded-2xl border border-gray-200 dark:border-gray-700/80 space-y-4 relative"
+                         x-data="{ showResults: false, query: @entangle('searchQuery').live }"
+                         @click.away="showResults = false">
+                        <span class="block text-xs font-bold text-indigo-650 dark:text-indigo-400">جستجو و افزودن تکی محصول</span>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">نام محصول، کد CRM، بارکد یا GTIN</label>
+                            <input type="text"
+                                   @focus="showResults = true"
+                                   @input="showResults = true"
+                                   wire:model.live.debounce.300ms="searchQuery"
+                                   placeholder="شروع به تایپ کنید (حداقل ۲ کاراکتر)..."
+                                   class="w-full h-10 px-3 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none">
+                        </div>
+
+                        {{-- نتایج جستجو شناور --}}
+                        <div x-show="showResults && ((query && query.trim().length >= 2) || {{ !empty($searchResults) ? 'true' : 'false' }})" style="display: none;">
+                            @if(!empty($searchResults))
+                                <div class="absolute right-5 left-5 mt-1 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto z-50 divide-y divide-gray-150 dark:divide-gray-700">
+                                    @foreach($searchResults as $product)
+                                        <div wire:click="addProduct({{ $product->id }})" class="p-3 hover:bg-indigo-50/55 dark:hover:bg-indigo-500/20 cursor-pointer flex items-center gap-3 transition-colors">
+                                            @if($product->main_image_url)
+                                                <img src="{{ $product->main_image_url }}" class="w-8 h-8 rounded-lg object-cover">
+                                            @else
+                                                <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 border border-gray-200 dark:border-gray-700">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                </div>
+                                            @endif
+                                            <div class="flex-1 min-w-0">
+                                                <span class="block text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{{ $product->title }}</span>
+                                                <span class="block text-[10px] text-gray-400 mt-0.5">CRM: {{ $product->crm_code }} | برند: {{ $product->brand?->name }}</span>
+                                            </div>
+                                            <svg class="w-4 h-4 text-indigo-500 opacity-0 group-hover:opacity-105" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @elseif(strlen(trim($searchQuery)) >= 2)
+                                <div class="absolute right-5 left-5 mt-1 bg-white dark:bg-gray-850 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl text-center text-xs text-gray-400">
+                                    هیچ محصولی یافت نشد.
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                {{-- جدول محصولات انتخاب شده --}}
+                <div class="mt-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-600 dark:text-gray-400">لیست محصولات انتخاب شده ({{ count($selectedProducts) }} محصول)</span>
+                        @if(count($selectedProducts) > 0)
+                            <button type="button" wire:click="$set('selectedProductIds', [])" class="text-[11px] text-red-500 hover:text-red-650 transition-colors">حذف همه موارد انتخاب شده</button>
+                        @endif
+                    </div>
+
+                     @if(count($selectedProducts) > 0)
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm max-h-80 overflow-y-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-right text-xs">
+                                <thead class="bg-gray-50 dark:bg-gray-900/40 font-bold text-gray-700 dark:text-gray-300">
+                                    <tr>
+                                        <th class="px-4 py-3 w-16">تصویر</th>
+                                        <th class="px-4 py-3">عنوان محصول</th>
+                                        <th class="px-4 py-3">شناسه CRM</th>
+                                        <th class="px-4 py-3">برند / دسته‌بندی</th>
+                                        <th class="px-4 py-3 w-20 text-center">عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800/20">
+                                    @foreach($selectedProducts as $prod)
+                                        <tr class="hover:bg-gray-50/40 dark:hover:bg-gray-900/10">
+                                            <td class="px-4 py-2">
+                                                @if($prod->main_image_url)
+                                                    <img src="{{ $prod->main_image_url }}" class="w-10 h-10 rounded-xl object-cover">
+                                                @else
+                                                    <div class="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700">
+                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-2 font-semibold text-gray-900 dark:text-white">
+                                                {{ $prod->title }}
+                                            </td>
+                                            <td class="px-4 py-2 text-gray-450 dark:text-gray-400">
+                                                {{ $prod->crm_code }}
+                                            </td>
+                                            <td class="px-4 py-2">
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span class="text-gray-700 dark:text-gray-300 font-bold">برند: {{ $prod->brand?->name }}</span>
+                                                    <span class="text-[10px] text-gray-400">دسته: {{ $prod->category?->name }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-2 text-center">
+                                                <button type="button" wire:click="removeProduct({{ $prod->id }})" class="p-1.5 text-red-500 hover:text-red-750 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                    </svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="p-6 bg-gray-50/50 dark:bg-gray-900/10 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center text-xs text-gray-400">
+                            هنوز هیچ محصولی به این دسته نمایشی متصل نشده است. از جعبه‌های بالا جهت افزودن استفاده کنید.
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="mt-8 flex justify-end">
                 <button wire:click="save" class="px-8 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all active:scale-95">ذخیره دسته‌بندی</button>
             </div>

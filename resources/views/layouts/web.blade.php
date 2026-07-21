@@ -180,6 +180,22 @@
     @livewire('market::web.location-modal')
 @endif
 
+@php
+    $isSmartBotActive = false;
+    try {
+        if (class_exists(\App\Models\Module::class)) {
+            $isSmartBotActive = \App\Models\Module::where('slug', 'smartbot')
+                ->where('installed', true)
+                ->where('active', true)
+                ->exists();
+        }
+    } catch (\Throwable $e) {}
+@endphp
+
+@if($isSmartBotActive && \Modules\SmartBot\App\Models\BotSetting::getValue('is_widget_enabled', true))
+    @livewire('smartbot.widget.chat-widget')
+@endif
+
 <script>
     function updateThemeUI() {
         const currentTheme = localStorage.theme || 'system';
@@ -200,7 +216,7 @@
 
 {{-- استایل‌های Media Query در فایل Blade مستقیما روی تگ main اعمال شدند تا نیازی به style تگ در پایین نباشد --}}
 <style>
-    @media (min-width: 768px) { main { padding-top: 5rem !important; } }
+    @media (min-width: 768px) { main { padding-top: 8rem !important; } }
 </style>
 </body>
 

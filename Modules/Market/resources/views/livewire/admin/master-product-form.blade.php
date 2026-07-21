@@ -22,7 +22,7 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">ساخت و تکمیل کاتالوگ محصول به صورت مرحله به مرحله.</p>
             </div>
 
-            <a href="{{ route('user.market.master-products.index') }}" class="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all shadow-sm">
+            <a href="{{ session('master_products_index_url', route('user.market.master-products.index')) }}" class="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all shadow-sm">
                 <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 بازگشت
             </a>
@@ -696,8 +696,8 @@
                                                     </div>
                                                 </div>
 
-                                                @if(!$vendorCanManagePrices)
-                                                    <div class="w-full pt-2 border-t border-gray-100 dark:border-gray-700" x-data="{
+                                                @if($storeType !== 'single' && !$vendorCanManagePrices)
+                                                     <div class="w-full pt-2 border-t border-gray-100 dark:border-gray-700" x-data="{
                                                         rawVal: @entangle('variants.'.$index.'.price'),
                                                         formattedVal: '',
                                                         init() {
@@ -711,7 +711,9 @@
                                                             this.rawVal = this.formattedVal.replace(/,/g, '');
                                                         }
                                                     }">
-                                                        <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">قیمت کاتالوگ (تومان) <span class="text-red-500">*</span></label>
+                                                        <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">
+                                                            {{ $storeType === 'single' ? 'قیمت اولیه/مرجع (تومان)' : 'قیمت کاتالوگ (تومان)' }} <span class="text-red-500">*</span>
+                                                        </label>
                                                         <div class="relative">
                                                             <input type="text"
                                                                    x-model="formattedVal"

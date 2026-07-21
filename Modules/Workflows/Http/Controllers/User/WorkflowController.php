@@ -111,8 +111,14 @@ class WorkflowController extends Controller
         $tokens = config('workflows.tokens', []);
 
         $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
+        if (is_string($cureStatuses)) {
+            $cureStatuses = json_decode($cureStatuses, true) ?: [];
+        }
         $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
-        $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name');
+        if (is_string($cureAssignableRoles)) {
+            $cureAssignableRoles = json_decode($cureAssignableRoles, true) ?: [];
+        }
+        $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', (array) $cureAssignableRoles)->orderBy('name');
 
         if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
             $usersQuery->whereDoesntHave('roles', function ($q) {
@@ -185,8 +191,14 @@ class WorkflowController extends Controller
         $tokens = config('workflows.tokens', []);
 
         $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
+        if (is_string($cureStatuses)) {
+            $cureStatuses = json_decode($cureStatuses, true) ?: [];
+        }
         $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
-        $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name');
+        if (is_string($cureAssignableRoles)) {
+            $cureAssignableRoles = json_decode($cureAssignableRoles, true) ?: [];
+        }
+        $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', (array) $cureAssignableRoles)->orderBy('name');
 
         if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
             $usersQuery->whereDoesntHave('roles', function ($q) {

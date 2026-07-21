@@ -153,8 +153,47 @@ class Installer extends BaseModuleInstaller
         // 4. Seed Default Entity and Default Settings
         $this->seedDefaultEntity();
         $this->seedDefaultSettings();
+        $this->publishDefaultThemeFiles();
 
-        Log::info("ContentForge Installer: Permissions and default config seeded.");
+        Log::info("ContentForge Installer: Permissions, default config and theme files seeded.");
+    }
+
+    protected function publishDefaultThemeFiles(): void
+    {
+        try {
+            $destDir = resource_path('views/themes/content');
+            
+            if (!File::exists($destDir)) {
+                File::makeDirectory($destDir, 0755, true);
+            }
+
+            $sourceDir = __DIR__ . '/resources/views/web';
+
+            $files = [
+                'archive.blade.php',
+                'category.blade.php',
+                'page.blade.php',
+                'post.blade.php',
+                'tag.blade.php',
+            ];
+
+            foreach ($files as $file) {
+                $destFile = $destDir . '/' . $file;
+                
+                // فقط در صورتی که فایل وجود نداشته باشد آن را ایجاد/کپی می‌کنیم
+                if (!File::exists($destFile)) {
+                    $sourceFile = $sourceDir . '/' . $file;
+                    if (File::exists($sourceFile)) {
+                        File::copy($sourceFile, $destFile);
+                    } else {
+                        // در صورتی که فایل مبدا در وب پیدا نشد، یک فایل پیش‌فرض ساده ایجاد می‌کنیم تا سیستم با خطا مواجه نشود
+                        File::put($destFile, "{{-- Default ContentForge {$file} Template --}}");
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error("ContentForge Installer publishDefaultThemeFiles failed: " . $e->getMessage());
+        }
     }
 
     protected function seedDefaultEntity(): void
@@ -166,6 +205,7 @@ class Installer extends BaseModuleInstaller
                 [
                     'name'       => $appName,
                     'slug'       => 'main',
+                    'theme_key'  => 'content',
                     'is_active'  => true,
                     'settings'   => [],
                 ]
@@ -195,7 +235,8 @@ class Installer extends BaseModuleInstaller
             ];
 
             foreach ($defaults as $key => $value) {
-                \Modules\ContentForge\Entities\ContentSetting::firstOrCreate(
+                // با استفاده از updateOrCreate مطمئن می‌شویم که پیش‌فرض‌ها در صورت ریست یا نصب مجدد بازنویسی/ایجاد می‌شوند
+                \Modules\ContentForge\Entities\ContentSetting::updateOrCreate(
                     ['key' => $key],
                     ['value' => $value]
                 );

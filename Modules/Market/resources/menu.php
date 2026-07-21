@@ -5,7 +5,7 @@ use Modules\Market\Entities\MarketSetting;
 return [
     // ... (منوهای قبلی بدون تغییر)
     [
-        'title' => 'انبارهای من',
+        'title' => 'مدیریت انبار',
         'route' => 'user.market.vendor.warehouses.index',
         'permission' => 'market.products.view', // 💡 از پرمیشن موجود فروشنده استفاده می‌کنیم
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-building-warehouse"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21v-13l9 -4l9 4v13" /><path d="M13 13h4v8h-10v-6h6" /><path d="M13 21v-9a1 1 0 0 0 -1 -1h-2a1 1 0 0 0 -1 1v3" /></svg>',
@@ -15,7 +15,7 @@ return [
     ],
     // ... (بقیه منوها بدون تغییر)
     [
-        'title' => 'داشبورد فروشگاه',
+        'title' => 'داشبورد',
         'route' => 'user.market.dashboard',
         'permission' => 'market.dashboard.view',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-shopping-cart"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17h-11v-14h-2" /><path d="M6 5l14 1l-1 7h-13" /></svg>',
@@ -23,7 +23,7 @@ return [
         'position' => 30,
     ],
     [
-        'title' => 'محصولات من (فروشنده)',
+        'title' => 'قیمت گذاری و تخفیف',
         'route' => 'user.market.vendor.products.index',
         'permission' => 'market.products.view',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-box"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12l0 9" /><path d="M12 12l-8 -4.5" /><path d="M16 5.25l-8 4.5" /></svg>',
@@ -78,7 +78,7 @@ return [
         'route' => 'user.market.master-products.index',
         'permission' => 'market.master-products.manage',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-packages"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 16.5l-5 -3l5 -3l5 3v5.5l-5 3z" /><path d="M2 13.5v5.5l5 3" /><path d="M7 16.5l5 -3" /><path d="M17 16.5l-5 -3l5 -3l5 3v5.5l-5 3z" /><path d="M12 13.5v5.5l5 3" /><path d="M17 16.5l5 -3" /><path d="M12 10.5l-5 -3l5 -3l5 3v5.5l-5 3z" /><path d="M7 7.5v5.5l5 3" /><path d="M12 10.5l5 -3" /></svg>',
-        'group' => 'market-settings',
+        'group' => 'market',
         'position' => 34,
     ],
     [
@@ -110,7 +110,7 @@ return [
         'route' => 'user.market.brands.index',
         'permission' => 'market.brands.manage',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-tag"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3z" /></svg>',
-        'group' => 'market-settings',
+        'group' => 'market',
         'position' => 36,
     ],
     [
@@ -118,24 +118,24 @@ return [
         'route' => 'user.market.categories.index',
         'permission' => 'market.categories.manage',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-category"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h6v6h-6z" /><path d="M14 4h6v6h-6z" /><path d="M4 14h6v6h-6z" /><path d="M17 17m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /></svg>',
-        'group' => 'market-settings',
+        'group' => 'market',
         'position' => 37,
     ],
     [
-        'title' => 'دسته‌بندی مجزا',
+        'title' => 'دسته بندی نمایشی',
         'route' => 'user.market.display-categories.index',
         'permission' => 'market.categories.manage',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-hierarchy-2"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M19 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M12 5v5" /><path d="M5 15v-1a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v1" /><path d="M12 14v1" /></svg>',
-        'group' => 'market-settings',
+        'group' => 'market',
         'position' => 37.5,
         'show' => fn() => (bool) MarketSetting::getValue('system.separate_category_enabled', false),
     ],
     [
-        'title' => 'ویژگی‌های تنوع‌ساز',
+        'title' => 'ویژگی ها (تنوع)',
         'route' => 'user.market.attributes.index',
         'permission' => 'market.attributes.manage',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-palette"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25" /><path d="M8.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M12.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M16.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /></svg>',
-        'group' => 'market-settings',
+        'group' => 'market',
         'position' => 38,
     ],
     [

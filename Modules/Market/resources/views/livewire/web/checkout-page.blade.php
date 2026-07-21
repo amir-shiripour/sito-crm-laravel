@@ -72,7 +72,7 @@
                                                             
                                                             {{-- Dropdown selector to change address --}}
                                                             <div x-data="{ open: false }" class="relative">
-                                                                <button type="button" @click="open = !open" class="text-[11px] text-gray-500 hover:text-indigo-650 dark:text-indigo-400 font-bold flex items-center gap-1 select-none">
+                                                                <button type="button" @click="open = !open" class="text-[11px] text-gray-500 hover:text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1 select-none">
                                                                     تغییر آدرس
                                                                     <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="{'rotate-180': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -100,7 +100,7 @@
                                                 @else
                                                     <div class="text-center py-6 space-y-3 bg-white dark:bg-gray-800/40 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
                                                         <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">هنوز هیچ آدرسی ثبت نکرده‌اید.</p>
-                                                        <button type="button" wire:click="openNewAddressModal" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-650 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95">
+                                                        <button type="button" wire:click="openNewAddressModal" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95">
                                                             ثبت اولین آدرس روی نقشه
                                                         </button>
                                                     </div>
@@ -164,7 +164,7 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         @foreach($shippingMethods as $method)
-                            <label wire:key="page-ship-{{ $method['id'] }}" class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-all hover:border-indigo-300 dark:hover:border-indigo-700 {{ $selectedShippingMethodId == $method['id'] ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-500 dark:border-indigo-600 ring-2 ring-indigo-500/20' : 'bg-gray-55/50 dark:bg-gray-900/10 border-gray-200 dark:border-gray-700' }}">
+                            <label wire:key="page-ship-{{ $method['id'] }}" class="relative flex flex-col p-4 border rounded-xl cursor-pointer transition-all hover:border-indigo-300 dark:hover:border-indigo-700 {{ $selectedShippingMethodId == $method['id'] ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-500 dark:border-indigo-600 ring-2 ring-indigo-500/20' : 'bg-gray-50 dark:bg-gray-900/10 border-gray-200 dark:border-gray-700' }}">
                                 <div class="flex items-center justify-between mb-2">
                                     <div class="flex items-center gap-2">
                                         <input type="radio" wire:model.live="selectedShippingMethodId" value="{{ $method['id'] }}" class="text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700">
@@ -174,7 +174,7 @@
                                         {{ $method['cost'] > 0 ? number_format($method['cost']) . ' ' . $this->getCurrencyLabel() : 'رایگان' }}
                                     </span>
                                 </div>
-                                <span class="text-[10px] text-gray-450 dark:text-gray-400">
+                                <span class="text-[10px] text-gray-400 dark:text-gray-400">
                                     @if($method['driver'] === 'post_api') استعلام مستقیم از پست
                                     @elseif($method['driver'] === 'tipax_api') استعلام مستقیم از تیپاکس
                                     @else محاسبه بر اساس وزن مرسوله @endif
@@ -294,7 +294,7 @@
 
                                             <!-- Vendor tag -->
                                             @if(!empty($item['vendor_name']))
-                                                <span class="text-[10px] text-gray-550 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded-md border border-gray-100 dark:border-gray-700/50 font-bold shrink-0 flex items-center gap-1">
+                                                <span class="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded-md border border-gray-100 dark:border-gray-700/50 font-bold shrink-0 flex items-center gap-1">
                                                     <svg class="w-2.5 h-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                                                     {{ $item['vendor_name'] }}
                                                 </span>
@@ -308,7 +308,7 @@
                                                         @if($attribute['type'] === 'color')
                                                             <div class="w-2.5 h-2.5 rounded-full shadow-inner border border-white dark:border-gray-800" style="background-color: {{ $attribute['meta_value'] ?? '#ccc' }}"></div>
                                                         @elseif($attribute['type'] === 'image' && $attribute['meta_value'])
-                                                            <img src="{{ Storage::url($attribute['meta_value']) }}" class="w-3.5 h-3.5 rounded object-cover border border-white dark:border-gray-850">
+                                                            <img src="{{ Storage::url($attribute['meta_value']) }}" class="w-3.5 h-3.5 rounded object-cover border border-white dark:border-gray-800">
                                                         @endif
                                                         <span>{{ $attribute['value'] }}</span>
                                                     </div>
@@ -392,16 +392,16 @@
 
     {{-- Modal for New Address Quick Creation --}}
     @if($showNewAddressModal)
-        <div wire:key="checkout-new-address-modal" class="fixed inset-0 z-[100] flex items-center justify-center overflow-x-hidden overflow-y-auto outline-none focus:outline-none" style="backdrop-filter: blur(8px); background-color: rgba(0, 0, 0, 0.4);">
+        <div wire:key="checkout-new-address-modal" x-data="{ init() { document.body.classList.add('overflow-hidden'); }, destroy() { document.body.classList.remove('overflow-hidden'); } }" class="fixed inset-0 z-[100] flex items-center justify-center overflow-x-hidden overflow-y-auto outline-none focus:outline-none" style="backdrop-filter: blur(8px); background-color: rgba(0, 0, 0, 0.4);">
             <div class="relative w-full max-w-2xl mx-auto my-6 px-4">
-                <div class="relative flex flex-col w-full bg-white dark:bg-gray-900 border-0 rounded-3xl shadow-2xl outline-none focus:outline-none overflow-hidden max-h-[95vh] dark:border dark:border-gray-700">
+                <div class="relative flex flex-col w-full bg-white dark:bg-gray-900 border-0 rounded-3xl shadow-2xl outline-none focus:outline-none overflow-hidden max-h-[95vh] dark:border dark:border-gray-800">
                     {{-- Modal Header --}}
-                    <div class="flex items-center justify-between p-5 border-b border-solid border-gray-200 dark:border-gray-700 rounded-t-3xl">
+                    <div class="flex items-center justify-between p-5 border-b border-solid border-gray-200 dark:border-gray-800 rounded-t-3xl">
                         <div>
                             <h3 class="text-base font-bold text-gray-900 dark:text-white">ثبت آدرس جدید روی نقشه</h3>
                             <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">موقعیت آدرس خود را روی نقشه مشخص کرده و ذخیره کنید.</p>
                         </div>
-                        <button type="button" wire:click="closeNewAddressModal" class="p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-indigo-600 hover:border-indigo-500 transition-all">
+                        <button type="button" wire:click="closeNewAddressModal" class="p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-500 transition-all">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -417,9 +417,9 @@
                                 <input type="text" 
                                        wire:model.live.debounce.300ms="searchQuery" 
                                        @focus="showDropdown = true" 
-                                       class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 placeholder-gray-400 pl-10" 
+                                       class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder-gray-400 dark:placeholder-gray-500 pl-10 outline-none" 
                                        placeholder="مثال: تهران، ونک، ملاصدرا...">
-                                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
@@ -428,10 +428,10 @@
                             
                             {{-- Suggestions dropdown --}}
                             @if(!empty($searchQuery) && count($searchResults) > 0)
-                                <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-1 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-40 overflow-y-auto py-1">
+                                <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-40 overflow-y-auto py-1">
                                     @foreach($searchResults as $res)
                                         <button type="button" 
-                                                wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, '{{ addslashes($res['title']) }}')"
+                                                wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, @js($res['title']))"
                                                 @click="showDropdown = false"
                                                 class="w-full text-right px-4 py-2 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/30 transition-colors flex flex-col gap-0.5 border-b border-gray-100 last:border-0 dark:border-gray-700/50">
                                             <span class="text-xs font-bold text-gray-900 dark:text-white">{{ $res['title'] }}</span>
@@ -599,7 +599,7 @@
                                         }
                                     }"
                                     x-init="initNewAddressMap()"
-                                    id="new-address-map" 
+                                    id="checkout-page-new-address-map" 
                                     wire:ignore 
                                     class="w-full h-56 bg-gray-100 dark:bg-gray-900" 
                                     style="z-index: 10;">
@@ -623,8 +623,8 @@
                                     } else {
                                         alert('مرورگر شما از GPS پشتیبانی نمی کند.');
                                     }
-                                " class="absolute bottom-10 left-2.5 z-[20] bg-white hover:bg-gray-100 text-indigo-650 p-2.5 rounded-xl shadow-md border border-gray-200 transition-colors flex items-center justify-center" title="موقعیت فعلی من (GPS)">
-                                    <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                " class="absolute bottom-10 left-2.5 z-[20] bg-white hover:bg-gray-100 text-indigo-600 p-2.5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors flex items-center justify-center" title="موقعیت فعلی من (GPS)">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <circle cx="12" cy="12" r="3" stroke-width="2" />
                                         <circle cx="12" cy="12" r="8" stroke-width="2" />
                                         <path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke-width="2" stroke-linecap="round" />
@@ -642,39 +642,91 @@
                             {{-- Modal Geocode Spinner Overlay --}}
                             <div wire:loading wire:target="fetchNewAddressFromCoordinates" class="absolute inset-0 bg-white/60 dark:bg-gray-900/60 backdrop-blur-[2px] z-[40] flex items-center justify-center rounded-2xl transition-all">
                                 <div class="flex flex-col items-center gap-2 bg-white dark:bg-gray-800 px-5 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg">
-                                    <div class="w-5 h-5 border-3 border-indigo-650 border-t-transparent rounded-full animate-spin"></div>
+                                    <div class="w-5 h-5 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                                     <span class="text-[11px] font-bold text-gray-800 dark:text-gray-200">در حال دریافت نشانی روی نقشه...</span>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            @php
+                                $jsonPath = base_path('Modules/Clients/resources/data/iran-provinces-cities.json');
+                                $provincesData = file_exists($jsonPath) ? json_decode(file_get_contents($jsonPath), true) : [];
+                                $allProvinces = array_keys($provincesData);
+                                $baseInputClass = "w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none";
+                                $labelClass = "block mb-1 text-[11px] font-bold text-gray-800 dark:text-gray-200";
+                            @endphp
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                 x-data="{
+                                     province: @entangle('newProvince'),
+                                     city: @entangle('newCity'),
+                                     provinces: @js($allProvinces),
+                                     cities: [],
+                                     provincesData: @js($provincesData),
+                                     init() {
+                                         if (this.province && this.provincesData[this.province]) {
+                                             this.cities = this.provincesData[this.province];
+                                         }
+                                         this.$watch('province', value => {
+                                             this.cities = (value && this.provincesData[value]) ? this.provincesData[value] : [];
+                                             if (value && this.cities && !this.cities.includes(this.city)) {
+                                                 this.city = '';
+                                             }
+                                         });
+                                     }
+                                 }">
                                 <div>
-                                    <label for="new_title" class="block mb-1 text-[11px] font-bold text-gray-800 dark:text-gray-200">عنوان آدرس (خانه، محل کار و...)</label>
-                                    <input type="text" id="new_title" wire:model.defer="newTitle" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 placeholder-gray-400" placeholder="مثال: خانه">
+                                    <label for="page_new_title" class="block mb-1 text-[11px] font-bold text-gray-800 dark:text-gray-200">عنوان آدرس (خانه، محل کار و...)</label>
+                                    <input type="text" id="page_new_title" wire:model.defer="newTitle" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder-gray-400 dark:placeholder-gray-500 outline-none" placeholder="مثال: خانه">
                                     @error('newTitle') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div>
-                                    <label for="new_postal_code" class="block mb-1 text-[11px] font-bold text-gray-800 dark:text-gray-200">کد پستی</label>
-                                    <input type="text" id="new_postal_code" wire:model.defer="newPostalCode" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 font-mono text-center dir-ltr" placeholder="1234567890">
+                                    <label for="page_new_postal_code" class="block mb-1 text-[11px] font-bold text-gray-800 dark:text-gray-200">کد پستی</label>
+                                    <input type="text" id="page_new_postal_code" wire:model.defer="newPostalCode" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono text-center dir-ltr focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder-gray-400 dark:placeholder-gray-500 outline-none" placeholder="1234567890">
                                     @error('newPostalCode') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                 </div>
 
-                                <div>
-                                    <label for="new_province" class="block mb-1 text-[11px] font-bold text-gray-800 dark:text-gray-200">استان</label>
-                                    <input type="text" id="new_province" wire:model="newProvince" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+                                {{-- Province Selector Dropdown --}}
+                                <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative" wire:ignore>
+                                    <label class="{{ $labelClass }}">استان</label>
+                                    <div @click="open = !open" class="{{ $baseInputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-800': open, 'bg-gray-50 dark:bg-gray-800': !open}">
+                                        <span x-text="province || 'انتخاب استان...'" class="block truncate" :class="{'text-gray-400 dark:text-gray-500': !province}"></span>
+                                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+                                    <div x-show="open" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                                        <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-100">
+                                        <template x-for="p in provinces.filter(item => item.toLowerCase().includes(search.toLowerCase()))" :key="p">
+                                            <div @click="province = p; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': province == p, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': province != p}">
+                                                <span x-text="p"></span>
+                                                <svg x-show="province == p" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            </div>
+                                        </template>
+                                    </div>
                                     @error('newProvince') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                 </div>
 
-                                <div>
-                                    <label for="new_city" class="block mb-1 text-[11px] font-bold text-gray-800 dark:text-gray-200">شهر</label>
-                                    <input type="text" id="new_city" wire:model="newCity" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+                                {{-- City Selector Dropdown --}}
+                                <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative" wire:ignore>
+                                    <label class="{{ $labelClass }}">شهر</label>
+                                    <div @click="province ? open = !open : null" class="{{ $baseInputClass }} flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-800 cursor-pointer': open && province, 'bg-gray-50 dark:bg-gray-800 cursor-pointer': !open && province, 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-900/30': !province}">
+                                        <span x-text="city || 'انتخاب شهر...'" class="block truncate" :class="{'text-gray-400 dark:text-gray-500': !city}"></span>
+                                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open && province}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+                                    <div x-show="open && province" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                                        <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-100">
+                                        <template x-for="c in cities.filter(item => item.toLowerCase().includes(search.toLowerCase()))" :key="c">
+                                            <div @click="city = c; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': city == c, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': city != c}">
+                                                <span x-text="c"></span>
+                                                <svg x-show="city == c" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            </div>
+                                        </template>
+                                    </div>
                                     @error('newCity') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div class="md:col-span-2">
-                                    <label for="new_address" class="block mb-1 text-[11px] font-bold text-gray-800 dark:text-gray-200">نشانی دقیق پستی</label>
-                                    <textarea id="new_address" wire:model="newAddress" rows="3" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 resize-y min-h-[50px]"></textarea>
+                                    <label for="page_new_address" class="block mb-1 text-[11px] font-bold text-gray-800 dark:text-gray-200">نشانی دقیق پستی</label>
+                                    <textarea id="page_new_address" wire:model="newAddress" rows="3" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all resize-y min-h-[50px] outline-none"></textarea>
                                     @error('newAddress') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                 </div>
                             </div>
@@ -682,7 +734,7 @@
                     </div>
 
                     {{-- Modal Footer --}}
-                    <div class="flex items-center justify-end p-5 border-t border-solid border-gray-200 dark:border-gray-700 rounded-b-3xl gap-3">
+                    <div class="flex items-center justify-end p-5 border-t border-solid border-gray-200 dark:border-gray-800 rounded-b-3xl gap-3">
                         <button type="button" wire:click="saveNewAddress" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95">
                             ثبت و استفاده از آدرس
                         </button>

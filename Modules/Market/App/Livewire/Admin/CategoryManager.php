@@ -6,6 +6,7 @@ use Livewire\Component;
 use Modules\Market\Entities\Category;
 use Modules\Market\Entities\MarketAttribute; // 💡 NEW
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class CategoryManager extends Component
 {
@@ -15,6 +16,17 @@ class CategoryManager extends Component
     public $icon, $existing_icon;
     public $has_parent_brand = false; // جهت غیر فعال کردن ویرایش برند در صورت داشتن والد با برند
     public $parentOptions = []; // برای همگام‌سازی سریع و زنده لیست کشویی والد با ویژگی‌های برند
+
+    // Deletion Modal State Properties
+    public $confirmingDeletion = false;
+    public $deleteTargetId = null;
+    public $deleteTargetName = '';
+    public $deleteProductCount = 0;
+    public $deleteSubCategoryCount = 0;
+    public $deleteActionType = 'move'; // 'move' or 'delete_all'
+    public $deleteMoveToCategoryId = '';
+    public $deleteConfirmName = '';
+    public $deleteMoveOptions = [];
 
     // آرایه‌های فرم‌ساز
     public $target_attributes = []; // فیلدهای عمومی (مثل وزن، ابعاد)
@@ -163,8 +175,126 @@ class CategoryManager extends Component
 
     public function delete($id)
     {
-        Category::findOrFail($id)->delete();
-        $this->dispatch('notify', type: 'success', text: 'دسته‌بندی حذف شد.');
+        $category = Category::findOrFail($id);
+        $categoryIds = $this->getDescendantCategoryIds($id);
+        
+        // Count products linked to this category or its subcategories
+        $this->deleteProductCount = \Modules\Market\Entities\MasterProduct::whereIn('category_id', $categoryIds)->count();
+        $this->deleteSubCategoryCount = count($categoryIds) - 1;
+
+        if ($this->deleteProductCount > 0 || $this->deleteSubCategoryCount > 0) {
+            // Setup deletion confirmation state
+            $this->deleteTargetId = $id;
+            $this->deleteTargetName = $category->name;
+            $this->deleteActionType = 'move';
+            $this->deleteMoveToCategoryId = '';
+            $this->deleteConfirmName = '';
+            $this->confirmingDeletion = true;
+
+            // Load move to options (all categories excluding descendants)
+            $allCats = Category::orderBy('code_offset')->get();
+            $this->deleteMoveOptions = $this->buildMoveOptions($allCats, $categoryIds);
+        } else {
+            // Delete directly since it is empty
+            $category->delete();
+            $this->dispatch('notify', type: 'success', text: 'دسته‌بندی با موفقیت حذف شد.');
+        }
+    }
+
+    public function confirmDelete()
+    {
+        if (!$this->deleteTargetId) return;
+
+        $category = Category::findOrFail($this->deleteTargetId);
+        $categoryIds = $this->getDescendantCategoryIds($this->deleteTargetId);
+
+        try {
+            DB::beginTransaction();
+
+            if ($this->deleteActionType === 'move') {
+                $this->validate([
+                    'deleteMoveToCategoryId' => 'required|exists:market_categories,id|not_in:' . implode(',', $categoryIds),
+                ], [
+                    'deleteMoveToCategoryId.required' => 'انتخاب دسته‌بندی مقصد الزامی است.',
+                    'deleteMoveToCategoryId.exists' => 'دسته‌بندی مقصد نامعتبر است.',
+                    'deleteMoveToCategoryId.not_in' => 'دسته‌بندی مقصد نمی‌تواند از زیرمجموعه‌های دسته در حال حذف باشد.',
+                ]);
+
+                // 1. Move all products in these categories to the new category
+                \Modules\Market\Entities\MasterProduct::whereIn('category_id', $categoryIds)
+                    ->update(['category_id' => $this->deleteMoveToCategoryId]);
+
+                // 2. Delete all subcategories and the category itself
+                Category::whereIn('id', $categoryIds)->delete();
+
+                $this->dispatch('notify', type: 'success', text: 'محصولات با موفقیت انتقال یافته و دسته‌بندی حذف شد.');
+            } else if ($this->deleteActionType === 'delete_all') {
+                // Must confirm by typing the exact name
+                if (trim($this->deleteConfirmName) !== trim($category->name)) {
+                    $this->addError('deleteConfirmName', 'نام وارد شده با نام دسته‌بندی مطابقت ندارد.');
+                    DB::rollBack();
+                    return;
+                }
+
+                // 1. Delete all products in these categories first
+                $products = \Modules\Market\Entities\MasterProduct::whereIn('category_id', $categoryIds)->get();
+                foreach ($products as $prod) {
+                    $prod->delete();
+                }
+
+                // 2. Delete all subcategories and the category itself
+                Category::whereIn('id', $categoryIds)->delete();
+
+                $this->dispatch('notify', type: 'success', text: 'دسته‌بندی و تمامی محصولات مرتبط با آن با موفقیت حذف شدند.');
+            }
+
+            DB::commit();
+            $this->closeDeleteModal();
+        } catch (Exception $e) {
+            DB::rollBack();
+            $this->dispatch('notify', type: 'error', text: 'خطا در عملیات حذف: ' . $e->getMessage());
+        }
+    }
+
+    public function closeDeleteModal()
+    {
+        $this->confirmingDeletion = false;
+        $this->deleteTargetId = null;
+        $this->deleteTargetName = '';
+        $this->deleteProductCount = 0;
+        $this->deleteSubCategoryCount = 0;
+        $this->deleteActionType = 'move';
+        $this->deleteMoveToCategoryId = '';
+        $this->deleteConfirmName = '';
+        $this->deleteMoveOptions = [];
+    }
+
+    protected function getDescendantCategoryIds($categoryId)
+    {
+        $ids = [$categoryId];
+        $children = Category::where('parent_id', $categoryId)->pluck('id')->toArray();
+        foreach ($children as $childId) {
+            $ids = array_merge($ids, $this->getDescendantCategoryIds($childId));
+        }
+        return $ids;
+    }
+
+    private function buildMoveOptions($categories, $excludedIds, $parentId = null, $depth = 0)
+    {
+        $options = [];
+        $filtered = $categories->where('parent_id', $parentId);
+        
+        foreach ($filtered as $cat) {
+            if (!in_array($cat->id, $excludedIds)) {
+                $options[] = [
+                    'id' => $cat->id,
+                    'name' => str_repeat('— ', $depth) . $cat->name,
+                ];
+                $options = array_merge($options, $this->buildMoveOptions($categories, $excludedIds, $cat->id, $depth + 1));
+            }
+        }
+        
+        return $options;
     }
 
     public function render()

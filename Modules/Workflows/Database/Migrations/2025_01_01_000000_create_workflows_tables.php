@@ -75,10 +75,12 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::disableForeignKeyConstraints();
         Schema::dropIfExists('workflow_logs');
         Schema::dropIfExists('workflow_instances');
         Schema::dropIfExists('workflow_actions');
         Schema::dropIfExists('workflow_stages');
         Schema::dropIfExists('workflows');
+        Schema::enableForeignKeyConstraints();
     }
 };

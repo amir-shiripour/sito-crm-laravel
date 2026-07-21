@@ -70,8 +70,7 @@ class MasterProduct extends Model {
         if ($this->main_image && Storage::disk('public')->exists($this->main_image)) {
             return Storage::url($this->main_image);
         }
-        // فال‌بک به یک تصویر پیش‌فرض
-        return 'https://via.placeholder.com/150/e2e8f0/718096?text=No+Image';
+        return null;
     }
 
     public function getPriceInfoAttribute()

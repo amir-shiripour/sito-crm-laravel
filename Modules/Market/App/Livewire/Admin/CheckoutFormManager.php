@@ -212,6 +212,33 @@ class CheckoutFormManager extends Component
         ];
     }
 
+    public function removeGroup($groupId)
+    {
+        // Remove the group from the groups array
+        $this->schema['groups'] = collect($this->schema['groups'])
+            ->reject(fn($g) => $g['id'] === $groupId)
+            ->values()
+            ->all();
+
+        // If there are still groups left, move fields in the deleted group to the first group.
+        $targetGroupId = $this->schema['groups'][0]['id'] ?? 'default';
+        if ($targetGroupId === 'default' && empty($this->schema['groups'])) {
+            $targetGroupId = 'group_' . Str::random(4);
+            $this->schema['groups'][] = ['id' => $targetGroupId, 'name' => 'اطلاعات تکمیلی'];
+        }
+
+        $this->schema['fields'] = collect($this->schema['fields'])
+            ->map(function($field) use ($groupId, $targetGroupId) {
+                if (($field['group'] ?? '') === $groupId) {
+                    $field['group'] = $targetGroupId;
+                }
+                return $field;
+            })
+            ->all();
+
+        $this->dispatch('notify', type: 'success', text: 'گروه با موفقیت حذف شد و فیلدهای آن منتقل شدند.');
+    }
+
     public function changeFieldGroup($fieldId, $newGroupId, $newIndex)
     {
         $fieldIndex = collect($this->schema['fields'])->search(fn($f) => $f['id'] === $fieldId);

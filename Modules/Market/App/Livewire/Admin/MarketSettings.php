@@ -34,6 +34,7 @@ class MarketSettings extends Component
     public array $specific_locations = [];
     public string $business_days = '';
     public string $variant_display_mode = 'grouped';
+    public string $single_vendor_redirect_after_save = 'catalog';
     public bool $ui_show_category_on_card = true;
     public bool $ui_show_brand_on_card = true;
     public bool $ui_show_brand_on_product_page = true;
@@ -99,6 +100,7 @@ class MarketSettings extends Component
         $this->specific_locations = json_decode(MarketSetting::getValue('general.specific_locations', '[]'), true) ?? [];
         $this->business_days = MarketSetting::getValue('general.business_days');
         $this->variant_display_mode = MarketSetting::getValue('general.variant_display_mode');
+        $this->single_vendor_redirect_after_save = MarketSetting::getValue('general.single_vendor_redirect_after_save', 'catalog');
         $this->ui_show_category_on_card = (bool) MarketSetting::getValue('ui.show_category_on_card');
         $this->ui_show_brand_on_card = (bool) MarketSetting::getValue('ui.show_brand_on_card', true);
         $this->ui_show_brand_on_product_page = (bool) MarketSetting::getValue('ui.show_brand_on_product_page', true);
@@ -226,6 +228,7 @@ class MarketSettings extends Component
         MarketSetting::setValue('general.specific_locations', json_encode($this->specific_locations));
         MarketSetting::setValue('general.business_days', $this->business_days);
         MarketSetting::setValue('general.variant_display_mode', $this->variant_display_mode);
+        MarketSetting::setValue('general.single_vendor_redirect_after_save', $this->single_vendor_redirect_after_save);
         MarketSetting::setValue('ui.show_category_on_card', $this->ui_show_category_on_card);
         MarketSetting::setValue('ui.show_brand_on_card', $this->ui_show_brand_on_card);
         MarketSetting::setValue('ui.show_brand_on_product_page', $this->ui_show_brand_on_product_page);
