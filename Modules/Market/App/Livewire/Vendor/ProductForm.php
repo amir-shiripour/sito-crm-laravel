@@ -28,6 +28,11 @@ class ProductForm extends Component
     public bool $isStandardOnly = false;
     public bool $vendorCanManagePrices = true;
 
+    public string $activeTab = 'vendor';
+    public bool $isAdminPricingAllowed = false;
+    public array $catalogPrices = [];
+    public string $catalogPricingSearch = '';
+
     // Batch Edit Properties
     public $batchPrice = '';
     public $batchDiscountPercent = '';
@@ -46,6 +51,12 @@ class ProductForm extends Component
     {
         $this->isWmsActive = (bool) MarketSetting::getValue('wms.enabled', false);
         $this->vendorCanManagePrices = (bool) MarketSetting::getValue('vendors.vendor_can_manage_prices', true);
+
+        $user = auth()->user();
+        $storeType = MarketSetting::getValue('system.store_type', 'multi');
+        $this->isAdminPricingAllowed = $user && $user->hasAnyRole(['super-admin', 'admin'])
+            && $storeType === 'multi'
+            && !$this->vendorCanManagePrices;
 
         if (request()->has('master_id')) {
             $this->selectProduct(request()->query('master_id'));
@@ -92,6 +103,9 @@ class ProductForm extends Component
         $this->vendor_custom_variants = [];
         $this->allow_custom_variants = false;
         $this->allowed_axes_options = [];
+        $this->catalogPrices = [];
+        $this->activeTab = 'vendor';
+        $this->catalogPricingSearch = '';
     }
 
     private function calculateAllowedAxes()
@@ -196,8 +210,34 @@ class ProductForm extends Component
                 ];
             }
 
+            if ($this->isAdminPricingAllowed) {
+                $this->catalogPrices = [];
+                foreach ($rawVariants as $variant) {
+                    $attributes = $variant->variant_attributes ?? [];
+                    $variantName = empty($attributes) || (count($attributes) === 1 && isset($attributes['name']) && $attributes['name'] === 'استاندارد')
+                        ? 'تنوع استاندارد'
+                        : implode(' | ', (array)$attributes);
+
+                    $this->catalogPrices[$variant->id] = [
+                        'variant_code' => $variant->variant_code,
+                        'display_name' => $variantName,
+                        'attributes' => $attributes,
+                        'price' => $variant->price ? number_format($variant->price) : '',
+                        'discount_price' => $variant->discount_price ? number_format($variant->discount_price) : '',
+                        'discount_start_date' => $variant->discount_start_date ? Jalalian::fromCarbon($variant->discount_start_date)->format('Y/m/d H:i') : '',
+                        'discount_end_date' => $variant->discount_end_date ? Jalalian::fromCarbon($variant->discount_end_date)->format('Y/m/d H:i') : '',
+                        'discount_stock' => $variant->discount_stock ?? '',
+                        'max_discount_purchase_qty' => $variant->max_discount_purchase_qty ?? '',
+                        'min_purchase' => $variant->min_purchase_qty ?? 1,
+                        'max_purchase' => $variant->max_purchase_qty ?? '',
+                        'cart_amount_step' => $variant->cart_amount_step ? number_format($variant->cart_amount_step) : '',
+                        'purchase_step' => $variant->purchase_step ?? '',
+                    ];
+                }
+            }
+
             if ($this->allow_custom_variants && empty($this->vendor_variants) && !empty($this->allowed_axes_options)) {
-               $this->addCustomVariant();
+                $this->addCustomVariant();
             }
         }
     }
@@ -256,10 +296,17 @@ class ProductForm extends Component
 
                 if ($hasPrice) {
                     if (!$this->vendorCanManagePrices) {
-                        $cleanPrice = $catalogPrice;
-                        $cleanDiscount = null;
-                        $startDate = null;
-                        $endDate = null;
+                        $cleanPrice = $variantObj->price;
+                        $cleanDiscount = $variantObj->discount_price;
+                        $startDate = $variantObj->discount_start_date;
+                        $endDate = $variantObj->discount_end_date;
+                        $discountStock = $variantObj->discount_stock;
+                        $maxDiscountQty = $variantObj->max_discount_purchase_qty;
+                        $reorderPoint = $variantObj->reorder_point;
+                        $minPurchase = $variantObj->min_purchase_qty;
+                        $maxPurchase = $variantObj->max_purchase_qty;
+                        $cartStep = $variantObj->cart_amount_step;
+                        $purchaseStep = $variantObj->purchase_step;
                     } else {
                         $cleanPrice = str_replace(',', '', $data['price']);
                         $cleanDiscount = str_replace(',', '', $data['discount_price']);
@@ -273,6 +320,14 @@ class ProductForm extends Component
                         if (!empty($data['discount_end_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $data['discount_end_date'])) {
                             $endDate = Jalalian::fromFormat('Y/m/d H:i', $data['discount_end_date'])->toCarbon();
                         }
+
+                        $discountStock = !empty($data['discount_stock']) ? $data['discount_stock'] : null;
+                        $maxDiscountQty = !empty($data['max_discount_purchase_qty']) ? $data['max_discount_purchase_qty'] : null;
+                        $reorderPoint = $data['reorder_point'] ?? 5;
+                        $minPurchase = $data['min_purchase'] ?: 1;
+                        $maxPurchase = !empty($data['max_purchase']) ? $data['max_purchase'] : null;
+                        $cartStep = !empty($data['cart_amount_step']) ? str_replace(',', '', $data['cart_amount_step']) : null;
+                        $purchaseStep = !empty($data['purchase_step']) ? $data['purchase_step'] : null;
                     }
 
                     $payload = [
@@ -280,13 +335,13 @@ class ProductForm extends Component
                         'discount_price' => !empty($cleanDiscount) ? $cleanDiscount : null,
                         'discount_start_date' => $startDate,
                         'discount_end_date' => $endDate,
-                        'discount_stock' => !$this->vendorCanManagePrices ? null : (!empty($data['discount_stock']) ? $data['discount_stock'] : null),
-                        'max_discount_purchase_qty' => !$this->vendorCanManagePrices ? null : (!empty($data['max_discount_purchase_qty']) ? $data['max_discount_purchase_qty'] : null),
-                        'reorder_point' => $data['reorder_point'] ?? 5,
-                        'min_purchase_qty' => $data['min_purchase'] ?: 1,
-                        'max_purchase_qty' => !empty($data['max_purchase']) ? $data['max_purchase'] : null,
-                        'cart_amount_step' => !empty($data['cart_amount_step']) ? str_replace(',', '', $data['cart_amount_step']) : null,
-                        'purchase_step' => !empty($data['purchase_step']) ? $data['purchase_step'] : null,
+                        'discount_stock' => $discountStock,
+                        'max_discount_purchase_qty' => $maxDiscountQty,
+                        'reorder_point' => $reorderPoint,
+                        'min_purchase_qty' => $minPurchase,
+                        'max_purchase_qty' => $maxPurchase,
+                        'cart_amount_step' => $cartStep,
+                        'purchase_step' => $purchaseStep,
                         'status' => $data['is_active'] ? $defaultStatus : 'draft',
                     ];
 
@@ -318,27 +373,6 @@ class ProductForm extends Component
                 $hasCustomPrice = $this->vendorCanManagePrices ? !empty($customData['price']) : true;
 
                 if ($hasCustomPrice) {
-                    if (!$this->vendorCanManagePrices) {
-                        $resolvedPrice = $this->resolveCatalogPrice($customData['attributes'] ?? []);
-                        $cleanPrice = $resolvedPrice;
-                        $cleanDiscount = null;
-                        $startDate = null;
-                        $endDate = null;
-                    } else {
-                        $cleanPrice = str_replace(',', '', $customData['price']);
-                        $cleanDiscount = str_replace(',', '', $customData['discount_price']);
-
-                        $startDate = null;
-                        if (!empty($customData['discount_start_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $customData['discount_start_date'])) {
-                            $startDate = Jalalian::fromFormat('Y/m/d H:i', $customData['discount_start_date'])->toCarbon();
-                        }
-
-                        $endDate = null;
-                        if (!empty($customData['discount_end_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $customData['discount_end_date'])) {
-                            $endDate = Jalalian::fromFormat('Y/m/d H:i', $customData['discount_end_date'])->toCarbon();
-                        }
-                    }
-
                     $variant = ProductVariant::where('master_product_id', $this->master_product_id)
                         ->whereJsonContains('variant_attributes', $customData['attributes'])
                         ->first();
@@ -352,18 +386,53 @@ class ProductForm extends Component
                         ]);
                     }
 
+                    if (!$this->vendorCanManagePrices) {
+                        $cleanPrice = $variant->price;
+                        $cleanDiscount = $variant->discount_price;
+                        $startDate = $variant->discount_start_date;
+                        $endDate = $variant->discount_end_date;
+                        $discountStock = $variant->discount_stock;
+                        $maxDiscountQty = $variant->max_discount_purchase_qty;
+                        $reorderPoint = $variant->reorder_point;
+                        $minPurchase = $variant->min_purchase_qty;
+                        $maxPurchase = $variant->max_purchase_qty;
+                        $cartStep = $variant->cart_amount_step;
+                        $purchaseStep = $variant->purchase_step;
+                    } else {
+                        $cleanPrice = str_replace(',', '', $customData['price']);
+                        $cleanDiscount = str_replace(',', '', $customData['discount_price']);
+
+                        $startDate = null;
+                        if (!empty($customData['discount_start_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $customData['discount_start_date'])) {
+                            $startDate = Jalalian::fromFormat('Y/m/d H:i', $customData['discount_start_date'])->toCarbon();
+                        }
+
+                        $endDate = null;
+                        if (!empty($customData['discount_end_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $customData['discount_end_date'])) {
+                            $endDate = Jalalian::fromFormat('Y/m/d H:i', $customData['discount_end_date'])->toCarbon();
+                        }
+
+                        $discountStock = !empty($customData['discount_stock']) ? $customData['discount_stock'] : null;
+                        $maxDiscountQty = !empty($customData['max_discount_purchase_qty']) ? $customData['max_discount_purchase_qty'] : null;
+                        $reorderPoint = $customData['reorder_point'] ?? 5;
+                        $minPurchase = $customData['min_purchase'] ?: 1;
+                        $maxPurchase = !empty($customData['max_purchase']) ? $customData['max_purchase'] : null;
+                        $cartStep = !empty($customData['cart_amount_step']) ? str_replace(',', '', $customData['cart_amount_step']) : null;
+                        $purchaseStep = !empty($customData['purchase_step']) ? $customData['purchase_step'] : null;
+                    }
+
                     $payload = [
                         'price' => $cleanPrice,
                         'discount_price' => !empty($cleanDiscount) ? $cleanDiscount : null,
                         'discount_start_date' => $startDate,
                         'discount_end_date' => $endDate,
-                        'discount_stock' => !$this->vendorCanManagePrices ? null : (!empty($customData['discount_stock']) ? $customData['discount_stock'] : null),
-                        'max_discount_purchase_qty' => !$this->vendorCanManagePrices ? null : (!empty($customData['max_discount_purchase_qty']) ? $customData['max_discount_purchase_qty'] : null),
-                        'reorder_point' => $customData['reorder_point'] ?? 5,
-                        'min_purchase_qty' => $customData['min_purchase'] ?: 1,
-                        'max_purchase_qty' => !empty($customData['max_purchase']) ? $customData['max_purchase'] : null,
-                        'cart_amount_step' => !empty($customData['cart_amount_step']) ? str_replace(',', '', $customData['cart_amount_step']) : null,
-                        'purchase_step' => !empty($customData['purchase_step']) ? $customData['purchase_step'] : null,
+                        'discount_stock' => $discountStock,
+                        'max_discount_purchase_qty' => $maxDiscountQty,
+                        'reorder_point' => $reorderPoint,
+                        'min_purchase_qty' => $minPurchase,
+                        'max_purchase_qty' => $maxPurchase,
+                        'cart_amount_step' => $cartStep,
+                        'purchase_step' => $purchaseStep,
                         'status' => $customData['is_active'] ? $defaultStatus : 'draft',
                     ];
 
@@ -593,6 +662,86 @@ class ProductForm extends Component
         }
 
         return $bestMatch ? $bestMatch->price : null;
+    }
+
+    public function getFilteredCatalogPricesProperty()
+    {
+        if (empty($this->catalogPrices)) return [];
+
+        $search = trim($this->catalogPricingSearch);
+        if ($search === '') {
+            return $this->catalogPrices;
+        }
+
+        return array_filter($this->catalogPrices, function($item) use ($search) {
+            return str_contains($item['display_name'], $search) 
+                || str_contains($item['variant_code'], $search)
+                || str_contains(str_replace(',', '', $item['price'] ?? ''), $search);
+        });
+    }
+
+    public function saveCatalogPrices()
+    {
+        if (!$this->isAdminPricingAllowed) {
+            abort(403, 'شما اجازه قیمت‌گذاری کاتالوگ را ندارید.');
+        }
+
+        foreach ($this->catalogPrices as $variantId => $data) {
+            $cleanPrice = isset($data['price']) && $data['price'] !== '' ? (int)str_replace(',', '', $data['price']) : null;
+            $cleanDiscount = isset($data['discount_price']) && $data['discount_price'] !== '' ? (int)str_replace(',', '', $data['discount_price']) : null;
+
+            $startDate = null;
+            if (!empty($data['discount_start_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $data['discount_start_date'])) {
+                $startDate = Jalalian::fromFormat('Y/m/d H:i', $data['discount_start_date'])->toCarbon();
+            }
+
+            $endDate = null;
+            if (!empty($data['discount_end_date']) && preg_match('/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/', $data['discount_end_date'])) {
+                $endDate = Jalalian::fromFormat('Y/m/d H:i', $data['discount_end_date'])->toCarbon();
+            }
+
+            $cleanCartStep = isset($data['cart_amount_step']) && $data['cart_amount_step'] !== '' ? (int)str_replace(',', '', $data['cart_amount_step']) : null;
+
+            $payload = [
+                'price' => $cleanPrice,
+                'discount_price' => $cleanDiscount,
+                'discount_start_date' => $startDate,
+                'discount_end_date' => $endDate,
+                'discount_stock' => $data['discount_stock'] !== '' ? (int)$data['discount_stock'] : null,
+                'max_discount_purchase_qty' => $data['max_discount_purchase_qty'] !== '' ? (int)$data['max_discount_purchase_qty'] : null,
+                'reorder_point' => $data['reorder_point'] !== '' ? (int)$data['reorder_point'] : 5,
+                'min_purchase_qty' => $data['min_purchase'] !== '' ? (int)$data['min_purchase'] : 1,
+                'max_purchase_qty' => $data['max_purchase'] !== '' ? (int)$data['max_purchase'] : null,
+                'cart_amount_step' => $cleanCartStep,
+                'purchase_step' => $data['purchase_step'] !== '' ? (int)$data['purchase_step'] : null,
+            ];
+
+            $variant = ProductVariant::where('id', $variantId)
+                ->where('master_product_id', $this->master_product_id)
+                ->first();
+
+            if ($variant) {
+                $variant->update($payload);
+
+                // Also update any existing VendorProduct records for this variant
+                \Modules\Market\Entities\VendorProduct::where('product_variant_id', $variantId)
+                    ->update([
+                        'price' => $cleanPrice,
+                        'discount_price' => $cleanDiscount,
+                        'discount_start_date' => $startDate,
+                        'discount_end_date' => $endDate,
+                        'discount_stock' => $payload['discount_stock'],
+                        'max_discount_purchase_qty' => $payload['max_discount_purchase_qty'],
+                        'min_purchase_qty' => $payload['min_purchase_qty'],
+                        'max_purchase_qty' => $payload['max_purchase_qty'],
+                        'cart_amount_step' => $payload['cart_amount_step'],
+                        'purchase_step' => $payload['purchase_step'],
+                    ]);
+            }
+        }
+
+        $this->dispatch('notify', type: 'success', text: 'قیمت‌های مرجع و تنظیمات تجاری کاتالوگ با موفقیت بروزرسانی و همگام‌سازی شدند.');
+        $this->loadVariants();
     }
 
     public function render()

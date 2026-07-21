@@ -251,6 +251,17 @@
                             </p>
                         </div>
 
+                        <div class="mt-4 bg-gray-50 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                            <label class="{{ $labelClass }}">مسیر هدایت پس از ثبت کاتالوگ (مختص تک فروشگاهی)</label>
+                            <select wire:model.defer="single_vendor_redirect_after_save" class="{{ $inputClass }}">
+                                <option value="catalog">لیست کاتالوگ محصولات (پیش‌فرض)</option>
+                                <option value="pricing">صفحه قیمت‌گذاری و موجودی همان کالا (پیشنهادی)</option>
+                            </select>
+                            <p class="text-[10px] text-gray-500 mt-2 leading-relaxed">
+                                تعیین می‌کند که پس از ذخیره نهایی کاتالوگ کالا در حالت تک فروشگاهی، به کدام صفحه هدایت شوید.
+                            </p>
+                        </div>
+
                     </div>
 
                     {{-- بلوک مالی --}}

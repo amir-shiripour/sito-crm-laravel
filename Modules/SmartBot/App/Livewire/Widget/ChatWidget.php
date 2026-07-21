@@ -24,12 +24,24 @@ class ChatWidget extends Component
     public bool $isStandalone = false;
     public string $lastUserMessage = '';
     public bool $allowCustomTyping = true;
+    public int $cartItemCount = 0;
+
+    protected $listeners = [
+        'cartUpdated' => 'updateCartCount'
+    ];
+
+    public function updateCartCount()
+    {
+        $cart = session()->get('market_cart', []);
+        $this->cartItemCount = (int) array_sum(array_column($cart, 'quantity'));
+    }
 
     public function mount(?string $sessionUuid = null)
     {
         $this->botName = (string) BotSetting::getValue('name', 'SmartBot');
         $this->primaryColor = (string) BotSetting::getValue('primary_color', '#6366f1');
         $this->allowCustomTyping = filter_var(BotSetting::getValue('allow_custom_typing', true), FILTER_VALIDATE_BOOLEAN);
+        $this->updateCartCount();
         
         $this->uuid = $sessionUuid ?? (string) Session::get('smartbot_session_uuid');
         if (!$this->uuid) {

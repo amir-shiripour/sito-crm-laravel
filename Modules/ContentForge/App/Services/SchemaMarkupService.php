@@ -18,8 +18,8 @@ final class SchemaMarkupService
             '@type'         => $type,
             'headline'      => $post->seo_title ?? $post->title,
             'description'   => $post->seo_description,
-            'datePublished' => $post->published_at?->toIso8601String(),
-            'dateModified'  => $post->updated_at->toIso8601String(),
+            'datePublished' => $post->published_at ? $post->published_at->toIso8601String() : null,
+            'dateModified'  => $post->updated_at ? $post->updated_at->toIso8601String() : now()->toIso8601String(),
             'author'        => [
                 '@type' => 'Person',
                 'name'  => $post->author->name ?? 'مدیر سیستم',

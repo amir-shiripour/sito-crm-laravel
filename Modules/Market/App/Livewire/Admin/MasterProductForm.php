@@ -101,10 +101,17 @@ class MasterProductForm extends Component
             $this->loadCategoryFields($this->category_id);
 
             foreach ($this->product->variants as $var) {
+                $priceVal = $var->price;
+                if ($this->storeType === 'single') {
+                    $vp = $var->vendorProducts()->first();
+                    if ($vp) {
+                        $priceVal = $vp->price;
+                    }
+                }
                 $this->variants[] = [
                     'id' => $var->id,
                     'values' => $var->variant_attributes ?? [],
-                    'price' => $var->price ? number_format($var->price) : '',
+                    'price' => $priceVal ? number_format($priceVal) : '',
                     'is_active' => (bool)$var->is_active,
                 ];
             }
@@ -452,7 +459,17 @@ class MasterProductForm extends Component
             $this->product->displayCategories()->sync($this->selectedDisplayCategories);
         }
 
-        $maxVariantSerial = ProductVariant::where('master_product_id', $this->product->id)->count();
+        $maxVariantSerial = 0;
+        $existingCodes = ProductVariant::where('master_product_id', $this->product->id)
+            ->pluck('variant_code')
+            ->toArray();
+        foreach ($existingCodes as $code) {
+            $parts = explode('-', $code);
+            $suffix = end($parts);
+            if (is_numeric($suffix)) {
+                $maxVariantSerial = max($maxVariantSerial, (int)$suffix);
+            }
+        }
         $keptVariantIds = [];
 
         if (empty($this->variantAxes) && empty($this->variants)) {
@@ -509,8 +526,61 @@ class MasterProductForm extends Component
             ProductVariant::where('master_product_id', $this->product->id)->whereNotIn('id', $keptVariantIds)->delete();
         }
 
+        // --- Single-Vendor Seeding Logic ---
+        if ($this->storeType === 'single') {
+            $vendor = \Modules\Market\Entities\Vendor::where('status', 'active')->first() 
+                ?? \Modules\Market\Entities\Vendor::first();
+
+            if ($vendor) {
+                $activeSavedVariants = ProductVariant::where('master_product_id', $this->product->id)
+                    ->whereIn('id', $keptVariantIds)
+                    ->where('is_active', true)
+                    ->get();
+
+                foreach ($activeSavedVariants as $varObj) {
+                    $existingVp = \Modules\Market\Entities\VendorProduct::where('vendor_id', $vendor->id)
+                        ->where('product_variant_id', $varObj->id)
+                        ->first();
+
+                    $payload = [
+                        'status' => 'published',
+                    ];
+
+                    if (!$existingVp) {
+                        $payload['price'] = $varObj->price ?? 0;
+                        $payload['stock'] = 0;
+                        $payload['min_purchase_qty'] = 1;
+                        $payload['reorder_point'] = 5;
+                    } else {
+                        if (!is_null($varObj->price)) {
+                            $payload['price'] = $varObj->price;
+                        }
+                    }
+
+                    \Modules\Market\Entities\VendorProduct::updateOrCreate(
+                        ['vendor_id' => $vendor->id, 'product_variant_id' => $varObj->id],
+                        $payload
+                    );
+                }
+
+                // Delete vendor products for variants that were removed
+                \Modules\Market\Entities\VendorProduct::where('vendor_id', $vendor->id)
+                    ->whereHas('variant', function($q) {
+                        $q->where('master_product_id', $this->product->id);
+                    })
+                    ->whereNotIn('product_variant_id', $keptVariantIds)
+                    ->delete();
+            }
+        }
+
         $this->dispatch('notify', type: 'success', text: 'محصول و تنوع‌های انتخابی با موفقیت در کاتالوگ ثبت شد.');
-        return redirect()->route('user.market.master-products.index');
+
+        $redirectTarget = MarketSetting::getValue('general.single_vendor_redirect_after_save', 'catalog');
+        if ($this->storeType === 'single' && $redirectTarget === 'pricing') {
+            return redirect()->to(route('user.market.vendor.products.create', ['master_id' => $this->product->id]));
+        }
+
+        return redirect()->to(session('master_products_index_url', route('user.market.master-products.index')));
     }
 
     public function render()

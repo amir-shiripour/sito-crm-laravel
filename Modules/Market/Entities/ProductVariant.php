@@ -5,8 +5,16 @@ use Illuminate\Database\Eloquent\Model;
 class ProductVariant extends Model {
     protected $table = 'market_product_variants';
     // 💡 اضافه کردن فیلدهای جدید
-    protected $fillable = ['master_product_id', 'variant_code', 'variant_attributes', 'price', 'stock', 'is_active'];
-    protected $casts = ['variant_attributes' => 'array'];
+    protected $fillable = [
+        'master_product_id', 'variant_code', 'variant_attributes', 'price', 'stock', 'is_active',
+        'discount_price', 'discount_start_date', 'discount_end_date', 'discount_stock', 'max_discount_purchase_qty',
+        'reorder_point', 'min_purchase_qty', 'max_purchase_qty', 'cart_amount_step', 'purchase_step'
+    ];
+    protected $casts = [
+        'variant_attributes' => 'array',
+        'discount_start_date' => 'datetime',
+        'discount_end_date' => 'datetime',
+    ];
 
     public function masterProduct() { return $this->belongsTo(MasterProduct::class, 'master_product_id'); }
     public function vendorProducts() { return $this->hasMany(VendorProduct::class, 'product_variant_id'); }

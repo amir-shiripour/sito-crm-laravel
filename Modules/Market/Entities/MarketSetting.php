@@ -41,6 +41,7 @@ class MarketSetting extends Model
             'specific_locations' => '[]',
             'business_days' => '',
             'variant_display_mode' => 'grouped',
+            'single_vendor_redirect_after_save' => 'catalog',
         ],
         'ui' => [
             'show_category_on_card' => true,

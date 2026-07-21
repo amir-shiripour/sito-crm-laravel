@@ -1,8 +1,9 @@
 @php
-    $baseInputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400
-    focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200
-    dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900";
-    $labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
+    $jsonPath = base_path('Modules/Clients/resources/data/iran-provinces-cities.json');
+    $provincesData = file_exists($jsonPath) ? json_decode(file_get_contents($jsonPath), true) : [];
+    $allProvinces = array_keys($provincesData);
+    $baseInputClass = "w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none placeholder-gray-400 dark:placeholder-gray-500";
+    $labelClass = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1";
 @endphp
 
 <div>
@@ -18,11 +19,19 @@
 
     {{-- Main Modal Overlay --}}
     @if($isOpen)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 backdrop-blur-md animate-in fade-in duration-300">
-            <div class="bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl border border-gray-100 dark:border-gray-800 mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
+        <div x-data="{ init() { document.body.classList.add('overflow-hidden'); }, destroy() { document.body.classList.remove('overflow-hidden'); } }" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 backdrop-blur-md animate-in fade-in duration-300">
+            <div class="bg-white dark:bg-gray-900 rounded-[2.5rem] p-6 w-full max-w-xl shadow-2xl border border-gray-100 dark:border-gray-800 mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin relative">
                 
+                {{-- Modal Geocode Spinner Overlay --}}
+                <div wire:loading wire:target="fetchNewAddressFromCoordinates" class="absolute inset-0 bg-white/60 dark:bg-gray-900/60 backdrop-blur-[2px] z-[40] flex items-center justify-center rounded-[2.5rem] transition-all">
+                    <div class="flex flex-col items-center gap-2 bg-white dark:bg-gray-800 px-5 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg">
+                        <div class="w-5 h-5 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span class="text-[11px] font-bold text-gray-800 dark:text-gray-200">در حال دریافت نشانی روی نقشه...</span>
+                    </div>
+                </div>
+
                 {{-- Modal Header --}}
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
                     <div>
                         <h3 class="text-xl font-black text-gray-900 dark:text-white">
                             @if(auth()->guard('client')->check())
@@ -54,7 +63,7 @@
 
                     {{-- Close Button --}}
                     @if(!$mustAddAddress && !$mustSelectLocation)
-                        <button type="button" wire:click="skipLocationSelection" class="p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors">
+                        <button type="button" wire:click="skipLocationSelection" class="p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400 transition-colors">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     @endif
@@ -109,7 +118,7 @@
                                        @focus="showDropdown = true" 
                                        class="{{ $baseInputClass }} pl-10" 
                                        placeholder="مثال: تهران، ونک، ملاصدرا...">
-                                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
@@ -118,10 +127,10 @@
                             
                             {{-- Search Results Suggestion Dropdown --}}
                             @if(!empty($searchQuery) && count($searchResults) > 0)
-                                <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
+                                <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
                                     @foreach($searchResults as $res)
                                         <button type="button" 
-                                                wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, '{{ addslashes($res['title']) }}')"
+                                                wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, @js($res['title']))"
                                                 @click="showDropdown = false"
                                                 class="w-full text-right px-4 py-2 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/30 transition-colors flex flex-col gap-0.5 border-b border-gray-100 last:border-0 dark:border-gray-700/50">
                                             <span class="text-xs font-bold text-gray-900 dark:text-white">{{ $res['title'] }}</span>
@@ -138,7 +147,7 @@
                         <div class="space-y-2">
                             <label class="{{ $labelClass }}">موقعیت دقیق روی نقشه</label>
                             <div class="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                                <div wire:ignore class="w-full h-48 relative z-10"
+                                <div wire:ignore class="w-full h-48 relative z-10 bg-gray-100 dark:bg-gray-900"
                                      x-data="{
                                          map: null,
                                          marker: null,
@@ -249,8 +258,8 @@
                                     } else {
                                         alert('مرورگر شما از GPS پشتیبانی نمی کند.');
                                     }
-                                " class="absolute bottom-2.5 left-2.5 z-[20] bg-white hover:bg-gray-100 text-indigo-650 p-2.5 rounded-xl shadow-md border border-gray-200 transition-colors flex items-center justify-center" title="موقعیت فعلی من (GPS)">
-                                    <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                " class="absolute bottom-2.5 left-2.5 z-[20] bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-indigo-600 dark:text-indigo-400 p-2.5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 transition-colors flex items-center justify-center" title="موقعیت فعلی من (GPS)">
+                                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <circle cx="12" cy="12" r="3" stroke-width="2" />
                                         <circle cx="12" cy="12" r="8" stroke-width="2" />
                                         <path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke-width="2" stroke-linecap="round" />
@@ -259,51 +268,85 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                             x-data="{
+                                 province: @entangle('newProvince'),
+                                 city: @entangle('newCity'),
+                                 provinces: @js($allProvinces),
+                                 cities: [],
+                                 provincesData: @js($provincesData),
+                                 init() {
+                                     if (this.province && this.provincesData[this.province]) {
+                                         this.cities = this.provincesData[this.province];
+                                     }
+                                     this.$watch('province', value => {
+                                         this.cities = (value && this.provincesData[value]) ? this.provincesData[value] : [];
+                                         if (value && this.cities && !this.cities.includes(this.city)) {
+                                             this.city = '';
+                                         }
+                                     });
+                                 }
+                             }">
+                            {{-- Province Selector Dropdown --}}
+                            <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative" wire:ignore>
                                 <label class="{{ $labelClass }}">استان <span class="text-red-500">*</span></label>
-                                <select wire:model.live="newProvince" class="{{ $baseInputClass }}">
-                                    <option value="">انتخاب استان...</option>
-                                    @foreach($provinces as $prov)
-                                        <option value="{{ $prov }}">{{ $prov }}</option>
-                                    @endforeach
-                                </select>
-                                @error('newProvince') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                                <div @click="open = !open" class="{{ $baseInputClass }} cursor-pointer flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-800': open, 'bg-gray-50 dark:bg-gray-800': !open}">
+                                    <span x-text="province || 'انتخاب استان...'" class="block truncate" :class="{'text-gray-400 dark:text-gray-500': !province}"></span>
+                                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                                <div x-show="open" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                                    <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-100">
+                                    <template x-for="p in provinces.filter(item => item.toLowerCase().includes(search.toLowerCase()))" :key="p">
+                                        <div @click="province = p; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': province == p, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50': province != p}">
+                                            <span x-text="p"></span>
+                                            <svg x-show="province == p" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        </div>
+                                    </template>
+                                </div>
+                                @error('newProvince') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                             </div>
 
-                            <div>
+                            {{-- City Selector Dropdown --}}
+                            <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative" wire:ignore>
                                 <label class="{{ $labelClass }}">شهر <span class="text-red-500">*</span></label>
-                                <select wire:model.live="newCity" class="{{ $baseInputClass }}" @if(!$newProvince) disabled @endif>
-                                    <option value="">انتخاب شهر...</option>
-                                    @foreach($cities as $c)
-                                        <option value="{{ $c }}">{{ $c }}</option>
-                                    @endforeach
-                                </select>
-                                @error('newCity') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                                <div @click="province ? open = !open : null" class="{{ $baseInputClass }} flex justify-between items-center transition-colors select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-gray-800 cursor-pointer': open && province, 'bg-gray-50 dark:bg-gray-800 cursor-pointer': !open && province, 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-800/30': !province}">
+                                    <span x-text="city || 'انتخاب شهر...'" class="block truncate" :class="{'text-gray-400 dark:text-gray-500': !city}"></span>
+                                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500 dark:text-indigo-400': open && province}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                                <div x-show="open && province" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                                    <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-100">
+                                    <template x-for="c in cities.filter(item => item.toLowerCase().includes(search.toLowerCase()))" :key="c">
+                                        <div @click="city = c; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': city == c, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50': city != c}">
+                                            <span x-text="c"></span>
+                                            <svg x-show="city == c" class="w-4 h-4 mr-auto text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        </div>
+                                    </template>
+                                </div>
+                                @error('newCity') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                             </div>
                         </div>
 
                         <div>
                             <label class="{{ $labelClass }}">عنوان آدرس <span class="text-red-500">*</span></label>
                             <input type="text" wire:model.defer="newTitle" class="{{ $baseInputClass }}" placeholder="مثال: خانه، محل کار">
-                            @error('newTitle') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                            @error('newTitle') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
                             <label class="{{ $labelClass }}">آدرس دقیق پستی <span class="text-red-500">*</span></label>
-                            <textarea wire:model.defer="newAddress" rows="2" class="{{ $baseInputClass }} resize-none" placeholder="نام خیابان، کوچه، پلاک، واحد"></textarea>
-                            @error('newAddress') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                            <textarea wire:model.defer="newAddress" rows="2" class="{{ $baseInputClass }} resize-y min-h-[50px]" placeholder="نام خیابان، کوچه، پلاک، واحد"></textarea>
+                            @error('newAddress') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
                             <label class="{{ $labelClass }}">کد پستی (۱۰ رقمی)</label>
-                            <input type="text" wire:model.defer="newPostalCode" class="{{ $baseInputClass }} dir-ltr text-right" placeholder="1234567890" maxlength="10">
-                            @error('newPostalCode') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                            <input type="text" wire:model.defer="newPostalCode" class="{{ $baseInputClass }} font-mono text-center dir-ltr" placeholder="1234567890" maxlength="10">
+                            @error('newPostalCode') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                         </div>
 
                         <div class="pt-4 flex items-center justify-between gap-3 border-t border-gray-100 dark:border-gray-800">
                             @if(!$mustAddAddress)
-                                <button type="button" wire:click="toggleAddNewAddress(false)" class="px-5 py-3 rounded-xl border border-gray-200 text-gray-650 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors text-xs font-bold text-center">
+                                <button type="button" wire:click="toggleAddNewAddress(false)" class="px-5 py-3 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors text-xs font-bold text-center">
                                     انصراف
                                 </button>
                             @endif
@@ -339,7 +382,7 @@
                                 {{-- Option B: Login --}}
                                 <a href="{{ route('client.login') }}" class="w-full text-right p-5 bg-gray-50/50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-3xl transition-all flex items-center justify-between group active:scale-[0.99]">
                                     <div class="flex items-center gap-4">
-                                        <div class="w-12 h-12 bg-white dark:bg-gray-800 text-gray-755 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-2xl flex items-center justify-center shrink-0">
+                                        <div class="w-12 h-12 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-2xl flex items-center justify-center shrink-0">
                                             <svg class="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 01-3-3h7a3 3 0 013 3v1" />
                                             </svg>
@@ -357,7 +400,7 @@
                                 {{-- Option C: Skip / Decline --}}
                                 <button type="button" wire:click="skipLocationSelection" class="w-full text-right p-5 bg-gray-50/50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-3xl transition-all flex items-center justify-between group active:scale-[0.99]">
                                     <div class="flex items-center gap-4">
-                                        <div class="w-12 h-12 bg-white dark:bg-gray-800 text-gray-755 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-2xl flex items-center justify-center shrink-0">
+                                        <div class="w-12 h-12 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-2xl flex items-center justify-center shrink-0">
                                             <svg class="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -386,7 +429,7 @@
                                            @focus="showDropdown = true" 
                                            class="{{ $baseInputClass }} pl-10" 
                                            placeholder="مثال: تهران، ونک، ملاصدرا...">
-                                    <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                         </svg>
@@ -395,10 +438,10 @@
                                 
                                 {{-- Search Results Suggestion Dropdown --}}
                                 @if(!empty($searchQuery) && count($searchResults) > 0)
-                                    <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
+                                    <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
                                         @foreach($searchResults as $res)
                                             <button type="button" 
-                                                    wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, '{{ addslashes($res['title']) }}')"
+                                                    wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, @js($res['title']))"
                                                     @click="showDropdown = false"
                                                     class="w-full text-right px-4 py-2 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/30 transition-colors flex flex-col gap-0.5 border-b border-gray-100 last:border-0 dark:border-gray-700/50">
                                                 <span class="text-xs font-bold text-gray-900 dark:text-white">{{ $res['title'] }}</span>
@@ -425,7 +468,7 @@
                             <div class="space-y-2">
                                 <label class="{{ $labelClass }}">موقعیت خود را روی نقشه علامت‌گذاری کنید</label>
                                 <div class="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                                    <div wire:ignore class="w-full h-64 relative z-10"
+                                    <div wire:ignore class="w-full h-64 relative z-10 bg-gray-100 dark:bg-gray-900"
                                          x-data="{
                                              map: null,
                                              marker: null,
@@ -544,7 +587,7 @@
                             </div>
 
                             <div class="pt-4 flex items-center justify-between gap-3">
-                                <button type="button" wire:click="$set('step', 1)" class="px-5 py-3 rounded-xl border border-gray-200 text-gray-650 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors text-xs font-bold text-center">
+                                <button type="button" wire:click="$set('step', 1)" class="px-5 py-3 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors text-xs font-bold text-center">
                                     بازگشت
                                 </button>
                                 <button type="button" 

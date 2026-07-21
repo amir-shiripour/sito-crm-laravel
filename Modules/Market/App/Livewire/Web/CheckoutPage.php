@@ -51,6 +51,8 @@ class CheckoutPage extends Component
     public $selectedAddressId = null;
     public $showNewAddressModal = false;
     public bool $showManualAddress = false;
+    public $searchQuery = '';
+    public $searchResults = [];
 
     // Quick address creation properties
     public $newTitle = '';
@@ -60,10 +62,6 @@ class CheckoutPage extends Component
     public $newPostalCode = '';
     public $newLat = 35.6892;
     public $newLng = 51.3890;
-
-    // Search query properties
-    public string $searchQuery = '';
-    public array $searchResults = [];
 
     // Map config
     public $mapProvider = 'neshan';
@@ -76,12 +74,51 @@ class CheckoutPage extends Component
             return;
         }
 
+        $results = [];
+
         if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
             $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
-            $this->searchResults = $mapService->search($query, $this->newLat, $this->newLng);
-        } else {
-            $this->searchResults = [];
+            if (!empty($mapService->getApiKey())) {
+                $results = $mapService->search($query, $this->newLat, $this->newLng);
+            }
         }
+
+        if (empty($results)) {
+            $results = $this->fallbackSearch($query);
+        }
+
+        $this->searchResults = $results;
+    }
+
+    protected function fallbackSearch($query)
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Laravel-CRM-Map-App'
+            ])->timeout(5)->get("https://nominatim.openstreetmap.org/search", [
+                'q' => $query,
+                'format' => 'json',
+                'accept-language' => 'fa,en',
+                'limit' => 10
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $results = [];
+                foreach ($data as $item) {
+                    $results[] = [
+                        'title' => $item['name'] ?? $item['display_name'] ?? '',
+                        'address' => $item['display_name'] ?? '',
+                        'lat' => (float)($item['lat'] ?? 0),
+                        'lng' => (float)($item['lon'] ?? 0),
+                    ];
+                }
+                return $results;
+            }
+        } catch (\Exception $e) {
+            // Silently fail
+        }
+        return [];
     }
 
     public function selectSearchResult($lat, $lng, $title = '')
@@ -482,6 +519,7 @@ class CheckoutPage extends Component
                 'payment_status' => $initialPaymentStatus,
                 'delivery_status' => $initialDeliveryStatus,
                 'payment_method' => $method,
+                'customer_notes' => $this->formData['customer_notes'] ?? null,
             ];
 
             $orderData['shipping_address_json'] = [
@@ -752,9 +790,18 @@ class CheckoutPage extends Component
         }
 
         if (!empty($geoData['address'])) {
-            $this->newProvince = $geoData['province'] ?? $this->newProvince;
-            $this->newCity = $geoData['city'] ?? $this->newCity;
-            $this->newAddress = $this->sanitizeAddress($geoData['address'], $this->newProvince, $this->newCity);
+            $rawProvince = $geoData['province'] ?? $this->newProvince;
+            $rawCity = $geoData['city'] ?? $this->newCity;
+
+            // Normalize Province
+            $rawProvince = trim(str_replace(['استان ', ' استان', ' Province'], '', $rawProvince));
+            
+            // Normalize City
+            $rawCity = trim(str_replace(['شهر ', ' شهر', ' City', 'شهرستان ', ' بخش '], '', $rawCity));
+
+            $this->newProvince = $rawProvince;
+            $this->newCity = $rawCity;
+            $this->newAddress = $this->sanitizeAddress($geoData['address'], $rawProvince, $rawCity);
             
             if (isset($geoData['data']['postal_code']) && !empty($geoData['data']['postal_code'])) {
                 $this->newPostalCode = $geoData['data']['postal_code'];
@@ -767,33 +814,47 @@ class CheckoutPage extends Component
     protected function sanitizeAddress($address, $province, $city)
     {
         if (empty($address)) return '';
-        
-        $address = preg_replace('/^(ایران|iran)\s*[،,]\s*/iu', '', $address);
 
+        // Remove country
+        $address = preg_replace('/\b(ایران|iran)\b/iu', '', $address);
+
+        // Remove province
         if (!empty($province)) {
             $provinceClean = str_replace(['استان ', ' Province'], '', $province);
-            $address = preg_replace('/^(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+            $address = preg_replace('/\b(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')\b/iu', '', $address);
         }
+        $address = preg_replace('/استان\s+[\p{L}\s]+/u', '', $address);
 
+        // Remove county / district / municipality administrative noise
+        $address = preg_replace('/شهرستان\s+[\p{L}\s]+/u', '', $address);
+        $address = preg_replace('/بخش\s+مرکزی\s+[\p{L}\s]+/u', '', $address);
+        $address = preg_replace('/بخش\s+[\p{L}\s]+/u', '', $address);
+        $address = preg_replace('/شهرداری\s+منطقه\s+[\d\p{L}\s]+(ناحیه\s+[\d\p{L}\s]+)?/u', '', $address);
+        $address = preg_replace('/منطقه\s+\d+(\s+شهر\s+[\p{L}\s]+)?/u', '', $address);
+
+        // Remove city name if it appears in address
         if (!empty($city)) {
             $cityClean = str_replace(['شهر ', ' City'], '', $city);
-            $address = preg_replace('/^(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+            $address = preg_replace('/\b(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')\b/iu', '', $address);
         }
 
+        // Remove postal code
         $address = preg_replace('/\b\d{5}-?\d{5}\b/u', '', $address);
-        $address = preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
-        
-        if (!empty($province)) {
-            $provinceClean = str_replace(['استان ', ' Province'], '', $province);
-            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')$/iu', '', $address);
-        }
-        if (!empty($city)) {
-            $cityClean = str_replace(['شهر ', ' City'], '', $city);
-            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')$/iu', '', $address);
-        }
-        $address = preg_replace('/\s*[،,]\s*(ایران|iran)$/iu', '', $address);
 
-        return preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
+        // Clean up duplicate commas, spaces and trailing separators
+        $address = preg_replace('/[،,]\s*[،,]+/u', '، ', $address);
+        $address = preg_replace('/^\s*[،,]\s*|\s*[،,]\s*$/u', '', $address);
+
+        // Split by comma, trim each part, remove empty/duplicates, and join back
+        $rawParts = array_map('trim', explode('،', str_replace(',', '،', $address)));
+        $filteredParts = [];
+        foreach ($rawParts as $part) {
+            if (!empty($part) && !in_array($part, $filteredParts)) {
+                $filteredParts[] = $part;
+            }
+        }
+
+        return implode('، ', $filteredParts);
     }
 
     protected function fallbackGeocode($lat, $lng)

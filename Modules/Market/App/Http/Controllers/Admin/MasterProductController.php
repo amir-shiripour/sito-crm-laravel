@@ -56,6 +56,8 @@ class MasterProductController extends Controller
             $displayCategories = $this->buildDisplayCategoryOptions($displayCategoriesAll);
         }
 
+        session(['master_products_index_url' => $request->fullUrl()]);
+
         return view('market::admin.master-products.index', compact(
             'products', 'categories', 'brands', 'separateCategoryEnabled', 'displayCategories'
         ));
@@ -129,7 +131,7 @@ class MasterProductController extends Controller
     {
         $this->authorizeVendorCatalog();
         $master_product->delete();
-        return redirect()->route('user.market.master-products.index')
+        return redirect()->to(session('master_products_index_url', route('user.market.master-products.index')))
             ->with('success', 'محصول با موفقیت از کاتالوگ حذف شد.');
     }
 

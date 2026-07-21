@@ -12,7 +12,7 @@
                 </svg>
                 دانلود فایل نمونه استاندارد
             </button>
-            <a href="{{ route('user.market.master-products.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold transition-all">
+            <a href="{{ session('master_products_index_url', route('user.market.master-products.index')) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold transition-all">
                 بازگشت به کاتالوگ
             </a>
         </div>

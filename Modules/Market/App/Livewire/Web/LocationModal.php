@@ -55,12 +55,51 @@ class LocationModal extends Component
             return;
         }
 
+        $results = [];
+
         if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
             $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
-            $this->searchResults = $mapService->search($query, $this->newLat, $this->newLng);
-        } else {
-            $this->searchResults = [];
+            if (!empty($mapService->getApiKey())) {
+                $results = $mapService->search($query, $this->newLat, $this->newLng);
+            }
         }
+
+        if (empty($results)) {
+            $results = $this->fallbackSearch($query);
+        }
+
+        $this->searchResults = $results;
+    }
+
+    protected function fallbackSearch($query)
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Laravel-CRM-Map-App'
+            ])->timeout(5)->get("https://nominatim.openstreetmap.org/search", [
+                'q' => $query,
+                'format' => 'json',
+                'accept-language' => 'fa,en',
+                'limit' => 10
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $results = [];
+                foreach ($data as $item) {
+                    $results[] = [
+                        'title' => $item['name'] ?? $item['display_name'] ?? '',
+                        'address' => $this->sanitizeAddress($item['display_name'] ?? '', '', ''),
+                        'lat' => (float)($item['lat'] ?? 0),
+                        'lng' => (float)($item['lon'] ?? 0),
+                    ];
+                }
+                return $results;
+            }
+        } catch (\Exception $e) {
+            // Silently fail
+        }
+        return [];
     }
 
     public function selectSearchResult($lat, $lng, $title = '')
@@ -303,18 +342,27 @@ class LocationModal extends Component
         }
 
         if (!empty($geoData['address'])) {
+            $rawProvince = $geoData['province'] ?? ($this->mustAddAddress || $this->showAddNewAddress || Auth::guard('client')->check() ? $this->newProvince : $this->selectedProvince);
+            $rawCity = $geoData['city'] ?? ($this->mustAddAddress || $this->showAddNewAddress || Auth::guard('client')->check() ? $this->newCity : $this->selectedCity);
+
+            // Normalize Province
+            $rawProvince = trim(str_replace(['استان ', ' استان', ' Province'], '', $rawProvince));
+
+            // Normalize City
+            $rawCity = trim(str_replace(['شهر ', ' شهر', ' City', 'شهرستان ', ' بخش '], '', $rawCity));
+
             if ($this->mustAddAddress || $this->showAddNewAddress || Auth::guard('client')->check()) {
-                $this->newProvince = $geoData['province'] ?? $this->newProvince;
-                $this->newCity = $geoData['city'] ?? $this->newCity;
-                $this->newAddress = $this->sanitizeAddress($geoData['address'], $this->newProvince, $this->newCity);
+                $this->newProvince = $rawProvince;
+                $this->newCity = $rawCity;
+                $this->newAddress = $this->sanitizeAddress($geoData['address'], $rawProvince, $rawCity);
                 if (isset($geoData['data']['postal_code']) && !empty($geoData['data']['postal_code'])) {
                     $this->newPostalCode = $geoData['data']['postal_code'];
                 } elseif (isset($geoData['postal_code']) && !empty($geoData['postal_code'])) {
                     $this->newPostalCode = $geoData['postal_code'];
                 }
             } else {
-                $this->selectedProvince = $geoData['province'] ?? $this->selectedProvince;
-                $this->selectedCity = $geoData['city'] ?? $this->selectedCity;
+                $this->selectedProvince = $rawProvince;
+                $this->selectedCity = $rawCity;
             }
         }
     }
@@ -322,20 +370,47 @@ class LocationModal extends Component
     protected function sanitizeAddress($address, $province, $city)
     {
         if (empty($address)) return '';
-        $address = preg_replace('/^(ایران|iran)\s*[،,]\s*/iu', '', $address);
 
+        // Remove country
+        $address = preg_replace('/\b(ایران|iran)\b/iu', '', $address);
+
+        // Remove province
         if (!empty($province)) {
             $provinceClean = str_replace(['استان ', ' Province'], '', $province);
-            $address = preg_replace('/^(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+            $address = preg_replace('/\b(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')\b/iu', '', $address);
         }
+        $address = preg_replace('/استان\s+[\p{L}\s]+/u', '', $address);
 
+        // Remove county / district / municipality administrative noise
+        $address = preg_replace('/شهرستان\s+[\p{L}\s]+/u', '', $address);
+        $address = preg_replace('/بخش\s+مرکزی\s+[\p{L}\s]+/u', '', $address);
+        $address = preg_replace('/بخش\s+[\p{L}\s]+/u', '', $address);
+        $address = preg_replace('/شهرداری\s+منطقه\s+[\d\p{L}\s]+(ناحیه\s+[\d\p{L}\s]+)?/u', '', $address);
+        $address = preg_replace('/منطقه\s+\d+(\s+شهر\s+[\p{L}\s]+)?/u', '', $address);
+
+        // Remove city name if it appears in address
         if (!empty($city)) {
             $cityClean = str_replace(['شهر ', ' City'], '', $city);
-            $address = preg_replace('/^(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')\s*[،,]\s*/iu', '', $address);
+            $address = preg_replace('/\b(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')\b/iu', '', $address);
         }
 
+        // Remove postal code
         $address = preg_replace('/\b\d{5}-?\d{5}\b/u', '', $address);
-        return preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
+
+        // Clean up duplicate commas, spaces and trailing separators
+        $address = preg_replace('/[،,]\s*[،,]+/u', '، ', $address);
+        $address = preg_replace('/^\s*[،,]\s*|\s*[،,]\s*$/u', '', $address);
+
+        // Split by comma, trim each part, remove empty/duplicates, and join back
+        $rawParts = array_map('trim', explode('،', str_replace(',', '،', $address)));
+        $filteredParts = [];
+        foreach ($rawParts as $part) {
+            if (!empty($part) && !in_array($part, $filteredParts)) {
+                $filteredParts[] = $part;
+            }
+        }
+
+        return implode('، ', $filteredParts);
     }
 
     protected function fallbackGeocode($lat, $lng)
@@ -349,18 +424,55 @@ class LocationModal extends Component
                 'format' => 'json',
                 'accept-language' => 'fa,en'
             ]);
+
             if ($response->successful()) {
-                $addressData = $response->json();
-                $addr = $addressData['display_name'] ?? '';
-                $province = $addressData['address']['state'] ?? '';
-                $province = str_replace(['استان ', ' Province'], '', $province);
-                $city = $addressData['address']['city'] ?? $addressData['address']['town'] ?? $addressData['address']['village'] ?? '';
-                $city = str_replace(['شهر ', ' City'], '', $city);
+                $data = $response->json();
+                $addressData = $data['address'] ?? [];
+                
+                $province = $addressData['state'] ?? '';
+                $province = trim(str_replace(['استان ', ' Province'], '', $province));
+
+                $city = $addressData['city'] ?? $addressData['town'] ?? $addressData['suburb'] ?? $addressData['village'] ?? '';
+                $city = trim(str_replace(['شهر ', ' City', 'شهرستان '], '', $city));
+
+                $addressParts = [];
+                if (!empty($addressData['suburb']) && $addressData['suburb'] !== $city) {
+                    $addressParts[] = $addressData['suburb'];
+                }
+                if (!empty($addressData['neighbourhood'])) {
+                    $addressParts[] = $addressData['neighbourhood'];
+                }
+                if (!empty($addressData['quarter'])) {
+                    $addressParts[] = $addressData['quarter'];
+                }
+                if (!empty($addressData['road'])) {
+                    $addressParts[] = $addressData['road'];
+                }
+                if (!empty($addressData['amenity'])) {
+                    $addressParts[] = $addressData['amenity'];
+                }
+                if (!empty($addressData['house_number'])) {
+                    $addressParts[] = 'پلاک ' . $addressData['house_number'];
+                }
+
+                if (!empty($addressParts)) {
+                    $formattedAddress = implode('، ', array_unique($addressParts));
+                } else {
+                    $formattedAddress = $this->sanitizeAddress($data['display_name'] ?? '', $province, $city);
+                }
+
+                $postcode = $addressData['postcode'] ?? '';
+                if (!empty($postcode)) {
+                    $postcode = preg_replace('/\D/', '', $postcode);
+                }
+
                 return [
                     'province' => $province,
                     'city' => $city,
-                    'address' => $addr,
-                    'postal_code' => $addressData['address']['postcode'] ?? ''
+                    'address' => $formattedAddress,
+                    'formatted' => $formattedAddress,
+                    'postal_code' => $postcode,
+                    'data' => $data
                 ];
             }
         } catch (\Exception $e) {}

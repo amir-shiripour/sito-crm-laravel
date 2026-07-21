@@ -24,6 +24,7 @@ class CheckoutForm extends Model implements FormSchemaContract
         'email'         => ['label' => 'ایمیل',              'column' => 'email'],
         'phone'         => ['label' => 'شماره تماس',         'column' => 'phone'],
         'national_code' => ['label' => 'کد ملی',             'column' => 'national_code'],
+        'customer_notes'=> ['label' => 'یادداشت سفارش',      'column' => 'customer_notes'],
     ];
 
     public function product()
@@ -71,6 +72,16 @@ class CheckoutForm extends Model implements FormSchemaContract
                 'label' => 'کد ملی',
                 'required' => false,
                 'is_system' => true,
+            ],
+            'customer_notes' => [
+                'id' => 'customer_notes',
+                'type' => 'textarea',
+                'label' => 'یادداشت شما برای سفارش',
+                'placeholder' => 'توضیحات اضافی که لازم است فروشنده بداند...',
+                'width' => 'full',
+                'required' => false,
+                'is_system' => true,
+                'group' => 'group_notes',
             ],
         ];
     }

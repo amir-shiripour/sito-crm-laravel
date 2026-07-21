@@ -28,6 +28,16 @@ trait HasMarketVendor
             return $vendor;
         }
 
-        return $this->marketVendors()->first();
+        $fallback = $this->marketVendors()->first();
+        if ($fallback) {
+            return $fallback;
+        }
+
+        if (\Modules\Market\Entities\MarketSetting::getValue('system.store_type', 'multi') === 'single') {
+            return \Modules\Market\Entities\Vendor::where('status', 'active')->first() 
+                ?? \Modules\Market\Entities\Vendor::first();
+        }
+
+        return null;
     }
 }

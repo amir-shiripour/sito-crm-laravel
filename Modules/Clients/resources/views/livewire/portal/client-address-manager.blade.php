@@ -125,10 +125,10 @@
                 
                 {{-- Suggestions dropdown --}}
                 @if(!empty($searchQuery) && count($searchResults) > 0)
-                    <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-1 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-150 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
+                    <div x-show="showDropdown" @click.away="showDropdown = false" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto py-2">
                         @foreach($searchResults as $res)
                             <button type="button" 
-                                    wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, '{{ addslashes($res['title']) }}')"
+                                    wire:click="selectSearchResult({{ $res['lat'] }}, {{ $res['lng'] }}, @js($res['title']))"
                                     @click="showDropdown = false"
                                     class="w-full text-right px-4 py-2 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/30 transition-colors flex flex-col gap-0.5 border-b border-gray-100 last:border-0 dark:border-gray-700/50">
                                 <span class="text-xs font-bold text-gray-900 dark:text-white">{{ $res['title'] }}</span>
@@ -373,14 +373,14 @@
                          }">
                         
                         {{-- Province Selector --}}
-                        <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative">
+                        <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative" wire:ignore>
                             <label class="block mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">استان <span class="text-red-500">*</span></label>
                             <div @click="open = !open" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 cursor-pointer flex justify-between items-center select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 bg-white dark:bg-gray-800': open, 'bg-gray-50 dark:bg-gray-900/50': !open}">
                                 <span x-text="province || 'انتخاب استان...'" class="block truncate" :class="{'text-gray-400 dark:text-gray-500': !province}"></span>
                                 <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                             </div>
-                            <div x-show="open" x-transition class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800 backdrop-blur-xl border border-gray-150 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar py-2" style="display: none;">
-                                <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-150">
+                            <div x-show="open" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                                <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-100">
                                 <template x-for="p in provinces.filter(item => item.toLowerCase().includes(search.toLowerCase()))" :key="p">
                                     <div @click="province = p; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': province == p, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': province != p}">
                                         <span x-text="p"></span>
@@ -392,14 +392,14 @@
                         </div>
 
                         {{-- City Selector --}}
-                        <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative">
+                        <div x-data="{ open: false, search: '' }" @click.away="open = false" class="relative" wire:ignore>
                             <label class="block mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">شهر <span class="text-red-500">*</span></label>
                             <div @click="province ? open = !open : null" class="w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 flex justify-between items-center select-none" :class="{'ring-2 ring-indigo-500/20 border-indigo-500 bg-white dark:bg-gray-800 cursor-pointer': open && province, 'bg-gray-50 dark:bg-gray-900/50 cursor-pointer': !open && province, 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-900/30': !province}">
                                 <span x-text="city || 'انتخاب شهر...'" class="block truncate" :class="{'text-gray-400 dark:text-gray-500': !city}"></span>
                                 <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180 text-indigo-500': open && province}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                             </div>
-                            <div x-show="open && province" x-transition class="absolute z-50 w-full mt-2 bg-white/95 dark:bg-gray-800 backdrop-blur-xl border border-gray-150 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar py-2" style="display: none;">
-                                <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-150">
+                            <div x-show="open && province" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar py-2" style="display: none;">
+                                <input type="text" x-model="search" placeholder="جستجو..." class="w-full border-0 border-b border-gray-200 dark:border-gray-700 bg-transparent px-4 py-2 text-sm focus:ring-0 focus:border-indigo-500 text-gray-900 dark:text-gray-100">
                                 <template x-for="c in cities.filter(item => item.toLowerCase().includes(search.toLowerCase()))" :key="c">
                                     <div @click="city = c; open = false; search = ''" class="px-4 py-2.5 cursor-pointer transition-all flex items-center gap-2 group" :class="{'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold': city == c, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50': city != c}">
                                         <span x-text="c"></span>

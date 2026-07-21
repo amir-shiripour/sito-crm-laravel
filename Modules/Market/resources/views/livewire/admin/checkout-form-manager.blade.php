@@ -112,7 +112,12 @@
                         <div class="space-y-6">
                             @foreach($groupedSchema as $groupDetails)
                                 <div class="p-5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-800/20">
-                                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">{{ $groupDetails['name'] }}</h4>
+                                    <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                                        <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $groupDetails['name'] }}</h4>
+                                        <button wire:click="removeGroup('{{ $groupDetails['id'] }}')" type="button" class="text-xs text-red-500 hover:text-red-700 transition" title="حذف گروه">
+                                            حذف گروه
+                                        </button>
+                                    </div>
                                     <div class="space-y-4">
                                         @foreach($groupDetails['fields'] as $field)
                                             @php

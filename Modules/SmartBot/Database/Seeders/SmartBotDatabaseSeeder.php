@@ -31,7 +31,7 @@ class SmartBotDatabaseSeeder extends Seeder
         // Helper to query some products if Market exists
         $productIds = [];
         if (class_exists('Modules\Market\Entities\MasterProduct')) {
-            $productIds = \Modules\Market\Entities\MasterProduct::where('status', 'published')
+            $productIds = \Modules\Market\Entities\MasterProduct::where('status', 'active')
                 ->limit(3)
                 ->pluck('id')
                 ->toArray();

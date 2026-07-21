@@ -49,7 +49,7 @@ class QnAManager extends Component
     {
         if (class_exists('Modules\Market\Entities\MasterProduct')) {
             return \Modules\Market\Entities\MasterProduct::select('id', 'title')
-                ->where('status', 'published')
+                ->where('status', 'active')
                 ->get()
                 ->toArray();
         }
