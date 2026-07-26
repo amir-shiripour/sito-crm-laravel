@@ -148,6 +148,7 @@ class InstallController extends Controller
             return back()->withInput()->withErrors(['db_database' => 'خطا در اجرای سیدرها: ' . $e->getMessage()]);
         }
 
+        $this->syncDatabaseConfigFromEnv();
         Log::info('[INSTALL] مرحله 1 با موفقیت تکمیل شد. هدایت به مرحله 2...');
 
         try {
@@ -166,10 +167,48 @@ class InstallController extends Controller
     }
 
     /**
+     * همگام‌سازی تنظیمات اتصال دیتابیس در حافظه از روی فایل .env
+     */
+    private function syncDatabaseConfigFromEnv(): void
+    {
+        try {
+            Artisan::call('config:clear');
+        } catch (\Throwable $e) {}
+
+        $envPath = app()->environmentFilePath();
+        if (file_exists($envPath)) {
+            $content = str_replace(["\r\n", "\r"], "\n", file_get_contents($envPath));
+            $lines = explode("\n", $content);
+            $envVars = [];
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (str_starts_with($line, '#') || !str_contains($line, '=')) {
+                    continue;
+                }
+                [$key, $value] = explode('=', $line, 2);
+                $key = strtoupper(trim($key));
+                $value = trim($value, " \t\n\r\0\x0B\"'");
+                $envVars[$key] = $value;
+            }
+
+            if (!empty($envVars['DB_DATABASE']) && !empty($envVars['DB_USERNAME'])) {
+                Config::set('database.connections.mysql.host', $envVars['DB_HOST'] ?? '127.0.0.1');
+                Config::set('database.connections.mysql.port', $envVars['DB_PORT'] ?? '3306');
+                Config::set('database.connections.mysql.database', $envVars['DB_DATABASE']);
+                Config::set('database.connections.mysql.username', $envVars['DB_USERNAME']);
+                Config::set('database.connections.mysql.password', $envVars['DB_PASSWORD'] ?? '');
+                DB::purge('mysql');
+            }
+        }
+    }
+
+    /**
      * نمایش فرم مرحله 2 (ایجاد ادمین)
      */
     public function step2()
     {
+        $this->syncDatabaseConfigFromEnv();
+
         // لاگ اولیه - باید اولین خط باشد
         \Illuminate\Support\Facades\Log::info('[INSTALL] متد step2 فراخوانی شد');
 
@@ -235,6 +274,7 @@ class InstallController extends Controller
      */
     public function processStep2(Request $request)
     {
+        $this->syncDatabaseConfigFromEnv();
         Log::info('[INSTALL] مرحله 2 شروع شد', ['ip' => $request->ip()]);
 
         try {
@@ -313,6 +353,7 @@ class InstallController extends Controller
      */
     public function step3()
     {
+        $this->syncDatabaseConfigFromEnv();
         Log::info('[INSTALL] نمایش فرم مرحله 3 - در حال بارگذاری لیست تم‌ها...');
         try {
             $themes = Theme::all();
@@ -338,6 +379,7 @@ class InstallController extends Controller
      */
     public function processStep3(Request $request)
     {
+        $this->syncDatabaseConfigFromEnv();
         Log::info('[INSTALL] مرحله 3 شروع شد', ['ip' => $request->ip()]);
 
         try {
