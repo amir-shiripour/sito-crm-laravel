@@ -38,27 +38,36 @@ class EnvWriter
         }
 
         $content = File::get($this->envPath);
-        $key = strtoupper($key); // اطمینان از اینکه کلید با حروف بزرگ است
+        $key = strtoupper(trim($key));
 
-        // بررسی اینکه آیا کلید از قبل وجود دارد یا نه
-        // الگوی Regex برای پیدا کردن KEY=VALUE
-        // این الگو مقادیر داخل کوتیشن ("VALUE") را هم در نظر می‌گیرد
-        $pattern = "/^{$key}=.*$/m";
+        // یکنواخت‌سازی کاراکترهای پایان خط
+        $content = str_replace(["\r\n", "\r"], "\n", $content);
+        $lines = explode("\n", $content);
+        $keyFound = false;
 
-        $newLine = "{$key}={$value}";
-
-        if (preg_match($pattern, $content)) {
-            // اگر کلید وجود داشت، آن را جایگزین کن
-            $content = preg_replace($pattern, $newLine, $content);
-        } else {
-            // اگر کلید وجود نداشت، آن را به انتهای فایل اضافه کن
-            // اطمینان از وجود یک خط جدید در انتهای فایل قبل از افزودن
-            $content = rtrim($content, "\n\r") . "\n" . $newLine;
+        foreach ($lines as $index => $line) {
+            $trimmedLine = trim($line);
+            if (str_starts_with($trimmedLine, '#')) {
+                continue;
+            }
+            if (str_contains($line, '=')) {
+                [$currentKey] = explode('=', $line, 2);
+                if (strtoupper(trim($currentKey)) === $key) {
+                    $lines[$index] = "{$key}={$value}";
+                    $keyFound = true;
+                    break;
+                }
+            }
         }
 
-        // نوشتن محتوای جدید در فایل .env
+        if (!$keyFound) {
+            $lines[] = "{$key}={$value}";
+        }
+
+        $newContent = implode("\n", $lines) . "\n";
+
         try {
-            File::put($this->envPath, $content);
+            File::put($this->envPath, $newContent);
             return true;
         } catch (\Exception $e) {
             throw new \Exception("خطا در هنگام نوشتن در فایل .env: " . $e->getMessage());
