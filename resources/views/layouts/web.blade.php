@@ -7,7 +7,13 @@
     <meta name="theme-color" content="#ffffff">
 
     @php
-        $globalSettings = \Modules\Settings\Entities\Setting::pluck('value', 'key')->toArray();
+        $globalSettings = [];
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                $globalSettings = \Modules\Settings\Entities\Setting::pluck('value', 'key')->toArray();
+            }
+        } catch (\Throwable $e) {}
+
         $appName = $globalSettings['app_name'] ?? config('app.name', 'CRM هوشمند');
         $appLogo = isset($globalSettings['app_logo']) ? asset($globalSettings['app_logo']) : null;
         $footerText = $globalSettings['footer_text'] ?? 'تمام حقوق محفوظ است.';
@@ -170,7 +176,7 @@
 @includeFirst($themeManager->resolveViewChain('header'), ['appName' => $appName, 'appLogo' => $appLogo])
 
 {{-- Main Content --}}
-<main class="flex-grow flex flex-col relative z-10 w-full pb-16 md:pb-0">
+<main class="flex-grow flex flex-col relative z-10 w-full pb-16 md:pb-0" style="padding-top: 5rem">
     @yield('content')
 </main>
 
@@ -220,7 +226,7 @@
 
 {{-- استایل‌های Media Query در فایل Blade مستقیما روی تگ main اعمال شدند تا نیازی به style تگ در پایین نباشد --}}
 <style>
-    /*@media (min-width: 768px) { main { padding-top: 8rem !important; } }*/
+    @media (min-width: 768px) { main { padding-top: 8rem !important; } }
 </style>
 </body>
 

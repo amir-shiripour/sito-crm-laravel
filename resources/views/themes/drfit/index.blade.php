@@ -128,7 +128,13 @@
             </div>
             {{-- فوتر بسیار مینیمال و یکپارچه با صفحه (بدون باکس مجزا) --}}
             @php
-                $globalSettings = \Modules\Settings\Entities\Setting::pluck('value', 'key')->toArray();
+                $globalSettings = [];
+                try {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                        $globalSettings = \Modules\Settings\Entities\Setting::pluck('value', 'key')->toArray();
+                    }
+                } catch (\Throwable $e) {}
+
                 $footerLogo = isset($globalSettings['app_logo']) ? asset($globalSettings['app_logo']) : null;
                 $footerAppName = $globalSettings['app_name'] ?? 'دکتر فیت';
             @endphp
