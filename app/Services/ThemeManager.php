@@ -14,6 +14,31 @@ final class ThemeManager
     private bool $entityChecked = false;
 
     /**
+     * بررسی می‌کند آیا سیستم نصب شده است یا خیر.
+     */
+    private function isInstalled(): bool
+    {
+        return File::exists(storage_path('app/installed.flag'));
+    }
+
+    /**
+     * بررسی فعال بودن ماژول ContentForge
+     */
+    private function isContentForgeActive(): bool
+    {
+        if (!class_exists(\Nwidart\Modules\Facades\Module::class)) {
+            return false;
+        }
+
+        try {
+            return \Nwidart\Modules\Facades\Module::has('ContentForge')
+                && \Nwidart\Modules\Facades\Module::isEnabled('ContentForge');
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
      * موجودیت فعال انتخاب شده در تنظیمات را برمی‌گرداند.
      */
     public function getActiveEntity(): ?object
@@ -24,17 +49,25 @@ final class ThemeManager
 
         $this->entityChecked = true;
 
-        // بررسی فعال بودن ماژول ContentForge و وجود جدول مربوطه
-        if (class_exists(\Modules\ContentForge\App\Models\ContentEntity::class) && \Illuminate\Support\Facades\Schema::hasTable('content_entities')) {
-            $entityId = Setting::where('key', 'content_entity_id')->value('value');
-            if ($entityId) {
-                // کش کردن اطلاعات به مدت ۶۰ ثانیه برای بهینه‌سازی
-                $this->activeEntity = Cache::remember("active_theme_entity_{$entityId}", 60, function () use ($entityId) {
-                    return \Modules\ContentForge\App\Models\ContentEntity::where('id', $entityId)
-                        ->where('is_active', true)
-                        ->first();
-                });
+        // اگر سیستم هنوز نصب نشده باشد یا ماژول ContentForge فعال نباشد، دسترسی به دیتابیس انجام نمی‌شود
+        if (!$this->isInstalled() || !$this->isContentForgeActive()) {
+            return null;
+        }
+
+        try {
+            if (class_exists(\Modules\ContentForge\App\Models\ContentEntity::class) && \Illuminate\Support\Facades\Schema::hasTable('content_entities')) {
+                $entityId = Setting::where('key', 'content_entity_id')->value('value');
+                if ($entityId) {
+                    // کش کردن اطلاعات به مدت ۶۰ ثانیه برای بهینه‌سازی
+                    $this->activeEntity = Cache::remember("active_theme_entity_{$entityId}", 60, function () use ($entityId) {
+                        return \Modules\ContentForge\App\Models\ContentEntity::where('id', $entityId)
+                            ->where('is_active', true)
+                            ->first();
+                    });
+                }
             }
+        } catch (\Throwable $e) {
+            $this->activeEntity = null;
         }
 
         return $this->activeEntity;
@@ -58,7 +91,16 @@ final class ThemeManager
         }
 
         // افزودن قالب پیش‌فرض ثبت شده در تنظیمات سیستم
-        $appTheme = Setting::where('key', 'app_theme')->value('value') ?? 'default';
+        $appTheme = 'default';
+
+        if ($this->isInstalled()) {
+            try {
+                $appTheme = Setting::where('key', 'app_theme')->value('value') ?? 'default';
+            } catch (\Throwable $e) {
+                $appTheme = 'default';
+            }
+        }
+
         $chain[] = strtolower($appTheme);
 
         if (strtolower($appTheme) !== 'default') {
