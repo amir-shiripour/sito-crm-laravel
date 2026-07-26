@@ -10,17 +10,7 @@ class RedirectIfNotInstalled
 {
     public function handle(Request $request, Closure $next)
     {
-        $installedFlag = storage_path('app/installed.flag');
-
-        if (!file_exists($installedFlag)) {
-            return redirect()->route('install.step1');
-        }
-
-        try {
-            if (!Schema::hasTable('settings')) {
-                return redirect()->route('install.step1');
-            }
-        } catch (\Throwable $e) {
+        if (!file_exists(storage_path('app/installed.flag'))) {
             return redirect()->route('install.step1');
         }
 
