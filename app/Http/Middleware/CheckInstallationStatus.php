@@ -17,10 +17,15 @@ class CheckInstallationStatus
             // مسیر فایل پرچم نصب
             $installedFlagPath = storage_path('app/installed.flag');
 
-            // ۱. آیا برنامه نصب شده است؟
+            // ۱. آیا برنامه نصب شده است و جداول دیتابیس موجود می‌باشند؟
             if (File::exists($installedFlagPath)) {
-                // بله. پس هیچ کاری نکن. بگذار برنامه به صورت عادی اجرا شود.
-                return $next($request);
+                try {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                        return $next($request);
+                    }
+                } catch (\Throwable $e) {
+                    // دیتابیس در دسترس نیست یا هنوز جداول ایجاد نشده‌اند
+                }
             }
 
             // ۲. برنامه نصب نشده است.
