@@ -179,23 +179,30 @@ final class ContentFrontController extends Controller
 
     // --- Default Entity Root Route Handlers ---
 
-    public function archiveDefault(Request $request)
+    public function archiveDefault(?Request $request = null)
     {
+        $request = $request ?? request();
         return $this->archive(null, $request);
     }
 
-    public function categoryDefault(string $categorySlug, Request $request)
+    public function categoryDefault(string $categorySlug, ?Request $request = null)
     {
+        $request = $request ?? request();
         return $this->category(null, $categorySlug, $request);
     }
 
-    public function tagDefault(string $tagSlug, Request $request)
+    public function tagDefault(string $tagSlug, ?Request $request = null)
     {
+        $request = $request ?? request();
         return $this->tag(null, $tagSlug, $request);
     }
 
-    public function showDefault(string $slug, Request $request)
+    public function showDefault(?string $slug = null, ?Request $request = null)
     {
+        $request = $request ?? request();
+        if (empty($slug)) {
+            return app(\App\Http\Controllers\PageController::class)->home();
+        }
         // 1. Try to find a post/page with this slug
         $postQuery = ContentPost::where('slug', $slug);
 

@@ -4,6 +4,12 @@ namespace Modules\Settings\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Modules\Booking\Entities\BookingCategory;
+use Modules\Properties\Entities\PropertyCategory;
+use Modules\Properties\Entities\PropertyStatus;
+use Modules\Settings\Entities\ApiKey;
 use Modules\Settings\Entities\Setting;
 use App\Services\GapGPTService;
 use Illuminate\Support\Facades\Schema;
@@ -25,7 +31,7 @@ class SettingsController extends Controller
             'bank_transfer_accounts',
             'active_payment_methods',
             'theme_colors',
-            'installment_due_days'        // ← Critical fix
+            'installment_due_days'
         ];
 
         foreach ($jsonKeys as $key) {
@@ -48,6 +54,22 @@ class SettingsController extends Controller
                 ->where('type', 'bank')
                 ->select('id', 'name')
                 ->get();
+        }
+
+        if (isset($settings['bank_transfer_accounts']) && is_array($settings['bank_transfer_accounts'])) {
+            $banksMap = $banks->pluck('name', 'id')->all();
+            foreach ($settings['bank_transfer_accounts'] as &$acc) {
+                if (is_array($acc)) {
+                    if (!empty($acc['bank_id']) && isset($banksMap[$acc['bank_id']])) {
+                        $acc['bank_name'] = $banksMap[$acc['bank_id']];
+                    }
+                    if (empty($acc['bank_name']) && !empty($acc['name'])) {
+                        $acc['bank_name'] = $acc['name'];
+                    }
+                    $acc['name'] = $acc['bank_name'] ?? ($acc['name'] ?? '');
+                }
+            }
+            unset($acc);
         }
 
         $availableServices = [];
@@ -102,7 +124,7 @@ class SettingsController extends Controller
             }
         }
 
-        $apiKeys = \Modules\Settings\Entities\ApiKey::with('creator')->latest()->get();
+        $apiKeys = ApiKey::with('creator')->latest()->get();
 
         $isPropertiesActive = NModule::has('Properties') && NModule::isEnabled('Properties');
         $propertyStatuses = collect();
@@ -110,10 +132,10 @@ class SettingsController extends Controller
 
         if ($isPropertiesActive) {
             if (Schema::hasTable('property_statuses')) {
-                $propertyStatuses = \Modules\Properties\Entities\PropertyStatus::all();
+                $propertyStatuses = PropertyStatus::all();
             }
             if (Schema::hasTable('property_categories')) {
-                $propertyCategories = \Modules\Properties\Entities\PropertyCategory::all();
+                $propertyCategories = PropertyCategory::all();
             }
         }
 
@@ -122,8 +144,15 @@ class SettingsController extends Controller
 
         if ($isBookingActive) {
             if (Schema::hasTable('booking_categories')) {
-                $bookingCategories = \Modules\Booking\Entities\BookingCategory::all();
+                $bookingCategories = BookingCategory::all();
             }
+        }
+
+        // واکشی پویای موجودیت‌های محتوا جهت انتخاب قالب داینامیک
+        $isContentForgeActive = NModule::has('ContentForge') && NModule::isEnabled('ContentForge');
+        $contentEntities = collect();
+        if ($isContentForgeActive && class_exists(\Modules\ContentForge\App\Models\ContentEntity::class) && Schema::hasTable('content_entities')) {
+            $contentEntities = \Modules\ContentForge\App\Models\ContentEntity::where('is_active', true)->get();
         }
 
         return view('settings::index', compact(
@@ -132,6 +161,8 @@ class SettingsController extends Controller
             'isAccountingActive',
             'isPropertiesActive',
             'isBookingActive',
+            'isContentForgeActive',
+            'contentEntities',
             'availableServices',
             'apiKeys',
             'propertyStatuses',
@@ -141,10 +172,18 @@ class SettingsController extends Controller
     }
     public function update(Request $request)
     {
-        $data = $request->except('_token');
+        $request->validate([
+            'identity_seal_signature' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
+        ], [
+            'identity_seal_signature.image' => 'فایل انتخاب‌شده برای مهر و امضا باید یک تصویر معتبر باشد.',
+            'identity_seal_signature.mimes' => 'فرمت تصویر مهر و امضا باید یکی از png, jpg, jpeg, webp باشد.',
+            'identity_seal_signature.max' => 'حجم تصویر مهر و امضا نباید بیشتر از ۵ مگابایت باشد.',
+        ]);
 
-        // If array fields are completely cleared, they won't be present in the request.
-        // We set them to empty arrays so they get updated/cleared in the database.
+        $data = $request->except('_token');
+        $this->handleIdentitySealUpload($request);
+        unset($data['identity_seal_signature']);
+
         $nullableArrayKeys = [
             'installment_types',
             'pos_devices',
@@ -205,9 +244,33 @@ class SettingsController extends Controller
                 $value = array_values($value);
             }
 
-            // Clean array fields
+            // Clean array fields & enrich bank_transfer_accounts
             if (in_array($key, ['pos_devices', 'bank_transfer_accounts']) && is_array($value)) {
                 $value = array_values($value);
+
+                if ($key === 'bank_transfer_accounts') {
+                    $isAccountingActive = NModule::has('Accounting') && NModule::isEnabled('Accounting');
+                    $banksMap = [];
+                    if ($isAccountingActive && Schema::hasTable('accounting_fund_accounts')) {
+                        $banksMap = DB::table('accounting_fund_accounts')
+                            ->where('type', 'bank')
+                            ->pluck('name', 'id')
+                            ->all();
+                    }
+                    foreach ($value as &$accItem) {
+                        if (is_array($accItem)) {
+                            if (!empty($accItem['bank_id']) && isset($banksMap[$accItem['bank_id']])) {
+                                $accItem['bank_name'] = $banksMap[$accItem['bank_id']];
+                            }
+                            if (!empty($accItem['bank_name'])) {
+                                $accItem['name'] = $accItem['bank_name'];
+                            } elseif (!empty($accItem['name'])) {
+                                $accItem['bank_name'] = $accItem['name'];
+                            }
+                        }
+                    }
+                    unset($accItem);
+                }
             }
 
             // Convert to JSON if array
@@ -223,6 +286,53 @@ class SettingsController extends Controller
 
         return redirect()->back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
     }
+    private function handleIdentitySealUpload(Request $request): void
+    {
+        $key = 'identity_seal_signature';
+        Log::info('handleIdentitySealUpload: Method called.');
+
+        if (!$request->hasFile($key)) {
+            Log::info('handleIdentitySealUpload: No file found for key: ' . $key);
+            return;
+        }
+        Log::info('handleIdentitySealUpload: File found for key: ' . $key);
+
+        $file = $request->file($key);
+
+        if (!$file->isValid()) {
+            Log::error('handleIdentitySealUpload: File is not valid.', ['file_error' => $file->getErrorMessage()]);
+            return;
+        }
+        Log::info('handleIdentitySealUpload: File is valid.');
+
+        try {
+            $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'png';
+            $filename = time() . '_' . Str::random(12) . '.' . $extension;
+            $destinationPath = public_path('uploads/settings');
+
+            Log::info('handleIdentitySealUpload: Attempting to move file.', ['filename' => $filename, 'destination' => $destinationPath]);
+            $file->move($destinationPath, $filename);
+
+            $newPath = 'uploads/settings/' . $filename;
+            Log::info('handleIdentitySealUpload: File moved successfully.', ['path' => $newPath]);
+
+            $oldPath = Setting::where('key', $key)->value('value');
+            if ($oldPath && file_exists(public_path($oldPath))) {
+                @unlink(public_path($oldPath));
+                Log::info('handleIdentitySealUpload: Old file deleted.', ['path' => $oldPath]);
+            }
+
+            Setting::updateOrCreate(['key' => $key], ['value' => $newPath]);
+            Log::info('handleIdentitySealUpload: Database updated successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('handleIdentitySealUpload: An exception occurred during file upload.', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
     private function validateInstallmentTypes(array $installmentTypes): array
     {
         $errors = [];
@@ -271,6 +381,7 @@ class SettingsController extends Controller
 
         return $errors;
     }
+
     private function extractBrandLabel(string $brandKey): string
     {
         $parts = explode('__', $brandKey);

@@ -18,17 +18,33 @@ class Installer extends BaseModuleInstaller
         'market_settings',
         'market_brands',
         'market_categories',
+        'market_display_categories',
         'market_master_products',
+        'market_master_product_display_category',
+        'market_product_variants',
+        'market_market_attributes',
         'market_vendors',
         'market_vendor_addresses',
         'market_vendor_documents',
         'market_vendor_products',
         'market_orders',
+        'market_order_meta',
+        'order_sync_logs',
         'market_order_statuses',
         'market_order_items',
         'market_warehouses',
         'market_warehouse_stocks',
         'market_warehouse_transactions',
+        'market_warehouse_transfers',
+        'checkout_forms',
+        'market_shipping_zones',
+        'market_shipping_methods',
+        'market_shipping_rates',
+        'market_shipping_slots',
+        'market_shipping_slot_bookings',
+        'market_shipping_rules',
+        'market_product_reviews',
+        'market_product_questions',
     ];
 
     protected function trackerPath(): string
@@ -60,7 +76,11 @@ class Installer extends BaseModuleInstaller
     public function install(): void
     {
         parent::install();
+        $this->setupPermissionsAndStatuses();
+    }
 
+    public function setupPermissionsAndStatuses(): void
+    {
         $guard = config('auth.defaults.guard', 'web');
 
         // ----- Permissions -----
@@ -274,20 +294,7 @@ class Installer extends BaseModuleInstaller
     public function uninstall(): void
     {
         $this->removeModuleOwnedPermissionsAndRoles();
-
-        // 💡 پاکسازی امن دیتابیس: جلوگیری از ارورهای Foreign Key و Table Already Exists هنگام ریست ماژول
-        try {
-            Schema::disableForeignKeyConstraints();
-            foreach ($this->tables as $table) {
-                Schema::dropIfExists($table);
-            }
-            Schema::enableForeignKeyConstraints();
-
-            // پاک کردن تاریخچه مایگریشن‌های ماژول مارکت تا لاراول با لوح سفید شروع کند
-            DB::table('migrations')->where('migration', 'like', '%market%')->delete();
-        } catch (\Throwable $e) {
-            Log::error("Market Installer DB Cleanup failed: " . $e->getMessage());
-        }
+        $this->dropModuleTables();
 
         parent::uninstall();
         Log::info("Market Installer: uninstalled, permissions and tables safely removed.");

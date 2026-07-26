@@ -12,6 +12,7 @@ use Modules\Services\App\Policies\InvoicePolicy;
 use Modules\Services\App\Policies\ProjectPolicy;
 use Modules\Services\App\Policies\ServicePolicy;
 use Modules\Services\App\Services\ProjectService;
+use Modules\Services\App\Console\Commands\SeedServiceWorkflows;
 use Modules\Services\App\Services\ServiceManagementService;
 use Modules\Services\App\Services\StatusBuilderService;
 use Illuminate\Support\Facades\Schema;
@@ -31,6 +32,9 @@ class ServicesServiceProvider extends ServiceProvider
         $this->registerViews();
         $this->registerTranslations();
         $this->loadSettingsIntoConfig();
+        $this->commands([
+            SeedServiceWorkflows::class,
+        ]);
     }
 
     public function register(): void

@@ -11,7 +11,9 @@ use Modules\Services\App\Http\Controllers\{
     OrderController,
 };
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified'])
+    ->prefix('user')
+    ->group(function () {
 
     // Categories
     Route::prefix('services/categories')

@@ -159,7 +159,7 @@
 
     $basePrice = $order->service?->base_price ?? 0;
 
-    $finalServicePrice = $invoice ? ($invoice->total ?? 0) : ($order->total_amount ?? 0);
+    $finalServicePrice = $invoiceItem ? ($invoiceItem->total ?? 0) : ($order->total_amount ?? 0);
 
     $isRenewalManual = ($order->renewal_price_type ?? 'auto') === 'manual';
     $calculatedRenewalPrice = $isRenewalManual
@@ -217,7 +217,7 @@
         @endif
 
         {{-- خلاصه سریع سفارش --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 {{ $order->billing_cycle ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-6">
             {{-- مشتری --}}
             <div
                 class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
@@ -243,8 +243,7 @@
             </div>
 
             {{-- وضعیت --}}
-            <div
-                class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
+            <div class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6 relative z-20">
                 <div class="flex items-center gap-2 mb-4">
                     <div class="p-2 bg-violet-50 dark:bg-violet-500/10 text-violet-500 rounded-lg">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -254,16 +253,48 @@
                     </div>
                     <span class="text-xs font-black text-gray-400 uppercase">وضعیت سفارش</span>
                 </div>
-                <div class="mt-2">
-                    <span class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-black border"
-                          style="background: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}40">
-                        <span class="w-2 h-2 rounded-full animate-pulse" style="background: {{ $statusColor }}"></span>
-                        {{ $order->status?->name ?? 'نامشخص' }}
-                    </span>
+                <div class="mt-2 relative" x-data="{ open: false }">
+                    <button type="button" @click="open = !open" @click.away="open = false"
+                            class="w-full inline-flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-black border transition-all hover:opacity-80 focus:ring-4 focus:outline-none"
+                            style="background: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}40; --tw-ring-color: {{ $statusColor }}30">
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full animate-pulse" style="background: {{ $statusColor }}"></span>
+                            {{ $order->status?->name ?? 'نامشخص' }}
+                        </span>
+                        <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <div x-show="open" x-transition.opacity.duration.200ms
+                         style="display: none;"
+                         class="absolute z-50 top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-xl overflow-hidden max-h-60 overflow-y-auto ring-1 ring-black ring-opacity-5">
+                        @foreach($statuses as $st)
+                            <form action="{{ route('services.orders.update', $order) }}" method="POST" class="m-0">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="status_id" value="{{ $st->id }}">
+                                <input type="hidden" name="renewal_price_type" value="{{ $order->renewal_price_type ?? 'auto' }}">
+                                <button type="submit"
+                                        class="w-full text-start px-4 py-3 text-sm font-bold transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between border-b border-gray-50 dark:border-gray-700/50 last:border-0"
+                                        style="color: {{ $st->color }}">
+                                    <span class="flex items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full" style="background: {{ $st->color }}"></span>
+                                        {{ $st->name }}
+                                    </span>
+                                    @if($order->status_id == $st->id)
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    @endif
+                                </button>
+                            </form>
+                        @endforeach
+                    </div>
                 </div>
             </div>
 
-            {{-- مبلغ نهایی فاکتور --}}
+            {{-- مبلغ نهایی سرویس --}}
             <div
                 class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
                 <div class="flex items-center gap-2 mb-4">
@@ -273,7 +304,7 @@
                                   d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
                     </div>
-                    <span class="text-xs font-black text-gray-400 uppercase">مبلغ نهایی فاکتور</span>
+                    <span class="text-xs font-black text-gray-400 uppercase">مبلغ نهایی سرویس</span>
                 </div>
                 <div
                     class="font-black text-gray-900 dark:text-white text-xl tabular-nums">{{ $faNum(number_format($finalServicePrice)) }}
@@ -282,6 +313,7 @@
             </div>
 
             {{-- مبلغ تمدید --}}
+            @if($order->billing_cycle)
             <div
                 class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
                 <div class="flex items-center justify-between mb-4">
@@ -305,6 +337,7 @@
                         class="inline-block mt-2 text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-500/20 px-2.5 py-1 rounded-md">{{ $billingCycleLabels[$order->billing_cycle] ?? $order->billing_cycle }}</span>
                 @endif
             </div>
+            @endif
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -387,7 +420,7 @@
                     </div>
                 </div>
 
-                @if($invoice)
+                @if($invoice && $order->billing_cycle)
                     <div class="{{ $cardClass }}">
                         <div
                             class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-amber-50 to-transparent dark:from-amber-500/10">
@@ -465,6 +498,82 @@
 
             {{-- ستون سمت چپ --}}
             <div class="space-y-8">
+                @if($invoice && !$order->billing_cycle)
+                    <div class="{{ $cardClass }}">
+                        <div
+                            class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-amber-50 to-transparent dark:from-amber-500/10">
+                            <h3 class="text-lg font-black text-amber-700 dark:text-amber-400 flex items-center gap-3">
+                                <div
+                                    class="p-2 bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 rounded-lg">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </div>
+                                فاکتور مرتبط
+                            </h3>
+                        </div>
+                        <div class="p-6 space-y-6">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <span class="block text-xs font-bold text-gray-400 mb-2">شماره فاکتور:</span>
+                                    <span
+                                        class="font-black text-gray-900 dark:text-white text-base tabular-nums">{{ $faNum($invoice->invoice_number) }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-xs font-bold text-gray-400 mb-2">وضعیت فاکتور:</span>
+                                    <span
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                                        style="background: {{ $invoiceStatusColor }}15; color: {{ $invoiceStatusColor }}; border-color: {{ $invoiceStatusColor }}40">
+                                        <span class="w-2 h-2 rounded-full"
+                                              style="background: {{ $invoiceStatusColor }}"></span>{{ $invoiceStatusName }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="block text-xs font-bold text-gray-400 mb-2">تاریخ صدور:</span>
+                                    <span
+                                        class="font-bold text-gray-700 dark:text-gray-300 text-sm tabular-nums dir-ltr">{{ $faNum($toJalali($invoice->issue_date)->format('Y/m/d')) }}</span>
+                                </div>
+                                @if($invoice->due_date)
+                                    <div>
+                                        <span class="block text-xs font-bold text-gray-400 mb-2">سررسید:</span>
+                                        <span
+                                            class="font-bold text-gray-700 dark:text-gray-300 text-sm tabular-nums dir-ltr">{{ $faNum($toJalali($invoice->due_date)->format('Y/m/d')) }}</span>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="pt-6 border-t border-gray-100 dark:border-gray-700 grid grid-cols-3 gap-6">
+                                <div>
+                                    <span class="block text-xs font-bold text-gray-400 mb-2">مبلغ کل:</span>
+                                    <span class="font-bold text-gray-800 dark:text-gray-200 text-sm tabular-nums">{{ $faNum(number_format($invoice->total)) }} <span
+                                            class="text-xs">{{ $currencyLabel }}</span></span>
+                                </div>
+                                <div>
+                                    <span class="block text-xs font-bold text-emerald-500 mb-2">پرداخت شده:</span>
+                                    <span class="font-bold text-emerald-600 dark:text-emerald-400 text-sm tabular-nums">{{ $faNum(number_format($invoice->paid_amount)) }} <span
+                                            class="text-xs">{{ $currencyLabel }}</span></span>
+                                </div>
+                                @if($remainingAmount > 0)
+                                    <div>
+                                        <span class="block text-xs font-bold text-rose-500 mb-2">مانده بدهی:</span>
+                                        <span
+                                            class="font-black text-rose-600 dark:text-rose-400 text-base tabular-nums">{{ $faNum(number_format($remainingAmount)) }} <span
+                                                class="text-xs">{{ $currencyLabel }}</span></span>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <a href="{{ route('services.invoices.show', $invoice) }}"
+                               class="block text-center mt-2 px-4 py-3 rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
+                                مشاهده فاکتور کامل ←
+                            </a>
+                        </div>
+                    </div>
+                @endif
+
+                @if($order->billing_cycle)
                 <form action="{{ route('services.orders.update', $order) }}" method="POST" class="{{ $cardClass }}">
                     @csrf
                     @method('PUT')
@@ -556,6 +665,7 @@
                         </div>
                     </div>
                 </form>
+                @endif
 
                 @if($invoice?->notes)
                     <div class="{{ $cardClass }} p-6 border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-900/10">

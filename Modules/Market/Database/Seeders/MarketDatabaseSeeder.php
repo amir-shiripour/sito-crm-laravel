@@ -13,7 +13,12 @@ class MarketDatabaseSeeder extends Seeder
     {
         $this->call([
             CheckoutFormSeeder::class,
-            // Other seeders for the Market module can be added here
         ]);
+
+        if (class_exists(\Modules\Market\Installer::class)) {
+            $installer = new \Modules\Market\Installer();
+            // اجرای لاجیک ساخت نقش‌ها، دسترسی‌ها و وضعیت‌ها
+            $installer->setupPermissionsAndStatuses();
+        }
     }
 }

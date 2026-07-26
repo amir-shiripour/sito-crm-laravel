@@ -164,21 +164,30 @@
                 item.className = 'p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 relative';
                 item.setAttribute('data-index', index);
 
-                let bankOptions = '<option value="">انتخاب بانک</option>';
-                banks.forEach(bank => {
-                    bankOptions += `<option value="${bank.id}" ${account.bank_id == bank.id ? 'selected' : ''}>${bank.name}</option>`;
-                });
-
-                let disabledAttr = !isAccountingActive ? 'disabled' : '';
-                let warningText = !isAccountingActive ? '<p class="text-xs text-red-500 mt-1">ماژول حسابداری غیرفعال است.</p>' : '';
+                let bankFieldHtml = '';
+                if (isAccountingActive) {
+                    let bankOptions = '<option value="">انتخاب بانک</option>';
+                    banks.forEach(bank => {
+                        bankOptions += `<option value="${bank.id}" ${account.bank_id == bank.id ? 'selected' : ''}>${bank.name}</option>`;
+                    });
+                    bankFieldHtml = `
+                        <label for="${accountId}_bank_id" class="${labelClass}">نام بانک</label>
+                        <select data-field="bank_id" id="${accountId}_bank_id" name="bank_transfer_accounts[${index}][bank_id]" class="${inputClass}">${bankOptions}</select>
+                        <input type="hidden" data-field="bank_name" name="bank_transfer_accounts[${index}][bank_name]" value="${account.bank_name || account.name || ''}">
+                    `;
+                } else {
+                    bankFieldHtml = `
+                        <label for="${accountId}_bank_name" class="${labelClass}">نام بانک</label>
+                        <input type="text" data-field="bank_name" id="${accountId}_bank_name" name="bank_transfer_accounts[${index}][bank_name]" value="${account.bank_name || account.name || ''}" class="${inputClass}" placeholder="نام بانک (مثلاً بانک ملی)">
+                        <input type="hidden" data-field="bank_id" name="bank_transfer_accounts[${index}][bank_id]" value="${account.bank_id || ''}">
+                    `;
+                }
 
                 item.innerHTML = `
                 <input type="hidden" name="bank_transfer_accounts[${index}][id]" value="${account.id}">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label for="${accountId}_bank_id" class="${labelClass}">نام بانک</label>
-                        <select data-field="bank_id" id="${accountId}_bank_id" name="bank_transfer_accounts[${index}][bank_id]" class="${inputClass}" ${disabledAttr}>${bankOptions}</select>
-                        ${warningText}
+                        ${bankFieldHtml}
                     </div>
                     <div>
                         <label for="${accountId}_account_number" class="${labelClass}">شماره حساب</label>
@@ -209,13 +218,28 @@
             bankAccountsContainer.addEventListener('input', (e) => {
                 if (e.target.hasAttribute('data-field')) {
                     const index = e.target.closest('[data-index]').getAttribute('data-index');
-                    bankAccounts[index][e.target.getAttribute('data-field')] = e.target.value;
+                    const field = e.target.getAttribute('data-field');
+                    bankAccounts[index][field] = e.target.value;
+                    if (field === 'bank_name') {
+                        bankAccounts[index]['name'] = e.target.value;
+                    }
                 }
             });
             bankAccountsContainer.addEventListener('change', (e) => {
                 if (e.target.hasAttribute('data-field')) {
                     const index = e.target.closest('[data-index]').getAttribute('data-index');
-                    bankAccounts[index][e.target.getAttribute('data-field')] = e.target.value;
+                    const field = e.target.getAttribute('data-field');
+                    bankAccounts[index][field] = e.target.value;
+                    if (field === 'bank_id' && isAccountingActive) {
+                        const selectedOption = e.target.options[e.target.selectedIndex];
+                        const selectedText = selectedOption && selectedOption.value ? selectedOption.text : '';
+                        bankAccounts[index]['bank_name'] = selectedText;
+                        bankAccounts[index]['name'] = selectedText;
+                        const hiddenInput = e.target.closest('div').querySelector('input[data-field="bank_name"]');
+                        if (hiddenInput) {
+                            hiddenInput.value = selectedText;
+                        }
+                    }
                 }
             });
 

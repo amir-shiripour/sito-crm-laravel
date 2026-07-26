@@ -297,6 +297,32 @@ class MarketSettings extends Component
 
             $warehouseCache = [];
 
+            // 1. Ensure Central Warehouse
+            $warehouseCache['system'] = Warehouse::firstOrCreate(
+                ['vendor_id' => null],
+                [
+                    'name' => 'انبار مرکزی سیستم',
+                    'code' => 'WH-MAIN',
+                    'is_active' => true,
+                ]
+            );
+
+            // 2. Ensure Warehouse for ALL Active Vendors regardless of stock
+            $activeVendors = Vendor::where('status', 'active')->with('user')->get();
+            foreach ($activeVendors as $vendor) {
+                $storeName = $vendor->store_name ?: ($vendor->user->name ?? 'فروشنده ' . $vendor->id);
+                $slugPrefix = $vendor->slug ? strtoupper(substr($vendor->slug, 0, 10)) : 'VND' . $vendor->id;
+                $warehouseCache[$vendor->id] = Warehouse::firstOrCreate(
+                    ['vendor_id' => $vendor->id],
+                    [
+                        'name' => 'انبار اصلی ' . $storeName,
+                        'code' => 'WH-' . $slugPrefix,
+                        'is_active' => true,
+                    ]
+                );
+            }
+
+            // 3. Map stock of vendor products
             VendorProduct::query()
                 ->where('stock', '>', 0)
                 ->with('vendor.user')
@@ -307,11 +333,13 @@ class MarketSettings extends Component
                         if (!isset($warehouseCache[$vendorId ?? 'system'])) {
                             if ($vendorId) {
                                 $vendor = $vendorProduct->vendor;
+                                $storeName = $vendor ? ($vendor->store_name ?: ($vendor->user->name ?? 'فروشنده')) : 'فروشنده';
+                                $slugPrefix = ($vendor && $vendor->slug) ? strtoupper(substr($vendor->slug, 0, 10)) : 'VND' . $vendorId;
                                 $warehouseCache[$vendorId] = Warehouse::firstOrCreate(
                                     ['vendor_id' => $vendorId],
                                     [
-                                        'name' => 'انبار اصلی ' . ($vendor->store_name ?: $vendor->user->name),
-                                        'code' => 'WH-' . strtoupper(substr($vendor->slug, 0, 10)),
+                                        'name' => 'انبار اصلی ' . $storeName,
+                                        'code' => 'WH-' . $slugPrefix,
                                         'is_active' => true,
                                     ]
                                 );
@@ -357,16 +385,26 @@ class MarketSettings extends Component
             $adminUser = User::role(['super-admin', 'admin'])->first();
 
             if ($adminUser) {
-                $vendorExists = Vendor::where('user_id', $adminUser->id)->exists();
+                $vendor = Vendor::where('user_id', $adminUser->id)->first();
 
-                if (!$vendorExists) {
-                    Vendor::create([
+                if (!$vendor) {
+                    $vendor = Vendor::create([
                         'user_id' => $adminUser->id,
                         'store_name' => 'فروشگاه اصلی',
                         'slug' => 'main-store',
                         'status' => 'active',
                         'kyc_status' => 'approved',
                     ]);
+                }
+
+                if ($this->wms_enabled && $vendor) {
+                    Warehouse::firstOrCreate(
+                        ['vendor_id' => $vendor->id],
+                        [
+                            'name' => 'انبار اصلی ' . $vendor->store_name,
+                            'is_active' => true,
+                        ]
+                    );
                 }
             }
         }

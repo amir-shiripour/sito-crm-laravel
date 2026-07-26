@@ -53,6 +53,22 @@ class UserPaymentSettingsController extends Controller
                 ->get();
         }
 
+        if (isset($settings['bank_transfer_accounts']) && is_array($settings['bank_transfer_accounts'])) {
+            $banksMap = $banks->pluck('name', 'id')->all();
+            foreach ($settings['bank_transfer_accounts'] as &$acc) {
+                if (is_array($acc)) {
+                    if (!empty($acc['bank_id']) && isset($banksMap[$acc['bank_id']])) {
+                        $acc['bank_name'] = $banksMap[$acc['bank_id']];
+                    }
+                    if (empty($acc['bank_name']) && !empty($acc['name'])) {
+                        $acc['bank_name'] = $acc['name'];
+                    }
+                    $acc['name'] = $acc['bank_name'] ?? ($acc['name'] ?? '');
+                }
+            }
+            unset($acc);
+        }
+
         $availableServices = [];
         if (Schema::hasTable('booking_services') && Schema::hasColumn('booking_services', 'custom_prices')) {
             $servicesWithPrices = DB::table('booking_services')
@@ -149,12 +165,36 @@ class UserPaymentSettingsController extends Controller
                     $value = 'none';
                 }
             }
-            if ($key === 'installment_rounding_factor') {
-                $value = max(0, (int)$value);
+            if (in_array($key, ['pos_devices', 'bank_transfer_accounts']) && is_array($value)) {
+                $value = array_values($value);
+
+                if ($key === 'bank_transfer_accounts') {
+                    $isAccountingActive = NModule::has('Accounting') && NModule::isEnabled('Accounting');
+                    $banksMap = [];
+                    if ($isAccountingActive && Schema::hasTable('accounting_fund_accounts')) {
+                        $banksMap = DB::table('accounting_fund_accounts')
+                            ->where('type', 'bank')
+                            ->pluck('name', 'id')
+                            ->all();
+                    }
+                    foreach ($value as &$accItem) {
+                        if (is_array($accItem)) {
+                            if (!empty($accItem['bank_id']) && isset($banksMap[$accItem['bank_id']])) {
+                                $accItem['bank_name'] = $banksMap[$accItem['bank_id']];
+                            }
+                            if (!empty($accItem['bank_name'])) {
+                                $accItem['name'] = $accItem['bank_name'];
+                            } elseif (!empty($accItem['name'])) {
+                                $accItem['bank_name'] = $accItem['name'];
+                            }
+                        }
+                    }
+                    unset($accItem);
+                }
             }
 
             if (is_array($value)) {
-                $value = json_encode($value, JSON_UNESCAPED_UNICODE);
+                $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             }
             
             Setting::updateOrCreate(

@@ -162,16 +162,20 @@
     </template>
 </div>
 
+@php
+    $themeManager = app(\App\Services\ThemeManager::class);
+@endphp
+
 {{-- Header --}}
-@includeFirst(["themes.{$appTheme}.header", 'themes.default.header'], ['appName' => $appName, 'appLogo' => $appLogo])
+@includeFirst($themeManager->resolveViewChain('header'), ['appName' => $appName, 'appLogo' => $appLogo])
 
 {{-- Main Content --}}
-<main class="flex-grow flex flex-col relative z-10 w-full pb-16 md:pb-0" style="padding-top: 5rem">
+<main class="flex-grow flex flex-col relative z-10 w-full pb-16 md:pb-0">
     @yield('content')
 </main>
 
 {{-- Footer --}}
-@includeFirst(["themes.{$appTheme}.footer", 'themes.default.footer'], ['appName' => $appName, 'footerText' => $footerText])
+@includeFirst($themeManager->resolveViewChain('footer'), ['appName' => $appName, 'footerText' => $footerText])
 
 {{-- Global Livewire Components --}}
 @if($isMarketActive)
@@ -216,7 +220,7 @@
 
 {{-- استایل‌های Media Query در فایل Blade مستقیما روی تگ main اعمال شدند تا نیازی به style تگ در پایین نباشد --}}
 <style>
-    @media (min-width: 768px) { main { padding-top: 8rem !important; } }
+    /*@media (min-width: 768px) { main { padding-top: 8rem !important; } }*/
 </style>
 </body>
 

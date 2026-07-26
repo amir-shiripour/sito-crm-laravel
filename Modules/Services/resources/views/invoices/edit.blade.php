@@ -352,17 +352,17 @@
                 </div>
                 <div class="w-full transition-all duration-300"
                      :class="items.some(i => i._showServiceDropdown) ? 'overflow-visible' : 'overflow-x-auto'">
-                    <table class="w-full text-sm text-start border-collapse min-w-300">
+                    <table class="w-full text-sm text-start border-collapse min-w-[1100px]">
                         <thead
                             class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
                         <tr>
                             <th class="px-4 py-3 w-[20%] min-w-[200px] font-bold">سرویس</th>
-                            <th class="px-4 py-3 w-[25%] min-w-[220px] font-bold">شرح</th>
-                            <th class="px-4 py-3 w-[16%] min-w-[160px] font-bold text-center">تعداد / واحد</th>
-                            <th class="px-4 py-3 w-[15%] min-w-[180px] font-bold text-center">مبلغ واحد</th>
-                            <th class="px-4 py-3 w-[12%] min-w-[140px] font-bold text-center">تخفیف</th>
-                            <th class="px-4 py-3 w-[11%] min-w-[130px] font-bold text-center" x-show="taxMode === 'item'">مالیات ردیف</th>
-                            <th class="px-4 py-3 w-[11%] min-w-[140px] font-bold text-center">جمع کل</th>
+                            <th class="px-4 py-3 w-[18%] min-w-[180px] font-bold">شرح</th>
+                            <th class="px-4 py-3 w-[11%] min-w-[120px] font-bold text-center">تعداد / واحد</th>
+                            <th class="px-4 py-3 w-[18%] min-w-[170px] font-bold text-center">مبلغ واحد</th>
+                            <th class="px-4 py-3 w-[13%] min-w-[150px] font-bold text-center">تخفیف</th>
+                            <th class="px-4 py-3 w-[10%] min-w-[110px] font-bold text-center" x-show="taxMode === 'item'">مالیات ردیف</th>
+                            <th class="px-4 py-3 w-[10%] min-w-[130px] font-bold text-center">جمع کل</th>
                             <th class="px-4 py-3 w-12 text-center"></th>
                         </tr>
                         </thead>
@@ -378,7 +378,6 @@
                                     <template x-if="item.mode === 'manual'">
                                         <input type="text" :name="'items[' + index + '][custom_service_name]'"
                                                x-model="item.custom_service_name"
-                                               @input="item.description = item.custom_service_name"
                                                class="{{ $inputClass }} py-2.5 text-xs w-full"
                                                placeholder="نام سرویس را تایپ کنید...">
                                     </template>
@@ -464,7 +463,7 @@
                                         <div class="flex items-stretch shrink-0 transition-all duration-300"
                                              :class="[
                                                  item.mode === 'manual' && item._unitUnlocked ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'bg-slate-50 dark:bg-slate-800/80',
-                                                 item.mode === 'manual' ? 'w-28' : 'w-16'
+                                                 item.mode === 'manual' ? 'w-20' : 'w-16'
                                              ]">
                                             <input type="text"
                                                    x-model="item.unit"
@@ -517,7 +516,7 @@
                                     <div
                                         x-show="item.mode === 'service' && item.service_raw && !item.service_raw.has_unit_pricing && getPeriodPrice(item) > 0"
                                         class="text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 text-center bg-gray-100 dark:bg-gray-800/50 p-1 rounded-md">
-                                        (پایه: <span x-text="formatMoney(item.service_raw.base_price || 0)"></span> +
+                                        (پایه: <span x-text="formatMoney(item.service_raw?.base_price || 0)"></span> +
                                         اشتراک: <span x-text="formatMoney(getPeriodPrice(item) || 0)"></span>)
                                     </div>
                                 </td>
@@ -1211,6 +1210,14 @@
                         }
                         this.forceSyncDateInputs();
 
+                        this.$watch('issueDate', () => {
+                            this.items.forEach((item, index) => {
+                                if (item.mode === 'service' && item.service_raw && item.service_raw.billing_type === 'recurring' && item.billing_period) {
+                                    this.updatePriceForPeriod(index);
+                                }
+                            });
+                        });
+
                         this.$nextTick(() => {
                             if (typeof jalaliDatepicker !== 'undefined') {
                                 jalaliDatepicker.startWatch();
@@ -1255,7 +1262,7 @@
                             service_raw: null,
                             custom_service_name: this.items[index].custom_service_name,
                             _showServiceDropdown: true,
-                            description: this.items[index].custom_service_name,
+                            description: '',
                             unit_price: 0,
                             _priceUnlocked: false,
                             service_custom_fields: [],
@@ -1301,7 +1308,7 @@
                             unit: serviceUnit,
                             billing_period: (service.billing_type === 'recurring' && !service.has_unit_pricing) ? '' : null,
                             _priceUnlocked: false,
-                            description: service.name,
+                            description: '',
                             service_custom_fields: fields,
                             custom_field_values: customValues,
                             _showCustomFields: fields.length > 0,
@@ -1334,6 +1341,20 @@
                             }
                         }
                         item.unit_price = price;
+                        
+                        if (service.billing_type === 'recurring' && item.billing_period) {
+                            let addAmount = 0;
+                            let addType = '';
+                            if (item.billing_period === 'monthly') { addAmount = 1; addType = 'month'; }
+                            else if (item.billing_period === 'quarterly') { addAmount = 3; addType = 'month'; }
+                            else if (item.billing_period === 'semi_annual') { addAmount = 6; addType = 'month'; }
+                            else if (item.billing_period === 'annual') { addAmount = 1; addType = 'year'; }
+                            
+                            if (addType && this.issueDate) {
+                                let renewalDate = this.addJalali(this.issueDate, addAmount, addType);
+                                item.description = this.issueDate + ' تا ' + renewalDate;
+                            }
+                        }
                     },
                     toggleMultiselect(item, fieldId, opt, checked) {
                         if (!Array.isArray(item.custom_field_values[fieldId])) item.custom_field_values[fieldId] = [];

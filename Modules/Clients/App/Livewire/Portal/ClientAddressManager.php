@@ -37,51 +37,12 @@ class ClientAddressManager extends Component
             return;
         }
 
-        $results = [];
-
         if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
             $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
-            if (!empty($mapService->getApiKey())) {
-                $results = $mapService->search($query, $this->lat, $this->lng);
-            }
+            $this->searchResults = $mapService->search($query, $this->lat, $this->lng);
+        } else {
+            $this->searchResults = [];
         }
-
-        if (empty($results)) {
-            $results = $this->fallbackSearch($query);
-        }
-
-        $this->searchResults = $results;
-    }
-
-    protected function fallbackSearch($query)
-    {
-        try {
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'User-Agent' => 'Laravel-CRM-Map-App'
-            ])->timeout(5)->get("https://nominatim.openstreetmap.org/search", [
-                'q' => $query,
-                'format' => 'json',
-                'accept-language' => 'fa,en',
-                'limit' => 10
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                $results = [];
-                foreach ($data as $item) {
-                    $results[] = [
-                        'title' => $item['name'] ?? $item['display_name'] ?? '',
-                        'address' => $this->sanitizeAddress($item['display_name'] ?? '', '', ''),
-                        'lat' => (float)($item['lat'] ?? 0),
-                        'lng' => (float)($item['lon'] ?? 0),
-                    ];
-                }
-                return $results;
-            }
-        } catch (\Exception $e) {
-            // Silently fail
-        }
-        return [];
     }
 
     public function selectSearchResult($lat, $lng, $title = '')
@@ -184,21 +145,12 @@ class ClientAddressManager extends Component
         }
 
         if (!empty($geoData['address'])) {
-            $rawProvince = $geoData['province'] ?? $this->province;
-            $rawCity = $geoData['city'] ?? $this->city;
-
-            // Normalize Province
-            $rawProvince = trim(str_replace(['استان ', ' استان', ' Province'], '', $rawProvince));
-
-            // Normalize City
-            $rawCity = trim(str_replace(['شهر ', ' شهر', ' City', 'شهرستان ', ' بخش '], '', $rawCity));
-
-            $this->province = $rawProvince;
-            $this->city = $rawCity;
-
+            $this->province = $geoData['province'] ?? $this->province;
+            $this->city = $geoData['city'] ?? $this->city;
+            
             // Sanitize address to make it Snapp-like
-            $this->address = $this->sanitizeAddress($geoData['address'], $rawProvince, $rawCity);
-
+            $this->address = $this->sanitizeAddress($geoData['address'], $this->province, $this->city);
+            
             if (isset($geoData['data']['postal_code']) && !empty($geoData['data']['postal_code'])) {
                 $this->postal_code = $geoData['data']['postal_code'];
             } elseif (isset($geoData['postal_code']) && !empty($geoData['postal_code'])) {
@@ -209,48 +161,43 @@ class ClientAddressManager extends Component
 
     protected function sanitizeAddress($address, $province, $city)
     {
-        if (empty($address)) return '';
+        if (empty($address)) {
+            return '';
+        }
 
         // Remove country
-        $address = preg_replace('/\b(ایران|iran)\b/iu', '', $address);
+        $address = preg_replace('/^(ایران|iran)\s*[،,]\s*/iu', '', $address);
 
-        // Remove province
+        // Remove province variations from the beginning
         if (!empty($province)) {
             $provinceClean = str_replace(['استان ', ' Province'], '', $province);
-            $address = preg_replace('/\b(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')\b/iu', '', $address);
+            $address = preg_replace('/^(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')\s*[،,]\s*/iu', '', $address);
         }
-        $address = preg_replace('/استان\s+[\p{L}\s]+/u', '', $address);
 
-        // Remove county / district / municipality administrative noise
-        $address = preg_replace('/شهرستان\s+[\p{L}\s]+/u', '', $address);
-        $address = preg_replace('/بخش\s+مرکزی\s+[\p{L}\s]+/u', '', $address);
-        $address = preg_replace('/بخش\s+[\p{L}\s]+/u', '', $address);
-        $address = preg_replace('/شهرداری\s+منطقه\s+[\d\p{L}\s]+(ناحیه\s+[\d\p{L}\s]+)?/u', '', $address);
-        $address = preg_replace('/منطقه\s+\d+(\s+شهر\s+[\p{L}\s]+)?/u', '', $address);
-
-        // Remove city name if it appears in address
+        // Remove city variations from the beginning
         if (!empty($city)) {
             $cityClean = str_replace(['شهر ', ' City'], '', $city);
-            $address = preg_replace('/\b(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')\b/iu', '', $address);
+            $address = preg_replace('/^(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')\s*[،,]\s*/iu', '', $address);
         }
 
-        // Remove postal code
+        // Remove postal code from address string if present
         $address = preg_replace('/\b\d{5}-?\d{5}\b/u', '', $address);
 
-        // Clean up duplicate commas, spaces and trailing separators
-        $address = preg_replace('/[،,]\s*[،,]+/u', '، ', $address);
-        $address = preg_replace('/^\s*[،,]\s*|\s*[،,]\s*$/u', '', $address);
-
-        // Split by comma, trim each part, remove empty/duplicates, and join back
-        $rawParts = array_map('trim', explode('،', str_replace(',', '،', $address)));
-        $filteredParts = [];
-        foreach ($rawParts as $part) {
-            if (!empty($part) && !in_array($part, $filteredParts)) {
-                $filteredParts[] = $part;
-            }
+        // Multibyte-safe trim for spaces and commas
+        $address = preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
+        
+        // Remove trailing country/province/city if they are appended at the end (for OSM display name)
+        if (!empty($province)) {
+            $provinceClean = str_replace(['استان ', ' Province'], '', $province);
+            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($province, '/') . '|' . preg_quote($provinceClean, '/') . '|استان\s+' . preg_quote($provinceClean, '/') . ')$/iu', '', $address);
         }
+        if (!empty($city)) {
+            $cityClean = str_replace(['شهر ', ' City'], '', $city);
+            $address = preg_replace('/\s*[،,]\s*(' . preg_quote($city, '/') . '|' . preg_quote($cityClean, '/') . '|شهر\s+' . preg_quote($cityClean, '/') . ')$/iu', '', $address);
+        }
+        $address = preg_replace('/\s*[،,]\s*(ایران|iran)$/iu', '', $address);
 
-        return implode('، ', $filteredParts);
+        return preg_replace('/^[،,\s]+|[،,\s]+$/u', '', $address);
     }
 
     protected function fallbackGeocode($lat, $lng)
@@ -268,42 +215,38 @@ class ClientAddressManager extends Component
             if ($response->successful()) {
                 $data = $response->json();
                 $addressData = $data['address'] ?? [];
-
+                
                 $province = $addressData['state'] ?? '';
-                $province = trim(str_replace(['استان ', ' Province'], '', $province));
+                $province = str_replace(['استان ', ' Province'], '', $province);
 
                 $city = $addressData['city'] ?? $addressData['town'] ?? $addressData['suburb'] ?? $addressData['village'] ?? '';
-                $city = trim(str_replace(['شهر ', ' City', 'شهرستان '], '', $city));
 
+                // Build a clean Snapp-like address from OSM structured components
                 $addressParts = [];
-                if (!empty($addressData['suburb']) && $addressData['suburb'] !== $city) {
-                    $addressParts[] = $addressData['suburb'];
+                if (!empty($addressData['road'])) {
+                    $addressParts[] = $addressData['road'];
                 }
                 if (!empty($addressData['neighbourhood'])) {
                     $addressParts[] = $addressData['neighbourhood'];
                 }
-                if (!empty($addressData['quarter'])) {
-                    $addressParts[] = $addressData['quarter'];
+                if (!empty($addressData['suburb']) && $addressData['suburb'] !== $city) {
+                    $addressParts[] = $addressData['suburb'];
                 }
-                if (!empty($addressData['road'])) {
-                    $addressParts[] = $addressData['road'];
-                }
-                if (!empty($addressData['amenity'])) {
-                    $addressParts[] = $addressData['amenity'];
-                }
-                if (!empty($addressData['house_number'])) {
-                    $addressParts[] = 'پلاک ' . $addressData['house_number'];
+                if (!empty($addressData['borough'])) {
+                    $addressParts[] = $addressData['borough'];
                 }
 
-                if (!empty($addressParts)) {
-                    $formattedAddress = implode('، ', array_unique($addressParts));
+                // Fallback to cleaned display_name if parts are too empty
+                if (count($addressParts) < 2) {
+                    $formattedAddress = $data['display_name'] ?? '';
                 } else {
-                    $formattedAddress = $this->sanitizeAddress($data['display_name'] ?? '', $province, $city);
+                    $formattedAddress = implode('، ', $addressParts);
                 }
 
+                // Extract postcode if available
                 $postcode = $addressData['postcode'] ?? '';
                 if (!empty($postcode)) {
-                    $postcode = preg_replace('/\D/', '', $postcode);
+                    $postcode = str_replace('-', '', $postcode);
                 }
 
                 return [

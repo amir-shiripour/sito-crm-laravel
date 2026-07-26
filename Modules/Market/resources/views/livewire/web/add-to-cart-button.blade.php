@@ -1,4 +1,4 @@
-<div class="flex items-center justify-end">
+<div class="flex items-center {{ $t['justify'] ?? 'justify-end' }}">
     @if ($hasCartLimit)
         <a href="{{ route('market.public.product.show', $productSlug) }}" class="inline-flex items-center justify-center px-4 h-11 text-xs font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400 rounded-2xl border border-amber-200 dark:border-amber-900/60 hover:bg-amber-100 transition-colors whitespace-nowrap">
             شرایط خرید

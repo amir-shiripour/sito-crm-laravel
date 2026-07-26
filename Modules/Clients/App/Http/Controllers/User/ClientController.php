@@ -3,27 +3,29 @@
 namespace Modules\Clients\App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Module;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Modules\Clients\Entities\Client;
+use Modules\Clients\Entities\ClientForm;
+use Modules\Clients\Entities\ClientSetting;
 use Modules\Clients\Entities\ClientStatus;
 use Modules\Clients\App\Http\Requests\StoreClientRequest;
 use Modules\Clients\App\Http\Requests\UpdateClientRequest;
+use Modules\Services\App\Http\Models\Invoice;
+use Modules\Services\App\Http\Models\Order;
 
 class ClientController extends Controller
 {
     public function __construct()
     {
-        // دسترسی‌ها بر اساس پرمیژن
         $this->middleware('permission:clients.view')->only(['index', 'show']);
         $this->middleware('permission:clients.create')->only(['create', 'store']);
         $this->middleware('permission:clients.edit')->only(['edit', 'update']);
         $this->middleware('permission:clients.delete')->only(['destroy', 'restore', 'forceDelete']);
     }
 
-    /**
-     * لیست کلاینت‌ها، فیلتر شده بر اساس قوانین visibility
-     */
+
     public function index(Request $request)
     {
         session(['clients_index_url' => $request->fullUrl()]);
@@ -38,7 +40,6 @@ class ClientController extends Controller
             $query->onlyTrashed();
         }
 
-        // فیلتر بر اساس جستجوی متنی
         if ($request->filled('search')) {
             $searchTerm = $request->input('search');
             $query->where(function ($q) use ($searchTerm) {
@@ -51,17 +52,14 @@ class ClientController extends Controller
             });
         }
 
-        // فیلتر بر اساس ایجاد کننده
         if ($request->filled('created_by')) {
             $query->where('created_by', $request->input('created_by'));
         }
 
-        // فیلتر بر اساس وضعیت
         if ($request->filled('status_id')) {
             $query->where('status_id', $request->input('status_id'));
         }
 
-        // فیلتر بر اساس ترتیب نمایش (جدیدترین، قدیمی‌ترین و...)
         $sort = $request->input('sort', 'newest');
         switch ($sort) {
             case 'oldest':
@@ -82,7 +80,6 @@ class ClientController extends Controller
         $clients = $query->paginate(12)
             ->appends($request->query());
 
-        // لیست کاربران و وضعیت‌ها برای دراپ‌داون‌های فیلتر
         $users = User::all();
         $statuses = ClientStatus::all();
 
@@ -94,17 +91,14 @@ class ClientController extends Controller
         return view('clients::user.clients.create');
     }
 
-    /**
-     * این متد عملاً فعلاً استفاده نمی‌شود (ما از Livewire فرم پویا داریم)
-     * ولی برای سازگاری نگهش می‌داریم.
-     */
+
     public function store(StoreClientRequest $request)
     {
         $data = $request->validate([
             'full_name' => 'required|string|max:255',
-            'email'     => 'nullable|email|unique:clients,email',
-            'phone'     => 'nullable|string',
-            'notes'     => 'nullable|string',
+            'email' => 'nullable|email|unique:clients,email',
+            'phone' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $data['created_by'] = auth()->id();
@@ -116,14 +110,12 @@ class ClientController extends Controller
             ->with('success', 'Client created.');
     }
 
-    /**
-     * هلپر داخلی برای چک کردن این‌که آیا یوزر اجازه دیدن این کلاینت را دارد یا نه
-     */
+
     protected function ensureVisible(Client $client): void
     {
         $user = auth()->user();
 
-        if (! $client->isVisibleFor($user)) {
+        if (!$client->isVisibleFor($user)) {
             abort(403, 'شما به این پرونده دسترسی ندارید.');
         }
     }
@@ -134,25 +126,72 @@ class ClientController extends Controller
 
         $relations = ['creator', 'status'];
 
-        $clientCallsModule = \App\Models\Module::where('slug', 'clientcalls')->first();
+        $clientCallsModule = Module::where('slug', 'clientcalls')->first();
         if ($clientCallsModule && $clientCallsModule->installed && $clientCallsModule->active && \Schema::hasTable('client_calls')) {
             $relations[] = 'calls.user';
         }
 
-        $followUpsModule = \App\Models\Module::where('slug', 'followups')->first();
+        $followUpsModule = Module::where('slug', 'followups')->first();
         if ($followUpsModule && $followUpsModule->installed && $followUpsModule->active && \Schema::hasTable('tasks')) {
             $relations[] = 'followUps.assignee';
         }
 
         $client->load($relations);
+        $keyFromSettings = ClientSetting::getValue('default_form_key');
+        $activeForm = ClientForm::active($keyFromSettings);
 
-        // دریافت فرم فعال برای نمایش لیبل فیلدها
-        $keyFromSettings = \Modules\Clients\Entities\ClientSetting::getValue('default_form_key');
-        $activeForm = \Modules\Clients\Entities\ClientForm::active($keyFromSettings);
+        $clientOrders = collect([]);
+        $clientInvoices = collect([]);
 
-        return view('clients::user.clients.show', compact('client', 'activeForm'));
+        if (class_exists(Order::class)) {
+            try {
+                $clientOrders = Order::with(['customer', 'status', 'service', 'invoice.payments'])
+                    ->where('customer_id', $client->id)
+                    ->orderByDesc('invoice_id')
+                    ->orderBy('id', 'asc')
+                    ->limit(50)
+                    ->get();
+            } catch (\Exception $e) {
+                $clientOrders = collect([]);
+            }
+        }
+
+        if (class_exists(Invoice::class)) {
+            try {
+                $clientInvoices = Invoice::with(['customer', 'status', 'service', 'payments'])
+                    ->where('customer_id', $client->id)
+                    ->whereNotNull('invoice_number')
+                    ->latest()
+                    ->limit(50)
+                    ->get();
+            } catch (\Exception $e) {
+                $clientInvoices = collect([]);
+            }
+        }
+
+        // ── Booking & Workflows check ───────────────────────────────────
+        $bookingModule = Module::where('slug', 'booking')->first();
+        $workflowsModule = Module::where('slug', 'workflows')->first();
+        
+        $isBookingActive = $bookingModule && $bookingModule->installed && $bookingModule->active;
+        $isWorkflowsActive = $workflowsModule && $workflowsModule->installed && $workflowsModule->active;
+
+        $availableWorkflows = collect([]);
+        if ($isBookingActive && $isWorkflowsActive && class_exists(\Modules\Workflows\Entities\Workflow::class) && \Schema::hasTable('workflows')) {
+            try {
+                $availableWorkflows = \Modules\Workflows\Entities\Workflow::where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+            } catch (\Exception $e) {
+                $availableWorkflows = collect([]);
+            }
+        }
+
+        return view('clients::user.clients.show', compact(
+            'client', 'activeForm', 'clientOrders', 'clientInvoices',
+            'bookingModule', 'workflowsModule', 'availableWorkflows'
+        ));
     }
-
 
     public function edit(Client $client)
     {
@@ -167,9 +206,9 @@ class ClientController extends Controller
 
         $data = $request->validate([
             'full_name' => 'required|string|max:255',
-            'email'     => "nullable|email|unique:clients,email,{$client->id}",
-            'phone'     => 'nullable|string',
-            'notes'     => 'nullable|string',
+            'email' => "nullable|email|unique:clients,email,{$client->id}",
+            'phone' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $client->update($data);
@@ -249,62 +288,46 @@ class ClientController extends Controller
         return redirect()->to(session('clients_index_url', route('user.clients.index')));
     }
 
-    /**
-     * ایجاد سریع کلاینت (برای ویجت / پاپ‌آپ quick create)
-     *
-     * اگر درخواست به‌صورت AJAX/JSON باشد، پاسخ JSON برمی‌گرداند،
-     * در غیر این صورت مانند store رفتار می‌کند و redirect می‌دهد.
-     */
     public function quickStore(Request $request)
     {
         $data = $request->validate([
             'full_name' => 'required|string|max:255',
-            'email'     => 'nullable|email|unique:clients,email',
-            'phone'     => 'nullable|string',
-            'notes'     => 'nullable|string',
+            'email' => 'nullable|email|unique:clients,email',
+            'phone' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $data['created_by'] = auth()->id();
 
         $client = Client::create($data);
-
-        // اگر ویجت/فرانت انتظار JSON دارد (مثلاً با fetch/axios ارسال شده)
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'message' => 'مشتری با موفقیت ایجاد شد.',
-                'client'  => $client->only(['id', 'full_name', 'email', 'phone']),
+                'client' => $client->only(['id', 'full_name', 'email', 'phone']),
             ], 201);
         }
 
-        // fallback برای ارسال معمولی فرم
         return redirect()
             ->to(session('clients_index_url', route('user.clients.index')))
             ->with('success', 'Client created.');
     }
 
-    /**
-     * جستجوی clients برای استفاده در فیلدهای select
-     * جستجو بر اساس: نام و نام خانوادگی، کد ملی، شماره تماس، شماره پرونده
-     * یا بارگذاری بر اساس IDs
-     */
     public function search(Request $request)
     {
         $query = $request->get('q', '');
         $ids = $request->get('ids', '');
-        $limit = min((int) $request->get('limit', 20), 50); // حداکثر 50 نتیجه
+        $limit = min((int)$request->get('limit', 20), 50); // حداکثر 50 نتیجه
 
         $user = auth()->user();
 
         $clientsQuery = Client::query()->visibleForUser($user);
 
-        // اگر IDs ارسال شده، بر اساس آنها جستجو کن
         if ($ids) {
             $idsArray = array_filter(array_map('intval', explode(',', $ids)));
             if (!empty($idsArray)) {
                 $clientsQuery->whereIn('id', $idsArray);
             }
         } elseif ($query) {
-            // جستجو بر اساس متن
             $clientsQuery->where(function ($subQuery) use ($query) {
                 $subQuery->where('full_name', 'like', "%{$query}%")
                     ->orWhere('national_code', 'like', "%{$query}%")
@@ -312,7 +335,6 @@ class ClientController extends Controller
                     ->orWhere('case_number', 'like', "%{$query}%");
             });
         } else {
-            // اگر هیچکدام نبود، لیست خالی برگردان
             return response()->json([
                 'results' => [],
                 'total' => 0,
@@ -325,7 +347,6 @@ class ClientController extends Controller
             ->limit($limit)
             ->get()
             ->map(function ($client) {
-                // ساخت لیبل نمایشی
                 $labelParts = [$client->full_name];
                 if ($client->national_code) {
                     $labelParts[] = "کد ملی: {$client->national_code}";
@@ -339,7 +360,7 @@ class ClientController extends Controller
 
                 return [
                     'id' => $client->id,
-                    'value' => (string) $client->id,
+                    'value' => (string)$client->id,
                     'label' => implode(' | ', $labelParts),
                     'full_name' => $client->full_name,
                     'national_code' => $client->national_code,
