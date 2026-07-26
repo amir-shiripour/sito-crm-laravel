@@ -189,8 +189,18 @@
                             // مبلغ پایه - همیشه از سرویس گرفته می‌شود
                             $basePrice = $order->service->base_price ?? 0;
 
-                            // مبلغ نهایی سرویس (فاکتور) - همیشه ثابت
-                            $finalServicePrice = $invoice ? ($invoice->total ?? 0) : ($order->total_amount ?? 0);
+                            $invoiceItem = null;
+                            if ($invoice) {
+                                if ($order->service_id) {
+                                    $invoiceItem = $invoice->items->where('service_id', $order->service_id)->first();
+                                } else {
+                                    $invoiceItem = $invoice->items->where('custom_service_name', $order->notes)->first()
+                                        ?? $invoice->items->where('description', $order->notes)->first();
+                                }
+                            }
+
+                            // مبلغ نهایی سرویس (فاکتور)
+                            $finalServicePrice = $invoiceItem ? ($invoiceItem->total ?? 0) : ($order->total_amount ?? 0);
 
                             // مبلغ تمدید - خودکار/دستی
                             $isRenewalManual = ($order->renewal_price_type ?? 'auto') === 'manual';

@@ -35,16 +35,14 @@ class VendorObserver
         // این منطق فقط در صورتی اجرا می‌شود که WMS فعال باشد و فروشنده هم فعال باشد
         if (MarketSetting::getValue('wms.enabled', false) && $vendor->status === 'active') {
             // بررسی می‌کنیم که آیا این فروشنده از قبل انباری دارد یا خیر
-            $existingWarehouse = Warehouse::where('vendor_id', $vendor->id)->first();
-
-            if (!$existingWarehouse) {
-                // اگر انباری نداشت، یک انبار پیش‌فرض برایش ایجاد می‌کنیم
-                Warehouse::create([
-                    'vendor_id' => $vendor->id,
-                    'name' => 'انبار اصلی ' . $vendor->store_name,
+            $storeName = $vendor->store_name ?: ($vendor->user->name ?? 'فروشنده ' . $vendor->id);
+            Warehouse::firstOrCreate(
+                ['vendor_id' => $vendor->id],
+                [
+                    'name' => 'انبار اصلی ' . $storeName,
                     'is_active' => true,
-                ]);
-            }
+                ]
+            );
         }
     }
 }

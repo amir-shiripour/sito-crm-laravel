@@ -73,7 +73,7 @@ class ContractRuleController extends Controller
             $accounts = json_decode(get_setting('bank_transfer_accounts', '[]'), true) ?: [];
             if (!empty($accounts)) {
                 foreach ($accounts as $acc) {
-                    $bankName = $acc['bank_name'] ?? '';
+                    $bankName = $acc['bank_name'] ?? $acc['name'] ?? '';
                     $accNum = $acc['account_number'] ?? '';
                     if ($bankName) {
                         $paymentOptions[] = 'کارت به کارت - ' . $bankName . ($accNum ? " ($accNum)" : "");
@@ -189,7 +189,7 @@ class ContractRuleController extends Controller
             $accounts = json_decode(get_setting('bank_transfer_accounts', '[]'), true) ?: [];
             if (!empty($accounts)) {
                 foreach ($accounts as $acc) {
-                    $bankName = $acc['bank_name'] ?? '';
+                    $bankName = $acc['bank_name'] ?? $acc['name'] ?? '';
                     $accNum = $acc['account_number'] ?? '';
                     if ($bankName) {
                         $paymentOptions[] = 'کارت به کارت - ' . $bankName . ($accNum ? " ($accNum)" : "");

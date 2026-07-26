@@ -153,11 +153,14 @@ class PageController extends Controller
             }
         }
 
-        // --- اینجا رفتار قبلی برای 'landing' حفظ می‌شود ---
-        if (!view()->exists("themes.{$appThemeLower}.index")) {
-            $appThemeLower = 'default';
+        // بررسی و رندرینگ پویای قالب از طریق ThemeManager
+        $themeManager = app(\App\Services\ThemeManager::class);
+        if ($themeManager->isSpaTheme()) {
+            return $themeManager->handleSpaResponse();
         }
 
-        return view("themes.{$appThemeLower}.index", $data);
+        $viewPath = $themeManager->resolveView('index', "themes.{$appThemeLower}.index");
+
+        return view($viewPath, $data);
     }
 }

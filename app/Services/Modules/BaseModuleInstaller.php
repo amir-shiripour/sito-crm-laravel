@@ -63,6 +63,9 @@ class BaseModuleInstaller implements ModuleInstallerInterface
     public function install(): void
     {
         try {
+            // 0) پاکسازی مایگریشن‌های یتیم یا جداول ناقص که در نصب‌های قبلی مانده‌اند
+            $this->cleanOrphanedModuleMigrations();
+
             // 1) run module migrations first
             $this->runArtisan('module:migrate', [
                 'module' => $this->moduleName,
@@ -153,6 +156,9 @@ class BaseModuleInstaller implements ModuleInstallerInterface
                 Log::warning("module:migrate-rollback failed for {$this->moduleName}: " . $e->getMessage());
             }
 
+            // پاکسازی فیزیکی جداول باقی‌مانده و رکورد مایگریشن‌ها
+            $this->dropModuleTables();
+
             // allow module-specific uninstall to drop tables / remove assets
             $this->removeModuleFiles();
 
@@ -162,6 +168,71 @@ class BaseModuleInstaller implements ModuleInstallerInterface
         } catch (\Throwable $e) {
             Log::error("BaseModuleInstaller uninstall error for {$this->moduleName}: " . $e->getMessage());
             throw $e;
+        }
+    }
+
+    /**
+     * Clean up any remaining tables for this module safely
+     */
+    protected function dropModuleTables(): void
+    {
+        try {
+            $tables = property_exists($this, 'tables') ? $this->tables : [];
+            
+            Schema::disableForeignKeyConstraints();
+
+            // 1. پاکسازی جداولی که صراحتاً در کلاس Installer تعریف شده‌اند
+            foreach ($tables as $table) {
+                Schema::dropIfExists($table);
+            }
+
+            // 2. پاکسازی تمام جداولی که نامشان با slug ماژول (مثلاً market_) شروع می‌شود
+            $allTables = Schema::getTableListing();
+            $prefix = $this->moduleSlug . '_';
+            foreach ($allTables as $table) {
+                if (str_starts_with($table, $prefix)) {
+                    Schema::dropIfExists($table);
+                }
+            }
+
+            Schema::enableForeignKeyConstraints();
+
+            // 3. پاک کردن رکورد مایگریشن‌های مربوطه
+            if (Schema::hasTable('migrations')) {
+                DB::table('migrations')->where('migration', 'like', '%' . $this->moduleSlug . '%')->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::warning("dropModuleTables failed for {$this->moduleName}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Clean up orphaned tables or migration records if a previous installation failed mid-way
+     */
+    protected function cleanOrphanedModuleMigrations(): void
+    {
+        try {
+            if (!Schema::hasTable('migrations')) {
+                return;
+            }
+
+            // اگر جداول پایه ماژول وجود نداشته باشند اما مایگریشن‌ها در دیتابیس ثبت شده باشند (حالت یتیم)
+            $migratedCount = DB::table('migrations')->where('migration', 'like', '%' . $this->moduleSlug . '%')->count();
+            $tables = property_exists($this, 'tables') ? $this->tables : [];
+            $existingTablesCount = 0;
+            foreach ($tables as $t) {
+                if (Schema::hasTable($t)) {
+                    $existingTablesCount++;
+                }
+            }
+
+            // اگر تعداد جداول موجود کمتر از جداول ماژول باشد یا ناهمخوانی وجود داشته باشد، جداول ناقص و رکورد مایگریشن‌ها پاک می‌شوند تا از اول ساخته شوند
+            if ($migratedCount > 0 && $existingTablesCount < count($tables)) {
+                Log::info("BaseModuleInstaller: Found orphaned/incomplete migration state for {$this->moduleName}. Cleaning up...");
+                $this->dropModuleTables();
+            }
+        } catch (\Throwable $e) {
+            Log::warning("cleanOrphanedModuleMigrations failed for {$this->moduleName}: " . $e->getMessage());
         }
     }
 

@@ -16,6 +16,7 @@ final class ThemeResolver
             $post->theme_key,
             $post->category?->theme_key,
             $post->entity?->theme_key,
+            $post->entity?->module_source,
             ContentSetting::getValue('general.default_theme_key', 'content'),
             'content',
         ]);
@@ -34,6 +35,7 @@ final class ThemeResolver
     {
         $chain = array_filter([
             $entity->theme_key,
+            $entity->module_source,
             ContentSetting::getValue('general.default_theme_key', 'content'),
             'content',
         ]);

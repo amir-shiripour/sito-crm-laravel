@@ -71,8 +71,8 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
         // Admin Section
         Route::middleware([CheckMultiVendorMode::class])->group(function () {
             Route::get('vendors', [VendorController::class, 'index'])->name('vendors.index')->middleware('permission:market.vendors.view');
-            Route::get('vendors/{vendor}', [VendorController::class, 'show'])->name('vendors.show')->middleware('permission:market.vendors.view');
             Route::resource('vendors', VendorController::class)->except(['index', 'show'])->middleware('permission:market.vendors.manage');
+            Route::get('vendors/{vendor}', [VendorController::class, 'show'])->name('vendors.show')->middleware('permission:market.vendors.view');
             Route::view('vendor-products/review', 'market::admin.vendor-products.review')
                 ->name('vendor-products.review')
                 ->middleware(['permission:market.vendors.manage']);
@@ -117,8 +117,8 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
 
         // Orders Section
         Route::get('orders', [\Modules\Market\App\Http\Controllers\User\OrderController::class, 'index'])->name('orders.index')->middleware('permission:market.orders.view');
-        Route::get('orders/{order}', [\Modules\Market\App\Http\Controllers\User\OrderController::class, 'show'])->name('orders.show')->middleware('permission:market.orders.view');
         Route::resource('orders', \Modules\Market\App\Http\Controllers\User\OrderController::class)->except(['index', 'show'])->middleware('permission:market.orders.manage');
+        Route::get('orders/{order}', [\Modules\Market\App\Http\Controllers\User\OrderController::class, 'show'])->name('orders.show')->middleware('permission:market.orders.view');
 
         Route::view('brands', 'market::admin.brands.index')->name('brands.index')->middleware('permission:market.brands.manage');
         Route::view('categories', 'market::admin.categories.index')->name('categories.index')->middleware('permission:market.categories.manage');

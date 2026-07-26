@@ -217,4 +217,65 @@ final class EntityResolverService
 
         return null;
     }
+
+    /**
+     * Resolve all variants of a specific MasterProduct.
+     */
+    public function resolveProductVariants(int $masterProductId): array
+    {
+        if (!class_exists('Modules\Market\Entities\MasterProduct')) {
+            return [];
+        }
+
+        $currency = 'toman';
+        $currencyPosition = 'right_space';
+
+        if (class_exists('Modules\Market\Entities\MarketSetting')) {
+            $currency = \Modules\Market\Entities\MarketSetting::getValue('general.currency', 'toman');
+            $currencyPosition = \Modules\Market\Entities\MarketSetting::getValue('general.currency_position', 'right_space');
+        }
+
+        try {
+            $product = \Modules\Market\Entities\MasterProduct::with(['variants.vendorProducts' => function ($q) {
+                $q->where('status', 'published')->orderBy('price', 'asc');
+            }])->find($masterProductId);
+
+            if (!$product) {
+                return [];
+            }
+
+            $variants = [];
+            foreach ($product->variants as $variant) {
+                $bestVp = $variant->vendorProducts->where('stock', '>', 0)->first() ?? $variant->vendorProducts->first();
+                if (!$bestVp) continue;
+
+                $minPrice = $bestVp->discount_price > 0 ? $bestVp->discount_price : $bestVp->price;
+                $originalPrice = $bestVp->price;
+                $hasStock = $bestVp->stock > 0;
+                $discountPercent = 0;
+                if ($originalPrice > 0 && $minPrice > 0 && $originalPrice > $minPrice) {
+                    $discountPercent = (int) round((($originalPrice - $minPrice) / $originalPrice) * 100);
+                }
+
+                $variants[] = [
+                    'id' => $variant->id,
+                    'variant_id' => $variant->id,
+                    'vendor_product_id' => $bestVp->id,
+                    'name' => $variant->name ?: 'استاندارد',
+                    'price' => $minPrice,
+                    'original_price' => $originalPrice,
+                    'has_stock' => $hasStock,
+                    'discount_percent' => $discountPercent,
+                    'formatted_price' => $this->formatPrice((float)$minPrice, $currency, $currencyPosition),
+                    'formatted_original_price' => $this->formatPrice((float)$originalPrice, $currency, $currencyPosition),
+                    'attributes' => is_array($variant->variant_attributes) ? $variant->variant_attributes : [],
+                ];
+            }
+
+            return $variants;
+        } catch (\Throwable $e) {
+            Log::error('EntityResolverService: Failed to resolve product variants: ' . $e->getMessage());
+            return [];
+        }
+    }
 }

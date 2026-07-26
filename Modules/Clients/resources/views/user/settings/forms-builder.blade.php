@@ -1179,8 +1179,8 @@
                                     .map(el => el.getAttribute('data-group-name'))
                                     .filter(name => name !== null);
 
-                                // ارسال به Livewire
-                            @this.call('reorderGroups', groupNames);
+                                // ارسال به Livewire (تغییر اعمال شده در خط زیر)
+                                window.livewire.find('{{ $this->getId() }}').call('reorderGroups', groupNames);
                             }
                         }
                     });
@@ -1230,8 +1230,8 @@
                                 .map(el => el.getAttribute('data-field-id'))
                                 .filter(id => id !== '');
 
-                            // ارسال به Livewire
-                        @this.call('reorderFields', groupName, fieldIds);
+                            // ارسال به Livewire (تغییر اعمال شده در خط زیر)
+                            window.livewire.find('{{ $this->getId() }}').call('reorderFields', groupName, fieldIds);
                         }
                     });
 

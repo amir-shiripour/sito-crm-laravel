@@ -16,49 +16,51 @@ class ThemeServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // ثبت Singleton برای ThemeManager و ViewOverrideResolver
+        $this->app->singleton(\App\Services\ThemeManager::class);
+        $this->app->singleton(\App\Services\ViewOverrideResolver::class);
+
+        // تمدید (Extend) کردن view.finder لاراول با ThemeOverrideViewFinder
+        $this->app->extend('view.finder', function ($finder, $app) {
+            $paths = $app['config']['view.paths'];
+            $overrideFinder = new \App\View\ThemeOverrideViewFinder($app['files'], $paths);
+            $overrideFinder->setResolver($app->make(\App\Services\ViewOverrideResolver::class));
+
+            // کپی کردن تمامی هیِنت‌های ثبت شده توسط ماژول‌های nwidart (مانند smartbot::, market::)
+            if (method_exists($finder, 'getHints')) {
+                foreach ($finder->getHints() as $namespace => $hints) {
+                    $overrideFinder->addNamespace($namespace, $hints);
+                }
+            }
+
+            return $overrideFinder;
+        });
     }
 
     /**
      * Bootstrap services.
-     *
-     * این متد، منطق اصلی بارگذاری تم است.
      */
     public function boot(): void
     {
-        // ۱. بررسی می‌کنیم که آیا اصلاً برنامه نصب شده است یا نه.
-        // اگر نصب نشده باشد (مثلاً در حال اجرای نصب‌کننده هستیم) یا
-        // اگر در حال اجرای دستورات ترمینال (cli) هستیم، هیچ کاری نکن.
         if (!$this->isAppInstalled() || $this->app->runningInConsole()) {
             return;
         }
 
         try {
             if (Schema::hasTable('themes')) {
-                // ۲. تم فعال را از دیتابیس پیدا می‌کنیم (و برای سرعت بیشتر، آن را کش می‌کنیم)
                 $activeTheme = Cache::rememberForever('active_theme', function () {
                     return Theme::where('active', true)->first();
                 });
 
                 if ($activeTheme) {
-                    // ۳. مسیر ویوهای تم فعال را به لاراول اضافه می‌کنیم
-                    // مثال: resources/views/themes/corporate
                     $themeViewPath = resource_path('views/themes/' . $activeTheme->directory_name);
-
                     if (is_dir($themeViewPath)) {
-                        // به لاراول می‌گوییم که *اول* در این مسیر به دنبال ویو بگردد
                         View::addLocation($themeViewPath);
                     }
-
-                    // ۴. متغیر $activeTheme را با تمام ویوها به اشتراک می‌گذاریم
-                    // تا در فایل‌های blade بتوانیم به اطلاعات تم (مثل نام) دسترسی داشته باشیم
                     View::share('activeTheme', $activeTheme);
                 }
             }
         } catch (\Exception $e) {
-            // اگر در اتصال به دیتابیس (مثلاً جدول themes) خطایی رخ داد،
-            // برنامه نباید کرش کند، فقط از تم پیش‌فرض استفاده می‌کند.
-            // (این خطا در عمل نباید رخ دهد مگر اینکه دیتابیس پاک شده باشد)
             report($e);
         }
     }

@@ -1,0 +1,19 @@
+resources/
+└── views/
+    └── themes/
+        └── {theme_key}/          ← مثلاً: drfit
+            ├── header.blade.php   ← override هدر layout اصلی (موجود)
+            ├── footer.blade.php   ← override فوتر layout اصلی (موجود)
+            ├── index.blade.php    ← override صفحه اصلی (موجود)
+            └── overrides/         ← پوشه جدید برای override ماژول‌ها
+                ├── smartbot/
+                │   └── page/
+                │       └── chat.blade.php    ← override صفحه /chat
+                ├── market/
+                │   └── web/
+                │       ├── index.blade.php   ← override صفحه فروشگاه
+                │       └── product/
+                │           └── show.blade.php ← override صفحه محصول
+                └── booking/
+                    └── web/
+                        └── index.blade.php

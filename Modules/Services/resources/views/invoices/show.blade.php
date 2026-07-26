@@ -264,33 +264,231 @@
                             d="M6 18L18 6M6 6l12 12"/></svg></span>{{ session('error') }}</div>
         @endif
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        @if(!empty($buyerExtraFields))
+            {{-- اطلاعات مشتری --}}
+            <div class="{{ $cardClass }}">
+                <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
+                    <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                        <div class="p-2 bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                 stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        اطلاعات مشتری
+                    </h3>
+                </div>
+                <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 text-sm">
+                    @foreach($buyerExtraFields as $field)
+                        <div class="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-xl border border-gray-100 dark:border-gray-700"><span
+                                class="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-1.5">{{ $field['label'] }}</span><span
+                                class="text-gray-800 dark:text-gray-200 text-base font-medium break-all">{{ $faNum($field['value']) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
-            {{-- SIDEBAR --}}
-            <div class="lg:col-span-4 xl:col-span-3 space-y-8 order-2 lg:order-1">
-                <div class="{{ $cardClass }}">
-                    <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
-                        <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                            <div class="p-2 bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400 rounded-lg">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                     stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                </svg>
-                            </div>
-                            اطلاعات مشتری
-                        </h3>
+        {{-- اقلام و خدمات فاکتور --}}
+        <div class="{{ $cardClass }}">
+            <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 flex items-center justify-between">
+                <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                    <div class="p-2 bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
                     </div>
-                    <div class="p-6 grid grid-cols-1 gap-4 text-sm">
-                        @foreach($buyerExtraFields as $field)
-                            <div class="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-xl border border-gray-100 dark:border-gray-700"><span
-                                    class="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-1.5">{{ $field['label'] }}</span><span
-                                    class="text-gray-800 dark:text-gray-200 text-base font-medium break-all">{{ $faNum($field['value']) }}</span>
-                            </div>
-                        @endforeach
+                    اقلام و خدمات فاکتور
+                </h3>
+                <span class="text-sm font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-100 dark:border-violet-500/20">{{ $faNum($invoice->items->count()) }} ردیف</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-start border-collapse min-w-[1200px]">
+                    <thead class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
+                    <tr>
+                        <th class="px-4 py-3 w-[22%] min-w-[220px] font-bold text-start">سرویس</th>
+                        <th class="px-4 py-3 w-[25%] min-w-[250px] font-bold text-start">شرح</th>
+                        <th class="px-4 py-3 w-[12%] min-w-[140px] font-bold text-center">تعداد / واحد</th>
+                        <th class="px-4 py-3 w-[18%] min-w-[220px] font-bold text-center">مبلغ واحد</th>
+                        <th class="px-4 py-3 w-[13%] min-w-[150px] font-bold text-center">تخفیف</th>
+                        @if(($settings['services_tax_mode'] ?? 'invoice') === 'item')
+                            <th class="px-4 py-3 w-[12%] min-w-[140px] font-bold text-center">مالیات ردیف</th>
+                        @endif
+                        <th class="px-4 py-3 w-[10%] min-w-[150px] font-bold text-center">جمع کل</th>
+                    </tr>
+                    </thead>
+                    @foreach($invoice->items as $item)
+                        @php
+                            $customFieldsCollection = $item->service ? $item->service->customFields : collect([]);
+                            $savedCustomFields = $item->meta['custom_fields'] ?? [];
+                            $displayQty = fmod($item->quantity, 1.0) === 0.0 ? (int)$item->quantity : $item->quantity;
+                        @endphp
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all">
+                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
+                            <td class="px-4 py-4 align-top font-bold text-gray-800 dark:text-gray-100 text-start">
+                                {{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}
+                            </td>
+                            <td class="px-4 py-4 align-top text-gray-600 dark:text-gray-400 text-start">
+                                {{ $item->description }}
+                            </td>
+                            <td class="px-4 py-4 align-top text-center">
+                                <div class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 overflow-hidden shadow-sm px-3 py-2">
+                                    <span class="font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum($displayQty) }}</span>
+                                    <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500">{{ $item->unit ?? 'عدد' }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 align-top text-center tabular-nums font-medium text-gray-700 dark:text-gray-300">
+                                {{ $faNum(number_format($item->unit_price)) }}
+                                <span class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                            </td>
+                            <td class="px-4 py-4 align-top text-center tabular-nums font-medium text-red-500 dark:text-red-400">
+                                @if($item->discount > 0)
+                                    {{ $faNum(number_format($item->discount)) }}
+                                    <span class="text-[10px] text-red-400/80 ms-1">{{ $currencyLabel }}</span>
+                                @else
+                                    —
+                                @endif
+                            </td>
+                            @if(($settings['services_tax_mode'] ?? 'invoice') === 'item')
+                                <td class="px-4 py-4 align-top text-center tabular-nums font-medium text-amber-600 dark:text-amber-400">
+                                    @if($item->tax_amount > 0)
+                                        {{ $faNum(number_format($item->tax_amount)) }}
+                                        <span class="text-[10px] text-amber-400/80 ms-1">{{ $currencyLabel }}</span>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                            @endif
+                            <td class="px-4 py-4 align-top tabular-nums font-bold text-gray-800 dark:text-gray-100 text-center whitespace-nowrap">
+                                @php
+                                    $rowGrandTotal = $item->total;
+                                    if (($settings['services_tax_mode'] ?? 'invoice') === 'item') {
+                                        $rowGrandTotal += $item->tax_amount;
+                                    }
+                                @endphp
+                                {{ $faNum(number_format($rowGrandTotal)) }}
+                                <span class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                            </td>
+                        </tr>
+
+                        @if(!empty($savedCustomFields))
+                            @foreach($savedCustomFields as $field_id => $value)
+                                @php
+                                    $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
+                                    if (!$fieldDef || !$fieldDef->has_pricing) continue;
+
+                                    if (is_array($value)) { $displayValue = implode('، ', $value); }
+                                    elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
+                                    else { $displayValue = $value ?: null; }
+
+                                    if (!$displayValue) continue;
+
+                                    $fieldPrice = $item->meta['custom_fields_prices'][$field_id] ?? null;
+                                    $fieldDiscount = $item->meta['custom_fields_discounts'][$field_id] ?? 0;
+
+                                    if ($fieldPrice === null) {
+                                        $fieldPrice = $fieldDef->pricing_type === 'percentage'
+                                                        ? ($item->unit_price * ((float)$fieldDef->pricing_amount / 100))
+                                                        : (float)$fieldDef->pricing_amount;
+                                    }
+                                @endphp
+                                <tr class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10">
+                                    <td class="px-4 py-2.5 relative text-start">
+                                        <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                        <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                        <div class="pe-4 ps-6 flex items-center gap-2">
+                                                <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                </span>
+                                            <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate">{{ $fieldDef->label }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-start">
+                                        <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $displayValue }}</span>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-center text-xs text-gray-400">
+                                        {{ $faNum($displayQty) }}
+                                    </td>
+                                    <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-gray-700 dark:text-gray-300">
+                                        {{ $faNum(number_format($fieldPrice)) }}
+                                        <span class="text-[9px] text-gray-400 ms-0.5">{{ $currencyLabel }}</span>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-red-500 dark:text-red-400">
+                                        @if($fieldDiscount > 0)
+                                            {{ $faNum(number_format($fieldDiscount)) }}
+                                            <span class="text-[9px] text-red-400/80 ms-0.5">{{ $currencyLabel }}</span>
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    @php
+                                        $cfTaxAmount = 0;
+                                        $cfTaxPercent = 0;
+                                        if (($settings['services_tax_mode'] ?? 'invoice') === 'item' && !empty($settings['services_tax_apply_custom_fields'])) {
+                                            $cfTaxPercent = $item->meta['custom_fields_taxes'][$field_id] ?? 0;
+                                            $cfTaxable = max(0, ($fieldPrice * $item->quantity) - $fieldDiscount);
+                                            $cfTaxAmount = $cfTaxable * ($cfTaxPercent / 100);
+                                        }
+                                        $cfRowTotal = max(0, ($fieldPrice * $item->quantity) - $fieldDiscount) + $cfTaxAmount;
+                                    @endphp
+                                    @if(($settings['services_tax_mode'] ?? 'invoice') === 'item')
+                                        <td class="px-4 py-2.5 text-center text-xs tabular-nums text-amber-600 dark:text-amber-400">
+                                            @if($cfTaxAmount > 0)
+                                                {{ $faNum(number_format($cfTaxAmount)) }}
+                                                <span class="text-[9px] text-amber-400/80 ms-0.5">{{ $currencyLabel }} ({{ $faNum((float)$cfTaxPercent) }}٪)</span>
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                    @endif
+                                    <td class="px-4 py-2.5 tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-xs">
+                                        {{ $faNum(number_format($cfRowTotal)) }}
+                                        <span class="text-[9px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        @endif
+                        </tbody>
+                    @endforeach
+                </table>
+            </div>
+
+            <div class="bg-gray-50/80 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700/50 p-6 flex justify-end">
+                <div class="w-full sm:w-96 space-y-4 text-base">
+                    <div class="flex justify-between items-center text-gray-600 dark:text-gray-400">
+                        <span class="font-medium">جمع مبالغ:</span>
+                        <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->subtotal)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                    </div>
+                    @if($invoice->discount_amount > 0)
+                        <div class="flex justify-between items-center text-rose-500 dark:text-rose-400">
+                            <span class="font-medium">مجموع تخفیف‌ها:</span>
+                            <span class="tabular-nums font-bold">− {{ $faNum(number_format($invoice->discount_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                        </div>
+                    @endif
+                    @if($invoice->tax_amount > 0)
+                        <div class="flex justify-between items-center text-amber-600 dark:text-amber-400">
+                            <span class="font-medium">مالیات
+                                @if((float)$invoice->tax_percent > 0)
+                                    ({{ $faNum((float)$invoice->tax_percent) }}٪):
+                                @else
+                                    (تفکیکی هر ردیف):
+                                @endif
+                            </span>
+                            <span class="tabular-nums font-bold">+ {{ $faNum(number_format($invoice->tax_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                        </div>
+                    @endif
+                    <div class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <span class="font-black text-gray-900 dark:text-white text-lg">مبلغ نهایی:</span>
+                        <span class="font-black text-indigo-600 dark:text-indigo-400 text-2xl tabular-nums">{{ $faNum(number_format($invoice->total)) }} <span class="text-sm font-bold text-indigo-400/80">{{ $currencyLabel }}</span></span>
                     </div>
                 </div>
+            </div>
+        </div>
 
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {{-- SIDEBAR --}}
+            <div class="lg:col-span-4 xl:col-span-4 space-y-8 order-2 lg:order-1">
                 <div class="{{ $cardClass }}">
                     <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-indigo-50 to-transparent dark:from-indigo-500/10">
                         <h3 class="text-lg font-black text-indigo-700 dark:text-indigo-400 flex items-center gap-3">
@@ -329,201 +527,7 @@
             </div>
 
             {{-- MAIN CONTENT --}}
-            <div class="lg:col-span-8 xl:col-span-9 space-y-8 order-1 lg:order-2">
-                <div class="{{ $cardClass }}">
-                    <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 flex items-center justify-between">
-                        <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                            <div class="p-2 bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400 rounded-lg">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-                                </svg>
-                            </div>
-                            اقلام و خدمات فاکتور
-                        </h3>
-                        <span class="text-sm font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-100 dark:border-violet-500/20">{{ $faNum($invoice->items->count()) }} ردیف</span>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-start border-collapse min-w-[1200px]">
-                            <thead class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
-                            <tr>
-                                <th class="px-4 py-3 w-[22%] min-w-[220px] font-bold text-start">سرویس</th>
-                                <th class="px-4 py-3 w-[25%] min-w-[250px] font-bold text-start">شرح</th>
-                                <th class="px-4 py-3 w-[12%] min-w-[140px] font-bold text-center">تعداد / واحد</th>
-                                <th class="px-4 py-3 w-[18%] min-w-[220px] font-bold text-center">مبلغ واحد</th>
-                                <th class="px-4 py-3 w-[13%] min-w-[150px] font-bold text-center">تخفیف</th>
-                                @if(($settings['services_tax_mode'] ?? 'invoice') === 'item')
-                                    <th class="px-4 py-3 w-[12%] min-w-[140px] font-bold text-center">مالیات ردیف</th>
-                                @endif
-                                <th class="px-4 py-3 w-[10%] min-w-[150px] font-bold text-center">جمع کل</th>
-                            </tr>
-                            </thead>
-                            @foreach($invoice->items as $item)
-                                @php
-                                    $customFieldsCollection = $item->service ? $item->service->customFields : collect([]);
-                                    $savedCustomFields = $item->meta['custom_fields'] ?? [];
-                                    $displayQty = fmod($item->quantity, 1.0) === 0.0 ? (int)$item->quantity : $item->quantity;
-                                @endphp
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all">
-                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
-                                    <td class="px-4 py-4 align-top font-bold text-gray-800 dark:text-gray-100 text-start">
-                                        {{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}
-                                    </td>
-                                    <td class="px-4 py-4 align-top text-gray-600 dark:text-gray-400 text-start">
-                                        {{ $item->description }}
-                                    </td>
-                                    <td class="px-4 py-4 align-top text-center">
-                                        <div class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 overflow-hidden shadow-sm px-3 py-2">
-                                            <span class="font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum($displayQty) }}</span>
-                                            <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500">{{ $item->unit ?? 'عدد' }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-4 align-top text-center tabular-nums font-medium text-gray-700 dark:text-gray-300">
-                                        {{ $faNum(number_format($item->unit_price)) }}
-                                        <span class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span>
-                                    </td>
-                                    <td class="px-4 py-4 align-top text-center tabular-nums font-medium text-red-500 dark:text-red-400">
-                                        @if($item->discount > 0)
-                                            {{ $faNum(number_format($item->discount)) }}
-                                            <span class="text-[10px] text-red-400/80 ms-1">{{ $currencyLabel }}</span>
-                                        @else
-                                            —
-                                        @endif
-                                    </td>
-                                    @if(($settings['services_tax_mode'] ?? 'invoice') === 'item')
-                                        <td class="px-4 py-4 align-top text-center tabular-nums font-medium text-amber-600 dark:text-amber-400">
-                                            @if($item->tax_amount > 0)
-                                                {{ $faNum(number_format($item->tax_amount)) }}
-                                                <span class="text-[10px] text-amber-400/80 ms-1">{{ $currencyLabel }}</span>
-                                            @else
-                                                —
-                                            @endif
-                                        </td>
-                                    @endif
-                                    <td class="px-4 py-4 align-top tabular-nums font-bold text-gray-800 dark:text-gray-100 text-center whitespace-nowrap">
-                                        @php
-                                            $rowGrandTotal = $item->total;
-                                            if (($settings['services_tax_mode'] ?? 'invoice') === 'item') {
-                                                $rowGrandTotal += $item->tax_amount;
-                                            }
-                                        @endphp
-                                        {{ $faNum(number_format($rowGrandTotal)) }}
-                                        <span class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
-                                    </td>
-                                </tr>
-
-                                @if(!empty($savedCustomFields))
-                                    @foreach($savedCustomFields as $field_id => $value)
-                                        @php
-                                            $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
-                                            if (!$fieldDef || !$fieldDef->has_pricing) continue;
-
-                                            if (is_array($value)) { $displayValue = implode('، ', $value); }
-                                            elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
-                                            else { $displayValue = $value ?: null; }
-
-                                            if (!$displayValue) continue;
-
-                                            $fieldPrice = $item->meta['custom_fields_prices'][$field_id] ?? null;
-                                            $fieldDiscount = $item->meta['custom_fields_discounts'][$field_id] ?? 0;
-
-                                            if ($fieldPrice === null) {
-                                                $fieldPrice = $fieldDef->pricing_type === 'percentage'
-                                                                ? ($item->unit_price * ((float)$fieldDef->pricing_amount / 100))
-                                                                : (float)$fieldDef->pricing_amount;
-                                            }
-                                        @endphp
-                                        <tr class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10">
-                                            <td class="px-4 py-2.5 relative text-start">
-                                                <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                                <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                                <div class="pe-4 ps-6 flex items-center gap-2">
-                                                        <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
-                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                                        </span>
-                                                    <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate">{{ $fieldDef->label }}</span>
-                                                </div>
-                                            </td>
-                                            <td class="px-4 py-2.5 text-start">
-                                                <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $displayValue }}</span>
-                                            </td>
-                                            <td class="px-4 py-2.5 text-center text-xs text-gray-400">
-                                                {{ $faNum($displayQty) }}
-                                            </td>
-                                            <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-gray-700 dark:text-gray-300">
-                                                {{ $faNum(number_format($fieldPrice)) }}
-                                                <span class="text-[9px] text-gray-400 ms-0.5">{{ $currencyLabel }}</span>
-                                            </td>
-                                            <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-red-500 dark:text-red-400">
-                                                @if($fieldDiscount > 0)
-                                                    {{ $faNum(number_format($fieldDiscount)) }}
-                                                    <span class="text-[9px] text-red-400/80 ms-0.5">{{ $currencyLabel }}</span>
-                                                @else
-                                                    —
-                                                @endif
-                                            </td>
-                                            @php
-                                                $cfTaxAmount = 0;
-                                                $cfTaxPercent = 0;
-                                                if (($settings['services_tax_mode'] ?? 'invoice') === 'item' && !empty($settings['services_tax_apply_custom_fields'])) {
-                                                    $cfTaxPercent = $item->meta['custom_fields_taxes'][$field_id] ?? 0;
-                                                    $cfTaxable = max(0, ($fieldPrice * $item->quantity) - $fieldDiscount);
-                                                    $cfTaxAmount = $cfTaxable * ($cfTaxPercent / 100);
-                                                }
-                                                $cfRowTotal = max(0, ($fieldPrice * $item->quantity) - $fieldDiscount) + $cfTaxAmount;
-                                            @endphp
-                                            @if(($settings['services_tax_mode'] ?? 'invoice') === 'item')
-                                                <td class="px-4 py-2.5 text-center text-xs tabular-nums text-amber-600 dark:text-amber-400">
-                                                    @if($cfTaxAmount > 0)
-                                                        {{ $faNum(number_format($cfTaxAmount)) }}
-                                                        <span class="text-[9px] text-amber-400/80 ms-0.5">{{ $currencyLabel }} ({{ $faNum((float)$cfTaxPercent) }}٪)</span>
-                                                    @else
-                                                        —
-                                                    @endif
-                                                </td>
-                                            @endif
-                                            <td class="px-4 py-2.5 tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-xs">
-                                                {{ $faNum(number_format($cfRowTotal)) }}
-                                                <span class="text-[9px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @endif
-                                </tbody>
-                            @endforeach
-                        </table>
-                    </div>
-
-                    <div class="bg-gray-50/80 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700/50 p-6 flex justify-end">
-                        <div class="w-full sm:w-96 space-y-4 text-base">
-                            <div class="flex justify-between items-center text-gray-600 dark:text-gray-400">
-                                <span class="font-medium">جمع مبالغ:</span>
-                                <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->subtotal)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
-                            </div>
-                            @if($invoice->discount_amount > 0)
-                                <div class="flex justify-between items-center text-rose-500 dark:text-rose-400">
-                                    <span class="font-medium">مجموع تخفیف‌ها:</span>
-                                    <span class="tabular-nums font-bold">− {{ $faNum(number_format($invoice->discount_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
-                                </div>
-                            @endif
-                            @if($invoice->tax_amount > 0)
-                                <div class="flex justify-between items-center text-amber-600 dark:text-amber-400">
-                                    <span class="font-medium">مالیات
-                                        @if((float)$invoice->tax_percent > 0)
-                                            ({{ $faNum((float)$invoice->tax_percent) }}٪):
-                                        @else
-                                            (تفکیکی هر ردیف):
-                                        @endif
-                                    </span>
-                                    <span class="tabular-nums font-bold">+ {{ $faNum(number_format($invoice->tax_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
-                                </div>
-                            @endif
-                            <div class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                                <span class="font-black text-gray-900 dark:text-white text-lg">مبلغ نهایی:</span>
-                                <span class="font-black text-indigo-600 dark:text-indigo-400 text-2xl tabular-nums">{{ $faNum(number_format($invoice->total)) }} <span class="text-sm font-bold text-indigo-400/80">{{ $currencyLabel }}</span></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="lg:col-span-8 xl:col-span-8 space-y-8 order-1 lg:order-2">
 
                 @if ($invoice->payments->isNotEmpty())
                     <div class="{{ $cardClass }}">
