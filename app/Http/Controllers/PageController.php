@@ -13,15 +13,23 @@ class PageController extends Controller
      */
     public function home()
     {
-        // خواندن تنظیمات نحوه نمایش سایت
-        $siteDisplayType = Setting::where('key', 'site_display_type')->value('value') ?? 'landing';
+        $siteDisplayType = 'landing';
+        $appTheme = 'default';
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                $siteDisplayType = Setting::where('key', 'site_display_type')->value('value') ?? 'landing';
+                $appTheme = Setting::where('key', 'app_theme')->value('value') ?? 'default';
+            }
+        } catch (\Throwable $e) {
+            $siteDisplayType = 'landing';
+            $appTheme = 'default';
+        }
 
         if ($siteDisplayType === 'admin') {
             return redirect()->route('admin.dashboard');
         }
 
-        // خواندن قالب انتخاب شده از تنظیمات
-        $appTheme = Setting::where('key', 'app_theme')->value('value') ?? 'default';
         $appThemeLower = strtolower($appTheme);
 
         $data = [
