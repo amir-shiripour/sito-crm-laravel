@@ -69,7 +69,17 @@ class ThemeComposer
      */
     public function compose(View $view)
     {
-        $globalSettings = Setting::pluck('value', 'key')->toArray();
+        $globalSettings = [];
+        if (file_exists(storage_path('app/installed.flag'))) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                    $globalSettings = Setting::pluck('value', 'key')->toArray();
+                }
+            } catch (\Throwable $e) {
+                $globalSettings = [];
+            }
+        }
+
         $appTheme = $globalSettings['app_theme'] ?? 'default';
 
         // دیکشنری رنگ‌های پیش‌فرض برای هر قالب (در صورتی که کاربر شخصی‌سازی نکرده باشد)
