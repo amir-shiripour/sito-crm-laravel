@@ -4,7 +4,9 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Module;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Nwidart\Modules\Facades\Module as NModule;
 
 class ModuleSeeder extends Seeder
 {
@@ -13,24 +15,52 @@ class ModuleSeeder extends Seeder
      */
     public function run(): void
     {
-        // پاک کردن جدول قبل از سید کردن
-//        Module::truncate();
+        // 1. ماژول هسته (مجازی)
+        Module::updateOrCreate(
+            ['slug' => 'core'],
+            [
+                'name' => 'ماژول هسته',
+                'description' => 'شامل تنظیمات اصلی، داشبورد و قابلیت‌های پایه سیستم.',
+                'version' => '1.0.0',
+                'active' => true,
+                'installed' => true,
+                'is_core' => true,
+            ]
+        );
 
-        // ماژول هسته (مجازی)
-        // این ماژول فیزیکی نیست اما برای نمایش در دیتابیس و مدیریت‌های آتی استفاده می‌شود
-        Module::create([
-            'name' => 'ماژول هسته',
-            'slug' => 'core',
-            'description' => 'شامل تنظیمات اصلی، داشبورد و قابلیت‌های پایه سیستم.',
-            'version' => '1.0.0',
-            'active' => true,
-            'is_core' => true, // این ماژول مجازی و هسته‌ای است
-        ]);
+        // 2. ماژول‌های پیش‌فرض پروژه که باید به صورت اولیه مایگریت و نصب شوند
+        $defaultInstalledModules = ['Settings'];
 
-        // ماژول UserManagement از اینجا حذف شد چون به هسته (app) منتقل شده است.
-        // ماژول‌های Blog و Shop طبق درخواست حذف شدند.
-        // در آینده، ماژول‌های اختیاری و فیزیکی جدید (مثل nwidart)
-        // می‌توانند با is_core = false در اینجا اضافه شوند.
+        foreach ($defaultInstalledModules as $name) {
+            $slug = Str::lower($name);
+            $pModule = class_exists(NModule::class) ? NModule::find($name) : null;
+            $version = $pModule?->get('version') ?? '1.0.0';
+            $description = $pModule?->get('description') ?? 'تنظیمات عمومی سیستم';
+
+            Module::updateOrCreate(
+                ['slug' => $slug],
+                [
+                    'name' => $name,
+                    'description' => $description,
+                    'version' => $version,
+                    'active' => true,
+                    'installed' => true,
+                    'installed_at' => now(),
+                    'is_core' => false,
+                ]
+            );
+
+            // اجرای Installer اختصاصی ماژول پیش‌فرض (مایگریشن‌ها و دسترسی‌های اولیه)
+            $installerClass = "\\Modules\\{$name}\\Installer";
+            if (class_exists($installerClass)) {
+                try {
+                    $installer = new $installerClass();
+                    $installer->install();
+                } catch (\Throwable $e) {
+                    Log::warning("ModuleSeeder: installer for {$name} encountered an issue: " . $e->getMessage());
+                }
+            }
+        }
     }
 }
 

@@ -2,14 +2,33 @@
 
 namespace Modules\Clients\App\Observers;
 
+use Illuminate\Support\Facades\Schema;
+use Nwidart\Modules\Facades\Module;
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientStatus;
 
 class ClientObserver
 {
+    private function isWorkflowsActive(): bool
+    {
+        if (!class_exists(\Modules\Workflows\Services\WorkflowEngine::class)) {
+            return false;
+        }
+
+        if (class_exists(Module::class) && !Module::isEnabled('Workflows')) {
+            return false;
+        }
+
+        if (!Schema::hasTable('workflows')) {
+            return false;
+        }
+
+        return true;
+    }
+
     public function created(Client $client): void
     {
-        if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class)) {
+        if ($this->isWorkflowsActive()) {
             /** @var \Modules\Workflows\Services\WorkflowEngine $engine */
             $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
             $newStatus = $client->status;
@@ -28,7 +47,7 @@ class ClientObserver
 
     public function updated(Client $client): void
     {
-        if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class)) {
+        if ($this->isWorkflowsActive()) {
             /** @var \Modules\Workflows\Services\WorkflowEngine $engine */
             $engine = app(\Modules\Workflows\Services\WorkflowEngine::class);
 

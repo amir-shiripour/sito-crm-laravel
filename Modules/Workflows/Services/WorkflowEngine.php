@@ -2,6 +2,8 @@
 
 namespace Modules\Workflows\Services;
 
+use Illuminate\Support\Facades\Schema;
+use Nwidart\Modules\Facades\Module;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -64,6 +66,14 @@ class WorkflowEngine
 
     public function start($workflow, ?string $relatedType = null, ?int $relatedId = null, array $payload = []): ?WorkflowInstance
     {
+        if (class_exists(Module::class) && !Module::isEnabled('Workflows')) {
+            return null;
+        }
+
+        if (!Schema::hasTable('workflows')) {
+            return null;
+        }
+
         if ($workflow instanceof Workflow) {
             return $this->startNodeWorkflow($workflow, $relatedType, $relatedId, $payload);
         }

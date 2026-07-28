@@ -14,6 +14,7 @@
         </button>
 
         {{-- سرچ بار --}}
+        @if(Route::has('user.clients.search'))
         <div class="hidden md:flex flex-1 items-center max-w-2xl">
             <div class="relative w-full"
                  x-data="{
@@ -50,8 +51,10 @@
                          }
                      },
                      selectClient(client) {
-                        const baseUrl = '{{ route('user.clients.show', ['client' => 0]) }}';
-                        window.location.href = baseUrl.replace('/0', '/' + client.id);
+                        const baseUrl = '{{ Route::has('user.clients.show') ? route('user.clients.show', ['client' => 0]) : '' }}';
+                        if (baseUrl) {
+                            window.location.href = baseUrl.replace('/0', '/' + client.id);
+                        }
                      },
                      handleKeydown(event) {
                          if (!this.showResults || !Array.isArray(this.clients) || this.clients.length === 0) return;
@@ -158,6 +161,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- آیکون‌های اکشن سمت چپ --}}
         <div class="flex items-center gap-1 sm:gap-2 mr-auto">
