@@ -38,14 +38,20 @@ Route::middleware(['web'])->group(function() {
     // --- New Checkout Flow Routes ---
     Route::group(['prefix' => 'market/checkout', 'as' => 'market.checkout.'], function() {
         // Route to initiate payment process after order is created by Livewire
-        Route::get('/process/{order}', [CheckoutController::class, 'process'])->name('process')->middleware('auth:client');
+        Route::get('/process/{order}', [CheckoutController::class, 'process'])->name('process');
 
         // Payment gateway callback
         Route::any('/callback', [CheckoutController::class, 'callback'])->name('callback');
 
         // Success and Failed pages
-        Route::get('/success/{order}', [CheckoutController::class, 'success'])->name('success')->middleware('auth:client');
-        Route::get('/failed/{order}', [CheckoutController::class, 'failed'])->name('failed')->middleware('auth:client');
+        Route::get('/success/{order}', [CheckoutController::class, 'success'])->name('success');
+        Route::get('/failed/{order}', [CheckoutController::class, 'failed'])->name('failed');
+    });
+
+    Route::group(['prefix' => 'checkout'], function() {
+        Route::get('/process/{order}', [CheckoutController::class, 'process']);
+        Route::get('/success/{order}', [CheckoutController::class, 'success']);
+        Route::get('/failed/{order}', [CheckoutController::class, 'failed']);
     });
 
 });

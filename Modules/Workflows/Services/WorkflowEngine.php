@@ -273,6 +273,50 @@ class WorkflowEngine
                         }
                     }
                 }
+
+                // 6. Services Filter
+                if ($relatedType === 'SERVICE' && class_exists(\Modules\Services\App\Http\Models\Service::class)) {
+                    $service = \Modules\Services\App\Http\Models\Service::find($relatedId);
+                    if ($service) {
+                        $serviceStatuses = $config['service_statuses'] ?? [];
+                        $serviceStatuses = array_filter(array_map('strval', $serviceStatuses));
+                        if (!empty($serviceStatuses) && !in_array((string)$service->status?->name, $serviceStatuses, true)) {
+                            Log::info("[Workflows] Skipping workflow {$wf->name} due to service status filter mismatch.");
+                            continue;
+                        }
+                    }
+                }
+
+                if ($relatedType === 'INVOICE' && class_exists(\Modules\Services\App\Http\Models\Invoice::class)) {
+                    $invoice = \Modules\Services\App\Http\Models\Invoice::find($relatedId);
+                    if ($invoice) {
+                        $invoiceStatuses = $config['invoice_statuses'] ?? [];
+                        $invoiceStatuses = array_filter(array_map('strval', $invoiceStatuses));
+                        if (!empty($invoiceStatuses) && !in_array((string)$invoice->status?->name, $invoiceStatuses, true)) {
+                            Log::info("[Workflows] Skipping workflow {$wf->name} due to invoice status filter mismatch.");
+                            continue;
+                        }
+
+                        $paymentStatuses = $config['payment_statuses'] ?? [];
+                        $paymentStatuses = array_filter(array_map('strval', $paymentStatuses));
+                        if (!empty($paymentStatuses) && !in_array((string)$invoice->status?->name, $paymentStatuses, true)) {
+                            Log::info("[Workflows] Skipping workflow {$wf->name} due to payment status filter mismatch.");
+                            continue;
+                        }
+                    }
+                }
+
+                if ($relatedType === 'ORDER' && class_exists(\Modules\Services\App\Http\Models\Order::class)) {
+                    $order = \Modules\Services\App\Http\Models\Order::find($relatedId);
+                    if ($order) {
+                        $orderStatuses = $config['order_statuses'] ?? [];
+                        $orderStatuses = array_filter(array_map('strval', $orderStatuses));
+                        if (!empty($orderStatuses) && !in_array((string)$order->status?->name, $orderStatuses, true)) {
+                            Log::info("[Workflows] Skipping workflow {$wf->name} due to order status filter mismatch.");
+                            continue;
+                        }
+                    }
+                }
             }
 
             if ($wf->nodes()->exists()) {
@@ -310,10 +354,7 @@ class WorkflowEngine
                 'current_node_id'    => $startNode->id,
                 'status'             => WorkflowInstance::STATUS_ACTIVE,
                 'started_at'         => now(),
-                'created_by'         => Auth::id(),
-                'binding_id'         => $payload['binding_id'] ?? null,
-                'tooth_context'      => $payload['tooth_context'] ?? null,
-                'item_context'       => $payload['item_context'] ?? null,
+                'created_by'         => Auth::id() ?? 1,
             ]);
 
             Log::info("[Workflows] Node-based Instance created: {$instance->id}. Current node: START ({$startNode->id})");
@@ -574,6 +615,20 @@ class WorkflowEngine
         }
     }
 
+    public function executeNodeAction(WorkflowInstance $instance, WorkflowNode $node, array $context): array
+    {
+        $action = new WorkflowAction([
+            'action_type' => $node->config['action_type'] ?? 'TASK',
+            'config' => $node->config,
+        ]);
+        $action->id = $node->id;
+        
+        $stage = new WorkflowStage();
+        $stage->id = 0;
+        
+        return $this->runAction($instance, $stage, $action, $context);
+    }
+
     protected function runAction(WorkflowInstance $instance, WorkflowStage $stage, WorkflowAction $action, array $context): array
     {
         $config = $action->config ?? [];
@@ -616,6 +671,10 @@ class WorkflowEngine
         } elseif (($assigneeTarget === 'TASK_ASSIGNEE' || $assigneeTarget === 'FOLLOWUP_ASSIGNEE') && (isset($context['task']) || isset($context['followup']))) {
             $taskObj = $context['task'] ?? $context['followup'];
             $targetUserId = $taskObj->assignee_id ?? $targetUserId;
+        } elseif ($assigneeTarget === 'INVOICE_CREATOR' && isset($context['invoice'])) {
+            $targetUserId = $context['invoice']->created_by ?? $targetUserId;
+        } elseif ($assigneeTarget === 'ORDER_CREATOR' && isset($context['order'])) {
+            $targetUserId = $context['order']->created_by ?? $targetUserId;
         }
 
         switch ($action->action_type) {
@@ -703,6 +762,8 @@ class WorkflowEngine
                 } elseif (($notifTarget === 'TASK_ASSIGNEE' || $notifTarget === 'FOLLOWUP_ASSIGNEE') && (isset($context['task']) || isset($context['followup']))) {
                     $taskObj = $context['task'] ?? $context['followup'];
                     $notifUserId = $taskObj->assignee_id ?? $notifUserId;
+                } elseif ($notifTarget === 'INVOICE_CREATOR' && isset($context['invoice'])) {
+                    $notifUserId = $context['invoice']->created_by ?? $notifUserId;
                 }
 
                 $recipient = $notifUserId ? \App\Models\User::find($notifUserId) : null;
@@ -758,6 +819,194 @@ class WorkflowEngine
                     }
                 } else {
                     Log::warning("[Workflows] SMS module not enabled or manager not found.");
+                }
+                break;
+
+
+
+            case WorkflowAction::TYPE_CHANGE_SERVICE_STATUS:
+                // تغییر وضعیت موجودیت‌های سرویس خدمات (Invoice, Order, Payment, Service)
+                $entityType   = $config['entity_type'] ?? 'invoice'; // invoice | order | payment | service
+                $statusName   = $config['status_name'] ?? null;
+                $statusType   = $config['status_type'] ?? null; // payment | service | invoice
+
+                if (!$statusName) {
+                    Log::warning("[Workflows] CHANGE_SERVICE_STATUS: No status_name configured.");
+                    $result = ['status' => 'skipped', 'reason' => 'no_status_name'];
+                    break;
+                }
+
+                try {
+                    if (!class_exists('Modules\\Services\\App\\Http\\Models\\Status')) {
+                        Log::warning("[Workflows] Services module Status model not found.");
+                        $result = ['status' => 'skipped', 'reason' => 'services_module_missing'];
+                        break;
+                    }
+
+                    $StatusModel = \Modules\Services\App\Http\Models\Status::class;
+
+                    // Find target status
+                    $statusQuery = $StatusModel::where('name', $statusName);
+                    if ($statusType) {
+                        $statusQuery->where('type', $statusType);
+                    }
+                    $targetStatus = $statusQuery->first();
+
+                    if (!$targetStatus) {
+                        Log::warning("[Workflows] CHANGE_SERVICE_STATUS: Status '{$statusName}' (type: {$statusType}) not found.");
+                        $result = ['status' => 'skipped', 'reason' => 'status_not_found'];
+                        break;
+                    }
+
+                    if ($entityType === 'invoice' && isset($context['invoice'])) {
+                        $invoiceObj = $context['invoice'];
+                        $invoiceObj->status_id = $targetStatus->id;
+                        $invoiceObj->save();
+                        Log::info("[Workflows] Changed Invoice ID {$invoiceObj->id} status to '{$statusName}'.");
+                        $result = ['status' => 'changed', 'entity' => 'invoice', 'id' => $invoiceObj->id, 'new_status' => $statusName];
+
+                    } elseif ($entityType === 'order') {
+                        // If we have direct order context
+                        if (isset($context['order'])) {
+                            $orderObj = $context['order'];
+                            $orderObj->status_id = $targetStatus->id;
+                            $orderObj->save();
+                            Log::info("[Workflows] Changed Order ID {$orderObj->id} status to '{$statusName}'.");
+                            $result = ['status' => 'changed', 'entity' => 'order', 'id' => $orderObj->id, 'new_status' => $statusName];
+                        } elseif (isset($context['invoice']) && class_exists('Modules\\Services\\App\\Http\\Models\\Order')) {
+                            // Change all orders of the invoice
+                            $invoice = $context['invoice'];
+                            $ordersUpdated = \Modules\Services\App\Http\Models\Order::where('invoice_id', $invoice->id)
+                                ->update(['status_id' => $targetStatus->id]);
+                            Log::info("[Workflows] Changed {$ordersUpdated} Order(s) for Invoice ID {$invoice->id} status to '{$statusName}'.");
+                            $result = ['status' => 'changed', 'entity' => 'orders', 'count' => $ordersUpdated, 'new_status' => $statusName];
+                        } elseif (isset($context['service']) && class_exists('Modules\\Services\\App\\Http\\Models\\Order')) {
+                            // Change all orders of the service
+                            $service = $context['service'];
+                            $ordersUpdated = \Modules\Services\App\Http\Models\Order::where('service_id', $service->id)
+                                ->update(['status_id' => $targetStatus->id]);
+                            Log::info("[Workflows] Changed {$ordersUpdated} Order(s) for Service ID {$service->id} status to '{$statusName}'.");
+                            $result = ['status' => 'changed', 'entity' => 'orders', 'count' => $ordersUpdated, 'new_status' => $statusName];
+                        } else {
+                            Log::warning("[Workflows] CHANGE_SERVICE_STATUS: No order/invoice/service context found.");
+                            $result = ['status' => 'skipped', 'reason' => 'no_order_context'];
+                        }
+
+                    } elseif ($entityType === 'payment') {
+                        if (isset($context['payment'])) {
+                            $paymentObj = $context['payment'];
+                            // Payment uses 'status' string field not status_id
+                            $paymentObj->status = strtolower(str_replace(' ', '_', $statusName));
+                            $paymentObj->save();
+                            Log::info("[Workflows] Changed Payment ID {$paymentObj->id} status to '{$statusName}'.");
+                            $result = ['status' => 'changed', 'entity' => 'payment', 'id' => $paymentObj->id, 'new_status' => $statusName];
+                        } elseif (isset($context['invoice']) && class_exists('Modules\\Services\\App\\Http\\Models\\Payment')) {
+                            // Change all non-canceled payments of the invoice
+                            $invoice = $context['invoice'];
+                            $paymentsUpdated = \Modules\Services\App\Http\Models\Payment::where('invoice_id', $invoice->id)
+                                ->where('status', '!=', 'canceled')
+                                ->update(['status' => strtolower(str_replace(' ', '_', $statusName))]);
+                            Log::info("[Workflows] Changed {$paymentsUpdated} Payment(s) for Invoice ID {$invoice->id} status to '{$statusName}'.");
+                            $result = ['status' => 'changed', 'entity' => 'payments', 'count' => $paymentsUpdated, 'new_status' => $statusName];
+                        } else {
+                            Log::warning("[Workflows] CHANGE_SERVICE_STATUS: No payment/invoice context found.");
+                            $result = ['status' => 'skipped', 'reason' => 'no_payment_context'];
+                        }
+                    } elseif ($entityType === 'service') {
+                        if (isset($context['service'])) {
+                            $serviceObj = $context['service'];
+                            $serviceObj->status_id = $targetStatus->id;
+                            $serviceObj->save();
+                            Log::info("[Workflows] Changed Service ID {$serviceObj->id} status to '{$statusName}'.");
+                            $result = ['status' => 'changed', 'entity' => 'service', 'id' => $serviceObj->id, 'new_status' => $statusName];
+                        } elseif (isset($context['invoice']) && class_exists('Modules\\Services\\App\\Http\\Models\\Service')) {
+                            $invoice = $context['invoice'];
+                            if ($invoice->service_id) {
+                                \Modules\Services\App\Http\Models\Service::where('id', $invoice->service_id)
+                                    ->update(['status_id' => $targetStatus->id]);
+                                Log::info("[Workflows] Changed Service ID {$invoice->service_id} for Invoice ID {$invoice->id} status to '{$statusName}'.");
+                                $result = ['status' => 'changed', 'entity' => 'service', 'id' => $invoice->service_id, 'new_status' => $statusName];
+                            } else {
+                                Log::warning("[Workflows] CHANGE_SERVICE_STATUS: Invoice {$invoice->id} has no service_id.");
+                                $result = ['status' => 'skipped', 'reason' => 'no_service_linked'];
+                            }
+                        } else {
+                            Log::warning("[Workflows] CHANGE_SERVICE_STATUS: No service/invoice context found.");
+                            $result = ['status' => 'skipped', 'reason' => 'no_service_context'];
+                        }
+                    } else {
+                        Log::warning("[Workflows] CHANGE_SERVICE_STATUS: Unknown entity_type '{$entityType}'.");
+                        $result = ['status' => 'skipped', 'reason' => 'unknown_entity_type'];
+                    }
+                } catch (\Throwable $e) {
+                    Log::error("[Workflows] CHANGE_SERVICE_STATUS failed: " . $e->getMessage());
+                    $result = ['status' => 'error', 'message' => $e->getMessage()];
+                }
+                break;
+
+            case WorkflowAction::TYPE_CREATE_INVOICE:
+                if ($this->isModuleEnabled($deps['services'] ?? 'Services') && class_exists('Modules\\Services\\App\\Http\\Models\\Invoice')) {
+                    if (isset($context['order'])) {
+                        $order = $context['order'];
+                        
+                        try {
+                            $invoiceTotal = $order->renewal_price ?: $order->total_amount;
+                            $dueDateOffset = (int)($config['due_date_offset'] ?? 0);
+                            $dueDate = $dueDateOffset > 0 ? now()->addDays($dueDateOffset) : $order->renewal_date;
+
+                            $invoiceData = [
+                                'customer_id' => $order->customer_id,
+                                'service_id' => $order->service_id,
+                                'project_id' => $order->project_id ?? null,
+                                'client_name' => $order->client_name,
+                                'client_phone' => $order->client_phone,
+                                'client_email' => $order->client_email,
+                                'issue_date' => now(),
+                                'due_date' => $dueDate,
+                                'subtotal' => $invoiceTotal,
+                                'total' => $invoiceTotal,
+                                'tax_amount' => 0,
+                                'discount_amount' => 0,
+                                'paid_amount' => 0,
+                                'created_by' => Auth::id() ?: 1,
+                                'meta' => [
+                                    'created_by_workflow' => true,
+                                    'source_order_id' => $order->id,
+                                ],
+                            ];
+
+                            $invoice = \Modules\Services\App\Http\Models\Invoice::create($invoiceData);
+                            
+                            // Try to create invoice item if service exists
+                            if ($order->service && class_exists('Modules\\Services\\App\\Http\\Models\\InvoiceItem')) {
+                                \Modules\Services\App\Http\Models\InvoiceItem::create([
+                                    'invoice_id' => $invoice->id,
+                                    'service_id' => $order->service_id,
+                                    'custom_service_name' => $order->service->name ?? 'تمدید سفارش',
+                                    'description' => 'تمدید سفارش',
+                                    'quantity' => 1,
+                                    'unit_price' => $invoiceTotal,
+                                    'total' => $invoiceTotal,
+                                    'discount' => 0,
+                                    'tax_amount' => 0,
+                                ]);
+                            }
+
+                            Log::info("[Workflows] Created Invoice ID {$invoice->id} for Order ID {$order->id}");
+                            
+                            if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class)) {
+                                app(\Modules\Workflows\Services\WorkflowEngine::class)->start('invoice_created', 'INVOICE', $invoice->id, []);
+                            }
+                            
+                            $result = ['status' => 'created', 'invoice_id' => $invoice->id];
+                        } catch (\Throwable $e) {
+                            Log::error("[Workflows] Invoice creation failed: " . $e->getMessage());
+                            $result = ['status' => 'error', 'message' => $e->getMessage()];
+                        }
+                    } else {
+                        Log::warning("[Workflows] CREATE_INVOICE skipped: No order context found.");
+                        $result = ['status' => 'skipped', 'reason' => 'no_order_context'];
+                    }
                 }
                 break;
         }
@@ -976,17 +1225,17 @@ class WorkflowEngine
                 $data['client'] = $client;
                 
                 $clientTokens = [
-                    'client_id' => $client->id,
-                    'client_name' => $client->full_name,
-                    'client_username' => $client->username,
-                    'client_phone' => $client->phone,
-                    'client_email' => $client->email,
-                    'client_national_code' => $client->national_code,
-                    'client_case_number' => $client->case_number,
-                    'client_notes' => $client->notes,
-                    'client_status' => $client->status?->label ?? $client->status?->key,
-                    'client_created_at_jalali' => $client->created_at ? \Morilog\Jalali\Jalalian::fromCarbon($client->created_at)->format('Y/m/d H:i') : null,
-                    'client_creator_name' => $client->creator?->name,
+                    'client_id'                  => $client->id,
+                    'client_name'                => $client->full_name,
+                    'client_username'            => $client->username,
+                    'client_phone'               => $client->phone,
+                    'client_email'               => $client->email,
+                    'client_national_code'       => $client->national_code,
+                    'client_case_number'         => $client->case_number,
+                    'client_notes'               => $client->notes,
+                    'client_status'              => $client->status?->label ?? $client->status?->key,
+                    'client_created_at_jalali'   => $client->created_at ? \Morilog\Jalali\Jalalian::fromCarbon($client->created_at)->format('Y/m/d H:i') : null,
+                    'client_creator_name'        => $client->creator?->name,
                 ];
 
                 // Expose custom fields from Form Builder schema
@@ -1008,6 +1257,137 @@ class WorkflowEngine
                 }
 
                 $data['tokens'] = array_merge($clientTokens, $data['tokens']);
+            }
+        }
+
+        // Handle INVOICE context
+        if ($instance->related_type === 'INVOICE' && class_exists('Modules\\Services\\App\\Http\\Models\\Invoice')) {
+            $invoice = \Modules\Services\App\Http\Models\Invoice::with(['customer', 'status', 'items.service', 'payments'])->find($instance->related_id);
+            if ($invoice) {
+                $data['invoice'] = $invoice;
+                if ($invoice->customer) {
+                    $data['client'] = $invoice->customer;
+                }
+
+                $invoiceTokens = [
+                    'invoice_id'             => $invoice->id,
+                    'invoice_number'         => $invoice->invoice_number ?? $invoice->proforma_invoice_number,
+                    'invoice_total'          => $invoice->total,
+                    'invoice_paid_amount'    => $invoice->paid_amount,
+                    'invoice_remaining'      => $invoice->remainingAmount(),
+                    'invoice_status'         => $invoice->status?->name,
+                    'invoice_due_date'       => $invoice->due_date ? \Morilog\Jalali\Jalalian::fromCarbon($invoice->due_date)->format('Y/m/d') : null,
+                    'invoice_issue_date'     => $invoice->issue_date ? \Morilog\Jalali\Jalalian::fromCarbon($invoice->issue_date)->format('Y/m/d') : null,
+                    'client_name'            => $invoice->client_name,
+                    'client_phone'           => $invoice->client_phone,
+                    'client_email'           => $invoice->client_email,
+                    'invoice_client_name'    => $invoice->client_name,
+                    'invoice_client_phone'   => $invoice->client_phone,
+                    'invoice_client_email'   => $invoice->client_email,
+                    'invoice_is_paid'        => $invoice->isPaid() ? 'بله' : 'خیر',
+                    'invoice_is_overdue'     => $invoice->isOverdue() ? 'بله' : 'خیر',
+                    'invoice_has_payment'    => $invoice->paid_amount > 0 ? 'بله' : 'خیر',
+                ];
+
+                // Add invoice creator info
+                if ($invoice->created_by) {
+                    $creator = \App\Models\User::find($invoice->created_by);
+                    if ($creator) {
+                        $invoiceTokens['invoice_creator_name'] = $creator->name;
+                        $invoiceTokens['invoice_creator_phone'] = $creator->phone ?? $creator->mobile ?? null;
+                    }
+                    $data['invoice_creator'] = $creator ?? null;
+                }
+
+                $data['tokens'] = array_merge($data['tokens'], $invoiceTokens);
+            }
+        }
+
+        // Handle PAYMENT context
+        if ($instance->related_type === 'PAYMENT' && class_exists('Modules\\Services\\App\\Http\\Models\\Payment')) {
+            $payment = \Modules\Services\App\Http\Models\Payment::with(['invoice.customer', 'invoice.status', 'invoice.payments'])->find($instance->related_id);
+            if ($payment) {
+                $data['payment'] = $payment;
+                $invoice = $payment->invoice;
+                if ($invoice) {
+                    $data['invoice'] = $invoice;
+                    if ($invoice->customer) {
+                        $data['client'] = $invoice->customer;
+                    }
+                }
+
+                $paymentTokens = [
+                    'payment_id'          => $payment->id,
+                    'payment_amount'      => $payment->amount,
+                    'payment_method'      => $payment->method,
+                    'payment_status'      => $payment->status,
+                    'payment_paid_at'     => $payment->paid_at?->format('Y-m-d H:i'),
+                    'payment_transaction_id' => $payment->transaction_id,
+                    'payment_is_late'     => ($invoice && $invoice->due_date && $payment->paid_at && $payment->paid_at->isAfter($invoice->due_date->endOfDay())) ? 'بله' : 'خیر',
+                    'invoice_number'      => $invoice?->invoice_number ?? $invoice?->proforma_invoice_number,
+                    'invoice_total'       => $invoice?->total,
+                    'invoice_remaining'   => $invoice?->remainingAmount(),
+                    'invoice_is_paid'     => $invoice?->isPaid() ? 'بله' : 'خیر',
+                    'client_name'         => $invoice?->client_name ?? $payment->invoice?->client_name,
+                    'client_phone'        => $invoice?->client_phone ?? $payment->invoice?->client_phone,
+                ];
+
+                $data['tokens'] = array_merge($data['tokens'], $paymentTokens);
+            }
+        }
+
+        // Handle ORDER context
+        if ($instance->related_type === 'ORDER' && class_exists('Modules\\Services\\App\\Http\\Models\\Order')) {
+            $order = \Modules\Services\App\Http\Models\Order::with(['customer', 'status', 'service', 'invoice'])->find($instance->related_id);
+            if ($order) {
+                $data['order'] = $order;
+                if ($order->invoice) {
+                    $data['invoice'] = $order->invoice;
+                }
+
+                $orderTokens = [
+                    'order_id'           => $order->id,
+                    'order_number'       => $order->order_number,
+                    'order_status'       => $order->status?->name,
+                    'order_total'        => $order->total_amount,
+                    'order_service_name' => $order->service?->name ?? $order->notes,
+                    'order_issue_date'   => $order->issue_date ? \Morilog\Jalali\Jalalian::fromCarbon($order->issue_date)->format('Y/m/d') : null,
+                    'order_renewal_date' => $order->renewal_date ? \Morilog\Jalali\Jalalian::fromCarbon($order->renewal_date)->format('Y/m/d') : null,
+                    'client_name'        => $order->client_name,
+                    'client_phone'       => $order->client_phone,
+                    'order_client_name'  => $order->client_name,
+                    'order_client_phone' => $order->client_phone,
+                    'order_client_email' => $order->client_email,
+                ];
+
+                if ($order->created_by) {
+                    $creator = \App\Models\User::find($order->created_by);
+                    if ($creator) {
+                        $orderTokens['order_creator_name'] = $creator->name;
+                        $orderTokens['order_creator_phone'] = $creator->phone ?? $creator->mobile ?? null;
+                    }
+                    $data['order_creator'] = $creator ?? null;
+                }
+
+                $data['tokens'] = array_merge($data['tokens'], $orderTokens);
+            }
+        }
+
+        // Handle SERVICE context
+        if ($instance->related_type === 'SERVICE' && class_exists('Modules\\Services\\App\\Http\\Models\\Service')) {
+            $service = \Modules\Services\App\Http\Models\Service::with(['status'])->find($instance->related_id);
+            if ($service) {
+                $data['service'] = $service;
+
+                $serviceTokens = [
+                    'service_id'           => $service->id,
+                    'service_name'         => $service->name,
+                    'service_status'       => $service->status?->name,
+                    'service_price'        => $service->base_price,
+                    'service_type'         => $service->billing_type,
+                ];
+
+                $data['tokens'] = array_merge($data['tokens'], $serviceTokens);
             }
         }
 
@@ -1079,6 +1459,28 @@ class WorkflowEngine
             // Assuming provider has a phone number in User model or profile
             $provider = $context['appointment']->provider ?? null;
             return $provider?->phone ?? $provider?->mobile ?? null;
+        }
+
+        if ($target === 'INVOICE_CLIENT' || $target === 'ORDER_CLIENT' || $target === 'PAYMENT_CLIENT') {
+            return $context['tokens']['client_phone'] ?? null;
+        }
+
+        if ($target === 'INVOICE_CREATOR') {
+            $invoice = $context['invoice'] ?? null;
+            if ($invoice && $invoice->created_by) {
+                $creator = \App\Models\User::find($invoice->created_by);
+                return $creator?->phone ?? $creator?->mobile ?? null;
+            }
+            return null;
+        }
+
+        if ($target === 'ORDER_CREATOR') {
+            $order = $context['order'] ?? null;
+            if ($order && $order->created_by) {
+                $creator = \App\Models\User::find($order->created_by);
+                return $creator?->phone ?? $creator?->mobile ?? null;
+            }
+            return null;
         }
 
         // New target for Statement Provider

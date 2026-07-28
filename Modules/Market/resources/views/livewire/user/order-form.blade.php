@@ -5,7 +5,7 @@
         <div class="lg:col-span-2 space-y-6">
 
             {{-- Client Selection Card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4 hover:shadow-md transition-all duration-300">
                 @if($clientId)
                     @php
                         $selectedClient = \Modules\Clients\Entities\Client::find($clientId);
@@ -95,9 +95,9 @@
             </div>
 
             {{-- Checkout Form Template & Dynamic Fields Card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
-                <h3 class="font-black text-gray-900 dark:text-gray-100 text-lg flex items-center gap-2">
-                    <span class="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4 hover:shadow-md transition-all duration-300">
+                <h3 class="font-black text-gray-900 dark:text-white text-base pb-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                    <span class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -192,9 +192,9 @@
             </div>
 
             {{-- Products & Items Selector Card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
-                <h3 class="font-black text-gray-900 dark:text-gray-100 text-lg flex items-center gap-2">
-                    <span class="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4 hover:shadow-md transition-all duration-300">
+                <h3 class="font-black text-gray-900 dark:text-white text-base pb-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                    <span class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
@@ -230,7 +230,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <span class="text-xs font-black text-emerald-600 dark:text-emerald-400">{{ number_format($p['price']) }} تومان</span>
+                                    <span class="text-xs font-black text-emerald-600 dark:text-emerald-400">{{ number_format($p['price']) }} {{ $this->currencyLabel }}</span>
                                 </button>
                             @endforeach
                         </div>
@@ -243,9 +243,9 @@
                             <thead class="bg-gray-50 dark:bg-gray-800/50">
                                 <tr class="text-gray-500 dark:text-gray-400 text-xs font-bold">
                                     <th class="py-3 px-4 text-right">عنوان محصول</th>
-                                    <th class="py-3 px-4 text-center">قیمت واحد (تومان)</th>
+                                    <th class="py-3 px-4 text-center">قیمت واحد ({{ $this->currencyLabel }})</th>
                                     <th class="py-3 px-4 text-center">تعداد</th>
-                                    <th class="py-3 px-4 text-center">قیمت کل (تومان)</th>
+                                    <th class="py-3 px-4 text-center">قیمت کل ({{ $this->currencyLabel }})</th>
                                     <th class="py-3 px-4 text-left">عملیات</th>
                                 </tr>
                             </thead>
@@ -273,7 +273,7 @@
                                             </div>
                                         </td>
                                         <td class="py-4 px-4 text-center text-xs font-medium">
-                                            {{ number_format($item['price']) }} <span class="text-[10px] text-gray-500 dark:text-gray-400">تومان</span>
+                                            {{ number_format($item['price']) }} <span class="text-[10px] text-gray-500 dark:text-gray-400">{{ $this->currencyLabel }}</span>
                                         </td>
                                         <td class="py-4 px-4 text-center">
                                             <div class="inline-flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-1">
@@ -291,7 +291,7 @@
                                             </div>
                                         </td>
                                         <td class="py-4 px-4 text-center text-xs font-black text-emerald-600 dark:text-emerald-400">
-                                            {{ number_format($item['price'] * $item['quantity']) }} <span class="text-[10px] font-normal text-emerald-500 dark:text-emerald-500/80">تومان</span>
+                                            {{ number_format($item['price'] * $item['quantity']) }} <span class="text-[10px] font-normal text-emerald-500 dark:text-emerald-500/80">{{ $this->currencyLabel }}</span>
                                         </td>
                                         <td class="py-4 px-4 text-left">
                                             <button type="button" wire:click="removeItem({{ $idx }})" class="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all">
@@ -314,9 +314,9 @@
             </div>
 
             {{-- Shipping Address Card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
-                <h3 class="font-black text-gray-900 dark:text-gray-100 text-lg flex items-center gap-2">
-                    <span class="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4 hover:shadow-md transition-all duration-300">
+                <h3 class="font-black text-gray-900 dark:text-white text-base pb-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                    <span class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -391,9 +391,9 @@
             </div>
 
             {{-- Shipping Management Card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
-                <h3 class="font-black text-gray-900 dark:text-gray-100 text-base flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-700">
-                    <span class="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4 hover:shadow-md transition-all duration-300">
+                <h3 class="font-black text-gray-900 dark:text-white text-base pb-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                    <span class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 011-1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
@@ -415,7 +415,7 @@
                     </div>
 
                     <div class="space-y-1">
-                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">هزینه حمل و نقل (تومان)</label>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">هزینه حمل و نقل ({{ $this->currencyLabel }})</label>
                         <input type="number" wire:model.live.debounce.300ms="total_shipping_cost" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none">
                         @error('total_shipping_cost') <span class="text-xs text-rose-600 block">{{ $message }}</span> @enderror
                     </div>
@@ -433,22 +433,50 @@
         <div class="space-y-6">
 
             {{-- Summary & Totals Card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-5">
-                <h3 class="font-black text-gray-900 dark:text-gray-100 text-lg border-b border-gray-200 dark:border-gray-700 pb-3">خلاصه مالی فاکتور</h3>
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-5 hover:shadow-md transition-all duration-300">
+                <h3 class="font-black text-gray-900 dark:text-white text-base pb-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                    <span class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                    </span>
+                    خلاصه فاکتور مالی
+                </h3>
                 <div class="space-y-4 text-sm">
+                    @php
+                        $calculatedSubtotal = collect($items)->sum(function($item) {
+                            return $item['price'] * $item['quantity'];
+                        });
+                        $calculatedDiscount = (float) $total_discount;
+                        $calculatedTax = (float) $total_tax;
+                        $calculatedShipping = (float) $total_shipping_cost;
+                        $calculatedGrandTotal = max(0, $calculatedSubtotal - $calculatedDiscount + $calculatedTax + $calculatedShipping);
+                    @endphp
                     <div class="flex justify-between">
-                        <span class="text-gray-500 dark:text-gray-400">مجموع اقلام:</span>
-                        <span class="font-bold text-gray-900 dark:text-white">{{ number_format($this->subtotal) }} تومان</span>
+                        <span class="text-gray-500 dark:text-gray-400">قیمت اقلام سفارش:</span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ number_format($calculatedSubtotal) }} {{ $this->currencyLabel }}</span>
                     </div>
-                    @if((float)$this->total_shipping_cost > 0)
+                    @if($calculatedDiscount > 0)
+                        <div class="flex justify-between text-rose-600 dark:text-rose-400">
+                            <span>تخفیف سفارش:</span>
+                            <span class="font-bold">{{ number_format($calculatedDiscount) }}- {{ $this->currencyLabel }}</span>
+                        </div>
+                    @endif
+                    @if($calculatedTax > 0)
+                        <div class="flex justify-between text-amber-600 dark:text-amber-400">
+                            <span>مالیات و عوارض:</span>
+                            <span class="font-bold">{{ number_format($calculatedTax) }} {{ $this->currencyLabel }}</span>
+                        </div>
+                    @endif
+                    @if($calculatedShipping > 0)
                         <div class="flex justify-between">
                             <span class="text-gray-500 dark:text-gray-400">هزینه حمل و نقل:</span>
-                            <span class="font-bold text-gray-900 dark:text-white">{{ number_format((float)$this->total_shipping_cost) }} تومان</span>
+                            <span class="font-bold text-gray-900 dark:text-white">{{ number_format($calculatedShipping) }} {{ $this->currencyLabel }}</span>
                         </div>
                     @endif
                     <div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-4 text-base font-black text-gray-900 dark:text-white">
-                        <span>مبلغ کل فاکتور:</span>
-                        <span class="text-indigo-600 dark:text-indigo-400">{{ number_format($this->subtotal + (float)$this->total_shipping_cost) }} تومان</span>
+                        <span>مبلغ کل پرداختی:</span>
+                        <span class="text-indigo-600 dark:text-indigo-400">{{ number_format($calculatedGrandTotal) }} {{ $this->currencyLabel }}</span>
                     </div>
                 </div>
 
@@ -462,21 +490,43 @@
                 </div>
             </div>
 
+            {{-- Related Services Invoice Component --}}
+            @if($this->order && $this->order->sourceInvoice)
+                <x-market-related-invoice :invoice="$this->order->sourceInvoice" />
+            @endif
+
             {{-- Settings & Gateway Settings --}}
-            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-5">
-                <h3 class="font-black text-gray-900 dark:text-gray-100 text-lg border-b border-gray-200 dark:border-gray-700 pb-3">تنظیمات پرداخت و ارسال</h3>
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-5 hover:shadow-md transition-all duration-300">
+                <h3 class="font-black text-gray-900 dark:text-white text-base pb-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                    <span class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </span>
+                    تنظیمات پرداخت و ارسال
+                </h3>
 
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">روش پرداخت</label>
-                        <select wire:model.live="payment_method" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none">
-                            <option value="zibal">زیبال (Zibal)</option>
-                            <option value="zarinpal">زرین‌پال (Zarinpal)</option>
-                            <option value="behpardakht">به پرداخت ملت (Behpardakht)</option>
-                            <option value="pos">پرداخت در محل (کارتخوان - POS)</option>
-                            <option value="transfer">کارت به کارت / واریز فیش (Transfer)</option>
-                            <option value="cod">پرداخت در محل (نقدی - COD)</option>
-                        </select>
+                        @if($this->order && $this->order->sourceInvoice)
+                            <div class="w-full px-4 py-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                روش پرداخت از طریق فاکتور سرویس و خدمات تعیین می‌شود
+                            </div>
+                        @else
+                            <select wire:model.live="payment_method" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none">
+                                <option value="zibal">زیبال (Zibal)</option>
+                                <option value="zarinpal">زرین‌پال (Zarinpal)</option>
+                                <option value="behpardakht">به پرداخت ملت (Behpardakht)</option>
+                                <option value="pos">پرداخت در محل (کارتخوان - POS)</option>
+                                <option value="transfer">کارت به کارت / واریز فیش (Transfer)</option>
+                                <option value="cod">پرداخت در محل (نقدی - COD)</option>
+                            </select>
+                        @endif
                     </div>
 
                     <div>

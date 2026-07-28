@@ -24,24 +24,26 @@ class Handler extends ExceptionHandler
     public function register(): void
     {
         $this->reportable(function (Throwable $e) {
-            // اگر استثنا از مواردی است که نباید گزارش شود (مانند خطای اعتبارسنجی یا عدم احراز هویت)، لاگ نکن
+            $req = request();
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
+                \Illuminate\Support\Facades\Log::warning('[404 NOT FOUND]', [
+                    'url' => $req ? $req->fullUrl() : null,
+                    'path' => $req ? $req->path() : null,
+                    'method' => $req ? $req->method() : null,
+                    'ip' => $req ? $req->ip() : null,
+                    'user_id' => auth()->id(),
+                    'client_id' => auth('client')->id(),
+                    'message' => $e->getMessage(),
+                ]);
+                return;
+            }
+
             if (!$this->shouldReport($e)) {
                 return;
             }
 
-            // فیلتر کردن خطاهای 404 معمولی
-            if ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
-                // خطاهای 404 را فقط در حالت development لاگ می‌کنیم
-                if (!app()->environment('production')) {
-                    \Illuminate\Support\Facades\Log::debug('[EXCEPTION] 404 - مسیر پیدا نشد', [
-                        'message' => $e->getMessage()
-                    ]);
-                }
-                return; // از لاگ کردن بیشتر جلوگیری می‌کنیم
-            }
-
-            // برای خطاهای دیگر، لاگ می‌کنیم
             \Illuminate\Support\Facades\Log::error('[EXCEPTION] خطا رخ داد', [
+                'url' => $req ? $req->fullUrl() : null,
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
                 'file' => $e->getFile(),
@@ -56,37 +58,16 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
-        // اگر استثنا نباید گزارش/لاگ شود، مستقیما رندر کن بدون ثبت لاگ خطا
-        if (!$this->shouldReport($e)) {
-            return parent::render($request, $e);
-        }
-
-        // فیلتر کردن خطاهای 404 معمولی (درخواست‌های اسکن/ربات)
-        if ($this->isHttpException($e) && $e->getStatusCode() === 404) {
-            $path = $request->path();
-
-            // اگر مسیر نامعتبر و کوتاه است (احتمالاً اسکن/ربات)، فقط در حالت development لاگ می‌کنیم
-            if (strlen($path) < 10 && !app()->environment('production')) {
-                \Illuminate\Support\Facades\Log::debug('[EXCEPTION] 404 - مسیر نامعتبر', [
-                    'path' => $path,
-                    'url' => $request->fullUrl()
-                ]);
-            }
-        } else {
-            // برای خطاهای دیگر (غیر از 404) یا در حالت development، لاگ می‌کنیم
-            \Illuminate\Support\Facades\Log::error('[EXCEPTION RENDER] خطا در render', [
-                'message' => $e->getMessage(),
-                'code' => $e->getCode(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'request_url' => $request->fullUrl(),
-                'request_method' => $request->method(),
-                'request_path' => $request->path(),
-                'is_http_exception' => $this->isHttpException($e),
-                'status_code' => $this->isHttpException($e) ? $e->getStatusCode() : null,
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
+        \Illuminate\Support\Facades\Log::warning('[EXCEPTION RENDER]', [
+            'class' => get_class($e),
+            'message' => $e->getMessage(),
+            'status' => $this->isHttpException($e) ? $e->getStatusCode() : 500,
+            'url' => $request ? $request->fullUrl() : null,
+            'path' => $request ? $request->path() : null,
+            'method' => $request ? $request->method() : null,
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
 
         return parent::render($request, $e);
     }

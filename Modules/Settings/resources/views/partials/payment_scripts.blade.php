@@ -190,14 +190,18 @@
                         ${bankFieldHtml}
                     </div>
                     <div>
-                        <label for="${accountId}_account_number" class="${labelClass}">شماره حساب</label>
-                        <input type="text" data-field="account_number" id="${accountId}_account_number" name="bank_transfer_accounts[${index}][account_number]" value="${account.account_number || ''}" class="${inputClass} dir-ltr text-left" placeholder="123-456-789">
+                        <label for="${accountId}_owner_name" class="${labelClass}">نام و نام خانوادگی صاحب حساب</label>
+                        <input type="text" data-field="owner_name" id="${accountId}_owner_name" name="bank_transfer_accounts[${index}][owner_name]" value="${account.owner_name || account.name || ''}" class="${inputClass}" placeholder="مثال: علی محمدی">
                     </div>
                     <div>
                         <label for="${accountId}_card_number" class="${labelClass}">شماره کارت</label>
                         <input type="text" data-field="card_number" id="${accountId}_card_number" name="bank_transfer_accounts[${index}][card_number]" value="${account.card_number || ''}" class="${inputClass} dir-ltr text-left" placeholder="6037-xxxx-xxxx-xxxx">
                     </div>
                     <div>
+                        <label for="${accountId}_account_number" class="${labelClass}">شماره حساب</label>
+                        <input type="text" data-field="account_number" id="${accountId}_account_number" name="bank_transfer_accounts[${index}][account_number]" value="${account.account_number || ''}" class="${inputClass} dir-ltr text-left" placeholder="123-456-789">
+                    </div>
+                    <div class="md:col-span-2">
                         <label for="${accountId}_iban" class="${labelClass}">شماره شبا</label>
                         <input type="text" data-field="iban" id="${accountId}_iban" name="bank_transfer_accounts[${index}][iban]" value="${account.iban || ''}" class="${inputClass} dir-ltr text-left" placeholder="IR...">
                     </div>

@@ -704,4 +704,402 @@
             </div>
         </div>
     @endif
+
+    {{-- Transfer Payment Modal (کارت به کارت / واریز بانکی) --}}
+    @if($showTransferModal)
+        <div class="fixed inset-0 z-[999] overflow-y-auto" dir="rtl">
+            <div class="flex min-h-full items-center justify-center p-2.5 sm:p-4 text-center">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" wire:click="closeTransferModal"></div>
+
+                <div class="relative transform overflow-hidden rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-800 text-right shadow-2xl transition-all w-full max-w-[98%] sm:max-w-xl md:max-w-2xl lg:max-w-3xl my-2 sm:my-6 border border-gray-200 dark:border-gray-700 flex flex-col max-h-[92vh]">
+                    {{-- Modal Header --}}
+                    <div class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700/60 bg-gradient-to-r from-indigo-50/50 to-white dark:from-gray-800 dark:to-gray-800 shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white">اطلاعات واریز بانکی (کارت به کارت)</h3>
+                                <p class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">لطفاً حساب مقصد را انتخاب کرده و اطلاعات واریز را ثبت نمایید</p>
+                            </div>
+                        </div>
+                        <button type="button" wire:click="closeTransferModal" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50 transition">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Modal Body --}}
+                    <div class="p-4 sm:p-6 space-y-5 sm:space-y-6 overflow-y-auto custom-scrollbar flex-1">
+
+                        {{-- Bank Accounts Cards Carousel --}}
+                        <div x-data="{
+                                active: @entangle('selectedBankAccountIndex').live,
+                                total: {{ count($bankAccounts) }},
+                                copied: '',
+                                scrollToActive() {
+                                    this.$nextTick(() => {
+                                        if (this.$refs.track && this.$refs.track.children && this.$refs.track.children[0] && this.$refs.track.children[0].children[this.active]) {
+                                            this.$refs.track.children[0].children[this.active].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                                        }
+                                    });
+                                },
+                                copyText(text, key) {
+                                    if (!text) return;
+                                    if (navigator.clipboard && window.isSecureContext) {
+                                        navigator.clipboard.writeText(text).then(() => {
+                                            this.copied = key;
+                                            setTimeout(() => this.copied = '', 2000);
+                                        }).catch(() => {
+                                            this.fallbackCopy(text, key);
+                                        });
+                                    } else {
+                                        this.fallbackCopy(text, key);
+                                    }
+                                },
+                                fallbackCopy(text, key) {
+                                    const el = document.createElement('textarea');
+                                    el.value = text;
+                                    el.setAttribute('readonly', '');
+                                    el.style.position = 'absolute';
+                                    el.style.left = '-9999px';
+                                    document.body.appendChild(el);
+                                    el.select();
+                                    try {
+                                        document.execCommand('copy');
+                                        this.copied = key;
+                                        setTimeout(() => this.copied = '', 2000);
+                                    } catch (err) {}
+                                    document.body.removeChild(el);
+                                },
+                                next() {
+                                    this.active = (this.active + 1) % this.total;
+                                    this.scrollToActive();
+                                },
+                                prev() {
+                                    this.active = (this.active - 1 + this.total) % this.total;
+                                    this.scrollToActive();
+                                },
+                                select(index) {
+                                    this.active = index;
+                                    this.scrollToActive();
+                                }
+                            }"
+                            x-init="
+                                if (active === null || active === undefined || active >= total) active = 0;
+                                setTimeout(() => scrollToActive(), 150);
+                                $watch('active', value => scrollToActive());
+                            "
+                            class="relative w-full rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
+
+                            {{-- Final Total Price Box --}}
+                            @php
+                                $payableTotal = ($totals['grand_total'] ?? 0) + ($shippingCost ?? 0);
+                            @endphp
+                            <div class="flex items-center justify-between gap-3 p-3.5 px-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 shadow-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div class="flex items-baseline gap-1.5">
+                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">مبلغ قابل پرداخت:</span>
+                                        <span class="text-base sm:text-lg font-black text-gray-900 dark:text-white tracking-tight">
+                                            {{ number_format($payableTotal) }}
+                                        </span>
+                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">تومان</span>
+                                    </div>
+                                </div>
+
+                                {{-- Icon-Only Copy Button for Raw Amount --}}
+                                <button type="button" 
+                                        @click="copyText('{{ $payableTotal }}', 'total')"
+                                        title="کپی مبلغ خالص (بدون پسوند جهت همراه بانک)"
+                                        class="p-2 rounded-xl bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 dark:hover:text-white transition-all shadow-xs active:scale-90 flex items-center justify-center shrink-0">
+                                    <template x-if="copied === 'total'">
+                                        <svg class="w-4.5 h-4.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </template>
+                                    <template x-if="copied !== 'total'">
+                                        <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                    </template>
+                                </button>
+                            </div>
+
+                            <!-- Carousel Header -->
+                            <div class="flex items-center justify-between pt-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                                    <label class="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                        انتخاب کارت / حساب مقصد <span class="text-rose-500">*</span>
+                                    </label>
+                                </div>
+
+                                @if(count($bankAccounts) > 1)
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-700">
+                                            <span x-text="active + 1"></span> / {{ count($bankAccounts) }}
+                                        </span>
+
+                                        <button type="button" @click="prev()"
+                                                class="p-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all active:scale-95">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
+
+                                        <button type="button" @click="next()"
+                                                class="p-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all active:scale-95">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- Peeking Carousel Track with Native Scroll-Snap --}}
+                            <div class="relative w-full overflow-x-auto snap-x snap-mandatory py-2 no-scrollbar scroll-smooth"
+                                 x-ref="track">
+                                <div class="flex items-center gap-3.5 sm:gap-4 px-[5%] sm:px-[10%] min-w-full">
+                                    @foreach($bankAccounts as $index => $acc)
+                                        @php
+                                            $cardGradients = [
+                                                0 => 'from-slate-900 via-indigo-950 to-blue-950',
+                                                1 => 'from-zinc-900 via-purple-950 to-slate-950',
+                                                2 => 'from-slate-900 via-emerald-950 to-teal-950',
+                                                3 => 'from-stone-900 via-rose-950 to-zinc-950',
+                                            ];
+                                            $bgGradient = $cardGradients[$index % 4];
+                                            $ownerName = $acc['owner_name'] ?? ($acc['name'] ?? '');
+                                            $bankName = $acc['bank_name'] ?? 'بانک';
+                                            $cardNumber = !empty($acc['card_number']) ? preg_replace('/[^0-9]/', '', $acc['card_number']) : '';
+                                            $accountNumber = !empty($acc['account_number']) ? trim($acc['account_number']) : '';
+                                            $ibanNumber = !empty($acc['iban']) ? trim($acc['iban']) : '';
+                                        @endphp
+                                        <div wire:key="bank-card-modal-slide-{{ $index }}" 
+                                             @click="select({{ $index }})"
+                                             class="snap-center shrink-0 w-[88%] sm:w-[350px] md:w-[380px] transition-all duration-300 select-none cursor-pointer"
+                                             :class="active === {{ $index }} ? 'scale-100 opacity-100 z-20' : 'scale-95 opacity-50 hover:opacity-80 z-10'">
+                                            
+                                            <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col justify-between text-white select-none border-2 transition-all duration-300 min-h-[230px] sm:min-h-[245px] shadow-xl"
+                                                 :class="active === {{ $index }} ? 'border-indigo-400 ring-4 ring-indigo-500/30 shadow-indigo-500/25' : 'border-transparent'">
+
+                                                <!-- Background Gradient & Glow -->
+                                                <div class="absolute inset-0 bg-gradient-to-br {{ $bgGradient }}"></div>
+                                                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
+
+                                                {{-- Header: Account Owner Name --}}
+                                                <div class="relative z-10 flex items-center justify-between border-b border-white/20 pb-2.5 mb-2">
+                                                    <div>
+                                                        <span class="text-[11px] sm:text-xs font-bold text-amber-200/90 block mb-0.5">صاحب حساب:</span>
+                                                        <span class="text-sm sm:text-base md:text-lg font-black text-white tracking-wide drop-shadow-md">
+                                                            {{ !empty($ownerName) ? $ownerName : $bankName }}
+                                                        </span>
+                                                    </div>
+
+                                                    <!-- Selected Badge -->
+                                                    <div class="flex items-center gap-1.5">
+                                                        <span class="text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-full transition-all"
+                                                              :class="active === {{ $index }} ? 'bg-indigo-600 text-white shadow-md border border-indigo-400/50' : 'bg-white/20 text-white/80'">
+                                                            <span x-text="active === {{ $index }} ? 'انتخاب‌شده' : 'کارت ' + ({{ $index }} + 1)"></span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Middle Section: All Numbers Left-Aligned with Orderly High-Legibility Boxes --}}
+                                                <div class="relative z-10 space-y-2 my-1.5">
+                                                    <!-- Card Number (Slightly Smaller Font Size) -->
+                                                    @if(!empty($cardNumber))
+                                                        <div class="flex items-center justify-between gap-2.5 bg-black/40 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20">
+                                                            <span class="text-[11px] sm:text-xs font-bold text-amber-200/90 shrink-0">شماره کارت:</span>
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-xs sm:text-sm font-extrabold tracking-wider sm:tracking-widest text-white block" style="direction: ltr; display: inline-block;">
+                                                                    {{ implode(' - ', str_split($cardNumber, 4)) }}
+                                                                </span>
+                                                                <button type="button" 
+                                                                        @click.stop="copyText('{{ $cardNumber }}', 'modal-card-{{ $index }}')"
+                                                                        title="کپی شماره کارت"
+                                                                        class="p-1.5 rounded-lg bg-white/15 hover:bg-white/30 text-white transition-all shrink-0 active:scale-90">
+                                                                    <template x-if="copied === 'modal-card-{{ $index }}'">
+                                                                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                                    </template>
+                                                                    <template x-if="copied !== 'modal-card-{{ $index }}'">
+                                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                                                    </template>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+
+                                                    <!-- Account Number -->
+                                                    @if(!empty($accountNumber))
+                                                        <div class="flex items-center justify-between gap-2.5 bg-black/40 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20">
+                                                            <span class="text-[11px] sm:text-xs font-bold text-amber-200/90 shrink-0">شماره حساب:</span>
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-xs sm:text-sm font-bold text-white block" style="direction: ltr; display: inline-block;">
+                                                                    {{ $accountNumber }}
+                                                                </span>
+                                                                <button type="button" 
+                                                                        @click.stop="copyText('{{ $accountNumber }}', 'modal-account-{{ $index }}')"
+                                                                        title="کپی شماره حساب"
+                                                                        class="p-1.5 rounded-lg bg-white/15 hover:bg-white/30 text-white transition-all shrink-0 active:scale-90">
+                                                                    <template x-if="copied === 'modal-account-{{ $index }}'">
+                                                                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                                    </template>
+                                                                    <template x-if="copied !== 'modal-account-{{ $index }}'">
+                                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                                                    </template>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+
+                                                    <!-- IBAN / Sheba -->
+                                                    @if(!empty($ibanNumber))
+                                                        <div class="flex items-center justify-between gap-2.5 bg-black/40 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20">
+                                                            <span class="text-[11px] sm:text-xs font-bold text-amber-200/90 shrink-0">شماره شبا:</span>
+                                                            <div class="flex items-center gap-2 overflow-hidden">
+                                                                <span class="text-[11px] sm:text-xs font-bold text-white block truncate" style="direction: ltr; display: inline-block;">
+                                                                    {{ $ibanNumber }}
+                                                                </span>
+                                                                <button type="button" 
+                                                                        @click.stop="copyText('{{ $ibanNumber }}', 'modal-iban-{{ $index }}')"
+                                                                        title="کپی شماره شبا"
+                                                                        class="p-1.5 rounded-lg bg-white/15 hover:bg-white/30 text-white transition-all shrink-0 active:scale-90">
+                                                                    <template x-if="copied === 'modal-iban-{{ $index }}'">
+                                                                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                                    </template>
+                                                                    <template x-if="copied !== 'modal-iban-{{ $index }}'">
+                                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                                                    </template>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                </div>
+
+                                                {{-- Footer: Bank Name --}}
+                                                <div class="relative z-10 flex items-center justify-between pt-2 border-t border-white/20 text-xs">
+                                                    <span class="text-[11px] sm:text-xs font-bold text-amber-200/90">بانک صادرکننده:</span>
+                                                    <span class="font-black text-amber-300 text-xs sm:text-sm drop-shadow-md">
+                                                        {{ $bankName }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <!-- Pagination Dots -->
+                            @if(count($bankAccounts) > 1)
+                                <div class="flex items-center justify-center gap-1.5 pt-1">
+                                    @foreach($bankAccounts as $index => $acc)
+                                        <button type="button" @click="select({{ $index }})"
+                                                class="h-2 rounded-full transition-all duration-300"
+                                                :class="active === {{ $index }} ? 'w-6 bg-indigo-600 dark:bg-indigo-400' : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'">
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            @error('selectedBankAccountIndex') <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Transfer Details Form --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                            <div>
+                                <label for="transfer_sender_name_modal" class="block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5">نام واریزکننده <span class="text-rose-500">*</span></label>
+                                <input type="text" id="transfer_sender_name_modal" wire:model.defer="transfer_sender_name" placeholder="مثال: علی محمدی" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3.5 py-2.5 text-xs text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none">
+                                @error('transfer_sender_name') <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="transfer_mobile_modal" class="block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5">شماره موبایل واریزکننده <span class="text-rose-500">*</span></label>
+                                <input type="text" id="transfer_mobile_modal" wire:model.defer="transfer_mobile" placeholder="۰۹۱۲۳۴۵۶۷۸۹" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3.5 py-2.5 text-xs text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none dir-ltr text-right">
+                                @error('transfer_mobile') <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="transfer_ref_number_modal" class="block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5">شماره مرجع / پیگیری <span class="text-rose-500">*</span></label>
+                                <input type="text" id="transfer_ref_number_modal" wire:model.defer="transfer_ref_number" placeholder="مثال: ۱۲۳۴۵۶۷۸" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3.5 py-2.5 text-xs text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none dir-ltr text-right">
+                                @error('transfer_ref_number') <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="transfer_payment_date_modal" class="block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5">تاریخ پرداخت (شمسی) <span class="text-rose-500">*</span></label>
+                                <input type="text" id="transfer_payment_date_modal" data-jdp wire:model.live="transfer_payment_date" x-on:change="$wire.set('transfer_payment_date', $event.target.value)" placeholder="۱۴۰۳/۰۵/۰۵" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3.5 py-2.5 text-xs text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none text-center dir-ltr">
+                                @error('transfer_payment_date') <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
+                        {{-- Image Upload Zone (Optimized WebP Upload) --}}
+                        <div>
+                            <label class="block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5">تصویر رسید پرداخت (اختیاری)</label>
+                            <div class="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-4 sm:p-5 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/30 cursor-pointer">
+                                <input type="file" wire:model="transfer_receipt" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                @if($transfer_receipt)
+                                    <div class="relative z-20 flex flex-col items-center gap-2">
+                                        <img src="{{ $transfer_receipt->temporaryUrl() }}" class="max-h-36 rounded-xl object-contain shadow-md border border-gray-200 dark:border-gray-700" />
+                                        <span class="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                            تصویر رسید بارگذاری شد (برای تغییر کلیک کنید)
+                                        </span>
+                                    </div>
+                                @else
+                                    <div class="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400 py-2">
+                                        <svg class="w-8 h-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                        <span class="text-xs font-bold text-gray-700 dark:text-gray-300">انتخاب یا رهاسازی تصویر رسید</span>
+                                        <span class="text-[10px] text-gray-400">فرمت‌های مجاز: JPG, PNG, WEBP (بهینه‌سازی خودکار)</span>
+                                    </div>
+                                @endif
+                                <div wire:loading wire:target="transfer_receipt" class="absolute inset-0 bg-white/90 dark:bg-gray-800/90 z-30 flex items-center justify-center rounded-2xl">
+                                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                                        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                        </svg>
+                                        در حال پیش‌نمایش و اعتبارسنجی فایل...
+                                    </span>
+                                </div>
+                            </div>
+                            @error('transfer_receipt') <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
+                        </div>
+
+                    </div>
+
+                    {{-- Modal Footer --}}
+                    <div class="flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5 sm:gap-3 p-4 sm:p-5 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50 rounded-b-2xl sm:rounded-b-3xl shrink-0">
+                        <button type="button" wire:click="closeTransferModal" class="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl transition text-center">
+                            انصراف
+                        </button>
+
+                        <button type="button"
+                                wire:click="confirmTransfer"
+                                wire:loading.attr="disabled"
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold rounded-xl shadow-md shadow-indigo-500/20 transition active:scale-95 disabled:opacity-50">
+                            <svg wire:loading wire:target="confirmTransfer" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span wire:loading.remove wire:target="confirmTransfer">تأیید اطلاعات و ثبت نهایی سفارش</span>
+                            <span wire:loading wire:target="confirmTransfer">در حال پردازش سفارش...</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

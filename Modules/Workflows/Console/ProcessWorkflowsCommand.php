@@ -20,6 +20,8 @@ class ProcessWorkflowsCommand extends Command
         Log::info("[Workflows] Starting process command...");
         $this->processScheduledWorkflows($engine);
         $this->processAppointmentReminders($engine);
+        $this->processInvoiceReminders($engine);
+        $this->processOrderRenewalReminders($engine);
     }
 
     protected function processScheduledWorkflows(WorkflowEngine $engine): void
@@ -200,5 +202,163 @@ class ProcessWorkflowsCommand extends Command
         }
 
         return false;
+    }
+
+    protected function processInvoiceReminders(WorkflowEngine $engine): void
+    {
+        $workflows = Workflow::where('is_active', true)
+            ->whereHas('triggers', function ($query) {
+                $query->where('type', WorkflowTrigger::TYPE_INVOICE_REMINDER);
+            })
+            ->with(['triggers' => function ($query) {
+                $query->where('type', WorkflowTrigger::TYPE_INVOICE_REMINDER);
+            }])
+            ->get();
+
+        Log::info("[Workflows] Found " . $workflows->count() . " active invoice reminder workflows.");
+
+        foreach ($workflows as $workflow) {
+            foreach ($workflow->triggers as $trigger) {
+                $this->checkAndTriggerInvoiceReminders($engine, $workflow, $trigger);
+            }
+        }
+    }
+
+    protected function checkAndTriggerInvoiceReminders(WorkflowEngine $engine, Workflow $workflow, WorkflowTrigger $trigger): void
+    {
+        if (!class_exists('Modules\\Services\\App\\Http\\Models\\Invoice')) {
+            return;
+        }
+
+        $config = $trigger->config;
+        $offsetDays = (int)($config['offset_days'] ?? 0);
+        $runAtTime = $config['run_at_time'] ?? '08:00';
+        $scheduleTz = config('booking.timezones.display_default', 'Asia/Tehran');
+
+        $nowLocal = now()->timezone($scheduleTz);
+        
+        try {
+            [$hours, $minutes] = explode(':', $runAtTime);
+            $scheduledRunTime = $nowLocal->copy()->hour((int)$hours)->minute((int)$minutes)->second(0);
+        } catch (\Throwable $e) {
+            return; // invalid time format
+        }
+
+        // We only want to trigger this once per day, at the specified time.
+        // If current time hasn't reached the scheduled time, do not run.
+        if ($nowLocal->lessThan($scheduledRunTime)) {
+            return;
+        }
+
+        $targetDate = $nowLocal->copy()->subDays($offsetDays)->format('Y-m-d');
+
+        $query = \Modules\Services\App\Http\Models\Invoice::whereDate('due_date', '<=', $targetDate)
+            ->whereRaw('paid_amount < total');
+
+        $invoiceStatuses = $config['invoice_statuses'] ?? [];
+        $invoiceStatuses = array_filter(array_map('strval', $invoiceStatuses));
+        
+        $paymentStatuses = $config['payment_statuses'] ?? [];
+        $paymentStatuses = array_filter(array_map('strval', $paymentStatuses));
+
+        $invoices = $query->get();
+
+        if (!empty($invoiceStatuses) || !empty($paymentStatuses)) {
+            $invoices = $invoices->filter(function ($invoice) use ($invoiceStatuses, $paymentStatuses) {
+                $statusName = (string)$invoice->status?->name;
+                $invoiceMatch = empty($invoiceStatuses) || in_array($statusName, $invoiceStatuses, true);
+                $paymentMatch = empty($paymentStatuses) || in_array($statusName, $paymentStatuses, true);
+                return $invoiceMatch && $paymentMatch;
+            });
+        }
+
+        foreach ($invoices as $invoice) {
+            // Ensure this specific workflow hasn't already been triggered for this invoice
+            $exists = $workflow->instances()
+                ->where('related_type', 'INVOICE')
+                ->where('related_id', $invoice->id)
+                ->exists();
+
+            if (!$exists) {
+                Log::info("[Workflows] Triggering invoice reminder '{$workflow->name}' for Invoice #{$invoice->id} (Target Date: {$targetDate})");
+                $engine->startWorkflow($workflow, 'INVOICE', $invoice->id);
+            }
+        }
+    }
+
+    protected function processOrderRenewalReminders(WorkflowEngine $engine): void
+    {
+        $workflows = Workflow::where('is_active', true)
+            ->whereHas('triggers', function ($query) {
+                $query->where('type', WorkflowTrigger::TYPE_ORDER_RENEWAL_REMINDER);
+            })
+            ->with(['triggers' => function ($query) {
+                $query->where('type', WorkflowTrigger::TYPE_ORDER_RENEWAL_REMINDER);
+            }])
+            ->get();
+
+        if ($workflows->count() > 0) {
+            Log::info("[Workflows] Found " . $workflows->count() . " active order renewal reminder workflows.");
+        }
+
+        foreach ($workflows as $workflow) {
+            foreach ($workflow->triggers as $trigger) {
+                $this->checkAndTriggerOrderRenewalReminders($engine, $workflow, $trigger);
+            }
+        }
+    }
+
+    protected function checkAndTriggerOrderRenewalReminders(WorkflowEngine $engine, Workflow $workflow, WorkflowTrigger $trigger): void
+    {
+        if (!class_exists('Modules\\Services\\App\\Http\\Models\\Order')) {
+            return;
+        }
+
+        $config = $trigger->config;
+        $offsetDays = (int)($config['offset_days'] ?? 0);
+        $runAtTime = $config['run_at_time'] ?? '08:00';
+        $scheduleTz = config('booking.timezones.display_default', 'Asia/Tehran');
+
+        $nowLocal = now()->timezone($scheduleTz);
+        
+        try {
+            [$hours, $minutes] = explode(':', $runAtTime);
+            $scheduledRunTime = $nowLocal->copy()->hour((int)$hours)->minute((int)$minutes)->second(0);
+        } catch (\Throwable $e) {
+            return; // invalid time format
+        }
+
+        if ($nowLocal->lessThan($scheduledRunTime)) {
+            return;
+        }
+
+        $targetDate = $nowLocal->copy()->subDays($offsetDays)->format('Y-m-d');
+
+        $query = \Modules\Services\App\Http\Models\Order::whereDate('renewal_date', $targetDate);
+
+        $orderStatuses = $config['order_statuses'] ?? [];
+        $orderStatuses = array_filter(array_map('strval', $orderStatuses));
+
+        $orders = $query->get();
+
+        if (!empty($orderStatuses)) {
+            $orders = $orders->filter(function ($order) use ($orderStatuses) {
+                $statusName = (string)$order->status?->name;
+                return in_array($statusName, $orderStatuses, true);
+            });
+        }
+
+        foreach ($orders as $order) {
+            $exists = $workflow->instances()
+                ->where('related_type', 'ORDER')
+                ->where('related_id', $order->id)
+                ->whereDate('created_at', $nowLocal->toDateString())
+                ->exists();
+
+            if (!$exists) {
+                Log::info("[Workflows] Triggering order renewal reminder '{$workflow->name}' for Order #{$order->id} (Target Date: {$targetDate})");
+                $engine->startWorkflow($workflow, 'ORDER', $order->id);
+            }
+        }
     }
 }

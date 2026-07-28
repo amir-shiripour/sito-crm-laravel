@@ -63,10 +63,9 @@ class SettingsController extends Controller
                     if (!empty($acc['bank_id']) && isset($banksMap[$acc['bank_id']])) {
                         $acc['bank_name'] = $banksMap[$acc['bank_id']];
                     }
-                    if (empty($acc['bank_name']) && !empty($acc['name'])) {
-                        $acc['bank_name'] = $acc['name'];
-                    }
-                    $acc['name'] = $acc['bank_name'] ?? ($acc['name'] ?? '');
+                    $owner = $acc['owner_name'] ?? (!empty($acc['name']) && $acc['name'] !== ($acc['bank_name'] ?? '') ? $acc['name'] : '');
+                    $acc['owner_name'] = $owner;
+                    $acc['name'] = $owner;
                 }
             }
             unset($acc);
@@ -262,11 +261,9 @@ class SettingsController extends Controller
                             if (!empty($accItem['bank_id']) && isset($banksMap[$accItem['bank_id']])) {
                                 $accItem['bank_name'] = $banksMap[$accItem['bank_id']];
                             }
-                            if (!empty($accItem['bank_name'])) {
-                                $accItem['name'] = $accItem['bank_name'];
-                            } elseif (!empty($accItem['name'])) {
-                                $accItem['bank_name'] = $accItem['name'];
-                            }
+                            $owner = $accItem['owner_name'] ?? ($accItem['name'] ?? '');
+                            $accItem['owner_name'] = $owner;
+                            $accItem['name'] = $owner;
                         }
                     }
                     unset($accItem);

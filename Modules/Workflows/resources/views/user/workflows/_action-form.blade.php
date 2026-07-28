@@ -9,11 +9,26 @@
     $alpineId = $isEdit ? 'action_edit_' . $actionInstance->id : 'action_create_' . $stage->id;
 
     $types = [
-        \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_SMS => 'ارسال پیامک (SMS)',
-        \Modules\Workflows\Entities\WorkflowAction::TYPE_CREATE_TASK => 'ایجاد وظیفه (Task)',
-        \Modules\Workflows\Entities\WorkflowAction::TYPE_CREATE_FOLLOWUP => 'ایجاد پیگیری (FollowUp)',
-        \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_NOTIFICATION => 'نوتیفیکیشن سیستم',
+        \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_SMS                => 'ارسال پیامک (SMS)',
+        \Modules\Workflows\Entities\WorkflowAction::TYPE_CREATE_TASK              => 'ایجاد وظیفه (Task)',
+        \Modules\Workflows\Entities\WorkflowAction::TYPE_CREATE_FOLLOWUP          => 'ایجاد پیگیری (FollowUp)',
+        \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_NOTIFICATION        => 'نوتیفیکیشن سیستم',
+        \Modules\Workflows\Entities\WorkflowAction::TYPE_CHANGE_SERVICE_STATUS    => 'تغییر وضعیت سرویس خدمات',
+        \Modules\Workflows\Entities\WorkflowAction::TYPE_CREATE_INVOICE           => 'ساخت فاکتور تمدید',
     ];
+
+    // Collect available service statuses for the CHANGE_SERVICE_STATUS action
+    $serviceModuleStatuses = $serviceModuleStatuses ?? [];
+    $allServiceStatuses = [];
+    foreach ($serviceModuleStatuses as $sType => $sItems) {
+        foreach ($sItems as $sItem) {
+            $allServiceStatuses[] = [
+                'id'   => $sItem['id'] ?? null,
+                'name' => $sItem['name'] ?? '',
+                'type' => $sType,
+            ];
+        }
+    }
 
     // Default Tokens
     $defaultTokens = [
@@ -51,6 +66,57 @@
             'client_status' => 'وضعیت پرونده',
             'client_created_at_jalali' => 'تاریخ ایجاد پرونده (شمسی)',
             'client_creator_name' => 'نام ثبت‌کننده پرونده',
+        ],
+        'invoice' => [
+            'invoice_id' => 'شناسه فاکتور',
+            'invoice_number' => 'شماره فاکتور',
+            'invoice_total' => 'مبلغ کل فاکتور',
+            'invoice_paid_amount' => 'مبلغ پرداخت شده',
+            'invoice_remaining' => 'مبلغ باقیمانده',
+            'invoice_status' => 'وضعیت فاکتور',
+            'invoice_due_date' => 'تاریخ سررسید فاکتور',
+            'invoice_issue_date' => 'تاریخ صدور فاکتور',
+            'invoice_is_paid' => 'آیا پرداخت شده؟',
+            'invoice_is_overdue' => 'آیا معوقه است؟',
+            'invoice_has_payment' => 'آیا پرداختی دارد؟',
+            'invoice_creator_name' => 'نام ایجادکننده فاکتور',
+            'invoice_creator_phone' => 'تلفن ایجادکننده فاکتور',
+            'client_name' => 'نام مشتری فاکتور',
+            'client_phone' => 'تلفن مشتری فاکتور',
+            'client_email' => 'ایمیل مشتری فاکتور',
+        ],
+        'order' => [
+            'order_id' => 'شناسه سفارش',
+            'order_number' => 'شماره سفارش',
+            'order_status' => 'وضعیت سفارش',
+            'order_total' => 'مبلغ کل سفارش',
+            'order_service_name' => 'نام خدمت سفارش',
+            'order_issue_date' => 'تاریخ صدور سفارش',
+            'order_renewal_date' => 'تاریخ تمدید سفارش',
+            'client_name' => 'نام مشتری سفارش',
+            'client_phone' => 'تلفن مشتری سفارش',
+        ],
+        'payment' => [
+            'payment_id' => 'شناسه پرداخت',
+            'payment_amount' => 'مبلغ پرداخت',
+            'payment_method' => 'روش پرداخت',
+            'payment_status' => 'وضعیت پرداخت',
+            'payment_paid_at' => 'تاریخ و ساعت پرداخت',
+            'payment_transaction_id' => 'کد پیگیری',
+            'payment_is_late' => 'آیا دیرکرد دارد؟',
+            'invoice_number' => 'شماره فاکتور مرتبط',
+            'invoice_total' => 'مبلغ کل فاکتور مرتبط',
+            'invoice_remaining' => 'مانده فاکتور مرتبط',
+            'invoice_is_paid' => 'آیا فاکتور پرداخت شده؟',
+            'client_name' => 'نام مشتری پرداخت',
+            'client_phone' => 'تلفن مشتری پرداخت',
+        ],
+        'service' => [
+            'service_id'           => 'شناسه سرویس',
+            'service_name'         => 'نام سرویس',
+            'service_status'       => 'وضعیت سرویس',
+            'service_price'        => 'قیمت پایه',
+            'service_type'         => 'نوع چرخه پرداخت',
         ]
     ];
 
@@ -272,6 +338,10 @@
                             </optgroup>
                             <optgroup label="تماس کلاینت">
                                 <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                            <optgroup label="سرویس خدمات">
+                                <option value="INVOICE_CLIENT">مشتری فاکتور</option>
+                                <option value="ORDER_CLIENT">مشتری سفارش</option>
+                                <option value="PAYMENT_CLIENT">مشتری پرداخت</option>
                             </optgroup>
                             <optgroup label="وظیفه و پیگیری">
                                 <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
@@ -368,7 +438,7 @@
                         <div class="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-0.5">
                             @foreach($groupedTokens as $group => $tokens)
                                 <div class="w-full text-[10px] font-extrabold text-gray-400 dark:text-gray-500 border-b border-gray-200/50 dark:border-gray-700 pb-0.5 mb-1.5 mt-2.5 first:mt-0">
-                                    {{ $group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : ($group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : ($group === 'treatment_plan' ? 'اطلاعات طرح درمان' : $group)) }}
+                                    {{ $group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : ($group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : ($group === 'treatment_plan' ? 'اطلاعات طرح درمان' : ($group === 'invoice' ? 'اطلاعات فاکتور' : ($group === 'order' ? 'اطلاعات سفارش' : ($group === 'payment' ? 'اطلاعات پرداخت' : ($group === 'service' ? 'اطلاعات سرویس' : ($group === 'client' ? 'اطلاعات مشتری' : $group)))))))  }}
                                 </div>
                                 @foreach($tokens as $k => $l)
                                     <button type="button" @click="insertToken('{{ $k }}')" 
@@ -419,6 +489,11 @@
                             </optgroup>
                             <optgroup label="تماس کلاینت">
                                 <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                            <optgroup label="سرویس خدمات">
+                                <option value="INVOICE_CREATOR">ایجادکننده فاکتور</option>
+                                <option value="INVOICE_CLIENT">مشتری فاکتور</option>
+                                <option value="ORDER_CLIENT">مشتری سفارش</option>
+                                <option value="PAYMENT_CLIENT">مشتری پرداخت</option>
                             </optgroup>
                             <optgroup label="وظیفه و پیگیری">
                                 <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
@@ -509,6 +584,11 @@
                             </optgroup>
                             <optgroup label="تماس کلاینت">
                                 <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                            <optgroup label="سرویس خدمات">
+                                <option value="INVOICE_CREATOR">ایجادکننده فاکتور</option>
+                                <option value="INVOICE_CLIENT">مشتری فاکتور</option>
+                                <option value="ORDER_CLIENT">مشتری سفارش</option>
+                                <option value="PAYMENT_CLIENT">مشتری پرداخت</option>
                             </optgroup>
                             <optgroup label="وظیفه و پیگیری">
                                 <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
@@ -537,7 +617,7 @@
                         <div class="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-0.5">
                             @foreach($groupedTokens as $group => $tokens)
                                 <div class="w-full text-[10px] font-extrabold text-gray-400 dark:text-gray-500 border-b border-gray-200/50 dark:border-gray-700 pb-0.5 mb-1.5 mt-2.5 first:mt-0">
-                                    {{ $group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : ($group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : ($group === 'treatment_plan' ? 'اطلاعات طرح درمان' : $group)) }}
+                                    {{ $group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : ($group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : ($group === 'treatment_plan' ? 'اطلاعات طرح درمان' : ($group === 'invoice' ? 'اطلاعات فاکتور' : ($group === 'order' ? 'اطلاعات سفارش' : ($group === 'payment' ? 'اطلاعات پرداخت' : ($group === 'service' ? 'اطلاعات سرویس' : ($group === 'client' ? 'اطلاعات مشتری' : $group)))))))  }}
                                 </div>
                                 @foreach($tokens as $k => $l)
                                     <button type="button" @click="insertToken('{{ $k }}')" 
@@ -553,6 +633,96 @@
                               :disabled="actionType !== '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_SEND_NOTIFICATION }}'"
                               class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-3 px-4 text-sm font-medium focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
                               placeholder="پیام نوتیفیکیشن را در اینجا بنویسید...">{{ $cfg['message'] ?? '' }}</textarea>
+                </div>
+            </div>
+
+            {{-- CHANGE_SERVICE_STATUS Fields --}}
+            <div class="space-y-5" x-show="actionType === '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_CHANGE_SERVICE_STATUS }}'">
+                <div class="bg-orange-50/30 dark:bg-orange-950/10 border border-orange-200 dark:border-orange-900/20 rounded-xl p-4">
+                    <h4 class="text-xs font-bold text-orange-700 dark:text-orange-400 mb-3 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        تنظیمات تغییر وضعیت سرویس خدمات
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {{-- Entity Type --}}
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">نوع موجودیت</label>
+                            <select name="config[entity_type]"
+                                    :disabled="actionType !== '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_CHANGE_SERVICE_STATUS }}'"
+                                    class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2.5 px-3 focus:ring-orange-500 focus:border-orange-500 text-sm shadow-sm">
+                                <option value="invoice" @selected(($cfg['entity_type'] ?? 'invoice') === 'invoice')>فاکتور (Invoice)</option>
+                                <option value="order"   @selected(($cfg['entity_type'] ?? '') === 'order')>سفارش (Order)</option>
+                                <option value="payment" @selected(($cfg['entity_type'] ?? '') === 'payment')>پرداخت (Payment)</option>
+                                <option value="service" @selected(($cfg['entity_type'] ?? '') === 'service')>سرویس و خدمات (Service)</option>
+                            </select>
+                            <p class="text-[10px] text-gray-400 mt-1">در صورت انتخاب «سفارش»، «پرداخت» یا «سرویس»، اگر موجودیت مستقیم وجود نداشت، همه موارد مرتبط با فاکتور تغییر می‌یابند.</p>
+                        </div>
+
+                        {{-- Status Type --}}
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">نوع وضعیت (فیلتر)</label>
+                            <select name="config[status_type]"
+                                    :disabled="actionType !== '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_CHANGE_SERVICE_STATUS }}'"
+                                    class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2.5 px-3 focus:ring-orange-500 focus:border-orange-500 text-sm shadow-sm">
+                                <option value="">همه انواع</option>
+                                <option value="payment" @selected(($cfg['status_type'] ?? '') === 'payment')>پرداخت (Payment)</option>
+                                <option value="service" @selected(($cfg['status_type'] ?? '') === 'service')>سرویس (Service)</option>
+                                <option value="invoice" @selected(($cfg['status_type'] ?? '') === 'invoice')>فاکتور (Invoice)</option>
+                                <option value="order"   @selected(($cfg['status_type'] ?? '') === 'order')>سفارش (Order)</option>
+                            </select>
+                        </div>
+
+                        {{-- Status Name --}}
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">وضعیت هدف</label>
+                            @if(!empty($allServiceStatuses))
+                                <select name="config[status_name]"
+                                        :disabled="actionType !== '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_CHANGE_SERVICE_STATUS }}'"
+                                        class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2.5 px-3 focus:ring-orange-500 focus:border-orange-500 text-sm shadow-sm">
+                                    <option value="">-- انتخاب وضعیت --</option>
+                                    <optgroup label="وضعیت‌های پرداخت">
+                                        @foreach($serviceModuleStatuses['payment'] ?? [] as $st)
+                                            <option value="{{ $st['name'] }}" @selected(($cfg['status_name'] ?? '') === $st['name'])>{{ $st['name'] }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                    <optgroup label="وضعیت‌های سرویس">
+                                        @foreach($serviceModuleStatuses['service'] ?? [] as $st)
+                                            <option value="{{ $st['name'] }}" @selected(($cfg['status_name'] ?? '') === $st['name'])>{{ $st['name'] }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                    <optgroup label="وضعیت‌های سفارش">
+                                        @foreach($serviceModuleStatuses['order'] ?? [] as $st)
+                                            <option value="{{ $st['name'] }}" @selected(($cfg['status_name'] ?? '') === $st['name'])>{{ $st['name'] }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                    <optgroup label="وضعیت‌های فاکتور">
+                                        @foreach($serviceModuleStatuses['invoice'] ?? [] as $st)
+                                            <option value="{{ $st['name'] }}" @selected(($cfg['status_name'] ?? '') === $st['name'])>{{ $st['name'] }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                </select>
+                            @else
+                                <input type="text" name="config[status_name]" value="{{ $cfg['status_name'] ?? '' }}"
+                                       :disabled="actionType !== '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_CHANGE_SERVICE_STATUS }}'"
+                                       placeholder="نام وضعیت هدف (مثلاً: لغو شده)"
+                                       class="block w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white py-2.5 px-3 text-sm focus:ring-orange-500 focus:border-orange-500">
+                                <p class="text-[10px] text-orange-500 mt-1">ماژول سرویس خدمات فعال نیست یا وضعیتی تعریف نشده. نام وضعیت را دستی وارد کنید.</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Create Invoice Fields --}}
+            <div class="space-y-4" x-show="actionType === '{{ \Modules\Workflows\Entities\WorkflowAction::TYPE_CREATE_INVOICE }}'">
+                <div class="p-4 bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-800 rounded-xl">
+                    <p class="text-xs font-bold text-teal-700 dark:text-teal-400 mb-2">تنظیمات ساخت فاکتور تمدید</p>
+                    <div class="space-y-3">
+                        <p class="text-[11px] text-teal-600 dark:text-teal-400">
+                            این عملیات یک فاکتور جدید بر اساس اطلاعات سفارش (مشتری، سرویس، مبلغ تمدید) ایجاد کرده و وضعیت آن را در انتظار پرداخت قرار می‌دهد.
+                            مهلت پرداخت فاکتور به‌طور خودکار برابر با تاریخ تمدید (یا دوره تناوب) سفارش در نظر گرفته می‌شود.
+                        </p>
+                    </div>
                 </div>
             </div>
 

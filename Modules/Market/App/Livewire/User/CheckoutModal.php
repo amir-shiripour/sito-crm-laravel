@@ -13,13 +13,28 @@ use Modules\Market\Entities\ShippingSlot;
 use Modules\Market\Entities\ShippingSlotBooking;
 use Modules\Settings\Entities\Setting;
 use App\Helpers\ProvinceCity;
+use Livewire\WithFileUploads;
+use App\Traits\FileUploadTrait;
+use Modules\Market\App\Models\OrderMeta;
 
 class CheckoutModal extends Component
 {
+    use WithFileUploads, FileUploadTrait;
+
     public bool $isOpen = false;
     public bool $isFullPage = false;
     public $cartItems = [];
     public $totalAmount = 0;
+
+    // Transfer Payment Modal properties
+    public bool $showTransferModal = false;
+    public array $bankAccounts = [];
+    public ?int $selectedBankAccountIndex = null;
+    public string $transfer_sender_name = '';
+    public string $transfer_mobile = '';
+    public string $transfer_ref_number = '';
+    public string $transfer_payment_date = '';
+    public $transfer_receipt = null;
 
     // Form fields
     public string $name = '';
@@ -45,7 +60,7 @@ class CheckoutModal extends Component
     {
         $rules = [
             'name' => 'required|string|max:255',
-            'mobile' => 'required|iran_mobile',
+            'mobile' => ['required', 'regex:/^09[0-9]{9}$/'],
             'province_id' => 'required|string',
             'city_id' => 'required|string',
             'address' => 'required|string|max:1000',
@@ -332,6 +347,95 @@ class CheckoutModal extends Component
             return;
         }
 
+        if ($this->payment_method === 'transfer') {
+            $this->loadBankAccounts();
+            if (empty($this->bankAccounts)) {
+                $this->addError('payment_method', 'هیچ حساب بانکی جهت واریز تعریف نشده است. لطفاً روش دیگری انتخاب کنید.');
+                return;
+            }
+
+            $this->transfer_sender_name = $this->name;
+            $this->transfer_mobile = $this->mobile;
+            if (empty($this->transfer_payment_date)) {
+                $this->transfer_payment_date = \Morilog\Jalali\Jalalian::now()->format('Y/m/d');
+            }
+
+            $this->showTransferModal = true;
+            return;
+        }
+
+        return $this->executeOrderCreation($orderService, $stockService, $client);
+    }
+
+    public function confirmTransfer(OrderService $orderService, StockService $stockService)
+    {
+        $this->loadBankAccounts();
+
+        $this->validate([
+            'selectedBankAccountIndex' => 'required|integer|min:0',
+            'transfer_sender_name' => 'required|string|max:255',
+            'transfer_mobile' => ['required', 'regex:/^09[0-9]{9}$/'],
+            'transfer_ref_number' => 'required|string|max:100',
+            'transfer_payment_date' => 'required|string',
+            'transfer_receipt' => 'nullable|image|max:5120',
+        ], [
+            'selectedBankAccountIndex.required' => 'انتخاب کارت بانکی مقصد الزامی است.',
+            'transfer_sender_name.required' => 'نام واریزکننده الزامی است.',
+            'transfer_mobile.required' => 'شماره موبایل واریزکننده الزامی است.',
+            'transfer_mobile.regex' => 'شماره موبایل واریزکننده معتبر نیست (مثال: ۰۹۱۲۳۴۵۶۷۸۹).',
+            'transfer_ref_number.required' => 'شماره مرجع / پیگیری الزامی است.',
+            'transfer_payment_date.required' => 'تاریخ پرداخت الزامی است.',
+            'transfer_receipt.image' => 'تصویر رسید باید از نوع تصویر باشد.',
+            'transfer_receipt.max' => 'حجم تصویر رسید نباید بیشتر از ۵ مگابایت باشد.',
+        ]);
+
+        $user = auth()->user();
+        $client = $user->clients()->first();
+
+        if (!$client) {
+            $this->addError('submit', 'پروفایل مشتری برای کاربر شما تعریف نشده است.');
+            return;
+        }
+
+        $receiptPath = null;
+        if ($this->transfer_receipt) {
+            $receiptPath = $this->uploadFile($this->transfer_receipt, 'market/transfer-receipts');
+        }
+
+        $selectedAccount = $this->bankAccounts[$this->selectedBankAccountIndex] ?? null;
+
+        $transferMeta = [
+            'transfer_bank_account' => $selectedAccount ? json_encode($selectedAccount, JSON_UNESCAPED_UNICODE) : null,
+            'transfer_sender_name' => $this->transfer_sender_name,
+            'transfer_mobile' => $this->transfer_mobile,
+            'transfer_ref_number' => $this->transfer_ref_number,
+            'transfer_payment_date' => $this->transfer_payment_date,
+            'transfer_receipt_path' => $receiptPath,
+        ];
+
+        $order = $this->executeOrderCreation($orderService, $stockService, $client, $transferMeta);
+
+        $this->showTransferModal = false;
+        return $this->redirect()->to(route('market.checkout.process', $order));
+    }
+
+    public function closeTransferModal(): void
+    {
+        $this->showTransferModal = false;
+    }
+
+    public function loadBankAccounts(): void
+    {
+        $settings = \Modules\Settings\Entities\Setting::all()->pluck('value', 'key')->toArray();
+        $raw = $settings['bank_transfer_accounts'] ?? [];
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true) ?: [];
+        }
+        $this->bankAccounts = is_array($raw) ? array_values($raw) : [];
+    }
+
+    protected function executeOrderCreation(OrderService $orderService, StockService $stockService, $client, ?array $transferMeta = null)
+    {
         DB::beginTransaction();
         try {
             $selectedMethod = $this->selectedShippingMethodId ? ShippingMethod::find($this->selectedShippingMethodId) : null;
@@ -371,6 +475,18 @@ class CheckoutModal extends Component
                     'booking_date' => $this->selectedDeliveryDate,
                 ]);
                 $booking->increment('orders_count');
+            }
+
+            if (!empty($transferMeta)) {
+                foreach ($transferMeta as $tKey => $tValue) {
+                    if (!is_null($tValue)) {
+                        OrderMeta::create([
+                            'order_id' => $order->id,
+                            'key' => $tKey,
+                            'value' => is_array($tValue) ? json_encode($tValue, JSON_UNESCAPED_UNICODE) : (string) $tValue
+                        ]);
+                    }
+                }
             }
 
             DB::commit();

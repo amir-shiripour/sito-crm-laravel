@@ -20,18 +20,40 @@ class CheckoutController extends Controller
     }
 
     /**
+     * Ensure the user owns or can view the order.
+     */
+    protected function checkOrderAccess(Order $order): void
+    {
+        $currentClientId = auth('client')->id();
+        if ($currentClientId && (int)$order->client_id === (int)$currentClientId) {
+            return;
+        }
+
+        if (auth()->check()) {
+            $user = auth()->user();
+            if ($user->clients()->where('id', $order->client_id)->exists() || $user->can('market.orders.view')) {
+                return;
+            }
+        }
+
+        if (!$order->client_id) {
+            return;
+        }
+
+        abort(403, 'شما اجازه دسترسی به این سفارش را ندارید.');
+    }
+
+    /**
      * Process the order and redirect to the payment gateway or show a success page.
      *
-     * @param Order $order
+     * @param Order|int|string $order
      * @param PaymentService $paymentService
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Contracts\View\View
      */
-    public function process(Order $order, PaymentService $paymentService)
+    public function process($order, PaymentService $paymentService)
     {
-        // Ensure the user owns the order
-        if ($order->client_id !== auth('client')->id()) {
-            abort(403, 'شما اجازه دسترسی به این سفارش را ندارید.');
-        }
+        $order = $order instanceof Order ? $order : Order::findOrFail($order);
+        $this->checkOrderAccess($order);
 
         // Ensure the order is in 'unpaid' state
         if ($order->payment_status !== 'unpaid') {
@@ -104,28 +126,26 @@ class CheckoutController extends Controller
     /**
      * Display the success page.
      *
-     * @param Order $order
+     * @param Order|int|string $order
      * @return \Illuminate\Contracts\View\View
      */
-    public function success(Order $order)
+    public function success($order)
     {
-        if ($order->client_id !== auth('client')->id()) {
-            abort(403);
-        }
+        $order = $order instanceof Order ? $order : Order::findOrFail($order);
+        $this->checkOrderAccess($order);
         return view('market::web.checkout.success', compact('order'));
     }
 
     /**
      * Display the failed page.
      *
-     * @param Order $order
+     * @param Order|int|string $order
      * @return \Illuminate\Contracts\View\View
      */
-    public function failed(Order $order)
+    public function failed($order)
     {
-         if ($order->client_id !== auth('client')->id()) {
-            abort(403);
-        }
+        $order = $order instanceof Order ? $order : Order::findOrFail($order);
+        $this->checkOrderAccess($order);
         return view('market::web.checkout.failed', compact('order'));
     }
 }

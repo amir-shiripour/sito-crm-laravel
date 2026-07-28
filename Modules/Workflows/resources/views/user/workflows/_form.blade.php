@@ -163,6 +163,10 @@
                                 <optgroup label="بر اساس زمان (یادآوری نوبت)">
                                     <option value="APPOINTMENT_REMINDER" @selected($triggerType === 'APPOINTMENT_REMINDER')>یادآوری نوبت‌دهی (قبل/بعد از نوبت)</option>
                                 </optgroup>
+                                <optgroup label="بر اساس زمان (یادآوری فاکتور)">
+                                    <option value="INVOICE_REMINDER" @selected($triggerType === 'INVOICE_REMINDER')>یادآوری سررسید فاکتور (قبل/بعد از سررسید)</option>
+                                    <option value="ORDER_RENEWAL_REMINDER" @selected($triggerType === 'ORDER_RENEWAL_REMINDER')>یادآوری تمدید سفارش (ساخت خودکار فاکتور)</option>
+                                </optgroup>
                                 <optgroup label="بر اساس زمان‌بندی (دوره‌ای)">
                                     <option value="SCHEDULE" @selected($triggerType === 'SCHEDULE')>زمان‌بندی دوره‌ای خاص (Cron Job)</option>
                                 </optgroup>
@@ -212,6 +216,39 @@
                                                     }
                                                 @endphp
                                                 @foreach($aptEvents as $k => $label)
+                                                    <label class="flex items-center gap-3 p-2 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-all select-none">
+                                                        <input type="checkbox" name="triggers[{{ $index }}][config][event_key][]" value="{{ $k }}" @checked(in_array($k, $selectedEvents))
+                                                               class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 event-checkbox h-4.5 w-4.5">
+                                                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ $label }}</span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        </div>
+
+                                        <!-- دسته‌بندی سرویس خدمات -->
+                                        <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+                                            <button type="button" class="event-group-toggle w-full flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-800/50 text-xs font-bold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                                                <span>رویدادهای سرویس خدمات (Services)</span>
+                                                <svg class="h-4 w-4 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                            </button>
+                                            <div class="event-group-content p-4 grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
+                                                @php
+                                                    $serviceEvents = [
+                                                        'invoice_created'         => 'ایجاد فاکتور جدید',
+                                                        'invoice_status_changed'  => 'تغییر وضعیت فاکتور',
+                                                        'invoice_paid'            => 'تکمیل پرداخت فاکتور',
+                                                        'invoice_unpaid'          => 'لغو یا بازگشت پرداخت فاکتور',
+                                                        'invoice_cancelled'       => 'لغو فاکتور',
+                                                        'payment_created'         => 'ثبت پرداخت جدید',
+                                                        'payment_cancelled'       => 'لغو پرداخت',
+                                                        'payment_status_changed'  => 'تغییر وضعیت پرداخت',
+                                                        'service_created'         => 'ایجاد سرویس جدید',
+                                                        'service_status_changed'  => 'تغییر وضعیت سرویس',
+                                                        'order_created'           => 'ایجاد سفارش جدید',
+                                                        'order_status_changed'    => 'تغییر وضعیت سفارش',
+                                                    ];
+                                                @endphp
+                                                @foreach($serviceEvents as $k => $label)
                                                     <label class="flex items-center gap-3 p-2 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-all select-none">
                                                         <input type="checkbox" name="triggers[{{ $index }}][config][event_key][]" value="{{ $k }}" @checked(in_array($k, $selectedEvents))
                                                                class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 event-checkbox h-4.5 w-4.5">
@@ -691,6 +728,70 @@
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <!-- ۷. فیلترهای اختصاصی سرویس خدمات -->
+                                        <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900/40">
+                                            <button type="button" class="event-group-toggle w-full flex justify-between items-center px-4 py-3 bg-gray-50/70 dark:bg-gray-800/20 text-xs font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">
+                                                <div class="flex items-center gap-2">
+                                                    <span>فیلترهای اختصاصی سرویس خدمات (Services)</span>
+                                                    <span class="badge-services-module hidden bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full text-[10px] font-extrabold border border-indigo-100 dark:border-indigo-900/50"></span>
+                                                </div>
+                                                <svg class="h-4 w-4 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                            </button>
+                                            <div class="event-group-content p-4 space-y-4 hidden">
+                                                <!-- فیلتر وضعیت سرویس -->
+                                                @if(isset($serviceModuleStatuses['service']))
+                                                <div class="space-y-3 bg-gray-50/30 dark:bg-gray-800/10 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">وضعیت(های) سرویس:</label>
+                                                    @php $selectedServiceStatuses = (array)($tConfig['service_statuses'] ?? []); @endphp
+                                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-white dark:bg-gray-900/50 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
+                                                        @foreach($serviceModuleStatuses['service'] as $st)
+                                                            <label class="flex items-center gap-2 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
+                                                                <input type="checkbox" name="triggers[{{ $index }}][config][service_statuses][]" value="{{ $st['name'] }}" @checked(in_array($st['name'], $selectedServiceStatuses))
+                                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                                                                <span class="text-xs text-gray-700 dark:text-gray-300 font-medium">{{ $st['name'] }}</span>
+                                                            </label>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                                @endif
+
+                                                <!-- فیلتر وضعیت فاکتور -->
+                                                @if(isset($serviceModuleStatuses['invoice']))
+                                                <div class="space-y-3 bg-gray-50/30 dark:bg-gray-800/10 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">وضعیت(های) فاکتور:</label>
+                                                    @php $selectedInvoiceStatuses = (array)($tConfig['invoice_statuses'] ?? []); @endphp
+                                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-white dark:bg-gray-900/50 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
+                                                        @foreach($serviceModuleStatuses['invoice'] as $st)
+                                                            <label class="flex items-center gap-2 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
+                                                                <input type="checkbox" name="triggers[{{ $index }}][config][invoice_statuses][]" value="{{ $st['name'] }}" @checked(in_array($st['name'], $selectedInvoiceStatuses))
+                                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                                                                <span class="text-xs text-gray-700 dark:text-gray-300 font-medium">{{ $st['name'] }}</span>
+                                                            </label>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                                @endif
+
+                                                <!-- فیلتر وضعیت پرداخت -->
+                                                @if(isset($serviceModuleStatuses['payment']))
+                                                <div class="space-y-3 bg-gray-50/30 dark:bg-gray-800/10 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">وضعیت(های) پرداخت:</label>
+                                                    @php $selectedPaymentStatuses = (array)($tConfig['payment_statuses'] ?? []); @endphp
+                                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-white dark:bg-gray-900/50 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
+                                                        @foreach($serviceModuleStatuses['payment'] as $st)
+                                                            <label class="flex items-center gap-2 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
+                                                                <input type="checkbox" name="triggers[{{ $index }}][config][payment_statuses][]" value="{{ $st['name'] }}" @checked(in_array($st['name'], $selectedPaymentStatuses))
+                                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                                                                <span class="text-xs text-gray-700 dark:text-gray-300 font-medium">{{ $st['name'] }}</span>
+                                                            </label>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                                @endif
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -811,7 +912,131 @@
                                 </div>
                             </div>
 
+                            <!-- 4. INVOICE_REMINDER CONFIG -->
+                            <div class="trigger-config config-INVOICE_REMINDER hidden space-y-6">
+                                <!-- زمان دقیق بررسی و ساعت اجرا -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
+                                    <div class="space-y-2">
+                                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">فاصله زمانی از سررسید فاکتور</label>
+                                        @php
+                                            $rawOffsetDays = (int)($tConfig['offset_days'] ?? 0);
+                                            $invoiceDirection = $rawOffsetDays <= 0 ? -1 : 1;
+                                            $absOffsetDays = abs($rawOffsetDays);
+                                        @endphp
+                                        <div class="flex rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+                                            <input type="number" value="{{ $absOffsetDays }}" min="0" class="invoice-offset-val-input block w-20 border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 text-center focus:ring-0 focus:outline-none text-sm font-semibold">
+                                            <input type="hidden" name="triggers[{{ $index }}][config][offset_days]" value="{{ $rawOffsetDays }}" class="real-invoice-offset-input">
+                                            <select class="invoice-offset-dir-select block border-r border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 focus:ring-0 focus:outline-none border-gray-300 dark:border-gray-700 text-xs font-bold">
+                                                <option value="-1" @selected($invoiceDirection === -1)>روز قبل از سررسید</option>
+                                                <option value="1" @selected($invoiceDirection === 1)>روز بعد از سررسید</option>
+                                            </select>
+                                        </div>
+                                        <p class="text-[10px] text-gray-400 leading-normal">عدد ۰ = در روز سررسید. اعداد مثبت = بعد از سررسید (برای یادآوری پرداخت نشده‌ها). اعداد منفی = قبل از سررسید (برای پیش‌یادآوری).</p>
+                                    </div>
+
+                                    <div class="space-y-2">
+                                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">ساعت اجرای بررسی روزانه</label>
+                                        <input type="time" name="triggers[{{ $index }}][config][run_at_time]" value="{{ $tConfig['run_at_time'] ?? '08:00' }}"
+                                               class="run-at-time-invoice-input block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-semibold">
+                                        <p class="text-[10px] text-gray-400 leading-normal">هر روز رأس این ساعت، فاکتورهای مشمول شرط بررسی می‌شوند.</p>
+                                    </div>
+                                </div>
+
+                                <!-- وضعیت‌های پرداخت مجاز -->
+                                @if(isset($serviceModuleStatuses['payment']) && count($serviceModuleStatuses['payment']) > 0)
+                                <div class="space-y-3">
+                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">وضعیت‌های پرداخت مجاز (فقط فاکتورهایی با این وضعیت‌ها بررسی می‌شوند)</label>
+                                    @php
+                                        $selectedInvoiceReminderPaymentStatuses = (array)($tConfig['payment_statuses'] ?? []);
+                                    @endphp
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 bg-white dark:bg-gray-900 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
+                                        @foreach($serviceModuleStatuses['payment'] as $st)
+                                            <label class="flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
+                                                <input type="checkbox" name="triggers[{{ $index }}][config][payment_statuses][]" value="{{ $st['name'] }}" @checked(in_array($st['name'], $selectedInvoiceReminderPaymentStatuses))
+                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 invoice-payment-status-checkbox h-4 w-4">
+                                                <span class="text-xs text-gray-700 dark:text-gray-300 font-medium">{{ $st['name'] }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    <p class="text-[10px] text-gray-400">اگر هیچ‌کدام انتخاب نشود، فاکتورها با هر وضعیت پرداختی بررسی می‌شوند.</p>
+                                </div>
+                                @endif
+
+                                <!-- فیلتر خدمات/سرویس‌ها -->
+                                @php $selectedInvoiceServices = (array)($tConfig['service_ids'] ?? []); @endphp
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">فیلتر خدمات/سرویس‌ها (اختیاری)</label>
+                                        <select name="triggers[{{ $index }}][config][service_operator]" class="operator-select text-xs font-bold rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2.5">
+                                            <option value="IN" @selected(($tConfig['service_operator'] ?? 'IN') === 'IN')>شامل موارد زیر باشد</option>
+                                            <option value="NOT_IN" @selected(($tConfig['service_operator'] ?? 'IN') === 'NOT_IN')>شامل موارد زیر نباشد (به جز...)</option>
+                                        </select>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-3.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+                                        @foreach($services as $service)
+                                            <label class="flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
+                                                <input type="checkbox" name="triggers[{{ $index }}][config][service_ids][]" value="{{ $service->id }}" @checked(in_array($service->id, $selectedInvoiceServices))
+                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 service-checkbox h-4 w-4">
+                                                <span class="text-sm text-gray-700 dark:text-gray-300">{{ $service->name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 5. ORDER_RENEWAL_REMINDER CONFIG -->
+                            <div class="trigger-config config-ORDER_RENEWAL_REMINDER hidden space-y-6">
+                                <!-- زمان دقیق بررسی و ساعت اجرا -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
+                                    <div class="space-y-2">
+                                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">فاصله زمانی از تاریخ تمدید سفارش</label>
+                                        @php
+                                            $rawOrderOffsetDays = (int)($tConfig['offset_days'] ?? 0);
+                                            $orderDirection = $rawOrderOffsetDays <= 0 ? -1 : 1;
+                                            $absOrderOffsetDays = abs($rawOrderOffsetDays);
+                                        @endphp
+                                        <div class="flex rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+                                            <input type="number" value="{{ $absOrderOffsetDays }}" min="0" class="order-offset-val-input block w-20 border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 text-center focus:ring-0 focus:outline-none text-sm font-semibold">
+                                            <input type="hidden" name="triggers[{{ $index }}][config][offset_days]" value="{{ $rawOrderOffsetDays }}" class="real-order-offset-input">
+                                            <select class="order-offset-dir-select block border-r border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 focus:ring-0 focus:outline-none border-gray-300 dark:border-gray-700 text-xs font-bold">
+                                                <option value="-1" @selected($orderDirection === -1)>روز قبل از تمدید</option>
+                                                <option value="1" @selected($orderDirection === 1)>روز بعد از تمدید</option>
+                                            </select>
+                                        </div>
+                                        <p class="text-[10px] text-gray-400 leading-normal">عدد ۰ = در روز تاریخ تمدید. اعداد منفی = قبل از تاریخ تمدید.</p>
+                                    </div>
+
+                                    <div class="space-y-2">
+                                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">ساعت اجرای بررسی روزانه</label>
+                                        <input type="time" name="triggers[{{ $index }}][config][run_at_time]" value="{{ $tConfig['run_at_time'] ?? '08:00' }}"
+                                               class="run-at-time-order-input block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-semibold">
+                                        <p class="text-[10px] text-gray-400 leading-normal">هر روز رأس این ساعت، سفارش‌های مشمول شرط بررسی می‌شوند.</p>
+                                    </div>
+                                </div>
+
+                                <!-- وضعیت‌های سفارش مجاز -->
+                                @if(isset($serviceModuleStatuses['order']) && count($serviceModuleStatuses['order']) > 0)
+                                <div class="space-y-3">
+                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">وضعیت‌های سفارش مجاز</label>
+                                    @php
+                                        $selectedOrderStatuses = (array)($tConfig['order_statuses'] ?? []);
+                                    @endphp
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 bg-white dark:bg-gray-900 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
+                                        @foreach($serviceModuleStatuses['order'] as $st)
+                                            <label class="flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
+                                                <input type="checkbox" name="triggers[{{ $index }}][config][order_statuses][]" value="{{ $st['name'] }}" @checked(in_array($st['name'], $selectedOrderStatuses))
+                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 order-status-checkbox h-4 w-4">
+                                                <span class="text-xs text-gray-700 dark:text-gray-300 font-medium">{{ $st['name'] }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    <p class="text-[10px] text-gray-400">اگر هیچ‌کدام انتخاب نشود، سفارش‌ها با هر وضعیتی بررسی می‌شوند.</p>
+                                </div>
+                                @endif
+                            </div>
+
                             <!-- 3. SCHEDULE CONFIG -->
+
                             <div class="trigger-config config-SCHEDULE hidden space-y-4">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div class="space-y-2">
@@ -1069,6 +1294,38 @@
 
                 text += '، این فرآیند زمان‌بندی شده اجرا می‌شود.';
                 nlpTextEl.textContent = text;
+            } else if (type === 'INVOICE_REMINDER') {
+                const valEl = item.querySelector('.invoice-offset-val-input');
+                const val = valEl ? (parseInt(valEl.value) || 0) : 0;
+                const dirEl = item.querySelector('.invoice-offset-dir-select');
+                const dirText = dirEl ? dirEl.options[dirEl.selectedIndex].text : '';
+                const runAtEl = item.querySelector('.run-at-time-invoice-input');
+                const runAtTime = runAtEl ? runAtEl.value : '';
+
+                let text = `دقیقاً ${val} ${dirText}`;
+                if (val === 0) text = `دقیقاً در روز سررسید`;
+
+                if (runAtTime) {
+                    text += ` رأس ساعت ${runAtTime} صبح/عصر`;
+                }
+                text += ' فاکتورهای مشمول این شرط بررسی می‌شوند.';
+                nlpTextEl.textContent = text;
+            } else if (type === 'ORDER_RENEWAL_REMINDER') {
+                const valEl = item.querySelector('.order-offset-val-input');
+                const val = valEl ? (parseInt(valEl.value) || 0) : 0;
+                const dirEl = item.querySelector('.order-offset-dir-select');
+                const dirText = dirEl ? dirEl.options[dirEl.selectedIndex].text : '';
+                const runAtEl = item.querySelector('.run-at-time-order-input');
+                const runAtTime = runAtEl ? runAtEl.value : '';
+
+                let text = `دقیقاً ${val} ${dirText}`;
+                if (val === 0) text = `دقیقاً در روز تاریخ تمدید`;
+
+                if (runAtTime) {
+                    text += ` رأس ساعت ${runAtTime} صبح/عصر`;
+                }
+                text += ' سفارش‌های مشمول بررسی شده و گردش کار اجرا می‌شود.';
+                nlpTextEl.textContent = text;
             } else if (type === 'SCHEDULE') {
                 const cronVal = item.querySelector('.cron-input').value;
                 const presetSelect = item.querySelector('.cron-preset-select');
@@ -1116,6 +1373,12 @@
             const followupStatusCount = item.querySelectorAll('[name*="[followup_statuses][]"]:checked').length;
             const followupPriorityCount = item.querySelectorAll('[name*="[followup_priorities][]"]:checked').length;
             updateBadge(item, '.badge-followups', followupStatusCount + followupPriorityCount);
+
+            // 7. Services Module
+            const serviceStatusCount = item.querySelectorAll('[name*="[service_statuses][]"]:checked').length;
+            const invoiceStatusCount = item.querySelectorAll('[name*="[invoice_statuses][]"]:checked').length;
+            const paymentStatusCount = item.querySelectorAll('[name*="[payment_statuses][]"]:checked').length;
+            updateBadge(item, '.badge-services-module', serviceStatusCount + invoiceStatusCount + paymentStatusCount);
         }
 
         function updateBadge(item, selector, count) {
@@ -1172,6 +1435,24 @@
             if (followupStatusCount + followupPriorityCount > 0) {
                 expandAccordion(item, '.badge-followups');
             }
+
+            // 7. Services Module
+            const serviceStatusCount = item.querySelectorAll('[name*="[service_statuses][]"]:checked').length;
+            const invoiceStatusCount = item.querySelectorAll('[name*="[invoice_statuses][]"]:checked').length;
+            const paymentStatusCount = item.querySelectorAll('[name*="[payment_statuses][]"]:checked').length;
+            if (serviceStatusCount + invoiceStatusCount + paymentStatusCount > 0) {
+                expandAccordion(item, '.badge-services-module');
+            }
+
+            // 8. Auto-expand event group accordions that have checked event-checkboxes
+            item.querySelectorAll('.event-group-toggle').forEach(btn => {
+                const content = btn.nextElementSibling;
+                if (content && content.querySelectorAll('.event-checkbox:checked').length > 0) {
+                    content.classList.remove('hidden');
+                    const icon = btn.querySelector('svg');
+                    if (icon) icon.classList.add('rotate-180');
+                }
+            });
         }
 
         function expandAccordion(item, badgeSelector) {
@@ -1226,6 +1507,32 @@
             updateNlpText(item);
         }
 
+        function calculateInvoiceOffset(item) {
+            const valEl = item.querySelector('.invoice-offset-val-input');
+            const dirEl = item.querySelector('.invoice-offset-dir-select');
+            const hiddenEl = item.querySelector('.real-invoice-offset-input');
+            if (!valEl || !dirEl || !hiddenEl) return;
+
+            const val = parseInt(valEl.value) || 0;
+            const dir = parseInt(dirEl.value) || 1;
+            hiddenEl.value = val * dir;
+
+            updateNlpText(item);
+        }
+
+        function calculateOrderOffset(item) {
+            const valEl = item.querySelector('.order-offset-val-input');
+            const dirEl = item.querySelector('.order-offset-dir-select');
+            const hiddenEl = item.querySelector('.real-order-offset-input');
+            if (!valEl || !dirEl || !hiddenEl) return;
+
+            const val = parseInt(valEl.value) || 0;
+            const dir = parseInt(dirEl.value) || 1;
+            hiddenEl.value = val * dir;
+
+            updateNlpText(item);
+        }
+
         // Initialize all trigger views on page load
         container.querySelectorAll('.trigger-item').forEach(item => {
             const typeSelect = item.querySelector('.trigger-type-select');
@@ -1264,7 +1571,15 @@
                 calculateOffset(item);
             }
 
-            if (e.target.classList.contains('event-checkbox') || e.target.classList.contains('service-checkbox') || e.target.classList.contains('provider-checkbox') || e.target.classList.contains('status-checkbox') || e.target.classList.contains('operator-select') || e.target.classList.contains('run-at-time-input')) {
+            if (e.target.classList.contains('invoice-offset-val-input') || e.target.classList.contains('invoice-offset-dir-select')) {
+                calculateInvoiceOffset(item);
+            }
+
+            if (e.target.classList.contains('order-offset-val-input') || e.target.classList.contains('order-offset-dir-select')) {
+                calculateOrderOffset(item);
+            }
+
+            if (e.target.classList.contains('event-checkbox') || e.target.classList.contains('service-checkbox') || e.target.classList.contains('provider-checkbox') || e.target.classList.contains('status-checkbox') || e.target.classList.contains('operator-select') || e.target.classList.contains('run-at-time-input') || e.target.classList.contains('run-at-time-invoice-input') || e.target.classList.contains('run-at-time-order-input')) {
                 updateNlpText(item);
             }
 
@@ -1292,6 +1607,14 @@
 
             if (e.target.classList.contains('offset-val-input')) {
                 calculateOffset(item);
+            }
+
+            if (e.target.classList.contains('invoice-offset-val-input')) {
+                calculateInvoiceOffset(item);
+            }
+
+            if (e.target.classList.contains('order-offset-val-input')) {
+                calculateOrderOffset(item);
             }
 
             if (e.target.classList.contains('cron-input')) {

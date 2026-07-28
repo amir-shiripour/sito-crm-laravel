@@ -58,6 +58,8 @@ class OrderForm extends Component
     public $shipping_method;
     public $tracking_code;
     public $total_shipping_cost = 0;
+    public $total_discount = 0;
+    public $total_tax = 0;
 
     // Client Quick Creation inline
     public bool $showQuickClientModal = false;
@@ -123,6 +125,8 @@ class OrderForm extends Component
             $this->shipping_method = $order->shipping_method;
             $this->tracking_code = $order->tracking_code;
             $this->total_shipping_cost = (float)$order->total_shipping_cost;
+            $this->total_discount = (float)$order->final_discount;
+            $this->total_tax = (float)$order->final_tax;
 
             $this->clientId = $order->client_id;
             $client = Client::find($order->client_id);
@@ -407,7 +411,7 @@ class OrderForm extends Component
         }
     }
 
-    public function getSubtotalProperty(): float
+    public function getSubtotal(): float
     {
         $subtotal = 0;
         foreach ($this->items as $item) {
@@ -454,27 +458,40 @@ class OrderForm extends Component
         $this->dispatch('notify', type: 'success', text: 'مشتری جدید با موفقیت ثبت شد.');
     }
 
+    public function getCurrencyLabelProperty(): string
+    {
+        if ($this->order) {
+            return $this->order->currency_label;
+        }
+        $currencySetting = MarketSetting::getValue('general.currency', 'toman');
+        return ($currencySetting === 'rial' || $currencySetting === 'IRR') ? 'ریال' : 'تومان';
+    }
+
     public function save(StockService $stockService)
     {
         $this->validate();
 
         DB::transaction(function () use ($stockService) {
             $user = Auth::user();
-            $subtotal = $this->subtotal;
+            $subtotal = $this->getSubtotal();
+            $discount = (float) $this->total_discount;
+            $tax = (float) $this->total_tax;
+            $shipping = (float) $this->total_shipping_cost;
 
             $orderData = [
                 'client_id' => $this->clientId,
                 'checkout_form_id' => $this->formId,
-                'grand_total' => $subtotal + (float)$this->total_shipping_cost,
                 'total_items_price' => $subtotal,
-                'total_discount' => 0,
+                'total_discount' => $discount,
+                'total_tax' => $tax,
+                'total_shipping_cost' => $shipping,
+                'grand_total' => max(0, $subtotal - $discount + $tax + $shipping),
                 'payment_method' => $this->payment_method,
                 'payment_status' => $this->payment_status,
                 'market_order_status_id' => $this->market_order_status_id,
                 'shipping_address_json' => $this->shipping_address,
                 'shipping_method' => $this->shipping_method,
                 'tracking_code' => $this->tracking_code,
-                'total_shipping_cost' => (float)$this->total_shipping_cost,
             ];
 
             if ($this->payment_status === 'paid' && empty($this->order?->paid_at)) {

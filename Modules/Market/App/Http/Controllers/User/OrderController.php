@@ -37,10 +37,6 @@ class OrderController extends Controller
             });
         }
 
-        if ($request->filled('payment_status')) {
-            $query->where('payment_status', $request->input('payment_status'));
-        }
-
         if ($request->filled('market_order_status_id')) {
             $query->where('market_order_status_id', $request->input('market_order_status_id'));
         }
@@ -53,14 +49,18 @@ class OrderController extends Controller
             });
         }
 
+        $allStatsOrders = (clone $statsQuery)->with('sourceInvoice')->get();
+        $paidOrders = $allStatsOrders->where('payment_status', 'paid');
+        $totalRevenue = $paidOrders->sum(fn($ord) => $ord->final_grand_total ?? $ord->grand_total);
+
         $stats = [
-            'total_count' => (clone $statsQuery)->count(),
-            'total_revenue' => (clone $statsQuery)->where('payment_status', 'paid')->sum('grand_total'),
-            'paid_count' => (clone $statsQuery)->where('payment_status', 'paid')->count(),
-            'unpaid_count' => (clone $statsQuery)->where('payment_status', 'unpaid')->count(),
+            'total_count' => $allStatsOrders->count(),
+            'total_revenue' => $totalRevenue,
+            'paid_count' => $paidOrders->count(),
+            'unpaid_count' => $allStatsOrders->where('payment_status', '!=', 'paid')->count(),
         ];
 
-        $orders = $query->with('client')->latest()->paginate(15)->withQueryString();
+        $orders = $query->with(['client', 'status', 'sourceInvoice'])->latest()->paginate(15)->withQueryString();
 
         return view('market::user.orders.index', compact('orders', 'stats'));
     }
@@ -89,6 +89,7 @@ class OrderController extends Controller
         }
         $items = $itemsQuery->get();
         $order->setRelation('items', $items);
+        $order->load(['sourceInvoice.status']);
 
         return view('market::user.orders.show', compact('order'));
     }
@@ -122,6 +123,8 @@ class OrderController extends Controller
                 abort(403, 'شما اجازه دسترسی به این سفارش را ندارید.');
             }
         }
+
+        $order->load(['sourceInvoice.status']);
 
         return view('market::user.orders.edit', compact('order'));
     }

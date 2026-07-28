@@ -97,6 +97,22 @@ class WorkflowController extends Controller
             ];
         }
 
+        if (class_exists(\Modules\Services\App\Http\Models\Invoice::class)) {
+            $triggerOptions['SERVICE'] = [
+                'invoice_created'         => 'ایجاد فاکتور جدید',
+                'invoice_status_changed'  => 'تغییر وضعیت فاکتور',
+                'invoice_cancelled'       => 'لغو فاکتور',
+                'invoice_overdue'         => 'معوقه شدن فاکتور',
+                'payment_created'         => 'ثبت پرداخت جدید',
+                'payment_cancelled'       => 'لغو پرداخت',
+                'payment_status_changed'  => 'تغییر وضعیت پرداخت',
+                'service_created'         => 'ایجاد سرویس جدید',
+                'service_status_changed'  => 'تغییر وضعیت سرویس',
+                'order_created'           => 'ایجاد سفارش جدید',
+                'order_status_changed'    => 'تغییر وضعیت سفارش',
+            ];
+        }
+
         return $triggerOptions;
     }
 
@@ -134,7 +150,18 @@ class WorkflowController extends Controller
             ? \Modules\Clients\Entities\ClientStatus::active()->get()
             : collect();
 
-        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses'));
+        $serviceModuleStatuses = [];
+        if (class_exists(\Modules\Services\App\Http\Models\Status::class)) {
+            $statuses = \Modules\Services\App\Http\Models\Status::all()->groupBy('type');
+            $serviceModuleStatuses = [
+                'service' => $statuses->get('service', collect())->toArray(),
+                'invoice' => $statuses->get('invoice', collect())->toArray(),
+                'payment' => $statuses->get('payment', collect())->toArray(),
+                'order'   => $statuses->get('order', collect())->toArray(),
+            ];
+        }
+
+        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
     }
 
     public function store(Request $request)
@@ -214,7 +241,18 @@ class WorkflowController extends Controller
             ? \Modules\Clients\Entities\ClientStatus::active()->get()
             : collect();
 
-        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses'));
+        $serviceModuleStatuses = [];
+        if (class_exists(\Modules\Services\App\Http\Models\Status::class)) {
+            $statuses = \Modules\Services\App\Http\Models\Status::all()->groupBy('type');
+            $serviceModuleStatuses = [
+                'service' => $statuses->get('service', collect())->toArray(),
+                'invoice' => $statuses->get('invoice', collect())->toArray(),
+                'payment' => $statuses->get('payment', collect())->toArray(),
+                'order'   => $statuses->get('order', collect())->toArray(),
+            ];
+        }
+
+        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
     }
 
     public function update(Request $request, Workflow $workflow)
@@ -410,6 +448,7 @@ class WorkflowController extends Controller
                     WorkflowAction::TYPE_CREATE_FOLLOWUP,
                     WorkflowAction::TYPE_SEND_NOTIFICATION,
                     WorkflowAction::TYPE_SEND_SMS,
+                    WorkflowAction::TYPE_CHANGE_SERVICE_STATUS,
                 ])],
             'sort_order'  => ['nullable', 'integer', 'min:0'],
             'config'      => ['nullable', 'array'],
@@ -464,6 +503,12 @@ class WorkflowController extends Controller
                 'priority'        => $config['priority'] ?? 'MEDIUM',
                 'status'          => $config['status'] ?? 'TODO',
             ];
+        } elseif ($data['action_type'] === WorkflowAction::TYPE_CHANGE_SERVICE_STATUS) {
+            $config = [
+                'entity_type' => $config['entity_type'] ?? 'invoice', // invoice | order | payment
+                'status_name' => $config['status_name'] ?? null,
+                'status_type' => $config['status_type'] ?? null,
+            ];
         }
 
         return [
@@ -481,13 +526,18 @@ class WorkflowController extends Controller
 
         $rolesQuery = \Spatie\Permission\Models\Role::orderBy('name');
         $usersQuery = \App\Models\User::select('id', 'name', 'email')->orderBy('name');
-        
+
         $subWorkflows = Workflow::where('id', '!=', $workflow->id)
             ->where('is_active', true)
             ->get();
 
         $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
         $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
+        
+        if (is_string($cureAssignableRoles)) {
+            $cureAssignableRoles = json_decode($cureAssignableRoles, true) ?? [];
+        }
+
         $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name');
 
         if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
@@ -554,7 +604,7 @@ class WorkflowController extends Controller
 
             foreach ($incomingNodes as $nodeData) {
                 $config = $nodeData['config'] ?? [];
-                
+
                 // Check direct fields
                 if (isset($config['role_id']) && $isSuperAdminRole($config['role_id'])) {
                     return response()->json(['success' => false, 'message' => 'شما مجاز به انتخاب نقش سوپر ادمین نیستید.'], 422);
@@ -611,7 +661,7 @@ class WorkflowController extends Controller
 
             if ($nodesToDelete->isNotEmpty()) {
                 $nodeIdsToDelete = $nodesToDelete->pluck('id')->toArray();
-                
+
                 $activeInstancesCount = \Modules\Workflows\Entities\WorkflowInstance::query()
                     ->where('workflow_id', $workflow->id)
                     ->where('status', \Modules\Workflows\Entities\WorkflowInstance::STATUS_ACTIVE)
@@ -685,10 +735,10 @@ class WorkflowController extends Controller
         if ($instance->status !== \Modules\Workflows\Entities\WorkflowInstance::STATUS_ACTIVE) {
             return response()->json(['success' => false, 'message' => 'فرآیند غیرفعال است.'], 422);
         }
-        
+
         $context = $engine->buildContextData($instance, $request->all());
         $engine->advance($instance, $context);
-        
+
         return response()->json([
             'success' => true,
             'message' => 'فرآیند با موفقیت به گام بعدی هدایت شد.'
@@ -727,7 +777,7 @@ class WorkflowController extends Controller
     public function restartInstance(\Modules\Workflows\Entities\WorkflowInstance $instance, \Modules\Workflows\Services\WorkflowEngine $engine)
     {
         Gate::authorize('workflows.edit');
-        
+
         // Cancel the current active one
         $instance->update([
             'status' => \Modules\Workflows\Entities\WorkflowInstance::STATUS_CANCELED,
@@ -751,31 +801,31 @@ class WorkflowController extends Controller
     public function getInstances(Request $request)
     {
         Gate::authorize('workflows.view');
-        
+
         $request->validate([
             'related_type' => 'required|string',
             'related_id' => 'required|integer',
         ]);
-        
+
         $instances = \Modules\Workflows\Entities\WorkflowInstance::where('related_type', $request->related_type)
             ->where('related_id', $request->related_id)
             ->with([
-                'workflow.nodes', 
-                'workflow.edges', 
-                'currentNode', 
+                'workflow.nodes',
+                'workflow.edges',
+                'currentNode',
                 'logs.user'
             ])
             ->get();
-            
+
         // Map current node information and return JSON
         $instancesMapped = $instances->map(function($inst) {
             $currentNode = $inst->currentNode;
-            
+
             // Fetch active tasks for this instance
             $tasks = \Modules\Tasks\Entities\Task::where('meta->workflow_instance_id', $inst->id)
                 ->with('assignee')
                 ->get();
-                
+
             return [
                 'id' => $inst->id,
                 'workflow_id' => $inst->workflow_id,
@@ -810,7 +860,7 @@ class WorkflowController extends Controller
                 })
             ];
         });
-            
+
         return response()->json([
             'success' => true,
             'instances' => $instancesMapped
@@ -820,16 +870,16 @@ class WorkflowController extends Controller
     public function toggleTask(Request $request, \Modules\Tasks\Entities\Task $task)
     {
         Gate::authorize('workflows.edit');
-        
-        $newStatus = $task->status === \Modules\Tasks\Entities\Task::STATUS_DONE 
-            ? \Modules\Tasks\Entities\Task::STATUS_TODO 
+
+        $newStatus = $task->status === \Modules\Tasks\Entities\Task::STATUS_DONE
+            ? \Modules\Tasks\Entities\Task::STATUS_TODO
             : \Modules\Tasks\Entities\Task::STATUS_DONE;
-            
+
         $task->update([
             'status' => $newStatus,
             'completed_at' => $newStatus === \Modules\Tasks\Entities\Task::STATUS_DONE ? now() : null,
         ]);
-        
+
         return response()->json([
             'success' => true,
             'message' => 'وضعیت وظیفه با موفقیت تغییر کرد.',
@@ -840,21 +890,21 @@ class WorkflowController extends Controller
     public function startInstance(Request $request, \Modules\Workflows\Services\WorkflowEngine $engine)
     {
         Gate::authorize('workflows.edit');
-        
+
         $request->validate([
             'workflow_id' => 'required|exists:workflows,id',
             'related_type' => 'required|string',
             'related_id' => 'required|integer',
         ]);
-        
+
         $workflow = Workflow::findOrFail($request->workflow_id);
-        
+
         if ($workflow->nodes()->exists()) {
             $instance = $engine->startNodeWorkflow($workflow, $request->related_type, $request->related_id);
         } else {
             $instance = $engine->startWorkflow($workflow, $request->related_type, $request->related_id);
         }
-        
+
         return response()->json([
             'success' => true,
             'message' => 'گردش‌کار با موفقیت آغاز شد.',
@@ -889,7 +939,7 @@ class WorkflowController extends Controller
                 ->where('status', \Modules\Workflows\Entities\WorkflowInstance::STATUS_ACTIVE)
                 ->with(['currentNode'])
                 ->get();
-                
+
             // For each instance, load the related subject (e.g. Client)
             foreach ($instances as $inst) {
                 if ($inst->related_type === 'CLIENT') {
@@ -915,7 +965,7 @@ class WorkflowController extends Controller
         Gate::authorize('workflows.view');
 
         $user = auth()->user();
-        
+
         // 1. Build search query for clients visible to user
         $search = $request->get('q');
         $visibleClientsQuery = \Modules\Clients\Entities\Client::visibleForUser($user);
@@ -976,11 +1026,11 @@ class WorkflowController extends Controller
 
         // 3. Batch load clients and tasks to avoid N+1 queries
         $instancesGrouped = $instances->getCollection()->groupBy('related_type');
-        
+
         $clients = collect();
         $appointments = collect();
         $treatmentPlans = collect();
-        
+
         if (isset($instancesGrouped['CLIENT'])) {
             $clients = \Modules\Clients\Entities\Client::whereIn('id', $instancesGrouped['CLIENT']->pluck('related_id'))->get()->keyBy('id');
         }
@@ -1002,7 +1052,7 @@ class WorkflowController extends Controller
         // 4. Map instances to rich JSON representation
         $instancesMapped = $instances->getCollection()->map(function($inst) use ($clients, $appointments, $treatmentPlans, $allTasks) {
             $currentNode = $inst->currentNode;
-            
+
             // Get client
             $client = null;
             if ($inst->related_type === 'CLIENT') {
@@ -1119,4 +1169,3 @@ class WorkflowController extends Controller
         ]);
     }
 }
-

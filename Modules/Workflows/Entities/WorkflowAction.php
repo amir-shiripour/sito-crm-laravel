@@ -20,11 +20,14 @@ class WorkflowAction extends Model
         'config' => 'array',
     ];
 
-    public const TYPE_CREATE_TASK       = 'CREATE_TASK';
-    public const TYPE_CREATE_FOLLOWUP   = 'CREATE_FOLLOW_UP';
-    public const TYPE_CREATE_REMINDER   = 'CREATE_REMINDER';
-    public const TYPE_SEND_NOTIFICATION = 'SEND_NOTIFICATION';
-    public const TYPE_SEND_SMS          = 'SEND_SMS';
+    public const TYPE_CREATE_TASK           = 'CREATE_TASK';
+    public const TYPE_CREATE_FOLLOWUP       = 'CREATE_FOLLOW_UP';
+    public const TYPE_CREATE_REMINDER       = 'CREATE_REMINDER';
+    public const TYPE_SEND_NOTIFICATION     = 'SEND_NOTIFICATION';
+    public const TYPE_SEND_SMS              = 'SEND_SMS';
+    public const TYPE_CHANGE_SERVICE_STATUS = 'CHANGE_SERVICE_STATUS';
+    public const TYPE_CREATE_INVOICE = 'CREATE_INVOICE';
+
 
     public function stage(): BelongsTo
     {
