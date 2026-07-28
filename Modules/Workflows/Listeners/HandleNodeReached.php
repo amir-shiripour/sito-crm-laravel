@@ -85,6 +85,17 @@ class HandleNodeReached
 
         // Check if multiple tasks are defined in the configuration
         $tasksTemplates = $config['tasks'] ?? [];
+        
+        // Execute system actions instantly
+        if (in_array($actionType, ['CHANGE_SERVICE_STATUS', 'CREATE_INVOICE'])) {
+            $this->engine->executeNodeAction($instance, $node, $context);
+            
+            // Auto advance if configured
+            if ($config['auto_advance'] ?? true) {
+                $this->engine->advance($instance, $context);
+            }
+            return;
+        }
 
         if ($actionType !== 'TASK' || empty($tasksTemplates)) {
             if ($actionType === 'FOLLOWUP') {

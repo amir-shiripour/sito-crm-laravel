@@ -26,17 +26,64 @@
             'creator_phone' => 'تلفن ثبت کننده',
         ],
         'client' => [
-            'client_id' => 'شناسه بیمار/کلاینت',
-            'client_name' => 'نام بیمار',
+            'client_id' => 'شناسه کاربر',
+            'client_name' => 'نام کاربر',
             'client_username' => 'نام کاربری',
-            'client_phone' => 'شماره بیمار',
-            'client_email' => 'ایمیل بیمار',
-            'client_national_code' => 'کد ملی بیمار',
+            'client_phone' => 'شماره کاربر',
+            'client_email' => 'ایمیل کاربر',
+            'client_national_code' => 'کد ملی کاربر',
             'client_case_number' => 'شماره پرونده',
             'client_notes' => 'یادداشت پرونده',
             'client_status' => 'وضعیت پرونده',
             'client_created_at_jalali' => 'تاریخ ایجاد پرونده (شمسی)',
-            'client_creator_name' => 'نام ثبت‌کننده پرونده',
+        ],
+        'invoice' => [
+            'invoice_id' => 'شناسه فاکتور',
+            'invoice_number' => 'شماره فاکتور',
+            'invoice_total' => 'مبلغ کل فاکتور',
+            'invoice_paid_amount' => 'مبلغ پرداخت شده',
+            'invoice_remaining' => 'مبلغ باقیمانده',
+            'invoice_status' => 'وضعیت فاکتور',
+            'invoice_due_date' => 'تاریخ سررسید فاکتور',
+            'invoice_issue_date' => 'تاریخ صدور فاکتور',
+            'invoice_is_paid' => 'آیا پرداخت شده؟',
+            'invoice_is_overdue' => 'آیا معوقه است؟',
+            'invoice_has_payment' => 'آیا پرداختی دارد؟',
+            'invoice_client_name' => 'نام مشتری فاکتور',
+            'invoice_client_phone' => 'تلفن مشتری فاکتور',
+            'invoice_client_email' => 'ایمیل مشتری فاکتور',
+            'invoice_creator_name' => 'نام ثبت‌کننده فاکتور',
+            'invoice_creator_phone' => 'شماره ثبت‌کننده فاکتور',
+        ],
+        'payment' => [
+            'payment_id' => 'شناسه پرداخت',
+            'payment_amount' => 'مبلغ پرداخت',
+            'payment_status' => 'وضعیت پرداخت',
+            'payment_method' => 'روش پرداخت',
+            'payment_gateway' => 'درگاه پرداخت',
+            'payment_ref_id' => 'شماره پیگیری پرداخت',
+            'payment_date' => 'تاریخ پرداخت',
+        ],
+        'order' => [
+            'order_id' => 'شناسه سفارش',
+            'order_number' => 'شماره سفارش',
+            'order_status' => 'وضعیت سفارش',
+            'order_total' => 'مبلغ کل سفارش',
+            'order_service_name' => 'نام خدمت سفارش',
+            'order_issue_date' => 'تاریخ صدور سفارش',
+            'order_renewal_date' => 'تاریخ تمدید سفارش',
+            'order_client_name' => 'نام مشتری سفارش',
+            'order_client_phone' => 'تلفن مشتری سفارش',
+            'order_client_email' => 'ایمیل مشتری سفارش',
+            'order_creator_name' => 'نام ثبت‌کننده سفارش',
+            'order_creator_phone' => 'شماره ثبت‌کننده سفارش',
+        ],
+        'service' => [
+            'service_id'           => 'شناسه سرویس',
+            'service_name'         => 'نام سرویس',
+            'service_status'       => 'وضعیت سرویس',
+            'service_price'        => 'قیمت پایه',
+            'service_type'         => 'نوع چرخه پرداخت',
         ]
     ];
 
@@ -623,6 +670,12 @@
                                             </optgroup>
                                             <optgroup label="تماس کلاینت">
                                                 <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                                            <optgroup label="سرویس خدمات">
+                                                <option value="INVOICE_CLIENT" x-bind:selected="action.config.target === 'INVOICE_CLIENT'">مشتری فاکتور</option>
+                                                <option value="ORDER_CLIENT" x-bind:selected="action.config.target === 'ORDER_CLIENT'">مشتری سفارش</option>
+                                                <option value="PAYMENT_CLIENT" x-bind:selected="action.config.target === 'PAYMENT_CLIENT'">مشتری پرداخت</option>
+                                                <option value="INVOICE_CREATOR" x-bind:selected="action.config.target === 'INVOICE_CREATOR'">ثبت‌کننده فاکتور</option>
+                                                <option value="ORDER_CREATOR" x-bind:selected="action.config.target === 'ORDER_CREATOR'">ثبت‌کننده سفارش</option>
                                             </optgroup>
                                             <optgroup label="وظیفه و پیگیری">
                                                 <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
@@ -824,13 +877,13 @@
                                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">هدف ارسال (گیرنده)</label>
                                     <select x-model="editingNode.config.sms_target"
                                             class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:border-indigo-400 outline-none">
-                                        <option value="APPOINTMENT_CLIENT">بیمار نوبت</option>
+                                        <option value="APPOINTMENT_CLIENT">کاربر نوبت</option>
                                         <option value="APPOINTMENT_PROVIDER">پزشک نوبت</option>
                                         <option value="STATEMENT_PROVIDER">ارائه‌دهنده صورت وضعیت</option>
                                         <option value="SPECIFIC_USER">کاربر خاص سیستم</option>
                                         <option value="CUSTOM_PHONE">شماره دلخواه</option>
                                         <optgroup label="طرح درمان">
-                                            <option value="TREATMENT_PLAN_CLIENT">بیمار طرح درمان</option>
+                                            <option value="TREATMENT_PLAN_CLIENT">کاربر طرح درمان</option>
                                             <option value="TREATMENT_PLAN_CREATOR">ایجادکننده طرح درمان</option>
                                             @if(isset($cureRoles))
                                                 @foreach($cureRoles as $role)
@@ -839,11 +892,15 @@
                                             @endif
                                         </optgroup>
                                         <optgroup label="پرونده کلاینت">
-                                            <option value="CLIENT">بیمار پرونده</option>
+                                            <option value="CLIENT">کاربر پرونده</option>
                                             <option value="CLIENT_CREATOR">ایجادکننده پرونده کلاینت</option>
                                         </optgroup>
                                         <optgroup label="تماس کلاینت">
                                             <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                                        <optgroup label="سرویس خدمات">
+                                            <option value="INVOICE_CLIENT" x-bind:selected="action.config.target === 'INVOICE_CLIENT'">مشتری فاکتور</option>
+                                            <option value="ORDER_CLIENT" x-bind:selected="action.config.target === 'ORDER_CLIENT'">مشتری سفارش</option>
+                                            <option value="PAYMENT_CLIENT" x-bind:selected="action.config.target === 'PAYMENT_CLIENT'">مشتری پرداخت</option>
                                         </optgroup>
                                         <optgroup label="وظیفه و پیگیری">
                                             <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
@@ -920,7 +977,7 @@
                                         <template x-for="group in Object.keys(tokenGroups)" :key="group">
                                             <div class="space-y-1">
                                                 <div class="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 border-b border-gray-200/50 dark:border-gray-700 pb-0.5 mb-1" 
-                                                     x-text="group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : (group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : (group === 'treatment_plan' ? 'اطلاعات طرح درمان' : group))">
+                                                     x-text="group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : (group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : (group === 'treatment_plan' ? 'اطلاعات طرح درمان' : (group === 'invoice' ? 'اطلاعات فاکتور' : (group === 'order' ? 'اطلاعات سفارش' : (group === 'service' ? 'اطلاعات سرویس' : (group === 'client' ? 'اطلاعات مشتری' : group))))))">
                                                 </div>
                                                 <div class="flex flex-wrap gap-1.5">
                                                     <template x-for="tokenKey in Object.keys(tokenGroups[group])" :key="tokenKey">
@@ -982,6 +1039,10 @@
                                         </optgroup>
                                         <optgroup label="تماس کلاینت">
                                             <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                                        <optgroup label="سرویس خدمات">
+                                            <option value="INVOICE_CLIENT" x-bind:selected="action.config.target === 'INVOICE_CLIENT'">مشتری فاکتور</option>
+                                            <option value="ORDER_CLIENT" x-bind:selected="action.config.target === 'ORDER_CLIENT'">مشتری سفارش</option>
+                                            <option value="PAYMENT_CLIENT" x-bind:selected="action.config.target === 'PAYMENT_CLIENT'">مشتری پرداخت</option>
                                         </optgroup>
                                         <optgroup label="وظیفه و پیگیری">
                                             <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
@@ -1065,6 +1126,10 @@
                                         </optgroup>
                                         <optgroup label="تماس کلاینت">
                                             <option value="CALL_CREATOR">ثبت‌کننده تماس</option>
+                                        <optgroup label="سرویس خدمات">
+                                            <option value="INVOICE_CLIENT" x-bind:selected="action.config.target === 'INVOICE_CLIENT'">مشتری فاکتور</option>
+                                            <option value="ORDER_CLIENT" x-bind:selected="action.config.target === 'ORDER_CLIENT'">مشتری سفارش</option>
+                                            <option value="PAYMENT_CLIENT" x-bind:selected="action.config.target === 'PAYMENT_CLIENT'">مشتری پرداخت</option>
                                         </optgroup>
                                         <optgroup label="وظیفه و پیگیری">
                                             <option value="TASK_CREATOR">ایجادکننده وظیفه/پیگیری</option>
@@ -1103,7 +1168,7 @@
                                         <template x-for="group in Object.keys(tokenGroups)" :key="group">
                                             <div class="space-y-1">
                                                 <div class="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 border-b border-gray-200/50 dark:border-gray-700 pb-0.5 mb-1" 
-                                                     x-text="group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : (group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : (group === 'treatment_plan' ? 'اطلاعات طرح درمان' : group))">
+                                                     x-text="group === 'appointment' ? 'اطلاعات نوبت‌دهی بیمار' : (group === 'statement' ? 'اطلاعات صورت وضعیت مالی' : (group === 'treatment_plan' ? 'اطلاعات طرح درمان' : (group === 'invoice' ? 'اطلاعات فاکتور' : (group === 'order' ? 'اطلاعات سفارش' : (group === 'service' ? 'اطلاعات سرویس' : (group === 'client' ? 'اطلاعات مشتری' : group))))))">
                                                 </div>
                                                 <div class="flex flex-wrap gap-1.5">
                                                     <template x-for="tokenKey in Object.keys(tokenGroups[group])" :key="tokenKey">

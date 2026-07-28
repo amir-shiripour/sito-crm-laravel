@@ -69,4 +69,22 @@ class VendorProduct extends Model {
         }
         return $value;
     }
+
+    /**
+     * 💡 Accessor for unified effective selling price calculation (discount price if valid and > 0, else base price)
+     */
+    public function getSellingPriceAttribute(): float
+    {
+        $now = now();
+        $hasActiveDiscount = $this->discount_price > 0
+            && (empty($this->discount_start_date) || $now->gte($this->discount_start_date))
+            && (empty($this->discount_end_date) || $now->lte($this->discount_end_date));
+
+        return $hasActiveDiscount ? (float) $this->discount_price : (float) $this->price;
+    }
+
+    public function getEffectivePrice(): float
+    {
+        return $this->selling_price;
+    }
 }

@@ -18,19 +18,14 @@ class Order extends Model
     protected $table = 'market_orders';
 
     protected $fillable = [
-        'client_id', // 💡 جایگزین user_id شد
-        'name',
-        'mobile',
-        'province_id',
-        'city_id',
-        'address',
+        'source_invoice_id',
+        'client_id',
         'payment_method',
         'total_amount',
-        'status', // pending, processing, completed, canceled, failed
+        'status',
         'transaction_id',
         'payment_ref_id',
         'paid_at',
-        // ستون‌های جدید از مایگریشن
         'total_items_price',
         'total_shipping_cost',
         'total_tax',
@@ -56,6 +51,20 @@ class Order extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function sourceInvoice()
+    {
+        if (class_exists(\Modules\Services\App\Http\Models\Invoice::class)) {
+            return $this->belongsTo(\Modules\Services\App\Http\Models\Invoice::class, 'source_invoice_id');
+        }
+        
+        return $this->belongsTo(self::class, 'source_invoice_id')->whereRaw('1 = 0');
+    }
+
+    public function scopeWhereSourceInvoiceId($query, $invoiceId)
+    {
+        return $query->where('source_invoice_id', $invoiceId);
     }
 
     public function items()
@@ -113,6 +122,31 @@ class Order extends Model
         if ($status) {
             $this->attributes['market_order_status_id'] = $status->id;
         }
+    }
+
+    public function getCurrencyLabelAttribute(): string
+    {
+        if ($this->relationLoaded('sourceInvoice') && $this->sourceInvoice && !empty($this->sourceInvoice->currency)) {
+            $invCurrency = $this->sourceInvoice->currency;
+            return ($invCurrency === 'rial' || $invCurrency === 'IRR') ? 'ریال' : 'تومان';
+        }
+        $currencySetting = \Modules\Market\Entities\MarketSetting::getValue('general.currency', 'toman');
+        return ($currencySetting === 'rial' || $currencySetting === 'IRR') ? 'ریال' : 'تومان';
+    }
+
+    public function getFinalGrandTotalAttribute()
+    {
+        return (float)($this->grand_total ?: $this->total_items_price);
+    }
+
+    public function getFinalTaxAttribute()
+    {
+        return (float)($this->total_tax ?? 0);
+    }
+
+    public function getFinalDiscountAttribute()
+    {
+        return (float)($this->total_discount ?? 0);
     }
 
     protected static function newFactory()

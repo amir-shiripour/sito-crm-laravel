@@ -110,6 +110,10 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::user.order-form', OrderForm::class);
         Livewire::component('market::client.interactions-manager', InteractionsManager::class);
 
+        // 💡 ثبت کامپوننت بلید فاکتور مرتبط و فیش واریز
+        Blade::component('market::components.related-invoice', 'market-related-invoice');
+        Blade::component('market::components.transfer-receipt-details', 'market-transfer-receipt-details');
+
         // 💡 ثبت Observer
         Vendor::observe(VendorObserver::class);
     }

@@ -21,10 +21,17 @@ class MarketOrderStatus extends Model
         'show_in_admin_stepper',
         'sort_order',
         'is_active',
+        'is_default',
     ];
 
     public function orders()
     {
         return $this->hasMany(Order::class, 'market_order_status_id');
+    }
+
+    public static function getDefaultStatus(): ?self
+    {
+        return static::where('is_default', true)->where('is_active', true)->first()
+            ?? static::where('is_active', true)->orderBy('sort_order', 'asc')->first();
     }
 }

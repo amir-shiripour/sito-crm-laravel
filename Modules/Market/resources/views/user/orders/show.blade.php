@@ -96,7 +96,7 @@
                             </span>
                         @endif
                     </div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">تاریخ ثبت: {{ \Morilog\Jalali\Jalalian::fromDateTime($order->created_at)->format('Y/m/d H:i') }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">تاریخ ثبت: {{ \Morilog\Jalali\Jalalian::fromDateTime($order->created_at)->format('Y/m/d') }}</p>
                 </div>
             </div>
 
@@ -293,13 +293,13 @@
                                             </div>
                                         </td>
                                         <td class="px-5 py-4 text-center text-xs font-semibold">
-                                            {{ number_format($item->unit_price) }} ریال
+                                            {{ number_format($item->unit_price) }} {{ $order->currency_label }}
                                         </td>
                                         <td class="px-5 py-4 text-center font-bold">
                                             {{ $item->quantity }} عدد
                                         </td>
                                         <td class="px-5 py-4 text-left pl-8 text-xs font-black text-emerald-600 dark:text-emerald-400">
-                                            {{ number_format($item->total_price) }} ریال
+                                            {{ number_format($item->total_price) }} {{ $order->currency_label }}
                                         </td>
                                     </tr>
                                 @endforeach
@@ -363,20 +363,35 @@
                         <div class="space-y-1">
                             <span class="text-xs text-gray-400 dark:text-gray-500 block">هزینه حمل و نقل:</span>
                             <span class="font-bold text-gray-900 dark:text-white">
-                                {{ number_format($order->total_shipping_cost) }} ریال
+                                {{ number_format($order->total_shipping_cost) }} {{ $order->currency_label }}
                             </span>
                         </div>
                         <div class="space-y-1 md:col-span-2">
                             <span class="text-xs text-gray-400 dark:text-gray-500 block">آدرس ارسال مرسوله:</span>
                             <span class="font-bold text-gray-900 dark:text-white">
-                                استان {{ $order->shipping_address_json['province'] ?: '-' }}، شهر {{ $order->shipping_address_json['city'] ?: '-' }}
-                                @if(!empty($order->shipping_address_json['address']))
-                                    ، {{ $order->shipping_address_json['address'] }}
+                                @php
+                                    $addressJson = $order->shipping_address_json ?? [];
+                                    $province = $addressJson['province'] ?? null;
+                                    $city = $addressJson['city'] ?? null;
+                                    $addressDetail = $addressJson['address'] ?? ($addressJson['full_address'] ?? null);
+                                @endphp
+                                @if($province || $city)
+                                    استان {{ $province ?: '-' }}، شهر {{ $city ?: '-' }}
+                                    @if($addressDetail)
+                                        ، {{ $addressDetail }}
+                                    @endif
+                                @elseif($addressDetail)
+                                    {{ $addressDetail }}
+                                @else
+                                    ثبت نشده
                                 @endif
                             </span>
                         </div>
                     </div>
                 </div>
+
+                {{-- Transfer Receipt Details Component --}}
+                <x-market-transfer-receipt-details :order="$order" />
             </div>
 
             {{-- Right Column: Client Card, Financial Summary, Payment info, Metadata fields --}}
@@ -434,29 +449,43 @@
                         خلاصه فاکتور مالی
                     </h3>
 
+                    @php
+                        $displayDiscount = $order->final_discount;
+                        $displayTax = $order->final_tax;
+                        $displayGrandTotal = $order->final_grand_total;
+                    @endphp
                     <div class="space-y-3.5 text-sm">
                         <div class="flex justify-between">
                             <span class="text-gray-400 dark:text-gray-500">قیمت اقلام سفارش:</span>
-                            <span class="font-semibold text-gray-900 dark:text-white">{{ number_format($order->total_items_price) }} ریال</span>
+                            <span class="font-semibold text-gray-900 dark:text-white">{{ number_format($order->total_items_price) }} {{ $order->currency_label }}</span>
                         </div>
-                        @if($order->total_discount > 0)
+                        @if($displayDiscount > 0)
                             <div class="flex justify-between text-rose-600 dark:text-rose-400">
                                 <span>تخفیف سفارش:</span>
-                                <span class="font-bold">{{ number_format($order->total_discount) }}- ریال</span>
+                                <span class="font-bold">{{ number_format($displayDiscount) }}- {{ $order->currency_label }}</span>
+                            </div>
+                        @endif
+                        @if($displayTax > 0)
+                            <div class="flex justify-between text-amber-600 dark:text-amber-400">
+                                <span>مالیات و عوارض:</span>
+                                <span class="font-bold">{{ number_format($displayTax) }} {{ $order->currency_label }}</span>
                             </div>
                         @endif
                         @if($order->total_shipping_cost > 0)
                             <div class="flex justify-between">
                                 <span class="text-gray-400 dark:text-gray-500">هزینه حمل و نقل:</span>
-                                <span class="font-semibold text-gray-900 dark:text-white">{{ number_format($order->total_shipping_cost) }} ریال</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">{{ number_format($order->total_shipping_cost) }} {{ $order->currency_label }}</span>
                             </div>
                         @endif
                         <div class="flex justify-between pt-3 border-t border-gray-200 dark:border-gray-700 text-base font-black text-gray-900 dark:text-white">
                             <span>مبلغ کل پرداختی:</span>
-                            <span class="text-indigo-600 dark:text-indigo-400">{{ number_format($order->grand_total) }} ریال</span>
+                            <span class="text-indigo-600 dark:text-indigo-400">{{ number_format($displayGrandTotal) }} {{ $order->currency_label }}</span>
                         </div>
                     </div>
                 </div>
+
+                {{-- Related Services Invoice Component --}}
+                <x-market-related-invoice :invoice="$order->sourceInvoice" />
 
                 {{-- Payment Details Card --}}
                 <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4 hover:shadow-md transition-all duration-300">
@@ -473,7 +502,9 @@
                         <div class="flex justify-between">
                             <span class="text-gray-400 dark:text-gray-500">درگاه/روش پرداخت:</span>
                             <span class="font-bold text-gray-900 dark:text-white">
-                                @if($order->payment_method === 'pos')
+                                @if($order->sourceInvoice)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-bold">از طریق فاکتور سرویس و خدمات</span>
+                                @elseif($order->payment_method === 'pos')
                                     پرداخت در محل (کارتخوان)
                                 @elseif($order->payment_method === 'transfer')
                                     کارت به کارت / واریز فیش
@@ -505,7 +536,10 @@
                         <div class="flex justify-between">
                             <span class="text-gray-400 dark:text-gray-500">مبلغ کل تراکنش:</span>
                             <span class="font-black text-gray-900 dark:text-white">
-                                {{ number_format($order->grand_total) }} ریال
+                                @php
+                                    $transactionTotal = $displayGrandTotal;
+                                @endphp
+                                {{ number_format($transactionTotal) }} {{ $order->currency_label }}
                             </span>
                         </div>
                         @if($order->transaction_id)
@@ -523,14 +557,17 @@
                         @if($order->paid_at)
                             <div class="flex justify-between">
                                 <span class="text-gray-400 dark:text-gray-500">تاریخ پرداخت:</span>
-                                <span class="font-bold text-gray-900 dark:text-white">{{ \Morilog\Jalali\Jalalian::fromDateTime($order->paid_at)->format('Y/m/d H:i') }}</span>
+                                <span class="font-bold text-gray-900 dark:text-white">{{ \Morilog\Jalali\Jalalian::fromDateTime($order->paid_at)->format('Y/m/d') }}</span>
                             </div>
                         @endif
                     </div>
                 </div>
 
                 {{-- Dynamic Checkout Fields with Persian labels --}}
-                @if($order->meta->isNotEmpty())
+                @php
+                    $displayMeta = $order->meta->reject(fn($m) => in_array($m->key, ['source_invoice_id', 'INVOICE_SOURCE_ID']));
+                @endphp
+                @if($displayMeta->isNotEmpty())
                     <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4 hover:shadow-md transition-all duration-300">
                         <h3 class="font-black text-gray-900 dark:text-white text-base pb-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
                             <span class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500">
@@ -542,7 +579,7 @@
                         </h3>
 
                         <div class="space-y-4 text-sm">
-                            @foreach($order->meta as $meta)
+                            @foreach($displayMeta as $meta)
                                 @php
                                     $field = $order->checkoutForm?->field($meta->key);
                                     if (!$field) {
@@ -601,9 +638,21 @@
                 <p class="mb-1"><span class="font-semibold">شماره تلفن:</span> {{ optional($order->client)->phone ?: '-' }}</p>
                 <p class="mb-1"><span class="font-semibold">کد ملی:</span> {{ optional($order->client)->national_code ?: '-' }}</p>
                 <p class="mb-1"><span class="font-semibold">نشانی تحویل:</span>
-                    استان {{ $order->shipping_address_json['province'] ?: '-' }}، شهر {{ $order->shipping_address_json['city'] ?: '-' }}
-                    @if(!empty($order->shipping_address_json['address']))
-                         {{ $order->shipping_address_json['address'] }}
+                    @php
+                        $printAddressJson = $order->shipping_address_json ?? [];
+                        $printProvince = $printAddressJson['province'] ?? null;
+                        $printCity = $printAddressJson['city'] ?? null;
+                        $printAddressDetail = $printAddressJson['address'] ?? ($printAddressJson['full_address'] ?? null);
+                    @endphp
+                    @if($printProvince || $printCity)
+                        استان {{ $printProvince ?: '-' }}، شهر {{ $printCity ?: '-' }}
+                        @if($printAddressDetail)
+                            ، {{ $printAddressDetail }}
+                        @endif
+                    @elseif($printAddressDetail)
+                        {{ $printAddressDetail }}
+                    @else
+                        ثبت نشده
                     @endif
                 </p>
             </div>
@@ -616,8 +665,8 @@
                     <th class="border border-black p-2 font-bold bg-gray-100">کد محصول</th>
                     <th class="border border-black p-2 font-bold bg-gray-100">شرح کالا یا خدمات</th>
                     <th class="border border-black p-2 font-bold bg-gray-100">تعداد</th>
-                    <th class="border border-black p-2 font-bold bg-gray-100">مبلغ واحد (ریال)</th>
-                    <th class="border border-black p-2 font-bold bg-gray-100">مبلغ کل (ریال)</th>
+                    <th class="border border-black p-2 font-bold bg-gray-100">مبلغ واحد ({{ $order->currency_label }})</th>
+                    <th class="border border-black p-2 font-bold bg-gray-100">مبلغ کل ({{ $order->currency_label }})</th>
                 </tr>
             </thead>
             <tbody>
@@ -657,35 +706,49 @@
                 @endforeach
 
                 {{-- Totals inside table for print --}}
+                @php
+                    $printDiscount = $order->final_discount;
+                    $printTax = $order->final_tax;
+                    $printGrandTotal = $order->final_grand_total;
+                @endphp
                 <tr>
                     <td colspan="4" class="border border-black p-2 text-left font-bold" style="text-align: left !important;">جمع کل اقلام:</td>
-                    <td colspan="2" class="border border-black p-2 font-bold">{{ number_format($order->total_items_price) }} ریال</td>
+                    <td colspan="2" class="border border-black p-2 font-bold">{{ number_format($order->total_items_price) }} {{ $order->currency_label }}</td>
                 </tr>
-                @if($order->total_discount > 0)
+                @if($printDiscount > 0)
                     <tr>
                         <td colspan="4" class="border border-black p-2 text-left font-bold" style="text-align: left !important; color: #000000 !important;">تخفیف صورتحساب:</td>
-                        <td colspan="2" class="border border-black p-2 font-bold text-rose-600">{{ number_format($order->total_discount) }}- ریال</td>
+                        <td colspan="2" class="border border-black p-2 font-bold text-rose-600">{{ number_format($printDiscount) }}- {{ $order->currency_label }}</td>
+                    </tr>
+                @endif
+                @if($printTax > 0)
+                    <tr>
+                        <td colspan="4" class="border border-black p-2 text-left font-bold" style="text-align: left !important;">مالیات و عوارض:</td>
+                        <td colspan="2" class="border border-black p-2 font-bold">{{ number_format($printTax) }} {{ $order->currency_label }}</td>
                     </tr>
                 @endif
                 @if($order->total_shipping_cost > 0)
                     <tr>
                         <td colspan="4" class="border border-black p-2 text-left font-bold" style="text-align: left !important;">هزینه حمل و نقل:</td>
-                        <td colspan="2" class="border border-black p-2 font-bold">{{ number_format($order->total_shipping_cost) }} ریال</td>
+                        <td colspan="2" class="border border-black p-2 font-bold">{{ number_format($order->total_shipping_cost) }} {{ $order->currency_label }}</td>
                     </tr>
                 @endif
                 <tr class="bg-gray-50">
                     <td colspan="4" class="border border-black p-2 text-left font-extrabold text-sm" style="text-align: left !important;">مبلغ قابل پرداخت صورتحساب:</td>
-                    <td colspan="2" class="border border-black p-2 font-black text-sm">{{ number_format($order->grand_total) }} ریال</td>
+                    <td colspan="2" class="border border-black p-2 font-black text-sm">{{ number_format($printGrandTotal) }} {{ $order->currency_label }}</td>
                 </tr>
             </tbody>
         </table>
 
         {{-- Metadata / dynamic info printed officially --}}
-        @if($order->meta->isNotEmpty())
+        @php
+            $displayPrintMeta = $order->meta->reject(fn($m) => in_array($m->key, ['source_invoice_id', 'INVOICE_SOURCE_ID']));
+        @endphp
+        @if($displayPrintMeta->isNotEmpty())
             <div class="invoice-print-box mt-4">
                 <h4 class="font-bold text-xs border-b border-black pb-1 mb-2">اطلاعات تکمیلی خریدار (پاسخ‌های فرم)</h4>
                 <div class="grid grid-cols-2 gap-2 text-[10px]">
-                    @foreach($order->meta as $meta)
+                    @foreach($displayPrintMeta as $meta)
                         @php
                             $field = $order->checkoutForm?->field($meta->key);
                             if (!$field) {

@@ -29,7 +29,7 @@
             <div class="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 p-5 rounded-3xl border border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between transition-all duration-200 hover:shadow-md">
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">مجموع درآمد تایید شده</span>
-                    <h3 class="text-2xl font-black text-emerald-900 dark:text-emerald-300">{{ number_format($stats['total_revenue']) }} <span class="text-xs font-normal">ریال</span></h3>
+                    <h3 class="text-2xl font-black text-emerald-900 dark:text-emerald-300">{{ number_format($stats['total_revenue'] ?? 0) }} <span class="text-xs font-normal">ریال</span></h3>
                 </div>
                 <div class="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-emerald-600 dark:text-emerald-400">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,7 +42,7 @@
             <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 p-5 rounded-3xl border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between transition-all duration-200 hover:shadow-md">
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">کل سفارشات ثبت شده</span>
-                    <h3 class="text-2xl font-black text-indigo-900 dark:text-indigo-300">{{ number_format($stats['total_count']) }} <span class="text-xs font-normal">سفارش</span></h3>
+                    <h3 class="text-2xl font-black text-indigo-900 dark:text-indigo-300">{{ number_format($stats['total_count'] ?? 0) }} <span class="text-xs font-normal">سفارش</span></h3>
                 </div>
                 <div class="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-indigo-600 dark:text-indigo-400">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -55,7 +55,7 @@
             <div class="bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20 p-5 rounded-3xl border border-blue-100 dark:border-blue-900/30 flex items-center justify-between transition-all duration-200 hover:shadow-md">
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">سفارشات پرداخت شده</span>
-                    <h3 class="text-2xl font-black text-blue-900 dark:text-blue-300">{{ number_format($stats['paid_count']) }} <span class="text-xs font-normal">سفارش</span></h3>
+                    <h3 class="text-2xl font-black text-blue-900 dark:text-blue-300">{{ number_format($stats['paid_count'] ?? 0) }} <span class="text-xs font-normal">سفارش</span></h3>
                 </div>
                 <div class="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-blue-600 dark:text-blue-400">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,7 +68,7 @@
             <div class="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-5 rounded-3xl border border-amber-100 dark:border-amber-900/30 flex items-center justify-between transition-all duration-200 hover:shadow-md">
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">در انتظار پرداخت</span>
-                    <h3 class="text-2xl font-black text-amber-900 dark:text-amber-300">{{ number_format($stats['unpaid_count']) }} <span class="text-xs font-normal">سفارش</span></h3>
+                    <h3 class="text-2xl font-black text-amber-900 dark:text-amber-300">{{ number_format($stats['unpaid_count'] ?? 0) }} <span class="text-xs font-normal">سفارش</span></h3>
                 </div>
                 <div class="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-amber-600 dark:text-amber-400">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">

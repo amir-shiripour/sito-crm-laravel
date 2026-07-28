@@ -38,4 +38,37 @@ class ProductVariant extends Model {
 
         return implode(', ', $attributes);
     }
+
+    /**
+     * 💡 Accessor for unified effective selling price calculation (discount price if valid and > 0, else base price)
+     */
+    public function getSellingPriceAttribute(): float
+    {
+        $now = now();
+
+        $hasVariantDiscount = $this->discount_price > 0
+            && (empty($this->discount_start_date) || $now->gte($this->discount_start_date))
+            && (empty($this->discount_end_date) || $now->lte($this->discount_end_date));
+
+        if ($hasVariantDiscount) {
+            return (float) $this->discount_price;
+        }
+
+        if ($this->relationLoaded('vendorProducts') || $this->vendorProducts()->exists()) {
+            $firstVp = $this->vendorProducts
+                ->where('status', 'published')
+                ->first() ?? $this->vendorProducts->first();
+
+            if ($firstVp) {
+                return $firstVp->selling_price;
+            }
+        }
+
+        return (float) ($this->price ?: 0);
+    }
+
+    public function getEffectivePrice(): float
+    {
+        return $this->selling_price;
+    }
 }
