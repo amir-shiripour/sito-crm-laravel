@@ -112,9 +112,15 @@
                                             مشاهده
                                         </a>
                                         @if($payment->status === 'PENDING')
-                                        <a href="#" class="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 rounded-lg text-xs font-medium transition-colors shadow-sm">
-                                            پرداخت
-                                        </a>
+                                            @if($payment->type === 'booking')
+                                                <a href="{{ route('client.payments.show', ['type' => 'booking', 'id' => $payment->id]) }}" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1">
+                                                    <span>پرداخت</span>
+                                                </a>
+                                            @elseif($payment->type === 'market')
+                                                <a href="{{ url('checkout/process/' . $payment->id) }}" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1">
+                                                    <span>پرداخت</span>
+                                                </a>
+                                            @endif
                                         @endif
                                     </div>
                                 </td>

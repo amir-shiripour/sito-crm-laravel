@@ -144,6 +144,11 @@ class AppointmentController extends Controller
         ));
     }
 
+    public function schedule(Request $request)
+    {
+        return view('booking::user.schedule.index');
+    }
+
     public function create()
     {
         $settings = BookingSetting::current();
@@ -470,12 +475,45 @@ class AppointmentController extends Controller
                 }
             }
 
+            // Collect user IDs for select-user-by-role fields
+            $roleUserIds = [];
+            foreach ($rawFormResponses as $key => $value) {
+                if (isset($fieldMeta[$key]) && ($fieldMeta[$key]['type'] ?? '') === 'select-user-by-role') {
+                    if (is_array($value)) {
+                        foreach ($value as $v) {
+                            if (is_numeric($v)) $roleUserIds[] = (int) $v;
+                        }
+                    } elseif (is_numeric($value)) {
+                        $roleUserIds[] = (int) $value;
+                    }
+                }
+            }
+
+            $userNamesMap = [];
+            if (!empty($roleUserIds)) {
+                $userNamesMap = User::whereIn('id', array_unique($roleUserIds))->pluck('name', 'id')->toArray();
+            }
+
             foreach ($rawFormResponses as $key => $value) {
                 if (isset($fieldMeta[$key])) {
+                    $type = $fieldMeta[$key]['type'];
+                    $displayValue = $value;
+
+                    if ($type === 'select-user-by-role') {
+                        if (is_array($value)) {
+                            $names = array_map(fn($id) => $userNamesMap[$id] ?? "کاربر #{$id}", $value);
+                            $displayValue = implode('، ', $names);
+                        } elseif (is_numeric($value)) {
+                            $displayValue = $userNamesMap[$value] ?? "کاربر #{$value}";
+                        }
+                    } elseif (is_array($value)) {
+                        $displayValue = implode('، ', $value);
+                    }
+
                     $formResponses[] = [
                         'label' => $fieldMeta[$key]['label'],
-                        'value' => $value,
-                        'type' => $fieldMeta[$key]['type'],
+                        'value' => $displayValue,
+                        'type' => $type,
                     ];
                 } else {
                     $label = $key;
@@ -508,26 +546,114 @@ class AppointmentController extends Controller
             }
         }
 
+        $appointment->load(['service', 'service.appointmentForm', 'payments', 'client']);
         $payments = $appointment->payments ?? collect();
 
-        // حل ارور املای CANCELLED در اینجا
+        $servicePaymentMode = $appointment->service->payment_mode ?? BookingService::PAYMENT_MODE_NONE;
+        $servicePaymentAmountType = $appointment->service->payment_amount_type ?? null;
+        $servicePaymentAmountValue = (float) ($appointment->service->payment_amount_value ?? 0);
+        $serviceBasePrice = (float) ($appointment->service->base_price ?? 0);
+
+        $rawSuggestedAmount = match($servicePaymentAmountType) {
+            BookingService::PAYMENT_AMOUNT_DEPOSIT  => $servicePaymentAmountValue,
+            BookingService::PAYMENT_AMOUNT_FIXED    => $servicePaymentAmountValue,
+            default                                 => $serviceBasePrice,
+        };
+
+        $settingsMap = \Illuminate\Support\Facades\Schema::hasTable('settings')
+            ? \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray()
+            : [];
+
+        // سیستم واحد پول اصلی را از settings#payment بررسی می‌کند (اگر تومان است، ورودی کاربر به ریال تبدیل می‌شود)
+        $systemCurrency = strtolower($settingsMap['payment_currency'] ?? $settings->currency_unit ?? 'toman');
+        $currencyUnit = ($systemCurrency === 'toman' || $systemCurrency === 'irt') ? 'IRT' : 'IRR';
+        $currencyLabel = ($currencyUnit === 'IRT') ? 'تومان' : 'ریال';
+
+        $suggestedAmount = $rawSuggestedAmount;
+
+        $hasPaidPayment = $payments->contains('status', BookingPayment::STATUS_PAID);
+
         $paymentStatusMap = [
-            BookingPayment::STATUS_PENDING => ['label' => 'در انتظار پرداخت', 'class' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'],
-            BookingPayment::STATUS_PAID => ['label' => 'پرداخت شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
-            BookingPayment::STATUS_FAILED => ['label' => 'ناموفق', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
-            BookingPayment::STATUS_REFUNDED => ['label' => 'برگشت داده شده', 'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'],
-            BookingPayment::STATUS_CANCELLED => ['label' => 'لغو شده', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
+            BookingPayment::STATUS_PENDING   => ['label' => 'در انتظار پرداخت', 'class' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'],
+            BookingPayment::STATUS_PAID      => ['label' => 'پرداخت شده',       'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
+            BookingPayment::STATUS_FAILED    => ['label' => 'ناموفق',           'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
+            BookingPayment::STATUS_REFUNDED  => ['label' => 'برگشت داده شده',   'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'],
+            BookingPayment::STATUS_CANCELLED => ['label' => 'لغو شده',          'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
         ];
 
-        $paymentModeMap = [
+        $servicePaymentModeLabel = match($servicePaymentMode) {
             BookingService::PAYMENT_MODE_OPTIONAL => 'اختیاری',
-            BookingService::PAYMENT_MODE_REQUIRED => 'اجباری',
+            BookingService::PAYMENT_MODE_REQUIRED => 'الزامی',
+            default                                => 'بدون پرداخت',
+        };
+
+        $settingsMap = \Illuminate\Support\Facades\Schema::hasTable('settings')
+            ? \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray()
+            : [];
+
+        $posDevices = is_string($settingsMap['pos_devices'] ?? null) ? (json_decode($settingsMap['pos_devices'], true) ?: []) : [];
+        $bankAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) : [];
+        $installmentTypes = is_string($settingsMap['installment_types'] ?? null) ? (json_decode($settingsMap['installment_types'], true) ?: []) : [];
+
+        $onlineGateways = [];
+        if (($settingsMap['zarinpal_status'] ?? '') === 'active') {
+            $onlineGateways[] = ['id' => 'zarinpal', 'label' => 'درگاه زرین‌پال'];
+        }
+        if (($settingsMap['zibal_status'] ?? '') === 'active') {
+            $onlineGateways[] = ['id' => 'zibal', 'label' => 'درگاه زیبال'];
+        }
+        if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
+            $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
+        }
+
+        // Build available payment methods based on section statuses in /settings#payment
+        $availablePaymentMethods = [];
+
+        if (!empty($onlineGateways)) {
+            $availablePaymentMethods['online'] = 'درگاه پرداخت آنلاین';
+        }
+
+        if (($settingsMap['pos_status'] ?? '') === 'active' || (!isset($settingsMap['pos_status']) && !empty($posDevices))) {
+            $availablePaymentMethods['pos'] = 'دستگاه کارتخوان (POS)';
+        }
+
+        if (($settingsMap['bank_transfer_status'] ?? '') === 'active' || (!isset($settingsMap['bank_transfer_status']) && !empty($bankAccounts))) {
+            $availablePaymentMethods['transfer'] = 'انتقال بانکی / کارت به کارت (شبا)';
+        }
+
+        if (($settingsMap['cod_status'] ?? '') === 'active') {
+            $availablePaymentMethods['cod'] = 'پرداخت در محل (نقد)';
+        }
+
+        if (($settingsMap['installment_status'] ?? '') === 'active' || (!isset($settingsMap['installment_status']) && !empty($installmentTypes))) {
+            $availablePaymentMethods['installment'] = 'پرداخت قسطی / چک';
+        }
+
+        // Manual option is always available for admin
+        $availablePaymentMethods['manual'] = 'ثبت دستی (ادمین)';
+
+        $paymentSubItems = [
+            'pos' => array_values(array_map(fn($d) => [
+                'id' => $d['id'] ?? ($d['name'] ?? ''),
+                'label' => ($d['name'] ?? 'کارتخوان') . (!empty($d['account_number']) ? ' (حساب: ' . $d['account_number'] . ')' : '')
+            ], $posDevices)),
+            'transfer' => array_values(array_map(fn($a) => [
+                'id' => $a['id'] ?? ($a['bank_name'] ?? ''),
+                'label' => ($a['bank_name'] ?? 'بانک') . (!empty($a['owner_name']) ? ' - ' . $a['owner_name'] : '') . (!empty($a['card_number']) ? ' (' . $a['card_number'] . ')' : (!empty($a['iban']) ? ' (' . $a['iban'] . ')' : ''))
+            ], $bankAccounts)),
+            'installment' => array_values(array_map(fn($i) => [
+                'id' => $i['id'] ?? ($i['title'] ?? ''),
+                'label' => ($i['title'] ?? 'طرح اقساطی') . (!empty($i['default_tier_config']['max_months']) ? ' (' . $i['default_tier_config']['max_months'] . ' ماهه)' : '')
+            ], $installmentTypes)),
+            'online' => $onlineGateways,
         ];
 
         return view('booking::user.appointments.show', compact(
             'appointment', 'settings', 'dateJalali', 'startTime', 'endTime',
             'statusMeta', 'entryValue', 'exitValue', 'formResponses', 'legacyResponses',
-            'payments', 'paymentStatusMap', 'paymentModeMap'
+            'payments', 'paymentStatusMap', 'servicePaymentMode', 'servicePaymentModeLabel',
+            'suggestedAmount', 'hasPaidPayment', 'availablePaymentMethods', 'paymentSubItems',
+            'currencyUnit', 'currencyLabel'
         ));
     }
 
@@ -537,6 +663,7 @@ class AppointmentController extends Controller
         $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
 
         $user = $request->user();
+        $appointment->load(['payments', 'service']);
 
         $services = BookingService::query()
             ->where('status', BookingService::STATUS_ACTIVE)
@@ -561,7 +688,207 @@ class AppointmentController extends Controller
             ->limit(200)
             ->get(['id', 'full_name']);
 
-        return view('booking::user.appointments.edit', compact('appointment', 'settings', 'services', 'providers', 'clients'));
+        $payments = $appointment->payments ?? collect();
+        $servicePaymentMode = $appointment->service->payment_mode ?? BookingService::PAYMENT_MODE_NONE;
+        $hasPaidPayment = $payments->contains('status', BookingPayment::STATUS_PAID);
+
+        $paymentStatusMap = [
+            BookingPayment::STATUS_PENDING   => ['label' => 'در انتظار پرداخت', 'class' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'],
+            BookingPayment::STATUS_PAID      => ['label' => 'پرداخت شده',       'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
+            BookingPayment::STATUS_FAILED    => ['label' => 'ناموفق',           'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
+            BookingPayment::STATUS_REFUNDED  => ['label' => 'برگشت داده شده',   'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'],
+            BookingPayment::STATUS_CANCELLED => ['label' => 'لغو شده',          'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
+        ];
+
+        return view('booking::user.appointments.edit', compact(
+            'appointment', 'settings', 'services', 'providers', 'clients',
+            'payments', 'paymentStatusMap', 'servicePaymentMode', 'hasPaidPayment'
+        ));
+    }
+
+    /**
+     * ثبت پرداخت جدید توسط ادمین
+     */
+    public function storePayment(Request $request, Appointment $appointment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
+
+        if ($request->has('amount')) {
+            $cleaned = preg_replace('/[^\d.]/', '', (string) $request->input('amount'));
+            $request->merge(['amount' => $cleaned]);
+        }
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:1'],
+            'type' => ['nullable', 'string', 'max:50'],
+            'status' => ['required', 'string', Rule::in([
+                BookingPayment::STATUS_PENDING,
+                BookingPayment::STATUS_PAID,
+                BookingPayment::STATUS_FAILED,
+                BookingPayment::STATUS_REFUNDED,
+                BookingPayment::STATUS_CANCELLED,
+            ])],
+            'gateway_ref' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'sub_item_label' => ['nullable', 'string', 'max:255'],
+            'paid_at_jalali' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $settingsMap = \Illuminate\Support\Facades\Schema::hasTable('settings')
+            ? \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray()
+            : [];
+
+        $systemCurrency = strtolower($settingsMap['payment_currency'] ?? $settings->currency_unit ?? 'toman');
+        $currencyUnit = ($systemCurrency === 'toman' || $systemCurrency === 'irt') ? 'IRT' : 'IRR';
+        
+        $inputAmount = (float) $data['amount'];
+        $amountInRials = ($currencyUnit === 'IRT') ? ($inputAmount * 10) : $inputAmount;
+
+        $paidAt = null;
+        if (!empty($data['paid_at_jalali'])) {
+            $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+            $localDate = $this->convertJalaliDateToLocal($data['paid_at_jalali'], $scheduleTz);
+            if ($localDate) {
+                $paidAt = $localDate;
+            }
+        }
+        if (!$paidAt && $data['status'] === BookingPayment::STATUS_PAID) {
+            $paidAt = now();
+        }
+
+        $notes = $data['notes'] ?? '';
+        if (!empty($data['sub_item_label'])) {
+            $notes = $notes ? ($data['sub_item_label'] . ' | ' . $notes) : $data['sub_item_label'];
+        }
+
+        $payment = BookingPayment::create([
+            'appointment_id' => $appointment->id,
+            'client_id' => $appointment->client_id,
+            'type' => $data['type'] ?? 'manual',
+            'amount' => $amountInRials,
+            'currency_unit' => 'IRR',
+            'status' => $data['status'],
+            'gateway_ref' => $data['gateway_ref'] ?? null,
+            'notes' => $notes ?: null,
+            'paid_at' => $paidAt,
+        ]);
+
+        if ($data['status'] === BookingPayment::STATUS_PAID) {
+            $this->service->markPaymentPaid($payment->id, $payment->gateway_ref);
+        }
+
+        $this->service->triggerWorkflow('payment_manual_recorded', $appointment->fresh());
+
+        return redirect()
+            ->route('user.booking.appointments.show', $appointment)
+            ->with('success', 'پرداخت جدید با موفقیت ثبت شد.');
+    }
+
+    /**
+     * ویرایش پرداخت توسط ادمین
+     */
+    public function updatePayment(Request $request, Appointment $appointment, BookingPayment $payment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
+
+        if ((int) $payment->appointment_id !== (int) $appointment->id) {
+            abort(403, 'پرداخت متعلق به این نوبت نیست.');
+        }
+
+        if ($request->has('amount')) {
+            $cleaned = preg_replace('/[^\d.]/', '', (string) $request->input('amount'));
+            $request->merge(['amount' => $cleaned]);
+        }
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:1'],
+            'type' => ['nullable', 'string', 'max:50'],
+            'status' => ['required', 'string', Rule::in([
+                BookingPayment::STATUS_PENDING,
+                BookingPayment::STATUS_PAID,
+                BookingPayment::STATUS_FAILED,
+                BookingPayment::STATUS_REFUNDED,
+                BookingPayment::STATUS_CANCELLED,
+            ])],
+            'gateway_ref' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'sub_item_label' => ['nullable', 'string', 'max:255'],
+            'paid_at_jalali' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $wasPaidBefore = ($payment->status === BookingPayment::STATUS_PAID);
+
+        $settingsMap = \Illuminate\Support\Facades\Schema::hasTable('settings')
+            ? \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray()
+            : [];
+
+        $systemCurrency = strtolower($settingsMap['payment_currency'] ?? $settings->currency_unit ?? 'toman');
+        $currencyUnit = ($systemCurrency === 'toman' || $systemCurrency === 'irt') ? 'IRT' : 'IRR';
+
+        $inputAmount = (float) $data['amount'];
+        $amountInRials = ($currencyUnit === 'IRT') ? ($inputAmount * 10) : $inputAmount;
+
+        $paidAt = $payment->paid_at;
+        if (!empty($data['paid_at_jalali'])) {
+            $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+            $localDate = $this->convertJalaliDateToLocal($data['paid_at_jalali'], $scheduleTz);
+            if ($localDate) {
+                $paidAt = $localDate;
+            }
+        }
+        if (!$paidAt && $data['status'] === BookingPayment::STATUS_PAID) {
+            $paidAt = now();
+        }
+
+        $notes = $data['notes'] ?? '';
+        if (!empty($data['sub_item_label'])) {
+            $notes = $notes ? ($data['sub_item_label'] . ' | ' . $notes) : $data['sub_item_label'];
+        }
+
+        $payment->update([
+            'type' => $data['type'] ?? $payment->type,
+            'amount' => $amountInRials,
+            'currency_unit' => 'IRR',
+            'status' => $data['status'],
+            'gateway_ref' => $data['gateway_ref'] ?? null,
+            'notes' => $notes ?: null,
+            'paid_at' => $paidAt,
+        ]);
+
+        if ($data['status'] === BookingPayment::STATUS_PAID && !$wasPaidBefore) {
+            $this->service->markPaymentPaid($payment->id, $payment->gateway_ref);
+        }
+
+        $this->service->triggerWorkflow('payment_manual_updated', $appointment->fresh());
+
+        return redirect()
+            ->route('user.booking.appointments.show', $appointment)
+            ->with('success', 'اطلاعات پرداخت با موفقیت بروزرسانی شد.');
+    }
+
+    /**
+     * لغو پرداخت توسط ادمین
+     */
+    public function destroyPayment(Request $request, Appointment $appointment, BookingPayment $payment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
+
+        if ((int) $payment->appointment_id !== (int) $appointment->id) {
+            abort(403, 'پرداخت متعلق به این نوبت نیست.');
+        }
+
+        $payment->update([
+            'status' => BookingPayment::STATUS_CANCELLED,
+        ]);
+
+        $this->service->triggerWorkflow('payment_manual_cancelled', $appointment->fresh());
+
+        return redirect()
+            ->route('user.booking.appointments.show', $appointment)
+            ->with('success', 'پرداخت با موفقیت لغو شد.');
     }
 
     public function update(Request $request, Appointment $appointment)
@@ -1013,6 +1340,7 @@ class AppointmentController extends Controller
                 'booking_services.category_id',
                 'booking_services.appointment_form_id',
                 'booking_services.custom_schedule_enabled',
+                'booking_services.payment_mode',
                 'bc.name as category_name',
             ]);
 
@@ -1078,6 +1406,7 @@ class AppointmentController extends Controller
                 'booking_services.category_id',
                 'booking_services.appointment_form_id',
                 'booking_services.custom_schedule_enabled',
+                'booking_services.payment_mode',
                 'bc.name as category_name',
             ]);
 
@@ -1241,12 +1570,26 @@ class AppointmentController extends Controller
             return response()->json(['data' => null]);
         }
 
+        $schema = $form->schema_json ?? [];
+        if (isset($schema['fields']) && is_array($schema['fields'])) {
+            foreach ($schema['fields'] as &$field) {
+                if (($field['type'] ?? '') === 'select-user-by-role') {
+                    $roleName = $field['role'] ?? null;
+                    $usersQ = User::query();
+                    if ($roleName) {
+                        $usersQ->whereHas('roles', fn($r) => $r->where('name', $roleName));
+                    }
+                    $field['user_options'] = $usersQ->orderBy('name')->get(['id', 'name']);
+                }
+            }
+        }
+
         return response()->json([
             'data' => [
                 'id' => $form->id,
                 'name' => $form->name,
                 'form_type' => $form->form_type,
-                'schema_json' => $form->schema_json ?? [],
+                'schema_json' => $schema,
             ],
         ]);
     }

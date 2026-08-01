@@ -126,10 +126,6 @@ class Order extends Model
 
     public function getCurrencyLabelAttribute(): string
     {
-        if ($this->relationLoaded('sourceInvoice') && $this->sourceInvoice && !empty($this->sourceInvoice->currency)) {
-            $invCurrency = $this->sourceInvoice->currency;
-            return ($invCurrency === 'rial' || $invCurrency === 'IRR') ? 'ریال' : 'تومان';
-        }
         $currencySetting = \Modules\Market\Entities\MarketSetting::getValue('general.currency', 'toman');
         return ($currencySetting === 'rial' || $currencySetting === 'IRR') ? 'ریال' : 'تومان';
     }

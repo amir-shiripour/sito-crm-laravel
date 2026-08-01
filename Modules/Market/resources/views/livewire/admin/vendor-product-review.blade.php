@@ -20,7 +20,7 @@
                     <th class="p-4 w-10"></th>
                     <th class="p-4">فروشگاه</th>
                     <th class="p-4">محصول</th>
-                    <th class="p-4">قیمت فعلی (تومان)</th>
+                    <th class="p-4">قیمت فعلی ({{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }})</th>
                     <th class="p-4">موجودی</th>
                     <th class="p-4">وضعیت</th>
                     <th class="p-4">عملیات</th>
@@ -144,11 +144,11 @@
                                             <div class="space-y-4">
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">قیمت اصلی فروشنده:</span>
-                                                    <span class="text-sm font-bold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700/50">{{ number_format($product->price) }} <span class="text-[10px] font-normal text-gray-500">تومان</span></span>
+                                                    <span class="text-sm font-bold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700/50">{{ number_format($product->price) }} <span class="text-[10px] font-normal text-gray-500">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span></span>
                                                 </div>
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">قیمت با تخفیف:</span>
-                                                    <span class="text-sm font-bold {{ $product->discount_price ? 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20' : 'text-gray-500 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50' }} px-2.5 py-1 rounded-lg">{{ $product->discount_price ? number_format($product->discount_price) . ' تومان' : 'ندارد' }}</span>
+                                                    <span class="text-sm font-bold {{ $product->discount_price ? 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20' : 'text-gray-500 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50' }} px-2.5 py-1 rounded-lg">{{ $product->discount_price ? number_format($product->discount_price) . ' ' . (\Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان') : 'ندارد' }}</span>
                                                 </div>
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">سود مشتری (تخفیف):</span>
@@ -184,7 +184,7 @@
                                                     <div class="flex justify-between items-center">
                                                         <span class="text-xs text-gray-500 dark:text-gray-400">محدودیت ارزش سبد خرید:</span>
                                                         <span class="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 px-2.5 py-1 rounded-lg">
-                                                            {{ $product->purchase_step }} عدد به ازای هر {{ number_format($product->cart_amount_step) }} تومان
+                                                            {{ $product->purchase_step }} عدد به ازای هر {{ number_format($product->cart_amount_step) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}
                                                         </span>
                                                     </div>
                                                 @endif

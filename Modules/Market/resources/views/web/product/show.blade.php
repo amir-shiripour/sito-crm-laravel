@@ -412,7 +412,7 @@
                                             </div>
                                             <div class="text-gray-900 dark:text-white font-black text-3xl tracking-tight flex items-baseline gap-1.5">
                                                 <span id="buybox-final-price">0</span>
-                                                <span class="text-sm font-medium text-gray-500">تومان</span>
+                                                <span class="text-sm font-medium text-gray-500">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -659,7 +659,7 @@
                                         </div>
                                         <div class="text-gray-900 dark:text-white font-black text-xl tracking-tight flex items-baseline gap-1">
                                             <span id="mini-buybox-final-price">0</span>
-                                            <span class="text-[10px] font-medium text-gray-400">تومان</span>
+                                            <span class="text-[10px] font-medium text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -809,7 +809,7 @@
                 </div>
                 <div class="text-gray-900 dark:text-white font-black text-xl tracking-tight flex items-center justify-end gap-1 w-full">
                     <span id="mobile-buybox-final-price">0</span>
-                    <span class="text-[10px] font-medium text-gray-500 pb-0.5">تومان</span>
+                    <span class="text-[10px] font-medium text-gray-500 pb-0.5">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                 </div>
             </div>
 
@@ -1347,7 +1347,7 @@
 
                 if (limitCheck.isRestricted) {
                     const formattedRemaining = new Intl.NumberFormat('fa-IR').format(limitCheck.remaining);
-                    const msg = `برای خرید این محصول، نیاز به ${formattedRemaining} تومان خرید بیشتر در سبد خود دارید.`;
+                    const msg = `برای خرید این محصول، نیاز به ${formattedRemaining} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} خرید بیشتر در سبد خود دارید.`;
                     
                     if (limitDesktop) { limitDesktop.classList.remove('hidden'); limitDesktop.classList.add('flex'); }
                     if (limitRemainingDesktop) limitRemainingDesktop.innerText = msg;
@@ -1367,7 +1367,7 @@
                     
                     if (qty > 0 && nextLimitCheck.isRestricted) {
                         const formattedRemaining = new Intl.NumberFormat('fa-IR').format(nextLimitCheck.remaining);
-                        const msg = `برای افزایش تعداد، نیاز به ${formattedRemaining} تومان خرید بیشتر در سبد خود دارید.`;
+                        const msg = `برای افزایش تعداد، نیاز به ${formattedRemaining} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} خرید بیشتر در سبد خود دارید.`;
                         
                         if (limitDesktop) { limitDesktop.classList.remove('hidden'); limitDesktop.classList.add('flex'); }
                         if (limitRemainingDesktop) limitRemainingDesktop.innerText = msg;
@@ -2101,7 +2101,7 @@
                             <svg class="w-4 h-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
-                            <span>خرید ${formattedQty} عدد به ازای هر ${formattedStep} تومان سبد خرید</span>
+                            <span>خرید ${formattedQty} عدد به ازای هر ${formattedStep} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} سبد خرید</span>
                         </div>
                     `;
                 }
@@ -2173,7 +2173,7 @@
                                 ` : ''}
                                 <div class="text-gray-900 dark:text-white font-black text-lg sm:text-xl flex items-baseline gap-1">
                                     <span>${formattedPrice}</span>
-                                    <span class="text-[10px] font-medium text-gray-500">تومان</span>
+                                    <span class="text-[10px] font-medium text-gray-500">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                 </div>
                             </div>
                             

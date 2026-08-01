@@ -23,11 +23,18 @@ final class LocalQnAAdapter implements AiAdapterInterface
             $answer = $question->defaultAnswer();
 
             if ($answer) {
+                $menuItems = [];
+                if ($answer->answer_type === 'menu_items') {
+                    $menuItems = $answer->activeRootMenuItems()->get()->toArray();
+                }
+
                 return [
                     'answer_text' => $answer->answer_text,
                     'answer_type' => $answer->answer_type,
                     'entity_type' => $answer->entity_type,
                     'entity_ids' => $answer->entity_ids,
+                    'smart_attachments' => $answer->smart_attachments ?? [],
+                    'menu_items' => $menuItems,
                     'confidence' => (float) $match['score'],
                     'matched_question_id' => (int) $question->id,
                     'matched_answer_id' => (int) $answer->id,

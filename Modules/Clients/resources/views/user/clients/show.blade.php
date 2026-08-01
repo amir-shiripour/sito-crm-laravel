@@ -19,14 +19,38 @@
         default      => 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600',
     };
 
-    $clientCallsModule = \App\Models\Module::where('slug', 'clientcalls')->first();
-    $followUpsModule   = \App\Models\Module::where('slug', 'followups')->first();
-    $bookingModule     = $bookingModule ?? \App\Models\Module::where('slug', 'booking')->first();
-    $workflowsModule   = $workflowsModule ?? \App\Models\Module::where('slug', 'workflows')->first();
+    $clientCallsModule   = \App\Models\Module::where('slug', 'clientcalls')->first();
+    $followUpsModule     = \App\Models\Module::where('slug', 'followups')->first();
+    $bookingModule       = $bookingModule ?? \App\Models\Module::where('slug', 'booking')->first();
+    $workflowsModule     = $workflowsModule ?? \App\Models\Module::where('slug', 'workflows')->first();
+    $domainManagerModule = \App\Models\Module::where('slug', 'domainmanager')->first();
+    $directAdminModule   = \App\Models\Module::where('slug', 'directadmin')->first();
+    $servicesModule      = \App\Models\Module::where('slug', 'services')->first();
 
-    $showWorkflowTab   = $bookingModule && $bookingModule->installed && $bookingModule->active
-                      && $workflowsModule && $workflowsModule->installed && $workflowsModule->active
-                      && class_exists(\Modules\Workflows\Entities\Workflow::class);
+    $showServicesTab     = $servicesModule && $servicesModule->installed && $servicesModule->active;
+
+    $showWorkflowTab     = $bookingModule && $bookingModule->installed && $bookingModule->active
+                        && $workflowsModule && $workflowsModule->installed && $workflowsModule->active
+                        && class_exists(\Modules\Workflows\Entities\Workflow::class);
+
+    $clientDomainsCount  = \Illuminate\Support\Facades\Schema::hasColumn('domain_records', 'client_id')
+                        ? \Modules\DomainManager\Entities\DomainRecord::where('client_id', $client->id)->count()
+                        : 0;
+
+    $clientAccountsCount = \Illuminate\Support\Facades\Schema::hasColumn('da_accounts', 'client_id')
+                        ? \Modules\DirectAdmin\Entities\DaAccount::where('client_id', $client->id)->count()
+                        : 0;
+
+    $hasDomains          = $clientDomainsCount > 0;
+    $hasAccounts         = $clientAccountsCount > 0;
+
+    $showDomainTab       = $domainManagerModule && $domainManagerModule->installed && $domainManagerModule->active
+                        && class_exists(\Modules\DomainManager\Entities\DomainRecord::class)
+                        && $hasDomains;
+
+    $showDirectAdminTab  = $directAdminModule && $directAdminModule->installed && $directAdminModule->active
+                        && class_exists(\Modules\DirectAdmin\Entities\DaAccount::class)
+                        && $hasAccounts;
 
     $statusMap = [
         'planned' => ['label' => 'برنامه‌ریزی شده', 'class' => 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700'],
@@ -65,8 +89,8 @@
     $clientOrders = $clientOrders ?? collect([]);
     $clientInvoices = $clientInvoices ?? collect([]);
 
-    $allStatuses = Status::whereIn('type', ['payment', 'invoice'])->get()->keyBy('name');
-    $orderStatuses = Status::where('type', 'order')->orderBy('sort_order')->get();
+    $allStatuses = ($showServicesTab && class_exists(Status::class)) ? Status::whereIn('type', ['payment', 'invoice'])->get()->keyBy('name') : collect();
+    $orderStatuses = ($showServicesTab && class_exists(Status::class)) ? Status::where('type', 'order')->orderBy('sort_order')->get() : collect();
 @endphp
 
 @extends('layouts.user')
@@ -77,7 +101,7 @@
         activeTab: 'general',
         init() {
             const hash = window.location.hash.substring(1);
-            if (['general','workflows','orders','invoices'].includes(hash)) this.activeTab = hash;
+            if (['general','workflows','orders','invoices','domains','directadmin','transactions'].includes(hash)) this.activeTab = hash;
         },
         setTab(tab) {
             this.activeTab = tab;
@@ -192,6 +216,7 @@
                     </button>
                 @endif
 
+                @if($showServicesTab)
                 {{-- Tab 2: Orders --}}
                 <button @click="setTab('orders')"
                         :class="activeTab === 'orders' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
@@ -221,8 +246,57 @@
                         :class="activeTab === 'invoices' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
                         class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
                     {{ $faNum($clientInvoices->count()) }}
-                </span>
+                    </span>
                 </button>
+                @endif
+
+                @if(isset($accountingModule) && $accountingModule && $accountingModule->installed && $accountingModule->active)
+                    {{-- Tab: Accounting Transactions --}}
+                    <button @click="setTab('transactions')"
+                            :class="activeTab === 'transactions' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        تراکنش‌های مالی
+                        <span :class="activeTab === 'transactions' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                              class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
+                            {{ isset($accountingDocuments) ? $faNum($accountingDocuments->count()) : '0' }}
+                        </span>
+                    </button>
+                @endif
+
+                @if($showDomainTab)
+                    {{-- Tab: Domains --}}
+                    <button @click="setTab('domains')"
+                            :class="activeTab === 'domains' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                        </svg>
+                        دامنه‌ها
+                        <span :class="activeTab === 'domains' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                              class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
+                            {{ $faNum($clientDomainsCount) }}
+                        </span>
+                    </button>
+                @endif
+
+                @if($showDirectAdminTab)
+                    {{-- Tab: DirectAdmin Hosting --}}
+                    <button @click="setTab('directadmin')"
+                            :class="activeTab === 'directadmin' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                        </svg>
+                        هاستینگ
+                        <span :class="activeTab === 'directadmin' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                              class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
+                            {{ $faNum($clientAccountsCount) }}
+                        </span>
+                    </button>
+                @endif
             </div>
 
             {{-- ================= General Tab (Complete) ================= --}}
@@ -1227,6 +1301,7 @@
             </div>
             @endif
 
+            @if($showServicesTab)
             {{-- ================= Orders & Services tab ================= --}}
             <div x-show="activeTab === 'orders'" x-cloak x-data="{ orderSearch: '', orderStatus: '' }" x-transition:enter="transition ease-out duration-200"
                  x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
@@ -1452,14 +1527,16 @@
                     </div>
                 @endif
             </div>
+            @endif
 
+            @if($showServicesTab)
             {{-- ================= Invoices Tab ================= --}}
-            <div x-show="activeTab === 'invoices'" x-cloak x-data="{ invoiceSearch: '', invoiceStatus: '' }" x-transition:enter="transition ease-out duration-200"
+            <div x-show="activeTab === 'invoices'" x-cloak x-data="{ invoiceSearch: '', invoiceStatus: '', selectedInvoices: [], submitMerge() { window.location.href = '{{ Route::has('services.invoices.create') ? route('services.invoices.create', ['type' => 'invoice']) : '#' }}&customer_id={{ $client->id }}&merge_invoices=' + this.selectedInvoices.join(','); } }" x-transition:enter="transition ease-out duration-200"
                  x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
 
                 {{-- Filter Bar --}}
                 <div class="bg-white dark:bg-gray-800/60 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm mb-6 backdrop-blur-xl">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="relative">
                             <div class="absolute inset-y-0 start-0 ps-4 flex items-center pointer-events-none">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -1473,6 +1550,17 @@
                             <option value="معوقه">معوقه</option>
                             <option value="لغو شده">لغو شده</option>
                         </select>
+                        <div>
+                            <button type="button" 
+                                    @click="submitMerge()" 
+                                    :disabled="selectedInvoices.length < 2"
+                                    :class="selectedInvoices.length < 2 ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20'"
+                                    class="w-full justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 h-full">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                                ادغام فاکتورها
+                                <span x-show="selectedInvoices.length > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-[11px]" x-text="selectedInvoices.length"></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1482,6 +1570,7 @@
                             <table class="min-w-full text-sm text-start divide-y divide-gray-100 dark:divide-gray-700/50">
                                 <thead class="bg-gray-50/80 dark:bg-gray-900/40">
                                 <tr>
+                                    <th class="px-4 py-5 w-12 text-center"></th>
                                     <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-start">شماره فاکتور</th>
                                     <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">مبلغ کل</th>
                                     <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">وضعیت پرداخت</th>
@@ -1497,7 +1586,11 @@
                                         $remaining   = $invoice->remainingAmount();
                                         $isCanceled  = str_contains($invoice->status?->name ?? '', 'لغو');
 
-                                        if ($remaining <= 0 && !$isCanceled) {
+                                        $isMerged = str_contains($invoice->status?->name ?? '', 'ادغام');
+
+                                        if ($isMerged) {
+                                            $statusName = $invoice->status?->name ?? 'ادغام شده';
+                                        } elseif ($remaining <= 0 && !$isCanceled) {
                                             $statusName  = 'پرداخت شده';
                                         } else {
                                             $hasOverduePayment = false;
@@ -1523,10 +1616,20 @@
                                     <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-200"
                                         data-search="{{ $searchableText }}" data-status="{{ $statusName }}"
                                         x-show="(!invoiceSearch || $el.dataset.search.includes(invoiceSearch.toLowerCase())) && (!invoiceStatus || $el.dataset.status === invoiceStatus)">
+                                        <td class="px-4 py-4 text-center">
+                                            @if($invoice->invoice_number && !$isCanceled && !str_contains($statusName, 'ادغام') && $statusName !== 'پرداخت شده' && empty($invoice->meta['is_merged_invoice']))
+                                                <input type="checkbox" value="{{ $invoice->id }}" x-model="selectedInvoices" class="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
+                                            @else
+                                                <input type="checkbox" disabled class="w-5 h-5 text-gray-300 bg-gray-50 border-gray-200 rounded cursor-not-allowed opacity-50 dark:bg-gray-800 dark:border-gray-700">
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4">
                                             <a href="{{ route('services.invoices.show', $invoice) }}" class="font-bold text-indigo-600 dark:text-indigo-400 text-base tabular-nums hover:underline">
                                                 {{ $faNum($invoice->invoice_number) }}
                                             </a>
+                                            @if(!empty($invoice->meta['is_merged_invoice']))
+                                                <span class="block mt-1 w-max inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-100 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20">حاصل ادغام</span>
+                                            @endif
                                         </td>
                                         <td class="px-6 py-4 text-center">
                                             <span class="font-black text-gray-900 dark:text-gray-100 text-base tabular-nums">{{ $faNum(number_format($invoice->total)) }}</span>
@@ -1535,6 +1638,9 @@
                                         <td class="px-6 py-4 text-center">
                                             @if($isCanceled)
                                                 <span class="font-black text-rose-500 dark:text-rose-400 text-base tabular-nums">لغو شده</span>
+                                            @elseif($isMerged)
+                                                <span class="font-black text-purple-600 dark:text-purple-400 text-base tabular-nums">ادغام شده</span>
+                                                <span class="block text-[11px] font-bold text-purple-500 mt-1">مبلغ به فاکتور جدید منتقل شد</span>
                                             @elseif($remaining <= 0)
                                                 <span class="font-black text-emerald-600 dark:text-emerald-400 text-base tabular-nums">{{ $faNum(number_format($invoice->paid_amount)) }} <span class="text-[11px] font-medium">{{ $currencyLabel }}</span></span>
                                                 <span class="block text-[11px] font-bold text-emerald-500 mt-1">تسویه کامل</span>
@@ -1591,6 +1697,131 @@
                     </div>
                 @endif
             </div>
+            @endif
+
+            @if($showDomainTab)
+                {{-- ================= Domains Tab (DomainManager Module) ================= --}}
+                <div x-show="activeTab === 'domains'" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                    @include('domainmanager::partials.client-domains-tab', ['client' => $client])
+                </div>
+            @endif
+
+            @if($showDirectAdminTab)
+                {{-- ================= Hosting Tab (DirectAdmin Module) ================= --}}
+                <div x-show="activeTab === 'directadmin'" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                    @include('directadmin::partials.client-hosting-tab', ['client' => $client])
+                </div>
+            @endif
+            @if(isset($accountingModule) && $accountingModule && $accountingModule->installed && $accountingModule->active)
+                {{-- ================= Accounting Transactions Tab ================= --}}
+                <div x-show="activeTab === 'transactions'" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
+                     
+                    @if(isset($accountingDocuments) && $accountingDocuments->count() > 0)
+                        {{-- Table --}}
+                        <div class="bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm text-start divide-y divide-gray-100 dark:divide-gray-700/50">
+                                    <thead class="bg-gray-50/80 dark:bg-gray-900/40">
+                                    <tr>
+                                        <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-start">شماره سند</th>
+                                        <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-start">شرح سند</th>
+                                        <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">مبلغ (جمع کل)</th>
+                                        <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">سیستم مبدأ</th>
+                                        <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">تاریخ ثبت</th>
+                                        <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-end">عملیات</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50 dark:divide-gray-700/40">
+                                    @foreach($accountingDocuments as $document)
+                                        <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-200">
+                                            <td class="px-6 py-4">
+                                                <a href="{{ route('admin.accounting.documents.show', $document->id) }}" class="font-bold text-indigo-600 dark:text-indigo-400 text-base tabular-nums hover:underline block">
+                                                    {{ $faNum($document->document_number) }}
+                                                </a>
+                                            </td>
+                                            <td class="px-6 py-4 max-w-sm">
+                                                <div class="font-bold text-gray-900 dark:text-white text-sm truncate" title="{{ $document->description }}">
+                                                    {{ $document->description }}
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                <span class="font-black text-gray-900 dark:text-gray-100 text-base tabular-nums">{{ $faNum(number_format($document->transactions->sum('debit'))) }}</span>
+                                                <span class="text-[11px] font-medium text-gray-400 block">{{ \Modules\Accounting\App\Services\CurrencyService::getBaseCurrency() }}</span>
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                @if($document->sourceDocument)
+                                                    @php
+                                                        $moduleName = 'نامشخص';
+                                                        $moduleColor = '#6b7280'; // gray
+                                                        
+                                                        if ($document->sourceDocument->module === 'services') {
+                                                            $moduleName = 'فاکتور سرویس و خدمات';
+                                                            $moduleColor = '#10b981'; // emerald
+                                                        } elseif ($document->sourceDocument->module === 'booking') {
+                                                            $moduleName = 'نوبت‌دهی';
+                                                            $moduleColor = '#a855f7'; // purple
+                                                        } elseif ($document->sourceDocument->module === 'market') {
+                                                            $moduleName = 'فروشگاه';
+                                                            $moduleColor = '#f59e0b'; // amber
+                                                        }
+                                                    @endphp
+                                                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border"
+                                                          style="background: {{ $moduleColor }}1a; color: {{ $moduleColor }}; border-color: {{ $moduleColor }}33">
+                                                        <span class="w-2 h-2 rounded-full" style="background: {{ $moduleColor }}"></span>
+                                                        {{ $moduleName }}
+                                                    </span>
+                                                    @php
+                                                        $snapshot = $document->sourceDocument->snapshot_data;
+                                                        $refNum = $snapshot['invoice_number'] ?? $snapshot['order_id'] ?? $snapshot['appointment_id'] ?? null;
+                                                    @endphp
+                                                    @if($refNum)
+                                                        <span class="block text-[11px] font-bold text-gray-500 mt-1">مرجع: {{ $faNum($refNum) }}</span>
+                                                    @endif
+                                                @else
+                                                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700">
+                                                        <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                                                        ثبت دستی / متفرقه
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4 text-center text-sm font-medium text-gray-500 dark:text-gray-400 dir-ltr whitespace-nowrap tabular-nums">
+                                                {{ $document->document_date ? $faNum(\Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($document->document_date))->format('Y/m/d')) : '-' }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center justify-end gap-2 opacity-100 sm:opacity-40 group-hover:opacity-100 transition-opacity duration-200">
+                                                    <a href="{{ route('admin.accounting.documents.show', $document->id) }}"
+                                                       class="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all hover:scale-110"
+                                                       title="مشاهده جزئیات کامل">
+                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                                        </svg>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @else
+                        <div class="flex flex-col items-center justify-center py-20 text-center">
+                            <span class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-400 mb-4">
+                                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </span>
+                            <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">هیچ تراکنش مالی یافت نشد</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">برای این مشتری هنوز هیچ تراکنشی در سیستم حسابداری ثبت نشده است.</p>
+                        </div>
+                    @endif
+                </div>
+            @endif
         </div>
     </div>
 @endsection

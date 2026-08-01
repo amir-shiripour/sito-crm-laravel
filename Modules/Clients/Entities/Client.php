@@ -11,10 +11,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Modules\Market\App\Models\Order;
 use Modules\Clients\Entities\ClientForm;
 use Modules\Clients\Entities\ClientSetting;
+use Modules\Wallet\App\Traits\HasWallet;
 
 class Client extends Authenticatable
 {
-    use SoftDeletes, HasFactory, Notifiable;
+    use SoftDeletes, HasFactory, Notifiable, HasWallet;
 
     protected $table = 'clients';
 

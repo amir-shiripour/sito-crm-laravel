@@ -2,7 +2,7 @@
 
 namespace Modules\Booking\Entities;
 
-use App\Models\Client;
+use Modules\Clients\Entities\Client;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,6 +15,7 @@ class BookingPayment extends Model
     public const STATUS_FAILED = 'FAILED';
     public const STATUS_REFUNDED = 'REFUNDED';
     public const STATUS_CANCELLED = 'CANCELLED';
+    public const STATUS_CANCELED = 'CANCELLED';
 
     protected $fillable = [
         'appointment_id',
@@ -25,11 +26,14 @@ class BookingPayment extends Model
         'status',
         'gateway_ref',
         'transaction_ref',
+        'notes',
+        'meta',
         'paid_at',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'meta' => 'array',
         'paid_at' => 'datetime',
     ];
 

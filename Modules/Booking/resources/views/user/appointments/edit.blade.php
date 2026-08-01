@@ -613,6 +613,84 @@
                 </button>
             </div>
         </form>
+
+        {{-- کارت وضعیت و خلاصه پرداخت (اطلاعات تکمیلی در ویرایش) --}}
+        @if($servicePaymentMode !== \Modules\Booking\Entities\BookingService::PAYMENT_MODE_NONE || $payments->isNotEmpty())
+            <div class="{{ $cardClass }} p-6 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-gray-700">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-emerald-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+                            </svg>
+                            سوابق پرداخت نوبت
+                        </h2>
+                        @if($servicePaymentMode === \Modules\Booking\Entities\BookingService::PAYMENT_MODE_REQUIRED)
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                سیاست: پرداخت الزامی
+                            </span>
+                        @elseif($servicePaymentMode === \Modules\Booking\Entities\BookingService::PAYMENT_MODE_OPTIONAL)
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                                سیاست: پرداخت اختیاری
+                            </span>
+                        @endif
+                    </div>
+
+                    <a href="{{ route('user.booking.appointments.show', $appointment) }}"
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        مدیریت پرداخت‌ها در صفحه مشاهده
+                    </a>
+                </div>
+
+                @if($payments->isNotEmpty())
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-right text-gray-500 dark:text-gray-400">
+                            <thead class="text-xs text-gray-600 bg-gray-50 dark:bg-gray-700/50 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 font-semibold">مبلغ</th>
+                                <th scope="col" class="px-4 py-3 font-semibold">نوع</th>
+                                <th scope="col" class="px-4 py-3 font-semibold">وضعیت</th>
+                                <th scope="col" class="px-4 py-3 font-semibold">کد پیگیری</th>
+                                <th scope="col" class="px-4 py-3 font-semibold">تاریخ</th>
+                            </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60">
+                            @foreach($payments as $payment)
+                                @php
+                                    $pStatusMeta = $paymentStatusMap[$payment->status] ?? ['label' => $payment->status, 'class' => 'bg-gray-100 text-gray-700'];
+                                    $pModeLabel = $payment->type === 'manual' ? 'ثبت دستی' : ($payment->type === 'booking' ? 'درگاه آنلاین' : $payment->type);
+                                @endphp
+                                <tr>
+                                    <td class="px-4 py-3 font-bold text-gray-900 dark:text-gray-100">
+                                        {{ number_format($payment->amount) }} {{ $payment->currency_unit === 'toman' ? 'تومان' : 'ریال' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
+                                        {{ $pModeLabel }}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-bold {{ $pStatusMeta['class'] }}">
+                                            {{ $pStatusMeta['label'] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                                        {{ $payment->gateway_ref ?: '—' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-xs font-medium" dir="ltr">
+                                        {{ $payment->paid_at ? \Morilog\Jalali\Jalalian::fromDateTime($payment->paid_at)->format('Y/m/d H:i') : '—' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        هنوز پرداختی برای این نوبت ثبت نشده است. ثبت و مدیریت کامل پرداخت‌ها در صفحه <a href="{{ route('user.booking.appointments.show', $appointment) }}" class="text-indigo-600 dark:text-indigo-400 font-bold underline">مشاهده نوبت</a> امکان‌پذیر است.
+                    </p>
+                @endif
+            </div>
+        @endif
     </div>
 
     <script>
@@ -975,6 +1053,33 @@
                     return wrapper;
                 }
 
+                if (type === 'select-user-by-role') {
+                    const select = document.createElement('select');
+                    select.className = 'w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100';
+                    if (field.required) select.required = true;
+                    if (field.multiple) select.multiple = true;
+                    select.dataset.fieldName = field.name;
+
+                    if (!field.multiple) {
+                        const emptyOpt = document.createElement('option');
+                        emptyOpt.value = '';
+                        emptyOpt.textContent = 'انتخاب کنید';
+                        select.appendChild(emptyOpt);
+                    }
+
+                    const selectedVals = Array.isArray(value) ? value.map(String) : (value !== null && value !== undefined ? [String(value)] : []);
+
+                    (field.user_options || []).forEach((user) => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.name;
+                        if (selectedVals.includes(String(user.id))) option.selected = true;
+                        select.appendChild(option);
+                    });
+                    wrapper.appendChild(select);
+                    return wrapper;
+                }
+
                 const input = document.createElement('input');
                 input.type = type;
                 input.className = 'w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400';
@@ -996,6 +1101,10 @@
                 elements.forEach((el) => {
                     const name = el.dataset.fieldName;
                     if (!name) return;
+                    if (el.tagName.toLowerCase() === 'select' && el.multiple) {
+                        values[name] = Array.from(el.selectedOptions).map(opt => opt.value);
+                        return;
+                    }
                     if (el.type === 'checkbox') {
                         if (!Array.isArray(values[name])) values[name] = [];
                         if (el.checked) values[name].push(el.value);

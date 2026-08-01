@@ -109,7 +109,9 @@ class ServiceController extends Controller
         $isAdminUser = $this->isAdminUser($authUser);
         $isProvider  = $this->userIsProvider($authUser, $settings);
 
-        return view('booking::user.services.create', compact('categories', 'forms', 'settings', 'isAdminUser', 'isProvider'));
+        $providers   = $isAdminUser ? $this->getEligibleProviders($settings) : collect();
+
+        return view('booking::user.services.create', compact('categories', 'forms', 'settings', 'isAdminUser', 'isProvider', 'providers'));
     }
 
     public function store(Request $request)
@@ -143,6 +145,7 @@ class ServiceController extends Controller
                 BookingService::ONLINE_MODE_FORCE_OFF,
             ])],
             'auto_confirm_online_booking' => ['nullable', 'boolean'],
+            'credit_client_wallet'        => ['nullable', 'boolean'],
 
             'payment_mode'       => ['required', Rule::in([
                 BookingService::PAYMENT_MODE_NONE,
@@ -159,6 +162,8 @@ class ServiceController extends Controller
             'appointment_form_id'   => ['nullable', 'integer', 'exists:booking_forms,id'],
             'provider_can_customize'=> ['nullable', 'boolean'],
             'custom_schedule_enabled' => ['nullable', 'boolean'],
+            'provider_ids'          => ['nullable', 'array'],
+            'provider_ids.*'        => ['integer', 'exists:users,id'],
         ]);
 
         $categoryIds = $request->input('category_ids', []);
@@ -175,6 +180,7 @@ class ServiceController extends Controller
         }
         $data['custom_schedule_enabled'] = (bool)($data['custom_schedule_enabled'] ?? false);
         $data['auto_confirm_online_booking'] = (bool)($data['auto_confirm_online_booking'] ?? false);
+        $data['credit_client_wallet'] = (bool)($data['credit_client_wallet'] ?? false);
 
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
@@ -187,8 +193,19 @@ class ServiceController extends Controller
             $service->categories()->sync($categoryIds);
         }
 
-        // اگر سازنده Provider است، سرویس خودش برای خودش فعال شود
-        if ($authUser && $this->userIsProvider($authUser, $settings)) {
+        if ($isAdminUser) {
+            $providerIds = array_map('intval', $request->input('provider_ids', []));
+            foreach ($providerIds as $pId) {
+                BookingServiceProvider::query()->updateOrCreate(
+                    ['service_id' => $service->id, 'provider_user_id' => $pId],
+                    [
+                        'is_active' => true,
+                        'customization_enabled' => true,
+                        'override_status_mode' => BookingServiceProvider::OVERRIDE_MODE_INHERIT,
+                    ]
+                );
+            }
+        } elseif ($authUser && $this->userIsProvider($authUser, $settings)) {
             BookingServiceProvider::query()->updateOrCreate(
                 ['service_id' => $service->id, 'provider_user_id' => $authUser->id],
                 [
@@ -233,6 +250,17 @@ class ServiceController extends Controller
                 ->first();
         }
 
+        $providers = $isAdminUser ? $this->getEligibleProviders($settings) : collect();
+        $effectiveProviderIds = [];
+        if ($isAdminUser && $service->exists) {
+            $effectiveProviderIds = BookingServiceProvider::query()
+                ->where('service_id', $service->id)
+                ->where('is_active', true)
+                ->pluck('provider_user_id')
+                ->map(fn($v) => (int)$v)
+                ->toArray();
+        }
+
         return view('booking::user.services.edit', compact(
             'service',
             'categories',
@@ -244,6 +272,8 @@ class ServiceController extends Controller
             'isOwnerService',
             'editingPublicAsProvider',
             'serviceProvider',
+            'providers',
+            'effectiveProviderIds'
         ));
     }
 
@@ -362,6 +392,7 @@ class ServiceController extends Controller
                 BookingService::ONLINE_MODE_FORCE_OFF,
             ])],
             'auto_confirm_online_booking' => ['nullable', 'boolean'],
+            'credit_client_wallet'        => ['nullable', 'boolean'],
 
             'payment_mode'       => ['required', Rule::in([
                 BookingService::PAYMENT_MODE_NONE,
@@ -379,9 +410,11 @@ class ServiceController extends Controller
             'custom_schedule_enabled' => ['nullable', 'boolean'],
         ];
 
-        // فقط admin می‌تواند provider_can_customize را تغییر دهد
+        // فقط admin می‌تواند provider_can_customize و provider_ids را تغییر دهد
         if ($isAdminUser) {
             $rules['provider_can_customize'] = ['nullable', 'boolean'];
+            $rules['provider_ids']          = ['nullable', 'array'];
+            $rules['provider_ids.*']        = ['integer', 'exists:users,id'];
         }
 
         $data = $request->validate($rules);
@@ -400,6 +433,7 @@ class ServiceController extends Controller
         }
         $data['custom_schedule_enabled'] = (bool) $request->input('custom_schedule_enabled', false);
         $data['auto_confirm_online_booking'] = (bool)($data['auto_confirm_online_booking'] ?? false);
+        $data['credit_client_wallet'] = (bool)($data['credit_client_wallet'] ?? false);
 
         $service->fill($data)->save();
 
@@ -407,6 +441,26 @@ class ServiceController extends Controller
             $service->categories()->sync($categoryIds);
         } else {
             $service->categories()->detach();
+        }
+
+        if ($isAdminUser) {
+            $selectedProviderIds = array_map('intval', $request->input('provider_ids', []));
+
+            foreach ($selectedProviderIds as $pId) {
+                BookingServiceProvider::query()->updateOrCreate(
+                    ['service_id' => $service->id, 'provider_user_id' => $pId],
+                    [
+                        'is_active' => true,
+                        'customization_enabled' => true,
+                        'override_status_mode' => BookingServiceProvider::OVERRIDE_MODE_INHERIT,
+                    ]
+                );
+            }
+
+            BookingServiceProvider::query()
+                ->where('service_id', $service->id)
+                ->whereNotIn('provider_user_id', $selectedProviderIds)
+                ->update(['is_active' => false]);
         }
 
         return redirect()
@@ -598,6 +652,46 @@ class ServiceController extends Controller
     protected function getProviderRoleIds(BookingSetting $settings): array
     {
         return array_map('intval', (array)($settings->allowed_roles ?? []));
+    }
+
+    /**
+     * لیست تمام کاربرانی که نقش ارائه‌دهنده (Provider) براساس تنظیمات نوبت‌دهی دارند
+     */
+    protected function getEligibleProviders(BookingSetting $settings)
+    {
+        $rolesInput = $settings->allowed_roles;
+        if (is_string($rolesInput)) {
+            $decoded = json_decode($rolesInput, true);
+            $rolesInput = is_array($decoded) ? $decoded : preg_split('/\s*,\s*/', trim($rolesInput), -1, PREG_SPLIT_NO_EMPTY);
+        }
+        if (!is_array($rolesInput) || empty($rolesInput)) {
+            return collect();
+        }
+
+        $roleIds = [];
+        $roleNames = [];
+        foreach ($rolesInput as $v) {
+            if (is_numeric($v) && (int)$v > 0) {
+                $roleIds[] = (int)$v;
+            } elseif (is_string($v) && trim($v) !== '') {
+                $roleNames[] = trim($v);
+            }
+        }
+
+        if (empty($roleIds) && empty($roleNames)) {
+            return collect();
+        }
+
+        return User::whereHas('roles', function ($q) use ($roleIds, $roleNames) {
+            $q->where(function ($subQ) use ($roleIds, $roleNames) {
+                if (!empty($roleIds)) {
+                    $subQ->whereIn('id', $roleIds);
+                }
+                if (!empty($roleNames)) {
+                    $subQ->orWhereIn('name', $roleNames);
+                }
+            });
+        })->orderBy('name')->get();
     }
 
     /**

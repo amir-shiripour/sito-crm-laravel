@@ -14,6 +14,14 @@ Route::middleware(['web', 'auth'])
             ->name('qna')
             ->middleware('permission:smartbot.manage');
 
+        Route::get('/qna/create', \Modules\SmartBot\App\Livewire\Admin\QnAEditor::class)
+            ->name('qna.create')
+            ->middleware('permission:smartbot.manage');
+
+        Route::get('/qna/{id}/edit', \Modules\SmartBot\App\Livewire\Admin\QnAEditor::class)
+            ->name('qna.edit')
+            ->middleware('permission:smartbot.manage');
+
         Route::get('/settings', \Modules\SmartBot\App\Livewire\Admin\SettingsManager::class)
             ->name('settings')
             ->middleware('permission:smartbot.settings');

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Modules\Accounting\App\Models\Document;
+use Modules\Accounting\Entities\Cheque;
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientForm;
 use Modules\Clients\Entities\ClientSetting;
@@ -14,6 +16,8 @@ use Modules\Clients\App\Http\Requests\StoreClientRequest;
 use Modules\Clients\App\Http\Requests\UpdateClientRequest;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Order;
+use Modules\Services\App\Http\Models\Payment;
+use Modules\Workflows\Entities\Workflow;
 
 class ClientController extends Controller
 {
@@ -172,14 +176,14 @@ class ClientController extends Controller
         // ── Booking & Workflows check ───────────────────────────────────
         $bookingModule = Module::where('slug', 'booking')->first();
         $workflowsModule = Module::where('slug', 'workflows')->first();
-        
+
         $isBookingActive = $bookingModule && $bookingModule->installed && $bookingModule->active;
         $isWorkflowsActive = $workflowsModule && $workflowsModule->installed && $workflowsModule->active;
 
         $availableWorkflows = collect([]);
-        if ($isBookingActive && $isWorkflowsActive && class_exists(\Modules\Workflows\Entities\Workflow::class) && \Schema::hasTable('workflows')) {
+        if ($isBookingActive && $isWorkflowsActive && class_exists(Workflow::class) && \Schema::hasTable('workflows')) {
             try {
-                $availableWorkflows = \Modules\Workflows\Entities\Workflow::where('is_active', true)
+                $availableWorkflows = Workflow::where('is_active', true)
                     ->orderBy('name')
                     ->get();
             } catch (\Exception $e) {
@@ -187,9 +191,93 @@ class ClientController extends Controller
             }
         }
 
+        // ── Accounting Module check ───────────────────────────────────
+        $accountingModule = Module::where('slug', 'accounting')->first();
+        $isAccountingActive = $accountingModule && $accountingModule->installed && $accountingModule->active;
+        $accountingDocuments = collect([]);
+
+        if ($isAccountingActive && class_exists(Document::class)) {
+            try {
+                $docIds = collect();
+
+                // 1. Documents where documentable is Accounting\Invoice for this client
+                if (class_exists(\Modules\Accounting\Entities\Invoice::class)) {
+                    $accInvoicesIds = \Modules\Accounting\Entities\Invoice::where('client_id', $client->id)->pluck('id')->toArray();
+                    if (!empty($accInvoicesIds)) {
+                        $ids = Document::where('documentable_type', \Modules\Accounting\Entities\Invoice::class)
+                            ->whereIn('documentable_id', $accInvoicesIds)
+                            ->pluck('id')->toArray();
+                        $docIds = $docIds->merge($ids);
+                    }
+                }
+
+                // 2. Documents where documentable is Cheque for this client
+                if (class_exists(Cheque::class) && \Schema::hasColumn('accounting_cheques', 'client_id')) {
+                    $chequeIds = Cheque::where('client_id', $client->id)->pluck('id')->toArray();
+                    if (!empty($chequeIds)) {
+                        $ids = Document::where('documentable_type', Cheque::class)
+                            ->whereIn('documentable_id', $chequeIds)
+                            ->pluck('id')->toArray();
+                        $docIds = $docIds->merge($ids);
+                    }
+                }
+
+                // 3. Documents through SourceDocument -> Payment -> Services\Invoice
+                if (class_exists(Payment::class) && class_exists(Invoice::class)) {
+                    $paymentIds = Payment::whereHas('invoice', function($q) use ($client) {
+                        $q->where('customer_id', $client->id);
+                    })->pluck('id')->toArray();
+
+                    if (!empty($paymentIds)) {
+                        $ids = \Modules\Accounting\App\Models\SourceDocument::where('sourceable_type', Payment::class)
+                            ->whereIn('sourceable_id', $paymentIds)
+                            ->pluck('document_id')->toArray();
+                        $docIds = $docIds->merge($ids);
+                    }
+                }
+
+                // 4. Documents through SourceDocument -> Services\Invoice
+                if (class_exists(Invoice::class)) {
+                    $srvInvoicesIds = Invoice::where('customer_id', $client->id)->pluck('id')->toArray();
+
+                    if (!empty($srvInvoicesIds)) {
+                        $ids = \Modules\Accounting\App\Models\SourceDocument::where('sourceable_type', Invoice::class)
+                            ->whereIn('sourceable_id', $srvInvoicesIds)
+                            ->pluck('document_id')->toArray();
+                        $docIds = $docIds->merge($ids);
+                    }
+                }
+
+                // 5. Documents through SourceDocument -> Services\Order
+                if (class_exists(Order::class)) {
+                    $srvOrderIds = Order::where('customer_id', $client->id)->pluck('id')->toArray();
+
+                    if (!empty($srvOrderIds)) {
+                        $ids = \Modules\Accounting\App\Models\SourceDocument::where('sourceable_type', Order::class)
+                            ->whereIn('sourceable_id', $srvOrderIds)
+                            ->pluck('document_id')->toArray();
+                        $docIds = $docIds->merge($ids);
+                    }
+                }
+
+                $uniqueDocIds = $docIds->unique()->toArray();
+
+                if (!empty($uniqueDocIds)) {
+                    $accountingDocuments = Document::with(['transactions', 'sourceDocument'])
+                        ->whereIn('id', $uniqueDocIds)
+                        ->latest('document_date')
+                        ->latest('id')
+                        ->get();
+                }
+            } catch (\Exception $e) {
+                // Keep it empty on error
+            }
+        }
+
         return view('clients::user.clients.show', compact(
             'client', 'activeForm', 'clientOrders', 'clientInvoices',
-            'bookingModule', 'workflowsModule', 'availableWorkflows'
+            'bookingModule', 'workflowsModule', 'availableWorkflows',
+            'accountingModule', 'accountingDocuments'
         ));
     }
 
@@ -259,8 +347,6 @@ class ClientController extends Controller
         $ids = $request->input('ids');
         $action = $request->input('action');
         $user = auth()->user();
-
-        // فیلتر کلاینت‌ها بر اساس دسترسی مشاهده
         $clientsQuery = Client::visibleForUser($user)->whereIn('id', $ids);
         $clients = $clientsQuery->get();
         $count = 0;

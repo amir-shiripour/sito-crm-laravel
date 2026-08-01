@@ -964,10 +964,11 @@ class CheckoutModal extends Component
                 $maxAllowedByCartValue = floor($otherItemsTotal / $vp->cart_amount_step) * $vp->purchase_step;
                 if ($item['quantity'] > $maxAllowedByCartValue) {
                     $formattedStep = number_format($vp->cart_amount_step);
+                    $currencyLabel = \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان';
                     if ($maxAllowedByCartValue == 0) {
-                        $this->dispatch('notify', type: 'error', text: "برای خرید محصول «{$item['name']}»، مبلغ کل سبد خرید باید حداقل {$formattedStep} تومان باشد.");
+                        $this->dispatch('notify', type: 'error', text: "برای خرید محصول «{$item['name']}»، مبلغ کل سبد خرید باید حداقل {$formattedStep} {$currencyLabel} باشد.");
                     } else {
-                        $this->dispatch('notify', type: 'error', text: "با توجه به مبلغ کل سبد خرید، حداکثر {$maxAllowedByCartValue} عدد از محصول «{$item['name']}» قابل سفارش است (به ازای هر {$formattedStep} تومان سبد خرید، {$vp->purchase_step} عدد).");
+                        $this->dispatch('notify', type: 'error', text: "با توجه به مبلغ کل سبد خرید، حداکثر {$maxAllowedByCartValue} عدد از محصول «{$item['name']}» قابل سفارش است (به ازای هر {$formattedStep} {$currencyLabel} سبد خرید، {$vp->purchase_step} عدد).");
                     }
                     return;
                 }

@@ -27,6 +27,7 @@ class SmartBotServiceProvider extends ServiceProvider
 
         // Register Livewire Components
         Livewire::component('smartbot.admin.qna-manager', \Modules\SmartBot\App\Livewire\Admin\QnAManager::class);
+        Livewire::component('smartbot.admin.qna-editor', \Modules\SmartBot\App\Livewire\Admin\QnAEditor::class);
         Livewire::component('smartbot.admin.analytics-dashboard', \Modules\SmartBot\App\Livewire\Admin\AnalyticsDashboard::class);
         Livewire::component('smartbot.admin.settings-manager', \Modules\SmartBot\App\Livewire\Admin\SettingsManager::class);
         Livewire::component('smartbot.widget.chat-widget', \Modules\SmartBot\App\Livewire\Widget\ChatWidget::class);

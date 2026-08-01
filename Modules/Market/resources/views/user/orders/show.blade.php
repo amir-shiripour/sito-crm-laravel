@@ -554,10 +554,21 @@
                                 <span class="font-bold text-gray-900 dark:text-white select-all text-xs">{{ $order->payment_ref_id }}</span>
                             </div>
                         @endif
-                        @if($order->paid_at)
+                        @php
+                            $displayPaidAt = $order->paid_at;
+                            if ($order->sourceInvoice) {
+                                $lastPayment = $order->sourceInvoice->payments()->whereNotNull('paid_at')->latest('paid_at')->first();
+                                if ($lastPayment && $lastPayment->paid_at) {
+                                    $displayPaidAt = $lastPayment->paid_at;
+                                } elseif ($order->sourceInvoice->paid_at) {
+                                    $displayPaidAt = $order->sourceInvoice->paid_at;
+                                }
+                            }
+                        @endphp
+                        @if($displayPaidAt)
                             <div class="flex justify-between">
                                 <span class="text-gray-400 dark:text-gray-500">تاریخ پرداخت:</span>
-                                <span class="font-bold text-gray-900 dark:text-white">{{ \Morilog\Jalali\Jalalian::fromDateTime($order->paid_at)->format('Y/m/d') }}</span>
+                                <span class="font-bold text-gray-900 dark:text-white">{{ \Morilog\Jalali\Jalalian::fromDateTime($displayPaidAt)->format('Y/m/d') }}</span>
                             </div>
                         @endif
                     </div>

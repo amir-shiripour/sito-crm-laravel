@@ -291,9 +291,9 @@
                     </a>
 
                     @if(Auth::guard('client')->check())
-                        <a href="{{ url('/clients/dashboard') }}"
+                        <a href="{{ route('client.dashboard') }}"
                            class="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-black hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-md w-full sm:w-auto">
-                            ورود به پنل کاربری
+                            بازگشت به پنل کاربری
                             <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M10 19l-7-7m0 0l7-7m-7 7h18"/>

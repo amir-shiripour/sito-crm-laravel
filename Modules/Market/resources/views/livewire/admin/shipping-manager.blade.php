@@ -1120,10 +1120,10 @@
                                 <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
                                     @if($r->action_type === 'free_shipping') ارسال کاملاً رایگان
                                     @elseif($r->action_type === 'percentage_discount') {{ $r->action_value }}% تخفیف هزینه ارسال
-                                    @elseif($r->action_type === 'fixed_discount') {{ number_format($r->action_value) }} تومان کسر هزینه ارسال
+                                    @elseif($r->action_type === 'fixed_discount') {{ number_format($r->action_value) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} کسر هزینه ارسال
                                     @else {{ $r->action_type }} @endif
                                 </td>
-                                <td class="px-6 py-4 text-gray-700 dark:text-gray-300">{{ number_format($r->min_grand_total) }} تومان</td>
+                                <td class="px-6 py-4 text-gray-700 dark:text-gray-300">{{ number_format($r->min_grand_total) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</td>
                                 <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">
                                     @if($brandCount > 0) <span class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-[10px]">{{ $brandCount }} برند</span> @endif
                                     @if($catCount > 0) <span class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-[10px]">{{ $catCount }} دسته‌بندی</span> @endif

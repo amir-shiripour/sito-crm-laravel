@@ -15,7 +15,8 @@ class BookingHandlePaymentTimeouts extends Command
 
     public function handle(): int
     {
-        $timeoutMinutes = (int) config('booking.payment_timeout_minutes', 20);
+        $dbTimeout = \Modules\Booking\Entities\BookingSetting::getValue('payment_timeout_minutes');
+        $timeoutMinutes = (int) ($dbTimeout ?: config('booking.payment_timeout_minutes', 20));
         $cutoff = now()->subMinutes($timeoutMinutes);
 
         $q = Appointment::query()

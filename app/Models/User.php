@@ -17,6 +17,7 @@ use Nwidart\Modules\Facades\Module;
 use Spatie\Permission\Traits\HasRoles;
 use Modules\Booking\App\Models\DoctorMedia;
 use Modules\Market\Traits\HasMarketVendor;
+use Modules\Wallet\App\Traits\HasWallet;
 
 class User extends Authenticatable
 {
@@ -27,6 +28,7 @@ class User extends Authenticatable
     use HasMarketVendor;
     use TwoFactorAuthenticatable;
     use HasRoles;
+    use HasWallet;
 
     /**
      * The attributes that are mass assignable.

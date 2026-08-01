@@ -351,10 +351,11 @@ class CartManager extends Component
 
             if ($requestedQty > $maxAllowedByCartValue) {
                 $formattedStep = number_format($vp->cart_amount_step);
+                $currencyLabel = \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان';
                 if ($maxAllowedByCartValue == 0) {
-                    return [false, "برای خرید این محصول، مبلغ سبد خرید شما باید حداقل {$formattedStep} تومان باشد."];
+                    return [false, "برای خرید این محصول، مبلغ سبد خرید شما باید حداقل {$formattedStep} {$currencyLabel} باشد."];
                 }
-                return [false, "با توجه به مبلغ سبد خرید شما، حداکثر {$maxAllowedByCartValue} عدد از این محصول قابل سفارش است (به ازای هر {$formattedStep} تومان سبد خرید، {$vp->purchase_step} عدد)."];
+                return [false, "با توجه به مبلغ سبد خرید شما، حداکثر {$maxAllowedByCartValue} عدد از این محصول قابل سفارش است (به ازای هر {$formattedStep} {$currencyLabel} سبد خرید، {$vp->purchase_step} عدد)."];
             }
         }
 
@@ -376,8 +377,9 @@ class CartManager extends Component
                 if ($item['quantity'] > $maxAllowed) {
                     $formattedStep = number_format($vp->cart_amount_step);
                     $title = $item['title'] ?? 'محصول محدود شده';
+                    $currencyLabel = \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان';
                     if ($maxAllowed == 0) {
-                        return [false, "به دلیل محدودیت خرید محصول «{$title}»، مبلغ سبد خرید شما باید حداقل {$formattedStep} تومان باشد. ابتدا تعداد آن را کاهش داده یا آن را حذف کنید."];
+                        return [false, "به دلیل محدودیت خرید محصول «{$title}»، مبلغ سبد خرید شما باید حداقل {$formattedStep} {$currencyLabel} باشد. ابتدا تعداد آن را کاهش داده یا آن را حذف کنید."];
                     }
                     return [false, "با توجه به مبلغ سبد خرید، حداکثر {$maxAllowed} عدد از محصول «{$title}» قابل خرید است. ابتدا تعداد آن را به {$maxAllowed} عدد یا کمتر کاهش دهید."];
                 }
