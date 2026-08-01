@@ -32,6 +32,8 @@ class ChatWidget extends Component
     public bool $isThinking = false;
     public bool $isStandalone = false;
     public string $lastUserMessage = '';
+    public ?int $selectedMenuItemId = null;
+    public ?string $selectedMenuItemLabel = null;
     public bool $allowCustomTyping = true;
     public int $cartItemCount = 0;
 
@@ -519,22 +521,37 @@ class ChatWidget extends Component
                 'content' => (string) BotSetting::getValue('welcome_message', 'سلام! چطور می‌توانم کمکتان کنم؟'),
                 'answer_type' => 'text',
                 'products' => [],
+                'menu_items' => [],
+                'url' => null,
                 'created_at' => now()->toIso8601String(),
             ];
         } else {
             $resolver = app(EntityResolverService::class);
             foreach ($session->messages()->orderBy('id', 'asc')->get() as $msg) {
                 $products = [];
-                if ($msg->answer && $msg->answer->answer_type === 'product_list' && !empty($msg->answer->entity_ids)) {
-                    $products = $resolver->resolveProducts($msg->answer->entity_ids);
+                $menuItems = $msg->metadata['menu_items'] ?? [];
+                $smartAttachments = $msg->metadata['smart_attachments'] ?? ($msg->answer ? ($msg->answer->smart_attachments ?? []) : []);
+                $url = $msg->metadata['url'] ?? null;
+                $answerType = $msg->metadata['answer_type'] ?? ($msg->answer ? $msg->answer->answer_type : 'text');
+
+                if ($answerType === 'product_list') {
+                    $entityIds = $msg->answer ? $msg->answer->entity_ids : ($msg->metadata['entity_ids'] ?? []);
+                    if (!empty($entityIds)) {
+                        $products = $resolver->resolveProducts($entityIds);
+                    }
+                } elseif ($answerType === 'menu_items' && empty($menuItems) && $msg->answer) {
+                    $menuItems = $msg->answer->activeRootMenuItems()->get()->toArray();
                 }
 
                 $this->messages[] = [
                     'id' => $msg->id,
                     'role' => $msg->role,
                     'content' => $msg->content,
-                    'answer_type' => $msg->answer ? $msg->answer->answer_type : 'text',
+                    'answer_type' => $answerType,
                     'products' => $products,
+                    'smart_attachments' => $smartAttachments,
+                    'menu_items' => $menuItems,
+                    'url' => $url,
                     'created_at' => $msg->created_at->toIso8601String(),
                 ];
             }
@@ -546,7 +563,8 @@ class ChatWidget extends Component
         $text = trim($overrideText ?? $this->userMessage);
         if (!$text) return;
 
-        // Record last user message for deferred process
+        $this->selectedMenuItemId = null;
+        $this->selectedMenuItemLabel = null;
         $this->lastUserMessage = $text;
 
         // Add user message to state instantly
@@ -555,6 +573,7 @@ class ChatWidget extends Component
             'content' => $text,
             'answer_type' => 'text',
             'products' => [],
+            'menu_items' => [],
             'created_at' => now()->toIso8601String(),
         ];
 
@@ -562,27 +581,80 @@ class ChatWidget extends Component
         $this->isThinking = true;
     }
 
+    public function clickMenuItem(int $menuItemId, string $label): void
+    {
+        if ($this->isThinking) return;
+
+        $this->selectedMenuItemId = $menuItemId;
+        $this->selectedMenuItemLabel = $label;
+        $this->lastUserMessage = '';
+
+        // Add user message with clicked button label (Option A)
+        $this->messages[] = [
+            'role' => 'user',
+            'content' => $label,
+            'answer_type' => 'text',
+            'products' => [],
+            'menu_items' => [],
+            'created_at' => now()->toIso8601String(),
+        ];
+
+        $this->isThinking = true;
+    }
+
     // Handles processing message after user sees thinking state
     public function processMessage(): void
     {
-        $text = $this->lastUserMessage;
-        if (!$text) {
-            $this->isThinking = false;
-            return;
-        }
-
         $engine = app(BotEngineService::class);
         $session = $engine->getOrCreateSession($this->uuid);
 
-        $botReply = $engine->sendMessage($session, $text);
+        if ($this->selectedMenuItemId && $this->selectedMenuItemLabel) {
+            $menuItemId = $this->selectedMenuItemId;
+            $userLabel = $this->selectedMenuItemLabel;
+            $this->selectedMenuItemId = null;
+            $this->selectedMenuItemLabel = null;
 
-        $this->messages[] = $botReply;
-        
-        // Reset properties
-        $this->lastUserMessage = '';
+            $botReply = $engine->processMenuItemClick($session, $menuItemId, $userLabel);
+            $this->messages[] = $botReply;
+        } else {
+            $text = $this->lastUserMessage;
+            if (!$text) {
+                $this->isThinking = false;
+                return;
+            }
+
+            $botReply = $engine->sendMessage($session, $text);
+            $this->messages[] = $botReply;
+            $this->lastUserMessage = '';
+        }
+
         $this->isThinking = false;
-
         $this->dispatch('chatScrollToBottom');
+    }
+
+    public function getProductUrl(array $product, ?array $activeVariant = null): string
+    {
+        $slug = $product['slug'] ?? null;
+        if (!$slug) {
+            return '#';
+        }
+
+        $variantId = $activeVariant ? ($activeVariant['variant_id'] ?? null) : ($product['variant_id'] ?? null);
+        $params = array_filter(['slug' => $slug, 'variant' => $variantId]);
+
+        try {
+            if (\Illuminate\Support\Facades\Route::has('market.public.product.show')) {
+                return route('market.public.product.show', $params);
+            }
+
+            if (\Illuminate\Support\Facades\Route::has('market.product.show')) {
+                return route('market.product.show', $params);
+            }
+        } catch (\Throwable $e) {
+            // Fallback
+        }
+
+        return url('/shop/product/' . $slug . ($variantId ? '?variant=' . $variantId : ''));
     }
 
     public function addToCart(int $productId): void
@@ -689,6 +761,53 @@ class ChatWidget extends Component
         $this->messages = array_values(array_filter($this->messages, function($msg) use ($messageId) {
             return ($msg['id'] ?? '') !== $messageId;
         }));
+    }
+
+    public function goBackStep(mixed $messageId): void
+    {
+        $targetIndex = null;
+        foreach ($this->messages as $index => $msg) {
+            if ((string) ($msg['id'] ?? '') === (string) $messageId || $index == $messageId) {
+                $targetIndex = $index;
+                break;
+            }
+        }
+
+        if ($targetIndex !== null) {
+            $indicesToRemove = [$targetIndex];
+            
+            // If the preceding message is a user message for this step, remove it too
+            if ($targetIndex > 0 && ($this->messages[$targetIndex - 1]['role'] ?? '') === 'user') {
+                $indicesToRemove[] = $targetIndex - 1;
+            }
+
+            // Remove from Database if session exists
+            if (!empty($this->uuid)) {
+                $session = \Modules\SmartBot\App\Models\BotSession::where('session_uuid', $this->uuid)->first();
+                if ($session) {
+                    foreach ($indicesToRemove as $idx) {
+                        $msgDbId = $this->messages[$idx]['id'] ?? null;
+                        if ($msgDbId && is_numeric($msgDbId)) {
+                            \Modules\SmartBot\App\Models\BotMessage::where('session_id', $session->id)
+                                ->where('id', $msgDbId)
+                                ->delete();
+                        }
+                    }
+                }
+            }
+
+            $this->messages = array_values(array_filter($this->messages, function($msg, $idx) use ($indicesToRemove) {
+                return !in_array($idx, $indicesToRemove, true);
+            }, ARRAY_FILTER_USE_BOTH));
+        }
+
+        // If no messages left or returning to beginning, reset session to home state
+        if (empty($this->messages) || count($this->messages) <= 1) {
+            $this->resetSession();
+            return;
+        }
+
+        $this->dispatch('chatScrollToBottom');
     }
 
     private function findProductInMessages(int $productId): ?array

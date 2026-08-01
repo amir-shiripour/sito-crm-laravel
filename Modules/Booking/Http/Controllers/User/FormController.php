@@ -22,8 +22,13 @@ class FormController extends Controller
     public function create()
     {
         $this->ensureFormCreateAllowed();
+        $rolesQuery = \Spatie\Permission\Models\Role::orderBy('name');
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $rolesQuery->where('name', '!=', 'super-admin');
+        }
+        $roles = $rolesQuery->get();
 
-        return view('booking::user.forms.create');
+        return view('booking::user.forms.create', compact('roles'));
     }
 
     public function store(Request $request)
@@ -43,8 +48,13 @@ class FormController extends Controller
     {
         $this->ensureFormEditAllowed();
         $this->ensureFormAccess($form);
+        $rolesQuery = \Spatie\Permission\Models\Role::orderBy('name');
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $rolesQuery->where('name', '!=', 'super-admin');
+        }
+        $roles = $rolesQuery->get();
 
-        return view('booking::user.forms.edit', compact('form'));
+        return view('booking::user.forms.edit', compact('form', 'roles'));
     }
 
     public function update(Request $request, BookingForm $form)
@@ -142,6 +152,9 @@ class FormController extends Controller
             $rules['schema_json.fields.*.placeholder'] = ['nullable', 'string', 'max:255'];
             $rules['schema_json.fields.*.options'] = ['nullable', 'string'];
             $rules['schema_json.fields.*.icon'] = ['nullable', 'string'];
+            $rules['schema_json.fields.*.role'] = ['nullable', 'string', 'max:100'];
+            $rules['schema_json.fields.*.multiple'] = ['nullable'];
+            $rules['schema_json.fields.*.lock_current_if_role'] = ['nullable'];
 
             $data = $request->validate($rules);
 
@@ -154,6 +167,9 @@ class FormController extends Controller
                 $type = trim((string) ($field['type'] ?? 'text'));
                 $placeholder = trim((string) ($field['placeholder'] ?? ''));
                 $icon = trim((string) ($field['icon'] ?? ''));
+                $role = trim((string) ($field['role'] ?? ''));
+                $multiple = ! empty($field['multiple']);
+                $lockCurrentIfRole = ! empty($field['lock_current_if_role']);
 
                 $optionsRaw = trim((string) ($field['options'] ?? ''));
                 $options = $optionsRaw === ''
@@ -169,6 +185,9 @@ class FormController extends Controller
                     'placeholder' => $placeholder ?: null,
                     'options' => $options,
                     'icon' => $icon ?: null,
+                    'role' => $role ?: null,
+                    'multiple' => $multiple,
+                    'lock_current_if_role' => $lockCurrentIfRole,
                 ];
             }
 

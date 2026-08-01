@@ -33,6 +33,7 @@
     // Default Tokens
     $defaultTokens = [
         'appointment' => [
+            'appointment_id' => 'شماره نوبت',
             'client_name' => 'نام مشتری',
             'client_phone' => 'شماره مشتری',
             'service_name' => 'نام سرویس',
@@ -40,6 +41,7 @@
             'appointment_date_jalali' => 'تاریخ نوبت (شمسی)',
             'appointment_time_jalali' => 'ساعت نوبت',
             'appointment_datetime_jalali' => 'تاریخ و ساعت کامل',
+            'amount' => 'مبلغ قابل پرداخت',
             'payment_link' => 'لینک پرداخت',
         ],
         'treatment_plan' => [

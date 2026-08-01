@@ -29,7 +29,7 @@
             <div class="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 p-5 rounded-3xl border border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between transition-all duration-200 hover:shadow-md">
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">مجموع درآمد تایید شده</span>
-                    <h3 class="text-2xl font-black text-emerald-900 dark:text-emerald-300">{{ number_format($stats['total_revenue'] ?? 0) }} <span class="text-xs font-normal">ریال</span></h3>
+                    <h3 class="text-2xl font-black text-emerald-900 dark:text-emerald-300">{{ number_format($stats['total_revenue'] ?? 0) }} <span class="text-xs font-normal">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span></h3>
                 </div>
                 <div class="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-emerald-600 dark:text-emerald-400">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -170,7 +170,7 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <span class="font-black text-gray-900 dark:text-white">{{ number_format($order->grand_total) }}</span>
-                                    <span class="text-[10px] text-gray-400 dark:text-gray-500">ریال</span>
+                                    <span class="text-[10px] text-gray-400 dark:text-gray-500">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                 </td>
                                 <td class="px-6 py-4">
                                     @if($order->payment_status === 'paid')

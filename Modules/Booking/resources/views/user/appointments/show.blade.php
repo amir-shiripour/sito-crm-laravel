@@ -1,6 +1,7 @@
 @extends('layouts.user')
 
 @section('content')
+    @includeIf('partials.jalali-date-picker')
     <style>
         .tooth-path {
             cursor: pointer;
@@ -194,62 +195,548 @@
             </div>
         </div>
 
-        @if($payments->isNotEmpty())
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                <div class="px-6 py-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between">
-                    <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-green-500">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-                        </svg>
-                        اطلاعات پرداخت
-                    </h2>
+        {{-- بخش مدیریت و اطلاعات پرداخت --}}
+        @if($servicePaymentMode !== \Modules\Booking\Entities\BookingService::PAYMENT_MODE_NONE || $payments->isNotEmpty())
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
+                 x-data="{
+                     showCreateModal: false,
+                     showEditModal: false,
+                     currencyUnit: '{{ $currencyUnit }}',
+                     createType: '{{ array_key_first($availablePaymentMethods) }}',
+                     createSubItemLabel: '',
+                     editType: 'manual',
+                     editSubItemLabel: '',
+                     createAmountDisplay: '{{ number_format($suggestedAmount) }}',
+                     editAmountDisplay: '',
+                     subItems: {{ json_encode($paymentSubItems) }},
+                     editData: { id: '', amount: '', type: 'manual', status: 'PAID', gateway_ref: '', notes: '', paid_at_jalali: '{{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d') }}' },
+                     init() {
+                         this.$watch('showCreateModal', val => {
+                             document.body.classList.toggle('overflow-hidden', val || this.showEditModal);
+                         });
+                         this.$watch('showEditModal', val => {
+                             document.body.classList.toggle('overflow-hidden', val || this.showCreateModal);
+                         });
+                     },
+                     getPaymentMeta(payment) {
+                          let meta = {};
+                          if (payment.meta && typeof payment.meta === 'object') {
+                              meta = { ...payment.meta };
+                          }
+                          if (payment.notes) {
+                              if (!meta.sub_item) {
+                                  const itemMatch = payment.notes.match(/آیتم:\s*([^\-|]+)/);
+                                  if (itemMatch) meta.sub_item = itemMatch[1].trim();
+                              }
+                              if (!meta.payer_name) {
+                                  const payerMatch = payment.notes.match(/واریزکننده:\s*([^\-|]+)/);
+                                  if (payerMatch) meta.payer_name = payerMatch[1].trim();
+                              }
+                              if (!meta.tracking_code) {
+                                  const trackingMatch = payment.notes.match(/کد پیگیری:\s*([^\-|]+)/);
+                                  if (trackingMatch) meta.tracking_code = trackingMatch[1].trim();
+                              }
+                              if (!meta.payment_date) {
+                                  const dateMatch = payment.notes.match(/تاریخ فیش:\s*([^\-|]+)/);
+                                  if (dateMatch) meta.payment_date = dateMatch[1].trim();
+                              }
+                              if (!meta.receipt_url) {
+                                  const receiptMatch = payment.notes.match(/رسید:\s*(https?:\/\/[^\s\-|]+)/);
+                                  if (receiptMatch) meta.receipt_url = receiptMatch[1].trim();
+                              }
+                          }
+                          return meta;
+                      },
+                      openEdit(payment) {
+                          const displayAmt = (this.currencyUnit === 'IRT') ? Math.round(payment.amount / 10) : payment.amount;
+                          const meta = this.getPaymentMeta(payment);
+                          
+                          let pType = payment.type || 'transfer';
+                          const rawSubItem = meta.sub_item || meta.sub_item_label || '';
+
+                          let foundCategory = pType;
+                          let foundItem = null;
+
+                          // Search in payment's own type category first
+                          if (this.subItems[pType] && Array.isArray(this.subItems[pType])) {
+                              foundItem = this.subItems[pType].find(i => 
+                                  i.id === rawSubItem || 
+                                  i.label === rawSubItem || 
+                                  i.label.includes(rawSubItem) || 
+                                  rawSubItem.includes(i.label) ||
+                                  (i.id && rawSubItem.includes(i.id))
+                              );
+                          }
+
+                          // If not found in payment's type, search across all categories (transfer, pos, etc.)
+                          if (!foundItem && rawSubItem) {
+                              for (const [cat, list] of Object.entries(this.subItems)) {
+                                  if (Array.isArray(list)) {
+                                      const match = list.find(i => 
+                                          i.id === rawSubItem || 
+                                          i.label === rawSubItem || 
+                                          i.label.includes(rawSubItem) || 
+                                          rawSubItem.includes(i.label) ||
+                                          (i.id && rawSubItem.includes(i.id))
+                                      );
+                                      if (match) {
+                                          foundItem = match;
+                                          foundCategory = cat;
+                                          break;
+                                      }
+                                  }
+                              }
+                          }
+
+                          // If still no item matched but rawSubItem exists and is a bank ID (bank_...), default category to 'transfer'
+                          if (!foundItem && rawSubItem && String(rawSubItem).startsWith('bank_')) {
+                              foundCategory = 'transfer';
+                          }
+
+                          this.editType = foundCategory;
+                          let matchedLabel = foundItem ? foundItem.label : (meta.sub_item_label || rawSubItem);
+                          this.editSubItemLabel = matchedLabel;
+
+                          this.$nextTick(() => {
+                              this.editSubItemLabel = matchedLabel;
+                          });
+
+                          if (matchedLabel) {
+                              meta.display_label = matchedLabel;
+                          }
+
+                          // Clean notes string so admin notes input stays clean
+                          let cleanNotes = payment.notes || '';
+                          if (cleanNotes.includes('آیتم:') || cleanNotes.includes('واریزکننده:') || cleanNotes.includes('کد پیگیری:')) {
+                              cleanNotes = cleanNotes.replace(/آیتم:\s*[^\|]+(\s*\|\s*)?/g, '')
+                                                     .replace(/واریزکننده:\s*[^\|]+(\s*\|\s*)?/g, '')
+                                                     .replace(/کد پیگیری:\s*[^\|]+(\s*\|\s*)?/g, '')
+                                                     .replace(/تاریخ فیش:\s*[^\|]+(\s*\|\s*)?/g, '')
+                                                     .replace(/رسید:\s*https?:\/\/[^\s\|]+(\s*\|\s*)?/g, '')
+                                                     .replace(/^[\s\|]+|[\s\|]+$/g, '').trim();
+                          }
+
+                          this.editData = {
+                              id: payment.id,
+                              amount: displayAmt,
+                              type: payment.type || 'manual',
+                              status: payment.status === 'PENDING' ? 'PAID' : payment.status,
+                              gateway_ref: payment.gateway_ref || meta.tracking_code || '',
+                              notes: cleanNotes,
+                              meta: meta,
+                              paid_at_jalali: '{{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d') }}'
+                          };
+                          this.editAmountDisplay = this.formatNumber(displayAmt);
+                          this.showEditModal = true;
+                     },
+                     formatNumber(val) {
+                         if (!val) return '';
+                         const num = String(val).replace(/[^\d]/g, '');
+                         return num.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                     },
+                     unformatNumber(val) {
+                         if (!val) return '';
+                         return String(val).replace(/[^\d]/g, '');
+                     }
+                 }">
+
+                {{-- هدر کارت پرداخت --}}
+                <div class="px-6 py-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-emerald-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+                            </svg>
+                            اطلاعات و وضعیت پرداخت
+                        </h2>
+
+                        {{-- Badge سیاست پرداخت سرویس --}}
+                        @if($servicePaymentMode === \Modules\Booking\Entities\BookingService::PAYMENT_MODE_REQUIRED)
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                سیاست: پرداخت الزامی
+                            </span>
+                        @elseif($servicePaymentMode === \Modules\Booking\Entities\BookingService::PAYMENT_MODE_OPTIONAL)
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                                سیاست: پرداخت اختیاری
+                            </span>
+                        @else
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                بدون پرداخت
+                            </span>
+                        @endif
+                    </div>
+
+                    @can('booking.payments.manage')
+                        @if($servicePaymentMode !== \Modules\Booking\Entities\BookingService::PAYMENT_MODE_NONE)
+                            <button type="button"
+                                    @click="showCreateModal = true"
+                                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                ثبت پرداخت جدید
+                            </button>
+                        @endif
+                    @endcan
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-right text-gray-500 dark:text-gray-400">
-                        <thead class="text-xs text-gray-600 bg-gray-50 dark:bg-gray-700/50 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                        <tr>
-                            <th scope="col" class="px-6 py-4 font-semibold">مبلغ</th>
-                            <th scope="col" class="px-6 py-4 font-semibold">واحد پول</th>
-                            <th scope="col" class="px-6 py-4 font-semibold">نوع پرداخت</th>
-                            <th scope="col" class="px-6 py-4 font-semibold">وضعیت</th>
-                            <th scope="col" class="px-6 py-4 font-semibold">کد پیگیری</th>
-                            <th scope="col" class="px-6 py-4 font-semibold">تاریخ پرداخت</th>
-                        </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60">
-                        @foreach($payments as $payment)
-                            @php
-                                $pStatusMeta = $paymentStatusMap[$payment->status] ?? ['label' => $payment->status, 'class' => 'bg-gray-100 text-gray-700'];
-                                $pModeLabel = $paymentModeMap[$payment->mode] ?? $payment->mode;
-                            @endphp
-                            <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
-                                <td class="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
-                                    {{ number_format($payment->amount) }}
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md text-xs font-medium text-gray-600 dark:text-gray-300">
-                                        {{ $payment->currency_unit === 'toman' ? 'تومان' : ($payment->currency_unit === 'rial' ? 'ریال' : $payment->currency_unit) }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 font-medium text-gray-700 dark:text-gray-300">
-                                    {{ $pModeLabel }}
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="inline-flex px-3 py-1 rounded-full text-[11px] font-bold tracking-wide {{ $pStatusMeta['class'] }}">
-                                        {{ $pStatusMeta['label'] }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">
-                                    {{ $payment->transaction_ref ?: '—' }}
-                                </td>
-                                <td class="px-6 py-4 text-xs font-medium" dir="ltr">
-                                    {{ $payment->updated_at && $payment->status === \Modules\Booking\Entities\BookingPayment::STATUS_PAID ? \Morilog\Jalali\Jalalian::fromDateTime($payment->updated_at)->format('Y/m/d H:i') : '—' }}
-                                </td>
+
+                {{-- هشدار نیاز به پرداخت --}}
+                @if($servicePaymentMode === \Modules\Booking\Entities\BookingService::PAYMENT_MODE_REQUIRED && $appointment->status === \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT && !$hasPaidPayment)
+                    <div class="mx-6 mt-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center gap-3">
+                        <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <span class="text-xs font-bold text-amber-800 dark:text-amber-300">
+                            این نوبت به علت عدم پرداخت در وضعیت «در انتظار پرداخت» است. با ثبت پرداخت تاییدشده (پرداخت شده)، وضعیت نوبت خودکار به «تایید شده» تغییر خواهد کرد.
+                        </span>
+                    </div>
+                @endif
+
+                {{-- جدول پرداخت‌ها --}}
+                @if($payments->isNotEmpty())
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-right text-gray-500 dark:text-gray-400">
+                            <thead class="text-xs text-gray-600 bg-gray-50 dark:bg-gray-700/50 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                                <th scope="col" class="px-6 py-4 font-semibold">مبلغ (ریال)</th>
+                                <th scope="col" class="px-6 py-4 font-semibold">روش پرداخت</th>
+                                <th scope="col" class="px-6 py-4 font-semibold">وضعیت</th>
+                                <th scope="col" class="px-6 py-4 font-semibold">کد پیگیری / مرجع</th>
+                                <th scope="col" class="px-6 py-4 font-semibold">تاریخ پرداخت</th>
+                                <th scope="col" class="px-6 py-4 font-semibold">توضیحات و آیتم</th>
+                                @can('booking.payments.manage')
+                                    <th scope="col" class="px-6 py-4 font-semibold text-center">عملیات</th>
+                                @endcan
                             </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60">
+                            @foreach($payments as $payment)
+                                @php
+                                    $pStatusMeta = $paymentStatusMap[$payment->status] ?? ['label' => $payment->status, 'class' => 'bg-gray-100 text-gray-700'];
+                                    $pModeLabel = $availablePaymentMethods[$payment->type] ?? ($payment->type === 'manual' ? 'ثبت دستی (ادمین)' : ($payment->type === 'booking' ? 'درگاه آنلاین' : $payment->type));
+                                @endphp
+                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <td class="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
+                                        {{ number_format($payment->amount) }}
+                                    </td>
+                                    <td class="px-6 py-4 font-medium text-gray-700 dark:text-gray-300">
+                                        <span class="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200">
+                                            {{ $pModeLabel }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex px-3 py-1 rounded-full text-[11px] font-bold tracking-wide {{ $pStatusMeta['class'] }}">
+                                            {{ $pStatusMeta['label'] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">
+                                        {{ $payment->gateway_ref ?: '—' }}
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-medium" dir="ltr">
+                                        {{ $payment->paid_at ? \Morilog\Jalali\Jalalian::fromDateTime($payment->paid_at)->format('Y/m/d H:i') : '—' }}
+                                    </td>
+                                    <td class="px-6 py-4 text-xs text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                                        @if(!empty($payment->meta['sub_item']))
+                                            <span class="font-bold block text-gray-800 dark:text-gray-200">{{ $payment->meta['sub_item'] }}</span>
+                                        @endif
+                                        @if(!empty($payment->notes))
+                                            <span class="text-gray-500 block truncate">{{ $payment->notes }}</span>
+                                        @elseif(empty($payment->meta['sub_item']))
+                                            —
+                                        @endif
+                                    </td>
+                                    @can('booking.payments.manage')
+                                        <td class="px-6 py-4 text-center">
+                                            <div class="flex items-center justify-center gap-2">
+                                                <button type="button"
+                                                        @click="openEdit({{ json_encode($payment) }})"
+                                                        class="p-1.5 rounded-lg text-gray-600 hover:text-indigo-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-indigo-400 dark:hover:bg-gray-700 transition"
+                                                        title="ویرایش پرداخت">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                </button>
+
+                                                @if($payment->status !== \Modules\Booking\Entities\BookingPayment::STATUS_CANCELLED)
+                                                    <form method="POST" action="{{ route('user.booking.appointments.payments.destroy', [$appointment, $payment]) }}"
+                                                          onsubmit="return confirm('آیا از لغو این پرداخت اطمینان دارید؟');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit"
+                                                                class="p-1.5 rounded-lg text-gray-600 hover:text-rose-600 hover:bg-rose-50 dark:text-gray-400 dark:hover:text-rose-400 dark:hover:bg-rose-900/30 transition"
+                                                                title="لغو پرداخت">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    @endcan
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                        هنوز پرداختی برای این نوبت ثبت نشده است.
+                    </div>
+                @endif
+
+                {{-- Modal ثبت پرداخت جدید --}}
+                <div x-show="showCreateModal"
+                     x-cloak
+                     class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+                     @keydown.escape.window="showCreateModal = false">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700 relative animate-in fade-in zoom-in-95 duration-150">
+                        <div class="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 dark:border-gray-700">
+                            <h3 class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                ثبت پرداخت جدید برای نوبت #{{ $appointment->id }}
+                            </h3>
+                            <button @click="showCreateModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <form method="POST" action="{{ route('user.booking.appointments.payments.store', $appointment) }}" class="space-y-4">
+                            @csrf
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">مبلغ (به {{ $currencyLabel }}) *</label>
+                                    <input type="text"
+                                           x-model="createAmountDisplay"
+                                           @input="createAmountDisplay = formatNumber($event.target.value)"
+                                           required
+                                           placeholder="مثلاً ۱,۰۰۰,۰۰۰"
+                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/40 transition-colors">
+                                    <input type="hidden" name="amount" :value="unformatNumber(createAmountDisplay)">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">روش پرداخت *</label>
+                                    <select name="type" x-model="createType" required
+                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/40 transition-colors">
+                                        @foreach($availablePaymentMethods as $key => $label)
+                                            <option value="{{ $key }}" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- سلکت باکس انتخاب زیر-آیتم (حساب/کارتخوان/درگاه/طرح اقساط) --}}
+                            <template x-if="subItems[createType] && subItems[createType].length > 0">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">گزینه / حساب پرداخت *</label>
+                                    <select x-model="createSubItemLabel"
+                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/40 transition-colors">
+                                        <option value="" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">-- انتخاب کنید --</option>
+                                        <template x-for="item in subItems[createType]" :key="item.id">
+                                            <option :value="item.label" x-text="item.label" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"></option>
+                                        </template>
+                                    </select>
+                                    <input type="hidden" name="sub_item_label" :value="createSubItemLabel">
+                                </div>
+                            </template>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">وضعیت پرداخت *</label>
+                                    <select name="status" required
+                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/40 transition-colors">
+                                        <option value="PAID" selected class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">پرداخت شده (تایید شده)</option>
+                                        <option value="PENDING" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">در انتظار پرداخت</option>
+                                        <option value="FAILED" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">ناموفق</option>
+                                        <option value="REFUNDED" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">استرداد شده</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">تاریخ پرداخت *</label>
+                                    <input type="text"
+                                           name="paid_at_jalali"
+                                           data-jdp
+                                           data-jdp-only-date
+                                           value="{{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d') }}"
+                                           required
+                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/40 transition-colors">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">کد پیگیری / شناسه مرجع</label>
+                                    <input type="text" name="gateway_ref" placeholder="مثلاً: 12345678"
+                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/40 transition-colors">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">توضیحات و یادداشت ادمین</label>
+                                <textarea name="notes" rows="2" placeholder="یادداشت اختیاری..."
+                                          class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/40 transition-colors"></textarea>
+                            </div>
+
+                            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                <button type="button" @click="showCreateModal = false"
+                                        class="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                    انصراف
+                                </button>
+                                <button type="submit"
+                                        class="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition">
+                                    ثبت پرداخت
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
+
+                {{-- Modal ویرایش پرداخت --}}
+                <div x-show="showEditModal"
+                     x-cloak
+                     class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+                     @keydown.escape.window="showEditModal = false">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700 relative animate-in fade-in zoom-in-95 duration-150">
+                        <div class="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 dark:border-gray-700">
+                            <h3 class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                ویرایش پرداخت
+                            </h3>
+                            <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <form method="POST" :action="`{{ url('/user/booking/appointments/' . $appointment->id . '/payments') }}/${editData.id}`" class="space-y-4">
+                            @csrf
+                            @method('PATCH')
+
+                            {{-- کارت مشخصات فیش/اطلاعات ارسالی کاربر --}}
+                            <template x-if="editData.meta && (editData.meta.payer_name || editData.meta.tracking_code || editData.meta.receipt_url || editData.meta.sub_item)">
+                                <div class="bg-indigo-50/70 dark:bg-indigo-950/40 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 space-y-2.5">
+                                    <div class="flex items-center justify-between border-b border-indigo-100 dark:border-indigo-900/50 pb-2">
+                                        <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            مشخصات پرداخت و فیش ارسالی کاربر
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                        <template x-if="editData.meta.payer_name">
+                                            <div class="bg-white/80 dark:bg-gray-800/80 p-2.5 rounded-xl border border-indigo-100/60 dark:border-gray-700">
+                                                <span class="text-gray-500 dark:text-gray-400 block mb-0.5">واریزکننده:</span>
+                                                <span class="font-bold text-gray-900 dark:text-gray-100" x-text="editData.meta.payer_name + (editData.meta.payer_mobile ? ' (' + editData.meta.payer_mobile + ')' : '')"></span>
+                                            </div>
+                                        </template>
+                                        <template x-if="editData.meta.tracking_code">
+                                            <div class="bg-white/80 dark:bg-gray-800/80 p-2.5 rounded-xl border border-indigo-100/60 dark:border-gray-700">
+                                                <span class="text-gray-500 dark:text-gray-400 block mb-0.5">کد پیگیری:</span>
+                                                <span class="font-bold text-gray-900 dark:text-gray-100" x-text="editData.meta.tracking_code"></span>
+                                            </div>
+                                        </template>
+                                        <template x-if="editData.meta.payment_date">
+                                            <div class="bg-white/80 dark:bg-gray-800/80 p-2.5 rounded-xl border border-indigo-100/60 dark:border-gray-700">
+                                                <span class="text-gray-500 dark:text-gray-400 block mb-0.5">تاریخ فیش:</span>
+                                                <span class="font-bold text-gray-900 dark:text-gray-100" x-text="editData.meta.payment_date"></span>
+                                            </div>
+                                        </template>
+                                        <template x-if="editSubItemLabel || editData.meta.sub_item_label || editData.meta.sub_item">
+                                            <div class="bg-white/80 dark:bg-gray-800/80 p-2.5 rounded-xl border border-indigo-100/60 dark:border-gray-700">
+                                                <span class="text-gray-500 dark:text-gray-400 block mb-0.5">حساب / گزینه انتخابی:</span>
+                                                <span class="font-bold text-gray-900 dark:text-gray-100" x-text="editSubItemLabel || editData.meta.display_label || editData.meta.sub_item_label || editData.meta.sub_item"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <template x-if="editData.meta.receipt_url">
+                                        <div class="pt-1">
+                                            <a :href="editData.meta.receipt_url" target="_blank"
+                                               class="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                <span>مشاهده و دریافت تصویر/فایل رسید پرداخت</span>
+                                            </a>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">مبلغ (به {{ $currencyLabel }}) *</label>
+                                    <input type="text"
+                                           x-model="editAmountDisplay"
+                                           @input="editAmountDisplay = formatNumber($event.target.value)"
+                                           required
+                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                    <input type="hidden" name="amount" :value="unformatNumber(editAmountDisplay)">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">روش پرداخت *</label>
+                                    <select name="type" x-model="editType" required
+                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                        @foreach($availablePaymentMethods as $key => $label)
+                                            <option value="{{ $key }}" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- سلکت باکس انتخاب زیر-آیتم در حالت ویرایش --}}
+                            <template x-if="subItems[editType] && subItems[editType].length > 0">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">گزینه / حساب پرداخت</label>
+                                    <select x-model="editSubItemLabel"
+                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                        <option value="" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">-- تغییر ندهید / انتخاب کنید --</option>
+                                        <template x-for="item in subItems[editType]" :key="item.id">
+                                            <option :value="item.label" x-text="item.label" :selected="item.label === editSubItemLabel || item.id === editSubItemLabel" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"></option>
+                                        </template>
+                                    </select>
+                                    <input type="hidden" name="sub_item_label" :value="editSubItemLabel">
+                                </div>
+                            </template>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">وضعیت پرداخت *</label>
+                                    <select name="status" x-model="editData.status" required
+                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                        <option value="PAID" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">پرداخت شده</option>
+                                        <option value="PENDING" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">در انتظار پرداخت</option>
+                                        <option value="FAILED" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">ناموفق</option>
+                                        <option value="REFUNDED" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">استرداد شده</option>
+                                        <option value="CANCELLED" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">لغو شده</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">تاریخ پرداخت *</label>
+                                    <input type="text"
+                                           name="paid_at_jalali"
+                                           x-model="editData.paid_at_jalali"
+                                           data-jdp
+                                           data-jdp-only-date
+                                           required
+                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">کد پیگیری / شناسه مرجع</label>
+                                    <input type="text" name="gateway_ref" x-model="editData.gateway_ref"
+                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">توضیحات و یادداشت ادمین</label>
+                                <textarea name="notes" x-model="editData.notes" rows="2"
+                                          class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors"></textarea>
+                            </div>
+
+                            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                <button type="button" @click="showEditModal = false"
+                                        class="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                    انصراف
+                                </button>
+                                <button type="submit"
+                                        class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition">
+                                    ذخیره تغییرات
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
             </div>
         @endif
 

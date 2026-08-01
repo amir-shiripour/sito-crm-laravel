@@ -85,13 +85,13 @@ class PaymentService
      * مبلغ payment->amount همیشه به ریال (IRR) در دیتابیس ذخیره شده،
      * پس باید مطمئن شویم GlobalPaymentService دوباره آن را تبدیل نمی‌کند.
      */
-    public function startGateway(BookingPayment $payment): array
+    public function startGateway(BookingPayment $payment, ?string $gateway = null): array
     {
         $settings = Setting::all()->pluck('value', 'key');
-        $defaultGateway = $settings['default_payment_gateway'] ?? null;
+        $defaultGateway = $gateway ?: ($settings['default_payment_gateway'] ?? null);
 
         if (!$defaultGateway) {
-            Log::error('No default payment gateway is configured.');
+            Log::error('No payment gateway is configured.');
             return ['payment_url' => null, 'gateway_ref' => null];
         }
 

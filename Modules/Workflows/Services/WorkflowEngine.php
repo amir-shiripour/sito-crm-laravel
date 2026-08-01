@@ -1056,20 +1056,57 @@ class WorkflowEngine
 
         if ($instance->related_type === 'APPOINTMENT' && class_exists('Modules\\Booking\\Entities\\Appointment')) {
             $appt = \Modules\Booking\Entities\Appointment::query()
-                ->with(['client', 'service', 'provider'])
+                ->with(['client', 'service', 'provider', 'payments'])
                 ->find($instance->related_id);
 
             if ($appt) {
                 $scheduleTz = config('booking.timezones.display_default', 'Asia/Tehran');
                 $dateJalali = $appt->start_at_utc ? Jalalian::fromDateTime($appt->start_at_utc->copy()->timezone($scheduleTz)) : null;
 
-                // Check if route exists before using it
-                $paymentLink = Route::has('booking.payment.show')
-                    ? route('booking.payment.show', ['id' => $appt->id])
-                    : '#';
+                // Resolve valid payment link (prioritize client appointment details page as requested by user)
+                $paymentLink = '#';
+                if (Route::has('client.appointments.show')) {
+                    $paymentLink = route('client.appointments.show', ['appointment' => $appt->id]);
+                } elseif (Route::has('booking.public.result')) {
+                    $paymentLink = route('booking.public.result', ['appointment' => $appt->id]);
+                } elseif (Route::has('user.booking.appointments.show')) {
+                    $paymentLink = route('user.booking.appointments.show', ['appointment' => $appt->id]);
+                } else {
+                    $paymentLink = url('/clients/appointments/' . $appt->id);
+                }
+
+                // Resolve currency settings from BookingSetting
+                $currencyUnit = 'IRR';
+                $currencyLabel = 'ریال';
+                if (class_exists(\Modules\Booking\Entities\BookingSetting::class)) {
+                    try {
+                        $bs = \Modules\Booking\Entities\BookingSetting::current();
+                        $currencyUnit = $bs->currency_unit ?? 'IRR';
+                        $currencyLabel = $currencyUnit === 'IRT' ? 'تومان' : 'ریال';
+                    } catch (\Throwable $e) {
+                        $currencyUnit = config('booking.defaults.currency_unit', 'IRR');
+                        $currencyLabel = $currencyUnit === 'IRT' ? 'تومان' : 'ریال';
+                    }
+                }
+
+                // Resolve pending payment amount if exists, or service price
+                $pendingPayment = $appt->payments 
+                    ? $appt->payments->first(fn($p) => strtoupper((string)$p->status) === 'PENDING')
+                    : null;
+
+                if ($pendingPayment) {
+                    $rawAmountInDb = (float)$pendingPayment->amount;
+                    $rawAmount = ($currencyUnit === 'IRT') ? ($rawAmountInDb / 10) : $rawAmountInDb;
+                } else {
+                    $priceInDb = $appt->service ? (float)($appt->service->discount_price ?? $appt->service->base_price ?? 0) : 0;
+                    $rawAmount = $priceInDb;
+                }
+
+                $formattedAmount = number_format($rawAmount) . ' ' . $currencyLabel;
 
                 $data['appointment'] = $appt;
                 $data['tokens'] = array_merge($data['tokens'], [
+                    'appointment_id' => $appt->id,
                     'client_name' => $appt->client?->full_name,
                     'client_phone' => $appt->client?->phone,
                     'service_name' => $appt->service?->name,
@@ -1077,7 +1114,11 @@ class WorkflowEngine
                     'appointment_date_jalali' => $dateJalali?->format('Y/m/d'),
                     'appointment_time_jalali' => $dateJalali?->format('H:i'),
                     'appointment_datetime_jalali' => $dateJalali?->format('Y/m/d H:i'),
+                    'amount' => $formattedAmount,
+                    'payable_amount' => $formattedAmount,
+                    'raw_amount' => $rawAmount,
                     'payment_link' => $paymentLink,
+                    'online_payment_url' => $paymentLink,
                 ]);
             }
         }

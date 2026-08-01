@@ -712,7 +712,7 @@
                                                         }
                                                     }">
                                                         <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">
-                                                            {{ $storeType === 'single' ? 'قیمت اولیه/مرجع (تومان)' : 'قیمت کاتالوگ (تومان)' }} <span class="text-red-500">*</span>
+                                                            {{ $storeType === 'single' ? 'قیمت اولیه/مرجع (' . (\Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان') . ')' : 'قیمت کاتالوگ (' . (\Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان') . ')' }} <span class="text-red-500">*</span>
                                                         </label>
                                                         <div class="relative">
                                                             <input type="text"

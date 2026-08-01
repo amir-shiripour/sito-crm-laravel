@@ -77,6 +77,7 @@ class Installer extends BaseModuleInstaller
             'booking.appointments.edit',
             'booking.appointments.cancel',
             'booking.appointments.manage',
+            'booking.payments.manage',
             'booking.reports.view',
             'booking.statement.view',
             'booking.statement.view.all',

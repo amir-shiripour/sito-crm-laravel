@@ -18,9 +18,14 @@ class BookingServiceProvider extends ServiceProvider
         $this->registerViews();
         $this->registerTranslations();
 
+        \Livewire\Livewire::component('booking.user.schedule-manager', \Modules\Booking\App\Livewire\User\ScheduleManager::class);
+
         if (class_exists(\Modules\Booking\App\Models\TreatmentPlan::class)) {
             \Modules\Booking\App\Models\TreatmentPlan::observe(\Modules\Booking\App\Observers\TreatmentPlanObserver::class);
         }
+
+        \Modules\Booking\Entities\BookingPayment::observe(\Modules\Booking\App\Observers\BookingPaymentObserver::class);
+        \Modules\Booking\Entities\Appointment::observe(\Modules\Booking\App\Observers\AppointmentObserver::class);
 
         // Load migrations unconditionally
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));

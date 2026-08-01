@@ -1,0 +1,11 @@
+{
+    "name": "Wallet",
+    "alias": "wallet",
+    "description": "System & Client Wallet Management Engine",
+    "keywords": ["wallet", "transactions", "finance", "accounting"],
+    "priority": 0,
+    "providers": [
+        "Modules\\Wallet\\App\\Providers\\WalletServiceProvider"
+    ],
+    "files": []
+}

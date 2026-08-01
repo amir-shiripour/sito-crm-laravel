@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <!-- Header -->
     <div>
-        <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white" style="font-family: 'General Sans', sans-serif;">گزارشات و آمار دستیار هوشمند</h1>
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">گزارشات و آمار دستیار هوشمند</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">عملکرد گفتگوها، سوالات متداول و نرخ موفقیت دستیار را رصد کنید.</p>
     </div>
 
@@ -16,7 +16,7 @@
                 </span>
             </div>
             <div class="mt-4">
-                <h3 class="text-2xl font-bold text-gray-900 dark:text-white" style="font-family: 'General Sans', sans-serif;">
+                <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
                     {{ number_format($this->stats['total_sessions']) }}
                 </h3>
                 <p class="text-xs text-gray-400 mt-1">تعداد نشست‌های ایجاد شده</p>
@@ -32,7 +32,7 @@
                 </span>
             </div>
             <div class="mt-4">
-                <h3 class="text-2xl font-bold text-gray-900 dark:text-white" style="font-family: 'General Sans', sans-serif;">
+                <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
                     {{ number_format($this->stats['total_messages']) }}
                 </h3>
                 <p class="text-xs text-gray-400 mt-1">تبادل پیام کاربر و بات</p>
@@ -48,7 +48,7 @@
                 </span>
             </div>
             <div class="mt-4">
-                <h3 class="text-2xl font-bold text-gray-900 dark:text-white" style="font-family: 'General Sans', sans-serif;">
+                <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
                     {{ $this->stats['resolved_rate'] }}%
                 </h3>
                 <div class="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-2 overflow-hidden">
@@ -66,7 +66,7 @@
                 </span>
             </div>
             <div class="mt-4">
-                <h3 class="text-2xl font-bold text-gray-900 dark:text-white" style="font-family: 'General Sans', sans-serif;">
+                <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
                     {{ $this->stats['conversion_rate'] }}%
                 </h3>
                 <p class="text-xs text-gray-400 mt-1">{{ $this->stats['sessions_with_cart'] }} بار افزودن به سبد</p>

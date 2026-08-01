@@ -22,6 +22,19 @@
 @section('content')
     <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
+        @if(isset($recentAppointments) && $recentAppointments->where('status', 'PENDING_PAYMENT')->count() > 0)
+            <div class="rounded-xl bg-blue-50 dark:bg-blue-900/30 p-4 border border-blue-200 dark:border-blue-800 shadow-sm flex items-start gap-3">
+                <svg class="w-6 h-6 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="flex-1">
+                    <h3 class="text-sm font-bold text-blue-800 dark:text-blue-300">شما نوبت(های) در انتظار پرداخت دارید</h3>
+                    <p class="text-sm text-blue-700 dark:text-blue-400 mt-1">برای قطعی شدن نوبت‌های خود، لطفاً در اسرع وقت نسبت به پرداخت یا ثبت فیش اقدام نمایید.</p>
+                </div>
+                <a href="{{ route('client.appointments.index', ['status' => 'PENDING_PAYMENT']) }}" class="shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    مشاهده نوبت‌ها
+                </a>
+            </div>
+        @endif
+
         {{-- بخش هیرو و خوش‌آمدگویی --}}
         <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 p-8 sm:p-10 shadow-xl shadow-indigo-600/20 text-white">
 

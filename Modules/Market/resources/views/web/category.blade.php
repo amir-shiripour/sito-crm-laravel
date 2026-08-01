@@ -241,12 +241,12 @@
                                         <div class="flex items-center gap-1">
                                             <span class="text-xs font-normal text-gray-400">از</span>
                                             <span x-text="formatNumber(minPrice)"></span>
-                                            <span class="text-[10px] text-gray-500 font-normal">تومان</span>
+                                            <span class="text-[10px] text-gray-500 font-normal">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                         </div>
                                         <div class="flex items-center gap-1">
                                             <span class="text-xs font-normal text-gray-400">تا</span>
                                             <span x-text="formatNumber(maxPrice)"></span>
-                                            <span class="text-[10px] text-gray-500 font-normal">تومان</span>
+                                            <span class="text-[10px] text-gray-500 font-normal">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                         </div>
                                     </div>
 
@@ -541,7 +541,7 @@
                                                         {{-- بزرگ شدن فونت قیمت --}}
                                                         <div class="text-gray-900 dark:text-white font-black flex items-center justify-end gap-1 text-xl sm:text-2xl tracking-tight">
                                                             {{ number_format($minPrice) }}
-                                                            <span class="text-[10px] sm:text-xs font-medium text-gray-500">تومان</span>
+                                                            <span class="text-[10px] sm:text-xs font-medium text-gray-500">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                                         </div>
                                                     </div>
                                                 </div>

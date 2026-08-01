@@ -515,7 +515,7 @@
                                                 type="text"
                                                 wire:model="authOtp"
                                                 placeholder="کد ۵ رقمی..."
-                                                class="w-full px-4 py-3 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-center tracking-widest font-mono"
+                                                class="w-full px-4 py-3 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-center tracking-widest"
                                             />
                                         </div>
                                         <button
@@ -693,15 +693,220 @@
                                     @elseif($botIcon)
                                         <img src="{{ $botIcon }}" class="w-full h-full object-cover rounded-full" alt="{{ $botName }}" />
                                     @else
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1 1.275-1.275Z"/></svg>
                                     @endif
                                 </div>
 
                                 <!-- متن پیام و محصولات -->
                                 <div class="flex-1 min-w-0 pt-1.5 pb-2">
                                     <div class="text-[15px] leading-[1.8] text-zinc-800 dark:text-zinc-200 prose-ai">
-                                        {!! nl2br(e($msg['content'])) !!}
+                                        {!! \Modules\SmartBot\App\Services\SmartTagParserService::parse($msg['content']) !!}
                                     </div>
+
+                                    <!-- پیوست‌های تعاملی و هوشمند (کارت بانکی، شبا، کریپتو، دکمه) -->
+                                    @if(!empty($msg['smart_attachments']))
+                                        <div class="mt-4 flex flex-col gap-3 max-w-xl">
+                                            @foreach($msg['smart_attachments'] as $attIndex => $att)
+                                                @if(($att['type'] ?? '') === 'bank_card' && !empty($att['card_number']))
+                                                    <!-- کارت بانکی -->
+                                                    <div x-data="{ copied: false }" class="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-emerald-950 text-white border border-slate-700/60 shadow-lg shadow-emerald-950/20 space-y-3 font-iranYekan">
+                                                        <div class="flex items-center justify-between">
+                                                            <div class="flex items-center gap-2">
+                                                                <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 text-xs">
+                                                                    💳
+                                                                </div>
+                                                                <span class="text-xs font-bold text-slate-200">{{ $att['bank_name'] ?: 'کارت بانکی' }}</span>
+                                                            </div>
+                                                            @if(!empty($att['card_holder']))
+                                                                <span class="text-[11px] font-semibold text-slate-400">به نام: {{ $att['card_holder'] }}</span>
+                                                            @endif
+                                                        </div>
+
+                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
+                                                            <span class="text-sm sm:text-base font-bold tracking-widest text-emerald-300">
+                                                                {{ implode(' ', str_split(preg_replace('/[^0-9]/', '', $att['card_number']), 4)) }}
+                                                            </span>
+                                                            <button 
+                                                                type="button"
+                                                                @click="
+                                                                    (function(val){
+                                                                        if (navigator.clipboard && window.isSecureContext) {
+                                                                            return navigator.clipboard.writeText(val);
+                                                                        } else {
+                                                                            var el = document.createElement('textarea');
+                                                                            el.value = val;
+                                                                            el.style.position = 'fixed';
+                                                                            el.style.left = '-9999px';
+                                                                            document.body.appendChild(el);
+                                                                            el.focus();
+                                                                            el.select();
+                                                                            try { document.execCommand('copy'); } catch(e){}
+                                                                            document.body.removeChild(el);
+                                                                            return Promise.resolve();
+                                                                        }
+                                                                    })('{{ preg_replace('/[^0-9]/', '', $att['card_number']) }}').then(() => { copied = true; setTimeout(() => copied = false, 2000); });
+                                                                "
+                                                                class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl shrink-0 mr-2"
+                                                                :class="copied ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
+                                                            >
+                                                                <template x-if="!copied">
+                                                                    <span>کپی کارت</span>
+                                                                </template>
+                                                                <template x-if="copied">
+                                                                    <span>کپی شد ✓</span>
+                                                                </template>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                @elseif(($att['type'] ?? '') === 'iban' && !empty($att['iban_code']))
+                                                    <!-- شماره شبا -->
+                                                    <div x-data="{ copied: false }" class="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-sky-950 text-white border border-slate-700/60 shadow-lg shadow-sky-950/20 space-y-3 font-iranYekan">
+                                                        <div class="flex items-center justify-between">
+                                                            <div class="flex items-center gap-2">
+                                                                <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-500/30 text-xs">
+                                                                    🏦
+                                                                </div>
+                                                                <span class="text-xs font-bold text-slate-200">شماره شبا (IBAN)</span>
+                                                            </div>
+                                                            @if(!empty($att['account_holder']))
+                                                                <span class="text-[11px] font-semibold text-slate-400">به نام: {{ $att['account_holder'] }}</span>
+                                                            @endif
+                                                        </div>
+
+                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
+                                                            <span class="text-xs sm:text-sm font-bold tracking-wider text-sky-300 truncate mr-2">
+                                                                {{ $att['iban_code'] }}
+                                                            </span>
+                                                            <button 
+                                                                type="button"
+                                                                @click="
+                                                                    (function(val){
+                                                                        if (navigator.clipboard && window.isSecureContext) {
+                                                                            return navigator.clipboard.writeText(val);
+                                                                        } else {
+                                                                            var el = document.createElement('textarea');
+                                                                            el.value = val;
+                                                                            el.style.position = 'fixed';
+                                                                            el.style.left = '-9999px';
+                                                                            document.body.appendChild(el);
+                                                                            el.focus();
+                                                                            el.select();
+                                                                            try { document.execCommand('copy'); } catch(e){}
+                                                                            document.body.removeChild(el);
+                                                                            return Promise.resolve();
+                                                                        }
+                                                                    })('{{ str_replace(' ', '', $att['iban_code']) }}').then(() => { copied = true; setTimeout(() => copied = false, 2000); });
+                                                                "
+                                                                class="shrink-0 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl"
+                                                                :class="copied ? 'bg-sky-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
+                                                            >
+                                                                <template x-if="!copied">
+                                                                    <span>کپی شبا</span>
+                                                                </template>
+                                                                <template x-if="copied">
+                                                                    <span>کپی شد ✓</span>
+                                                                </template>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                @elseif(($att['type'] ?? '') === 'crypto_wallet' && !empty($att['address']))
+                                                    <!-- کیف پول کریپتو -->
+                                                    <div x-data="{ copied: false }" class="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white border border-purple-900/50 shadow-lg shadow-purple-950/20 space-y-3 font-iranYekan">
+                                                        <div class="flex items-center justify-between">
+                                                            <div class="flex items-center gap-2">
+                                                                <div class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center border border-purple-500/30 text-xs">
+                                                                    🪙
+                                                                </div>
+                                                                <span class="text-xs font-bold text-slate-200">کیف پول {{ strtoupper($att['currency'] ?? 'Crypto') }}</span>
+                                                            </div>
+                                                            @if(!empty($att['network']))
+                                                                <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
+                                                                    {{ $att['network'] }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
+
+                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
+                                                            <span class="text-xs font-semibold tracking-wider text-purple-200 truncate mr-2">
+                                                                {{ $att['address'] }}
+                                                            </span>
+                                                            <button 
+                                                                type="button"
+                                                                @click="
+                                                                    (function(val){
+                                                                        if (navigator.clipboard && window.isSecureContext) {
+                                                                            return navigator.clipboard.writeText(val);
+                                                                        } else {
+                                                                            var el = document.createElement('textarea');
+                                                                            el.value = val;
+                                                                            el.style.position = 'fixed';
+                                                                            el.style.left = '-9999px';
+                                                                            document.body.appendChild(el);
+                                                                            el.focus();
+                                                                            el.select();
+                                                                            try { document.execCommand('copy'); } catch(e){}
+                                                                            document.body.removeChild(el);
+                                                                            return Promise.resolve();
+                                                                        }
+                                                                    })('{{ trim($att['address']) }}').then(() => { copied = true; setTimeout(() => copied = false, 2000); });
+                                                                "
+                                                                class="shrink-0 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl"
+                                                                :class="copied ? 'bg-purple-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
+                                                            >
+                                                                <template x-if="!copied">
+                                                                    <span>کپی آدرس</span>
+                                                                </template>
+                                                                <template x-if="copied">
+                                                                    <span>کپی شد ✓</span>
+                                                                </template>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                @elseif(($att['type'] ?? '') === 'url_button' && !empty($att['button_url']))
+                                                    <!-- دکمه اکشن / لینک -->
+                                                    <div class="mt-1">
+                                                        <a href="{{ $att['button_url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 transition-all active:scale-95">
+                                                            <span>{{ $att['button_label'] ?: 'مشاهده و اقدام' }}</span>
+                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                                                        </a>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    <!-- آیتم‌های منوی شرطی -->
+                                    @if(!empty($msg['menu_items']))
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4 max-w-2xl">
+                                            @foreach($msg['menu_items'] as $mItem)
+                                                <button
+                                                    wire:click="clickMenuItem({{ $mItem['id'] }}, '{{ addslashes($mItem['label']) }}')"
+                                                    wire:key="mitem-sa-{{ $msg['id'] ?? $loop->parent->index }}-{{ $mItem['id'] }}"
+                                                    type="button"
+                                                    class="flex items-center justify-between p-3.5 text-xs font-bold text-zinc-800 dark:text-zinc-100 bg-white/95 dark:bg-[#18181c] border border-zinc-200/80 dark:border-zinc-800/85 rounded-2xl hover:bg-purple-50/80 dark:hover:bg-purple-950/40 hover:border-purple-300 dark:hover:border-purple-500/50 hover:text-purple-600 dark:hover:text-purple-300 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer text-right group"
+                                                >
+                                                    <span class="flex items-center gap-2">
+                                                        <span class="w-2 h-2 rounded-full bg-purple-500 group-hover:scale-125 transition-transform"></span>
+                                                        {{ $mItem['label'] }}
+                                                    </span>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-400 group-hover:text-purple-500 transform group-hover:-translate-x-1 transition-all flex-shrink-0 mr-2 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    <!-- لینک خروجی -->
+                                    @if(!empty($msg['url']))
+                                        <div class="mt-3">
+                                            <a href="{{ $msg['url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-all">
+                                                <span>مشاهده لینک</span>
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                            </a>
+                                        </div>
+                                    @endif
 
                                     <!-- لیست محصولات پیشنهادی -->
                                     @if(!empty($msg['products']))
@@ -727,7 +932,7 @@
                                                         <!-- بخش بالا (عکس + عنوان + بج‌ها) -->
                                                         <div class="flex gap-3.5 items-start w-full">
                                                             <!-- عکس محصول -->
-                                                            <a href="{{ $product['slug'] ? route('market.public.product.show', array_filter(['slug' => $product['slug'], 'variant' => $activeVariant ? $activeVariant['variant_id'] : ($product['variant_id'] ?? null)])) : '#' }}" 
+                                                            <a href="{{ $this->getProductUrl($product, $activeVariant ?? null) }}" 
                                                                class="block flex-shrink-0 group relative overflow-hidden rounded-xl border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-800/40 p-2 w-16 h-16 md:w-20 md:h-20 flex items-center justify-center">
                                                                 @if(!empty($product['image']))
                                                                     <img src="{{ $product['image'] }}" class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" alt="{{ $product['title'] }}" />
@@ -742,7 +947,7 @@
 
                                                             <!-- عنوان و بج‌ها -->
                                                             <div class="flex-1 min-w-0 flex flex-col gap-1.5 py-0.5">
-                                                                <a href="{{ $product['slug'] ? route('market.public.product.show', array_filter(['slug' => $product['slug'], 'variant' => $activeVariant ? $activeVariant['variant_id'] : ($product['variant_id'] ?? null)])) : '#' }}" class="block group">
+                                                                <a href="{{ $this->getProductUrl($product, $activeVariant ?? null) }}" class="block group">
                                                                     <h4 class="text-xs md:text-sm font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-relaxed">{{ $product['title'] }}</h4>
                                                                 </a>
 
@@ -854,7 +1059,7 @@
                                                                     </button>
                                                                 @elseif($hasVariations && $assistantLevel !== 2)
                                                                     <!-- دکمه سطح ۱: لینک به صفحه محصول -->
-                                                                    <a href="{{ $product['slug'] ? route('market.public.product.show', array_filter(['slug' => $product['slug'], 'variant' => $product['variant_id'] ?? null])) : '#' }}" 
+                                                                    <a href="{{ $this->getProductUrl($product) }}" 
                                                                        wire:key="btn-var-sa-lvl1-{{ $product['id'] }}"
                                                                        class="inline-flex items-center justify-center gap-1 px-3 h-8 text-[11px] font-bold text-white rounded-xl whitespace-nowrap transition-all duration-300 hover:brightness-110 active:scale-95 shadow-sm" 
                                                                        style="background-color: {{ $primaryColor }}; box-shadow: 0 4px 12px -2px {{ $primaryColor }}50;">
@@ -966,6 +1171,39 @@
                                             </div>
                                         @endif
                                     @endif
+
+                                    <!-- دکمه بازگشت تمام‌عرض فقط برای آخرین پیام -->
+                                    @if($loop->last && $msg['role'] === 'bot' && !$loop->first && (($msg['answer_type'] ?? '') !== 'variant_card'))
+                                        <div class="mt-4 w-full">
+                                            <button
+                                                x-on:click="
+                                                    const row = document.getElementById('msg-sa-row-' + '{{ $msg['id'] ?? $loop->index }}');
+                                                    if (row) {
+                                                        row.style.maxHeight = row.offsetHeight + 'px';
+                                                        row.style.overflow = 'hidden';
+                                                        row.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+                                                        row.offsetHeight;
+                                                        row.style.opacity = '0';
+                                                        row.style.maxHeight = '0';
+                                                        row.style.paddingTop = '0';
+                                                        row.style.paddingBottom = '0';
+                                                        row.style.marginTop = '0';
+                                                        row.style.marginBottom = '0';
+                                                    }
+                                                    setTimeout(() => {
+                                                        $wire.goBackStep('{{ $msg['id'] ?? $loop->index }}');
+                                                    }, 350);
+                                                "
+                                                type="button"
+                                                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-50/90 dark:bg-zinc-900/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-500/50 transition-all duration-200 shadow-sm cursor-pointer"
+                                            >
+                                                <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                                </svg>
+                                                <span>بازگشت</span>
+                                            </button>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         @endif
@@ -989,43 +1227,48 @@
             <div x-ref="bottomBar" class="fixed bottom-0 left-0 w-full z-20 bg-gradient-to-t from-white via-white/95 to-transparent dark:from-[#0a0a0d] dark:via-[#0a0a0d]/97 dark:to-transparent pt-12 pb-6" wire:key="sa-input-bar">
                 <div class="max-w-3xl mx-auto w-full px-4 flex flex-col gap-3">
 
-                    <!-- پیشنهادات حین چت -->
-                    @if(!empty($suggestions) && count($messages) > 1)
+                    <!-- پیشنهادات حین چت / منو اصلی در صورت غیرفعال بودن تایپ متنی -->
+                    @if(count($messages) > 1)
                         @if($allowCustomTyping)
-                            <!-- اسکرولر افقی جمع و جور در صورت فعال بودن تایپ متنی -->
-                            <div class="flex overflow-x-auto smartbot-scrollbar pb-1 gap-2 justify-start px-2">
-                                @foreach($suggestions as $sug)
-                                    <button
-                                        wire:click="sendMessage('{{ addslashes($sug) }}')"
-                                        class="whitespace-nowrap flex-shrink-0 px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-700/60 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all duration-200 shadow-sm"
-                                    >
-                                        {{ $sug }}
-                                    </button>
-                                @endforeach
-                            </div>
-                        @else
-                            <!-- پنل ویژه و شیک سوالات آماده در صورت غیرفعال بودن تایپ متنی -->
-                            <div class="w-full bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-800/70 rounded-[28px] p-5 shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] flex flex-col gap-4 smartbot-fade-in">
-                                <div class="flex items-center gap-2 text-xs font-bold text-zinc-800 dark:text-zinc-200 border-b border-zinc-100 dark:border-zinc-800/60 pb-3">
-                                    <div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                                    <span>سوالات متداول و میانبرهای پیشنهادی:</span>
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            @if(!empty($suggestions))
+                                <div class="flex overflow-x-auto smartbot-scrollbar pb-1 gap-2 justify-start px-2">
                                     @foreach($suggestions as $sug)
                                         <button
                                             wire:click="sendMessage('{{ addslashes($sug) }}')"
-                                            class="flex items-center justify-between p-3.5 text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-50/80 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/50 rounded-2xl hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all duration-200 text-right group shadow-sm hover:shadow-md cursor-pointer"
+                                            class="whitespace-nowrap flex-shrink-0 px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-700/60 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all duration-200 shadow-sm"
                                         >
-                                            <span class="line-clamp-1">{{ $sug }}</span>
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-400 group-hover:text-indigo-500 transform group-hover:-translate-x-1 transition-all flex-shrink-0 mr-2 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                            {{ $sug }}
                                         </button>
                                     @endforeach
+                                </div>
+                            @endif
+                        @else
+                            <!-- پنل با استایل قبلی و فقط گزینه منو اصلی در صورت غیرفعال بودن تایپ متنی -->
+                            <div class="w-full bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-800/70 rounded-[28px] p-5 shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] flex flex-col gap-4 smartbot-fade-in">
+                                <div class="flex items-center gap-2 text-xs font-bold text-zinc-800 dark:text-zinc-200 border-b border-zinc-100 dark:border-zinc-800/60 pb-3">
+                                    <div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                                    <span>دسترسی سریع</span>
+                                </div>
+                                <div class="grid grid-cols-1 gap-2.5">
+                                    <button
+                                        wire:click="resetSession"
+                                        type="button"
+                                        class="flex items-center justify-between p-3.5 text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-50/80 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/50 rounded-2xl hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all duration-200 text-right group shadow-sm hover:shadow-md cursor-pointer"
+                                    >
+                                        <span class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 00-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                            </svg>
+                                            <span>منو اصلی</span>
+                                        </span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-400 group-hover:text-indigo-500 transform group-hover:-translate-x-1 transition-all flex-shrink-0 mr-2 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                    </button>
                                 </div>
                             </div>
                         @endif
                     @endif
 
-                    <!-- باکس ورودی چت اصلی -->
+                    <!-- باکس ورودی چت اصلی یا دکمه منو اصلی -->
                     @if($allowCustomTyping)
                         <div class="relative bg-white/95 dark:bg-[#151518]/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-700/60 rounded-[28px] p-2 sm:p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-end transition-all focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-500">
                             <!-- دکمه ضمیمه یا اختیاری -->
@@ -1219,7 +1462,7 @@
                                         type="text"
                                         wire:model="authOtp"
                                         placeholder="کد ۵ رقمی..."
-                                        class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-center tracking-widest font-mono"
+                                        class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-center tracking-widest"
                                     />
                                 </div>
                                 <button
@@ -1334,7 +1577,37 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg>
                                     </div>
                                     <div class="flex-1 text-[13px] text-zinc-800 dark:text-zinc-200 leading-relaxed pt-1">
-                                        {!! nl2br(e($msg['content'])) !!}
+                                        {!! \Modules\SmartBot\App\Services\SmartTagParserService::parse($msg['content']) !!}
+
+                                        <!-- آیتم‌های منوی شرطی در ویجت -->
+                                        @if(!empty($msg['menu_items']))
+                                            <div class="grid grid-cols-1 gap-2 mt-3">
+                                                @foreach($msg['menu_items'] as $mItem)
+                                                    <button
+                                                        wire:click="clickMenuItem({{ $mItem['id'] }}, '{{ addslashes($mItem['label']) }}')"
+                                                        wire:key="mitem-cmp-{{ $msg['id'] ?? $loop->parent->index }}-{{ $mItem['id'] }}"
+                                                        type="button"
+                                                        class="flex items-center justify-between p-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-100 bg-white/95 dark:bg-[#18181c] border border-zinc-200/80 dark:border-zinc-800/85 rounded-xl hover:bg-purple-50/80 dark:hover:bg-purple-950/40 hover:border-purple-300 dark:hover:border-purple-500/50 hover:text-purple-600 dark:hover:text-purple-300 transition-all duration-200 shadow-sm cursor-pointer text-right group"
+                                                    >
+                                                        <span class="flex items-center gap-1.5">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500 group-hover:scale-125 transition-transform"></span>
+                                                            {{ $mItem['label'] }}
+                                                        </span>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-zinc-400 group-hover:text-purple-500 transform group-hover:-translate-x-1 transition-all flex-shrink-0 mr-1 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        @endif
+
+                                        <!-- لینک خروجی در ویجت -->
+                                        @if(!empty($msg['url']))
+                                            <div class="mt-2.5">
+                                                <a href="{{ $msg['url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-all">
+                                                    <span>مشاهده لینک</span>
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                                </a>
+                                            </div>
+                                        @endif
 
                                         <!-- Products in Widget -->
                                         @if(!empty($msg['products']))
@@ -1357,7 +1630,7 @@
                                                             <!-- بخش بالا (عکس + عنوان + بج‌ها) -->
                                                             <div class="flex gap-2.5 items-start w-full">
                                                                 <!-- عکس محصول -->
-                                                                <a href="{{ $product['slug'] ? route('market.public.product.show', array_filter(['slug' => $product['slug'], 'variant' => $activeVariant ? $activeVariant['variant_id'] : ($product['variant_id'] ?? null)])) : '#' }}" 
+                                                                <a href="{{ $this->getProductUrl($product, $activeVariant ?? null) }}" 
                                                                    class="block flex-shrink-0 group overflow-hidden rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 p-1 w-12 h-12 flex items-center justify-center">
                                                                     @if(!empty($product['image']))
                                                                         <img src="{{ $product['image'] }}" class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" alt="" />
@@ -1372,7 +1645,7 @@
 
                                                                 <!-- جزییات -->
                                                                 <div class="flex-1 min-w-0 flex flex-col gap-1 py-0.5">
-                                                                    <a href="{{ $product['slug'] ? route('market.public.product.show', array_filter(['slug' => $product['slug'], 'variant' => $activeVariant ? $activeVariant['variant_id'] : ($product['variant_id'] ?? null)])) : '#' }}" class="block group">
+                                                                    <a href="{{ $this->getProductUrl($product, $activeVariant ?? null) }}" class="block group">
                                                                         <h4 class="text-xs font-bold truncate text-zinc-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-normal">{{ $product['title'] }}</h4>
                                                                     </a>
                                                                     @if(!empty($product['variant_name']) || (!empty($product['has_variations']) && (!$isVariantCard)))
@@ -1483,7 +1756,7 @@
                                                                         </button>
                                                                     @elseif($hasVariations && $assistantLevel !== 2)
                                                                         <!-- دکمه سطح ۱: لینک به صفحه محصول -->
-                                                                        <a href="{{ $product['slug'] ? route('market.public.product.show', array_filter(['slug' => $product['slug'], 'variant' => $product['variant_id'] ?? null])) : '#' }}" 
+                                                                        <a href="{{ $this->getProductUrl($product) }}" 
                                                                            wire:key="btn-var-cmp-lvl1-{{ $product['id'] }}"
                                                                            class="inline-flex items-center justify-center gap-1 px-2.5 h-7 text-[10px] font-bold text-white rounded-lg whitespace-nowrap transition-all duration-300 hover:brightness-110 active:scale-95 shadow-sm" 
                                                                            style="background-color: {{ $primaryColor }}; box-shadow: 0 2px 8px -2px {{ $primaryColor }}50;">
@@ -1595,6 +1868,39 @@
                                                 </div>
                                             @endif
                                         @endif
+
+                                        <!-- دکمه بازگشت تمام‌عرض فقط برای آخرین پیام در ویجت -->
+                                        @if($loop->last && $msg['role'] === 'bot' && !$loop->first && (($msg['answer_type'] ?? '') !== 'variant_card'))
+                                            <div class="mt-3 w-full">
+                                                <button
+                                                    x-on:click="
+                                                        const row = document.getElementById('msg-cmp-row-' + '{{ $msg['id'] ?? $loop->index }}');
+                                                        if (row) {
+                                                            row.style.maxHeight = row.offsetHeight + 'px';
+                                                            row.style.overflow = 'hidden';
+                                                            row.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+                                                            row.offsetHeight;
+                                                            row.style.opacity = '0';
+                                                            row.style.maxHeight = '0';
+                                                            row.style.paddingTop = '0';
+                                                            row.style.paddingBottom = '0';
+                                                            row.style.marginTop = '0';
+                                                            row.style.marginBottom = '0';
+                                                        }
+                                                        setTimeout(() => {
+                                                            $wire.goBackStep('{{ $msg['id'] ?? $loop->index }}');
+                                                        }, 350);
+                                                    "
+                                                    type="button"
+                                                    class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200/80 dark:border-zinc-800 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-50/90 dark:bg-zinc-900/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-500/50 transition-all duration-200 shadow-sm cursor-pointer"
+                                                >
+                                                    <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                                    </svg>
+                                                    <span>بازگشت</span>
+                                                </button>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             @endif
@@ -1624,9 +1930,17 @@
                             </button>
                         </div>
                     @else
-                        <div class="py-2.5 text-center text-xs text-zinc-450 dark:text-zinc-550 select-none font-medium">
-                            💬 قابلیت ارسال پیام غیرفعال است.
-                        </div>
+                        <!-- دکمه منو اصلی در ویجت شناور در صورت غیرفعال بودن تایپ دلخواه -->
+                        <button
+                            wire:click="resetSession"
+                            type="button"
+                            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800/80 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/90 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all duration-200 shadow-sm cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 00-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            <span>منو اصلی</span>
+                        </button>
                     @endif
                 </div>
             @endif

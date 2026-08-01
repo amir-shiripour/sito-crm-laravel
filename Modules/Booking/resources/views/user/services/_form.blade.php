@@ -70,6 +70,14 @@
         }
     }
 
+    $providers = $providers ?? collect();
+    $initialProviderIds = $effectiveProviderIds ?? [];
+    $effectiveProviderIds = old('provider_ids', $initialProviderIds);
+    if (!is_array($effectiveProviderIds)) {
+        $effectiveProviderIds = [];
+    }
+    $effectiveProviderIds = array_map('intval', (array)$effectiveProviderIds);
+
     $effectiveFormId = old('appointment_form_id');
     if ($effectiveFormId === null) {
     $effectiveFormId = ($editingPublicAsProvider && $serviceProvider && $serviceProvider->override_appointment_form_id !==
@@ -157,7 +165,7 @@
             @endif
 
             {{-- دسته‌ها --}}
-            <div class="col-span-1 md:col-span-2">
+            <div class="col-span-1">
                 <label class="{{ $labelClass }}">دسته‌های سرویس (انتخاب چندگانه)</label>
                 
                 <div class="relative mt-1" id="multi-select-container">
@@ -186,7 +194,7 @@
             </div>
 
             <div>
-                <label class="{{ $labelClass }}">فرم اختصاصی نوبت</label>
+                <label class="{{ $labelClass }}">فرم اختصاصی سرویس</label>
                 <div class="relative">
                     <select name="appointment_form_id" class="{{ $selectClass }}">
                         <option value="">بدون فرم اختصاصی</option>
@@ -200,6 +208,36 @@
                 </div>
                 @error('appointment_form_id')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
             </div>
+
+            @if($isAdminUser)
+                <div class="col-span-1 md:col-span-2">
+                    <label class="{{ $labelClass }}">ارائه‌دهندگان سرویس</label>
+                    
+                    <div class="relative mt-1" id="providers-multi-select-container">
+                        <!-- Trigger -->
+                        <div id="providers-multi-select-trigger" class="min-h-[44px] w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-slate-900/40 px-3 py-2 text-sm shadow-sm cursor-pointer transition-all hover:border-gray-300 dark:hover:border-gray-600 flex flex-wrap items-center gap-2">
+                            <span id="providers-multi-select-placeholder" class="text-slate-400 dark:text-slate-500 py-1 px-1">انتخاب ارائه‌دهندگان...</span>
+                            <div id="providers-multi-select-badges" class="flex flex-wrap gap-2 empty:hidden"></div>
+                            <div class="mr-auto pointer-events-none text-slate-400">
+                                <svg id="providers-multi-select-icon" class="h-4 w-4 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                        </div>
+
+                        <!-- Dropdown -->
+                        <div id="providers-multi-select-dropdown" class="absolute z-10 mt-2 w-full rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 max-h-60 overflow-auto py-1 hidden">
+                            @foreach($providers as $provider)
+                                <label class="flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 group">
+                                    <input type="checkbox" name="provider_ids[]" value="{{ $provider->id }}" data-name="{{ $provider->name }}" 
+                                        @checked(in_array($provider->id, $effectiveProviderIds))
+                                        class="w-4 h-4 text-indigo-600 bg-white border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 provider-multi-select-checkbox">
+                                    <span class="text-sm text-slate-700 dark:text-slate-300 group-hover:text-indigo-700 dark:group-hover:text-indigo-400">{{ $provider->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                    @error('provider_ids')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
+                </div>
+            @endif
         </div>
     </div>
 
@@ -295,6 +333,15 @@
                     <span class="text-sm font-medium text-slate-700 dark:text-slate-200">تایید خودکار رزروهای آنلاین</span>
                 </label>
                 @error('auto_confirm_online_booking')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
+            </div>
+
+            <div class="flex items-center mt-8">
+                <label class="relative inline-flex items-center cursor-pointer gap-3">
+                    <input type="checkbox" name="credit_client_wallet" value="1" class="sr-only peer" @checked(old('credit_client_wallet', $service->credit_client_wallet ?? false))>
+                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-500/20 dark:peer-focus:ring-indigo-800/30 rounded-full peer dark:bg-slate-700 peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-200">شارژ کیف پول سیستمی کلاینت بعد از پرداخت</span>
+                </label>
+                @error('credit_client_wallet')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
             </div>
 
             {{-- پرداخت --}}
@@ -453,6 +500,76 @@
 
             // initial state
             updateMultiSelect();
+        }
+
+        // Providers Multi-Select Logic
+        const pContainer = document.getElementById('providers-multi-select-container');
+        const pTrigger = document.getElementById('providers-multi-select-trigger');
+        const pDropdown = document.getElementById('providers-multi-select-dropdown');
+        const pBadgesContainer = document.getElementById('providers-multi-select-badges');
+        const pPlaceholder = document.getElementById('providers-multi-select-placeholder');
+        const pIcon = document.getElementById('providers-multi-select-icon');
+        const pCheckboxes = document.querySelectorAll('.provider-multi-select-checkbox');
+
+        if (pContainer) {
+            function updateProvidersMultiSelect() {
+                pBadgesContainer.innerHTML = '';
+                let selectedCount = 0;
+
+                pCheckboxes.forEach(cb => {
+                    if (cb.checked) {
+                        selectedCount++;
+                        const badge = document.createElement('span');
+                        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-500/20 text-xs font-medium';
+                        badge.innerHTML = `
+                            ${cb.dataset.name}
+                            <button type="button" class="text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 focus:outline-none" data-id="${cb.value}">
+                                <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        `;
+                        pBadgesContainer.appendChild(badge);
+                    }
+                });
+
+                if (selectedCount > 0) {
+                    pPlaceholder.classList.add('hidden');
+                    pBadgesContainer.classList.remove('hidden');
+                } else {
+                    pPlaceholder.classList.remove('hidden');
+                    pBadgesContainer.classList.add('hidden');
+                }
+            }
+
+            pTrigger.addEventListener('click', () => {
+                pDropdown.classList.toggle('hidden');
+                pIcon.classList.toggle('rotate-180');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!pContainer.contains(e.target)) {
+                    pDropdown.classList.add('hidden');
+                    pIcon.classList.remove('rotate-180');
+                }
+            });
+
+            pCheckboxes.forEach(cb => {
+                cb.addEventListener('change', updateProvidersMultiSelect);
+            });
+
+            pBadgesContainer.addEventListener('click', (e) => {
+                if (e.target.closest('button')) {
+                    e.stopPropagation();
+                    const btn = e.target.closest('button');
+                    const id = btn.dataset.id;
+                    const cb = document.querySelector(`.provider-multi-select-checkbox[value="${id}"]`);
+                    if (cb) {
+                        cb.checked = false;
+                        updateProvidersMultiSelect();
+                    }
+                }
+            });
+
+            updateProvidersMultiSelect();
         }
 
         // Payment UI logic

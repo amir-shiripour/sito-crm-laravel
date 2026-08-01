@@ -79,7 +79,7 @@
                                 @if (!empty($item['cart_amount_step']) && !empty($item['purchase_step']))
                                     <div class="mt-2.5 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/10 px-3 py-1.5 rounded-lg border border-amber-100 dark:border-amber-800/20 text-[10px] font-bold text-amber-700 dark:text-amber-400">
                                         <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                        <span>به ازای هر {{ number_format($item['cart_amount_step']) }} تومان خرید، امکان خرید {{ $item['purchase_step'] }} عدد وجود دارد.</span>
+                                        <span>به ازای هر {{ number_format($item['cart_amount_step']) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} خرید، امکان خرید {{ $item['purchase_step'] }} عدد وجود دارد.</span>
                                     </div>
                                 @endif
 
@@ -92,7 +92,7 @@
                                             </div>
                                         @endif
                                         <div class="text-base font-black text-gray-900 dark:text-white mt-1">
-                                            {{ number_format($item['price'] * $item['quantity']) }} <span class="text-xs font-medium">تومان</span>
+                                            {{ number_format($item['price'] * $item['quantity']) }} <span class="text-xs font-medium">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                         </div>
                                     </div>
                                     <div class="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg">
@@ -128,12 +128,12 @@
             @if($totalDiscount > 0)
                 <div class="flex justify-between items-center mb-4 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 px-4 py-3 rounded-xl">
                     <span class="text-sm font-bold">سود شما از این خرید</span>
-                    <span class="text-sm font-black">{{ number_format($totalDiscount) }} تومان</span>
+                    <span class="text-sm font-black">{{ number_format($totalDiscount) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                 </div>
             @endif
             <div class="flex justify-between items-center mb-6">
                 <span class="text-sm font-medium text-gray-600 dark:text-gray-300">مبلغ قابل پرداخت</span>
-                <span class="text-xl font-black text-gray-900 dark:text-white">{{ number_format($totalPrice) }} تومان</span>
+                <span class="text-xl font-black text-gray-900 dark:text-white">{{ number_format($totalPrice) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
             </div>
 
             <button

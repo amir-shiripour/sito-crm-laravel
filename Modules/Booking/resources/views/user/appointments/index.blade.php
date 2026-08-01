@@ -31,7 +31,12 @@
                 </div>
             </div>
 
-            <div class="flex flex-col justify-center items-end gap-3">
+            <div class="flex flex-col sm:flex-row justify-center items-end gap-3">
+                <a class="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-5 py-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-900 shadow-sm transition"
+                   href="{{ route('user.booking.schedule.index') }}">
+                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    برنامه زمانی
+                </a>
                 <a class="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition"
                    href="{{ route('user.booking.appointments.create') }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>

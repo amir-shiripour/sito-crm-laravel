@@ -328,14 +328,14 @@
                                     @if (!empty($item['cart_amount_step']) && !empty($item['purchase_step']))
                                         <div class="inline-flex items-center gap-1.5 text-[10px] text-amber-700 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400 px-2.5 py-1 rounded-md border border-amber-100 dark:border-amber-900/60 font-bold shrink-0 w-full mt-2">
                                             <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                            <span>محدودیت خرید: به ازای هر {{ number_format($item['cart_amount_step']) }} تومان خرید، امکان خرید {{ $item['purchase_step'] }} عدد وجود دارد.</span>
+                                            <span>محدودیت خرید: به ازای هر {{ number_format($item['cart_amount_step']) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} خرید، امکان خرید {{ $item['purchase_step'] }} عدد وجود دارد.</span>
                                         </div>
                                     @endif
 
                                     <div class="flex items-center justify-end mt-3">
                                         <div class="text-left">
                                             <div class="text-sm font-black text-gray-900 dark:text-white">
-                                                {{ number_format($item['price'] * $item['quantity']) }} <span class="text-[10px] font-bold text-gray-500">تومان</span>
+                                                {{ number_format($item['price'] * $item['quantity']) }} <span class="text-[10px] font-bold text-gray-500">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                             </div>
                                             @if($item['price'] < $item['base_price'])
                                                 <div class="flex items-center gap-1.5 justify-end mt-0.5">
@@ -355,18 +355,18 @@
                     <div class="border-t border-gray-200 dark:border-gray-700 pt-5 space-y-3">
                         <div class="flex justify-between text-sm">
                             <p class="text-gray-600 dark:text-gray-400">جمع کل سبد خرید:</p>
-                            <p class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($totals['subtotal']) }} <span class="text-xs">تومان</span></p>
+                            <p class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($totals['subtotal']) }} <span class="text-xs">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span></p>
                         </div>
                         @if($totals['discount'] > 0)
                             <div class="flex justify-between text-sm">
                                 <p class="text-gray-600 dark:text-gray-400">تخفیف شما:</p>
-                                <p class="font-medium text-red-500">-{{ number_format($totals['discount']) }} <span class="text-xs">تومان</span></p>
+                                <p class="font-medium text-red-500">-{{ number_format($totals['discount']) }} <span class="text-xs">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span></p>
                             </div>
                         @endif
                         @if($shippingCost > 0)
                             <div class="flex justify-between text-sm">
                                 <p class="text-gray-600 dark:text-gray-400">هزینه ارسال:</p>
-                                <p class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($shippingCost) }} <span class="text-xs">تومان</span></p>
+                                <p class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($shippingCost) }} <span class="text-xs">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span></p>
                             </div>
                         @elseif($selectedShippingMethodId)
                             <div class="flex justify-between text-sm">
@@ -376,7 +376,7 @@
                         @endif
                         <div class="flex justify-between text-base font-bold pt-2 border-t border-dashed border-gray-200 dark:border-gray-700 mt-3">
                             <p class="text-gray-900 dark:text-white">مبلغ قابل پرداخت:</p>
-                            <p class="text-indigo-600 dark:text-indigo-400">{{ number_format($totals['grand_total'] + $shippingCost) }} <span class="text-xs">تومان</span></p>
+                            <p class="text-indigo-600 dark:text-indigo-400">{{ number_format($totals['grand_total'] + $shippingCost) }} <span class="text-xs">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span></p>
                         </div>
                     </div>
 
@@ -856,7 +856,7 @@
                                         <span class="text-base sm:text-lg font-black text-gray-900 dark:text-white tracking-tight">
                                             {{ number_format($payableTotal) }}
                                         </span>
-                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">تومان</span>
+                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                     </div>
                                 </div>
 

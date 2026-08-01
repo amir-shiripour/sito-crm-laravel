@@ -29,7 +29,7 @@
                     </div>
                     <div>
                         <span class="block text-sm text-gray-500 dark:text-gray-400 mb-1">مبلغ سفارش:</span>
-                        <span class="text-lg font-bold text-gray-900 dark:text-white">{{ number_format($order->grand_total) }} تومان</span>
+                        <span class="text-lg font-bold text-gray-900 dark:text-white">{{ number_format($order->grand_total) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                     </div>
                 </div>
 

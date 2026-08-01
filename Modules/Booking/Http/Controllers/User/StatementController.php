@@ -642,6 +642,25 @@ class StatementController extends Controller
                 $newResponse = [];
                 $totalUnits = 0;
 
+                // Collect user IDs for select-user-by-role fields
+                $roleUserIds = [];
+                foreach ($appointment->appointment_form_response_json as $key => $value) {
+                    $meta = $fieldMeta[$key] ?? [];
+                    if (($meta['type'] ?? '') === 'select-user-by-role') {
+                        if (is_array($value)) {
+                            foreach ($value as $v) {
+                                if (is_numeric($v)) $roleUserIds[] = (int) $v;
+                            }
+                        } elseif (is_numeric($value)) {
+                            $roleUserIds[] = (int) $value;
+                        }
+                    }
+                }
+                $userNamesMap = [];
+                if (!empty($roleUserIds)) {
+                    $userNamesMap = \App\Models\User::whereIn('id', array_unique($roleUserIds))->pluck('name', 'id')->toArray();
+                }
+
                 foreach ($appointment->appointment_form_response_json as $key => $value) {
                     $meta = $fieldMeta[$key] ?? ['label' => $key, 'icon' => null, 'type' => null];
                     $fieldType = $meta['type'] ?? (
@@ -658,12 +677,22 @@ class StatementController extends Controller
                         elseif ($key === 'DL' || $key === 'LL') $label = 'شماره دندان (LL)';
                     }
 
+                    $displayValue = $value;
+                    if ($fieldType === 'select-user-by-role') {
+                        if (is_array($value)) {
+                            $names = array_map(fn($id) => $userNamesMap[$id] ?? "کاربر #{$id}", $value);
+                            $displayValue = implode('، ', $names);
+                        } elseif (is_numeric($value)) {
+                            $displayValue = $userNamesMap[$value] ?? "کاربر #{$value}";
+                        }
+                    }
+
                     $newResponse[] = [
                         'key' => $key,
                         'label' => $label,
                         'icon' => $meta['icon'],
                         'type' => $fieldType,
-                        'value' => $value
+                        'value' => $displayValue
                     ];
 
                     if ($form->form_type === BookingForm::TYPE_TOOTH_NUMBER && !empty($value)) {

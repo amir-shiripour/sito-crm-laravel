@@ -135,6 +135,8 @@ Route::prefix('clients')
             Route::put('profile', [ClientProfileController::class, 'update'])
                 ->name('profile.update');
 
+            Route::get('appointments', [ClientAppointmentController::class, 'index'])
+                ->name('appointments.index');
             Route::get('appointments/{appointment}', [ClientAppointmentController::class, 'show'])
                 ->name('appointments.show');
             Route::post('appointments/{appointment}/cancel', [ClientAppointmentController::class, 'cancel'])
@@ -144,6 +146,8 @@ Route::prefix('clients')
                 ->name('payments.index');
             Route::get('payments/{type}/{id}', [ClientPaymentController::class, 'show'])
                 ->name('payments.show');
+            Route::post('payments/{id}/process', [ClientPaymentController::class, 'processPayment'])
+                ->name('payments.process');
 
             // 🛍️ Market Orders Routes
             Route::get('market/orders', [ClientPaymentController::class, 'marketOrdersIndex'])

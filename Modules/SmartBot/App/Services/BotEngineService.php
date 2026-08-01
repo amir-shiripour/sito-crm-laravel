@@ -74,6 +74,16 @@ final class BotEngineService
             $products = $this->resolver->resolveProducts($response['entity_ids']);
         }
 
+        $menuItems = $response['menu_items'] ?? [];
+        $smartAttachments = $response['smart_attachments'] ?? [];
+        $metadata = [];
+        if (!empty($menuItems)) {
+            $metadata['menu_items'] = $menuItems;
+        }
+        if (!empty($smartAttachments)) {
+            $metadata['smart_attachments'] = $smartAttachments;
+        }
+
         // Save bot message
         $botMsg = BotMessage::create([
             'session_id' => $session->id,
@@ -83,6 +93,7 @@ final class BotEngineService
             'answer_id' => $response['matched_answer_id'],
             'resolved' => $response['confidence'] > 0,
             'confidence_score' => $response['confidence'],
+            'metadata' => $metadata,
         ]);
 
         return [
@@ -91,7 +102,81 @@ final class BotEngineService
             'content' => $response['answer_text'],
             'answer_type' => $response['answer_type'],
             'products' => $products,
+            'smart_attachments' => $smartAttachments,
+            'menu_items' => $menuItems,
             'confidence' => $response['confidence'],
+            'created_at' => $botMsg->created_at->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Process selection of a menu item (Option A: User prompt + bot response).
+     */
+    public function processMenuItemClick(BotSession $session, int $menuItemId, string $userLabel): array
+    {
+        $item = \Modules\SmartBot\App\Models\BotMenuItem::with('activeChildren')->findOrFail($menuItemId);
+
+        // 1. Save user message with item's label in DB
+        BotMessage::create([
+            'session_id' => $session->id,
+            'role' => 'user',
+            'content' => $userLabel,
+            'resolved' => true,
+        ]);
+
+        // 2. Prepare response based on item's response_type
+        $answerText = $item->response_text ?? $item->label;
+        $answerType = $item->response_type ?? 'text';
+        $products = [];
+        $menuItems = [];
+        $url = null;
+        $smartAttachments = $item->smart_attachments ?? [];
+
+        if ($answerType === 'product_list' && !empty($item->response_entity_ids)) {
+            $products = $this->resolver->resolveProducts($item->response_entity_ids);
+        } elseif ($answerType === 'menu_items') {
+            $menuItems = $item->activeChildren->toArray();
+        } elseif ($answerType === 'url') {
+            $url = $item->response_url;
+        }
+
+        $metadata = [
+            'answer_type' => $answerType,
+        ];
+        if (!empty($menuItems)) {
+            $metadata['menu_items'] = $menuItems;
+        }
+        if (!empty($smartAttachments)) {
+            $metadata['smart_attachments'] = $smartAttachments;
+        }
+        if (!empty($url)) {
+            $metadata['url'] = $url;
+        }
+        if (!empty($item->response_entity_ids)) {
+            $metadata['entity_ids'] = $item->response_entity_ids;
+        }
+
+        // 3. Save bot message in DB
+        $botMsg = BotMessage::create([
+            'session_id' => $session->id,
+            'role' => 'bot',
+            'content' => $answerText,
+            'answer_id' => $item->answer_id,
+            'resolved' => true,
+            'confidence_score' => 1.0,
+            'metadata' => $metadata,
+        ]);
+
+        return [
+            'id' => $botMsg->id,
+            'role' => 'bot',
+            'content' => $answerText,
+            'answer_type' => $answerType,
+            'products' => $products,
+            'smart_attachments' => $smartAttachments,
+            'menu_items' => $menuItems,
+            'url' => $url,
+            'confidence' => 1.0,
             'created_at' => $botMsg->created_at->toIso8601String(),
         ];
     }

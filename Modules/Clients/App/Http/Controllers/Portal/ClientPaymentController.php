@@ -93,7 +93,6 @@ class ClientPaymentController extends Controller
             // Booking currency settings
             $bookingCurrencyUnit = $payment->currency_unit ?? 'IRR';
             $bookingCurrencyLabel = $bookingCurrencyUnit === 'IRT' ? 'تومان' : 'ریال';
-            // Double-check with BookingSetting if currency_unit not on payment record
             if (!$payment->currency_unit && class_exists(\Modules\Booking\Entities\BookingSetting::class) && Schema::hasTable('booking_settings')) {
                 try {
                     $bs = \Modules\Booking\Entities\BookingSetting::current();
@@ -102,7 +101,77 @@ class ClientPaymentController extends Controller
                 } catch (\Exception $e) {}
             }
 
-            return view('clients::portal.payments.show_booking', compact('payment', 'bookingCurrencyUnit', 'bookingCurrencyLabel'));
+            $settingsMap = \Illuminate\Support\Facades\Schema::hasTable('settings')
+                ? \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray()
+                : [];
+
+            $activeRaw = $settingsMap['active_payment_methods'] ?? '[]';
+            $activeMethods = is_string($activeRaw) ? json_decode($activeRaw, true) : (array) $activeRaw;
+            if (empty($activeMethods) || !is_array($activeMethods)) {
+                $activeMethods = ['online', 'pos', 'transfer', 'cod', 'installment'];
+            }
+
+            $allMethodLabels = [
+                'online' => 'پرداخت آنلاین',
+                'transfer' => 'انتقال بانکی (کارت به کارت / شبا)',
+                'pos' => 'دستگاه کارتخوان (POS)',
+                'installment' => 'اقساطی / چک',
+                'cod' => 'پرداخت در محل / نقدی',
+            ];
+
+            $availablePaymentMethods = [];
+            foreach ($activeMethods as $m) {
+                if (isset($allMethodLabels[$m])) {
+                    $availablePaymentMethods[$m] = $allMethodLabels[$m];
+                }
+            }
+
+            $onlineGateways = [];
+            if (($settingsMap['zarinpal_status'] ?? '') === 'active') {
+                $onlineGateways[] = ['id' => 'zarinpal', 'label' => 'درگاه زرین‌پال'];
+            }
+            if (($settingsMap['zibal_status'] ?? '') === 'active') {
+                $onlineGateways[] = ['id' => 'zibal', 'label' => 'درگاه زیبال'];
+            }
+            if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
+                $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
+            }
+            if (empty($onlineGateways)) {
+                $onlineGateways[] = ['id' => 'zarinpal', 'label' => 'زرین‌پال'];
+                $onlineGateways[] = ['id' => 'zibal', 'label' => 'زیبال'];
+            }
+
+            $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) 
+                ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) 
+                : (is_array($settingsMap['bank_transfer_accounts'] ?? null) ? $settingsMap['bank_transfer_accounts'] : []);
+
+            $bankAccounts = array_map(function($acc) {
+                return [
+                    'id' => $acc['id'] ?? ($acc['bank_name'] ?? 'bank'),
+                    'bank_name' => $acc['bank_name'] ?? 'بانک',
+                    'owner_name' => $acc['owner_name'] ?? ($acc['owner'] ?? ''),
+                    'card_number' => $acc['card_number'] ?? '',
+                    'account_number' => $acc['account_number'] ?? '',
+                    'iban' => $acc['iban'] ?? '',
+                ];
+            }, $rawAccounts);
+
+            $paymentSubItems = [
+                'online' => $onlineGateways,
+                'transfer' => array_map(fn($a) => ['id' => $a['id'], 'label' => $a['bank_name'] . ' - ' . $a['owner_name']], $bankAccounts),
+                'pos' => [],
+                'installment' => [],
+                'cod' => []
+            ];
+
+            return view('clients::portal.payments.show_booking', compact(
+                'payment', 
+                'bookingCurrencyUnit', 
+                'bookingCurrencyLabel',
+                'availablePaymentMethods',
+                'paymentSubItems',
+                'bankAccounts'
+            ));
         }
 
         if ($type === 'market') {
@@ -137,5 +206,125 @@ class ClientPaymentController extends Controller
             ->findOrFail($id);
 
         return view('clients::portal.orders.show', compact('order'));
+    }
+
+    public function processPayment(Request $request, $id)
+    {
+        $client = auth('client')->user();
+        
+        if (!class_exists(\Modules\Booking\Entities\BookingPayment::class) || !Schema::hasTable('booking_payments')) {
+            abort(404);
+        }
+
+        $payment = \Modules\Booking\Entities\BookingPayment::whereHas('appointment', function($q) use ($client) {
+            $q->where('client_id', $client->id);
+        })->findOrFail($id);
+
+        if ($payment->status !== \Modules\Booking\Entities\BookingPayment::STATUS_PENDING) {
+            return back()->with('error', 'این پرداخت قابل پردازش نیست.');
+        }
+
+        $method = $request->input('payment_method');
+
+        $request->validate([
+            'payment_method' => 'required|string',
+            'sub_item' => 'nullable|string',
+            'tracking_code' => 'nullable|string|max:255',
+            'payment_date' => 'nullable|string|max:20',
+            'payer_name' => 'nullable|string|max:255',
+            'payer_mobile' => 'nullable|string|max:50',
+            'receipt_file' => ($method !== 'online') 
+                ? 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:10240' 
+                : 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:10240',
+        ], [
+            'receipt_file.required' => 'لطفاً تصویر یا فایل رسید پرداخت را آپلود نمایید.',
+        ]);
+
+        if ($method === 'online') {
+            try {
+                $paymentService = app(\Modules\Booking\Services\PaymentService::class);
+                $gateway = $request->input('sub_item'); // e.g. zarinpal, zibal
+                $result = $paymentService->startGateway($payment, $gateway);
+                
+                $url = $result['payment_url'] ?? $result['url'] ?? null;
+                if (!empty($url)) {
+                    return redirect()->away($url);
+                }
+                return back()->with('error', 'خطا در اتصال به درگاه پرداخت.');
+            } catch (\Exception $e) {
+                return back()->with('error', 'خطای سیستمی: ' . $e->getMessage());
+            }
+        } else {
+            // Manual methods (transfer, pos, cod, etc)
+            $subItemId = $request->input('sub_item');
+            $subItemLabel = $subItemId;
+            $tracking = $request->input('tracking_code');
+            $date = $request->input('payment_date');
+            $payerName = $request->input('payer_name');
+            $payerMobile = $request->input('payer_mobile');
+
+            if ($subItemId && \Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                $settingsMap = \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray();
+                $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) 
+                    ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) 
+                    : (array) ($settingsMap['bank_transfer_accounts'] ?? []);
+                
+                foreach ($rawAccounts as $acc) {
+                    $accId = $acc['id'] ?? ($acc['bank_name'] ?? '');
+                    if ($accId == $subItemId) {
+                        $bankName = $acc['bank_name'] ?? 'بانک';
+                        $ownerName = $acc['owner_name'] ?? ($acc['owner'] ?? '');
+                        $cardNumber = !empty($acc['card_number']) ? preg_replace('/[^0-9]/', '', $acc['card_number']) : '';
+                        $subItemLabel = $bankName . ($ownerName ? ' - ' . $ownerName : '') . ($cardNumber ? ' (' . $cardNumber . ')' : '');
+                        break;
+                    }
+                }
+            }
+
+            $receiptPath = null;
+            if ($request->hasFile('receipt_file')) {
+                try {
+                    $receiptPath = $request->file('receipt_file')->store('payment-receipts', 'public');
+                } catch (\Exception $e) {
+                    // Fallback to local uploads directory if public disk fails
+                    $file = $request->file('receipt_file');
+                    $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                    $file->move(public_path('uploads/payment-receipts'), $filename);
+                    $receiptPath = 'uploads/payment-receipts/' . $filename;
+                }
+            }
+
+            $receiptUrl = $receiptPath ? (str_starts_with($receiptPath, 'uploads/') ? asset($receiptPath) : asset('storage/' . $receiptPath)) : null;
+
+            $metaData = [
+                'sub_item' => $subItemId,
+                'sub_item_label' => $subItemLabel,
+                'payer_name' => $payerName,
+                'payer_mobile' => $payerMobile,
+                'tracking_code' => $tracking,
+                'payment_date' => $date,
+                'receipt_path' => $receiptPath,
+                'receipt_url' => $receiptUrl,
+            ];
+
+            $payment->update([
+                'type' => $method,
+                'status' => \Modules\Booking\Entities\BookingPayment::STATUS_PAID,
+                'gateway_ref' => $tracking ?: $payment->gateway_ref,
+                'meta' => array_merge($payment->meta ?? [], array_filter($metaData)),
+                'paid_at' => now(),
+            ]);
+
+            if ($payment->appointment && in_array($payment->appointment->status, [
+                \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT,
+                \Modules\Booking\Entities\Appointment::STATUS_DRAFT
+            ])) {
+                $payment->appointment->update([
+                    'status' => \Modules\Booking\Entities\Appointment::STATUS_PENDING,
+                ]);
+            }
+
+            return back()->with('success', 'اطلاعات و رسید پرداخت شما با موفقیت ثبت شد و در انتظار تایید مدیریت است.');
+        }
     }
 }

@@ -275,7 +275,7 @@
                                                     {{-- بزرگ شدن فونت قیمت --}}
                                                     <div class="text-gray-900 dark:text-white font-black flex items-center justify-end gap-1 text-xl sm:text-2xl tracking-tight">
                                                         {{ number_format($minPrice) }}
-                                                        <span class="text-[10px] sm:text-xs font-medium text-gray-500">تومان</span>
+                                                        <span class="text-[10px] sm:text-xs font-medium text-gray-500">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                                     </div>
                                                 </div>
                                             </div>

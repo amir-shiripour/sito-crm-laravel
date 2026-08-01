@@ -17,11 +17,13 @@ final class BotMessage extends Model
         'answer_id',
         'resolved',
         'confidence_score',
+        'metadata',
     ];
 
     protected $casts = [
         'resolved' => 'boolean',
         'confidence_score' => 'float',
+        'metadata' => 'array',
     ];
 
     public function session(): BelongsTo

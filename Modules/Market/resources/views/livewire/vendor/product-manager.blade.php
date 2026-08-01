@@ -101,7 +101,7 @@
 
                                         <div class="flex flex-col border-r border-gray-100 dark:border-gray-700 pr-3">
                                             <span class="text-[10px] text-gray-400 dark:text-gray-500">قیمت اصلی</span>
-                                            <span class="font-bold text-gray-600 dark:text-gray-300 text-sm">{{ number_format($vp->price) }} <span class="font-normal text-[10px]">تومان</span></span>
+                                            <span class="font-bold text-gray-600 dark:text-gray-300 text-sm">{{ number_format($vp->price) }} <span class="font-normal text-[10px]">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span></span>
                                         </div>
 
                                         <div class="flex flex-col border-r border-gray-100 dark:border-gray-700 pr-3">
@@ -119,7 +119,7 @@
                                             <span class="font-bold text-gray-600 dark:text-gray-300 text-sm">{{ $vp->min_purchase_qty }} - {{ $vp->max_purchase_qty ?: 'نامحدود' }}</span>
                                             @if($vp->cart_amount_step > 0 && $vp->purchase_step > 0)
                                                 <span class="text-[9px] text-amber-600 dark:text-amber-400 mt-1 font-semibold block" title="محدودیت بر اساس مبلغ سبد خرید">
-                                                    به ازای هر {{ number_format($vp->cart_amount_step) }} تومان: {{ $vp->purchase_step }} عدد
+                                                    به ازای هر {{ number_format($vp->cart_amount_step) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}: {{ $vp->purchase_step }} عدد
                                                 </span>
                                             @endif
                                         </div>
@@ -151,7 +151,7 @@
                                             format(val) { this.formatted = val ? val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''; },
                                             update() { this.raw = this.formatted.replace(/,/g, ''); }
                                         }">
-                                            <label class="{{ $labelClass }}">قیمت (تومان)</label>
+                                            <label class="{{ $labelClass }}">قیمت ({{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }})</label>
                                             <input type="text" x-model="formatted" @input="update()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-400">
                                             @error('editForm.price') <span class="text-[10px] text-red-500">{{ $message }}</span> @enderror
                                         </div>
@@ -247,7 +247,7 @@
                                                 <label class="{{ $labelClass }}">مبنای مبلغ سبد خرید</label>
                                                 <div class="relative">
                                                     <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-mono dir-ltr text-center" placeholder="مثلا 1,000,000">
-                                                    <span class="absolute inset-y-0 right-3 flex items-center text-[9px] text-gray-400">تومان سبد</span>
+                                                    <span class="absolute inset-y-0 right-3 flex items-center text-[9px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} سبد</span>
                                                 </div>
                                                 @error('editForm.cart_amount_step') <span class="text-[10px] text-red-500">{{ $message }}</span> @enderror
                                             </div>

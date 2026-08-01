@@ -14,6 +14,7 @@ return [
 
     'tokens' => [
         'appointment' => [
+            'appointment_id' => 'شماره نوبت',
             'client_name' => 'نام بیمار',
             'client_phone' => 'شماره بیمار',
             'service_name' => 'نام خدمت',
@@ -21,6 +22,7 @@ return [
             'appointment_date_jalali' => 'تاریخ نوبت (شمسی)',
             'appointment_time_jalali' => 'ساعت نوبت',
             'appointment_datetime_jalali' => 'تاریخ و ساعت نوبت',
+            'amount' => 'مبلغ قابل پرداخت',
             'payment_link' => 'لینک پرداخت',
         ],
         'statement' => [

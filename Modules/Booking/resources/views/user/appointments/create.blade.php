@@ -429,7 +429,12 @@
                                         @click="selectProvider(p, true)">
                                     <div class="flex items-start justify-between gap-2">
                                         <div class="flex-1">
-                                            <div class="font-semibold text-sm mb-1" x-text="p.name"></div>
+                                            <div class="font-semibold text-sm mb-1 flex items-center flex-wrap gap-1.5">
+                                                <span x-text="p.name"></span>
+                                                <span x-show="providers && providers.length === 1" class="text-[10px] px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold">
+                                                    تنها ارائه‌دهنده (انتخاب خودکار)
+                                                </span>
+                                            </div>
                                             <div class="text-xs text-gray-500 dark:text-gray-400" x-show="p.subtitle"
                                                  x-text="p.subtitle"></div>
                                         </div>
@@ -1087,7 +1092,20 @@
                                                 </div>
                                             </template>
 
-                                            <template x-if="!['textarea','select','radio','checkbox','tooth_number'].includes(field.type)">
+                                            <template x-if="field.type === 'select-user-by-role'">
+                                                <select
+                                                    class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100"
+                                                    :required="field.required"
+                                                    :multiple="field.multiple"
+                                                    x-model="appointmentFormValues[field.name]">
+                                                    <option value="" x-show="!field.multiple">انتخاب کنید</option>
+                                                    <template x-for="u in (field.user_options || [])" :key="u.id">
+                                                        <option :value="u.id" x-text="u.name"></option>
+                                                    </template>
+                                                </select>
+                                            </template>
+
+                                            <template x-if="!['textarea','select','radio','checkbox','tooth_number','select-user-by-role'].includes(field.type)">
                                                 <input
                                                     class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 placeholder:text-gray-400"
                                                     :type="field.type || 'text'" :placeholder="field.placeholder || ''"
@@ -1554,7 +1572,7 @@
                     return this.defaultSlotCapacity;
                 },
 
-                async fetchProviders() {
+                async fetchProviders(autoSelect = true) {
                     this.providerLoading = true;
                     const params = new URLSearchParams({
                         q: this.providerSearch || ''
@@ -1572,6 +1590,11 @@
                         });
                         const json = await res.json();
                         this.providers = json.data || [];
+
+                        // انتخاب خودکار در صورت وجود تنها ۱ ارائه‌دهنده
+                        if (autoSelect && this.providers.length === 1 && !this.providerId) {
+                            await this.selectProvider(this.providers[0], false);
+                        }
                     } finally {
                         this.providerLoading = false;
                     }
@@ -1675,7 +1698,8 @@
                             this.providerId = String(this.fixedProvider.id);
                         }
                         await this.next();
-                        if (this.fixedProvider && this.step === 3) {
+                        // اگر تنها ۱ ارائه‌دهنده انتخاب گردید، مستقیماً به مرحله تقویم برود
+                        if (this.providerId && this.step === 3) {
                             await this.next();
                         }
                     }
@@ -1688,6 +1712,12 @@
                     this.selectedService = this.services.find(s => String(s.id) === String(this.serviceId)) || null;
                     this.resetCalendarAndSlots();
                     this.resetAppointmentForm();
+
+                    if (this.selectedService && this.selectedService.payment_mode === 'REQUIRED') {
+                        this.status = 'PENDING_PAYMENT';
+                    } else {
+                        this.status = 'CONFIRMED';
+                    }
 
                     if (this.flow === 'SERVICE_FIRST') {
                         await this.fetchProviders();
@@ -1847,11 +1877,19 @@
                     }
 
                     this.appointmentFormSchema = schema;
+                    const authUserId = @json(auth()->id());
                     for (const field of schema.fields) {
-                        if (field.type === 'checkbox' || field.type === 'tooth_number') {
+                        if (field.type === 'checkbox' || field.type === 'tooth_number' || (field.type === 'select-user-by-role' && field.multiple)) {
                             this.appointmentFormValues[field.name] = [];
                         } else {
                             this.appointmentFormValues[field.name] = '';
+                        }
+
+                        if (field.type === 'select-user-by-role' && field.lock_current_if_role && authUserId && Array.isArray(field.user_options)) {
+                            const isMatch = field.user_options.some(u => Number(u.id) === Number(authUserId));
+                            if (isMatch) {
+                                this.appointmentFormValues[field.name] = field.multiple ? [authUserId] : authUserId;
+                            }
                         }
                     }
                 },
@@ -2169,7 +2207,11 @@
                         if (!this.clientId) return alert('لطفاً {{ $clientLabel }} را انتخاب کنید.');
                         // Load providers/services when moving to step 2
                         if (this.flow === 'PROVIDER_FIRST' && !this.fixedProvider) {
-                            await this.fetchProviders();
+                            await this.fetchProviders(true);
+                            if (this.providers.length === 1 && this.providerId) {
+                                this.step = 3;
+                                return;
+                            }
                         } else if (this.flow === 'SERVICE_FIRST') {
                             await this.fetchAllActiveServices();
                         }

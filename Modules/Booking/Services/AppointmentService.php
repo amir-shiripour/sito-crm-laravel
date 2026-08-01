@@ -37,6 +37,7 @@ class AppointmentService
 
             // --- رویدادهای دقیق ایجاد (بر اساس منبع و وضعیت اولیه) ---
             'created_online_pending'       => 'رزرو آنلاین: در انتظار تایید (نیاز به بررسی)',
+            'created_online_pending_payment' => 'رزرو آنلاین: در انتظار پرداخت',
             'created_online_confirmed'     => 'رزرو آنلاین: تایید شده (اتوماتیک)',
             'created_operator_confirmed'   => 'ثبت توسط اپراتور/ادمین (تایید شده)',
 
@@ -217,6 +218,9 @@ class AppointmentService
                 $this->onAppointmentConfirmed($appointment);
             } elseif ($appointment->status === Appointment::STATUS_PENDING) {
                 $this->triggerWorkflow('created_online_pending', $appointment);
+            } elseif ($appointment->status === Appointment::STATUS_PENDING_PAYMENT) {
+                $this->triggerWorkflow('created_online_pending_payment', $appointment);
+                $this->triggerStatusWorkflows($appointment);
             }
 
             $this->audit->log(
@@ -245,40 +249,49 @@ class AppointmentService
         return DB::transaction(function () use ($paymentId, $gatewayRef) {
             $payment = BookingPayment::query()->whereKey($paymentId)->lockForUpdate()->firstOrFail();
 
-            if ($payment->status === BookingPayment::STATUS_PAID) {
-                return $payment;
+            if ($payment->status !== BookingPayment::STATUS_PAID) {
+                $payment->status = BookingPayment::STATUS_PAID;
+                $payment->gateway_ref = $gatewayRef ?: $payment->gateway_ref;
+                $payment->paid_at = $payment->paid_at ?: now();
+                $payment->save();
             }
 
-            $payment->status = BookingPayment::STATUS_PAID;
-            $payment->gateway_ref = $gatewayRef ?: $payment->gateway_ref;
-            $payment->paid_at = now();
-            $payment->save();
-
             $appt = Appointment::query()->whereKey($payment->appointment_id)->lockForUpdate()->first();
-            if ($appt && $appt->status === Appointment::STATUS_PENDING_PAYMENT) {
 
-                // Check auto-confirm setting
+            // Note: Wallet synchronization and crediting is automatically handled by BookingPaymentObserver and BookingPaymentWalletService
+
+            // 2) به‌روزرسانی وضعیت نوبت:
+            // در صورت ثبت/تایید پرداخت نوبت، اگر وضعیت نوبت در انتظار پرداخت، در انتظار تایید یا پیش‌نویس باشد:
+            // اگر تایید خودکار فعال باشد -> وضعیت به CONFIRMED تغییر می‌کند.
+            // اگر تایید خودکار فعال نباشد -> وضعیت به PENDING (در انتظار تایید ادمین/اپراتور) تغییر می‌کند.
+            if ($appt && in_array($appt->status, [Appointment::STATUS_PENDING_PAYMENT, Appointment::STATUS_PENDING, Appointment::STATUS_DRAFT])) {
+
                 $sp = $this->engine->getServiceProvider($appt->service_id, $appt->provider_user_id);
-                $autoConfirm = $sp ? $sp->effectiveAutoConfirm() : false;
+                $autoConfirm = $sp ? $sp->effectiveAutoConfirm() : (!empty($appt->service?->auto_confirm_online_booking));
 
-                $appt->status = $autoConfirm ? Appointment::STATUS_CONFIRMED : Appointment::STATUS_PENDING;
-                $appt->save();
+                $oldStatus = $appt->status;
+                $targetStatus = $autoConfirm ? Appointment::STATUS_CONFIRMED : Appointment::STATUS_PENDING;
 
-                $this->triggerStatusWorkflows($appt, Appointment::STATUS_PENDING_PAYMENT);
+                if ($oldStatus !== $targetStatus) {
+                    $appt->status = $targetStatus;
+                    $appt->save();
 
-                if ($appt->status === Appointment::STATUS_CONFIRMED) {
-                    $this->onAppointmentConfirmed($appt);
+                    $this->triggerStatusWorkflows($appt, $oldStatus);
+
+                    if ($appt->status === Appointment::STATUS_CONFIRMED) {
+                        $this->onAppointmentConfirmed($appt);
+                    }
+
+                    $this->audit->log(
+                        action: 'PAYMENT_PAID_AND_APPOINTMENT_STATUS_UPDATED',
+                        entityType: 'APPOINTMENT',
+                        entityId: $appt->id,
+                        userId: null,
+                        before: null,
+                        after: $appt->toArray(),
+                        meta: ['payment_id' => $paymentId, 'target_status' => $targetStatus]
+                    );
                 }
-
-                $this->audit->log(
-                    action: 'PAYMENT_PAID_AND_APPOINTMENT_STATUS_UPDATED',
-                    entityType: 'APPOINTMENT',
-                    entityId: $appt->id,
-                    userId: null,
-                    before: null,
-                    after: $appt->toArray(),
-                    meta: ['payment_id' => $paymentId]
-                );
             }
 
             return $payment;
@@ -313,11 +326,32 @@ class AppointmentService
             $this->lockDayAndSlot($serviceId, $providerUserId, $localDate, $startUtc, $endUtc);
             $this->assertCapacityAvailable($serviceId, $providerUserId, $localDate, $startUtc, $endUtc);
 
+            $service = BookingService::query()->findOrFail($serviceId);
+            $sp = $this->engine->getServiceProvider($serviceId, $providerUserId);
+            $settings = BookingSetting::current();
+
+            $amount = $sp ? $this->paymentService->calculateAmount($service, $sp) : 0;
+            $needsPayment = false;
+
+            if ($settings->tax_enabled && $amount > 0) {
+                $needsPayment = true;
+            } elseif ($service->payment_mode !== BookingService::PAYMENT_MODE_NONE && $amount > 0) {
+                $needsPayment = true;
+            }
+
+            if (!$status) {
+                if ($needsPayment && ($settings->tax_enabled || $service->payment_mode === BookingService::PAYMENT_MODE_REQUIRED)) {
+                    $status = Appointment::STATUS_PENDING_PAYMENT;
+                } else {
+                    $status = Appointment::STATUS_CONFIRMED;
+                }
+            }
+
             $appointment = Appointment::query()->create([
                 'service_id' => $serviceId,
                 'provider_user_id' => $providerUserId,
                 'client_id' => $clientId,
-                'status' => $status ?? Appointment::STATUS_CONFIRMED,
+                'status' => $status,
                 'start_at_utc' => $startUtc,
                 'end_at_utc' => $endUtc,
                 'created_by_type' => Appointment::CREATED_BY_OPERATOR,
@@ -325,6 +359,15 @@ class AppointmentService
                 'notes' => $notes,
                 'appointment_form_response_json' => $appointmentFormResponse,
             ]);
+
+            if ($needsPayment) {
+                $this->paymentService->createPendingPayment(
+                    $appointment->id,
+                    $clientId,
+                    $amount,
+                    $settings->currency_unit ?? config('booking.defaults.currency_unit', 'IRR')
+                );
+            }
 
             $this->triggerWorkflow('appointment_created', $appointment);
 

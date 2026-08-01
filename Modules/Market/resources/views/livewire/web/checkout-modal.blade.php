@@ -319,10 +319,10 @@
                         <div class="flex flex-col text-right">
                             <div class="flex items-baseline gap-1.5 text-[11px] text-gray-500">
                                 <span>هزینه محصولات:</span>
-                                <span class="font-bold">{{ number_format($totalAmount) }} تومان</span>
+                                <span class="font-bold">{{ number_format($totalAmount) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                 @if($shippingCost > 0)
                                     <span class="mr-1">+ هزینه ارسال:</span>
-                                    <span class="font-bold text-gray-600 dark:text-gray-300">{{ number_format($shippingCost) }} تومان</span>
+                                    <span class="font-bold text-gray-600 dark:text-gray-300">{{ number_format($shippingCost) }} {{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                 @endif
                             </div>
                             <div class="flex items-baseline mt-1">
@@ -330,7 +330,7 @@
                             </div>
                         </div>
                         <div class="text-lg font-black text-gray-900 dark:text-white">
-                            {{ number_format($totalAmount + $shippingCost) }} <span class="text-xs font-medium">تومان</span>
+                            {{ number_format($totalAmount + $shippingCost) }} <span class="text-xs font-medium">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                         </div>
                     </div>
 
@@ -811,7 +811,7 @@
                                         <span class="text-base sm:text-lg font-black text-gray-900 dark:text-white tracking-tight">
                                             {{ number_format($payableTotal) }}
                                         </span>
-                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">تومان</span>
+                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                     </div>
                                 </div>
 

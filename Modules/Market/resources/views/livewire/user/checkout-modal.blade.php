@@ -549,7 +549,7 @@
                                         <span class="text-base sm:text-lg font-black text-gray-900 dark:text-white tracking-tight">
                                             {{ number_format($payableTotal) }}
                                         </span>
-                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">تومان</span>
+                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                     </div>
                                 </div>
 

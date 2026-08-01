@@ -1,5 +1,12 @@
 @php
     /** @var \Modules\Booking\Entities\BookingForm $form */
+    if (!isset($roles)) {
+        $rolesQuery = \Spatie\Permission\Models\Role::orderBy('name');
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $rolesQuery->where('name', '!=', 'super-admin');
+        }
+        $roles = $rolesQuery->get();
+    }
     $fields = old('schema_json.fields', $form->schema_json['fields'] ?? []);
     if (!is_array($fields) || count($fields) === 0) {
     $fields = [
@@ -80,16 +87,17 @@
                     <label class="{{ $smallLabelClass }}">نوع (HTML)</label>
                     @php $fieldType = $field['type'] ?? 'text'; @endphp
                     <select name="schema_json[fields][{{ $i }}][type]" class="{{ $selectClass }} text-sm" required>
-                        <option value="text" @selected($fieldType==='text' )>text</option>
-                        <option value="number" @selected($fieldType==='number' )>number</option>
-                        <option value="email" @selected($fieldType==='email' )>email</option>
-                        <option value="tel" @selected($fieldType==='tel' )>tel</option>
-                        <option value="date" @selected($fieldType==='date' )>date</option>
-                        <option value="time" @selected($fieldType==='time' )>time</option>
-                        <option value="textarea" @selected($fieldType==='textarea' )>textarea</option>
-                        <option value="select" @selected($fieldType==='select' )>select</option>
-                        <option value="radio" @selected($fieldType==='radio' )>radio</option>
-                        <option value="checkbox" @selected($fieldType==='checkbox' )>checkbox</option>
+                        <option value="text" @selected($fieldType==='text' )>متنی / تک‌خطی (text)</option>
+                        <option value="number" @selected($fieldType==='number' )>عددی (number)</option>
+                        <option value="email" @selected($fieldType==='email' )>پست الکترونیک (email)</option>
+                        <option value="tel" @selected($fieldType==='tel' )>شماره تلفن (tel)</option>
+                        <option value="date" @selected($fieldType==='date' )>تاریخ (date)</option>
+                        <option value="time" @selected($fieldType==='time' )>زمان (time)</option>
+                        <option value="textarea" @selected($fieldType==='textarea' )>متن چندخطی / توضیحات (textarea)</option>
+                        <option value="select" @selected($fieldType==='select' )>منوی افتادنی (select)</option>
+                        <option value="radio" @selected($fieldType==='radio' )>دکمه رادیویی / تک‌انتخابی (radio)</option>
+                        <option value="checkbox" @selected($fieldType==='checkbox' )>چک‌باکس / چندانتخابی (checkbox)</option>
+                        <option value="select-user-by-role" @selected($fieldType==='select-user-by-role' )>انتخاب کاربر بر اساس نقش (select-user-by-role)</option>
                     </select>
                 </div>
 
@@ -109,6 +117,28 @@
                     <label class="{{ $smallLabelClass }}">آیکون (SVG)</label>
                     <input type="text" name="schema_json[fields][{{ $i }}][icon]" class="{{ $inputClass }} text-sm"
                            value="{{ $field['icon'] ?? '' }}" placeholder="کد SVG">
+                </div>
+
+                <div class="md:col-span-6 grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl bg-gray-100/70 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 role-settings-box {{ $fieldType === 'select-user-by-role' ? '' : 'hidden' }}">
+                    <div>
+                        <label class="{{ $smallLabelClass }}">نقش (Role)</label>
+                        <select name="schema_json[fields][{{ $i }}][role]" class="{{ $selectClass }} text-sm">
+                            <option value="">همه نقش‌ها (انتخاب نقش)</option>
+                            @foreach($roles as $role)
+                                <option value="{{ $role->name }}" @selected(($field['role'] ?? '') === $role->name)>{{ $role->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-4 pt-5 sm:col-span-2">
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" name="schema_json[fields][{{ $i }}][multiple]" value="1" @checked(!empty($field['multiple']))>
+                            انتخاب چندگانه (Multiple)
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" name="schema_json[fields][{{ $i }}][lock_current_if_role]" value="1" @checked(!empty($field['lock_current_if_role']))>
+                            قفل روی کاربر فعلی (در صورت داشتن نقش)
+                        </label>
+                    </div>
                 </div>
 
                 <div class="flex items-end gap-3 md:col-span-6">
@@ -172,12 +202,25 @@
             }
         }
 
-        if (formTypeSelect) {
-            formTypeSelect.addEventListener('change', toggleFieldsSection);
-            toggleFieldsSection();
-        }
-
         if (!container || !addBtn) return;
+
+        const roleOptionsHtml = `@foreach($roles as $role)<option value="{{ $role->name }}">{{ $role->name }}</option>@endforeach`;
+
+        container.addEventListener('change', function(e) {
+            if (e.target && e.target.name && e.target.name.includes('[type]')) {
+                const row = e.target.closest('.form-field-row');
+                if (row) {
+                    const roleBox = row.querySelector('.role-settings-box');
+                    if (roleBox) {
+                        if (e.target.value === 'select-user-by-role') {
+                            roleBox.classList.remove('hidden');
+                        } else {
+                            roleBox.classList.add('hidden');
+                        }
+                    }
+                }
+            }
+        });
 
         addBtn.addEventListener('click', function() {
             const index = Date.now();
@@ -195,16 +238,17 @@
                 <div>
                     <label class="${smallLabelClass}">نوع (HTML)</label>
                     <select name="schema_json[fields][${index}][type]" class="${selectClass}" required>
-                        <option value="text">text</option>
-                        <option value="number">number</option>
-                        <option value="email">email</option>
-                        <option value="tel">tel</option>
-                        <option value="date">date</option>
-                        <option value="time">time</option>
-                        <option value="textarea">textarea</option>
-                        <option value="select">select</option>
-                        <option value="radio">radio</option>
-                        <option value="checkbox">checkbox</option>
+                        <option value="text">متنی / تک‌خطی (text)</option>
+                        <option value="number">عددی (number)</option>
+                        <option value="email">پست الکترونیک (email)</option>
+                        <option value="tel">شماره تلفن (tel)</option>
+                        <option value="date">تاریخ (date)</option>
+                        <option value="time">زمان (time)</option>
+                        <option value="textarea">متن چندخطی / توضیحات (textarea)</option>
+                        <option value="select">منوی افتادنی (select)</option>
+                        <option value="radio">دکمه رادیویی / تک‌انتخابی (radio)</option>
+                        <option value="checkbox">چک‌باکس / چندانتخابی (checkbox)</option>
+                        <option value="select-user-by-role">انتخاب کاربر بر اساس نقش (select-user-by-role)</option>
                     </select>
                 </div>
                 <div>
@@ -213,11 +257,30 @@
                 </div>
                 <div>
                     <label class="${smallLabelClass}">گزینه‌ها (CSV)</label>
-                    <input type="text" name="schema_json[fields][${index}][options]" class="${inputClass}" placeholder="مثلاً: گزینه۱,گزینه₂">
+                    <input type="text" name="schema_json[fields][${index}][options]" class="${inputClass}" placeholder="مثلاً: گزینه۱,گزینه۲">
                 </div>
                 <div>
                     <label class="${smallLabelClass}">آیکون (SVG)</label>
                     <input type="text" name="schema_json[fields][${index}][icon]" class="${inputClass}" placeholder="کد SVG">
+                </div>
+                <div class="md:col-span-6 grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl bg-gray-100/70 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 role-settings-box hidden">
+                    <div>
+                        <label class="${smallLabelClass}">نقش (Role)</label>
+                        <select name="schema_json[fields][${index}][role]" class="${selectClass} text-sm">
+                            <option value="">همه نقش‌ها (انتخاب نقش)</option>
+                            ${roleOptionsHtml}
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-4 pt-5 sm:col-span-2">
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" name="schema_json[fields][${index}][multiple]" value="1">
+                            انتخاب چندگانه (Multiple)
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" name="schema_json[fields][${index}][lock_current_if_role]" value="1">
+                            قفل روی کاربر فعلی (در صورت داشتن نقش)
+                        </label>
+                    </div>
                 </div>
                 <div class="flex items-end gap-3 md:col-span-6">
                     <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">

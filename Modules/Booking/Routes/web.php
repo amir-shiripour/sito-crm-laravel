@@ -155,6 +155,7 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->middleware('can:booking.availability.manage');
 
         Route::get('appointments', [UserAppointmentController::class, 'index'])->name('appointments.index')->middleware('can:booking.appointments.view');
+        Route::get('schedule', [UserAppointmentController::class, 'schedule'])->name('schedule.index')->middleware('can:booking.appointments.view');
         Route::get('appointments/create', [UserAppointmentController::class, 'create'])->name('appointments.create');
         Route::post('appointments', [UserAppointmentController::class, 'store'])->name('appointments.store');
 
@@ -197,6 +198,19 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::delete('appointments/{appointment}', [UserAppointmentController::class, 'destroy'])
             ->name('appointments.destroy')
             ->middleware('can:booking.appointments.edit');
+
+        // مدیریت پرداخت‌های نوبت
+        Route::post('appointments/{appointment}/payments', [UserAppointmentController::class, 'storePayment'])
+            ->name('appointments.payments.store')
+            ->middleware('can:booking.payments.manage');
+
+        Route::patch('appointments/{appointment}/payments/{payment}', [UserAppointmentController::class, 'updatePayment'])
+            ->name('appointments.payments.update')
+            ->middleware('can:booking.payments.manage');
+
+        Route::delete('appointments/{appointment}/payments/{payment}', [UserAppointmentController::class, 'destroyPayment'])
+            ->name('appointments.payments.destroy')
+            ->middleware('can:booking.payments.manage');
 
         Route::get('settings', [UserSettingsController::class, 'edit'])->name('settings.edit')->middleware('can:booking.settings.manage');
         Route::post('settings', [UserSettingsController::class, 'update'])->name('settings.update')->middleware('can:booking.settings.manage');
