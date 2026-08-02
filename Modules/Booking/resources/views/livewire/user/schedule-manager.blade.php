@@ -252,15 +252,45 @@
                                 </div>
                                 <div>
                                     <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ $pData['provider']->name }}</h3>
-                                    <p class="text-xs font-bold mt-1 {{ $pData['policy']['is_closed'] ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400' }}">
-                                        {{ $pData['policy']['is_closed'] ? 'تعطیل' : 'حضور دارد' }}
-                                    </p>
+                                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                        <p class="text-xs font-bold {{ $pData['policy']['is_closed'] ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400' }}">
+                                            {{ $pData['policy']['is_closed'] ? 'تعطیل' : 'حضور دارد' }}
+                                        </p>
+                                        @if (!$pData['policy']['is_closed'] && !empty($pData['policy']['rule_source']))
+                                            @php
+                                                $sourceBadge = match($pData['policy']['rule_source']) {
+                                                    'SERVICE_PROVIDER' => ['label' => 'برنامه اختصاصی پزشک', 'class' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300'],
+                                                    'SERVICE' => ['label' => 'برنامه سرویس', 'class' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'],
+                                                    'EXCEPTION' => ['label' => 'استثنای تاریخی', 'class' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'],
+                                                    default => ['label' => 'برنامه عمومی سیستم', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'],
+                                                };
+                                            @endphp
+                                            <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md {{ $sourceBadge['class'] }}">
+                                                {{ $sourceBadge['label'] }}
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                             @if (!$pData['policy']['is_closed'])
-                                <div class="text-[11px] text-gray-500 dark:text-gray-400 space-y-1 font-semibold">
-                                    <p>گام زمانی: {{ $pData['effective_slot_duration'] }} دقیقه</p>
-                                    <p>ظرفیت هر بازه: {{ $pData['policy']['capacity_per_slot'] ?: 'نامحدود' }}</p>
+                                <div class="text-[11px] text-gray-500 dark:text-gray-400 space-y-1 font-semibold border-t border-gray-200 dark:border-gray-700 pt-3.5 mt-3">
+                                    <div class="flex items-center justify-between">
+                                        <span>⏱️ مدت اسلات:</span>
+                                        <span class="font-bold text-gray-800 dark:text-gray-200">{{ $pData['effective_slot_duration'] }} دقیقه</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span>👥 ظرفیت اسلات:</span>
+                                        <span class="font-bold text-gray-800 dark:text-gray-200">{{ $pData['policy']['capacity_per_slot'] ?: 'نامحدود' }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span>📅 ظرفیت کل روز:</span>
+                                        <span class="font-bold {{ $pData['daily_remaining'] === 0 ? 'text-rose-500 font-black' : 'text-gray-800 dark:text-gray-200' }}">
+                                            {{ $pData['capacity_per_day'] !== null ? $pData['capacity_per_day'] . ' نوبت' : 'نامحدود' }}
+                                            @if ($pData['capacity_per_day'] !== null)
+                                                <span class="text-[10px] text-gray-500">({{ $pData['daily_remaining'] }} مانده)</span>
+                                            @endif
+                                        </span>
+                                    </div>
                                 </div>
                             @endif
                         </div>

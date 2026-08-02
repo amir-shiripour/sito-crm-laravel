@@ -1250,6 +1250,77 @@
                 updatePreview();
             })();
 
+            // ===================== Test Payment Event Listeners =====================
+            function handleTestPayment(gateway) {
+                let testForm = document.getElementById('test-payment-form');
+                let gatewayInput = document.getElementById('test-gateway-input');
+
+                if (!testForm) {
+                    testForm = document.createElement('form');
+                    testForm.id = 'test-payment-form';
+                    testForm.action = '{{ route("settings.payment.request") }}';
+                    testForm.method = 'POST';
+                    testForm.className = 'hidden';
+
+                    const csrf = document.createElement('input');
+                    csrf.type = 'hidden';
+                    csrf.name = '_token';
+                    csrf.value = '{{ csrf_token() }}';
+                    testForm.appendChild(csrf);
+
+                    gatewayInput = document.createElement('input');
+                    gatewayInput.type = 'hidden';
+                    gatewayInput.name = 'gateway';
+                    gatewayInput.id = 'test-gateway-input';
+                    testForm.appendChild(gatewayInput);
+
+                    const amountInput = document.createElement('input');
+                    amountInput.type = 'hidden';
+                    amountInput.name = 'amount';
+                    amountInput.value = '1000';
+                    testForm.appendChild(amountInput);
+
+                    const descInput = document.createElement('input');
+                    descInput.type = 'hidden';
+                    descInput.name = 'description';
+                    descInput.value = 'تست پرداخت';
+                    testForm.appendChild(descInput);
+
+                    document.body.appendChild(testForm);
+                }
+
+                if (gatewayInput) {
+                    gatewayInput.value = gateway;
+                }
+
+                let returnUrlInput = document.getElementById('test-return-url-input');
+                if (!returnUrlInput) {
+                    returnUrlInput = document.createElement('input');
+                    returnUrlInput.type = 'hidden';
+                    returnUrlInput.name = 'return_url';
+                    returnUrlInput.id = 'test-return-url-input';
+                    testForm.appendChild(returnUrlInput);
+                }
+                returnUrlInput.value = window.location.href;
+
+                testForm.submit();
+            }
+
+            const testZarinpalBtn = document.getElementById('test-zarinpal-btn');
+            if (testZarinpalBtn) {
+                testZarinpalBtn.addEventListener('click', () => handleTestPayment('zarinpal'));
+            }
+
+            const testZibalBtn = document.getElementById('test-zibal-btn');
+            if (testZibalBtn) {
+                testZibalBtn.addEventListener('click', () => handleTestPayment('zibal'));
+            }
+
+            const testBehpardakhtBtn = document.getElementById('test-behpardakht-btn');
+            if (testBehpardakhtBtn) {
+                testBehpardakhtBtn.addEventListener('click', () => handleTestPayment('behpardakht'));
+            }
+
             // اجرای رندرهای اولیه
             renderPosDevices();
             renderBankAccounts();

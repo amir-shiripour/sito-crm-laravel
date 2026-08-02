@@ -20,6 +20,12 @@ class PaymentController extends Controller
         $gateway = $request->input('gateway', 'zarinpal');
         $description = $request->input('description', 'پرداخت تست');
 
+        // Store origin URL to return to after payment callback
+        $returnUrl = $request->input('return_url') ?: url()->previous();
+        if ($returnUrl) {
+            session(['payment_test_return_url' => $returnUrl]);
+        }
+
         try {
             $paymentService = new PaymentService($gateway);
 
@@ -67,7 +73,7 @@ class PaymentController extends Controller
             $status = $request->query('Status');
 
             if (!$authority) {
-                return redirect()->route('settings.index')->with('error', 'اطلاعات پرداخت معتبر نیست.');
+                return $this->redirectBackToSource('error', 'اطلاعات پرداخت معتبر نیست.');
             }
 
             if ($status === 'NOK') {
@@ -76,7 +82,7 @@ class PaymentController extends Controller
                 if ($payment) {
                     $payment->update(['status' => 'failed']);
                 }
-                return redirect()->route('settings.index')->with('error', 'پرداخت توسط کاربر لغو شد.');
+                return $this->redirectBackToSource('error', 'پرداخت توسط کاربر لغو شد.');
             }
 
             $dataToVerify = [
@@ -89,7 +95,7 @@ class PaymentController extends Controller
             $success = $request->query('success');
 
             if (!$authority) {
-                return redirect()->route('settings.index')->with('error', 'اطلاعات پرداخت معتبر نیست.');
+                return $this->redirectBackToSource('error', 'اطلاعات پرداخت معتبر نیست.');
             }
 
             if ($success != 1) {
@@ -98,19 +104,19 @@ class PaymentController extends Controller
                 if ($payment) {
                     $payment->update(['status' => 'failed']);
                 }
-                return redirect()->route('settings.index')->with('error', 'پرداخت توسط کاربر لغو شد یا ناموفق بود.');
+                return $this->redirectBackToSource('error', 'پرداخت توسط کاربر لغو شد یا ناموفق بود.');
             }
 
             $dataToVerify = $request->query(); // Pass all query params
         } else {
-            return redirect()->route('settings.index')->with('error', 'درگاه پرداخت ناشناخته است.');
+            return $this->redirectBackToSource('error', 'درگاه پرداخت ناشناخته است.');
         }
 
         // Find the pending payment using the authority/trackId
         $payment = Payment::where('authority', $authority)->where('status', 'pending')->first();
 
         if (!$payment) {
-            return redirect()->route('settings.index')->with('error', 'تراکنش یافت نشد یا قبلاً بررسی شده است.');
+            return $this->redirectBackToSource('error', 'تراکنش یافت نشد یا قبلاً بررسی شده است.');
         }
 
         // Add amount to data for verification (required by both gateways in our service)
@@ -127,18 +133,31 @@ class PaymentController extends Controller
                     'ref_id' => $result['ref_id']
                 ]);
 
-                // Here you would typically trigger events (e.g., mark invoice as paid, send email)
-
-                return redirect()->route('settings.index')->with('success', 'پرداخت با موفقیت انجام شد. کد پیگیری: ' . $result['ref_id']);
+                return $this->redirectBackToSource('success', 'پرداخت با موفقیت انجام شد. کد پیگیری: ' . $result['ref_id']);
             } else {
                 // Payment failed during verification
                 $payment->update(['status' => 'failed']);
                 Log::error('Payment verification failed from gateway', ['result' => $result]);
-                return redirect()->route('settings.index')->with('error', 'خطا در تایید پرداخت: ' . ($result['message'] ?? 'خطای ناشناخته'));
+                return $this->redirectBackToSource('error', 'خطا در تایید پرداخت: ' . ($result['message'] ?? 'خطای ناشناخته'));
             }
         } catch (\Exception $e) {
             Log::error('Payment verify exception: ' . $e->getMessage());
-            return redirect()->route('settings.index')->with('error', 'خطا در سیستم تایید پرداخت: ' . $e->getMessage());
+            return $this->redirectBackToSource('error', 'خطا در سیستم تایید پرداخت: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Helper to redirect back to the initiating page (e.g. /user/settings/payment or /settings#payment)
+     */
+    protected function redirectBackToSource(string $type, string $message)
+    {
+        $returnUrl = session('payment_test_return_url');
+        session()->forget('payment_test_return_url');
+
+        if ($returnUrl && filter_var($returnUrl, FILTER_VALIDATE_URL)) {
+            return redirect()->to($returnUrl)->with($type, $message);
+        }
+
+        return redirect()->route('settings.index')->with($type, $message);
     }
 }
