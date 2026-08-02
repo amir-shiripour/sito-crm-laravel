@@ -39,7 +39,8 @@ class ClientProfileController extends Controller
 
         // 2. منطق بررسی اینکه آیا شماره تماس به صورت موقت قابل ویرایش است (نیاز به OTP دارد)
         $authMode = ClientSetting::getValue('auth.mode', 'password');
-        $smsModuleAvailable = class_exists(\Modules\Sms\Entities\SmsOtp::class);
+        $smsModuleAvailable = class_exists(\Modules\Sms\Entities\SmsOtp::class)
+            && \Illuminate\Support\Facades\Schema::hasTable('sms_otps');
 
         if (in_array($authMode, ['otp', 'both']) && $smsModuleAvailable && !in_array('phone', $lockedFields)) {
             $lockedFields[] = 'phone';
@@ -98,7 +99,8 @@ class ClientProfileController extends Controller
         }
 
         $authMode = ClientSetting::getValue('auth.mode', 'password');
-        $smsModuleAvailable = class_exists(\Modules\Sms\Entities\SmsOtp::class);
+        $smsModuleAvailable = class_exists(\Modules\Sms\Entities\SmsOtp::class)
+            && \Illuminate\Support\Facades\Schema::hasTable('sms_otps');
         if (in_array($authMode, ['otp', 'both']) && $smsModuleAvailable && !in_array('phone', $lockedFields)) {
             $lockedFields[] = 'phone';
         }

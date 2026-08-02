@@ -38,6 +38,7 @@ class BookingEngine
      *   'slot_duration_minutes' => int,
      *   'capacity_per_slot' => int, // 0 => unlimited
      *   'capacity_per_day' => ?int, // null => unlimited
+     *   'rule_source' => string, // GLOBAL, SERVICE, SERVICE_PROVIDER, EXCEPTION
      * ]
      */
     public function resolveDayPolicy(int $serviceId, int $providerUserId, Carbon $localDate): array
@@ -53,10 +54,12 @@ class BookingEngine
         $policy = [
             'is_closed' => true,
             'work_windows' => [],
+            'inherited_work_windows' => [],
             'breaks' => [],
             'slot_duration_minutes' => (int)($settings->default_slot_duration_minutes ?? config('booking.defaults.slot_duration_minutes', 30)),
             'capacity_per_slot' => (int)($settings->default_capacity_per_slot ?? config('booking.defaults.capacity_per_slot', 1)),
             'capacity_per_day' => $settings->default_capacity_per_day ?? config('booking.defaults.capacity_per_day', null),
+            'rule_source' => 'GLOBAL',
         ];
 
         $svc = BookingService::query()->find($serviceId);
@@ -95,15 +98,17 @@ class BookingEngine
             ->where('weekday', $weekday)
             ->first();
 
-        $policy = $this->applyRule($policy, $globalRule);
+        $policy = $this->applyRule($policy, $globalRule, 'GLOBAL');
 
-        $serviceRule = BookingAvailabilityRule::query()
-            ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
-            ->where('scope_id', $serviceId)
-            ->where('weekday', $weekday)
-            ->first();
+        if ($svc->custom_schedule_enabled) {
+            $serviceRule = BookingAvailabilityRule::query()
+                ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
+                ->where('scope_id', $serviceId)
+                ->where('weekday', $weekday)
+                ->first();
 
-        $policy = $this->applyRule($policy, $serviceRule);
+            $policy = $this->applyRule($policy, $serviceRule, 'SERVICE');
+        }
 
         // Provider rule stored by UI: scope_id = provider_user_id
         $providerUserRule = BookingAvailabilityRule::query()
@@ -112,7 +117,7 @@ class BookingEngine
             ->where('weekday', $weekday)
             ->first();
 
-        $policy = $this->applyRule($policy, $providerUserRule);
+        $policy = $this->applyRule($policy, $providerUserRule, 'SERVICE_PROVIDER');
 
         // Optional more-specific layer: scope_id = booking_service_providers.id (pivot)
         $providerPivotRule = BookingAvailabilityRule::query()
@@ -121,7 +126,7 @@ class BookingEngine
             ->where('weekday', $weekday)
             ->first();
 
-        $policy = $this->applyRule($policy, $providerPivotRule);
+        $policy = $this->applyRule($policy, $providerPivotRule, 'SERVICE_PROVIDER');
 
         // --------------------
         // Exceptions: GLOBAL -> SERVICE -> PROVIDER(USER) -> PROVIDER(PIVOT)  (last wins)
@@ -134,15 +139,17 @@ class BookingEngine
             ->whereDate('local_date', $localDateStr)
             ->first();
 
-        $policy = $this->applyException($policy, $globalEx);
+        $policy = $this->applyException($policy, $globalEx, 'EXCEPTION');
 
-        $serviceEx = BookingAvailabilityException::query()
-            ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE)
-            ->where('scope_id', $serviceId)
-            ->whereDate('local_date', $localDateStr)
-            ->first();
+        if ($svc->custom_schedule_enabled) {
+            $serviceEx = BookingAvailabilityException::query()
+                ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE)
+                ->where('scope_id', $serviceId)
+                ->whereDate('local_date', $localDateStr)
+                ->first();
 
-        $policy = $this->applyException($policy, $serviceEx);
+            $policy = $this->applyException($policy, $serviceEx, 'EXCEPTION');
+        }
 
         // Provider exception stored by UI: scope_id = provider_user_id
         $providerUserEx = BookingAvailabilityException::query()
@@ -151,7 +158,7 @@ class BookingEngine
             ->whereDate('local_date', $localDateStr)
             ->first();
 
-        $policy = $this->applyException($policy, $providerUserEx);
+        $policy = $this->applyException($policy, $providerUserEx, 'EXCEPTION');
 
         // Optional more-specific: scope_id = booking_service_providers.id (pivot)
         $providerPivotEx = BookingAvailabilityException::query()
@@ -160,7 +167,7 @@ class BookingEngine
             ->whereDate('local_date', $localDateStr)
             ->first();
 
-        $policy = $this->applyException($policy, $providerPivotEx);
+        $policy = $this->applyException($policy, $providerPivotEx, 'EXCEPTION');
 
         // --------------------
         // Normalize
@@ -188,7 +195,7 @@ class BookingEngine
         return $policy;
     }
 
-    protected function applyRule(array $policy, ?BookingAvailabilityRule $rule): array
+    protected function applyRule(array $policy, ?BookingAvailabilityRule $rule, string $scopeLabel = 'GLOBAL'): array
     {
         if (!$rule) {
             return $policy;
@@ -198,6 +205,7 @@ class BookingEngine
             $policy['is_closed'] = true;
             $policy['work_windows'] = [];
             $policy['breaks'] = [];
+            $policy['rule_source'] = $scopeLabel;
             return $policy;
         }
 
@@ -208,6 +216,16 @@ class BookingEngine
                 'start' => substr((string)$rule->work_start_local, 0, 5),
                 'end' => substr((string)$rule->work_end_local, 0, 5),
             ]];
+            $policy['rule_source'] = $scopeLabel;
+        } elseif ($policy['is_closed'] && !empty($policy['inherited_work_windows'])) {
+            // Rule explicitly opened day (is_closed = false), restore inherited windows
+            $policy['is_closed'] = false;
+            $policy['work_windows'] = $policy['inherited_work_windows'];
+            $policy['rule_source'] = $scopeLabel;
+        }
+
+        if (!empty($policy['work_windows'])) {
+            $policy['inherited_work_windows'] = $policy['work_windows'];
         }
 
         // Breaks override only if not null (to allow [] as "no breaks")
@@ -231,7 +249,7 @@ class BookingEngine
         return $policy;
     }
 
-    protected function applyException(array $policy, ?BookingAvailabilityException $ex): array
+    protected function applyException(array $policy, ?BookingAvailabilityException $ex, string $scopeLabel = 'EXCEPTION'): array
     {
         if (!$ex) {
             return $policy;
@@ -241,6 +259,7 @@ class BookingEngine
             $policy['is_closed'] = true;
             $policy['work_windows'] = [];
             $policy['breaks'] = [];
+            $policy['rule_source'] = $scopeLabel;
             return $policy;
         }
 
@@ -250,6 +269,7 @@ class BookingEngine
 
             // اگر Exception پنجره کاری داد ولی خالی بود => بسته
             $policy['is_closed'] = empty($policy['work_windows']);
+            $policy['rule_source'] = $scopeLabel;
         }
 
         if ($ex->override_breaks_json !== null) {

@@ -377,7 +377,7 @@ class PaymentService
             if (isset($result['result']) && ($result['result'] == 100 || $result['result'] == 101)) {
                 return [
                     'success'   => true,
-                    'ref_id'    => $result['refNumber'] ?? null, // Zibal returns refNumber
+                    'ref_id'    => !empty($result['refNumber']) ? $result['refNumber'] : ($result['trackId'] ?? $trackId),
                     'authority' => $trackId,
                     'message'   => 'Payment successfully verified.',
                 ];

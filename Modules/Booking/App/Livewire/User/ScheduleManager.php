@@ -72,19 +72,23 @@ class ScheduleManager extends Component
     {
         if ($this->selectedServiceId) {
             $service = BookingService::find($this->selectedServiceId);
-            if ($service && !$service->custom_schedule_enabled) {
-                $this->timeStepMinutes = max(5, (int)($service->duration_minutes ?? 30));
+            if ($service) {
+                $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+                $localDate = $this->getGregorianCarbon() ?? now($scheduleTz)->startOfDay();
+                $bookingEngine = new BookingEngine();
+                $policy = $bookingEngine->resolveDayPolicy($service->id, Auth::id() ?? 1, $localDate);
+                if (!empty($policy['slot_duration_minutes'])) {
+                    $this->timeStepMinutes = max(5, (int)$policy['slot_duration_minutes']);
+                }
             }
         }
     }
 
     public function updatedTimeStepMinutes($val): void
     {
-        // Check if current service locks step
         if ($this->selectedServiceId) {
             $service = BookingService::find($this->selectedServiceId);
             if ($service && !$service->custom_schedule_enabled) {
-                $this->timeStepMinutes = max(5, (int)($service->duration_minutes ?? 30));
                 $this->toastError = 'امکان تغییر گام زمانی برای این سرویس وجود ندارد (سرویس سفارشی نیست).';
                 return;
             }
@@ -103,7 +107,6 @@ class ScheduleManager extends Component
         if ($this->selectedServiceId) {
             $service = BookingService::find($this->selectedServiceId);
             if ($service && !$service->custom_schedule_enabled) {
-                $this->timeStepMinutes = max(5, (int)($service->duration_minutes ?? 30));
                 $this->toastError = 'امکان تغییر گام زمانی برای این سرویس وجود ندارد (سرویس سفارشی نیست).';
                 return;
             }
@@ -223,7 +226,65 @@ class ScheduleManager extends Component
                 return;
             }
 
+            // Check if within work windows
+            if (!empty($policy['work_windows'])) {
+                $inWorkWindow = false;
+                foreach ($policy['work_windows'] as $win) {
+                    [$wSH, $wSM] = explode(':', $win['start']);
+                    [$wEH, $wEM] = explode(':', $win['end']);
+                    $winStart = $localDate->copy()->setTime((int)$wSH, (int)$wSM, 0);
+                    $winEnd = $localDate->copy()->setTime((int)$wEH, (int)$wEM, 0);
+                    if ($newStartLocal->gte($winStart) && $newEndLocal->lte($winEnd)) {
+                        $inWorkWindow = true;
+                        break;
+                    }
+                }
+                if (!$inWorkWindow) {
+                    $this->toastError = 'ساعت انتخابی خارج از ساعات کاری پزشک در این روز است.';
+                    return;
+                }
+            }
+
+            // Check if in break
+            if (!empty($policy['breaks'])) {
+                foreach ($policy['breaks'] as $b) {
+                    $bStartStr = $b['start_local'] ?? null;
+                    $bEndStr = $b['end_local'] ?? null;
+                    if ($bStartStr && $bEndStr) {
+                        [$bSH, $bSM] = explode(':', $bStartStr);
+                        [$bEH, $bEM] = explode(':', $bEndStr);
+                        $bStart = $localDate->copy()->setTime((int)$bSH, (int)$bSM, 0);
+                        $bEnd = $localDate->copy()->setTime((int)$bEH, (int)$bEM, 0);
+                        if ($newStartLocal->lt($bEnd) && $newEndLocal->gt($bStart)) {
+                            $this->toastError = 'ساعت انتخابی با زمان استراحت پزشک تداخل دارد.';
+                            return;
+                        }
+                    }
+                }
+            }
+
             $capacityPerSlot = (int)($policy['capacity_per_slot'] ?? 0);
+            $capacityPerDay = $policy['capacity_per_day'] ?? null;
+
+            if ($capacityPerDay !== null && (int)$capacityPerDay > 0) {
+                $startUtcOfDay = $localDate->copy()->timezone('UTC');
+                $endUtcOfDay = $localDate->copy()->endOfDay()->timezone('UTC');
+                $dailyBookedCount = Appointment::query()
+                    ->where('provider_user_id', $newProviderId)
+                    ->where('id', '!=', $appointmentId)
+                    ->whereNotIn('status', [
+                        Appointment::STATUS_CANCELED_BY_ADMIN,
+                        Appointment::STATUS_CANCELED_BY_CLIENT,
+                    ])
+                    ->where('start_at_utc', '<=', $endUtcOfDay)
+                    ->where('end_at_utc', '>=', $startUtcOfDay)
+                    ->count();
+
+                if ($dailyBookedCount >= (int)$capacityPerDay) {
+                    $this->toastError = sprintf('ظرفیت کل روزانه پزشک تکمیل است (حداکثر %d نوبت در روز).', (int)$capacityPerDay);
+                    return;
+                }
+            }
 
             $existingOverlapCount = Appointment::query()
                 ->where('provider_user_id', $newProviderId)
@@ -284,7 +345,15 @@ class ScheduleManager extends Component
 
         if (!empty($startTimeStr)) {
             [$h, $m] = explode(':', $startTimeStr);
-            $dur = $this->timeStepMinutes > 0 ? $this->timeStepMinutes : 30;
+            $dur = 30;
+            if ($this->modalServiceId && $this->modalProviderId) {
+                $bookingEngine = new BookingEngine();
+                $localDate = $this->getGregorianCarbon() ?? now();
+                $pol = $bookingEngine->resolveDayPolicy($this->modalServiceId, $this->modalProviderId, $localDate);
+                $dur = max(5, (int)($pol['slot_duration_minutes'] ?? 30));
+            } elseif ($this->timeStepMinutes > 0) {
+                $dur = $this->timeStepMinutes;
+            }
             $startCb = Carbon::createFromTime((int)$h, (int)$m)->addMinutes($dur);
             $this->modalEndTime = $startCb->format('H:i');
         } else {
@@ -333,6 +402,35 @@ class ScheduleManager extends Component
                 return;
             }
 
+            $bookingEngine = new BookingEngine();
+            $policy = $bookingEngine->resolveDayPolicy($this->modalServiceId, $this->modalProviderId, $localDate);
+
+            if ($policy['is_closed']) {
+                $this->modalError = 'پزشک انتخابی در این روز برنامه کاری ندارد.';
+                return;
+            }
+
+            // Check capacity per day
+            $capacityPerDay = $policy['capacity_per_day'] ?? null;
+            if ($capacityPerDay !== null && (int)$capacityPerDay > 0) {
+                $startUtcOfDay = $localDate->copy()->timezone('UTC');
+                $endUtcOfDay = $localDate->copy()->endOfDay()->timezone('UTC');
+                $dailyBookedCount = Appointment::query()
+                    ->where('provider_user_id', $this->modalProviderId)
+                    ->whereNotIn('status', [
+                        Appointment::STATUS_CANCELED_BY_ADMIN,
+                        Appointment::STATUS_CANCELED_BY_CLIENT,
+                    ])
+                    ->where('start_at_utc', '<=', $endUtcOfDay)
+                    ->where('end_at_utc', '>=', $startUtcOfDay)
+                    ->count();
+
+                if ($dailyBookedCount >= (int)$capacityPerDay) {
+                    $this->modalError = sprintf('ظرفیت کل روزانه پزشک تکمیل است (حداکثر %d نوبت در روز).', (int)$capacityPerDay);
+                    return;
+                }
+            }
+
             [$sH, $sM] = explode(':', $this->modalStartTime);
             $startLocal = $localDate->copy()->setTime((int)$sH, (int)$sM, 0);
 
@@ -340,8 +438,7 @@ class ScheduleManager extends Component
                 [$eH, $eM] = explode(':', $this->modalEndTime);
                 $endLocal = $localDate->copy()->setTime((int)$eH, (int)$eM, 0);
             } else {
-                $service = BookingService::find($this->modalServiceId);
-                $dur = $service?->duration_minutes ?? $this->timeStepMinutes;
+                $dur = max(5, (int)($policy['slot_duration_minutes'] ?? 30));
                 $endLocal = $startLocal->copy()->addMinutes($dur);
             }
 
@@ -555,6 +652,21 @@ class ScheduleManager extends Component
         $maxEndMinutes = 20 * 60;
 
         foreach ($providers as $p) {
+            $svcId = $this->selectedServiceId;
+            if (!$svcId) {
+                $spRow = BookingServiceProvider::where('provider_user_id', $p->id)->where('is_active', true)->first();
+                $svcId = $spRow?->service_id ?? ($services->first()?->id ?? 1);
+            }
+            $pPol = $bookingEngine->resolveDayPolicy($svcId, (int)$p->id, $localDate);
+            if (!$pPol['is_closed'] && !empty($pPol['work_windows'])) {
+                foreach ($pPol['work_windows'] as $win) {
+                    [$wSH, $wSM] = explode(':', $win['start']);
+                    [$wEH, $wEM] = explode(':', $win['end']);
+                    $minStartMinutes = min($minStartMinutes, ((int)$wSH * 60) + (int)$wSM);
+                    $maxEndMinutes = max($maxEndMinutes, ((int)$wEH * 60) + (int)$wEM);
+                }
+            }
+
             $pAppts = $allAppointments->where('provider_user_id', $p->id);
             foreach ($pAppts as $apt) {
                 $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
@@ -603,15 +715,25 @@ class ScheduleManager extends Component
 
             $policy = $bookingEngine->resolveDayPolicy($serviceId, (int)$provider->id, $localDate);
 
-            // Effective Slot Duration
-            $effectiveSlotDuration = $isStepLocked
-                ? max(5, (int)($activeService->duration_minutes ?? 30))
-                : ($this->timeStepMinutes > 0 ? $this->timeStepMinutes : max(5, (int)($policy['slot_duration_minutes'] ?? 30)));
+            // Effective Slot Duration: use timeStepMinutes when unlocked so UI toolbar step changes take immediate effect
+            if ($isStepLocked) {
+                $effectiveSlotDuration = max(5, (int)($policy['slot_duration_minutes'] ?? 30));
+            } else {
+                $effectiveSlotDuration = max(5, (int)($this->timeStepMinutes > 0 ? $this->timeStepMinutes : ($policy['slot_duration_minutes'] ?? 30)));
+            }
 
             $capacityPerSlot = (int)($policy['capacity_per_slot'] ?? 1);
+            $capacityPerDay = $policy['capacity_per_day'] ?? null;
             $workWindows = $policy['work_windows'] ?? [];
             $breaks = $policy['breaks'] ?? [];
             $isClosed = $policy['is_closed'] || empty($workWindows);
+
+            // Total booked appointments for this provider today
+            $providerAppointmentsToday = $allAppointments->where('provider_user_id', $provider->id);
+            $dailyBookedTotal = $providerAppointmentsToday->count();
+            $dailyRemaining = ($capacityPerDay !== null && (int)$capacityPerDay > 0)
+                ? max(0, (int)$capacityPerDay - $dailyBookedTotal)
+                : null;
 
             // Dynamic Slots for Grid View
             $providerSlots = [];
@@ -667,9 +789,20 @@ class ScheduleManager extends Component
                         }
 
                         $bookedCount = count($formattedSlotAppts);
-                        $remainingCap = $capacityPerSlot > 0 ? max(0, $capacityPerSlot - $bookedCount) : null;
-                        if (!$inBreak && $remainingCap !== null) {
-                            $totalRemainingCapacitySum += $remainingCap;
+                        $slotRemaining = $capacityPerSlot > 0 ? max(0, $capacityPerSlot - $bookedCount) : null;
+
+                        if ($dailyRemaining !== null) {
+                            if ($slotRemaining === null) {
+                                $slotRemaining = $dailyRemaining;
+                            } else {
+                                $slotRemaining = min($slotRemaining, $dailyRemaining);
+                            }
+                        }
+
+                        $isFull = ($capacityPerSlot > 0 && $bookedCount >= $capacityPerSlot) || ($dailyRemaining !== null && $dailyRemaining <= 0);
+
+                        if (!$inBreak && $slotRemaining !== null) {
+                            $totalRemainingCapacitySum += $slotRemaining;
                         }
 
                         $providerSlots[] = [
@@ -678,8 +811,8 @@ class ScheduleManager extends Component
                             'in_break' => $inBreak,
                             'capacity' => $capacityPerSlot,
                             'booked_count' => $bookedCount,
-                            'remaining_capacity' => $remainingCap,
-                            'is_full' => $capacityPerSlot > 0 && $bookedCount >= $capacityPerSlot,
+                            'remaining_capacity' => $slotRemaining,
+                            'is_full' => $isFull,
                             'appointments' => $formattedSlotAppts,
                         ];
 
@@ -772,6 +905,9 @@ class ScheduleManager extends Component
             $providerSchedules[] = [
                 'provider' => $provider,
                 'policy' => $policy,
+                'capacity_per_day' => $capacityPerDay,
+                'daily_booked' => $dailyBookedTotal,
+                'daily_remaining' => $dailyRemaining,
                 'effective_slot_duration' => $effectiveSlotDuration,
                 'slots' => $providerSlots,
                 'appointments' => $formattedAppointments,

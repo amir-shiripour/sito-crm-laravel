@@ -47,8 +47,9 @@ class ClientAuthSettings extends Component
 
     public function mount()
     {
-        // آیا ماژول SMS نصب است؟
-        $this->smsModuleAvailable = class_exists(\Modules\Sms\Services\SmsManager::class);
+        // آیا ماژول SMS نصب و جداول آن موجود است؟
+        $this->smsModuleAvailable = class_exists(\Modules\Sms\Services\SmsManager::class)
+            && \Illuminate\Support\Facades\Schema::hasTable('sms_gateway_settings');
 
         if ($this->smsModuleAvailable && class_exists(\Modules\Sms\Entities\SmsGatewaySetting::class)) {
             $user = auth()->user();

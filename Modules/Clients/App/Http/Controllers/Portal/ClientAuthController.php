@@ -26,7 +26,8 @@ class ClientAuthController extends Controller
         $otpMaxRequests    = (int) ClientSetting::getValue('auth.otp_max_requests', 3);
 
         // اگر sms نیست، اجباراً password
-        $smsAvailable = class_exists(\Modules\Sms\Services\SmsManager::class);
+        $smsAvailable = class_exists(\Modules\Sms\Services\SmsManager::class)
+            && \Illuminate\Support\Facades\Schema::hasTable('sms_gateway_settings');
         if (! $smsAvailable) {
             $mode = 'password';
             $defaultLogin = 'password';
@@ -240,7 +241,7 @@ class ClientAuthController extends Controller
 
         // پترن OTP کلاینت از تنظیمات SMS (آخرین رکورد)
         $patternId = null;
-        if (class_exists(SmsGatewaySetting::class)) {
+        if (class_exists(SmsGatewaySetting::class) && \Illuminate\Support\Facades\Schema::hasTable('sms_gateway_settings')) {
             $globalSetting = SmsGatewaySetting::query()->orderByDesc('id')->first();
             $patternId = data_get($globalSetting, 'config.client_otp_pattern');
         }
