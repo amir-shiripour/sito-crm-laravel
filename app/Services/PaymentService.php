@@ -14,9 +14,9 @@ class PaymentService
     protected $callbackUrl;
     protected $currency;
 
-    public function __construct(string $gateway)
+    public function __construct(?string $gateway = 'zarinpal')
     {
-        $this->gateway = $gateway;
+        $this->gateway = $gateway ?: 'zarinpal';
         $this->loadGatewaySettings();
     }
 

@@ -718,10 +718,4 @@
                 </div>
             </div>
             
-            <form id="test-payment-form" action="{{ route('settings.payment.request') }}" method="POST" class="hidden">
-                @csrf
-                <input type="hidden" name="gateway" id="test-gateway-input" value="">
-                <input type="hidden" name="amount" value="1000">
-                <input type="hidden" name="description" value="تست پرداخت">
-            </form>
             </div>
