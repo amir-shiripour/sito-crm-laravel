@@ -17,7 +17,7 @@ class PaymentController extends Controller
     {
         // This is a dummy example. In a real scenario, you'd get the amount from an order/invoice.
         $amount = $request->input('amount', 1000); // Toman
-        $gateway = $request->input('gateway', 'zarinpal');
+        $gateway = $request->input('gateway') ?: 'zarinpal';
         $description = $request->input('description', 'پرداخت تست');
 
         // Store origin URL to return to after payment callback
