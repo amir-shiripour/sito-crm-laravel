@@ -979,8 +979,16 @@ class WorkflowController extends Controller
         }
         $clientIdsSubquery = $visibleClientsQuery->select('id');
 
+        // Helper filter for graphical canvas workflows that are not automatic system processes
+        $canvasWorkflowFilter = function($wQuery) {
+            $wQuery->whereHas('nodes')
+                   ->where('key', 'not like', 'system_%')
+                   ->where('key', 'not like', 'auto_%');
+        };
+
         // 2. Fetch workflow instances related to these clients
         $query = \Modules\Workflows\Entities\WorkflowInstance::query()
+            ->whereHas('workflow', $canvasWorkflowFilter)
             ->where(function($q) use ($clientIdsSubquery) {
                 $q->where(function($q1) use ($clientIdsSubquery) {
                     $q1->where('related_type', 'CLIENT')
@@ -1111,49 +1119,60 @@ class WorkflowController extends Controller
 
         // Get total stats for the active filters
         $stats = [
-            'active' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'ACTIVE')->where(function($q) use ($clientIdsSubquery) {
-                $q->where(function($q1) use ($clientIdsSubquery) {
-                    $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
-                })->orWhere(function($q2) use ($clientIdsSubquery) {
-                    $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                        $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
+            'active' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'ACTIVE')
+                ->whereHas('workflow', $canvasWorkflowFilter)
+                ->where(function($q) use ($clientIdsSubquery) {
+                    $q->where(function($q1) use ($clientIdsSubquery) {
+                        $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
+                    })->orWhere(function($q2) use ($clientIdsSubquery) {
+                        $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                            $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
+                        });
+                    })->orWhere(function($q3) use ($clientIdsSubquery) {
+                        $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                            $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
+                        });
                     });
-                })->orWhere(function($q3) use ($clientIdsSubquery) {
-                    $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                        $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
+                })->count(),
+            'completed' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'COMPLETED')
+                ->whereHas('workflow', $canvasWorkflowFilter)
+                ->where(function($q) use ($clientIdsSubquery) {
+                    $q->where(function($q1) use ($clientIdsSubquery) {
+                        $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
+                    })->orWhere(function($q2) use ($clientIdsSubquery) {
+                        $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                            $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
+                        });
+                    })->orWhere(function($q3) use ($clientIdsSubquery) {
+                        $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                            $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
+                        });
                     });
-                });
-            })->count(),
-            'completed' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'COMPLETED')->where(function($q) use ($clientIdsSubquery) {
-                $q->where(function($q1) use ($clientIdsSubquery) {
-                    $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
-                })->orWhere(function($q2) use ($clientIdsSubquery) {
-                    $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                        $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
+                })->count(),
+            'canceled' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'CANCELED')
+                ->whereHas('workflow', $canvasWorkflowFilter)
+                ->where(function($q) use ($clientIdsSubquery) {
+                    $q->where(function($q1) use ($clientIdsSubquery) {
+                        $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
+                    })->orWhere(function($q2) use ($clientIdsSubquery) {
+                        $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                            $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
+                        });
+                    })->orWhere(function($q3) use ($clientIdsSubquery) {
+                        $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
+                            $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
+                        });
                     });
-                })->orWhere(function($q3) use ($clientIdsSubquery) {
-                    $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                        $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
-                    });
-                });
-            })->count(),
-            'canceled' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'CANCELED')->where(function($q) use ($clientIdsSubquery) {
-                $q->where(function($q1) use ($clientIdsSubquery) {
-                    $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
-                })->orWhere(function($q2) use ($clientIdsSubquery) {
-                    $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                        $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
-                    });
-                })->orWhere(function($q3) use ($clientIdsSubquery) {
-                    $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                        $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
-                    });
-                });
-            })->count(),
+                })->count(),
         ];
 
         // Available workflows for dropdown
-        $workflows = \Modules\Workflows\Entities\Workflow::where('is_active', true)->select(['id', 'name'])->get();
+        $workflows = \Modules\Workflows\Entities\Workflow::where('is_active', true)
+            ->whereHas('nodes')
+            ->where('key', 'not like', 'system_%')
+            ->where('key', 'not like', 'auto_%')
+            ->select(['id', 'name'])
+            ->get();
 
         return response()->json([
             'success' => true,

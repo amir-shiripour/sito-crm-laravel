@@ -25,6 +25,7 @@ class ScheduleManager extends Component
     public string $statusFilter = '';
     public int $timeStepMinutes = 30; // Custom inputtable step
     public string $viewMode = 'grid'; // 'grid' or 'timeline'
+    public string $calendarView = 'day'; // 'day', 'week', 'month'
 
     // Quick Creation Modal State
     public bool $showModal = false;
@@ -94,11 +95,15 @@ class ScheduleManager extends Component
             }
         }
 
+        if ($val === '' || $val === null) {
+            return;
+        }
+
         $v = (int)$val;
-        if ($v < 5) {
-            $this->timeStepMinutes = 5;
-        } elseif ($v > 240) {
-            $this->timeStepMinutes = 240;
+        if ($v >= 5 && $v <= 480) {
+            $this->timeStepMinutes = $v;
+        } elseif ($v > 480) {
+            $this->timeStepMinutes = 480;
         }
     }
 
@@ -111,7 +116,7 @@ class ScheduleManager extends Component
                 return;
             }
         }
-        $this->timeStepMinutes = max(5, min(240, $step));
+        $this->timeStepMinutes = max(5, min(480, $step));
     }
 
     public function setViewMode(string $mode): void
@@ -125,6 +130,41 @@ class ScheduleManager extends Component
     {
         $this->toastSuccess = null;
         $this->toastError = null;
+    }
+
+    public function setCalendarView(string $view): void
+    {
+        if (in_array($view, ['day', 'week', 'month'])) {
+            $this->calendarView = $view;
+        }
+    }
+
+    public function goToDay(string $dateJalali): void
+    {
+        $this->selectedDateJalali = $dateJalali;
+        $this->calendarView = 'day';
+    }
+
+    public function previousPeriod(): void
+    {
+        if ($this->calendarView === 'week') {
+            $this->previousWeek();
+        } elseif ($this->calendarView === 'month') {
+            $this->previousMonth();
+        } else {
+            $this->previousDay();
+        }
+    }
+
+    public function nextPeriod(): void
+    {
+        if ($this->calendarView === 'week') {
+            $this->nextWeek();
+        } elseif ($this->calendarView === 'month') {
+            $this->nextMonth();
+        } else {
+            $this->nextDay();
+        }
     }
 
     public function previousDay(): void
@@ -142,6 +182,62 @@ class ScheduleManager extends Component
         if ($gDate) {
             $gDate->addDay();
             $this->selectedDateJalali = Jalalian::fromDateTime($gDate)->format('Y/m/d');
+        }
+    }
+
+    public function previousWeek(): void
+    {
+        $gDate = $this->getGregorianCarbon();
+        if ($gDate) {
+            $gDate->subDays(7);
+            $this->selectedDateJalali = Jalalian::fromDateTime($gDate)->format('Y/m/d');
+        }
+    }
+
+    public function nextWeek(): void
+    {
+        $gDate = $this->getGregorianCarbon();
+        if ($gDate) {
+            $gDate->addDays(7);
+            $this->selectedDateJalali = Jalalian::fromDateTime($gDate)->format('Y/m/d');
+        }
+    }
+
+    public function previousMonth(): void
+    {
+        $gDate = $this->getGregorianCarbon();
+        if ($gDate) {
+            $j = Jalalian::fromDateTime($gDate);
+            $m = $j->getMonth() - 1;
+            $y = $j->getYear();
+            if ($m < 1) {
+                $m = 12;
+                $y--;
+            }
+            $d = min($j->getDay(), 28);
+            $g = CalendarUtils::toGregorian($y, $m, $d);
+            $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+            $newDate = Carbon::createFromDate($g[0], $g[1], $g[2], $scheduleTz);
+            $this->selectedDateJalali = Jalalian::fromDateTime($newDate)->format('Y/m/d');
+        }
+    }
+
+    public function nextMonth(): void
+    {
+        $gDate = $this->getGregorianCarbon();
+        if ($gDate) {
+            $j = Jalalian::fromDateTime($gDate);
+            $m = $j->getMonth() + 1;
+            $y = $j->getYear();
+            if ($m > 12) {
+                $m = 1;
+                $y++;
+            }
+            $d = min($j->getDay(), 28);
+            $g = CalendarUtils::toGregorian($y, $m, $d);
+            $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+            $newDate = Carbon::createFromDate($g[0], $g[1], $g[2], $scheduleTz);
+            $this->selectedDateJalali = Jalalian::fromDateTime($newDate)->format('Y/m/d');
         }
     }
 
@@ -564,6 +660,200 @@ class ScheduleManager extends Component
         return $user && ($user->hasRole('super-admin') || $user->hasRole('admin') || $user->can('booking.admin'));
     }
 
+    protected function calculateFreeSegments(Carbon $slotStart, Carbon $slotEnd, array $appointments, array $breaks): array
+    {
+        $slotStartMins = ($slotStart->hour * 60) + $slotStart->minute;
+        $slotEndMins = ($slotEnd->hour * 60) + $slotEnd->minute;
+
+        $busyIntervals = [];
+
+        foreach ($breaks as $b) {
+            $bStartStr = $b['start_local'] ?? null;
+            $bEndStr = $b['end_local'] ?? null;
+            if ($bStartStr && $bEndStr) {
+                [$bSH, $bSM] = explode(':', $bStartStr);
+                [$bEH, $bEM] = explode(':', $bEndStr);
+                $bS = ((int)$bSH * 60) + (int)$bSM;
+                $bE = ((int)$bEH * 60) + (int)$bEM;
+                $s = max($slotStartMins, $bS);
+                $e = min($slotEndMins, $bE);
+                if ($s < $e) {
+                    $busyIntervals[] = ['start' => $s, 'end' => $e];
+                }
+            }
+        }
+
+        foreach ($appointments as $apt) {
+            $startCarbon = $apt['start_time_carbon'] ?? null;
+            $endCarbon = $apt['end_time_carbon'] ?? null;
+            if ($startCarbon && $endCarbon) {
+                $s = ($startCarbon->hour * 60) + $startCarbon->minute;
+                $e = ($endCarbon->hour * 60) + $endCarbon->minute;
+                $s = max($slotStartMins, $s);
+                $e = min($slotEndMins, $e);
+                if ($s < $e) {
+                    $busyIntervals[] = ['start' => $s, 'end' => $e];
+                }
+            }
+        }
+
+        if (empty($busyIntervals)) {
+            $dur = $slotEndMins - $slotStartMins;
+            return [[
+                'start_time' => $slotStart->format('H:i'),
+                'end_time' => $slotEnd->format('H:i'),
+                'duration_minutes' => $dur,
+                'formatted_duration' => $this->formatMinutesToHuman($dur),
+            ]];
+        }
+
+        usort($busyIntervals, fn($a, $b) => $a['start'] <=> $b['start']);
+
+        $mergedBusy = [];
+        foreach ($busyIntervals as $cur) {
+            if (empty($mergedBusy)) {
+                $mergedBusy[] = $cur;
+            } else {
+                $lastIdx = count($mergedBusy) - 1;
+                if ($cur['start'] <= $mergedBusy[$lastIdx]['end']) {
+                    $mergedBusy[$lastIdx]['end'] = max($mergedBusy[$lastIdx]['end'], $cur['end']);
+                } else {
+                    $mergedBusy[] = $cur;
+                }
+            }
+        }
+
+        $freeSegments = [];
+        $cursor = $slotStartMins;
+
+        foreach ($mergedBusy as $busy) {
+            if ($busy['start'] > $cursor) {
+                $dur = $busy['start'] - $cursor;
+                if ($dur >= 5) {
+                    $hS = (int)floor($cursor / 60);
+                    $mS = $cursor % 60;
+                    $hE = (int)floor($busy['start'] / 60);
+                    $mE = $busy['start'] % 60;
+                    $freeSegments[] = [
+                        'start_time' => sprintf('%02d:%02d', $hS, $mS),
+                        'end_time' => sprintf('%02d:%02d', $hE, $mE),
+                        'duration_minutes' => $dur,
+                        'formatted_duration' => $this->formatMinutesToHuman($dur),
+                    ];
+                }
+            }
+            $cursor = max($cursor, $busy['end']);
+        }
+
+        if ($cursor < $slotEndMins) {
+            $dur = $slotEndMins - $cursor;
+            if ($dur >= 5) {
+                $hS = (int)floor($cursor / 60);
+                $mS = $cursor % 60;
+                $hE = (int)floor($slotEndMins / 60);
+                $mE = $slotEndMins % 60;
+                $freeSegments[] = [
+                    'start_time' => sprintf('%02d:%02d', $hS, $mS),
+                    'end_time' => sprintf('%02d:%02d', $hE, $mE),
+                    'duration_minutes' => $dur,
+                    'formatted_duration' => $this->formatMinutesToHuman($dur),
+                ];
+            }
+        }
+
+        return $freeSegments;
+    }
+
+    protected function formatMinutesToHuman(int $minutes): string
+    {
+        if ($minutes < 60) {
+            return sprintf('%d دقیقه', $minutes);
+        }
+        $hours = (int)floor($minutes / 60);
+        $remMins = $minutes % 60;
+        if ($remMins === 0) {
+            return sprintf('%d ساعت', $hours);
+        }
+        return sprintf('%d ساعت و %d دقیقه', $hours, $remMins);
+    }
+
+    protected function getJalaliWeekRange(Carbon $gDate): array
+    {
+        $date = $gDate->copy()->startOfDay();
+        $offset = ($date->dayOfWeek + 1) % 7;
+        $saturday = $date->copy()->subDays($offset);
+
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $dayCarbon = $saturday->copy()->addDays($i);
+            $j = Jalalian::fromDateTime($dayCarbon);
+            $days[] = [
+                'carbon' => $dayCarbon,
+                'jalali_date' => $j->format('Y/m/d'),
+                'day_name' => $j->format('l'),
+                'day_num' => $j->format('d'),
+                'month_name' => $j->format('F'),
+                'is_today' => $dayCarbon->isToday(),
+            ];
+        }
+
+        return $days;
+    }
+
+    protected function getJalaliMonthGrid(Carbon $gDate): array
+    {
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        $j = Jalalian::fromDateTime($gDate);
+        $year = $j->getYear();
+        $month = $j->getMonth();
+        $monthLength = $j->getMonthDays();
+
+        $gFirst = CalendarUtils::toGregorian($year, $month, 1);
+        $firstDayCarbon = Carbon::createFromDate($gFirst[0], $gFirst[1], $gFirst[2], $scheduleTz)->startOfDay();
+
+        $leadingEmptyCount = ($firstDayCarbon->dayOfWeek + 1) % 7;
+
+        $grid = [];
+        $currentWeek = [];
+
+        for ($i = 0; $i < $leadingEmptyCount; $i++) {
+            $currentWeek[] = null;
+        }
+
+        for ($d = 1; $d <= $monthLength; $d++) {
+            $gDay = CalendarUtils::toGregorian($year, $month, $d);
+            $dayCarbon = Carbon::createFromDate($gDay[0], $gDay[1], $gDay[2], $scheduleTz)->startOfDay();
+            $jalaliStr = sprintf('%04d/%02d/%02d', $year, $month, $d);
+
+            $currentWeek[] = [
+                'day_num' => $d,
+                'jalali_date' => $jalaliStr,
+                'carbon' => $dayCarbon,
+                'is_today' => $dayCarbon->isToday(),
+            ];
+
+            if (count($currentWeek) === 7) {
+                $grid[] = $currentWeek;
+                $currentWeek = [];
+            }
+        }
+
+        if (!empty($currentWeek)) {
+            while (count($currentWeek) < 7) {
+                $currentWeek[] = null;
+            }
+            $grid[] = $currentWeek;
+        }
+
+        return [
+            'year' => $year,
+            'month' => $month,
+            'month_name' => $j->format('F'),
+            'year_month_title' => $j->format('F Y'),
+            'grid' => $grid,
+        ];
+    }
+
     public function render()
     {
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
@@ -581,7 +871,8 @@ class ScheduleManager extends Component
             $activeService = BookingService::find($this->selectedServiceId);
             if ($activeService && !$activeService->custom_schedule_enabled) {
                 $isStepLocked = true;
-                $this->timeStepMinutes = max(5, (int)($activeService->duration_minutes ?? 30));
+                $pServicePolicy = $bookingEngine->resolveDayPolicy($activeService->id, Auth::id() ?? 1, $localDate);
+                $this->timeStepMinutes = max(5, (int)($pServicePolicy['slot_duration_minutes'] ?? 30));
             }
         }
 
@@ -617,28 +908,233 @@ class ScheduleManager extends Component
 
         $providers = $providersQuery->orderBy('name')->get();
 
-        // Fetch Appointments for selected date
-        $startUtc = $localDate->copy()->timezone('UTC');
-        $endUtc = $localDate->copy()->endOfDay()->timezone('UTC');
+        $weekDays = [];
+        $weekProviderSchedules = [];
+        $monthData = [];
 
-        $appointmentsQuery = Appointment::query()
-            ->with(['service', 'provider', 'client'])
-            ->where('start_at_utc', '<=', $endUtc)
-            ->where('end_at_utc', '>=', $startUtc)
-            ->whereNotIn('status', [
-                Appointment::STATUS_CANCELED_BY_ADMIN,
-                Appointment::STATUS_CANCELED_BY_CLIENT,
-            ]);
+        if ($this->calendarView === 'week') {
+            $weekDays = $this->getJalaliWeekRange($localDate);
+            $weekStartCarbon = $weekDays[0]['carbon']->copy()->startOfDay();
+            $weekEndCarbon = $weekDays[6]['carbon']->copy()->endOfDay();
 
-        if ($this->selectedServiceId) {
-            $appointmentsQuery->where('service_id', $this->selectedServiceId);
-        }
+            $weekStartUtc = $weekStartCarbon->copy()->timezone('UTC');
+            $weekEndUtc = $weekEndCarbon->copy()->timezone('UTC');
 
-        if ($this->statusFilter) {
-            $appointmentsQuery->where('status', $this->statusFilter);
-        }
+            $weekAppointmentsQuery = Appointment::query()
+                ->with(['service', 'provider', 'client'])
+                ->where('start_at_utc', '<=', $weekEndUtc)
+                ->where('end_at_utc', '>=', $weekStartUtc)
+                ->whereNotIn('status', [
+                    Appointment::STATUS_CANCELED_BY_ADMIN,
+                    Appointment::STATUS_CANCELED_BY_CLIENT,
+                ]);
 
-        $allAppointments = $appointmentsQuery->get();
+            if ($this->selectedServiceId) {
+                $weekAppointmentsQuery->where('service_id', $this->selectedServiceId);
+            }
+            if ($this->statusFilter) {
+                $weekAppointmentsQuery->where('status', $this->statusFilter);
+            }
+
+            $allWeekAppointments = $weekAppointmentsQuery->get();
+
+            $totalAppointmentsCount = $allWeekAppointments->count();
+            $confirmedCount = $allWeekAppointments->where('status', Appointment::STATUS_CONFIRMED)->count();
+            $draftCount = $allWeekAppointments->where('status', Appointment::STATUS_DRAFT)->count();
+            $pendingCount = $allWeekAppointments->whereIn('status', [Appointment::STATUS_PENDING, Appointment::STATUS_PENDING_PAYMENT])->count();
+            $doneCount = $allWeekAppointments->where('status', Appointment::STATUS_DONE)->count();
+            $totalRemainingCapacitySum = 0;
+
+            foreach ($providers as $provider) {
+                $providerDays = [];
+
+                foreach ($weekDays as $wDay) {
+                    $dayCarbon = $wDay['carbon'];
+                    $serviceId = $this->selectedServiceId;
+                    if (!$serviceId) {
+                        $spRow = BookingServiceProvider::where('provider_user_id', $provider->id)->where('is_active', true)->first();
+                        $serviceId = $spRow?->service_id ?? ($services->first()?->id ?? 1);
+                    }
+
+                    $policy = $bookingEngine->resolveDayPolicy($serviceId, (int)$provider->id, $dayCarbon);
+                    $workWindows = $policy['work_windows'] ?? [];
+                    $breaks = $policy['breaks'] ?? [];
+                    $isClosed = $policy['is_closed'] || empty($workWindows);
+
+                    $dStartUtc = $dayCarbon->copy()->startOfDay()->timezone('UTC');
+                    $dEndUtc = $dayCarbon->copy()->endOfDay()->timezone('UTC');
+
+                    $dayAppts = $allWeekAppointments->where('provider_user_id', $provider->id)
+                        ->filter(function ($apt) use ($dStartUtc, $dEndUtc) {
+                            return $apt->start_at_utc <= $dEndUtc && $apt->end_at_utc >= $dStartUtc;
+                        });
+
+                    $capacityPerDay = $policy['capacity_per_day'] ?? null;
+                    $dailyBookedTotal = $dayAppts->count();
+                    $dailyRemaining = ($capacityPerDay !== null && (int)$capacityPerDay > 0)
+                        ? max(0, (int)$capacityPerDay - $dailyBookedTotal)
+                        : null;
+
+                    if (!$isClosed && $dailyRemaining !== null) {
+                        $totalRemainingCapacitySum += $dailyRemaining;
+                    }
+
+                    $trackStartMins = 8 * 60;
+                    $trackTotalMins = 12 * 60; // 08:00 - 20:00
+                    $formattedDayAppts = [];
+
+                    foreach ($dayAppts as $apt) {
+                        $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
+                        $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
+
+                        $sMins = ($aptStartLocal->hour * 60) + $aptStartLocal->minute;
+                        $eMins = ($aptEndLocal->hour * 60) + $aptEndLocal->minute;
+
+                        $leftPercent = max(0, min(100, (($sMins - $trackStartMins) / $trackTotalMins) * 100));
+                        $widthPercent = max(2, min(100, (($eMins - $sMins) / $trackTotalMins) * 100));
+
+                        $formattedDayAppts[] = [
+                            'id' => $apt->id,
+                            'client_name' => $apt->client?->full_name ?? 'بیمار جدید',
+                            'service_name' => $apt->service?->name ?? '',
+                            'status' => $apt->status,
+                            'start_time' => $aptStartLocal->format('H:i'),
+                            'end_time' => $aptEndLocal->format('H:i'),
+                            'left_percent' => $leftPercent,
+                            'width_percent' => $widthPercent,
+                        ];
+                    }
+
+                    $providerDays[] = [
+                        'jalali_date' => $wDay['jalali_date'],
+                        'day_name' => $wDay['day_name'],
+                        'day_num' => $wDay['day_num'],
+                        'is_today' => $wDay['is_today'],
+                        'is_closed' => $isClosed,
+                        'policy' => $policy,
+                        'capacity_per_day' => $capacityPerDay,
+                        'daily_booked' => $dailyBookedTotal,
+                        'daily_remaining' => $dailyRemaining,
+                        'appointments' => $formattedDayAppts,
+                    ];
+                }
+
+                $weekProviderSchedules[] = [
+                    'provider' => $provider,
+                    'days' => $providerDays,
+                ];
+            }
+
+            $timelineHeaders = [];
+            $providerSchedules = [];
+            $gridStartHour = 8;
+            $gridEndHour = 20;
+
+        } elseif ($this->calendarView === 'month') {
+            $monthInfo = $this->getJalaliMonthGrid($localDate);
+
+            $j = Jalalian::fromDateTime($localDate);
+            $gStartArr = CalendarUtils::toGregorian($j->getYear(), $j->getMonth(), 1);
+            $gEndArr = CalendarUtils::toGregorian($j->getYear(), $j->getMonth(), $j->getMonthDays());
+
+            $mStartCarbon = Carbon::createFromDate($gStartArr[0], $gStartArr[1], $gStartArr[2], $scheduleTz)->startOfDay();
+            $mEndCarbon = Carbon::createFromDate($gEndArr[0], $gEndArr[1], $gEndArr[2], $scheduleTz)->endOfDay();
+
+            $mStartUtc = $mStartCarbon->copy()->timezone('UTC');
+            $mEndUtc = $mEndCarbon->copy()->timezone('UTC');
+
+            $monthAppointmentsQuery = Appointment::query()
+                ->with(['service', 'provider', 'client'])
+                ->where('start_at_utc', '<=', $mEndUtc)
+                ->where('end_at_utc', '>=', $mStartUtc)
+                ->whereNotIn('status', [
+                    Appointment::STATUS_CANCELED_BY_ADMIN,
+                    Appointment::STATUS_CANCELED_BY_CLIENT,
+                ]);
+
+            if ($this->selectedServiceId) {
+                $monthAppointmentsQuery->where('service_id', $this->selectedServiceId);
+            }
+            if ($this->statusFilter) {
+                $monthAppointmentsQuery->where('status', $this->statusFilter);
+            }
+            if ($this->selectedProviderId) {
+                $monthAppointmentsQuery->where('provider_user_id', $this->selectedProviderId);
+            }
+
+            $allMonthAppointments = $monthAppointmentsQuery->get();
+
+            $totalAppointmentsCount = $allMonthAppointments->count();
+            $confirmedCount = $allMonthAppointments->where('status', Appointment::STATUS_CONFIRMED)->count();
+            $draftCount = $allMonthAppointments->where('status', Appointment::STATUS_DRAFT)->count();
+            $pendingCount = $allMonthAppointments->whereIn('status', [Appointment::STATUS_PENDING, Appointment::STATUS_PENDING_PAYMENT])->count();
+            $doneCount = $allMonthAppointments->where('status', Appointment::STATUS_DONE)->count();
+            $totalRemainingCapacitySum = 0;
+
+            $enrichedMonthGrid = [];
+            foreach ($monthInfo['grid'] as $weekRow) {
+                $enrichedRow = [];
+                foreach ($weekRow as $cell) {
+                    if ($cell === null) {
+                        $enrichedRow[] = null;
+                        continue;
+                    }
+
+                    $dayCarbon = $cell['carbon'];
+                    $dStartUtc = $dayCarbon->copy()->startOfDay()->timezone('UTC');
+                    $dEndUtc = $dayCarbon->copy()->endOfDay()->timezone('UTC');
+
+                    $dayAppts = $allMonthAppointments->filter(function ($apt) use ($dStartUtc, $dEndUtc) {
+                        return $apt->start_at_utc <= $dEndUtc && $apt->end_at_utc >= $dStartUtc;
+                    });
+
+                    $cell['total_appts'] = $dayAppts->count();
+                    $cell['confirmed_count'] = $dayAppts->where('status', Appointment::STATUS_CONFIRMED)->count();
+                    $cell['draft_count'] = $dayAppts->where('status', Appointment::STATUS_DRAFT)->count();
+                    $cell['pending_count'] = $dayAppts->whereIn('status', [Appointment::STATUS_PENDING, Appointment::STATUS_PENDING_PAYMENT])->count();
+                    $cell['done_count'] = $dayAppts->where('status', Appointment::STATUS_DONE)->count();
+
+                    $enrichedRow[] = $cell;
+                }
+                $enrichedMonthGrid[] = $enrichedRow;
+            }
+
+            $monthData = [
+                'year' => $monthInfo['year'],
+                'month' => $monthInfo['month'],
+                'month_name' => $monthInfo['month_name'],
+                'year_month_title' => $monthInfo['year_month_title'],
+                'grid' => $enrichedMonthGrid,
+            ];
+
+            $timelineHeaders = [];
+            $providerSchedules = [];
+            $gridStartHour = 8;
+            $gridEndHour = 20;
+
+        } else {
+            // Day View
+            $startUtc = $localDate->copy()->timezone('UTC');
+            $endUtc = $localDate->copy()->endOfDay()->timezone('UTC');
+
+            $appointmentsQuery = Appointment::query()
+                ->with(['service', 'provider', 'client'])
+                ->where('start_at_utc', '<=', $endUtc)
+                ->where('end_at_utc', '>=', $startUtc)
+                ->whereNotIn('status', [
+                    Appointment::STATUS_CANCELED_BY_ADMIN,
+                    Appointment::STATUS_CANCELED_BY_CLIENT,
+                ]);
+
+            if ($this->selectedServiceId) {
+                $appointmentsQuery->where('service_id', $this->selectedServiceId);
+            }
+
+            if ($this->statusFilter) {
+                $appointmentsQuery->where('status', $this->statusFilter);
+            }
+
+            $allAppointments = $appointmentsQuery->get();
 
         // Dashboard Metrics
         $totalAppointmentsCount = $allAppointments->count();
@@ -647,9 +1143,9 @@ class ScheduleManager extends Component
         $pendingCount = $allAppointments->whereIn('status', [Appointment::STATUS_PENDING, Appointment::STATUS_PENDING_PAYMENT])->count();
         $doneCount = $allAppointments->where('status', Appointment::STATUS_DONE)->count();
 
-        // Global Timeline bounds (default 08:00 to 20:00)
-        $minStartMinutes = 8 * 60;
-        $maxEndMinutes = 20 * 60;
+        // Global Timeline bounds (Calculated dynamically based on work schedule hierarchy)
+        $foundMinMinutes = null;
+        $foundMaxMinutes = null;
 
         foreach ($providers as $p) {
             $svcId = $this->selectedServiceId;
@@ -662,8 +1158,11 @@ class ScheduleManager extends Component
                 foreach ($pPol['work_windows'] as $win) {
                     [$wSH, $wSM] = explode(':', $win['start']);
                     [$wEH, $wEM] = explode(':', $win['end']);
-                    $minStartMinutes = min($minStartMinutes, ((int)$wSH * 60) + (int)$wSM);
-                    $maxEndMinutes = max($maxEndMinutes, ((int)$wEH * 60) + (int)$wEM);
+                    $wStartMins = ((int)$wSH * 60) + (int)$wSM;
+                    $wEndMins = ((int)$wEH * 60) + (int)$wEM;
+
+                    $foundMinMinutes = ($foundMinMinutes === null) ? $wStartMins : min($foundMinMinutes, $wStartMins);
+                    $foundMaxMinutes = ($foundMaxMinutes === null) ? $wEndMins : max($foundMaxMinutes, $wEndMins);
                 }
             }
 
@@ -671,15 +1170,24 @@ class ScheduleManager extends Component
             foreach ($pAppts as $apt) {
                 $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
                 $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
-                $minStartMinutes = min($minStartMinutes, ($aptStartLocal->hour * 60) + $aptStartLocal->minute);
-                $maxEndMinutes = max($maxEndMinutes, ($aptEndLocal->hour * 60) + $aptEndLocal->minute);
+                $aS = ($aptStartLocal->hour * 60) + $aptStartLocal->minute;
+                $aE = ($aptEndLocal->hour * 60) + $aptEndLocal->minute;
+
+                $foundMinMinutes = ($foundMinMinutes === null) ? $aS : min($foundMinMinutes, $aS);
+                $foundMaxMinutes = ($foundMaxMinutes === null) ? $aE : max($foundMaxMinutes, $aE);
             }
         }
 
-        $gridStartHour = (int)floor($minStartMinutes / 60);
-        $gridEndHour = (int)ceil($maxEndMinutes / 60);
+        // Fallback if no work windows or closed
+        if ($foundMinMinutes === null || $foundMaxMinutes === null) {
+            $foundMinMinutes = 8 * 60;  // 08:00
+            $foundMaxMinutes = 20 * 60; // 20:00
+        }
+
+        $gridStartHour = (int)floor($foundMinMinutes / 60);
+        $gridEndHour = (int)ceil($foundMaxMinutes / 60);
         if ($gridEndHour <= $gridStartHour) {
-            $gridEndHour = $gridStartHour + 12;
+            $gridEndHour = $gridStartHour + 10;
         }
 
         $totalGridMinutes = ($gridEndHour - $gridStartHour) * 60;
@@ -784,6 +1292,9 @@ class ScheduleManager extends Component
                                 'status' => $apt->status,
                                 'start_time' => $aptStartLocal->format('H:i'),
                                 'end_time' => $aptEndLocal->format('H:i'),
+                                'start_time_carbon' => $aptStartLocal,
+                                'end_time_carbon' => $aptEndLocal,
+                                'duration_minutes' => $aptStartLocal->diffInMinutes($aptEndLocal),
                                 'notes' => $apt->notes,
                             ];
                         }
@@ -799,7 +1310,13 @@ class ScheduleManager extends Component
                             }
                         }
 
-                        $isFull = ($capacityPerSlot > 0 && $bookedCount >= $capacityPerSlot) || ($dailyRemaining !== null && $dailyRemaining <= 0);
+                        // Calculate free time segments inside this slot
+                        $freeSegments = $this->calculateFreeSegments($slotStart, $slotEnd, $formattedSlotAppts, $breaks);
+                        $totalFreeMinsInSlot = array_sum(array_column($freeSegments, 'duration_minutes'));
+
+                        $isFull = ($capacityPerSlot > 0 && $bookedCount >= $capacityPerSlot)
+                            || ($dailyRemaining !== null && $dailyRemaining <= 0)
+                            || ($totalFreeMinsInSlot <= 0 && !empty($formattedSlotAppts));
 
                         if (!$inBreak && $slotRemaining !== null) {
                             $totalRemainingCapacitySum += $slotRemaining;
@@ -812,6 +1329,8 @@ class ScheduleManager extends Component
                             'capacity' => $capacityPerSlot,
                             'booked_count' => $bookedCount,
                             'remaining_capacity' => $slotRemaining,
+                            'total_free_minutes' => $totalFreeMinsInSlot,
+                            'free_segments' => $freeSegments,
                             'is_full' => $isFull,
                             'appointments' => $formattedSlotAppts,
                         ];
@@ -845,9 +1364,42 @@ class ScheduleManager extends Component
                     'end_time' => $aptEndLocal->format('H:i'),
                     'left_percent' => $leftPercent,
                     'width_percent' => $widthPercent,
+                    's_mins' => $sMins,
+                    'e_mins' => $eMins,
                     'notes' => $apt->notes,
                 ];
             }
+
+            // Calculate overlap columns so appointments never collide or stack on top of each other
+            usort($formattedAppointments, function ($a, $b) {
+                return $a['s_mins'] <=> $b['s_mins'];
+            });
+
+            $columns = [];
+            foreach ($formattedAppointments as &$aptItem) {
+                $placed = false;
+                foreach ($columns as $cIdx => &$colAppts) {
+                    $lastAppt = end($colAppts);
+                    if ($lastAppt['e_mins'] <= $aptItem['s_mins']) {
+                        $colAppts[] = &$aptItem;
+                        $aptItem['col_index'] = $cIdx;
+                        $placed = true;
+                        break;
+                    }
+                }
+                if (!$placed) {
+                    $cIdx = count($columns);
+                    $columns[$cIdx] = [&$aptItem];
+                    $aptItem['col_index'] = $cIdx;
+                }
+            }
+            unset($aptItem, $colAppts);
+
+            $maxCols = max(1, count($columns));
+            foreach ($formattedAppointments as &$aptItem) {
+                $aptItem['max_cols'] = $maxCols;
+            }
+            unset($aptItem);
 
             // Mapped Breaks for Gantt Timeline Track
             $formattedBreaks = [];
@@ -915,6 +1467,7 @@ class ScheduleManager extends Component
                 'slotDropTargets' => $slotDropTargets,
             ];
         }
+        } // End of Day View else block
 
         // Search Clients for Modal
         $clientsForModal = [];
@@ -931,6 +1484,10 @@ class ScheduleManager extends Component
         return view('booking::livewire.user.schedule-manager', [
             'localDate' => $localDate,
             'dayOfWeekJalali' => $dayOfWeekJalali,
+            'calendarView' => $this->calendarView,
+            'weekDays' => $weekDays,
+            'weekProviderSchedules' => $weekProviderSchedules,
+            'monthData' => $monthData,
             'services' => $services,
             'providers' => $providers,
             'timelineHeaders' => $timelineHeaders,
