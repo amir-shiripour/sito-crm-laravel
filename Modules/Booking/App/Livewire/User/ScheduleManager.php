@@ -1338,6 +1338,38 @@ class ScheduleManager extends Component
                         $cursor->addMinutes($effectiveSlotDuration);
                     }
                 }
+            } elseif ($providerAppointmentsToday->count() > 0) {
+                foreach ($providerAppointmentsToday as $apt) {
+                    $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
+                    $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
+
+                    $formattedSlotAppts = [[
+                        'id' => $apt->id,
+                        'client_name' => $apt->client?->full_name ?? 'بیمار جدید',
+                        'client_phone' => $apt->client?->phone ?? '',
+                        'service_name' => $apt->service?->name ?? 'خدمت عمومی',
+                        'status' => $apt->status,
+                        'start_time' => $aptStartLocal->format('H:i'),
+                        'end_time' => $aptEndLocal->format('H:i'),
+                        'start_time_carbon' => $aptStartLocal,
+                        'end_time_carbon' => $aptEndLocal,
+                        'duration_minutes' => $aptStartLocal->diffInMinutes($aptEndLocal),
+                        'notes' => $apt->notes,
+                    ]];
+
+                    $providerSlots[] = [
+                        'start_time' => $aptStartLocal->format('H:i'),
+                        'end_time' => $aptEndLocal->format('H:i'),
+                        'in_break' => false,
+                        'capacity' => 1,
+                        'booked_count' => 1,
+                        'remaining_capacity' => 0,
+                        'total_free_minutes' => 0,
+                        'free_segments' => [],
+                        'is_full' => true,
+                        'appointments' => $formattedSlotAppts,
+                    ];
+                }
             }
 
             // Mapped Appointments for Gantt Timeline Track

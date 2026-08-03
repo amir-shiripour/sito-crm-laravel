@@ -27,7 +27,7 @@ class PageController extends Controller
         }
 
         if ($siteDisplayType === 'admin') {
-            return redirect()->route('admin.dashboard');
+            return $this->redirectToDashboard();
         }
 
         $appThemeLower = strtolower($appTheme);
@@ -154,10 +154,10 @@ class PageController extends Controller
                 if (Route::has('market.public.index')) {
                     return redirect()->route('market.public.index');
                 }
-                return redirect()->route('admin.dashboard');
+                return $this->redirectToDashboard();
             } else {
                 // شرکتی و سایر مواردی که هنوز تعریف نشده‌اند
-                return redirect()->route('admin.dashboard');
+                return $this->redirectToDashboard();
             }
         }
 
@@ -170,5 +170,21 @@ class PageController extends Controller
         $viewPath = $themeManager->resolveView('index', "themes.{$appThemeLower}.index");
 
         return view($viewPath, $data);
+    }
+
+    /**
+     * هدایت کاربر به داشبورد مربوطه بر اساس نقش کاربر
+     */
+    protected function redirectToDashboard()
+    {
+        if (auth()->check()) {
+            $user = auth()->user();
+            if (method_exists($user, 'hasRole') && $user->hasRole('super-admin')) {
+                return redirect()->route('admin.dashboard');
+            }
+            return redirect()->route('user.dashboard');
+        }
+
+        return redirect()->route('admin.dashboard');
     }
 }

@@ -100,7 +100,12 @@ class BookingEngine
 
         $policy = $this->applyRule($policy, $globalRule, 'GLOBAL');
 
-        if ($svc->custom_schedule_enabled) {
+        $hasServiceRules = $svc->custom_schedule_enabled || BookingAvailabilityRule::query()
+            ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
+            ->where('scope_id', $serviceId)
+            ->exists();
+
+        if ($hasServiceRules) {
             $serviceRule = BookingAvailabilityRule::query()
                 ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
                 ->where('scope_id', $serviceId)
@@ -141,7 +146,7 @@ class BookingEngine
 
         $policy = $this->applyException($policy, $globalEx, 'EXCEPTION');
 
-        if ($svc->custom_schedule_enabled) {
+        if ($hasServiceRules || BookingAvailabilityException::query()->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE)->where('scope_id', $serviceId)->exists()) {
             $serviceEx = BookingAvailabilityException::query()
                 ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE)
                 ->where('scope_id', $serviceId)
@@ -206,6 +211,23 @@ class BookingEngine
             $policy['work_windows'] = [];
             $policy['breaks'] = [];
             $policy['rule_source'] = $scopeLabel;
+            if ($scopeLabel === 'SERVICE') {
+                $policy['service_is_closed'] = true;
+            }
+            return $policy;
+        }
+
+        // If service level explicitly closed this weekday, lower provider levels cannot re-open it
+        if (!empty($policy['service_is_closed']) && $scopeLabel !== 'SERVICE') {
+            if ($rule->slot_duration_minutes !== null) {
+                $policy['slot_duration_minutes'] = (int)$rule->slot_duration_minutes;
+            }
+            if ($rule->capacity_per_slot !== null) {
+                $policy['capacity_per_slot'] = $rule->capacity_per_slot;
+            }
+            if ($rule->capacity_per_day !== null) {
+                $policy['capacity_per_day'] = $rule->capacity_per_day;
+            }
             return $policy;
         }
 
@@ -260,6 +282,20 @@ class BookingEngine
             $policy['work_windows'] = [];
             $policy['breaks'] = [];
             $policy['rule_source'] = $scopeLabel;
+            if ($ex->scope_type === BookingAvailabilityException::SCOPE_SERVICE) {
+                $policy['service_is_closed'] = true;
+            }
+            return $policy;
+        }
+
+        // If service level explicitly closed this date, non-service exceptions cannot re-open it
+        if (!empty($policy['service_is_closed']) && $ex->scope_type !== BookingAvailabilityException::SCOPE_SERVICE) {
+            if ($ex->override_capacity_per_slot !== null) {
+                $policy['capacity_per_slot'] = $ex->override_capacity_per_slot;
+            }
+            if ($ex->override_capacity_per_day !== null) {
+                $policy['capacity_per_day'] = $ex->override_capacity_per_day;
+            }
             return $policy;
         }
 
