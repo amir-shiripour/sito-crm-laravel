@@ -154,7 +154,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ $isEdit ? route('admin.users.update', $user) : route('admin.users.store') }}" enctype="multipart/form-data" @submit="isSubmitting = true" class="space-y-6 pb-10">
+        <form method="POST" action="{{ $isEdit ? route('admin.users.update', $user) : route('admin.users.store') }}" enctype="multipart/form-data" autocomplete="off" @submit="isSubmitting = true" class="space-y-6 pb-10">
             @csrf
             @if($isEdit)
                 @method('PUT')
@@ -235,6 +235,14 @@
                     show: false,
                     password: '',
                     passwordConfirmation: '',
+                    init() {
+                        this.password = '';
+                        this.passwordConfirmation = '';
+                        this.$nextTick(() => {
+                            this.password = '';
+                            this.passwordConfirmation = '';
+                        });
+                    },
                     generatePassword() {
                         const length = 12;
                         const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
@@ -256,7 +264,7 @@
                             </button>
                         </div>
                         <div class="relative">
-                            <input :type="show ? 'text' : 'password'" name="password" x-model="password" class="{{ $inputClass }} dir-ltr text-left font-mono !pr-11" @if(!$isEdit) required @endif placeholder="••••••••">
+                            <input :type="show ? 'text' : 'password'" name="password" x-model="password" autocomplete="new-password" class="{{ $inputClass }} dir-ltr text-left font-mono !pr-11" @if(!$isEdit) required @endif placeholder="••••••••">
                             <button type="button" @click="show = !show" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 focus:outline-none transition-colors" tabindex="-1">
                                 {{-- آیکون چشم باز (وقتی پنهان است نشان بده) --}}
                                 <svg x-show="!show" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
@@ -269,7 +277,7 @@
                     <div>
                         <label class="{{ $labelClass }}">تأیید رمز عبور @if(!$isEdit) <span class="text-red-500">*</span> @endif</label>
                         <div class="relative">
-                            <input :type="show ? 'text' : 'password'" name="password_confirmation" x-model="passwordConfirmation" class="{{ $inputClass }} dir-ltr text-left font-mono !pr-11" @if(!$isEdit) required @endif placeholder="••••••••">
+                            <input :type="show ? 'text' : 'password'" name="password_confirmation" x-model="passwordConfirmation" autocomplete="new-password" class="{{ $inputClass }} dir-ltr text-left font-mono !pr-11" @if(!$isEdit) required @endif placeholder="••••••••">
                             <button type="button" @click="show = !show" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 focus:outline-none transition-colors" tabindex="-1">
                                 <svg x-show="!show" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                 <svg x-show="show" x-cloak class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0l1.414 1.414m12.022-1.254A9.97 9.97 0 0021.543 12c-1.274 4.057-5.064 7-9.542 7m-1.724-1.724l-3.29-3.29" /></svg>
