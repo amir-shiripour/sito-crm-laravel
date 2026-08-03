@@ -44,6 +44,8 @@ class StoreInvoiceRequest extends FormRequest
 
             'items' => 'required|array|min:1',
             'items.*.service_id' => 'nullable|exists:services,id',
+            'items.*.product_id' => 'nullable',
+            'items.*.product_variant_id' => 'nullable',
             'items.*.custom_service_name' => 'nullable|string|max:255',
             'items.*.description' => 'nullable|string',
             'items.*.unit' => 'nullable|string|max:50',
@@ -82,6 +84,63 @@ class StoreInvoiceRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $isMarketEnabled = \Nwidart\Modules\Facades\Module::has('Market')
+                && \Nwidart\Modules\Facades\Module::isEnabled('Market')
+                && class_exists(\Modules\Market\App\Models\Order::class);
+
+            foreach ($this->input('items', []) as $index => $item) {
+                if (!empty($item['product_id']) || !empty($item['product_variant_id'])) {
+                    if (!$isMarketEnabled) {
+                        $validator->errors()->add("items.{$index}.product_id", 'ماژول فروشگاه غیرفعال است و امکان ثبت محصول فروشگاهی وجود ندارد.');
+                        continue;
+                    }
+
+                    $requestedQty = (float)($item['quantity'] ?? 1);
+                    $variantId = $item['product_variant_id'] ?? null;
+                    $masterId = $item['product_id'] ?? null;
+                    $availableStock = 0;
+                    $title = !empty($item['custom_service_name']) ? $item['custom_service_name'] : 'محصول فروشگاه';
+
+                    if ($variantId && class_exists(\Modules\Market\Entities\ProductVariant::class)) {
+                        $variant = \Modules\Market\Entities\ProductVariant::with('vendorProducts')->find($variantId);
+                        if ($variant) {
+                            $isWmsActive = class_exists(\Modules\Market\Entities\MarketSetting::class) 
+                                && (bool) \Modules\Market\Entities\MarketSetting::getValue('wms.enabled', false);
+                            
+                            if ($isWmsActive && class_exists(\Modules\Market\App\Services\WarehouseStockService::class) && class_exists(\Modules\Market\Entities\WarehouseStock::class)) {
+                                $stockField = app(\Modules\Market\App\Services\WarehouseStockService::class)->getStockDeductionStrategy() === 'separated' ? 'online_stock' : 'physical_stock';
+                                $stocks = \Modules\Market\Entities\WarehouseStock::where('product_variant_id', $variantId)
+                                    ->whereHas('warehouse', function($q) { $q->where('is_active', true); })
+                                    ->get();
+                                $availableStock = (int) $stocks->sum(function($s) use ($stockField) {
+                                    return max(0, $s->{$stockField} - $s->reserved_stock);
+                                });
+                            } else {
+                                if ($variant->vendorProducts && $variant->vendorProducts->count() > 0) {
+                                    $availableStock = (int) $variant->vendorProducts->where('status', 'published')->sum('stock');
+                                } else {
+                                    $availableStock = (int) ($variant->stock ?? 0);
+                                }
+                            }
+                        }
+                    } elseif ($masterId && class_exists(\Modules\Market\Entities\MasterProduct::class)) {
+                        $master = \Modules\Market\Entities\MasterProduct::with('variants.vendorProducts')->find($masterId);
+                        if ($master) {
+                            $availableStock = (int) ($master->price_info['total_stock'] ?? 0);
+                        }
+                    }
+
+                    if ($requestedQty > $availableStock) {
+                        $validator->errors()->add("items.{$index}.quantity", "تعداد درخواستی برای «{$title}» بیش از موجودی انبار است (موجودی فعلی: {$availableStock} عدد).");
+                    }
+                }
+            }
+        });
     }
 
     public function attributes(): array

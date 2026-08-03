@@ -21,7 +21,6 @@ class Service extends Model
         'name',
         'code',
         'category_id',
-        'template_id',
         'description',
         'status_id',
         'base_price',
@@ -33,7 +32,6 @@ class Service extends Model
         'billing_type',
         'recurring_period',
         'custom_period_days',
-        'renewal_reminder_days',
         'auto_renewal',
         'meta',
         'sort_order',
@@ -53,11 +51,6 @@ class Service extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ServiceCategory::class, 'category_id');
-    }
-
-    public function template(): BelongsTo
-    {
-        return $this->belongsTo(ServiceTemplate::class, 'template_id');
     }
 
     public function status(): BelongsTo

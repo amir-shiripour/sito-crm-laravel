@@ -12,8 +12,7 @@ use Modules\Services\App\Http\Controllers\{
 };
 
 Route::middleware(['auth', 'verified'])
-    ->prefix('user')
-    ->group(function () {
+    ->prefix('user')->group(function () {
 
     // Categories
     Route::prefix('services/categories')
@@ -84,6 +83,7 @@ Route::middleware(['auth', 'verified'])
     Route::prefix('services/status-builder')
         ->name('services.status-builder.')
         ->group(function () {
+            Route::post('/seed', [StatusBuilderController::class, 'seed'])->name('seed');
             Route::resource('/', StatusBuilderController::class)
                 ->parameters(['' => 'status'])
                 ->only(['index', 'store', 'update', 'destroy']);

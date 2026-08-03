@@ -54,6 +54,8 @@
     };
 
     $isCanceled = str_contains($invoice->status?->name ?? '', 'لغو');
+    $statusName = $invoice->status?->name ?? '—';
+    $statusColor = $invoice->status?->color ?? '#6b7280';
 
     $total = (float) ($invoice->total ?? 0);
     $paid  = (float) ($invoice->paid_amount ?? 0);
@@ -112,6 +114,13 @@
 
     $ltrFields = ['phone', 'email', 'national_code', 'case_number'];
 
+    if (!isset($siteName)) {
+        $siteName = $pickSetting(['identity_site_name', 'site_name', 'app_name', 'identity_name']) ?: ($sellerInfo['name'] ?: 'فاکتور');
+    }
+    if (!isset($appLogo)) {
+        $appLogo = $pickSetting(['identity_logo', 'site_logo', 'app_logo', 'company_logo']);
+    }
+
     $toDataUri = function (?string $relativePath) {
         if (!$relativePath) return null;
         $absolutePath = public_path(ltrim($relativePath, '/'));
@@ -122,6 +131,7 @@
         return 'data:' . $mime . ';base64,' . base64_encode($data);
     };
 
+    $appLogoDataUri = $toDataUri($appLogo);
     $stampSignatureDataUri = $toDataUri($sellerInfo['stamp_signature_image'] ?? null);
 
     $inlineAppCss = '';
@@ -139,12 +149,12 @@
     }
 @endphp
 
-    @php
-        $orientation = $settings['services_official_invoice_orientation'] ?? 'portrait';
-        $containerWidth = $orientation === 'landscape' ? '297mm' : '210mm';
-        $containerHeight = $orientation === 'landscape' ? '210mm' : '297mm';
-        $pageSize = $orientation === 'landscape' ? 'A4 landscape' : 'A4 portrait';
-    @endphp
+@php
+    $orientation = $settings['services_official_invoice_orientation'] ?? 'portrait';
+    $containerWidth = $orientation === 'landscape' ? '297mm' : '210mm';
+    $containerHeight = $orientation === 'landscape' ? '210mm' : '297mm';
+    $pageSize = $orientation === 'landscape' ? 'A4 landscape' : 'A4 portrait';
+@endphp
 
     <!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -181,17 +191,18 @@
 
         .a4-container {
             width: {{ $containerWidth }};
-            min-height: {{ $containerHeight }};
-            padding: 10mm 15mm;
+            max-width: 100%;
+            padding: {{ $orientation === 'landscape' ? '6mm 8mm' : '8mm 12mm' }};
             margin: 10mm auto;
             background: white;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
         }
 
         @media print {
             @page {
                 size: {{ $pageSize }};
-                margin: 0;
+                margin: 3mm;
             }
 
             body {
@@ -203,8 +214,7 @@
                 margin: 0;
                 box-shadow: none;
                 width: 100%;
-                min-height: 100vh;
-                page-break-after: always;
+                min-height: auto;
             }
 
             .no-print {
@@ -218,15 +228,15 @@
 
         .table-cell-border {
             border: 1px solid #000;
-            padding: 4px;
+            padding: {{ $orientation === 'landscape' ? '2px 4px' : '3.5px 5px' }};
             text-align: center;
         }
 
         .header-title {
             text-align: center;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
 
         thead {
@@ -245,6 +255,30 @@
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
+
+        .status-official-tag {
+            display: inline-block;
+            padding: 1.5px 7px;
+            border-radius: 3px;
+            font-size: 9.5px;
+            font-weight: bold;
+            border: 1px solid;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .merged-official-tag {
+            display: inline-block;
+            padding: 1.5px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            background-color: #f3e8ff;
+            color: #7e22ce;
+            border: 1px solid #c084fc;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
     </style>
 </head>
 <body>
@@ -260,41 +294,55 @@
 </div>
 
 <div class="a4-container relative">
-    @if($isFullyPaid && !$isCanceled)
-        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-10">
-            <span class="text-8xl font-bold text-green-600 transform -rotate-45">تسویه شده</span>
-        </div>
-    @endif
 
     <div class="relative z-10">
-        <div class="flex justify-between items-start mb-4">
-            <div class="w-1/4 flex flex-col items-start pt-1">
-                @if($isCanceled)
-                    <span class="inline-block border-2 border-red-500 text-red-600 bg-red-50 font-bold px-3 py-1 rounded-lg text-sm transform -rotate-6 shadow-sm">لغو شده</span>
+
+        <div class="flex justify-between items-start mb-2">
+            <div class="w-1/4">
+                @if($appLogoDataUri)
+                    <img src="{{ $appLogoDataUri }}" alt="{{ $siteName }}" style="max-height: 40px; max-width: 140px; object-fit: contain;">
                 @endif
             </div>
-            <div class="w-2/4 header-title">
+            <div class="w-2/4 header-title text-center pt-1">
                 @if($isProforma)
                     پیش فاکتور
                 @else
                     صورتحساب فروش کالا و خدمات
                 @endif
             </div>
-            <div class="w-1/4 text-left space-y-1 text-[10px]">
-                <p>شماره سریال: <span
-                        class="text-xs font-bold">{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</span>
-                </p>
-                <p>تاریخ صدور: <span class="font-bold">{{ $toJalali($invoice->issue_date) }}</span></p>
+            <div class="w-1/4 border border-official rounded p-1.5 bg-gray-50 text-left space-y-1 text-[9.5px]">
+                <div class="flex items-center justify-between border-b border-gray-200 pb-1 mb-1">
+                    <span class="text-gray-500 font-medium">شماره سریال:</span>
+                    <span class="text-xs font-bold">{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500 font-medium">تاریخ صدور:</span>
+                    <span class="font-bold">{{ $toJalali($invoice->issue_date) }}</span>
+                </div>
                 @if($invoice->due_date)
-                    <p>تاریخ سررسید: <span class="font-bold">{{ $toJalali($invoice->due_date) }}</span></p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500 font-medium">تاریخ سررسید:</span>
+                        <span class="font-bold">{{ $toJalali($invoice->due_date) }}</span>
+                    </div>
                 @endif
+                <div class="flex items-center justify-between pt-1 border-t border-gray-200 mt-1">
+                    <span class="text-gray-500 font-medium">وضعیت:</span>
+                    <div class="space-x-1 space-x-reverse">
+                        <span class="status-official-tag" style="background-color: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}55;">
+                            {{ $statusName }}
+                        </span>
+                        @if(!empty($invoice->meta['is_merged_invoice']))
+                            <span class="merged-official-tag">ادغام</span>
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
 
         @if($hasSellerBlock)
-            <div class="border border-official rounded mb-4">
-                <div class="bg-gray-100 border-b border-official text-center font-bold py-1.5">مشخصات فروشنده</div>
-                <div class="p-3 grid grid-cols-4 gap-y-3 gap-x-4 text-[10.5px]">
+            <div class="border border-official rounded mb-2">
+                <div class="bg-gray-100 border-b border-official text-center font-bold py-1 text-[10.5px]">مشخصات فروشنده</div>
+                <div class="p-2 grid grid-cols-4 gap-y-1.5 gap-x-3 text-[10px]">
                     @foreach($sellerFields as $field)
                         <div class="col-span-{{ $field['span'] }}">
                             <span class="text-gray-600">{{ $field['label'] }}:</span>
@@ -307,9 +355,9 @@
         @endif
 
         {{-- Buyer Info --}}
-        <div class="border border-official rounded mb-4">
-            <div class="bg-gray-100 border-b border-official text-center font-bold py-1">مشخصات خریدار</div>
-            <div class="p-2 grid grid-cols-4 gap-2 text-[10px]">
+        <div class="border border-official rounded mb-2">
+            <div class="bg-gray-100 border-b border-official text-center font-bold py-1 text-[10.5px]">مشخصات خریدار</div>
+            <div class="p-2 grid grid-cols-4 gap-1.5 text-[10px]">
                 @if($buyerNameField)
                     <div class="col-span-2"><span class="text-gray-600">نام شخص حقیقی/حقوقی:</span> <span
                             class="font-bold">{{ $buyerNameField['value'] }}</span></div>
@@ -471,24 +519,22 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-2 gap-4 mt-6 avoid-break">
-            <div></div>
-            <div class="flex justify-between items-start border border-official rounded p-4 h-32">
-                <div class="w-1/2 text-center h-full flex flex-col justify-between">
-                    <p class="font-bold text-[11px]">مهر و امضای فروشنده</p>
-                    @if($stampSignatureDataUri)
-                        <div class="flex-grow flex items-center justify-center">
+        <div class="border border-official rounded p-2 mt-2 avoid-break">
+            <div class="flex justify-between items-stretch text-center" style="min-height: 65px;">
+                <div class="w-1/2 flex flex-col justify-between items-center px-2">
+                    <p class="font-bold text-[10.5px] border-b border-gray-200 pb-1 w-full">مهر و امضای فروشنده</p>
+                    <div class="flex-1 flex items-center justify-center py-1 w-full" style="min-height: 40px;">
+                        @if($stampSignatureDataUri)
                             <img src="{{ $stampSignatureDataUri }}" alt="مهر و امضا"
-                                 class="max-h-20 max-w-full object-contain mix-blend-multiply">
-                        </div>
-                    @else
-                        <div class="flex-grow"></div>
-                    @endif
+                                 style="max-height: 40px; max-width: 100%; object-fit: contain; mix-blend-mode: multiply;">
+                        @endif
+                    </div>
+                    <p class="text-[9.5px] font-bold text-gray-700 pt-0.5 border-t border-dashed border-gray-300 w-full">{{ $sellerInfo['name'] }}</p>
                 </div>
-                <div
-                    class="w-1/2 text-center h-full flex flex-col justify-between border-r border-dashed border-gray-400">
-                    <p class="font-bold text-[11px]">مهر و امضای خریدار</p>
-                    <div class="flex-grow"></div>
+                <div class="w-1/2 flex flex-col justify-between items-center px-2 border-r border-dashed border-gray-400">
+                    <p class="font-bold text-[10.5px] border-b border-gray-200 pb-1 w-full">مهر و امضای خریدار</p>
+                    <div class="flex-1 w-full" style="min-height: 40px;"></div>
+                    <p class="text-[9.5px] font-bold text-gray-700 pt-0.5 border-t border-dashed border-gray-300 w-full">تأیید و امضاء</p>
                 </div>
             </div>
         </div>

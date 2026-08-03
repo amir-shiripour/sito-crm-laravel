@@ -13,9 +13,6 @@
     $toJalali = function ($date) {
         if (!$date) return null;
         $carbon = Carbon::parse($date);
-        if ($carbon->year < 1900) {
-            return new Jalalian($carbon->year, $carbon->month, $carbon->day, $carbon->hour, $carbon->minute, $carbon->second);
-        }
         return Jalalian::fromCarbon($carbon);
     };
 
@@ -77,7 +74,7 @@
                            placeholder="جستجو: نام مشتری، شماره سفارش، نام سرویس..."
                            class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 ps-12 pe-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white">
                 </div>
-                <div class="xl:col-span-2">
+                <div class="xl:col-span-3">
                     <select name="status_id"
                             class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
                         <option value="">همه وضعیت‌ها</option>
@@ -87,23 +84,13 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="xl:col-span-2">
+                <div class="xl:col-span-3">
                     <select name="service_id"
                             class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
                         <option value="">همه سرویس‌ها</option>
                         @foreach($services as $srv)
                             <option
                                 value="{{ $srv->id }}" @selected(request('service_id') == $srv->id)>{{ $srv->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="xl:col-span-2">
-                    <select name="customer_id"
-                            class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
-                        <option value="">همه مشتریان</option>
-                        @foreach($customers as $cus)
-                            <option
-                                value="{{ $cus->id }}" @selected(request('customer_id') == $cus->id)>{{ $cus->full_name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -116,7 +103,7 @@
                         </svg>
                         فیلتر
                     </button>
-                    @if(request()->hasAny(['search', 'status_id', 'service_id', 'customer_id']))
+                    @if(request()->hasAny(['search', 'status_id', 'service_id']))
                         <a href="{{ route('services.orders.index') }}" title="پاک کردن فیلترها"
                            class="px-5 py-3.5 rounded-2xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -140,9 +127,6 @@
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
                             شماره فاکتور
-                        </th>
-                        <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
-                            مبلغ پایه
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
                             دوره و مبلغ تمدید
@@ -175,19 +159,26 @@
                             $statusColor = $order->status->color ?? '#6b7280';
                             $statusName  = $order->status->name ?? 'نامشخص';
 
-                            $renewalDate = $order->renewal_date ? Carbon::parse($order->renewal_date) : null;
+                            $renewalDate = $order->renewal_date;
                             if (!$renewalDate && $order->billing_cycle && $issueDate) {
-                                $renewalDate = clone Carbon::parse($issueDate);
-                                switch ($order->billing_cycle) {
-                                    case 'monthly':     $renewalDate->addMonth(); break;
-                                    case 'quarterly':   $renewalDate->addMonths(3); break;
-                                    case 'semi_annual': $renewalDate->addMonths(6); break;
-                                    case 'annual':      $renewalDate->addYear(); break;
+                                try {
+                                    $issueJalali = clone $toJalali($issueDate);
+                                    switch ($order->billing_cycle) {
+                                        case 'monthly':     $renewalDate = $issueJalali->addMonths(1)->format('Y/m/d'); break;
+                                        case 'quarterly':   $renewalDate = $issueJalali->addMonths(3)->format('Y/m/d'); break;
+                                        case 'semi_annual': $renewalDate = $issueJalali->addMonths(6)->format('Y/m/d'); break;
+                                        case 'annual':      $renewalDate = $issueJalali->addYears(1)->format('Y/m/d'); break;
+                                    }
+                                } catch (\Exception $e) {
+                                    $renewalDate = clone Carbon::parse($issueDate);
+                                    switch ($order->billing_cycle) {
+                                        case 'monthly':     $renewalDate->addMonth(); break;
+                                        case 'quarterly':   $renewalDate->addMonths(3); break;
+                                        case 'semi_annual': $renewalDate->addMonths(6); break;
+                                        case 'annual':      $renewalDate->addYear(); break;
+                                    }
                                 }
                             }
-
-                            // مبلغ پایه - همیشه از سرویس گرفته می‌شود
-                            $basePrice = $order->service->base_price ?? 0;
 
                             $invoiceItem = null;
                             if ($invoice) {
@@ -199,8 +190,26 @@
                                 }
                             }
 
-                            // مبلغ نهایی سرویس (فاکتور)
-                            $finalServicePrice = $invoiceItem ? ($invoiceItem->total ?? 0) : ($order->total_amount ?? 0);
+                            // مبلغ نهایی سرویس (فاکتور) بعد اعمال مالیات و تخفیف
+                            if ($invoice) {
+                                if ($invoice->items->count() === 1) {
+                                    $finalServicePrice = $invoice->total;
+                                } elseif ($invoiceItem) {
+                                    $rowBaseWithTax = $invoiceItem->total + ($invoiceItem->tax_amount ?? 0);
+                                    if (($invoice->tax_percent ?? 0) > 0 && ($invoiceItem->tax_amount ?? 0) == 0) {
+                                        $rowBaseWithTax += $rowBaseWithTax * ($invoice->tax_percent / 100);
+                                    }
+                                    if (($invoice->extra_discount_value ?? 0) > 0 && $invoice->subtotal > 0) {
+                                        $extraDiscShare = $invoice->extra_discount_value * ($rowBaseWithTax / $invoice->subtotal);
+                                        $rowBaseWithTax = max(0, $rowBaseWithTax - $extraDiscShare);
+                                    }
+                                    $finalServicePrice = (int) round($rowBaseWithTax);
+                                } else {
+                                    $finalServicePrice = $invoice->total;
+                                }
+                            } else {
+                                $finalServicePrice = $order->total_amount ?? 0;
+                            }
 
                             // مبلغ تمدید - خودکار/دستی
                             $isRenewalManual = ($order->renewal_price_type ?? 'auto') === 'manual';
@@ -254,13 +263,6 @@
                                 @else
                                     <span class="text-sm font-bold text-gray-400">بدون فاکتور</span>
                                 @endif
-                            </td>
-
-                            {{-- مبلغ پایه --}}
-                            <td class="px-6 py-4 text-center align-middle">
-                                <div
-                                    class="font-black text-gray-900 dark:text-gray-100 text-base tabular-nums">{{ $faNum(number_format($basePrice)) }}</div>
-                                <div class="text-[10px] font-bold text-gray-400 mt-0.5">{{ $currencyLabel }}</div>
                             </td>
 
                             {{-- دوره و مبلغ تمدید --}}

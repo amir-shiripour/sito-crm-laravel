@@ -255,7 +255,7 @@
                                         <span
                                             class="font-mono text-sm font-bold text-indigo-600 dark:text-indigo-400">{{ $invoice->invoice_number }}</span>
                                         <span
-                                            class="text-xs text-gray-400 mt-1 dir-ltr">{{ $invoice->issue_date?->format('Y-m-d') }}</span>
+                                            class="text-xs text-gray-400 mt-1 dir-ltr">{{ $invoice->issue_date ? \Morilog\Jalali\Jalalian::fromCarbon($invoice->issue_date)->format('Y/m/d') : '-' }}</span>
                                     </div>
                                     <div class="flex items-center gap-4">
                                         @if($invoice->status)

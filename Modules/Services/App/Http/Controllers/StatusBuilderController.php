@@ -54,6 +54,16 @@ class StatusBuilderController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function seed()
+    {
+        $this->authorize('status-builder.manage');
+        \Illuminate\Support\Facades\Artisan::call('db:seed', [
+            '--class' => 'Modules\Services\Database\Seeders\StatusSeeder',
+            '--force' => true
+        ]);
+        return back()->with('success', 'وضعیت‌های پیش‌فرض با موفقیت ساخته شدند.');
+    }
+
     private function prepareData(array $validated): array
     {
         // لیست ویژگی‌های تخصصی که باید در ستون JSON ذخیره شوند

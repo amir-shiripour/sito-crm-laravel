@@ -17,7 +17,6 @@ class StoreServiceRequest extends FormRequest
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50|unique:services,code',
             'category_id' => 'nullable|exists:service_categories,id',
-            'template_id' => 'nullable|exists:service_templates,id',
             'description' => 'nullable|string',
             'status_id' => 'required|exists:services_statuses,id',
             'base_price' => 'nullable|integer|min:0',
@@ -31,7 +30,6 @@ class StoreServiceRequest extends FormRequest
             'billing_type' => 'nullable|in:one_time,recurring',
             'recurring_period' => 'nullable|in:monthly,quarterly,semi_annual,annual',
             'custom_period_days' => 'nullable|integer|min:1',
-            'renewal_reminder_days' => 'nullable|integer|min:0',
             'auto_renewal' => 'nullable|boolean',
 
             'renewal_prices' => 'nullable|array',

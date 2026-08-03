@@ -75,9 +75,9 @@
 
         {{-- Summary strip --}}
         @php
-            $sumTotal = $invoices->sum('total');
-            $sumPaid  = $invoices->sum('paid_amount');
-            $sumDue   = max(0, $sumTotal - $sumPaid);
+            $sumTotal = $invoices->reject(fn($inv) => $inv->isMerged())->sum('total');
+            $sumPaid  = $invoices->reject(fn($inv) => $inv->isMerged())->sum('paid_amount');
+            $sumDue   = $invoices->reject(fn($inv) => $inv->isMerged())->sum(fn($inv) => $inv->remainingAmount());
             $sumCount = $invoices->total() ?? $invoices->count();
             $statCardClass = "rounded-3xl border p-5 flex items-center gap-5 overflow-hidden";
         @endphp
@@ -214,16 +214,22 @@
                     @forelse($invoices as $invoice)
                         @php
                             $remaining   = $invoice->remainingAmount();
-                            $isCanceled  = str_contains($invoice->status?->name ?? '', 'لغو');
+                            $isCanceled  = $invoice->isCanceled();
 
                             $statusName = $invoice->status?->name ?? '—';
                             $statusColor = $invoice->status?->color ?? '#6b7280';
                         @endphp
                         <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-200">
                             <td class="px-6 py-4">
-                                <a href="{{ route('services.invoices.show', $invoice) }}" class="font-bold text-indigo-600 dark:text-indigo-400 text-base tabular-nums hover:underline">
+                                <a href="{{ route('services.invoices.show', $invoice) }}" class="font-bold text-indigo-600 dark:text-indigo-400 text-base tabular-nums hover:underline block">
                                     {{ $faNum($invoice->invoice_number) }}
                                 </a>
+                                @if(!empty($invoice->meta['created_by_workflow']))
+                                    <span class="inline-block mt-2 text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-500/20">سیستمی</span>
+                                @endif
+                                @if(!empty($invoice->meta['is_merged_invoice']) && !$invoice->isMerged())
+                                    <span class="inline-block mt-2 text-[10px] font-bold text-purple-500 bg-purple-50 dark:bg-purple-500/10 px-2 py-0.5 rounded border border-purple-100 dark:border-purple-500/20">حاصل ادغام فاکتورها</span>
+                                @endif
                             </td>
                             <td class="px-6 py-4">
                                 <div class="font-bold text-gray-900 dark:text-white text-base">{{ $invoice->customer?->full_name ?? $invoice->client_name ?? '—' }}</div>
@@ -239,6 +245,19 @@
                                 @if($isCanceled)
                                     <span class="font-black text-rose-500 dark:text-rose-400 text-base tabular-nums">لغو شده</span>
                                     <span class="block text-[11px] font-bold text-gray-400 mt-1">امکان پرداخت ندارد</span>
+                                @elseif($invoice->isMerged())
+                                    <span class="font-black text-purple-500 dark:text-purple-400 text-base tabular-nums">{{ $faNum(number_format($invoice->total)) }} <span class="text-[11px] font-medium">{{ $currencyLabel }}</span></span>
+                                    @php
+                                        $mergedIntoId = $invoice->meta['was_merged_into'] ?? null;
+                                    @endphp
+                                    @if($mergedIntoId)
+                                        @php $mergedInvoice = \Modules\Services\App\Http\Models\Invoice::find($mergedIntoId); @endphp
+                                        @if($mergedInvoice)
+                                            <span class="block text-[10px] font-bold text-purple-400 mt-1">⇐ ادغام در {{ $faNum($mergedInvoice->invoice_number) }}</span>
+                                        @endif
+                                    @else
+                                        <span class="block text-[11px] font-bold text-purple-400 mt-1">ادغام شده</span>
+                                    @endif
                                 @elseif($remaining <= 0)
                                     <span class="font-black text-emerald-600 dark:text-emerald-400 text-base tabular-nums">{{ $faNum(number_format($invoice->paid_amount)) }} <span class="text-[11px] font-medium">{{ $currencyLabel }}</span></span>
                                     <span class="block text-[11px] font-bold text-emerald-500 mt-1">تسویه کامل</span>
@@ -258,10 +277,10 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-center text-sm font-medium text-gray-500 dark:text-gray-400 dir-ltr whitespace-nowrap tabular-nums">
-                                {{ $faNum($invoice->issue_date) }}
+                                {{ $faNum($toJalali($invoice->issue_date)?->format('Y/m/d') ?? '-') }}
                             </td>
                             <td class="px-6 py-4 text-center text-sm font-medium text-gray-500 dark:text-gray-400 dir-ltr whitespace-nowrap tabular-nums">
-                                {{ $faNum($invoice->due_date) }}
+                                {{ $faNum($toJalali($invoice->due_date)?->format('Y/m/d') ?? '-') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center justify-end gap-2 opacity-100 sm:opacity-40 group-hover:opacity-100 transition-opacity duration-200">
@@ -283,13 +302,15 @@
                                         </svg>
                                     </a>
                                     @can('update', $invoice)
-                                        <a href="{{ route('services.invoices.edit', $invoice) }}"
-                                           class="p-2.5 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all hover:scale-110"
-                                           title="ویرایش">
-                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                            </svg>
-                                        </a>
+                                         @if($invoice->isEditable())
+                                             <a href="{{ route('services.invoices.edit', $invoice) }}"
+                                                class="p-2.5 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all hover:scale-110"
+                                                title="ویرایش">
+                                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                 </svg>
+                                             </a>
+                                         @endif
                                     @endcan
                                     @can('delete', $invoice)
                                         <form method="POST" action="{{ route('services.invoices.destroy', $invoice) }}"

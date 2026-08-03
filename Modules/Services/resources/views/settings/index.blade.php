@@ -2,6 +2,7 @@
 @section('title', 'تنظیمات سرویس‌ها')
 
 @php
+    $isSuperAdmin = auth()->user()?->hasAnyRole(['super-admin', 'superadmin']);
     $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:bg-gray-800 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20";
     $labelClass = "block text-xs font-bold text-gray-600 dark:text-gray-300 mb-2";
     $cardClass  = "bg-white dark:bg-gray-800/40 rounded-3xl border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden";
@@ -17,7 +18,7 @@
 
     $tabs = [
         'numbering'   => ['label' => 'شماره‌گذاری', 'icon' => 'hash'],
-        'finance'     => ['label' => 'مالی و ارز', 'icon' => 'coin'],
+        'finance'     => ['label' => 'مالی', 'icon' => 'coin'],
         'print'       => ['label' => 'چاپ و فاکتور', 'icon' => 'printer'],
         'automation'  => ['label' => 'مدیریت گردش کارها', 'icon' => 'bolt'],
     ];
@@ -376,6 +377,49 @@
                     </div>
                 </div>
 
+                {{-- Payment Synchronization --}}
+                <div class="{{ $cardClass }} md:col-span-2">
+                    <div
+                        class="p-6 border-b border-gray-100 dark:border-gray-700/60 bg-linear-to-r from-emerald-50/50 to-transparent dark:from-emerald-900/10">
+                        <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor"
+                                 stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                            </svg>
+                            همگام‌سازی روش‌های پرداخت
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <label
+                            class="flex items-center justify-between gap-6 cursor-pointer group p-5 rounded-2xl border-2 border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30 hover:border-emerald-200 dark:hover:border-emerald-500/30 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-all">
+                            <div class="flex-1">
+                                <span class="text-base font-black text-gray-800 dark:text-gray-200 block">فراخوانی روش‌های پرداخت از تنظیمات سیستم</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400 block mt-1.5 leading-relaxed">
+                                        با فعال‌سازی این گزینه، درگاه‌های آنلاین، حساب‌های بانکی و دستگاه‌های کارتخوان (POS) که در ماژول تنظیمات اصلی سیستم تعریف شده‌اند، به صورت خودکار در صفحه «ثبت پرداختی» نمایش داده خواهند شد.
+                                    </span>
+                            </div>
+                            <div class="relative shrink-0">
+                                <input type="hidden" name="services_use_global_payment_settings" value="0">
+                                <input type="checkbox" id="services_use_global_payment_settings"
+                                       name="services_use_global_payment_settings" value="1"
+                                       @checked($v('services_use_global_payment_settings') === '1') class="sr-only peer">
+                                <div
+                                    class="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:bg-emerald-500 transition-colors duration-300 shadow-inner"></div>
+                                <div
+                                    class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 peer-checked:-translate-x-6 flex items-center justify-center">
+                                    <svg
+                                        class="w-3.5 h-3.5 text-emerald-600 opacity-0 peer-checked:opacity-100 transition-opacity"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
                 {{-- Currency Settings --}}
                 <div class="{{ $cardClass }}"
                      x-data="{ currency: '{{ $v('currency','toman') }}' }">
@@ -398,19 +442,23 @@
                         <div class="flex flex-col">
                             <label class="{{ $labelClass }}">انتخاب واحد</label>
                             <div
-                                class="flex items-center gap-2 p-1.5 rounded-xl bg-gray-100 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
-                                <button type="button" @click="currency = 'toman'"
+                                class="flex items-center gap-2 p-1.5 rounded-xl bg-gray-100 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 {{ !$isSuperAdmin ? 'opacity-60 cursor-not-allowed' : '' }}">
+                                <button type="button" @if($isSuperAdmin) @click="currency = 'toman'" @else disabled @endif
                                         :class="currency === 'toman' ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-                                        class="flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200">
+                                        class="flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200 {{ !$isSuperAdmin ? 'cursor-not-allowed' : '' }}">
                                     تومان (Toman)
                                 </button>
-                                <button type="button" @click="currency = 'rial'"
+                                <button type="button" @if($isSuperAdmin) @click="currency = 'rial'" @else disabled @endif
                                         :class="currency === 'rial' ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-                                        class="flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200">
+                                        class="flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200 {{ !$isSuperAdmin ? 'cursor-not-allowed' : '' }}">
                                     ریال (Rial)
                                 </button>
                             </div>
-                            <input type="hidden" name="currency" x-model="currency">
+                            @if($isSuperAdmin)
+                                <input type="hidden" name="currency" x-model="currency">
+                            @else
+                                <p class="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">تغییر واحد مالی فقط توسط سوپر ادمین امکان‌پذیر است.</p>
+                            @endif
                         </div>
 
                         <div class="flex flex-col">
@@ -424,6 +472,81 @@
                                 </svg>
                                 <span
                                     x-text="currency === 'rial' ? 'تمامی مبالغ در سیستم بر اساس ریال محاسبه خواهند شد.' : 'تمامی مبالغ در سیستم بر اساس تومان محاسبه خواهند شد.'"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Rounding Settings --}}
+                <div class="{{ $cardClass }}"
+                     x-data="roundingPreview('{{ $v('services_rounding_mode', 'none') }}', {{ $v('services_rounding_factor', 1000) }})">
+                    <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                            <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3"/>
+                                </svg>
+                            </span>
+                            تنظیمات رند کردن مبالغ
+                        </h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 mr-13">
+                            نحوه رند شدن مبالغ کل فاکتورها در ماژول سرویس‌ها را مشخص کنید.
+                        </p>
+                    </div>
+
+                    <div class="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+                        {{-- Controls Column --}}
+                        <div class="space-y-5 flex flex-col justify-between">
+                            <div>
+                                <label class="{{ $labelClass }}">نوع رندسازی</label>
+                                <div class="flex items-center gap-1.5 p-1.5 rounded-xl bg-gray-100 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
+                                    <button type="button" @click="mode = 'none'; updatePreview()"
+                                            :class="mode === 'none' ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                                            class="flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 text-center">
+                                        بدون رندسازی
+                                    </button>
+                                    <button type="button" @click="mode = 'up'; updatePreview()"
+                                            :class="mode === 'up' ? 'bg-white dark:bg-gray-800 shadow-sm text-emerald-600 dark:text-emerald-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                                            class="flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 text-center">
+                                        رو به بالا
+                                    </button>
+                                    <button type="button" @click="mode = 'down'; updatePreview()"
+                                            :class="mode === 'down' ? 'bg-white dark:bg-gray-800 shadow-sm text-rose-600 dark:text-rose-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                                            class="flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 text-center">
+                                        رو به پایین
+                                    </button>
+                                </div>
+                                <input type="hidden" name="services_rounding_mode" x-model="mode">
+                            </div>
+
+                            <div>
+                                <label for="services_rounding_factor" class="{{ $labelClass }}">ضریب گرد کردن (تومان)</label>
+                                <input type="number" min="0" step="1" id="services_rounding_factor" name="services_rounding_factor"
+                                       x-model.number="factor" @input="updatePreview"
+                                       placeholder="1000"
+                                       class="{{ $inputClass }} dir-ltr text-left font-semibold">
+                                <p class="text-[11px] text-gray-400 mt-1.5">مبنای رند کردن مبالغ کل (مثلاً 1000 تومان)</p>
+                            </div>
+                        </div>
+
+                        {{-- Preview Column --}}
+                        <div class="flex flex-col">
+                            <label class="{{ $labelClass }}">پیش‌نمایش زنده</label>
+                            <div class="flex-1 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700/60 p-5 flex flex-col justify-between space-y-3 text-sm">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">مبلغ نمونه فاکتور:</span>
+                                    <span class="font-bold text-gray-800 dark:text-gray-200 dir-ltr" x-text="Number(sampleAmount).toLocaleString('en-US') + ' تومان'"></span>
+                                </div>
+
+                                <div class="flex items-center justify-between pt-3 border-t border-gray-200/60 dark:border-gray-700/60">
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">مبلغ رند شده:</span>
+                                    <span class="font-bold text-base dir-ltr" :class="colorClass" x-text="Number(result).toLocaleString('en-US') + ' تومان'"></span>
+                                </div>
+
+                                <div class="flex items-center justify-between text-xs pt-2 border-t border-gray-200/40 dark:border-gray-700/40">
+                                    <span class="text-gray-400">تفاوت اثر مالی:</span>
+                                    <span class="font-medium dir-ltr" :class="diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : (diff < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400')" x-text="formattedDiff + ' تومان'"></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -622,7 +745,7 @@
                         </div>
                         <div class="p-6">
                             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                با کلیک روی دکمه زیر، تمام گردش کارهای استاندارد و پیش‌فرض خدمات (مانند فعال‌سازی سفارش پس از پرداخت، معلق شدن سفارشات در صورت لغو فاکتور، و تعلیق خودکار ۷ روزه) مجدداً در سیستم نصب و تنظیم می‌شوند. 
+                                با کلیک روی دکمه زیر، تمام گردش کارهای استاندارد و پیش‌فرض خدمات (مانند فعال‌سازی سفارش پس از پرداخت، معلق شدن سفارشات در صورت لغو فاکتور، و تعلیق خودکار ۷ روزه) مجدداً در سیستم نصب و تنظیم می‌شوند.
                             </p>
                             <button type="button" onclick="document.getElementById('seedWorkflowsForm').submit();" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-500/20 transition-all text-sm font-bold shadow-sm group">
                                 <svg class="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -633,48 +756,6 @@
                         </div>
                     </div>
 
-                    {{-- Payment Synchronization --}}
-                    <div class="{{ $cardClass }} md:col-span-2">
-                        <div
-                            class="p-6 border-b border-gray-100 dark:border-gray-700/60 bg-linear-to-r from-emerald-50/50 to-transparent dark:from-emerald-900/10">
-                            <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24"
-                                     stroke="currentColor"
-                                     stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                          d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                                </svg>
-                                همگام‌سازی روش‌های پرداخت
-                            </h2>
-                        </div>
-                        <div class="p-6">
-                            <label
-                                class="flex items-center justify-between gap-6 cursor-pointer group p-5 rounded-2xl border-2 border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30 hover:border-emerald-200 dark:hover:border-emerald-500/30 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-all">
-                                <div class="flex-1">
-                                    <span class="text-base font-black text-gray-800 dark:text-gray-200 block">فراخوانی روش‌های پرداخت از تنظیمات سیستم</span>
-                                    <span class="text-sm text-gray-500 dark:text-gray-400 block mt-1.5 leading-relaxed">
-                                        با فعال‌سازی این گزینه، درگاه‌های آنلاین، حساب‌های بانکی و دستگاه‌های کارتخوان (POS) که در ماژول تنظیمات اصلی سیستم تعریف شده‌اند، به صورت خودکار در صفحه «ثبت پرداختی» نمایش داده خواهند شد.
-                                    </span>
-                                </div>
-                                <div class="relative shrink-0">
-                                    <input type="hidden" name="services_use_global_payment_settings" value="0">
-                                    <input type="checkbox" id="services_use_global_payment_settings"
-                                           name="services_use_global_payment_settings" value="1"
-                                           @checked($v('services_use_global_payment_settings') === '1') class="sr-only peer">
-                                    <div
-                                        class="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:bg-emerald-500 transition-colors duration-300 shadow-inner"></div>
-                                    <div
-                                        class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 peer-checked:-translate-x-6 flex items-center justify-center">
-                                        <svg
-                                            class="w-3.5 h-3.5 text-emerald-600 opacity-0 peer-checked:opacity-100 transition-opacity"
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -758,6 +839,58 @@
                     updateProformaPreview() {
                         const num = String(1).padStart(this.proforma_padding, '0');
                         this.proforma_preview = this.proforma_prefix + this.proforma_middle + '-' + num + this.proforma_suffix;
+                    }
+                }));
+
+                Alpine.data('roundingPreview', (initialMode, initialFactor) => ({
+                    mode: initialMode || 'none',
+                    factor: parseInt(initialFactor) || 1000,
+                    sampleAmount: 345200,
+                    result: 345200,
+
+                    init() {
+                        this.updatePreview();
+                    },
+
+                    setFactor(val) {
+                        this.factor = parseInt(val) || 0;
+                        this.updatePreview();
+                    },
+
+                    setSample(val) {
+                        this.sampleAmount = parseInt(val) || 0;
+                        this.updatePreview();
+                    },
+
+                    updatePreview() {
+                        const factor = this.factor || 0;
+                        const sample = Number(this.sampleAmount) || 0;
+                        if (!this.mode || this.mode === 'none' || factor <= 0) {
+                            this.result = Math.round(sample);
+                        } else if (this.mode === 'up') {
+                            this.result = Math.ceil(sample / factor) * factor;
+                        } else if (this.mode === 'down') {
+                            this.result = Math.floor(sample / factor) * factor;
+                        } else {
+                            this.result = Math.round(sample);
+                        }
+                    },
+
+                    get diff() {
+                        return this.result - (Number(this.sampleAmount) || 0);
+                    },
+
+                    get formattedDiff() {
+                        const d = this.diff;
+                        if (d > 0) return '+' + d.toLocaleString('en-US');
+                        if (d < 0) return d.toLocaleString('en-US');
+                        return '۰';
+                    },
+
+                    get colorClass() {
+                        if (this.mode === 'up') return 'text-emerald-600 dark:text-emerald-400';
+                        if (this.mode === 'down') return 'text-rose-600 dark:text-rose-400';
+                        return 'text-slate-800 dark:text-slate-100';
                     }
                 }));
             });
