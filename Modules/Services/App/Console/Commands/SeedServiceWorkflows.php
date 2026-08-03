@@ -156,6 +156,66 @@ class SeedServiceWorkflows extends Command
             'sort_order' => 10,
             'config' => ['entity_type' => 'order', 'status_name' => 'لغو شده', 'status_type' => 'order']
         ]);
+        // 7. Revert Invoice Status to Overdue on Payment Cancelled
+        $wf7 = Workflow::updateOrCreate(
+            ['key' => 'system_invoice_unpaid_revert_overdue'],
+            ['name' => 'بازگشت وضعیت فاکتور به معوقه در صورت لغو پرداخت', 'is_active' => true, 'created_by' => 1]
+        );
+        $wf7->triggers()->delete();
+        $wf7->triggers()->create(['type' => 'EVENT', 'config' => ['event_key' => ['invoice_unpaid'], 'payment_statuses' => ['معوقه']]]);
+
+        $wf7->stages()->delete();
+        $wf7->nodes()->delete();
+        $wf7->edges()->delete();
+        $stage7 = $wf7->stages()->create(['name' => 'بازگشت وضعیت معوقه', 'sort_order' => 1]);
+        $stage7->actions()->create([
+            'action_type' => 'CHANGE_SERVICE_STATUS',
+            'sort_order' => 10,
+            'config' => ['entity_type' => 'invoice', 'status_name' => 'معوقه', 'status_type' => 'payment']
+        ]);
+
+        // 8. Revert Invoice Status to Pending on Payment Cancelled
+        $wf8 = Workflow::updateOrCreate(
+            ['key' => 'system_invoice_unpaid_revert_pending'],
+            ['name' => 'بازگشت وضعیت فاکتور به در انتظار پرداخت در صورت لغو پرداخت', 'is_active' => true, 'created_by' => 1]
+        );
+        $wf8->triggers()->delete();
+        $wf8->triggers()->create(['type' => 'EVENT', 'config' => ['event_key' => ['invoice_unpaid'], 'payment_statuses' => ['در انتظار پرداخت']]]);
+
+        $wf8->stages()->delete();
+        $wf8->nodes()->delete();
+        $wf8->edges()->delete();
+        $stage8 = $wf8->stages()->create(['name' => 'بازگشت وضعیت در انتظار', 'sort_order' => 1]);
+        $stage8->actions()->create([
+            'action_type' => 'CHANGE_SERVICE_STATUS',
+            'sort_order' => 10,
+            'config' => ['entity_type' => 'invoice', 'status_name' => 'در انتظار پرداخت', 'status_type' => 'payment']
+        ]);
+
+        // 9. Auto Create Invoice on Order Renewal Date
+        $wf9 = Workflow::updateOrCreate(
+            ['key' => 'system_order_renewal_auto_invoice'],
+            ['name' => 'ساخت خودکار فاکتور با فرارسیدن تاریخ تمدید سفارش', 'is_active' => true, 'created_by' => 1]
+        );
+        $wf9->triggers()->delete();
+        $wf9->triggers()->create([
+            'type' => 'ORDER_RENEWAL_REMINDER',
+            'config' => [
+                'offset_days' => 0,
+                'run_at_time' => '08:00',
+                'order_statuses' => ['فعال'],
+            ]
+        ]);
+
+        $wf9->stages()->delete();
+        $wf9->nodes()->delete();
+        $wf9->edges()->delete();
+        $stage9 = $wf9->stages()->create(['name' => 'ساخت فاکتور تمدید', 'sort_order' => 1]);
+        $stage9->actions()->create([
+            'action_type' => 'CREATE_INVOICE',
+            'sort_order' => 10,
+            'config' => []
+        ]);
 
         $this->info('Successfully seeded new Workflows for Services!');
     }

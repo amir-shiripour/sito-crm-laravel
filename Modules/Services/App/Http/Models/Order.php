@@ -67,4 +67,14 @@ class Order extends Model
     {
         return $this->belongsTo(Invoice::class);
     }
+
+    public function invoices()
+    {
+        return Invoice::where(function($query) {
+            $query->where('id', $this->invoice_id)
+                  ->orWhere('meta->source_order_id', $this->id)
+                  ->orWhereJsonContains('meta->merged_from_invoice_ids', $this->invoice_id)
+                  ->orWhere('meta->was_merged_into', $this->invoice_id);
+        })->latest();
+    }
 }

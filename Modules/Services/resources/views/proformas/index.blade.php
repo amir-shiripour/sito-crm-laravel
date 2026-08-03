@@ -56,8 +56,8 @@
         {{-- Filter bar --}}
         <form method="GET"
               class="bg-white dark:bg-gray-800/60 p-5 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl">
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-5">
-                <div class="relative xl:col-span-8">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+                <div class="relative md:col-span-6 lg:col-span-7">
                     <div class="absolute inset-y-0 start-0 ps-5 flex items-center pointer-events-none">
                         <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                              stroke-width="2">
@@ -69,17 +69,16 @@
                            placeholder="جستجو: نام مشتری، شماره پیش فاکتور..."
                            class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 ps-12 pe-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white">
                 </div>
-                <div class="xl:col-span-2">
-                    <select name="status_id"
+                <div class="md:col-span-3 lg:col-span-3">
+                    <select name="customer_id"
                             class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
-                        <option value="">همه وضعیت‌ها</option>
-                        @foreach($statuses as $st)
-                            <option
-                                value="{{ $st->id }}" @selected(request('status_id') == $st->id)>{{ $st->name }}</option>
+                        <option value="">همه مشتریان</option>
+                        @foreach($customers as $c)
+                            <option value="{{ $c->id }}" @selected(request('customer_id') == $c->id)>{{ $c->full_name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="xl:col-span-2 flex gap-2">
+                <div class="md:col-span-3 lg:col-span-2 flex gap-2">
                     <button type="submit"
                             class="flex-1 px-6 py-3.5 rounded-2xl bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 text-sm font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -88,7 +87,7 @@
                         </svg>
                         فیلتر
                     </button>
-                    @if(request()->hasAny(['search', 'status_id']))
+                    @if(request()->hasAny(['search', 'customer_id']))
                         <a href="{{ route('services.proformas.index') }}" title="پاک کردن فیلترها"
                            class="px-5 py-3.5 rounded-2xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -116,9 +115,6 @@
                             مبلغ کل
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
-                            وضعیت
-                        </th>
-                        <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
                             تاریخ صدور
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
@@ -131,10 +127,6 @@
                     </thead>
                     <tbody class="divide-y divide-gray-50 dark:divide-gray-700/40">
                     @forelse($proformas as $proforma)
-                        @php
-                            $statusColor = $proforma->status?->color ?? '#6b7280';
-                            $statusName  = $proforma->status?->name  ?? '—';
-                        @endphp
                         <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-200">
                             <td class="px-6 py-4">
                                 <a href="{{ route('services.invoices.show', $proforma) }}" class="font-bold text-indigo-600 dark:text-indigo-400 text-base tabular-nums hover:underline">
@@ -150,13 +142,6 @@
                             <td class="px-6 py-4 text-center">
                                 <span class="font-black text-gray-900 dark:text-gray-100 text-base tabular-nums">{{ $faNum(number_format($proforma->total)) }}</span>
                                 <span class="text-[11px] font-medium text-gray-400 block">{{ $currencyLabel }}</span>
-                            </td>
-                            <td class="px-6 py-4 text-center">
-                                <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border"
-                                      style="background: {{ $statusColor }}1a; color: {{ $statusColor }}; border-color: {{ $statusColor }}33">
-                                    <span class="w-2 h-2 rounded-full" style="background: {{ $statusColor }}"></span>
-                                    {{ $statusName }}
-                                </span>
                             </td>
                             <td class="px-6 py-4 text-center text-sm font-medium text-gray-500 dark:text-gray-400 dir-ltr whitespace-nowrap tabular-nums">
                                 {{ $faNum($proforma->issue_date) }}
@@ -175,13 +160,15 @@
                                         </svg>
                                     </a>
                                     @can('update', $proforma)
-                                        <a href="{{ route('services.invoices.edit', $proforma) }}"
-                                           class="p-2.5 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all hover:scale-110"
-                                           title="ویرایش">
-                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                            </svg>
-                                        </a>
+                                        @if($proforma->isEditable())
+                                            <a href="{{ route('services.invoices.edit', $proforma) }}"
+                                               class="p-2.5 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all hover:scale-110"
+                                               title="ویرایش">
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                </svg>
+                                            </a>
+                                        @endif
                                     @endcan
                                     @can('delete', $proforma)
                                         <form method="POST" action="{{ route('services.invoices.destroy', $proforma) }}"

@@ -13,11 +13,13 @@
 
     $useGlobalPayment = ($settings['services_use_global_payment_settings'] ?? '0') === '1';
 
-    $activePaymentMethods = [];
-    $onlineGateways = [];
-    $bankTransferAccounts = [];
-    $posDevices = [];
-    $codEnabled = false;
+    $banksMap = [];
+    if (\Illuminate\Support\Facades\Schema::hasTable('accounting_fund_accounts')) {
+        $banksMap = \Illuminate\Support\Facades\DB::table('accounting_fund_accounts')
+            ->where('type', 'bank')
+            ->pluck('name', 'id')
+            ->all();
+    }
 
     if ($useGlobalPayment) {
         $activePaymentMethods = json_decode($settings['active_payment_methods'] ?? '[]', true);
@@ -26,7 +28,17 @@
         if (($settings['zibal_status'] ?? 'inactive') === 'active') $onlineGateways['zibal'] = 'زیبال';
         if (($settings['behpardakht_status'] ?? 'inactive') === 'active') $onlineGateways['behpardakht'] = 'به‌پرداخت ملت';
 
-        $bankTransferAccounts = in_array('transfer', $activePaymentMethods) ? json_decode($settings['bank_transfer_accounts'] ?? '[]', true) : [];
+        $rawAccounts = in_array('transfer', $activePaymentMethods) ? json_decode($settings['bank_transfer_accounts'] ?? '[]', true) : [];
+        if (is_array($rawAccounts)) {
+            foreach ($rawAccounts as $acc) {
+                if (is_array($acc)) {
+                    if (empty($acc['bank_name']) && !empty($acc['bank_id']) && isset($banksMap[$acc['bank_id']])) {
+                        $acc['bank_name'] = $banksMap[$acc['bank_id']];
+                    }
+                    $bankTransferAccounts[] = $acc;
+                }
+            }
+        }
         $posDevices = in_array('pos', $activePaymentMethods) ? json_decode($settings['pos_devices'] ?? '[]', true) : [];
         $codEnabled = in_array('cod', $activePaymentMethods);
     }
@@ -111,10 +123,10 @@
                                  :class="paymentType === 'online' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-md' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-800'">
                                 <div
                                     class="w-16 h-16 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center transition-colors text-indigo-600 dark:text-indigo-400">
-                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                         stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                              d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 21z"/>
+                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/>
+                                        <path stroke-linecap="round" d="M2.5 9.5h19"/>
+                                        <path stroke-linecap="round" d="M6 14.5h4"/>
                                     </svg>
                                 </div>
                                 <span class="text-lg font-bold transition-colors"
@@ -127,14 +139,31 @@
                                  :class="paymentType === 'manual' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-md' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-800'">
                                 <div
                                     class="w-16 h-16 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center transition-colors text-indigo-600 dark:text-indigo-400">
-                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                         stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                              d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6A.75.75 0 012.25 5.25v-.75m0 0A.75.75 0 013 4.5A.75.75 0 013.75 3.75m0 0A.75.75 0 014.5 4.5A.75.75 0 013.75 4.5m5.25 0v.75A.75.75 0 019 6A.75.75 0 018.25 5.25v-.75m0 0A.75.75 0 019 4.5A.75.75 0 018.25 4.5m5.25 0v.75A.75.75 0 0115 6a.75.75 0 01-.75-.75v-.75m0 0a.75.75 0 01.75.75a.75.75 0 01-.75.75M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5"/>
+                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <rect x="2.5" y="6" width="19" height="12" rx="2"/>
+                                        <circle cx="12" cy="12" r="2.75"/>
+                                        <path stroke-linecap="round" d="M5.5 9v0M18.5 15v0"/>
                                     </svg>
                                 </div>
                                 <span class="text-lg font-bold transition-colors"
                                       :class="paymentType === 'manual' ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-300'">پرداخت نقدی / انتقال بانکی</span>
+                            </div>
+                        @endif
+                        @if(isset($customerCheques) && $customerCheques->isNotEmpty())
+                            <div @click="setPaymentType('cheque')"
+                                 class="flex flex-col items-center justify-center text-center gap-4 p-8 rounded-2xl border-2 transition-all cursor-pointer"
+                                 :class="paymentType === 'cheque' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-md' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-800'">
+                                <div
+                                    class="w-16 h-16 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center transition-colors text-indigo-600 dark:text-indigo-400">
+                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <rect x="2.5" y="5" width="19" height="14" rx="2"/>
+                                        <path stroke-linecap="round" d="M6 10h6"/>
+                                        <path stroke-linecap="round" d="M6 13h4"/>
+                                        <path stroke-linecap="round" d="M14 16.5c1.2 0 1.2-1.5 2.4-1.5s1.2 1.5 2.4 1.5"/>
+                                    </svg>
+                                </div>
+                                <span class="text-lg font-bold transition-colors"
+                                      :class="paymentType === 'cheque' ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-300'">پرداخت با چک</span>
                             </div>
                         @endif
                     </div>
@@ -184,6 +213,15 @@
                                             کارت به کارت / حواله بانکی</h3>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             @foreach($bankTransferAccounts as $account)
+                                                @php
+                                                    $bankName = $account['bank_name'] ?? '';
+                                                    $ownerName = $account['owner_name'] ?? $account['name'] ?? '';
+                                                    if (empty($bankName) && !empty($ownerName) && (str_contains($ownerName, 'بانک') || str_contains($ownerName, 'Bank'))) {
+                                                        $bankName = $ownerName;
+                                                        $ownerName = '';
+                                                    }
+                                                    $title = !empty($bankName) ? $bankName : (!empty($ownerName) ? $ownerName : 'حساب بانکی');
+                                                @endphp
                                                 <label
                                                     class="flex items-start text-start gap-4 p-5 rounded-2xl border-2 transition-all cursor-pointer"
                                                     :class="selectedMethod === 'transfer-{{ $account['id'] ?? '' }}' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-200 dark:hover:border-indigo-800'">
@@ -192,23 +230,26 @@
                                                            x-model="selectedMethod"
                                                            class="mt-1 w-5 h-5 text-indigo-600 focus:ring-indigo-500/50 dark:bg-gray-800 dark:border-gray-600">
                                                     <div class="flex-1">
-                                                        <span
-                                                            class="text-base font-bold text-gray-800 dark:text-gray-100">{{ $account['name'] ?? 'حساب بانکی' }}</span>
-                                                        <div
-                                                            class="text-sm text-gray-500 dark:text-gray-400 mt-3 space-y-2">
+                                                        <div class="flex items-center gap-2 flex-wrap">
+                                                            <span class="text-base font-black text-gray-800 dark:text-gray-100">{{ $faNum($title) }}</span>
+                                                            @if(!empty($bankName) && !empty($ownerName) && $bankName !== $ownerName)
+                                                                <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">به نام: {{ $faNum($ownerName) }}</span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="text-sm text-gray-500 dark:text-gray-400 mt-3 space-y-2">
                                                             @if(!empty($account['account_number']))
                                                                 <p>شماره حساب: <strong
-                                                                        class="font-mono text-gray-700 dark:text-gray-300">{{ $account['account_number'] }}</strong>
+                                                                        class="font-bold text-gray-700 dark:text-gray-300">{{ $faNum($account['account_number']) }}</strong>
                                                                 </p>
                                                             @endif
                                                             @if(!empty($account['card_number']))
                                                                 <p>شماره کارت: <strong
-                                                                        class="font-mono text-gray-700 dark:text-gray-300">{{ $account['card_number'] }}</strong>
+                                                                        class="font-bold text-gray-700 dark:text-gray-300">{{ $faNum($account['card_number']) }}</strong>
                                                                 </p>
                                                             @endif
                                                             @if(!empty($account['iban']))
                                                                 <p>شماره شبا: <strong
-                                                                        class="font-mono text-gray-700 dark:text-gray-300">{{ $account['iban'] }}</strong>
+                                                                        class="font-bold text-gray-700 dark:text-gray-300">{{ $faNum($account['iban']) }}</strong>
                                                                 </p>
                                                             @endif
                                                         </div>
@@ -262,6 +303,51 @@
                                 @endif
                             @endif
                         </div>
+
+                        @if(isset($customerCheques) && $customerCheques->isNotEmpty())
+                            <div x-show="paymentType === 'cheque'" x-cloak class="space-y-6">
+                                <div>
+                                    <h3 class="text-base font-bold text-gray-500 dark:text-gray-400 mb-4 border-b border-gray-200 dark:border-gray-700 pb-3">
+                                        انتخاب چک</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        @foreach($customerCheques as $cheque)
+                                            @php
+                                                $isExceeded = $cheque->amount > $dueAmount;
+                                            @endphp
+                                            <label
+                                                class="flex items-start text-start gap-4 p-5 rounded-2xl border-2 transition-all {{ $isExceeded ? 'opacity-60 bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700/60 cursor-not-allowed' : 'cursor-pointer' }}"
+                                                @unless($isExceeded)
+                                                    :class="selectedMethod === 'cheque-{{ $cheque->id }}' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-200 dark:hover:border-indigo-800'"
+                                                    @click="selectCheque({{ $cheque->amount }}, '{{ $cheque->due_date_jalali }}', '{{ $cheque->cheque_number }}')"
+                                                @endunless
+                                                >
+                                                <input type="radio" name="method_radio" value="cheque-{{ $cheque->id }}"
+                                                       x-model="selectedMethod"
+                                                       @if($isExceeded) disabled @endif
+                                                       class="mt-1 w-5 h-5 text-indigo-600 focus:ring-indigo-500/50 dark:bg-gray-800 dark:border-gray-600 {{ $isExceeded ? 'cursor-not-allowed opacity-50' : '' }}">
+                                                <div class="flex-1">
+                                                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                                                        <span class="text-base font-bold text-gray-800 dark:text-gray-100">چک صیادی {{ $faNum($cheque->cheque_number) }}</span>
+                                                        @if($isExceeded)
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">مبلغ بیش از مانده</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="text-sm text-gray-500 dark:text-gray-400 mt-2 space-y-1">
+                                                        <p>مبلغ چک: <strong class="font-bold text-gray-700 dark:text-gray-300">{{ $faNum(number_format($cheque->amount)) }}</strong> {{ $currencyLabel }}</p>
+                                                        <p>تاریخ سررسید: <strong class="font-bold text-gray-700 dark:text-gray-300">{{ $faNum($cheque->due_date_jalali) }}</strong></p>
+                                                    </div>
+                                                    @if($isExceeded)
+                                                        <p class="text-xs font-semibold text-red-500 dark:text-red-400 mt-2">
+                                                            مبلغ چک از مانده بدهی فاکتور ({{ $faNum(number_format($dueAmount)) }} {{ $currencyLabel }}) بیشتر است و قابل انتخاب نیست.
+                                                        </p>
+                                                    @endif
+                                                </div>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -363,14 +449,31 @@
                             const onlineMethods = @json(array_keys($onlineGateways));
                             if (onlineMethods.includes(oldMethod)) {
                                 this.paymentType = 'online';
+                            } else if (oldMethod.startsWith('cheque-')) {
+                                this.paymentType = 'cheque';
                             } else if (oldMethod.startsWith('transfer-') || oldMethod.startsWith('pos-') || oldMethod === 'cod' || oldMethod === 'cash') {
                                 this.paymentType = 'manual';
                             }
                         }
 
                         this.$watch('selectedMethod', (value) => {
-                            if (value) {
+                            if (value && !value.startsWith('cheque-')) {
                                 this.amount = this.formatPriceInput(this.dueAmount);
+                            }
+                        });
+                    },
+
+                    selectCheque(amount, date, chequeNumber) {
+                        this.amount = this.formatPriceInput(amount);
+                        this.paidAtDate = date;
+                        const trackingInput = this.$el.querySelector('#tracking_number');
+                        if (trackingInput) trackingInput.value = chequeNumber;
+                        this.$nextTick(() => {
+                            const dateEl = document.querySelector('input[name="paid_at"]');
+                            if (dateEl) {
+                                dateEl.value = this.paidAtDate;
+                                dateEl.dispatchEvent(new Event('input', { bubbles: true }));
+                                dateEl.dispatchEvent(new Event('change', { bubbles: true }));
                             }
                         });
                     },

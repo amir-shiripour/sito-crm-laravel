@@ -129,7 +129,7 @@
                         </h2>
                     </div>
                     {{-- آپدیت گرید برای فرم‌های عریض --}}
-                    <div class="p-6 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
                         <div class="md:col-span-2 xl:col-span-2">
                             <label class="{{ $labelClass }}">نام سرویس</label>
                             <input type="text" name="name" value="{{ old('name', $service->name ?? '') }}"
@@ -160,17 +160,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div>
-                            <label class="{{ $labelClass }}">قالب مرتبط</label>
-                            <select name="template_id" class="{{ $inputClass }} cursor-pointer">
-                                <option value="">بدون قالب پیش‌فرض</option>
-                                @foreach($templates as $t)
-                                    <option
-                                        value="{{ $t->id }}" @selected(old('template_id', $service->template_id ?? '') == $t->id)>{{ $t->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="md:col-span-3 xl:col-span-4">
+                        <div class="md:col-span-2 xl:col-span-5">
                             <label class="{{ $labelClass }}">توضیحات کلی</label>
                             <textarea name="description" rows="4" class="{{ $inputClass }} resize-none"
                                       placeholder="توضیحات و ویژگی‌های کلی این سرویس را اینجا بنویسید...">{{ old('description', $service->description ?? '') }}</textarea>
@@ -195,7 +185,7 @@
                     </div>
                     <div class="p-6 space-y-6">
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div>
                                 <label class="{{ $labelClass }}">نوع چرخه پرداخت</label>
                                 <select name="billing_type" x-model="billingType"
@@ -204,21 +194,8 @@
                                     <option value="recurring">اشتراک دوره‌ای</option>
                                 </select>
                             </div>
-                            <div :class="billingType !== 'recurring' ? 'opacity-40' : ''">
-                                <label class="{{ $labelClass }}">ارسال یادآور قبل از سررسید (روز)</label>
-                                <input type="text"
-                                       x-data="persianField({{ old('renewal_reminder_days', $service->renewal_reminder_days ?? 7) }})"
-                                       x-model="display" @input="handleInput($event.target.value)"
-                                       class="{{ $inputClass }} dir-ltr text-end tabular-nums font-medium"
-                                       placeholder="۰" :disabled="billingType !== 'recurring'">
-                                <input type="hidden" name="renewal_reminder_days" :value="value">
-                            </div>
-                        </div>
-
-                        <div
-                            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-6 border-t border-gray-100 dark:border-gray-700/50">
                             {{-- Base Price --}}
-                            <div class="sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                            <div class="md:col-span-1 lg:col-span-2">
                                 <label class="{{ $labelClass }}">قیمت پایه</label>
                                 <div class="relative">
                                     <input type="text" x-model="basePriceDisplay"
@@ -231,10 +208,10 @@
                                 </div>
                                 <input type="hidden" name="base_price" x-model.number="basePrice">
                             </div>
+                        </div>
 
                             {{-- بخش فروش بر اساس واحد --}}
-                            <div
-                                class="sm:col-span-2 lg:col-span-3 xl:col-span-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                            <div class="pt-4 border-t border-gray-100 dark:border-gray-700/50">
                                 <label
                                     class="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer w-max mb-4 transition-colors hover:border-indigo-400">
                                     <input type="checkbox" name="has_unit_pricing" value="1" x-model="hasUnitPricing"
@@ -252,8 +229,6 @@
                                     </div>
                                 </div>
                             </div>
-
-                        </div>
 
                         {{-- Renewal Prices --}}
                         <div x-show="billingType === 'recurring'" x-collapse

@@ -94,13 +94,20 @@ class Invoice extends Model
         });
 
         static::saving(function (Invoice $invoice) {
-            $invoice->paid_amount = $invoice->calculatePaidAmount();
+            if ($invoice->isDirty('status_id')) {
+                $invoice->unsetRelation('status');
+            }
+
+            // Do not recalculate paid_amount for merged/canceled invoices so they keep their historical values
+            if (!$invoice->isMerged() && !$invoice->isCanceled()) {
+                $invoice->paid_amount = $invoice->calculatePaidAmount();
+            }
         });
     }
 
     public function calculatePaidAmount(): int
     {
-        return $this->payments()->where('status', '!=', 'canceled')->sum('amount');
+        return $this->payments()->whereNotIn('status', ['canceled', 'pending'])->sum('amount');
     }
 
     public static function generateNumber(): string
@@ -110,7 +117,16 @@ class Invoice extends Model
         $suffix = Setting::where('key', 'services_invoice_suffix')->value('value') ?? '';
         $padding = (int)(Setting::where('key', 'services_invoice_padding')->value('value') ?? 4);
 
-        $seq = static::withTrashed()->whereNotNull('invoice_number')->whereRaw("invoice_number LIKE ?", ["{$prefix}%"])->count() + 1;
+        $lastSeq = static::withTrashed()
+            ->whereNotNull('invoice_number')
+            ->whereRaw("invoice_number LIKE ?", ["{$prefix}{$middle}-%"])
+            ->get()
+            ->map(function($inv) use ($prefix, $middle, $suffix) {
+                $numStr = str_replace([$prefix . $middle . '-', $suffix], '', $inv->invoice_number);
+                return (int)$numStr;
+            })->max() ?? 0;
+
+        $seq = $lastSeq + 1;
 
         return $prefix . $middle . '-' . str_pad($seq, $padding, '0', STR_PAD_LEFT) . $suffix;
     }
@@ -122,7 +138,16 @@ class Invoice extends Model
         $suffix = Setting::where('key', 'services_proforma_invoice_suffix')->value('value') ?? '';
         $padding = (int)(Setting::where('key', 'services_proforma_invoice_padding')->value('value') ?? 4);
 
-        $seq = static::withTrashed()->whereNotNull('proforma_invoice_number')->whereRaw("proforma_invoice_number LIKE ?", ["{$prefix}%"])->count() + 1;
+        $lastSeq = static::withTrashed()
+            ->whereNotNull('proforma_invoice_number')
+            ->whereRaw("proforma_invoice_number LIKE ?", ["{$prefix}{$middle}-%"])
+            ->get()
+            ->map(function($inv) use ($prefix, $middle, $suffix) {
+                $numStr = str_replace([$prefix . $middle . '-', $suffix], '', $inv->proforma_invoice_number);
+                return (int)$numStr;
+            })->max() ?? 0;
+
+        $seq = $lastSeq + 1;
 
         return $prefix . $middle . '-' . str_pad($seq, $padding, '0', STR_PAD_LEFT) . $suffix;
     }
@@ -167,14 +192,49 @@ class Invoice extends Model
         return $this->morphMany(ActivityLog::class, 'subject')->latest();
     }
 
+    public function isCanceled(): bool
+    {
+        $statusName = $this->status?->name ?? '';
+        return str_contains($statusName, 'لغو') || str_contains(strtolower($statusName), 'cancel');
+    }
+
+    public function isMerged(): bool
+    {
+        $statusName = $this->status?->name ?? '';
+        return str_contains($statusName, 'ادغام');
+    }
+
+    public function isEditable(): bool
+    {
+        if ($this->isCanceled() || $this->isMerged()) {
+            return false;
+        }
+
+        if ($this->isPaid()) {
+            return false;
+        }
+
+        if ($this->status && $this->status->locksInvoice()) {
+            return false;
+        }
+
+        return true;
+    }
+
     public function remainingAmount(): int
     {
+        if ($this->isCanceled() || $this->isMerged()) {
+            return 0;
+        }
         return max(0, $this->total - $this->calculatePaidAmount());
     }
 
     public function isPaid(): bool
     {
-        return $this->remainingAmount() <= 0;
+        if ($this->isCanceled() || $this->isMerged()) {
+            return false;
+        }
+        return max(0, $this->total - $this->calculatePaidAmount()) <= 0;
     }
 
     public function isOverdue(): bool
@@ -187,11 +247,12 @@ class Invoice extends Model
             return false;
         }
 
-        $isPastDueDate = Carbon::parse($this->due_date)->endOfDay()->isPast();
+        $gregorianDueDate = Carbon::parse($this->due_date);
+        $isPastDueDate = $gregorianDueDate->isPast() && !$gregorianDueDate->isToday();
 
         $hasLatePayment = $this->payments()
             ->where('status', '!=', 'canceled')
-            ->where('paid_at', '>', $this->due_date)
+            ->where('paid_at', '>', $gregorianDueDate)
             ->exists();
 
         return $isPastDueDate || $hasLatePayment;

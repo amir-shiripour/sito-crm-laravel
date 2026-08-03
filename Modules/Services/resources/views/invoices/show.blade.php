@@ -12,13 +12,8 @@
 
     $toJalali = function ($date) {
         if (!$date) return null;
-        if ($date instanceof \Carbon\Carbon && $date->year < 1900) {
-            return new Jalalian($date->year, $date->month, $date->day, $date->hour, $date->minute, $date->second);
-        }
-        if ($date instanceof \Carbon\Carbon) {
-            return Jalalian::fromCarbon($date);
-        }
-        return $date;
+        $carbon = $date instanceof \Carbon\Carbon ? $date : \Carbon\Carbon::parse($date);
+        return Jalalian::fromCarbon($carbon);
     };
 
     $buyerExtraFieldIds = json_decode($settings['services_invoice_client_fields'] ?? '[]', true) ?: [];
@@ -26,7 +21,8 @@
         ? $invoice->customer->getFormFieldValues($buyerExtraFieldIds)
         : [];
 
-    $remainingAmount = $invoice->remainingAmount();
+    $isProforma = empty($invoice->invoice_number);
+    $remainingAmount = $invoice->isMerged() ? max(0, $invoice->total - $invoice->paid_amount) : $invoice->remainingAmount();
     $isCanceled = str_contains($invoice->status?->name ?? '', 'لغو');
 
     // Just use the real status from the database, driven purely by Workflows!
@@ -48,36 +44,67 @@
     $cardClass  = "bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl";
 
     $getPaymentMethodName = function($method) use ($settings) {
+        if (!$method) return '—';
         $posDevices = json_decode($settings['pos_devices'] ?? '[]', true);
         $bankAccounts = json_decode($settings['bank_transfer_accounts'] ?? '[]', true);
 
-        if (str_starts_with($method, 'pos-')) {
-            $id = substr($method, 4);
-            foreach ($posDevices as $device) {
-                if ($device['id'] === $id) {
-                    return 'کارتخوان ' . $device['name'];
+        if (str_starts_with($method, 'pos-') || $method === 'pos') {
+            $id = str_starts_with($method, 'pos-') ? substr($method, 4) : null;
+            if ($id) {
+                foreach ($posDevices as $device) {
+                    if (isset($device['id']) && (string)$device['id'] === $id) {
+                        return 'کارتخوان ' . ($device['name'] ?? '');
+                    }
                 }
             }
             return 'کارتخوان';
         }
-        if (str_starts_with($method, 'cash-')) {
+        if (str_starts_with($method, 'cash-') || $method === 'cash') {
             return 'نقد';
         }
         if ($method === 'cod') {
             return 'پرداخت در محل';
         }
-        if (str_starts_with($method, 'transfer-')) {
-             $id = substr($method, 9);
-             foreach ($bankAccounts as $account) {
-                if ($account['id'] === $id) {
-                    return 'انتقال به ' . $account['account_number'];
+        if (str_starts_with($method, 'transfer-') || $method === 'transfer') {
+            $id = str_starts_with($method, 'transfer-') ? substr($method, 9) : null;
+            if ($id) {
+                foreach ($bankAccounts as $account) {
+                    if (isset($account['id']) && (string)$account['id'] === $id) {
+                        return 'انتقال به ' . ($account['account_number'] ?? '');
+                    }
                 }
             }
             return 'انتقال بانکی';
         }
+        if (str_starts_with($method, 'cheque-') || str_starts_with($method, 'check-') || $method === 'cheque' || $method === 'check') {
+            return 'چک';
+        }
+        if (str_starts_with($method, 'online-') || in_array($method, ['online', 'zarinpal', 'zibal', 'behpardakht'])) {
+            return 'درگاه آنلاین';
+        }
+        if ($method === 'wallet') return 'کیف پول';
+        if ($method === 'credit') return 'اعتبار';
+        if ($method === 'installment') return 'اقساطی';
+
         return $method;
     };
 
+    $backUrl = request('back_url');
+    if (!$backUrl && request('from_order')) {
+        $backUrl = route('user.market.orders.show', request('from_order'));
+    }
+    if (!$backUrl && request('from') === 'client') {
+        $backUrl = route('user.clients.show', [$invoice->customer_id ?? 1]) . '#invoices';
+    }
+    if (!$backUrl) {
+        $referer = request()->header('referer');
+        if ($referer && (str_contains($referer, '/market/orders/') || str_contains($referer, '/market/orders'))) {
+            $backUrl = $referer;
+        }
+    }
+    if (!$backUrl) {
+        $backUrl = route('services.invoices.index');
+    }
 @endphp
 
 @section('content')
@@ -113,13 +140,23 @@
                                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border {{ $isProforma ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' : 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20' }}">
                                 {{ $isProforma ? 'پیش فاکتور' : 'فاکتور رسمی' }}
                             </span>
-                            <span
-                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
-                                style="background: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}33;">
-                                <span class="w-2 h-2 rounded-full" style="background: {{ $statusColor }}"></span>{{ $statusName }}
-                            </span>
+                            @if(!$isProforma)
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                                    style="background: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}33;">
+                                    <span class="w-2 h-2 rounded-full" style="background: {{ $statusColor }}"></span>{{ $statusName }}
+                                </span>
+                            @endif
                         </div>
-                        <h1 class="text-2xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</h1>
+                        <div class="flex items-center gap-3">
+                            <h1 class="text-2xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</h1>
+                            @if(!empty($invoice->meta['created_by_workflow']))
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 border border-indigo-100 dark:border-indigo-500/20">ایجاد سیستمی</span>
+                            @endif
+                            @if(!empty($invoice->meta['is_merged_invoice']))
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-50 dark:bg-purple-500/10 text-purple-500 border border-purple-100 dark:border-purple-500/20">حاصل ادغام فاکتورها</span>
+                            @endif
+                        </div>
                         <div
                             class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-3 text-sm text-gray-500 dark:text-gray-400">
                             <span class="flex items-center gap-1.5"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
@@ -157,7 +194,7 @@
                         @endcan
                     @else
                         @can('update', $invoice)
-                            @if (!str_contains($invoice->status?->name ?? '', 'لغو') && !str_contains($invoice->status?->name ?? '', 'cancel') && $remainingAmount > 0)
+                            @if (!str_contains($invoice->status?->name ?? '', 'لغو') && !str_contains($invoice->status?->name ?? '', 'cancel') && !$invoice->isMerged() && $remainingAmount > 0)
                                 <a href="{{ route('services.invoices.payment', $invoice) }}"
                                    class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-bold shadow-lg transition-all active:scale-95 @if(!$invoice->isPaid()) bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-emerald-500/30 hover:shadow-emerald-500/50 @else bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 shadow-sky-500/30 hover:shadow-sky-500/50 @endif">
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -174,13 +211,6 @@
                             @endif
                         @endcan
                     @endif
-
-                    <a href="{{ route('services.invoices.index') }}"
-                       class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm font-bold transition-all active:scale-95">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                        </svg>
-                        بازگشت</a>
                     <a href="{{ route('services.invoices.print', $invoice) }}"
                        class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-400 dark:hover:bg-sky-500/20 text-sm font-bold transition-all active:scale-95"
                        id="pdf-download-btn">
@@ -197,7 +227,7 @@
                         <span id="pdf-btn-text">دانلود PDF</span>
                     </a>
                     @can('update', $invoice)
-                        @if(!$invoice->status?->locksInvoice() && !str_contains($invoice->status?->name ?? '', 'لغو') && !str_contains($invoice->status?->name ?? '', 'cancel'))
+                        @if($invoice->isEditable())
                             <a href="{{ route('services.invoices.edit', $invoice) }}"
                                class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 text-sm font-bold transition-all active:scale-95">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -220,13 +250,13 @@
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                     </svg>
-                                    حذف
+                                    حذف پیش فاکتور
                                 </button>
                             </form>
                         @endcan
                     @else
                         @can('update', $invoice)
-                            @if (!str_contains($invoice->status?->name ?? '', 'لغو') && !str_contains($invoice->status?->name ?? '', 'cancel') && $remainingAmount > 0)
+                            @if (!str_contains($invoice->status?->name ?? '', 'لغو') && !str_contains($invoice->status?->name ?? '', 'cancel') && !$invoice->isMerged() && $remainingAmount > 0)
                                 <form action="{{ route('services.invoices.cancel', $invoice) }}" method="POST"
                                       onsubmit="return confirm('آیا از لغو این فاکتور اطمینان دارید؟ این عمل غیرقابل بازگشت است.');">
                                     @csrf
@@ -243,6 +273,12 @@
                             @endif
                         @endcan
                     @endif
+                        <a href="{{ $backUrl }}"
+                           class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm font-bold transition-all active:scale-95">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                            </svg>
+                            بازگشت</a>
                 </div>
             </div>
         </div>
@@ -262,6 +298,36 @@
                         class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path
                             stroke-linecap="round" stroke-linejoin="round"
                             d="M6 18L18 6M6 6l12 12"/></svg></span>{{ session('error') }}</div>
+        @endif
+
+        @if(!empty($invoice->meta['is_merged_invoice']) && !empty($invoice->meta['merged_from_invoice_ids']))
+            <div class="rounded-3xl border border-purple-100 dark:border-purple-500/20 bg-purple-50/50 dark:bg-purple-500/5 p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <span class="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 shrink-0">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                    </span>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">این فاکتور حاصل ادغام است</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                            این فاکتور از ادغام فاکتورهای زیر ایجاد شده است:
+                        </p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            @php
+                                $sourceInvoices = \Modules\Services\App\Http\Models\Invoice::whereIn('id', $invoice->meta['merged_from_invoice_ids'])->get()->keyBy('id');
+                            @endphp
+                            @foreach($invoice->meta['merged_from_invoice_ids'] as $sourceId)
+                                @php
+                                    $sourceInv = $sourceInvoices->get($sourceId);
+                                    $sourceNumber = $sourceInv ? ($sourceInv->invoice_number ?: $sourceInv->proforma_invoice_number ?: $sourceId) : $sourceId;
+                                @endphp
+                                <a href="{{ route('services.invoices.show', $sourceId) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors shadow-sm">
+                                    فاکتور #{{ $faNum($sourceNumber) }}
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
         @endif
 
         @if(!empty($buyerExtraFields))
@@ -326,8 +392,22 @@
                         @endphp
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all">
                         <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
+                            @php
+                                $itemMeta = is_array($item->meta) ? $item->meta : (json_decode($item->meta, true) ?: []);
+                                $isMarketItem = ($itemMeta['type'] ?? null) === 'product';
+                            @endphp
                             <td class="px-4 py-4 align-top font-bold text-gray-800 dark:text-gray-100 text-start">
-                                {{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span>{{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}</span>
+                                    @if($isMarketItem)
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-2 py-0.5 rounded-md">
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                            </svg>
+                                            از فروشگاه
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-4 py-4 align-top text-gray-600 dark:text-gray-400 text-start">
                                 {{ $item->description }}
@@ -478,8 +558,23 @@
                             <span class="tabular-nums font-bold">+ {{ $faNum(number_format($invoice->tax_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
                         </div>
                     @endif
-                    <div class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                        <span class="font-black text-gray-900 dark:text-white text-lg">مبلغ نهایی:</span>
+                    @php
+                        $rMeta = $invoice->meta['rounding'] ?? null;
+                        $rDiff = (int)($rMeta['diff'] ?? 0);
+                        $isRounded = !empty($rMeta['is_rounded']);
+                    @endphp
+                    <div class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-start">
+                        <div>
+                            <span class="font-black text-gray-900 dark:text-white text-lg block">مبلغ نهایی:</span>
+                            @if($isRounded && $rDiff != 0)
+                                <div class="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2.5 py-0.5 rounded-lg border border-indigo-200/80 dark:border-indigo-800/60 w-fit">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span>حاصل رندسازی مبالغ ({{ $rDiff > 0 ? '+' : '' }}{{ $faNum(number_format($rDiff)) }} {{ $currencyLabel }})</span>
+                                </div>
+                            @endif
+                        </div>
                         <span class="font-black text-indigo-600 dark:text-indigo-400 text-2xl tabular-nums">{{ $faNum(number_format($invoice->total)) }} <span class="text-sm font-bold text-indigo-400/80">{{ $currencyLabel }}</span></span>
                     </div>
                 </div>
@@ -488,46 +583,65 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {{-- SIDEBAR --}}
-            <div class="lg:col-span-4 xl:col-span-4 space-y-8 order-2 lg:order-1">
-                <div class="{{ $cardClass }}">
-                    <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-indigo-50 to-transparent dark:from-indigo-500/10">
-                        <h3 class="text-lg font-black text-indigo-700 dark:text-indigo-400 flex items-center gap-3">
-                            <div class="p-2 bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-lg shadow-sm">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                                </svg>
+            @if(!$isProforma)
+                <div class="lg:col-span-4 xl:col-span-4 space-y-8 order-2 lg:order-1">
+                    <div class="{{ $cardClass }}">
+                        <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-indigo-50 to-transparent dark:from-indigo-500/10">
+                            <h3 class="text-lg font-black text-indigo-700 dark:text-indigo-400 flex items-center gap-3">
+                                <div class="p-2 bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-lg shadow-sm">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                                    </svg>
+                                </div>
+                                خلاصه وضعیت فاکتور
+                            </h3>
+                        </div>
+                        <div class="p-6 space-y-4 text-base">
+
+                            <div class="flex justify-between items-center text-gray-600 dark:text-gray-400 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700/50">
+                                <span class="font-medium text-sm">وضعیت فعلی:</span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                                      style="background: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}33;">
+                                    <span class="w-2 h-2 rounded-full" style="background: {{ $statusColor }}"></span>{{ $statusName }}
+                                </span>
                             </div>
-                            خلاصه وضعیت فاکتور
-                        </h3>
-                    </div>
-                    <div class="p-6 space-y-4 text-base">
 
-                        <div class="flex justify-between items-center text-gray-600 dark:text-gray-400 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700/50">
-                            <span class="font-medium text-sm">وضعیت فعلی:</span>
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
-                                  style="background: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}33;">
-                                <span class="w-2 h-2 rounded-full" style="background: {{ $statusColor }}"></span>{{ $statusName }}
-                            </span>
-                        </div>
-
-                        <div class="flex justify-between items-center text-gray-600 dark:text-gray-400">
-                            <span class="font-medium">مبلغ کل:</span>
-                            <span class="tabular-nums font-bold text-gray-800 dark:text-gray-200">{{ $faNum(number_format($invoice->total)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
-                        </div>
-                        <div class="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
-                            <span class="font-medium">پرداخت شده:</span>
-                            <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->paid_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
-                        </div>
-                        <div class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                            <span class="font-black text-gray-900 dark:text-white">مانده بدهی:</span>
-                            <span class="font-black text-rose-600 dark:text-rose-400 text-xl tabular-nums">{{ $faNum(number_format($remainingAmount)) }} <span class="text-sm font-bold">{{ $currencyLabel }}</span></span>
+                            <div class="flex justify-between items-center text-gray-600 dark:text-gray-400">
+                                <span class="font-medium">مبلغ کل:</span>
+                                <span class="tabular-nums font-bold text-gray-800 dark:text-gray-200">{{ $faNum(number_format($invoice->total)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                            </div>
+                            @if(!$invoice->isMerged())
+                                <div class="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
+                                    <span class="font-medium">پرداخت شده:</span>
+                                    <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->paid_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                                </div>
+                                <div class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                                    <span class="font-black text-gray-900 dark:text-white">مانده بدهی:</span>
+                                    <span class="font-black text-rose-600 dark:text-rose-400 text-xl tabular-nums">{{ $faNum(number_format($remainingAmount)) }} <span class="text-sm font-bold">{{ $currencyLabel }}</span></span>
+                                </div>
+                            @else
+                                @php
+                                    $mergedIntoId = $invoice->meta['was_merged_into'] ?? null;
+                                    $mergedIntoInvoice = $mergedIntoId ? \Modules\Services\App\Http\Models\Invoice::find($mergedIntoId) : null;
+                                @endphp
+                                <div class="pt-4 border-t-2 border-dashed border-purple-200 dark:border-purple-700/50 flex flex-col gap-2">
+                                    <p class="text-sm text-purple-600 dark:text-purple-400 font-bold">یادداشت: پرداختی‌های این فاکتور به فاکتور جدید منتقل شده‌اند.</p>
+                                    @if($mergedIntoInvoice)
+                                        <a href="{{ route('services.invoices.show', $mergedIntoInvoice) }}"
+                                           class="inline-flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 rounded-lg text-xs font-bold hover:bg-purple-100 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                                            مشاهده فاکتور {{ $faNum($mergedIntoInvoice->invoice_number) }}
+                                        </a>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
-            </div>
+            @endif
 
             {{-- MAIN CONTENT --}}
-            <div class="lg:col-span-8 xl:col-span-8 space-y-8 order-1 lg:order-2">
+            <div class="{{ !$isProforma ? 'lg:col-span-8 xl:col-span-8' : 'lg:col-span-12 xl:col-span-12' }} space-y-8 order-1 lg:order-2">
 
                 @if ($invoice->payments->isNotEmpty())
                     <div class="{{ $cardClass }}">

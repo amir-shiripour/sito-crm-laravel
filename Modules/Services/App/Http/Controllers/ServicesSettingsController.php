@@ -39,6 +39,8 @@ class ServicesSettingsController extends Controller
         'services_tax_mode',
         'services_tax_apply_custom_fields',
         'services_official_invoice_orientation',
+        'services_rounding_mode',
+        'services_rounding_factor',
     ];
 
     private const BOOLEANS = [
@@ -135,8 +137,11 @@ class ServicesSettingsController extends Controller
     {
         $this->authorize('services.settings.manage');
 
-        $request->validate([
-            'currency' => 'required|in:toman,rial',
+        $user = auth()->user();
+        $isSuperAdmin = $user && ($user->hasRole('super-admin') || $user->hasRole('superadmin'));
+
+        $rules = [
+            'currency' => $isSuperAdmin ? 'required|in:toman,rial' : 'nullable|in:toman,rial',
             'services_invoice_prefix' => 'nullable|string|max:20',
             'services_invoice_middle_prefix' => 'nullable|string|max:20',
             'services_invoice_suffix' => 'nullable|string|max:20',
@@ -154,9 +159,17 @@ class ServicesSettingsController extends Controller
             'services_invoice_client_fields.*' => 'string|max:191',
             'services_tax_mode' => 'required|in:invoice,item',
             'services_official_invoice_orientation' => 'nullable|in:portrait,landscape',
-        ]);
+            'services_rounding_mode' => 'nullable|in:none,up,down',
+            'services_rounding_factor' => 'nullable|integer|min:1',
+        ];
+
+        $request->validate($rules);
 
         foreach (self::KEYS as $key) {
+            if ($key === 'currency' && !$isSuperAdmin) {
+                continue;
+            }
+
             if ($key === 'services_invoice_client_fields') {
                 $value = json_encode(
                     array_values($request->input('services_invoice_client_fields', [])),

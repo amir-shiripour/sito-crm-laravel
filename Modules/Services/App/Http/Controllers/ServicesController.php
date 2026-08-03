@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Modules\Services\App\Http\Models\Service;
 use Modules\Services\App\Http\Models\ServiceCategory;
-use Modules\Services\App\Http\Models\ServiceTemplate;
 use Modules\Services\App\Http\Models\Status;
 use Modules\Services\App\Http\Requests\StoreServiceRequest;
 use Modules\Services\App\Http\Requests\UpdateServiceRequest;
@@ -47,7 +46,6 @@ class ServicesController extends Controller
 
         return view('services::services.create', [
             'categories' => ServiceCategory::active()->orderBy('name')->get(),
-            'templates' => ServiceTemplate::orderBy('name')->get(),
             'statuses' => Status::where('type', 'service')->orderBy('sort_order')->get(),
             'currency' => $currency,
         ]);
@@ -73,7 +71,6 @@ class ServicesController extends Controller
 
         $service->load([
             'category',
-            'template',
             'customFields' => fn($q) => $q->orderBy('sort_order'),
         ]);
 
@@ -104,7 +101,6 @@ class ServicesController extends Controller
         return view('services::services.create', [
             'service' => $service,
             'categories' => ServiceCategory::active()->orderBy('name')->get(),
-            'templates' => ServiceTemplate::orderBy('name')->get(),
             'statuses' => Status::where('type', 'service')->orderBy('sort_order')->get(),
             'currency' => $currency,
         ]);

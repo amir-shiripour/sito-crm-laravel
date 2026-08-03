@@ -223,17 +223,18 @@
 
         .page-standard {
             width: 210mm;
-            min-height: 297mm;
-            padding: 16mm 15mm;
-            font-size: 11px;
+            max-width: 100%;
+            padding: 10mm 12mm;
+            font-size: 10.5px;
+            box-sizing: border-box;
         }
 
         .invoice-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            padding-bottom: 18px;
-            margin-bottom: 22px;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
             border-bottom: 1px solid #e2e8f0;
         }
 
@@ -244,59 +245,101 @@
             object-fit: contain;
         }
 
-        .invoice-header .invoice-meta {
+        .invoice-header .invoice-meta-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
             text-align: right;
+            min-width: 220px;
         }
 
-        .invoice-header .invoice-meta h1 {
-            font-size: 17px;
+        .invoice-meta-header {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .invoice-meta-header h1.invoice-title {
+            font-size: 15px;
             font-weight: bold;
             color: #0f172a;
-            margin: 0 0 6px;
+            margin: 0;
         }
 
-        .invoice-header .status-badge {
+        .status-tag {
             display: inline-block;
-            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10.5px;
             font-weight: 700;
+            border: 1px solid;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .merged-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10.5px;
+            font-weight: 700;
+            background-color: #f3e8ff;
+            color: #7e22ce;
+            border: 1px solid #d8b4fe;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .invoice-meta-dates {
+            font-size: 10px;
+            color: #64748b;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 5px;
+            margin-top: 4px;
         }
 
         .parties-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 32px;
-            margin-bottom: 26px;
+            gap: 16px;
+            margin-bottom: 14px;
         }
 
         .party-block h2 {
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 700;
             color: #0f172a;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
             border-bottom: 1px solid #e2e8f0;
         }
 
         .party-block p {
-            font-size: 11px;
+            font-size: 10.5px;
             color: #475569;
-            line-height: 1.9;
+            line-height: 1.6;
             margin: 0;
         }
 
         .party-block p.party-name {
-            font-size: 12.5px;
+            font-size: 11.5px;
             font-weight: 700;
             color: #0f172a;
             margin-bottom: 2px;
         }
 
         .section-title {
-            font-size: 12.5px;
+            font-size: 11.5px;
             font-weight: 700;
             color: #0f172a;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
             border-bottom: 2px solid #059669;
             display: inline-block;
         }
@@ -312,9 +355,9 @@
         .items-table thead th {
             background-color: #f8fafc;
             color: #475569;
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 700;
-            padding: 10px 14px;
+            padding: 7px 10px;
             border-bottom: 1px solid #e2e8f0;
             text-align: right;
         }
@@ -329,9 +372,9 @@
         }
 
         .items-table tbody td, .items-table tfoot td {
-            padding: 11px 14px;
+            padding: 7px 10px;
             border-bottom: 1px solid #e2e8f0;
-            font-size: 11px;
+            font-size: 10.5px;
             vertical-align: top;
         }
 
@@ -414,40 +457,40 @@
         .payments-table thead th {
             background-color: #f8fafc;
             color: #475569;
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 700;
-            padding: 8px 10px;
+            padding: 5px 8px;
             border: 1px solid #e2e8f0;
         }
 
         .payments-table tbody td {
-            padding: 8px 10px;
+            padding: 5px 8px;
             border: 1px solid #e2e8f0;
-            font-size: 10px;
+            font-size: 9.5px;
         }
 
         .invoice-footer {
             display: flex;
             justify-content: flex-end;
             align-items: flex-start;
-            gap: 32px;
+            gap: 20px;
         }
 
         .signature-block {
             text-align: center;
-            width: 190px;
+            width: 170px;
             flex-shrink: 0;
         }
 
         .signature-block p.label {
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 700;
             color: #475569;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
         .signature-box {
-            height: 70px;
+            height: 48px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -455,9 +498,9 @@
 
         .signature-block .seller-name {
             border-top: 1px dashed #cbd5e1;
-            font-size: 10.5px;
-            padding-top: 8px;
-            margin-top: 4px;
+            font-size: 10px;
+            padding-top: 4px;
+            margin-top: 2px;
             color: #0f172a;
             font-weight: 700;
         }
@@ -472,8 +515,7 @@
                 margin: 0;
                 box-shadow: none;
                 width: 100%;
-                min-height: 100vh;
-                page-break-after: always;
+                min-height: auto;
             }
 
             .print-fab {
@@ -481,8 +523,8 @@
             }
 
             @page {
-                size: A4;
-                margin: 0;
+                size: A4 portrait;
+                margin: 5mm;
             }
         }
     </style>
@@ -498,11 +540,6 @@
 </button>
 
 <div class="print-container page-standard flex flex-col relative">
-    @if($isFullyPaid && !$isCanceled)
-        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-10">
-            <span class="text-8xl font-bold text-green-600 transform -rotate-45">پرداخت شده</span>
-        </div>
-    @endif
 
     <div class="relative z-10 flex flex-col flex-1">
 
@@ -512,14 +549,22 @@
                     <img src="{{ $appLogoDataUri }}" alt="{{ $siteName }}">
                 @endif
             </div>
-            <div class="invoice-meta">
-                <h1>{{ $isProforma ? 'پیش فاکتور' : 'صورتحساب' }}
-                    #{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</h1>
-                <div class="flex items-center justify-end gap-2 mt-1">
-                    @if($isCanceled)
-                        <span class="inline-block border border-red-500 text-red-600 bg-red-50 font-bold px-2 py-0.5 rounded text-xs shadow-sm">لغو شده</span>
-                    @else
-                        <span class="status-badge" style="color: {{ $statusColor }}">{{ $statusName }}</span>
+            <div class="invoice-meta-card">
+                <div class="invoice-meta-header">
+                    <h1 class="invoice-title">{{ $isProforma ? 'پیش فاکتور' : 'صورتحساب' }} #{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</h1>
+                    <span class="status-tag" style="background-color: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}44;">
+                        {{ $statusName }}
+                    </span>
+                    @if(!empty($invoice->meta['is_merged_invoice']))
+                        <span class="merged-tag">حاصل ادغام</span>
+                    @endif
+                </div>
+                <div class="invoice-meta-dates">
+                    @if($invoice->issue_date)
+                        <span>تاریخ صدور: {{ $toJalali($invoice->issue_date) }}</span>
+                    @endif
+                    @if($invoice->due_date)
+                        <span>تاریخ سررسید: {{ $toJalali($invoice->due_date) }}</span>
                     @endif
                 </div>
             </div>
@@ -698,13 +743,13 @@
             </div>
         @endif
 
-        <div class="invoice-footer mt-auto pt-10 avoid-break">
+        <div class="invoice-footer mt-3 pt-2 avoid-break">
             <div class="signature-block">
                 <p class="label">مهر و امضا:</p>
                 <div class="signature-box">
                     @if($stampSignatureDataUri)
                         <img src="{{ $stampSignatureDataUri }}" alt="مهر و امضا"
-                             style="max-height: 5rem; max-width: 100%; object-fit: contain; mix-blend-mode: multiply;">
+                             style="max-height: 3rem; max-width: 100%; object-fit: contain; mix-blend-mode: multiply;">
                     @endif
                 </div>
                 <p class="seller-name">{{ $sellerInfo['name'] }}</p>
