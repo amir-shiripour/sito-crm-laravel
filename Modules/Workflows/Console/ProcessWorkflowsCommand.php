@@ -252,6 +252,10 @@ class ProcessWorkflowsCommand extends Command
 
         $targetDate = $nowLocal->copy()->subDays($offsetDays)->format('Y-m-d');
 
+        if (!class_exists(\Modules\Services\App\Http\Models\Invoice::class) || !\Illuminate\Support\Facades\Schema::hasTable('services_invoices')) {
+            return;
+        }
+
         $query = \Modules\Services\App\Http\Models\Invoice::whereDate('due_date', '<=', $targetDate)
             ->whereRaw('paid_amount < total');
 
@@ -333,6 +337,10 @@ class ProcessWorkflowsCommand extends Command
         }
 
         $targetDate = $nowLocal->copy()->subDays($offsetDays)->format('Y-m-d');
+
+        if (!class_exists(\Modules\Services\App\Http\Models\Order::class) || !\Illuminate\Support\Facades\Schema::hasTable('services_orders')) {
+            return;
+        }
 
         $query = \Modules\Services\App\Http\Models\Order::whereDate('renewal_date', $targetDate);
 

@@ -123,17 +123,37 @@ class WorkflowController extends Controller
 
         $triggerOptions = $this->getTriggerOptions();
         $usersQuery = User::query()->select(['id', 'name'])->orderBy('name');
-        $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
+
+        $services = collect();
+        if (class_exists(\Modules\Booking\Entities\BookingService::class) && \Illuminate\Support\Facades\Schema::hasTable('booking_services')) {
+            try {
+                $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
+            } catch (\Throwable $e) {
+                $services = collect();
+            }
+        }
+
         $tokens = config('workflows.tokens', []);
 
-        $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
-        if (is_string($cureStatuses)) {
-            $cureStatuses = json_decode($cureStatuses, true) ?: [];
+        $cureStatuses = [];
+        $cureAssignableRoles = [];
+        if (class_exists(\Modules\Booking\Entities\BookingSetting::class) && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
+            try {
+                $setting = \Modules\Booking\Entities\BookingSetting::current();
+                $cureStatuses = $setting?->cure_statuses ?? [];
+                if (is_string($cureStatuses)) {
+                    $cureStatuses = json_decode($cureStatuses, true) ?: [];
+                }
+                $cureAssignableRoles = $setting?->cure_assignable_roles ?? [];
+                if (is_string($cureAssignableRoles)) {
+                    $cureAssignableRoles = json_decode($cureAssignableRoles, true) ?: [];
+                }
+            } catch (\Throwable $e) {
+                $cureStatuses = [];
+                $cureAssignableRoles = [];
+            }
         }
-        $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
-        if (is_string($cureAssignableRoles)) {
-            $cureAssignableRoles = json_decode($cureAssignableRoles, true) ?: [];
-        }
+
         $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', (array) $cureAssignableRoles)->orderBy('name');
 
         if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
@@ -144,21 +164,25 @@ class WorkflowController extends Controller
         }
 
         $users = $usersQuery->get();
-        $cureRoles = $cureRolesQuery->get();
+        $cureRoles = !empty($cureAssignableRoles) ? $cureRolesQuery->get() : collect();
 
-        $clientStatuses = class_exists(\Modules\Clients\Entities\ClientStatus::class)
+        $clientStatuses = (class_exists(\Modules\Clients\Entities\ClientStatus::class) && \Illuminate\Support\Facades\Schema::hasTable('client_statuses'))
             ? \Modules\Clients\Entities\ClientStatus::active()->get()
             : collect();
 
         $serviceModuleStatuses = [];
-        if (class_exists(\Modules\Services\App\Http\Models\Status::class)) {
-            $statuses = \Modules\Services\App\Http\Models\Status::all()->groupBy('type');
-            $serviceModuleStatuses = [
-                'service' => $statuses->get('service', collect())->toArray(),
-                'invoice' => $statuses->get('invoice', collect())->toArray(),
-                'payment' => $statuses->get('payment', collect())->toArray(),
-                'order'   => $statuses->get('order', collect())->toArray(),
-            ];
+        if (class_exists(\Modules\Services\App\Http\Models\Status::class) && \Illuminate\Support\Facades\Schema::hasTable('services_statuses')) {
+            try {
+                $statuses = \Modules\Services\App\Http\Models\Status::all()->groupBy('type');
+                $serviceModuleStatuses = [
+                    'service' => $statuses->get('service', collect())->toArray(),
+                    'invoice' => $statuses->get('invoice', collect())->toArray(),
+                    'payment' => $statuses->get('payment', collect())->toArray(),
+                    'order'   => $statuses->get('order', collect())->toArray(),
+                ];
+            } catch (\Throwable $e) {
+                $serviceModuleStatuses = [];
+            }
         }
 
         return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
@@ -212,19 +236,38 @@ class WorkflowController extends Controller
         $workflow->load(['stages.actions', 'triggers']);
         $triggerOptions = $this->getTriggerOptions();
         $usersQuery = User::query()->select(['id', 'name'])->orderBy('name');
-        $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
+
+        $services = collect();
+        if (class_exists(\Modules\Booking\Entities\BookingService::class) && \Illuminate\Support\Facades\Schema::hasTable('booking_services')) {
+            try {
+                $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
+            } catch (\Throwable $e) {
+                $services = collect();
+            }
+        }
 
         // Pass tokens to view
         $tokens = config('workflows.tokens', []);
 
-        $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
-        if (is_string($cureStatuses)) {
-            $cureStatuses = json_decode($cureStatuses, true) ?: [];
+        $cureStatuses = [];
+        $cureAssignableRoles = [];
+        if (class_exists(\Modules\Booking\Entities\BookingSetting::class) && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
+            try {
+                $setting = \Modules\Booking\Entities\BookingSetting::current();
+                $cureStatuses = $setting?->cure_statuses ?? [];
+                if (is_string($cureStatuses)) {
+                    $cureStatuses = json_decode($cureStatuses, true) ?: [];
+                }
+                $cureAssignableRoles = $setting?->cure_assignable_roles ?? [];
+                if (is_string($cureAssignableRoles)) {
+                    $cureAssignableRoles = json_decode($cureAssignableRoles, true) ?: [];
+                }
+            } catch (\Throwable $e) {
+                $cureStatuses = [];
+                $cureAssignableRoles = [];
+            }
         }
-        $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
-        if (is_string($cureAssignableRoles)) {
-            $cureAssignableRoles = json_decode($cureAssignableRoles, true) ?: [];
-        }
+
         $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', (array) $cureAssignableRoles)->orderBy('name');
 
         if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
@@ -235,21 +278,25 @@ class WorkflowController extends Controller
         }
 
         $users = $usersQuery->get();
-        $cureRoles = $cureRolesQuery->get();
+        $cureRoles = !empty($cureAssignableRoles) ? $cureRolesQuery->get() : collect();
 
-        $clientStatuses = class_exists(\Modules\Clients\Entities\ClientStatus::class)
+        $clientStatuses = (class_exists(\Modules\Clients\Entities\ClientStatus::class) && \Illuminate\Support\Facades\Schema::hasTable('client_statuses'))
             ? \Modules\Clients\Entities\ClientStatus::active()->get()
             : collect();
 
         $serviceModuleStatuses = [];
-        if (class_exists(\Modules\Services\App\Http\Models\Status::class)) {
-            $statuses = \Modules\Services\App\Http\Models\Status::all()->groupBy('type');
-            $serviceModuleStatuses = [
-                'service' => $statuses->get('service', collect())->toArray(),
-                'invoice' => $statuses->get('invoice', collect())->toArray(),
-                'payment' => $statuses->get('payment', collect())->toArray(),
-                'order'   => $statuses->get('order', collect())->toArray(),
-            ];
+        if (class_exists(\Modules\Services\App\Http\Models\Status::class) && \Illuminate\Support\Facades\Schema::hasTable('services_statuses')) {
+            try {
+                $statuses = \Modules\Services\App\Http\Models\Status::all()->groupBy('type');
+                $serviceModuleStatuses = [
+                    'service' => $statuses->get('service', collect())->toArray(),
+                    'invoice' => $statuses->get('invoice', collect())->toArray(),
+                    'payment' => $statuses->get('payment', collect())->toArray(),
+                    'order'   => $statuses->get('order', collect())->toArray(),
+                ];
+            } catch (\Throwable $e) {
+                $serviceModuleStatuses = [];
+            }
         }
 
         return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
