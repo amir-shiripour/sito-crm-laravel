@@ -325,12 +325,20 @@
 
                     {{-- Time Slots Matrix (Right Content) --}}
                     <div class="flex-1 p-5">
-                        @if ($pData['policy']['is_closed'])
+                        @if ($pData['policy']['is_closed'] && empty($pData['slots']))
                             <div class="h-full flex flex-col items-center justify-center text-gray-400 py-10">
                                 <span class="text-3xl mb-2">🌙</span>
                                 <span class="text-sm font-black">امروز برنامه کاری ندارد</span>
                             </div>
                         @else
+                            @if ($pData['policy']['is_closed'])
+                                <div class="mb-4 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-2xl text-xs font-black flex items-center justify-between">
+                                    <span class="flex items-center gap-2">
+                                        <span>🌙 این تاریخ تعطیل است (نوبت‌دهی جدید غیرفعال است)</span>
+                                    </span>
+                                    <span class="text-[11px] font-bold opacity-80">{{ count($pData['slots']) }} نوبت ثبت‌شده</span>
+                                </div>
+                            @endif
                             {{-- Grid of Time Slots: 1 to 3 spacious columns instead of cramped 5 columns --}}
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                                 @forelse ($pData['slots'] as $slot)
@@ -540,12 +548,18 @@
                                     @endforeach
                                 </div>
 
-                            @if ($pData['policy']['is_closed'])
+                            @if ($pData['policy']['is_closed'] && empty($pData['appointments']))
                                 <div class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50/95 dark:bg-gray-900/95 z-10">
                                     <svg class="w-16 h-16 mb-4 text-indigo-500 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                                     <span class="text-lg font-black text-gray-800 dark:text-gray-200">پزشک در این تاریخ حضور ندارد</span>
                                 </div>
                             @else
+                                @if ($pData['policy']['is_closed'])
+                                    <div class="sticky top-2 z-30 mx-4 p-2.5 bg-amber-500/90 text-white rounded-xl text-xs font-black backdrop-blur flex items-center justify-between shadow-md">
+                                        <span>🌙 این تاریخ تعطیل است (نوبت‌دهی جدید غیرفعال است)</span>
+                                        <span class="text-[11px] font-bold">{{ count($pData['appointments']) }} نوبت ثبت‌شده</span>
+                                    </div>
+                                @endif
 
                                 {{-- زمان‌های استراحت --}}
                                 @foreach ($pData['breaks'] as $brk)
@@ -694,7 +708,15 @@
                                         @endforeach
                                     </div>
 
-                                    @if (!$pData['policy']['is_closed'])
+                                    @if ($pData['policy']['is_closed'] && empty($pData['appointments']))
+                                        <div class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs font-black bg-gray-50/70 dark:bg-gray-900/70">
+                                            🌙 تعطیل
+                                        </div>
+                                    @else
+                                        @if ($pData['policy']['is_closed'])
+                                            <div class="absolute inset-0 bg-amber-500/10 pointer-events-none z-0 border-y border-amber-500/30"></div>
+                                        @endif
+
                                         {{-- استراحت‌ها --}}
                                         @foreach ($pData['breaks'] as $brk)
                                             <div style="right: {{ $brk['left_percent'] }}%; width: {{ $brk['width_percent'] }}%;" class="absolute inset-y-1 bg-amber-50/80 dark:bg-amber-950/40 border-x border-amber-300 dark:border-amber-800 flex items-center justify-center overflow-hidden z-0">
@@ -703,9 +725,11 @@
                                         @endforeach
 
                                         {{-- اسلات‌های خالی جهت درگ یا کلیک --}}
-                                        @foreach ($pData['slotDropTargets'] as $sTarget)
-                                            <div @dragover.prevent @drop="handleDrop($event, {{ $pData['provider']->id }}, '{{ $sTarget['start_time'] }}')" wire:click="openCreateModal({{ $pData['provider']->id }}, '{{ $sTarget['start_time'] }}')" style="right: {{ $sTarget['left_percent'] }}%; width: {{ $sTarget['width_percent'] }}%;" class="absolute inset-y-1 group hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 cursor-pointer border-r border-transparent hover:border-indigo-400 flex justify-center items-center z-1 transition-colors"></div>
-                                        @endforeach
+                                        @if (!$pData['policy']['is_closed'])
+                                            @foreach ($pData['slotDropTargets'] as $sTarget)
+                                                <div @dragover.prevent @drop="handleDrop($event, {{ $pData['provider']->id }}, '{{ $sTarget['start_time'] }}')" wire:click="openCreateModal({{ $pData['provider']->id }}, '{{ $sTarget['start_time'] }}')" style="right: {{ $sTarget['left_percent'] }}%; width: {{ $sTarget['width_percent'] }}%;" class="absolute inset-y-1 group hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 cursor-pointer border-r border-transparent hover:border-indigo-400 flex justify-center items-center z-1 transition-colors"></div>
+                                            @endforeach
+                                        @endif
 
                                         {{-- کارت‌های نوبت افقی --}}
                                         <div class="absolute inset-x-0 inset-y-2 pointer-events-none z-10">
@@ -755,10 +779,6 @@
                                                     </div>
                                                 </div>
                                             @endforeach
-                                        </div>
-                                    @else
-                                        <div class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs font-black bg-gray-50/70 dark:bg-gray-900/70">
-                                            🌙 تعطیل
                                         </div>
                                     @endif
                                 </div>
@@ -847,9 +867,9 @@
                                     </div>
                                 </div>
 
-                                {{-- Appointments List --}}
+                                 {{-- Appointments List --}}
                                 <div class="p-3.5 flex-1 space-y-3 min-h-[170px]">
-                                    @if ($wDay['is_closed'])
+                                    @if ($wDay['is_closed'] && empty($wDay['appointments']))
                                         <div class="p-6 text-center text-xs font-black text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 rounded-2xl border border-rose-200 dark:border-rose-900/60">
                                             پزشک در این روز حضور ندارد یا تعطیل رسمی است.
                                         </div>
@@ -858,6 +878,11 @@
                                             هیچ نوبتی برای این روز ثبت نشده است.
                                         </div>
                                     @else
+                                        @if ($wDay['is_closed'])
+                                            <div class="mb-2 p-2 bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-200 text-[11px] font-black rounded-xl text-center border border-amber-300 dark:border-amber-800">
+                                                🌙 این روز تعطیل است (نوبت‌های ثبت‌شده قبلی)
+                                            </div>
+                                        @endif
                                         @foreach ($wDay['appointments'] as $mApt)
                                             @php
                                                 $wStatusBadge = match($mApt['status']) {

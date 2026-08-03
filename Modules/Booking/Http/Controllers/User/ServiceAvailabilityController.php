@@ -153,6 +153,14 @@ class ServiceAvailabilityController extends Controller
             );
         }
 
+        // Automatically sync custom_schedule_enabled flag on service
+        $hasCustomRules = BookingAvailabilityRule::query()
+            ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
+            ->where('scope_id', $service->id)
+            ->exists();
+
+        $service->update(['custom_schedule_enabled' => $hasCustomRules]);
+
         return redirect()
             ->route('user.booking.services.availability.edit', $service)
             ->with('success', 'برنامه زمانی سرویس ذخیره شد.');
