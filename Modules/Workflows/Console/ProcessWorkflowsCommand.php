@@ -20,6 +20,7 @@ class ProcessWorkflowsCommand extends Command
         Log::info("[Workflows] Starting process command...");
         $this->processScheduledWorkflows($engine);
         $this->processAppointmentReminders($engine);
+        $this->processBookingPaymentReminders($engine);
         $this->processInvoiceReminders($engine);
         $this->processOrderRenewalReminders($engine);
     }
@@ -366,6 +367,103 @@ class ProcessWorkflowsCommand extends Command
             if (!$exists) {
                 Log::info("[Workflows] Triggering order renewal reminder '{$workflow->name}' for Order #{$order->id} (Target Date: {$targetDate})");
                 $engine->startWorkflow($workflow, 'ORDER', $order->id);
+            }
+        }
+    }
+
+    protected function processBookingPaymentReminders(WorkflowEngine $engine): void
+    {
+        if (!class_exists(\Modules\Booking\Entities\BookingPayment::class) || !\Illuminate\Support\Facades\Schema::hasTable('booking_payments')) {
+            return;
+        }
+
+        $workflows = Workflow::where('is_active', true)
+            ->whereHas('triggers', function ($query) {
+                $query->where('type', WorkflowTrigger::TYPE_BOOKING_PAYMENT_REMINDER);
+            })
+            ->with(['triggers' => function ($query) {
+                $query->where('type', WorkflowTrigger::TYPE_BOOKING_PAYMENT_REMINDER);
+            }])
+            ->get();
+
+        Log::info("[Workflows] Found " . $workflows->count() . " active booking payment reminder workflows.");
+
+        foreach ($workflows as $workflow) {
+            foreach ($workflow->triggers as $trigger) {
+                $this->checkAndTriggerBookingPaymentReminders($engine, $workflow, $trigger);
+            }
+        }
+    }
+
+    protected function checkAndTriggerBookingPaymentReminders(WorkflowEngine $engine, Workflow $workflow, WorkflowTrigger $trigger): void
+    {
+        $config = $trigger->config ?? [];
+        $offsetMinutes = (int)($config['offset_minutes'] ?? 0);
+        $statuses = $config['statuses'] ?? (isset($config['status']) ? [$config['status']] : ['PAID', 'PENDING']);
+        $statuses = array_filter(array_map('strval', $statuses));
+
+        $nowMinute = now()->startOfMinute();
+        $targetTimeStart = $nowMinute->copy()->subMinutes($offsetMinutes)->subMinutes(1);
+        $targetTimeEnd = $nowMinute->copy()->subMinutes($offsetMinutes)->addMinutes(2);
+
+        $query = \Modules\Booking\Entities\BookingPayment::query()
+            ->with(['appointment'])
+            ->whereHas('appointment')
+            ->where(function($q) use ($targetTimeStart, $targetTimeEnd) {
+                $q->whereBetween('created_at', [$targetTimeStart, $targetTimeEnd])
+                  ->orWhereBetween('updated_at', [$targetTimeStart, $targetTimeEnd]);
+            });
+
+        if (!empty($statuses)) {
+            $query->whereIn('status', $statuses);
+        }
+
+        $payments = $query->get();
+
+        foreach ($payments as $payment) {
+            $appointment = $payment->appointment;
+            if (!$appointment) continue;
+
+            // Apply Service Filters
+            $serviceIds = $config['service_ids'] ?? (isset($config['service_id']) ? [$config['service_id']] : []);
+            $serviceIds = array_filter(array_map('intval', $serviceIds));
+            $serviceOperator = $config['service_operator'] ?? 'IN';
+            if (!empty($serviceIds)) {
+                if ($serviceOperator === 'IN' && !in_array((int)$appointment->service_id, $serviceIds, true)) {
+                    continue;
+                }
+                if ($serviceOperator === 'NOT_IN' && in_array((int)$appointment->service_id, $serviceIds, true)) {
+                    continue;
+                }
+            }
+
+            // Apply Provider Filters
+            $providerIds = $config['provider_ids'] ?? (isset($config['provider_id']) ? [$config['provider_id']] : []);
+            $providerIds = array_filter(array_map('intval', $providerIds));
+            $providerOperator = $config['provider_operator'] ?? 'IN';
+            if (!empty($providerIds)) {
+                if ($providerOperator === 'IN' && !in_array((int)$appointment->provider_user_id, $providerIds, true)) {
+                    continue;
+                }
+                if ($providerOperator === 'NOT_IN' && in_array((int)$appointment->provider_user_id, $providerIds, true)) {
+                    continue;
+                }
+            }
+
+            // Check if this workflow instance already ran for this appointment
+            $exists = $workflow->instances()
+                ->where('related_type', 'APPOINTMENT')
+                ->where('related_id', $appointment->id)
+                ->exists();
+
+            if (!$exists) {
+                Log::info("[Workflows] Triggering booking payment reminder '{$workflow->name}' for Appointment #{$appointment->id} / Payment #{$payment->id}");
+                $engine->startWorkflow($workflow, 'APPOINTMENT', $appointment->id, [
+                    'appointment_payment_id' => $payment->id,
+                    'payment_id' => $payment->id,
+                    'payment_amount' => $payment->amount,
+                    'payment_status' => $payment->status,
+                ]);
             }
         }
     }

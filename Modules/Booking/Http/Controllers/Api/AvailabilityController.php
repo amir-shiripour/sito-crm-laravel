@@ -65,7 +65,7 @@ class AvailabilityController extends Controller
             'weekday' => (int) $data['weekday'],
         ], $data);
 
-        $this->audit->log('AVAILABILITY_RULE_UPSERT', 'booking_availability_rules', $rule->id, null, $rule->toArray());
+        $this->audit->log('AVAILABILITY_RULE_UPSERT', 'booking_availability_rules', $rule->id, $request->user()?->id, null, $rule->toArray());
 
         return response()->json(['data' => $rule], 201);
     }
@@ -100,7 +100,7 @@ class AvailabilityController extends Controller
             'local_date' => $data['local_date'],
         ], $data);
 
-        $this->audit->log('AVAILABILITY_EXCEPTION_UPSERT', 'booking_availability_exceptions', $ex->id, null, $ex->toArray());
+        $this->audit->log('AVAILABILITY_EXCEPTION_UPSERT', 'booking_availability_exceptions', $ex->id, $request->user()?->id, null, $ex->toArray());
 
         return response()->json(['data' => $ex], 201);
     }

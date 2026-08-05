@@ -14,10 +14,11 @@ class LimoSmsDriver implements DriverInterface
 
     public function __construct(array $config = [])
     {
-        $this->apiKey  = $config['api_key']  ?? null;
+        $this->apiKey  = $config['api_key']  ?? env('LIMOSMS_API_KEY');
 
-        // Fallback to env if config is null (useful for CLI/Cron)
-        $this->sender  = $config['sender']   ?? ($config['sender_number'] ?? env('LIMOSMS_SENDER'));
+        // Fallback to env if config is empty (useful for CLI/Cron)
+        $sender = !empty($config['sender']) ? $config['sender'] : (!empty($config['sender_number']) ? $config['sender_number'] : (env('LIMOSMS_SENDER') ?: env('SMS_SENDER')));
+        $this->sender = $sender ?: null;
 
         $this->baseUrl = rtrim($config['base_url'] ?? 'https://api.limosms.com/api', '/');
 
@@ -46,11 +47,20 @@ class LimoSmsDriver implements DriverInterface
             return;
         }
 
+        $senderNumber = $message->from ?: ($this->sender ?: (env('LIMOSMS_SENDER') ?: env('SMS_SENDER')));
+
+        if (empty($senderNumber)) {
+            $error = 'LimoSms SenderNumber is missing. Please configure LIMOSMS_SENDER or SMS_SENDER in .env or SMS settings.';
+            Log::error('[LimoSms] sendText: ' . $error);
+            $message->markAsFailed('limosms', $error);
+            return;
+        }
+
         $url = $this->baseUrl . '/sendsms';
 
         $payload = [
             'Message'      => $message->message ?? '',
-            'SenderNumber' => $message->from ?: $this->sender,
+            'SenderNumber' => $senderNumber,
             'MobileNumber' => [$message->to], // لیمو آرایه شماره‌ها می‌خواهد
         ];
 

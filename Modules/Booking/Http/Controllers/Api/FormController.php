@@ -43,7 +43,7 @@ class FormController extends Controller
 
         $form = BookingForm::query()->create($data);
 
-        $this->audit->log('FORM_CREATED', 'booking_forms', $form->id, null, $form->toArray());
+        $this->audit->log('FORM_CREATED', 'booking_forms', $form->id, $user->id, null, $form->toArray());
 
         return response()->json(['data' => $form], 201);
     }
@@ -68,7 +68,7 @@ class FormController extends Controller
         $before = $form->toArray();
         $form->fill($data);
         $form->save();
-        $this->audit->log('FORM_UPDATED', 'booking_forms', $form->id, $before, $form->toArray());
+        $this->audit->log('FORM_UPDATED', 'booking_forms', $form->id, $user->id, $before, $form->toArray());
 
         return response()->json(['data' => $form]);
     }
@@ -86,7 +86,7 @@ class FormController extends Controller
 
         $before = $form->toArray();
         $form->delete();
-        $this->audit->log('FORM_DELETED', 'booking_forms', $form->id, $before, null);
+        $this->audit->log('FORM_DELETED', 'booking_forms', $form->id, $user->id, $before, null);
         return response()->json(['ok' => true]);
     }
 }

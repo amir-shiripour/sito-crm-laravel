@@ -162,6 +162,7 @@
                                 </optgroup>
                                 <optgroup label="بر اساس زمان (یادآوری نوبت)">
                                     <option value="APPOINTMENT_REMINDER" @selected($triggerType === 'APPOINTMENT_REMINDER')>یادآوری نوبت‌دهی (قبل/بعد از نوبت)</option>
+                                    <option value="BOOKING_PAYMENT_REMINDER" @selected($triggerType === 'BOOKING_PAYMENT_REMINDER')>براساس زمان پرداخت نوبت (قبل/بعد از ایجاد پرداخت)</option>
                                 </optgroup>
                                 <optgroup label="بر اساس زمان (یادآوری فاکتور)">
                                     <option value="INVOICE_REMINDER" @selected($triggerType === 'INVOICE_REMINDER')>یادآوری سررسید فاکتور (قبل/بعد از سررسید)</option>
@@ -912,6 +913,115 @@
                                 </div>
                             </div>
 
+                            <!-- 3. BOOKING_PAYMENT_REMINDER CONFIG -->
+                            <div class="trigger-config config-BOOKING_PAYMENT_REMINDER hidden space-y-6">
+                                <!-- زمان دقیق ارسال و ساعت اجرا -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
+                                    <div class="space-y-2">
+                                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">فاصله زمانی از ثبت/پرداخت نوبت</label>
+                                        @php
+                                            $rawOffset = (int)($tConfig['offset_minutes'] ?? 0);
+                                            $direction = $rawOffset < 0 ? -1 : 1;
+                                            $absMinutes = abs($rawOffset);
+
+                                            $val = $absMinutes;
+                                            $unit = 1;
+
+                                            if ($absMinutes % 1440 === 0 && $absMinutes > 0) {
+                                                $val = $absMinutes / 1440;
+                                                $unit = 1440;
+                                            } elseif ($absMinutes % 60 === 0 && $absMinutes > 0) {
+                                                $val = $absMinutes / 60;
+                                                $unit = 60;
+                                            }
+                                        @endphp
+                                        <div class="flex rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+                                            <input type="number" value="{{ $val }}" min="0" class="offset-val-input block w-20 border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 text-center focus:ring-0 focus:outline-none text-sm font-semibold">
+                                            <select class="offset-unit-select block border-r border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 focus:ring-0 focus:outline-none border-gray-300 dark:border-gray-700 text-xs font-bold">
+                                                <option value="1" @selected($unit === 1)>دقیقه</option>
+                                                <option value="60" @selected($unit === 60)>ساعت</option>
+                                                <option value="1440" @selected($unit === 1440)>روز</option>
+                                            </select>
+                                            <select class="offset-dir-select block border-r border-0 bg-transparent text-gray-900 dark:text-white py-2 px-3 focus:ring-0 focus:outline-none border-gray-300 dark:border-gray-700 text-xs font-bold">
+                                                <option value="1" @selected($direction === 1)>بعد از ایجاد/پرداخت</option>
+                                                <option value="-1" @selected($direction === -1)>قبل از ایجاد/پرداخت</option>
+                                            </select>
+                                        </div>
+                                        <input type="hidden" name="triggers[{{ $index }}][config][offset_minutes]" value="{{ $rawOffset }}" class="real-offset-input">
+                                    </div>
+
+                                    <div class="space-y-2">
+                                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">ساعت اجرای مشخص روز (اختیاری)</label>
+                                        <input type="time" name="triggers[{{ $index }}][config][run_at_time]" value="{{ $tConfig['run_at_time'] ?? '' }}"
+                                               class="run-at-time-input block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-semibold">
+                                        <p class="text-[10px] text-gray-400 leading-normal">در صورت خالی بودن، به صورت آنی پس از گذشت زمان تعیین‌شده اجرا می‌شود.</p>
+                                    </div>
+                                </div>
+
+                                <!-- وضعیت‌های پرداخت -->
+                                <div class="space-y-3">
+                                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">وضعیت‌های پرداخت مجاز</label>
+                                    @php
+                                        $selectedPaymentStatuses = (array)($tConfig['statuses'] ?? ['PAID']);
+                                        $bookingPaymentStatuses = [
+                                            'PAID' => 'پرداخت موفق (PAID)',
+                                            'PENDING' => 'در انتظار پرداخت (PENDING)',
+                                            'FAILED' => 'پرداخت ناموفق (FAILED)',
+                                            'REFUNDED' => 'استردادشده (REFUNDED)',
+                                        ];
+                                    @endphp
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 bg-white dark:bg-gray-900 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
+                                        @foreach($bookingPaymentStatuses as $k => $label)
+                                            <label class="flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
+                                                <input type="checkbox" name="triggers[{{ $index }}][config][statuses][]" value="{{ $k }}" @checked(in_array($k, $selectedPaymentStatuses))
+                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 status-checkbox h-4 w-4">
+                                                <span class="text-xs text-gray-700 dark:text-gray-300 font-medium">{{ $label }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                <!-- فیلتر خدمات -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">فیلتر خدمات/سرویس‌ها</label>
+                                        <select name="triggers[{{ $index }}][config][service_operator]" class="operator-select text-xs font-bold rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2.5">
+                                            <option value="IN" @selected(($tConfig['service_operator'] ?? 'IN') === 'IN')>شامل موارد زیر باشد</option>
+                                            <option value="NOT_IN" @selected(($tConfig['service_operator'] ?? 'IN') === 'NOT_IN')>شامل موارد زیر نباشد (به جز...)</option>
+                                        </select>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-3.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+                                        @foreach($services as $service)
+                                            <label class="flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
+                                                <input type="checkbox" name="triggers[{{ $index }}][config][service_ids][]" value="{{ $service->id }}" @checked(in_array($service->id, $selectedServices))
+                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 service-checkbox h-4 w-4">
+                                                <span class="text-sm text-gray-700 dark:text-gray-300">{{ $service->name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                <!-- فیلتر پزشکان -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">فیلتر پزشک/ارائه‌دهنده</label>
+                                        <select name="triggers[{{ $index }}][config][provider_operator]" class="operator-select text-xs font-bold rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-indigo-500 focus:border-indigo-500 py-1 px-2.5">
+                                            <option value="IN" @selected(($tConfig['provider_operator'] ?? 'IN') === 'IN')>شامل موارد زیر باشد</option>
+                                            <option value="NOT_IN" @selected(($tConfig['provider_operator'] ?? 'IN') === 'NOT_IN')>شامل موارد زیر نباشد (به جز...)</option>
+                                        </select>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-3.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+                                        @foreach($users as $user)
+                                            <label class="flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
+                                                <input type="checkbox" name="triggers[{{ $index }}][config][provider_ids][]" value="{{ $user->id }}" @checked(in_array($user->id, $selectedProviders))
+                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 provider-checkbox h-4 w-4">
+                                                <span class="text-sm text-gray-700 dark:text-gray-300">{{ $user->name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- 4. INVOICE_REMINDER CONFIG -->
                             <div class="trigger-config config-INVOICE_REMINDER hidden space-y-6">
                                 <!-- زمان دقیق بررسی و ساعت اجرا -->
@@ -1248,23 +1358,30 @@
                 text += '، این گردش کار به طور آنی اجرا خواهد شد.';
                 nlpTextEl.textContent = text;
             } else if (type === 'APPOINTMENT_REMINDER') {
-                const val = parseInt(item.querySelector('.offset-val-input').value) || 0;
-                const unitText = item.querySelector('.offset-unit-select').options[item.querySelector('.offset-unit-select').selectedIndex].text;
-                const dirText = item.querySelector('.offset-dir-select').options[item.querySelector('.offset-dir-select').selectedIndex].text;
-                const runAtTime = item.querySelector('.run-at-time-input').value;
+                const configDiv = item.querySelector('.config-APPOINTMENT_REMINDER');
+                const valInput = configDiv ? configDiv.querySelector('.offset-val-input') : null;
+                const val = valInput ? (parseInt(valInput.value) || 0) : 0;
+                const unitSelect = configDiv ? configDiv.querySelector('.offset-unit-select') : null;
+                const unitText = (unitSelect && unitSelect.selectedIndex >= 0) ? unitSelect.options[unitSelect.selectedIndex].text : '';
+                const dirSelect = configDiv ? configDiv.querySelector('.offset-dir-select') : null;
+                const dirText = (dirSelect && dirSelect.selectedIndex >= 0) ? dirSelect.options[dirSelect.selectedIndex].text : '';
+                const runAtEl = configDiv ? configDiv.querySelector('.run-at-time-input') : null;
+                const runAtTime = runAtEl ? runAtEl.value : '';
 
-                const checkedStatuses = Array.from(item.querySelectorAll('.status-checkbox:checked')).map(el => {
+                const checkedStatuses = configDiv ? Array.from(configDiv.querySelectorAll('.status-checkbox:checked')).map(el => {
                     return statusLabels[el.value] || el.value;
-                });
-                const checkedServices = Array.from(item.querySelectorAll('.service-checkbox:checked')).map(el => {
+                }) : [];
+                const checkedServices = configDiv ? Array.from(configDiv.querySelectorAll('.service-checkbox:checked')).map(el => {
                     return `«${el.nextElementSibling.textContent.trim()}»`;
-                });
-                const serviceOp = item.querySelector('[name*="[service_operator]"]').value;
+                }) : [];
+                const serviceOpEl = configDiv ? configDiv.querySelector('[name*="[service_operator]"]') : null;
+                const serviceOp = serviceOpEl ? serviceOpEl.value : 'IN';
 
-                const checkedProviders = Array.from(item.querySelectorAll('.provider-checkbox:checked')).map(el => {
+                const checkedProviders = configDiv ? Array.from(configDiv.querySelectorAll('.provider-checkbox:checked')).map(el => {
                     return `«${el.nextElementSibling.textContent.trim()}»`;
-                });
-                const providerOp = item.querySelector('[name*="[provider_operator]"]').value;
+                }) : [];
+                const providerOpEl = configDiv ? configDiv.querySelector('[name*="[provider_operator]"]') : null;
+                const providerOp = providerOpEl ? providerOpEl.value : 'IN';
 
                 let text = `دقیقاً ${val} ${unitText} ${dirText}`;
                 if (runAtTime) {
@@ -1275,6 +1392,68 @@
                     text += ` برای نوبت‌هایی با وضعیت ${checkedStatuses.join(' یا ')}`;
                 } else {
                     text += ' برای نوبت‌ها با هر وضعیتی';
+                }
+
+                if (checkedServices.length > 0) {
+                    if (serviceOp === 'IN') {
+                        text += ` مربوط به خدمت(های) ${checkedServices.join(' یا ')}`;
+                    } else {
+                        text += ` مربوط به تمام خدمات به جز ${checkedServices.join(' و ')}`;
+                    }
+                }
+                if (checkedProviders.length > 0) {
+                    if (providerOp === 'IN') {
+                        text += ` برای پزشک(ها) ${checkedProviders.join(' یا ')}`;
+                    } else {
+                        text += ` برای تمام پزشکان به جز ${checkedProviders.join(' و ')}`;
+                    }
+                }
+
+                text += '، این فرآیند زمان‌بندی شده اجرا می‌شود.';
+                nlpTextEl.textContent = text;
+            } else if (type === 'BOOKING_PAYMENT_REMINDER') {
+                const configDiv = item.querySelector('.config-BOOKING_PAYMENT_REMINDER');
+                const valInput = configDiv ? configDiv.querySelector('.offset-val-input') : null;
+                const val = valInput ? (parseInt(valInput.value) || 0) : 0;
+                const unitSelect = configDiv ? configDiv.querySelector('.offset-unit-select') : null;
+                const unitText = (unitSelect && unitSelect.selectedIndex >= 0) ? unitSelect.options[unitSelect.selectedIndex].text : '';
+                const dirSelect = configDiv ? configDiv.querySelector('.offset-dir-select') : null;
+                const dirText = (dirSelect && dirSelect.selectedIndex >= 0) ? dirSelect.options[dirSelect.selectedIndex].text : '';
+                const runAtEl = configDiv ? configDiv.querySelector('.run-at-time-input') : null;
+                const runAtTime = runAtEl ? runAtEl.value : '';
+
+                const paymentStatusLabels = {
+                    'PAID': 'پرداخت موفق',
+                    'PENDING': 'در انتظار پرداخت',
+                    'FAILED': 'پرداخت ناموفق',
+                    'REFUNDED': 'استردادشده'
+                };
+
+                const checkedStatuses = configDiv ? Array.from(configDiv.querySelectorAll('.status-checkbox:checked')).map(el => {
+                    return paymentStatusLabels[el.value] || el.value;
+                }) : [];
+                const checkedServices = configDiv ? Array.from(configDiv.querySelectorAll('.service-checkbox:checked')).map(el => {
+                    return `«${el.nextElementSibling.textContent.trim()}»`;
+                }) : [];
+                const serviceOpEl = configDiv ? configDiv.querySelector('[name*="[service_operator]"]') : null;
+                const serviceOp = serviceOpEl ? serviceOpEl.value : 'IN';
+
+                const checkedProviders = configDiv ? Array.from(configDiv.querySelectorAll('.provider-checkbox:checked')).map(el => {
+                    return `«${el.nextElementSibling.textContent.trim()}»`;
+                }) : [];
+                const providerOpEl = configDiv ? configDiv.querySelector('[name*="[provider_operator]"]') : null;
+                const providerOp = providerOpEl ? providerOpEl.value : 'IN';
+
+                let text = `دقیقاً ${val} ${unitText} ${dirText}`;
+                if (val === 0) text = `دقیقاً هنگام ایجاد/پرداخت نوبت`;
+                if (runAtTime) {
+                    text += ` رأس ساعت ${runAtTime} صبح/عصر`;
+                }
+
+                if (checkedStatuses.length > 0) {
+                    text += ` برای پرداخت‌هایی با وضعیت ${checkedStatuses.join(' یا ')}`;
+                } else {
+                    text += ' برای پرداخت‌ها با هر وضعیتی';
                 }
 
                 if (checkedServices.length > 0) {
@@ -1496,13 +1675,22 @@
             updateNlpText(item);
         }
 
-        function calculateOffset(item) {
-            const val = parseInt(item.querySelector('.offset-val-input').value) || 0;
-            const unit = parseInt(item.querySelector('.offset-unit-select').value) || 1;
-            const dir = parseInt(item.querySelector('.offset-dir-select').value) || -1;
+        function calculateOffset(item, targetInput) {
+            const configDiv = targetInput ? targetInput.closest('.trigger-config') : item.querySelector('.trigger-config:not(.hidden)');
+            if (!configDiv) return;
+
+            const valEl = configDiv.querySelector('.offset-val-input');
+            const unitEl = configDiv.querySelector('.offset-unit-select');
+            const dirEl = configDiv.querySelector('.offset-dir-select');
+            const realEl = configDiv.querySelector('.real-offset-input');
+            if (!valEl || !unitEl || !dirEl || !realEl) return;
+
+            const val = parseInt(valEl.value) || 0;
+            const unit = parseInt(unitEl.value) || 1;
+            const dir = parseInt(dirEl.value) || 1;
 
             const finalOffset = val * unit * dir;
-            item.querySelector('.real-offset-input').value = finalOffset;
+            realEl.value = finalOffset;
 
             updateNlpText(item);
         }
@@ -1568,7 +1756,7 @@
             }
 
             if (e.target.classList.contains('offset-val-input') || e.target.classList.contains('offset-unit-select') || e.target.classList.contains('offset-dir-select')) {
-                calculateOffset(item);
+                calculateOffset(item, e.target);
             }
 
             if (e.target.classList.contains('invoice-offset-val-input') || e.target.classList.contains('invoice-offset-dir-select')) {

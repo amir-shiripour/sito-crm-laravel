@@ -29,7 +29,7 @@ class CategoryService
 
         $category = BookingCategory::query()->create($data);
 
-        $this->audit->log('CATEGORY_CREATED', 'booking_categories', $category->id, null, $category->toArray());
+        $this->audit->log('CATEGORY_CREATED', 'booking_categories', $category->id, $user->id, null, $category->toArray());
 
         return $category;
     }
@@ -42,7 +42,7 @@ class CategoryService
         $category->fill($data);
         $category->save();
 
-        $this->audit->log('CATEGORY_UPDATED', 'booking_categories', $category->id, $before, $category->toArray());
+        $this->audit->log('CATEGORY_UPDATED', 'booking_categories', $category->id, $user->id, $before, $category->toArray());
 
         return $category;
     }
@@ -54,7 +54,7 @@ class CategoryService
         $before = $category->toArray();
         $category->delete();
 
-        $this->audit->log('CATEGORY_DELETED', 'booking_categories', $category->id, $before, null);
+        $this->audit->log('CATEGORY_DELETED', 'booking_categories', $category->id, $user->id, $before, null);
     }
 
     private function scopedQuery(User $user): Builder

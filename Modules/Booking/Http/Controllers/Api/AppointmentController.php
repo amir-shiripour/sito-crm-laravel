@@ -131,7 +131,7 @@ class AppointmentController extends Controller
             $before = $appointment->toArray();
             $appointment->status = Appointment::STATUS_DONE;
             $appointment->save();
-            $this->audit->log('APPOINTMENT_DONE', 'appointments', $appointment->id, $before, $appointment->toArray());
+            $this->audit->log('APPOINTMENT_DONE', 'appointments', $appointment->id, $request->user()?->id, $before, $appointment->toArray());
             return response()->json(['data' => $appointment]);
         }
 

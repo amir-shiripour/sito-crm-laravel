@@ -495,8 +495,14 @@ class AppointmentController extends Controller
             }
 
             foreach ($rawFormResponses as $key => $value) {
-                if (isset($fieldMeta[$key])) {
-                    $type = $fieldMeta[$key]['type'];
+                $type = $fieldMeta[$key]['type'] ?? (
+                    ($form->form_type === 'TOOTH_NUMBER' || $key === 'tooth_numbers' || str_contains(strtolower($key), 'tooth'))
+                        ? 'tooth_number'
+                        : null
+                );
+                $label = $fieldMeta[$key]['label'] ?? ($key === 'tooth_numbers' ? 'نقشه دندانی' : $key);
+
+                if ($type !== null || isset($fieldMeta[$key])) {
                     $displayValue = $value;
 
                     if ($type === 'select-user-by-role') {
@@ -506,14 +512,16 @@ class AppointmentController extends Controller
                         } elseif (is_numeric($value)) {
                             $displayValue = $userNamesMap[$value] ?? "کاربر #{$value}";
                         }
+                    } elseif ($type === 'tooth_number') {
+                        $displayValue = $value;
                     } elseif (is_array($value)) {
                         $displayValue = implode('، ', $value);
                     }
 
                     $formResponses[] = [
-                        'label' => $fieldMeta[$key]['label'],
+                        'label' => $label,
                         'value' => $displayValue,
-                        'type' => $type,
+                        'type' => $type ?? 'text',
                     ];
                 } else {
                     $label = $key;
@@ -532,17 +540,26 @@ class AppointmentController extends Controller
         } else if (!empty($rawFormResponses)) {
             // Fallback if form is not available, just use keys
             foreach ($rawFormResponses as $key => $value) {
-                $label = $key;
+                $isTooth = $key === 'tooth_numbers' || str_contains(strtolower($key), 'tooth');
+                $label = $key === 'tooth_numbers' ? 'نقشه دندانی' : $key;
                 if ($key === 'UR') $label = 'شماره دندان (UR)';
                 elseif ($key === 'UL') $label = 'شماره دندان (UL)';
                 elseif ($key === 'DR' || $key === 'LR') $label = 'شماره دندان (LR)';
                 elseif ($key === 'DL' || $key === 'LL') $label = 'شماره دندان (LL)';
 
-                $legacyResponses[] = [
-                    'label' => $label,
-                    'value' => $value,
-                    'type' => 'text',
-                ];
+                if ($isTooth) {
+                    $formResponses[] = [
+                        'label' => $label,
+                        'value' => $value,
+                        'type' => 'tooth_number',
+                    ];
+                } else {
+                    $legacyResponses[] = [
+                        'label' => $label,
+                        'value' => $value,
+                        'type' => 'text',
+                    ];
+                }
             }
         }
 

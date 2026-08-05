@@ -5,12 +5,15 @@
 @section('content')
     @php
         $tokenOptions = [
-            'client_name' => 'نام مشتری',
+            'appointment_id' => 'شماره نوبت',
+            'appointment_details_id' => 'شناسه جزئیات نوبت',
+            'appointment_payment_id' => 'شناسه صورتحساب مالی نوبت',
+            'client_name' => 'نام بیمار',
             'appointment_date_jalali' => 'تاریخ (شمسی)',
             'appointment_time_jalali' => 'ساعت',
             'appointment_datetime_jalali' => 'تاریخ و ساعت کامل',
-            'service_name' => 'نام سرویس',
-            'provider_name' => 'نام ارائه‌دهنده',
+            'service_name' => 'نام خدمت',
+            'provider_name' => 'نام پزشک/ارائه‌دهنده',
         ];
 
         // Merge with tokens from config if available

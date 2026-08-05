@@ -4,6 +4,7 @@ namespace Modules\Reminders\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Modules\Reminders\Entities\Reminder;
 
 class ProcessRemindersCommand extends Command
@@ -13,6 +14,11 @@ class ProcessRemindersCommand extends Command
 
     public function handle(): void
     {
+        if (!Schema::hasTable('reminders')) {
+            $this->warn('Reminders table does not exist in database.');
+            return;
+        }
+
         $this->info('Processing pending reminders...');
 
         // 1. Process WORKFLOW reminders
