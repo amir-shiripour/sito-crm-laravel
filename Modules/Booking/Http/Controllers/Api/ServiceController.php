@@ -142,7 +142,7 @@ class ServiceController extends Controller
             }
         }
 
-        $this->audit->log('SERVICE_CREATED', 'booking_services', $service->id, null, $service->toArray());
+        $this->audit->log('SERVICE_CREATED', 'booking_services', $service->id, $user->id, null, $service->toArray());
 
         return response()->json(['data' => $service->fresh(['category', 'appointmentForm', 'serviceProviders.provider'])], 201);
     }
@@ -195,7 +195,7 @@ class ServiceController extends Controller
         }
         $service->fill($data);
         $service->save();
-        $this->audit->log('SERVICE_UPDATED', 'booking_services', $service->id, $before, $service->toArray());
+        $this->audit->log('SERVICE_UPDATED', 'booking_services', $service->id, $user->id, $before, $service->toArray());
 
         return response()->json(['data' => $service->fresh(['category', 'appointmentForm', 'serviceProviders.provider'])]);
     }
@@ -221,7 +221,7 @@ class ServiceController extends Controller
 
         $before = $service->toArray();
         $service->delete();
-        $this->audit->log('SERVICE_DELETED', 'booking_services', $service->id, $before, null);
+        $this->audit->log('SERVICE_DELETED', 'booking_services', $service->id, $user->id, $before, null);
         return response()->json(['ok' => true]);
     }
 
@@ -243,7 +243,7 @@ class ServiceController extends Controller
             ]);
         }
 
-        $this->audit->log('SERVICE_PROVIDERS_ATTACHED', 'booking_services', $service->id, null, ['provider_user_ids' => $ids]);
+        $this->audit->log('SERVICE_PROVIDERS_ATTACHED', 'booking_services', $service->id, $request->user()?->id, null, null, ['provider_user_ids' => $ids]);
         return response()->json(['data' => $service->fresh(['serviceProviders.provider'])]);
     }
 
@@ -274,7 +274,7 @@ class ServiceController extends Controller
         $before = $serviceProvider->toArray();
         $serviceProvider->fill($data);
         $serviceProvider->save();
-        $this->audit->log('SERVICE_PROVIDER_UPDATED', 'booking_service_providers', $serviceProvider->id, $before, $serviceProvider->toArray());
+        $this->audit->log('SERVICE_PROVIDER_UPDATED', 'booking_service_providers', $serviceProvider->id, $request->user()?->id, $before, $serviceProvider->toArray());
 
         return response()->json(['data' => $serviceProvider->fresh(['service', 'provider'])]);
     }

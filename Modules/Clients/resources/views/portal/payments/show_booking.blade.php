@@ -180,7 +180,7 @@
                      x-transition:leave="ease-in duration-200"
                      x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                      x-transition:leave-end="opacity-0 translate-y-8 sm:translate-y-0 sm:scale-95"
-                     class="relative transform overflow-hidden rounded-3xl bg-white text-right shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl md:max-w-2xl border border-gray-100 flex flex-col max-h-[90vh]">
+                     class="relative transform overflow-hidden rounded-3xl bg-white text-right shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl md:max-w-2xl border border-gray-100 flex flex-col max-h-[90vh] min-h-0">
                      
                     {{-- Modal Header --}}
                     <div class="px-6 py-5 bg-gray-50/80 border-b border-gray-100 flex justify-between items-center shrink-0">
@@ -199,21 +199,21 @@
                         </button>
                     </div>
 
-                    <form :action="formAction" method="POST" enctype="multipart/form-data" id="clientPaymentForm" class="flex flex-col flex-1 overflow-hidden">
+                    <form :action="formAction" method="POST" enctype="multipart/form-data" id="clientPaymentForm" class="flex flex-col flex-1 min-h-0 overflow-hidden">
                         @csrf
                         <input type="hidden" name="payment_method" :value="method">
 
                         {{-- Modal Body --}}
-                        <div class="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
+                        <div class="p-6 space-y-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                             
                             {{-- کارت خلاصه مبلغ با دکمه کپی عدد خالص --}}
-                            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-5 text-white shadow-lg shadow-indigo-600/20">
-                                <div class="flex justify-between items-center relative z-10">
+                            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-4 sm:p-5 text-white shadow-lg shadow-indigo-600/20">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
                                     <div>
                                         <span class="text-xs font-medium text-indigo-100/90 block mb-1">مبلغ قابل پرداخت صورت‌حساب</span>
-                                        <div class="flex items-center gap-3">
+                                        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
                                             <div class="flex items-baseline gap-1.5">
-                                                <span class="text-2xl font-bold tracking-tight" x-text="paymentAmount"></span>
+                                                <span class="text-xl sm:text-2xl font-bold tracking-tight" x-text="paymentAmount"></span>
                                                 <span class="text-xs font-bold text-indigo-200">{{ $bookingCurrencyLabel }}</span>
                                             </div>
                                             
@@ -236,7 +236,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-xs font-bold text-white flex items-center gap-1.5">
+                                    <div class="self-start sm:self-auto shrink-0 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-xs font-bold text-white flex items-center gap-1.5">
                                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                                         <span>صورت‌حساب #{{ $payment->id }}</span>
                                     </div>

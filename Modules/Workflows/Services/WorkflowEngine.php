@@ -1104,10 +1104,16 @@ class WorkflowEngine
 
                 $formattedAmount = number_format($rawAmount) . ' ' . $currencyLabel;
 
+                $firstPayment = $pendingPayment ?? ($appt->payments ? $appt->payments->first() : null);
+                $bookingPaymentId = $firstPayment ? $firstPayment->id : $appt->id;
+
                 $data['appointment'] = $appt;
                 $data['tokens'] = array_merge($data['tokens'], [
                     'appointment_id' => $appt->id,
+                    'appointment_details_id' => $appt->id,
+                    'appointment_payment_id' => $bookingPaymentId,
                     'client_name' => $appt->client?->full_name,
+                    'patient_name' => $appt->client?->full_name,
                     'client_phone' => $appt->client?->phone,
                     'service_name' => $appt->service?->name,
                     'provider_name' => $appt->provider?->name,
@@ -1278,6 +1284,7 @@ class WorkflowEngine
                 $clientTokens = [
                     'client_id'                  => $client->id,
                     'client_name'                => $client->full_name,
+                    'patient_name'               => $client->full_name,
                     'client_username'            => $client->username,
                     'client_phone'               => $client->phone,
                     'client_email'               => $client->email,
@@ -1368,19 +1375,25 @@ class WorkflowEngine
                 }
 
                 $paymentTokens = [
-                    'payment_id'          => $payment->id,
-                    'payment_amount'      => $payment->amount,
-                    'payment_method'      => $payment->method,
-                    'payment_status'      => $payment->status,
-                    'payment_paid_at'     => $payment->paid_at?->format('Y-m-d H:i'),
-                    'payment_transaction_id' => $payment->transaction_id,
-                    'payment_is_late'     => ($invoice && $invoice->due_date && $payment->paid_at && $payment->paid_at->isAfter($invoice->due_date->endOfDay())) ? 'بله' : 'خیر',
-                    'invoice_number'      => $invoice?->invoice_number ?? $invoice?->proforma_invoice_number,
-                    'invoice_total'       => $invoice?->total,
-                    'invoice_remaining'   => $invoice?->remainingAmount(),
-                    'invoice_is_paid'     => $invoice?->isPaid() ? 'بله' : 'خیر',
-                    'client_name'         => $invoice?->client_name ?? $payment->invoice?->client_name,
-                    'client_phone'        => $invoice?->client_phone ?? $payment->invoice?->client_phone,
+                    'payment_id'                => $payment->id,
+                    'payment_amount'            => $payment->amount,
+                    'payment_method'            => $payment->method,
+                    'payment_status'            => $payment->status,
+                    'payment_paid_at'           => $payment->paid_at?->format('Y-m-d H:i'),
+                    'payment_transaction_id'   => $payment->transaction_id,
+                    'payment_is_late'           => ($invoice && $invoice->due_date && $payment->paid_at && $payment->paid_at->isAfter($invoice->due_date->endOfDay())) ? 'بله' : 'خیر',
+                    'invoice_number'            => $invoice?->invoice_number ?? $invoice?->proforma_invoice_number,
+                    'payment_invoice_number'   => $invoice?->invoice_number ?? $invoice?->proforma_invoice_number,
+                    'invoice_total'             => $invoice?->total,
+                    'payment_invoice_total'     => $invoice?->total,
+                    'invoice_remaining'         => $invoice?->remainingAmount(),
+                    'payment_invoice_remaining' => $invoice?->remainingAmount(),
+                    'invoice_is_paid'           => $invoice?->isPaid() ? 'بله' : 'خیر',
+                    'payment_invoice_is_paid'   => $invoice?->isPaid() ? 'بله' : 'خیر',
+                    'client_name'               => $invoice?->client_name ?? $payment->invoice?->client_name,
+                    'payment_client_name'       => $invoice?->client_name ?? $payment->invoice?->client_name,
+                    'client_phone'              => $invoice?->client_phone ?? $payment->invoice?->client_phone,
+                    'payment_client_phone'      => $invoice?->client_phone ?? $payment->invoice?->client_phone,
                 ];
 
                 $data['tokens'] = array_merge($data['tokens'], $paymentTokens);

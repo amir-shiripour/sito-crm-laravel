@@ -15,6 +15,8 @@ return [
     'tokens' => [
         'appointment' => [
             'appointment_id' => 'شماره نوبت',
+            'appointment_details_id' => 'شناسه جزئیات نوبت',
+            'appointment_payment_id' => 'شناسه صورتحساب مالی نوبت',
             'client_name' => 'نام بیمار',
             'client_phone' => 'شماره بیمار',
             'service_name' => 'نام خدمت',

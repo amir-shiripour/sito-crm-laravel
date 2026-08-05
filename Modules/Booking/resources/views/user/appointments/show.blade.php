@@ -755,6 +755,22 @@
                             @php
                                 $value = $response['value'];
                                 $isToothNumber = isset($response['type']) && $response['type'] === 'tooth_number';
+
+                                $parsedTeeth = [];
+                                if ($isToothNumber) {
+                                    if (is_array($value)) {
+                                        $parsedTeeth = array_values(array_filter(array_map('intval', $value)));
+                                    } elseif (is_string($value) && trim($value) !== '') {
+                                        $decoded = json_decode($value, true);
+                                        if (is_array($decoded)) {
+                                            $parsedTeeth = array_values(array_filter(array_map('intval', $decoded)));
+                                        } else {
+                                            $parsedTeeth = array_values(array_filter(array_map('intval', preg_split('/[\s,،]+/', $value))));
+                                        }
+                                    } elseif (is_numeric($value)) {
+                                        $parsedTeeth = [(int)$value];
+                                    }
+                                }
                             @endphp
 
                             <div class="flex flex-col gap-2 {{ $isToothNumber ? 'col-span-1 md:col-span-2' : '' }}">
@@ -763,7 +779,7 @@
                                 @if($isToothNumber)
                                     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mt-1"
                                          x-data="{
-                                             selected: @js(is_array($value) ? array_map('intval', $value) : (is_string($value) && $value !== '' ? array_map('intval', explode(',', $value)) : [])),
+                                             selected: @js($parsedTeeth),
                                              isReadOnly: true,
                                              getToothLabel(id) {
                                                  const mapping = {
@@ -793,7 +809,7 @@
                                              },
                                              toggle(id) {},
                                              is(id) {
-                                                 return this.selected.includes(id) ? 'tooth-path tooth-selected' : 'tooth-path tooth-unselected';
+                                                 return this.selected.map(Number).includes(Number(id)) ? 'tooth-path tooth-selected' : 'tooth-path tooth-unselected';
                                              }
                                          }">
                                         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40">
@@ -809,7 +825,7 @@
                                                 <span class="text-xl font-black text-indigo-600 dark:text-indigo-400"
                                                       x-text="selected.length">0</span>
                                             </div>
-                                            <div class="flex justify-center select-none dental-chart-wrapper max-w-lg mx-auto mb-4">
+                                            <div class="flex justify-center select-none dental-chart-wrapper mx-auto mb-4">
                                                 <x-booking::dental-chart/>
                                             </div>
                                         </div>

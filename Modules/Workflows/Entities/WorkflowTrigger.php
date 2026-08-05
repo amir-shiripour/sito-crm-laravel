@@ -26,6 +26,7 @@ class WorkflowTrigger extends Model
     public const TYPE_CLIENT_STATUS = 'CLIENT_STATUS';
     public const TYPE_INVOICE_REMINDER = 'INVOICE_REMINDER';
     public const TYPE_ORDER_RENEWAL_REMINDER = 'ORDER_RENEWAL_REMINDER';
+    public const TYPE_BOOKING_PAYMENT_REMINDER = 'BOOKING_PAYMENT_REMINDER';
 
     public function workflow(): BelongsTo
     {

@@ -4,6 +4,7 @@ namespace Modules\Booking\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Modules\Booking\Entities\Appointment;
 
 class BookingDispatchReminders extends Command
@@ -18,8 +19,8 @@ class BookingDispatchReminders extends Command
             return self::SUCCESS;
         }
 
-        if (!class_exists('Modules\\Reminders\\Entities\\Reminder')) {
-            $this->warn('Reminders module is not available/enabled.');
+        if (!class_exists('Modules\\Reminders\\Entities\\Reminder') || !Schema::hasTable('reminders')) {
+            $this->warn('Reminders module is not available, enabled or installed in database.');
             return self::SUCCESS;
         }
 

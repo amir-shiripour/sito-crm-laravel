@@ -4,8 +4,11 @@
 @php
     $defaultTokens = [
         'appointment' => [
-            'client_name' => 'نام مشتری',
-            'client_phone' => 'شماره مشتری',
+            'appointment_id' => 'شماره نوبت',
+            'appointment_details_id' => 'شناسه جزئیات نوبت',
+            'appointment_payment_id' => 'شناسه صورتحساب مالی نوبت',
+            'client_name' => 'نام بیمار',
+            'client_phone' => 'شماره بیمار',
             'service_name' => 'نام سرویس',
             'provider_name' => 'نام پزشک',
             'appointment_date_jalali' => 'تاریخ نوبت (شمسی)',
@@ -26,12 +29,12 @@
             'creator_phone' => 'تلفن ثبت کننده',
         ],
         'client' => [
-            'client_id' => 'شناسه کاربر',
-            'client_name' => 'نام کاربر',
+            'client_id' => 'شناسه بیمار/کلاینت',
+            'client_name' => 'نام بیمار',
             'client_username' => 'نام کاربری',
-            'client_phone' => 'شماره کاربر',
-            'client_email' => 'ایمیل کاربر',
-            'client_national_code' => 'کد ملی کاربر',
+            'client_phone' => 'شماره بیمار',
+            'client_email' => 'ایمیل بیمار',
+            'client_national_code' => 'کد ملی بیمار',
             'client_case_number' => 'شماره پرونده',
             'client_notes' => 'یادداشت پرونده',
             'client_status' => 'وضعیت پرونده',
@@ -63,6 +66,8 @@
             'payment_gateway' => 'درگاه پرداخت',
             'payment_ref_id' => 'شماره پیگیری پرداخت',
             'payment_date' => 'تاریخ پرداخت',
+            'payment_client_name' => 'نام مشتری پرداخت',
+            'payment_client_phone' => 'تلفن مشتری پرداخت',
         ],
         'order' => [
             'order_id' => 'شناسه سفارش',
