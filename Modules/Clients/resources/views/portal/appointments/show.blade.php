@@ -164,6 +164,7 @@
                         <span class="font-medium text-gray-900 dark:text-white text-lg">{{ $service->name ?? '---' }}</span>
                     </div>
 
+                    @if($showProviderInfo ?? true)
                     <div>
                         <span class="block text-sm text-gray-500 dark:text-gray-400 mb-1">{{ config('booking.labels.provider') }}</span>
                         <div class="flex items-center gap-3">
@@ -173,6 +174,16 @@
                             <span class="font-medium text-gray-900 dark:text-white">{{ $appointment->provider->full_name ?? $appointment->provider->name ?? '---' }}</span>
                         </div>
                     </div>
+                    @endif
+
+                    @if(($showServiceDescription ?? true) && !empty($service?->description))
+                    <div class="col-span-1 sm:col-span-2 pt-3 border-t border-gray-100 dark:border-gray-700/60">
+                        <span class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">توضیحات سرویس</span>
+                        <div class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed prose dark:prose-invert max-w-none">
+                            {!! $service->description !!}
+                        </div>
+                    </div>
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
@@ -194,7 +205,7 @@
             </div>
 
             {{-- اطلاعات فرم (پاسخ‌ها) --}}
-            @if(!empty($formResponses))
+            @if(($showSupplementaryInfo ?? true) && !empty($formResponses))
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">
                 <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>

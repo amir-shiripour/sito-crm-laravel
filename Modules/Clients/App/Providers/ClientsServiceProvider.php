@@ -38,6 +38,8 @@ class ClientsServiceProvider extends ServiceProvider
         }
 
         \Livewire\Livewire::component('clients::portal.client-address-manager', \Modules\Clients\App\Livewire\Portal\ClientAddressManager::class);
+        \Livewire\Livewire::component('modules.clients.app.livewire.settings.client-dashboard-settings', \Modules\Clients\App\Livewire\Settings\ClientDashboardSettings::class);
+        \Livewire\Livewire::component('clients.dashboard-settings', \Modules\Clients\App\Livewire\Settings\ClientDashboardSettings::class);
     }
 
     /**

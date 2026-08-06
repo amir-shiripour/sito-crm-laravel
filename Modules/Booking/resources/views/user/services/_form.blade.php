@@ -1,3 +1,37 @@
+@push('styles')
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <style>
+        .custom-quill-wrapper .ql-toolbar {
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+            border-color: #e2e8f0;
+            background-color: #f8fafc;
+        }
+        .dark .custom-quill-wrapper .ql-toolbar {
+            border-color: #334155;
+            background-color: #0f172a;
+        }
+        .custom-quill-wrapper .ql-container {
+            border-bottom-left-radius: 0.75rem;
+            border-bottom-right-radius: 0.75rem;
+            border-color: #e2e8f0;
+            min-height: 150px;
+            font-family: inherit;
+        }
+        .dark .custom-quill-wrapper .ql-container {
+            border-color: #334155;
+            color: #f8fafc;
+        }
+        .dark .ql-snow .ql-stroke { stroke: #94a3b8; }
+        .dark .ql-snow .ql-fill { fill: #94a3b8; }
+        .dark .ql-snow .ql-picker { color: #94a3b8; }
+    </style>
+@endpush
+
+@push('scripts')
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+@endpush
+
 @php
     /** @var \Modules\Booking\Entities\BookingService $service */
     $isAdminUser = (bool)($isAdminUser ?? false);
@@ -238,6 +272,53 @@
                     @error('provider_ids')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
                 </div>
             @endif
+
+            {{-- توضیحات سرویس --}}
+            <div class="col-span-1 md:col-span-2">
+                <label class="{{ $labelClass }}">توضیحات سرویس (اختیاری)</label>
+                <div
+                    wire:ignore
+                    x-data="{
+                        content: @js(old('description', $service->description ?? '')),
+                        initQuill() {
+                            if (typeof Quill === 'undefined') {
+                                setTimeout(() => this.initQuill(), 200);
+                                return;
+                            }
+                            let quill = new Quill(this.$refs.editor, {
+                                theme: 'snow',
+                                placeholder: 'توضیحات مربوط به این سرویس را در صورت تمایل وارد کنید...',
+                                modules: {
+                                    toolbar: [
+                                        [{ 'header': [1, 2, 3, false] }],
+                                        ['bold', 'italic', 'underline', 'strike'],
+                                        [{ 'color': [] }, { 'background': [] }],
+                                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                        [{ 'align': [] }, { 'direction': 'rtl' }],
+                                        ['link'],
+                                        ['clean']
+                                    ]
+                                }
+                            });
+                            quill.on('text-change', () => {
+                                this.content = quill.root.innerHTML;
+                                if (this.$refs.hiddenInput) {
+                                    this.$refs.hiddenInput.value = this.content;
+                                }
+                            });
+                            if (this.content) {
+                                quill.root.innerHTML = this.content;
+                            }
+                        }
+                    }"
+                    x-init="initQuill()"
+                    class="custom-quill-wrapper border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900/50 transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 shadow-sm"
+                >
+                    <input type="hidden" name="description" x-ref="hiddenInput" :value="content">
+                    <div x-ref="editor" class="focus:outline-none min-h-[150px]"></div>
+                </div>
+                @error('description')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
+            </div>
         </div>
     </div>
 

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Modules\Market\App\Models\Order;
 use Modules\Clients\Entities\ClientForm;
 use Modules\Clients\Entities\ClientSetting;
+use Modules\Clients\Entities\ClientTermsAcceptance;
 use Modules\Wallet\App\Traits\HasWallet;
 
 class Client extends Authenticatable
@@ -58,6 +59,16 @@ class Client extends Authenticatable
         return $this->hasMany(Order::class, 'client_id');
     }
 
+
+    public function termsAcceptances()
+    {
+        return $this->hasMany(ClientTermsAcceptance::class, 'client_id');
+    }
+
+    public function hasAcceptedTerms(string $version): bool
+    {
+        return $this->termsAcceptances()->where('version', $version)->exists();
+    }
 
     public function addresses()
     {

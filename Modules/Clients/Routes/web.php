@@ -91,6 +91,7 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class, 'permission
     ->prefix('user/settings/clients')
     ->name('user.settings.clients.')
     ->group(function () {
+        Route::get('/dashboard', \Modules\Clients\App\Livewire\Settings\ClientDashboardSettings::class)->name('dashboard');
         Route::get('/forms', ClientFormBuilder::class)->name('forms');
         Route::get('/username', ClientUsernameSettings::class)->name('username');
         Route::get('/statuses', ClientStatusesManager::class)->name('statuses');
@@ -129,6 +130,9 @@ Route::prefix('clients')
         Route::middleware('auth:client')->group(function () {
             Route::get('dashboard', [ClientDashboardController::class, 'index'])
                 ->name('dashboard');
+
+            Route::post('terms/accept', [\Modules\Clients\App\Http\Controllers\Portal\ClientTermsController::class, 'accept'])
+                ->name('terms.accept');
 
             Route::get('profile', [ClientProfileController::class, 'show'])
                 ->name('profile.show');

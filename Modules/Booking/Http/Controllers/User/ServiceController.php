@@ -129,8 +129,9 @@ class ServiceController extends Controller
         $this->sanitizePriceInputs($request);
 
         $data = $request->validate([
-            'name'   => ['required', 'string', 'max:255'],
-            'status' => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
+            'name'        => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'status'      => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
 
             'base_price'     => ['required', 'numeric', 'min:0'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],
@@ -376,8 +377,9 @@ class ServiceController extends Controller
         // -------------------------------------------------
 
         $rules = [
-            'name'   => ['required', 'string', 'max:255'],
-            'status' => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
+            'name'        => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'status'      => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
 
             'base_price'     => ['required', 'numeric', 'min:0'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],
