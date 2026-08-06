@@ -45,7 +45,7 @@
                 {{ session('success') }}
                 @if(request('tab'))
                     <span class="text-xs bg-emerald-100 dark:bg-emerald-800/40 px-2 py-0.5 rounded-lg">
-                @if(request('tab') === 'cure')طرح درمان@elseif(request('tab') === 'schedule')برنامه زمانی@elseعمومی@endif
+                @if(request('tab') === 'cure')طرح درمان@elseif(request('tab') === 'schedule')برنامه زمانی@elseif(request('tab') === 'appearance')تنظیمات ظاهری@elseعمومی@endif
             </span>
                 @endif
             </div>
@@ -96,6 +96,15 @@
                             class="pb-4 px-5 transition-all whitespace-nowrap flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         برنامه زمانی
+                    </button>
+
+                    <button type="button" @click="activeTab = 'appearance'"
+                            :class="activeTab === 'appearance'
+                                ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border-b-2 border-transparent'"
+                            class="pb-4 px-5 transition-all whitespace-nowrap flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                        تنظیمات ظاهری
                     </button>
                 </div>
             </div>
@@ -1212,6 +1221,95 @@
                                 class="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/50 hover:-translate-y-0.5 transition-all transform active:scale-95">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                             ذخیره برنامه زمانی
+                        </button>
+                        <p class="text-xs text-center text-gray-400 mt-3">
+                            تغییرات بلافاصله اعمال خواهند شد.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            {{--                  APPEARANCE TAB                           --}}
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            <div x-show="activeTab === 'appearance'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {{-- ستون اصلی --}}
+                <div class="lg:col-span-2 space-y-8">
+                    <div class="{{ $cardClass }}">
+                        <div class="{{ $headerClass }}">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات نمایش در داشبورد مشتریان</h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">کنترل بخش‌ها و اطلاعات قابل مشاهده برای بیماران/مشتریان</p>
+                            </div>
+                        </div>
+
+                        <div class="p-6 space-y-6">
+
+                            {{-- گزینه ۱: نمایش توضیحات سرویس --}}
+                            <div class="flex items-center justify-between p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
+                                <div class="space-y-1">
+                                    <label class="text-sm font-bold text-gray-900 dark:text-white block">
+                                        نمایش توضیحات سرویس در داشبورد مشتریان/بیماران
+                                    </label>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        در صورت فعال بودن، توضیحات ثبتی سرویس در صفحه جزئیات نوبت مشتریان به آن‌ها نمایش داده می‌شود.
+                                    </p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                    <input type="hidden" name="show_service_description" value="0">
+                                    <input type="checkbox" name="show_service_description" value="1" @checked(old('show_service_description', $settings->show_service_description ?? true)) class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
+                            {{-- گزینه ۲: نمایش اطلاعات تکمیلی --}}
+                            <div class="flex items-center justify-between p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
+                                <div class="space-y-1">
+                                    <label class="text-sm font-bold text-gray-900 dark:text-white block">
+                                        نمایش اطلاعات تکمیلی در داشبورد مشتریان/بیماران
+                                    </label>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        در صورت فعال بودن، پاسخ‌های فرم اختصاصی نوبت (اطلاعات تکمیلی) در پرتال کلاینت قابل مشاهده خواهد بود.
+                                    </p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                    <input type="hidden" name="show_supplementary_info" value="0">
+                                    <input type="checkbox" name="show_supplementary_info" value="1" @checked(old('show_supplementary_info', $settings->show_supplementary_info ?? true)) class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
+                            {{-- گزینه ۳: نمایش ارائه‌دهنده --}}
+                            <div class="flex items-center justify-between p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
+                                <div class="space-y-1">
+                                    <label class="text-sm font-bold text-gray-900 dark:text-white block">
+                                        نمایش ارائه‌دهنده در داشبورد مشتریان/بیماران
+                                    </label>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        در صورت فعال بودن، نام و مشخصات {{ config('booking.labels.provider') }} در صفحه نوبت کلاینت نمایش داده می‌شود.
+                                    </p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                    <input type="hidden" name="show_provider_info" value="0">
+                                    <input type="checkbox" name="show_provider_info" value="1" @checked(old('show_provider_info', $settings->show_provider_info ?? true)) class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ستون راست --}}
+                <div class="space-y-8">
+                    <div class="sticky top-6 z-10">
+                        <button type="submit"
+                                class="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/50 hover:-translate-y-0.5 transition-all transform active:scale-95">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                            ذخیره تنظیمات ظاهری
                         </button>
                         <p class="text-xs text-center text-gray-400 mt-3">
                             تغییرات بلافاصله اعمال خواهند شد.

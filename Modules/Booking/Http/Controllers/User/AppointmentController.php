@@ -459,6 +459,8 @@ class AppointmentController extends Controller
         $formResponses = [];
         $legacyResponses = [];
 
+        $hasToothForm = false;
+
         if (!empty($rawFormResponses) && $appointment->service && $appointment->service->appointmentForm) {
             $form = $appointment->service->appointmentForm;
             $formSchema = $form->schema_json;
@@ -467,12 +469,20 @@ class AppointmentController extends Controller
             if (isset($formSchema['fields']) && is_array($formSchema['fields'])) {
                 foreach ($formSchema['fields'] as $field) {
                     if (isset($field['name'])) {
+                        $fType = $field['type'] ?? 'text';
+                        if ($fType === 'tooth_number') {
+                            $hasToothForm = true;
+                        }
                         $fieldMeta[$field['name']] = [
                             'label' => $field['label'] ?? $field['name'],
-                            'type' => $field['type'] ?? 'text',
+                            'type' => $fType,
                         ];
                     }
                 }
+            }
+
+            if ($form->form_type === 'TOOTH_NUMBER') {
+                $hasToothForm = true;
             }
 
             // Collect user IDs for select-user-by-role fields
@@ -494,9 +504,21 @@ class AppointmentController extends Controller
                 $userNamesMap = User::whereIn('id', array_unique($roleUserIds))->pluck('name', 'id')->toArray();
             }
 
+            $legacyToothKeys = ['UR', 'UL', 'DR', 'LR', 'DL', 'LL'];
+
             foreach ($rawFormResponses as $key => $value) {
+                $isToothKey = ($key === 'tooth_numbers' || str_contains(strtolower((string)$key), 'tooth'));
+                $isLegacyToothKey = in_array($key, $legacyToothKeys, true);
+
+                // If key is not explicitly defined in form schema and it's a tooth key/legacy tooth key, only include if service has a tooth form
+                if (!isset($fieldMeta[$key])) {
+                    if (($isToothKey || $isLegacyToothKey) && !$hasToothForm) {
+                        continue;
+                    }
+                }
+
                 $type = $fieldMeta[$key]['type'] ?? (
-                    ($form->form_type === 'TOOTH_NUMBER' || $key === 'tooth_numbers' || str_contains(strtolower($key), 'tooth'))
+                    ($hasToothForm && ($isToothKey || $form->form_type === 'TOOTH_NUMBER'))
                         ? 'tooth_number'
                         : null
                 );
@@ -538,28 +560,21 @@ class AppointmentController extends Controller
                 }
             }
         } else if (!empty($rawFormResponses)) {
-            // Fallback if form is not available, just use keys
+            // Fallback if form is not available — skip dental chart and legacy tooth numbers since service has no tooth form attached
+            $legacyToothKeys = ['UR', 'UL', 'DR', 'LR', 'DL', 'LL'];
             foreach ($rawFormResponses as $key => $value) {
-                $isTooth = $key === 'tooth_numbers' || str_contains(strtolower($key), 'tooth');
-                $label = $key === 'tooth_numbers' ? 'نقشه دندانی' : $key;
-                if ($key === 'UR') $label = 'شماره دندان (UR)';
-                elseif ($key === 'UL') $label = 'شماره دندان (UL)';
-                elseif ($key === 'DR' || $key === 'LR') $label = 'شماره دندان (LR)';
-                elseif ($key === 'DL' || $key === 'LL') $label = 'شماره دندان (LL)';
+                $isTooth = $key === 'tooth_numbers' || str_contains(strtolower((string)$key), 'tooth');
+                $isLegacyToothKey = in_array($key, $legacyToothKeys, true);
 
-                if ($isTooth) {
-                    $formResponses[] = [
-                        'label' => $label,
-                        'value' => $value,
-                        'type' => 'tooth_number',
-                    ];
-                } else {
-                    $legacyResponses[] = [
-                        'label' => $label,
-                        'value' => $value,
-                        'type' => 'text',
-                    ];
+                if ($isTooth || $isLegacyToothKey) {
+                    continue;
                 }
+
+                $legacyResponses[] = [
+                    'label' => $key,
+                    'value' => $value,
+                    'type' => 'text',
+                ];
             }
         }
 

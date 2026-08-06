@@ -121,12 +121,18 @@ class SettingsController extends Controller
             'tax_enabled' => ['required'],
             'tax_type' => ['nullable', 'in:PERCENT,FIXED'],
             'tax_amount' => ['nullable', 'numeric', 'min:0'],
+            'show_service_description' => ['nullable'],
+            'show_supplementary_info' => ['nullable'],
+            'show_provider_info' => ['nullable'],
         ]);
 
         $generalData['global_online_booking_enabled'] = (bool) $generalData['global_online_booking_enabled'];
         $generalData['allow_role_service_creation'] = (bool) $generalData['allow_role_service_creation'];
         $generalData['allow_appointment_entry_exit_times'] = (bool) $generalData['allow_appointment_entry_exit_times'];
         $generalData['tax_enabled'] = $request->boolean('tax_enabled');
+        $generalData['show_service_description'] = $request->boolean('show_service_description');
+        $generalData['show_supplementary_info'] = $request->boolean('show_supplementary_info');
+        $generalData['show_provider_info'] = $request->boolean('show_provider_info');
 
         $settings->fill($generalData);
         $settings->allowed_roles = $syncRoleInput($normalizeRolesToIds($request->input('allowed_roles', [])), $oldAllowedRoles);

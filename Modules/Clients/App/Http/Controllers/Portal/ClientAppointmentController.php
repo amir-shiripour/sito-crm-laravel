@@ -189,6 +189,10 @@ class ClientAppointmentController extends Controller
             'online' => $onlineGateways,
         ];
 
+        $showServiceDescription = $bookingSettings->show_service_description ?? true;
+        $showSupplementaryInfo  = $bookingSettings->show_supplementary_info ?? true;
+        $showProviderInfo       = $bookingSettings->show_provider_info ?? true;
+
         return view('clients::portal.appointments.show', compact(
             'appointment',
             'formResponses',
@@ -196,7 +200,10 @@ class ClientAppointmentController extends Controller
             'bookingCurrencyLabel',
             'availablePaymentMethods',
             'paymentSubItems',
-            'bankAccounts'
+            'bankAccounts',
+            'showServiceDescription',
+            'showSupplementaryInfo',
+            'showProviderInfo'
         ));
     }
 

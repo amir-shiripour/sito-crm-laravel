@@ -44,6 +44,9 @@ class BookingSetting extends Model
         'cure_allowed_categories',
         'cure_statuses',
         'cure_assignable_roles',
+        'show_service_description',
+        'show_supplementary_info',
+        'show_provider_info',
         'key',
         'value',
     ];
@@ -65,6 +68,9 @@ class BookingSetting extends Model
         'cure_allowed_categories' => 'array',
         'cure_statuses' => 'array',
         'cure_assignable_roles' => 'array',
+        'show_service_description' => 'boolean',
+        'show_supplementary_info' => 'boolean',
+        'show_provider_info' => 'boolean',
     ];
 
     public static function current(): self
@@ -116,6 +122,9 @@ class BookingSetting extends Model
                 [ 'id' => 'approved2', 'name' => 'تایید نهایی',     'color' => '#10b981', 'order' => 4, 'allowed_roles' => [], 'allowed_from' => ['approved1'] ]
             ],
             'cure_assignable_roles' => [],
+            'show_service_description' => true,
+            'show_supplementary_info' => true,
+            'show_provider_info' => true,
         ]);
     }
 

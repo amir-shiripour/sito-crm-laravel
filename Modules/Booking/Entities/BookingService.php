@@ -30,6 +30,7 @@ class BookingService extends Model
     protected $fillable = [
         'owner_user_id',
         'name',
+        'description',
         'slug',
         'status',
         'base_price',
