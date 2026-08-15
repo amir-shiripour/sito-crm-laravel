@@ -2,7 +2,7 @@
 
 @php
     // ترکیب کامل اطلاعات پزشک از فایل امکانات جدید
-    $providerName = $provider->name ?? $provider->full_name ?? 'ارائه‌دهنده';
+    $providerName = $provider->name ?? $provider->full_name ?? config('booking.labels.provider');
     $provProfile  = $provider->profile ?? null;
     $provMedia    = $provider->doctorMedia ?? collect();
     $provGallery  = $provMedia->where('type', 'photo')->values();
@@ -21,7 +21,7 @@
 
     // Build available tabs dynamically
     $tabs = [['id' => 'booking', 'label' => 'رزرو نوبت', 'icon' => 'calendar']];
-    if ($showAbout && $provProfile?->about_me)               $tabs[] = ['id' => 'about',     'label' => 'درباره پزشک', 'icon' => 'user'];
+    if ($showAbout && $provProfile?->about_me)               $tabs[] = ['id' => 'about',     'label' => 'درباره ' . config('booking.labels.provider'), 'icon' => 'user'];
     if ($showInsurances && !empty($provInsurances))           $tabs[] = ['id' => 'insurance', 'label' => 'بیمه‌ها',    'icon' => 'shield'];
     if ($showGallery && $provGallery->count() > 0)           $tabs[] = ['id' => 'gallery',   'label' => 'گالری',      'icon' => 'photo'];
     if ($showVideo   && $provVideos->count() > 0)            $tabs[] = ['id' => 'videos',    'label' => 'ویدیوها',    'icon' => 'video'];
@@ -211,7 +211,7 @@
                 <svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                 </svg>
-                بازگشت به لیست پزشکان
+                بازگشت به لیست {{ config('booking.labels.providers') }}
             </a>
 
             <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
@@ -649,7 +649,7 @@
                         <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                         </div>
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">درباره پزشک</h2>
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">درباره {{ config('booking.labels.provider') }}</h2>
                     </div>
                     <p class="text-gray-700 dark:text-gray-300 leading-loose text-sm md:text-base">{{ $provProfile->about_me }}</p>
                 </div>
@@ -861,7 +861,7 @@
                 if (selectedService.tax_amount > 0) {
                     const formattedTax = toPersianDigits(parseInt(selectedService.tax_amount).toLocaleString('en-US'));
 {{--                    taxInfo.textContent = `مبلغ ${formattedTax} {{ ($settings->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان' }} هزینه ارائه خدمات آنلاین`;--}}
-                    taxInfo.textContent = `هزینه نوبت ثبت شده بصورت مجزا در مطب پزشک محاسبه خواهد شد`;
+                    taxInfo.textContent = `هزینه نوبت ثبت شده بصورت مجزا در مطب {{ config('booking.labels.provider') }} محاسبه خواهد شد`;
                     taxInfo.classList.remove('hidden');
                 } else {
                     taxInfo.classList.add('hidden');

@@ -12,6 +12,8 @@
     $reminders = Reminder::query()
         ->where('user_id', $user->id)
         ->open()
+        ->forTasks()
+        ->where('channel', '!=', Reminder::CHANNEL_WORKFLOW)
         ->where('remind_at', '<=', $endOfDay)
         ->with('task')
         ->get()

@@ -4,7 +4,7 @@
     $isProviderFlow = ($flow ?? 'SERVICE_FIRST') === 'PROVIDER_FIRST';
 @endphp
 
-@section('title', $isProviderFlow ? 'انتخاب پزشک' : 'لیست خدمات رزرو آنلاین')
+@section('title', $isProviderFlow ? 'انتخاب ' . config('booking.labels.provider') : 'لیست خدمات رزرو آنلاین')
 
 @section('content')
     <div class="max-w-7xl mx-auto px-6 w-full space-y-12">
@@ -24,14 +24,14 @@
             </div>
             <h1 class="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight">
                 @if($isProviderFlow)
-                    انتخاب <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">پزشک/متخصص</span>
+                    انتخاب <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">{{ config('booking.labels.providers') }}</span>
                 @else
                     رزرو آنلاین <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">سرویس‌ها</span>
                 @endif
             </h1>
             <p class="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
                 @if($isProviderFlow)
-                    متخصص مورد نظر خود را از لیست زیر انتخاب کرده و پس از انتخاب سرویس، در کوتاه‌ترین زمان نوبت بگیرید.
+                    {{ config('booking.labels.provider') }} مورد نظر خود را از لیست زیر انتخاب کرده و پس از انتخاب سرویس، در کوتاه‌ترین زمان نوبت بگیرید.
                 @else
                     سرویس مورد نظر خود را از لیست زیر انتخاب کنید و در کوتاه‌ترین زمان نوبت خود را قطعی نمایید.
                 @endif
@@ -46,7 +46,7 @@
                         // ترکیب منطق تعیین مشخصات
                         $profile = $item->profile ?? null;
 
-                        $name = $isProviderFlow ? ($item->name ?? $item->full_name ?? 'پزشک') : $item->name;
+                        $name = $isProviderFlow ? ($item->name ?? $item->full_name ?? config('booking.labels.provider')) : $item->name;
 
                         // استفاده از اطلاعات جدید پروفایل
                         $specialty = $profile?->specialty ?? null;
@@ -97,16 +97,6 @@
                                         </svg>
                                     @endif
                                 </div>
-
-                                {{--<div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-xl text-sm font-bold flex flex-col items-center gap-0.5 border border-emerald-100 dark:border-emerald-800/50">
-                                    @if($priceLabel) <span class="text-[9px] font-normal opacity-80">{{ $priceLabel }}</span> @endif
-                                    <div class="flex items-center gap-1">
-                                        {{ number_format($price) }} <span class="text-[10px] font-normal">{{ ($settings->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان' }}</span>
-                                    </div>
-                                    @if(isset($settings->tax_enabled) && $settings->tax_enabled)
-                                        <span class="text-[9px] font-normal opacity-80 text-emerald-600/80 dark:text-emerald-500"></span>
-                                    @endif
-                                </div>--}}
                             </div>
 
                             <div class="flex-1 min-w-0">
@@ -160,10 +150,10 @@
                     </svg>
                 </div>
                 <h3 class="text-2xl font-black text-gray-900 dark:text-white mb-3">
-                    @if($isProviderFlow) هیچ پزشکی یافت نشد @else هیچ سرویسی یافت نشد @endif
+                    @if($isProviderFlow) هیچ {{ config('booking.labels.provider') }} یافت نشد @else هیچ سرویسی یافت نشد @endif
                 </h3>
                 <p class="text-gray-500 dark:text-gray-400 text-lg">
-                    در حال حاضر هیچ @if($isProviderFlow) پزشکی @else خدماتی @endif برای رزرو آنلاین در سیستم فعال نیست. لطفاً بعداً مراجعه کنید.
+                    در حال حاضر هیچ @if($isProviderFlow) {{ config('booking.labels.provider') }} @else خدماتی @endif برای رزرو آنلاین در سیستم فعال نیست. لطفاً بعداً مراجعه کنید.
                 </p>
             </div>
         @endif

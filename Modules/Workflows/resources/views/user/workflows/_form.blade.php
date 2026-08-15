@@ -402,7 +402,7 @@
                                                         $selectedProviders = (array)($tConfig['provider_ids'] ?? (isset($tConfig['provider_id']) ? [$tConfig['provider_id']] : []));
                                                     @endphp
                                                     <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-                                                        @foreach($users as $user)
+                                                        @foreach(($providers ?? $users) as $user)
                                                             <label class="flex items-center gap-2 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
                                                                 <input type="checkbox" name="triggers[{{ $index }}][config][provider_ids][]" value="{{ $user->id }}" @checked(in_array($user->id, $selectedProviders))
                                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 provider-checkbox h-4 w-4">
@@ -902,7 +902,7 @@
                                         </select>
                                     </div>
                                     <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-3.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-                                        @foreach($users as $user)
+                                        @foreach(($providers ?? $users) as $user)
                                             <label class="flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
                                                 <input type="checkbox" name="triggers[{{ $index }}][config][provider_ids][]" value="{{ $user->id }}" @checked(in_array($user->id, $selectedProviders))
                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 provider-checkbox h-4 w-4">
@@ -1011,7 +1011,7 @@
                                         </select>
                                     </div>
                                     <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-3.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-                                        @foreach($users as $user)
+                                        @foreach(($providers ?? $users) as $user)
                                             <label class="flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 select-none">
                                                 <input type="checkbox" name="triggers[{{ $index }}][config][provider_ids][]" value="{{ $user->id }}" @checked(in_array($user->id, $selectedProviders))
                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 provider-checkbox h-4 w-4">

@@ -57,12 +57,67 @@ class SettingsController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'status', 'owner_user_id']);
 
-        $providers = \App\Models\User::query()
+        // ── Providers filtered by allowed_roles & super-admin visibility ──
+        $rolesInput = $settings->allowed_roles ?? [];
+        if (is_string($rolesInput)) {
+            $decoded = json_decode($rolesInput, true);
+            $rolesInput = is_array($decoded) ? $decoded : preg_split('/\s*,\s*/', trim($rolesInput), -1, PREG_SPLIT_NO_EMPTY);
+        }
+        $roleIds = [];
+        $roleNames = [];
+        if (is_array($rolesInput)) {
+            foreach ($rolesInput as $v) {
+                if (is_numeric($v) && (int)$v > 0) {
+                    $roleIds[] = (int)$v;
+                } elseif (is_string($v) && trim($v) !== '') {
+                    $roleNames[] = trim($v);
+                }
+            }
+        }
+
+        $providersQuery = \App\Models\User::query();
+
+        if (!empty($roleIds) || !empty($roleNames)) {
+            $providersQuery->whereHas('roles', function ($q) use ($roleIds, $roleNames) {
+                $q->where(function ($subQ) use ($roleIds, $roleNames) {
+                    if (!empty($roleIds)) {
+                        $subQ->whereIn('id', $roleIds);
+                    }
+                    if (!empty($roleNames)) {
+                        $subQ->orWhereIn('name', $roleNames);
+                    }
+                });
+            });
+        } else {
+            // Fallback: if no provider roles defined, show users attached to services
+            $providersQuery->whereIn('id', function ($q) {
+                $q->select('provider_user_id')->from('booking_service_providers');
+            });
+        }
+
+        $isSuperAdmin = auth()->user() && auth()->user()->hasRole('super-admin');
+        if (!$isSuperAdmin) {
+            $providersQuery->whereDoesntHave('roles', function ($r) {
+                $r->where('name', 'super-admin');
+            });
+        }
+
+        $providers = $providersQuery
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
 
         $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
         $syncGroups = $syncService->getGroups();
+
+        if (!$isSuperAdmin) {
+            $superAdminUserIds = \App\Models\User::whereHas('roles', function ($r) {
+                $r->where('name', 'super-admin');
+            })->pluck('id')->toArray();
+
+            $syncGroups = array_values(array_filter($syncGroups, function ($g) use ($superAdminUserIds) {
+                return empty($g['provider_user_id']) || !in_array((int)$g['provider_user_id'], $superAdminUserIds, true);
+            }));
+        }
 
         return view('booking::user.settings.edit', compact(
             'settings', 'rules', 'roles', 'categories', 'globalExceptions', 'services', 'providers', 'syncGroups'
@@ -355,7 +410,31 @@ class SettingsController extends Controller
         if ($syncInput !== null) {
             $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
             $rawGroups = is_string($syncInput) ? json_decode($syncInput, true) : (is_array($syncInput) ? $syncInput : []);
-            $syncService->saveGroups(is_array($rawGroups) ? $rawGroups : []);
+            if (!is_array($rawGroups)) {
+                $rawGroups = [];
+            }
+
+            if (!$isSuperAdmin) {
+                $existingGroups = $syncService->getGroups();
+                $superAdminUserIds = \App\Models\User::whereHas('roles', function ($r) {
+                    $r->where('name', 'super-admin');
+                })->pluck('id')->toArray();
+
+                $superAdminGroups = array_filter($existingGroups, function ($g) use ($superAdminUserIds) {
+                    return !empty($g['provider_user_id']) && in_array((int)$g['provider_user_id'], $superAdminUserIds, true);
+                });
+
+                if (!empty($superAdminGroups)) {
+                    $submittedIds = array_column($rawGroups, 'id');
+                    foreach ($superAdminGroups as $sag) {
+                        if (!in_array($sag['id'], $submittedIds, true)) {
+                            $rawGroups[] = $sag;
+                        }
+                    }
+                }
+            }
+
+            $syncService->saveGroups($rawGroups);
         }
 
         // ═══════════════════════════════════════

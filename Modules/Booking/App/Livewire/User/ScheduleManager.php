@@ -404,7 +404,7 @@ class ScheduleManager extends Component
             }
 
             if (!empty($wWindows) && !$inWorkWindow) {
-                $this->toastError = 'امکان ثبت نوبت جدید خارج از ساعات کاری رسمی ارائه دهنده وجود ندارد.';
+                $this->toastError = 'امکان ثبت نوبت جدید خارج از ساعات کاری رسمی ' . config('booking.labels.provider') . ' وجود ندارد.';
                 return;
             }
 
@@ -473,7 +473,7 @@ class ScheduleManager extends Component
         }
 
         if (!$this->modalProviderId) {
-            $this->modalError = 'لطفاً پزشک/ارائه‌دهنده را انتخاب کنید.';
+            $this->modalError = 'لطفاً ' . config('booking.labels.provider') . ' را انتخاب کنید.';
             return;
         }
 
@@ -512,7 +512,7 @@ class ScheduleManager extends Component
             $policy = $bookingEngine->resolveDayPolicy($this->modalServiceId, $this->modalProviderId, $localDate);
 
             if ($policy['is_closed']) {
-                $this->modalError = 'ثبت نوبت در این تاریخ به دلیل تعطیلی ارائه دهنده امکان‌پذیر نیست.';
+                $this->modalError = 'ثبت نوبت در این تاریخ به دلیل تعطیلی ' . config('booking.labels.provider') . ' امکان‌پذیر نیست.';
                 return;
             }
 
@@ -529,7 +529,7 @@ class ScheduleManager extends Component
                 }
 
                 if (!$inWorkWindow) {
-                    $this->modalError = 'ثبت نوبت در این ساعت به دلیل قرارگیری خارج از ساعات کاری رسمی ارائه دهنده امکان‌پذیر نیست.';
+                    $this->modalError = 'ثبت نوبت در این ساعت به دلیل قرارگیری خارج از ساعات کاری رسمی ' . config('booking.labels.provider') . ' امکان‌پذیر نیست.';
                     return;
                 }
             }

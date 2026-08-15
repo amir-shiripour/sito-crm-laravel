@@ -45,7 +45,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <div>
                 <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">صورت وضعیت</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">گزارش نوبت‌ها به تفکیک پزشک و سایر نقش‌ها</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">گزارش نوبت‌ها به تفکیک {{ config('booking.labels.provider') }} و سایر نقش‌ها</p>
             </div>
 
             <div class="flex gap-2">
@@ -76,7 +76,7 @@
 
                 {{-- Provider Search with Alpine.js --}}
                 <div class="relative" @click.outside="closeResults('provider')">
-                    <label for="provider_search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">پزشک (ارائه‌دهنده)</label>
+                    <label for="provider_search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ config('booking.labels.provider') }}</label>
 
                     <div class="relative">
                         <input type="text"
@@ -156,7 +156,7 @@
                         <thead class="bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
                             <tr>
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">شناسه</th>
-                                <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">پزشک</th>
+                                <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">{{ config('booking.labels.provider') }}</th>
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">بازه زمانی</th>
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ساعت نوبت‌ها</th>
                                 <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">وضعیت</th>

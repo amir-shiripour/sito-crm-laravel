@@ -479,7 +479,9 @@ class CalendarEventService
 
         try {
             $query = \Modules\Reminders\Entities\Reminder::query()
-                ->whereNotNull('remind_at');
+                ->whereNotNull('remind_at')
+                ->where('channel', '!=', \Modules\Reminders\Entities\Reminder::CHANNEL_WORKFLOW)
+                ->forTasks();
 
             $canViewAll = false;
             if (method_exists($user, 'hasRole') && $user->hasRole('super-admin')) {
@@ -496,17 +498,19 @@ class CalendarEventService
 
             $reminders = $query->whereBetween('remind_at', [$from, $to])
                 ->where('status', '!=', \Modules\Reminders\Entities\Reminder::STATUS_CANCELED)
+                ->with(['task', 'user'])
                 ->get();
 
             return $reminders->map(function ($rem) {
                 $remindAt   = $rem->remind_at;
                 $jalaliDate = $remindAt ? Jalalian::fromCarbon($remindAt) : null;
+                $title      = $rem->relatedTitle();
 
                 return [
                     'id'          => 'reminder_' . $rem->id,
                     'raw_id'      => $rem->id,
-                    'title'       => "یادآوری: " . \Illuminate\Support\Str::limit($rem->message, 40),
-                    'description' => $rem->message,
+                    'title'       => "یادآوری: " . \Illuminate\Support\Str::limit($title, 40),
+                    'description' => $rem->message ?: $title,
                     'datetime'    => $remindAt ? $remindAt->toIso8601String() : null,
                     'time'        => $jalaliDate ? $jalaliDate->format('H:i') : '',
                     'date_fa'     => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
@@ -518,7 +522,7 @@ class CalendarEventService
                     'source_label'=> 'یادآوری‌ها',
                     'color'       => 'purple',
                     'status'      => $rem->status,
-                    'url'         => route('home'),
+                    'url'         => $rem->relatedUrl() ?: (\Illuminate\Support\Facades\Route::has('user.reminders.index') ? route('user.reminders.index') : route('home')),
                 ];
             });
         } catch (\Throwable $e) {

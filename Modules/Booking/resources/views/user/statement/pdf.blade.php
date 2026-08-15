@@ -233,7 +233,7 @@
 
 <div class="users-box">
     <div class="user-col" style="text-align: right;">
-        پزشک: <span style="font-weight: bold;">{{ $provider ? $provider->name : '______' }}</span>
+        {{ config('booking.labels.provider') }}: <span style="font-weight: bold;">{{ $provider ? $provider->name : '______' }}</span>
     </div>
 
     <div class="user-col" style="text-align: center;">
