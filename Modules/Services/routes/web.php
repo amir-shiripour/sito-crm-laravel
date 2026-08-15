@@ -3,16 +3,24 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Services\App\Http\Controllers\{
     ServicesController,
-    ProjectController,
     InvoiceController,
     StatusBuilderController,
     ServicesSettingsController,
     ServiceCategoryController,
     OrderController,
+    ServicePackageController,
 };
 
 Route::middleware(['auth', 'verified'])
     ->prefix('user')->group(function () {
+
+    // Packages
+    Route::prefix('services/packages')
+        ->name('services.packages.')
+        ->group(function () {
+            Route::get('/json/all', [ServicePackageController::class, 'getPackagesJson'])->name('json');
+            Route::resource('/', ServicePackageController::class)->parameters(['' => 'package']);
+        });
 
     // Categories
     Route::prefix('services/categories')
@@ -34,14 +42,6 @@ Route::middleware(['auth', 'verified'])
         ->name('services.custom-fields.')
         ->group(function () {
             Route::get('/', [ServicesController::class, 'customFieldsIndex'])->name('index');
-        });
-
-    // Projects
-    Route::prefix('services/projects')
-        ->name('services.projects.')
-        ->group(function () {
-            Route::resource('/', ProjectController::class)->parameters(['' => 'project']);
-            Route::post('/{project}/change-status', [ProjectController::class, 'changeStatus'])->name('change-status');
         });
 
     // Proformas

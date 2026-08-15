@@ -17,9 +17,61 @@
     };
 
     $buyerExtraFieldIds = json_decode($settings['services_invoice_client_fields'] ?? '[]', true) ?: [];
-    $buyerExtraFields = ($invoice->customer && !empty($buyerExtraFieldIds))
+    $clientSelectedFields = is_array($invoice->meta) ? ($invoice->meta['client_selected_fields'] ?? []) : [];
+
+    $initialBuyerFields = ($invoice->customer && !empty($buyerExtraFieldIds))
         ? $invoice->customer->getFormFieldValues($buyerExtraFieldIds)
         : [];
+
+    $fieldsById = [];
+    foreach ($initialBuyerFields as $f) {
+        $fieldsById[$f['id']] = $f;
+    }
+
+    $systemLabels = [
+        'full_name' => 'نام و نام خانوادگی',
+        'phone' => 'شماره تماس',
+        'email' => 'پست الکترونیک',
+        'national_code' => 'کد / شناسه ملی',
+        'case_number' => 'شماره پرونده',
+        'address' => 'نشانی',
+    ];
+    $activeClientForm = class_exists(\Modules\Clients\Entities\ClientForm::class)
+        ? \Modules\Clients\Entities\ClientForm::active()
+        : null;
+
+    foreach ($buyerExtraFieldIds as $fid) {
+        $selectedVal = $clientSelectedFields[$fid] ?? null;
+        if (!empty($selectedVal)) {
+            $formattedVal = is_array($selectedVal)
+                ? implode(' ، ', array_filter(array_map('trim', $selectedVal)))
+                : trim((string)$selectedVal);
+
+            if ($formattedVal !== '') {
+                if (isset($fieldsById[$fid])) {
+                    $fieldsById[$fid]['value'] = $formattedVal;
+                } else {
+                    $label = $systemLabels[$fid] ?? null;
+                    if (!$label && $activeClientForm) {
+                        $fieldDef = $activeClientForm->field($fid);
+                        $label = $fieldDef['label'] ?? null;
+                    }
+                    $fieldsById[$fid] = [
+                        'id' => $fid,
+                        'label' => $label ?: $fid,
+                        'value' => $formattedVal,
+                    ];
+                }
+            }
+        }
+    }
+
+    $buyerExtraFields = [];
+    foreach ($buyerExtraFieldIds as $fid) {
+        if (isset($fieldsById[$fid]) && !empty($fieldsById[$fid]['value'])) {
+            $buyerExtraFields[] = $fieldsById[$fid];
+        }
+    }
 
     $isProforma = empty($invoice->invoice_number);
     $remainingAmount = $invoice->isMerged() ? max(0, $invoice->total - $invoice->paid_amount) : $invoice->remainingAmount();
@@ -456,7 +508,7 @@
                             @foreach($savedCustomFields as $field_id => $value)
                                 @php
                                     $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
-                                    if (!$fieldDef || !$fieldDef->has_pricing) continue;
+                                    if (!$fieldDef) continue;
 
                                     if (is_array($value)) { $displayValue = implode('، ', $value); }
                                     elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
@@ -464,13 +516,18 @@
 
                                     if (!$displayValue) continue;
 
-                                    $fieldPrice = $item->meta['custom_fields_prices'][$field_id] ?? null;
-                                    $fieldDiscount = $item->meta['custom_fields_discounts'][$field_id] ?? 0;
+                                    $fieldPrice = 0;
+                                    $fieldDiscount = 0;
+                                    
+                                    if ($fieldDef->has_pricing) {
+                                        $fieldPrice = $item->meta['custom_fields_prices'][$field_id] ?? null;
+                                        $fieldDiscount = $item->meta['custom_fields_discounts'][$field_id] ?? 0;
 
-                                    if ($fieldPrice === null) {
-                                        $fieldPrice = $fieldDef->pricing_type === 'percentage'
-                                                        ? ($item->unit_price * ((float)$fieldDef->pricing_amount / 100))
-                                                        : (float)$fieldDef->pricing_amount;
+                                        if ($fieldPrice === null) {
+                                            $fieldPrice = $fieldDef->pricing_type === 'percentage'
+                                                            ? ($item->unit_price * ((float)$fieldDef->pricing_amount / 100))
+                                                            : (float)$fieldDef->pricing_amount;
+                                        }
                                     }
                                 @endphp
                                 <tr class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10">
@@ -485,7 +542,19 @@
                                         </div>
                                     </td>
                                     <td class="px-4 py-2.5 text-start">
-                                        <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $displayValue }}</span>
+                                        @if($fieldDef->type === 'file')
+                                            <a href="{{ Storage::url($displayValue) }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                دانلود فایل
+                                            </a>
+                                        @elseif($fieldDef->type === 'url')
+                                            <a href="{{ str_starts_with($displayValue, 'http') ? $displayValue : 'http://' . $displayValue }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dir-ltr">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                                                {{ $displayValue }}
+                                            </a>
+                                        @else
+                                            <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $displayValue }}</span>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-2.5 text-center text-xs text-gray-400">
                                         {{ $faNum($displayQty) }}
@@ -540,12 +609,6 @@
                         <span class="font-medium">جمع مبالغ:</span>
                         <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->subtotal)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
                     </div>
-                    @if($invoice->discount_amount > 0)
-                        <div class="flex justify-between items-center text-rose-500 dark:text-rose-400">
-                            <span class="font-medium">مجموع تخفیف‌ها:</span>
-                            <span class="tabular-nums font-bold">− {{ $faNum(number_format($invoice->discount_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
-                        </div>
-                    @endif
                     @if($invoice->tax_amount > 0)
                         <div class="flex justify-between items-center text-amber-600 dark:text-amber-400">
                             <span class="font-medium">مالیات
@@ -556,6 +619,16 @@
                                 @endif
                             </span>
                             <span class="tabular-nums font-bold">+ {{ $faNum(number_format($invoice->tax_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                        </div>
+                        <div class="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                            <span class="font-medium">مبلغ با احتساب مالیات:</span>
+                            <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->subtotal + $invoice->tax_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                        </div>
+                    @endif
+                    @if($invoice->discount_amount > 0)
+                        <div class="flex justify-between items-center text-rose-500 dark:text-rose-400">
+                            <span class="font-medium">مجموع تخفیف‌ها:</span>
+                            <span class="tabular-nums font-bold">− {{ $faNum(number_format($invoice->discount_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
                         </div>
                     @endif
                     @php

@@ -20,6 +20,7 @@ class SmartBotServiceProvider extends ServiceProvider
     {
         $this->registerConfig();
         $this->registerViews();
+        $this->registerTranslations();
 
         if (BaseModuleInstaller::isInstalled($this->moduleName)) {
             $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
@@ -45,6 +46,19 @@ class SmartBotServiceProvider extends ServiceProvider
     {
         $this->publishes([module_path($this->moduleName, 'config/config.php') => config_path($this->moduleNameLower.'.php')], 'config');
         $this->mergeConfigFrom(module_path($this->moduleName, 'config/config.php'), $this->moduleNameLower);
+    }
+
+    public function registerTranslations(): void
+    {
+        $langPath = resource_path('lang/modules/' . $this->moduleNameLower);
+
+        if (is_dir($langPath)) {
+            $this->loadTranslationsFrom($langPath, $this->moduleNameLower);
+            $this->loadJsonTranslationsFrom($langPath);
+        } else {
+            $this->loadTranslationsFrom(module_path($this->moduleName, 'lang'), $this->moduleNameLower);
+            $this->loadJsonTranslationsFrom(module_path($this->moduleName, 'lang'));
+        }
     }
 
     public function registerViews(): void

@@ -104,10 +104,61 @@
     $savedBuyerFieldIds = array_key_exists('services_invoice_client_fields', $settings)
         ? (json_decode($settings['services_invoice_client_fields'] ?? '[]', true) ?: [])
         : $defaultBuyerFieldIds;
+    $clientSelectedFields = is_array($invoice->meta) ? ($invoice->meta['client_selected_fields'] ?? []) : [];
 
-    $buyerDisplayFields = $invoice->customer
+    $initialBuyerFields = $invoice->customer
         ? $invoice->customer->getFormFieldValues($savedBuyerFieldIds)
         : [];
+
+    $fieldsById = [];
+    foreach ($initialBuyerFields as $f) {
+        $fieldsById[$f['id']] = $f;
+    }
+
+    $systemLabels = [
+        'full_name' => 'نام و نام خانوادگی',
+        'phone' => 'شماره تماس',
+        'email' => 'پست الکترونیک',
+        'national_code' => 'کد / شناسه ملی',
+        'case_number' => 'شماره پرونده',
+        'address' => 'نشانی',
+    ];
+    $activeClientForm = class_exists(\Modules\Clients\Entities\ClientForm::class)
+        ? \Modules\Clients\Entities\ClientForm::active()
+        : null;
+
+    foreach ($savedBuyerFieldIds as $fid) {
+        $selectedVal = $clientSelectedFields[$fid] ?? null;
+        if (!empty($selectedVal)) {
+            $formattedVal = is_array($selectedVal)
+                ? implode(' ، ', array_filter(array_map('trim', $selectedVal)))
+                : trim((string)$selectedVal);
+
+            if ($formattedVal !== '') {
+                if (isset($fieldsById[$fid])) {
+                    $fieldsById[$fid]['value'] = $formattedVal;
+                } else {
+                    $label = $systemLabels[$fid] ?? null;
+                    if (!$label && $activeClientForm) {
+                        $fieldDef = $activeClientForm->field($fid);
+                        $label = $fieldDef['label'] ?? null;
+                    }
+                    $fieldsById[$fid] = [
+                        'id' => $fid,
+                        'label' => $label ?: $fid,
+                        'value' => $formattedVal,
+                    ];
+                }
+            }
+        }
+    }
+
+    $buyerDisplayFields = [];
+    foreach ($savedBuyerFieldIds as $fid) {
+        if (isset($fieldsById[$fid]) && !empty($fieldsById[$fid]['value'])) {
+            $buyerDisplayFields[] = $fieldsById[$fid];
+        }
+    }
 
     $buyerNameField = collect($buyerDisplayFields)->firstWhere('id', 'full_name');
     $buyerOtherFields = collect($buyerDisplayFields)->reject(fn($f) => $f['id'] === 'full_name');
@@ -211,14 +262,31 @@
             }
 
             .a4-container {
-                margin: 0;
-                box-shadow: none;
-                width: 100%;
-                min-height: auto;
+                margin: 0 !important;
+                box-shadow: none !important;
+                width: 100% !important;
+                min-height: auto !important;
+                padding: {{ $orientation === 'landscape' ? '4mm 6mm' : '5mm 8mm' }} !important;
             }
 
             .no-print {
                 display: none !important;
+            }
+
+            tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            .official-signature-block {
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            .table-cell-border {
+                padding: {{ $orientation === 'landscape' ? '1.5px 3px' : '2px 4px' }} !important;
             }
         }
 
@@ -331,9 +399,6 @@
                         <span class="status-official-tag" style="background-color: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}55;">
                             {{ $statusName }}
                         </span>
-                        @if(!empty($invoice->meta['is_merged_invoice']))
-                            <span class="merged-official-tag">ادغام</span>
-                        @endif
                     </div>
                 </div>
             </div>
@@ -424,6 +489,7 @@
                                             if (!$fieldDef) continue;
                                             if (is_array($value)) { $displayValue = implode('، ', $value); }
                                             elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
+                                            elseif ($fieldDef->type === 'file') { $displayValue = $value ? 'فایل پیوست شده' : null; }
                                             else { $displayValue = $value ?: null; }
                                             if ($displayValue) {
                                                 $printedFields[] = $fieldDef->label . ': ' . $displayValue;
@@ -453,12 +519,6 @@
                     <td colspan="{{ $footColspan }}" class="table-cell-border text-left">جمع مبالغ:</td>
                     <td class="table-cell-border">{{ $faNum(number_format($invoice->subtotal)) }}</td>
                 </tr>
-                @if($invoice->discount_amount > 0)
-                    <tr class="bg-gray-100 font-bold">
-                        <td colspan="{{ $footColspan }}" class="table-cell-border text-left text-red-600">مجموع تخفیف‌ها:</td>
-                        <td class="table-cell-border text-red-600">{{ $faNum(number_format($invoice->discount_amount)) }}</td>
-                    </tr>
-                @endif
                 @if($invoice->tax_amount > 0)
                     <tr class="bg-gray-100 font-bold">
                         <td colspan="{{ $footColspan }}" class="table-cell-border text-left text-green-600">مالیات
@@ -469,6 +529,16 @@
                             @endif
                         </td>
                         <td class="table-cell-border text-green-600">{{ $faNum(number_format($invoice->tax_amount)) }}</td>
+                    </tr>
+                    <tr class="bg-gray-100 font-bold">
+                        <td colspan="{{ $footColspan }}" class="table-cell-border text-left">مبلغ با احتساب مالیات:</td>
+                        <td class="table-cell-border">{{ $faNum(number_format($invoice->subtotal + $invoice->tax_amount)) }}</td>
+                    </tr>
+                @endif
+                @if($invoice->discount_amount > 0)
+                    <tr class="bg-gray-100 font-bold">
+                        <td colspan="{{ $footColspan }}" class="table-cell-border text-left text-red-600">مجموع تخفیف‌ها:</td>
+                        <td class="table-cell-border text-red-600">{{ $faNum(number_format($invoice->discount_amount)) }}</td>
                     </tr>
                 @endif
                 <tr class="bg-gray-100 font-bold text-[12px]">
@@ -481,8 +551,12 @@
             </table>
         </div>
 
-        @if($invoice->payments->isNotEmpty())
-            <div class="mb-4 avoid-break">
+        @php
+            $validPayments = $invoice->payments->reject(fn($p) => ($p->status ?? '') === 'canceled');
+        @endphp
+
+        @if($validPayments->isNotEmpty())
+            <div class="mb-2">
                 <table class="w-full border-collapse border border-official text-[9.5px]">
                     <thead class="bg-gray-100 font-bold">
                     <tr>
@@ -493,7 +567,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                    @foreach($invoice->payments as $payment)
+                    @foreach($validPayments as $payment)
                         <tr>
                             <td class="table-cell-border">{{ $toJalali($payment->paid_at) }}</td>
                             <td class="table-cell-border font-bold text-emerald-600">{{ $faNum(number_format($payment->amount)) }}</td>
@@ -513,13 +587,13 @@
         @endif
 
         @if(!empty($settings['services_invoice_footer_note']))
-            <div class="mt-4 border border-official rounded p-2 text-[10px] avoid-break bg-gray-50">
+            <div class="mt-2 border border-official rounded p-2 text-[10px] bg-gray-50">
                 <strong class="text-gray-800">یادداشت:</strong>
                 <div class="mt-1 leading-relaxed">{!! nl2br(e($settings['services_invoice_footer_note'])) !!}</div>
             </div>
         @endif
 
-        <div class="border border-official rounded p-2 mt-2 avoid-break">
+        <div class="border border-official rounded p-2 mt-2 official-signature-block avoid-break">
             <div class="flex justify-between items-stretch text-center" style="min-height: 65px;">
                 <div class="w-1/2 flex flex-col justify-between items-center px-2">
                     <p class="font-bold text-[10.5px] border-b border-gray-200 pb-1 w-full">مهر و امضای فروشنده</p>

@@ -41,6 +41,11 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
                     ->name('store')
                     ->middleware('permission:clients.create');
 
+                // جستجوی clients برای فیلدهای select و سرچ‌بار
+                Route::get('/search', [UserClientController::class, 'search'])
+                    ->name('search')
+                    ->middleware('permission:clients.view');
+
                 Route::get('/{client}', [UserClientController::class, 'show'])
                     ->name('show')
                     ->middleware('permission:clients.view');
@@ -69,16 +74,9 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
                     ->name('bulk-update')
                     ->middleware('permission:clients.edit');
 
-
-
                 // 🔹 این روت جدید برای "ورود به پنل مشتری در تب جدید" است
                 Route::get('/{client}/portal-login', [ClientAuthController::class, 'autoLoginFromAdmin'])
                     ->name('portal-login')
-                    ->middleware('permission:clients.view');
-
-                // جستجوی clients برای فیلدهای select
-                Route::get('/search', [UserClientController::class, 'search'])
-                    ->name('search')
                     ->middleware('permission:clients.view');
             });
     });

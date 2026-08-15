@@ -62,6 +62,10 @@ class ServiceManagementService
     {
         unset($data['custom_fields']);
 
+        if (array_key_exists('accounting_category_id', $data) && empty($data['accounting_category_id'])) {
+            $data['accounting_category_id'] = null;
+        }
+
         // لاجیک مربوط به فروش واحدی
         $data['has_unit_pricing'] = !empty($data['has_unit_pricing']);
         if (!$data['has_unit_pricing']) {

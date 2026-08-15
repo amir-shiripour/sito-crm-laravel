@@ -17,6 +17,7 @@ class StoreServiceRequest extends FormRequest
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50|unique:services,code',
             'category_id' => 'nullable|exists:service_categories,id',
+            'accounting_category_id' => 'nullable|exists:accounting_categories,id',
             'description' => 'nullable|string',
             'status_id' => 'required|exists:services_statuses,id',
             'base_price' => 'nullable|integer|min:0',

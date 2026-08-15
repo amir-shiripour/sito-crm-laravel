@@ -105,7 +105,7 @@ class StatusBuilderController extends Controller
             'name' => 'required|string|max:100',
             'color' => 'required|string|max:20',
             'icon' => 'nullable|string|max:50',
-            'type' => 'required|in:project,order,service,invoice,payment',
+            'type' => 'required|in:order,service,invoice,payment',
             'is_final' => 'nullable|boolean',
             'is_default' => 'nullable|boolean',
             'is_readonly' => 'nullable|boolean',

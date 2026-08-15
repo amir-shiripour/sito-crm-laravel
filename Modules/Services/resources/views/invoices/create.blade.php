@@ -11,7 +11,137 @@
 @php
     use Modules\Services\App\Http\Models\Status;
 
-    $customersListForJs = $customers->map(function ($c) {
+    if (!function_exists('extractClientFieldSubItems')) {
+        function extractClientFieldSubItems($client, string $fieldId, ?array $activeFormSchema = null): array {
+            $items = [];
+
+            if ($fieldId === 'address' || $fieldId === 'addresses') {
+                if ($client->addresses && $client->addresses->count() > 0) {
+                    foreach ($client->addresses as $addr) {
+                        $parts = array_filter([
+                            $addr->title ? "{$addr->title}:" : null,
+                            $addr->province,
+                            $addr->city,
+                            $addr->address,
+                            $addr->postal_code ? "(کدپستی: {$addr->postal_code})" : null,
+                        ]);
+                        $items[] = implode(' ', $parts);
+                    }
+                }
+            }
+
+            $systemFields = \Modules\Clients\Entities\ClientForm::getSystemFields();
+            if (isset($systemFields[$fieldId])) {
+                $col = $systemFields[$fieldId]['column'];
+                $val = $col === 'status_id' ? ($client->status->name ?? null) : ($client->{$col} ?? null);
+                if ($val) {
+                    if (is_array($val)) {
+                        $items = array_merge($items, $val);
+                    } else {
+                        $split = preg_split('/[\n\r\|::]+/u', (string)$val);
+                        if (count($split) > 1) {
+                            $items = array_merge($items, array_map('trim', $split));
+                        } else {
+                            $commaSplit = preg_split('/[،,]+/u', (string)$val);
+                            if (count($commaSplit) > 1) {
+                                $items = array_merge($items, array_map('trim', $commaSplit));
+                            } else {
+                                $items[] = trim((string)$val);
+                            }
+                        }
+                    }
+                }
+            }
+
+            $metaVal = ($client->meta ?? [])[$fieldId] ?? null;
+            if ($metaVal !== null && $metaVal !== '') {
+                if (is_array($metaVal)) {
+                    foreach ($metaVal as $m) {
+                        if (is_scalar($m)) $items[] = (string)$m;
+                        elseif (is_array($m)) $items[] = implode(' - ', array_filter($m));
+                    }
+                } else {
+                    $str = (string)$metaVal;
+                    if (str_starts_with(trim($str), '[') && str_ends_with(trim($str), ']')) {
+                        $decoded = json_decode($str, true);
+                        if (is_array($decoded)) {
+                            foreach ($decoded as $d) {
+                                if (is_scalar($d)) $items[] = (string)$d;
+                            }
+                        }
+                    } else {
+                        $split = preg_split('/[\n\r\|::]+/u', $str);
+                        if (count($split) > 1) {
+                            $items = array_merge($items, array_map('trim', $split));
+                        } else {
+                            $commaSplit = preg_split('/[،,]+/u', $str);
+                            if (count($commaSplit) > 1) {
+                                $items = array_merge($items, array_map('trim', $commaSplit));
+                            } else {
+                                $items[] = trim($str);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ($activeFormSchema && !empty($activeFormSchema['fields'])) {
+                foreach ($activeFormSchema['fields'] as $f) {
+                    if (($f['id'] ?? '') === $fieldId) {
+                        $rawOpts = $f['options'] ?? $f['options_json'] ?? null;
+                        if ($rawOpts) {
+                            $opts = is_array($rawOpts) ? $rawOpts : (json_decode($rawOpts, true) ?: []);
+                            if (is_string($rawOpts) && empty($opts)) {
+                                $opts = array_map('trim', preg_split('/[\n\r,،]+/u', $rawOpts));
+                            }
+                            if (is_array($opts) && count($opts) > 1 && empty($items)) {
+                                foreach ($opts as $opt) {
+                                    $items[] = is_array($opt) ? ($opt['label'] ?? $opt['value'] ?? '') : (string)$opt;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return array_values(array_unique(array_filter(array_map('trim', $items))));
+        }
+    }
+
+    $checkedClientFields = json_decode($settings['services_invoice_client_fields'] ?? '[]', true);
+    if (!is_array($checkedClientFields) || empty($checkedClientFields)) {
+        $checkedClientFields = ['full_name', 'phone', 'email', 'national_code', 'case_number'];
+    }
+
+    $activeForm = \Modules\Clients\Entities\ClientForm::active(\Modules\Clients\Entities\ClientSetting::getValue('default_form_key'));
+    $formSchema = $activeForm ? $activeForm->schema : [];
+    $allFieldsMap = [];
+    foreach (\Modules\Clients\Entities\ClientForm::systemFieldDefaults() as $fid => $f) {
+        $allFieldsMap[$fid] = $f['label'] ?? $fid;
+    }
+    if ($activeForm && !empty($formSchema['fields'])) {
+        foreach ($formSchema['fields'] as $f) {
+            if (!empty($f['id'])) {
+                $allFieldsMap[$f['id']] = $f['label'] ?? $f['id'];
+            }
+        }
+    }
+    $allFieldsMap['address'] = 'آدرس';
+    $allFieldsMap['addresses'] = 'آدرس‌ها';
+
+    $customersListForJs = $customers->map(function ($c) use ($checkedClientFields, $formSchema, $allFieldsMap) {
+        $multiSubFields = [];
+        foreach ($checkedClientFields as $fieldId) {
+            $subItems = extractClientFieldSubItems($c, $fieldId, $formSchema);
+            if (count($subItems) > 1) {
+                $multiSubFields[] = [
+                    'id' => $fieldId,
+                    'label' => $allFieldsMap[$fieldId] ?? $fieldId,
+                    'options' => $subItems,
+                ];
+            }
+        }
+
         return [
             'id'       => $c->id,
             'name'     => $c->full_name,
@@ -19,6 +149,7 @@
             'phone'    => $c->phone ?? '',
             'username' => $c->username ?? '',
             'label'    => $c->full_name . ' - ' . ($c->email ?? $c->phone ?? ''),
+            'multi_sub_fields' => $multiSubFields,
         ];
     })->values();
 
@@ -84,7 +215,7 @@
             </div>
         @endif
 
-        <form id="invoiceForm" @submit="onSubmitCheck($event)" action="{{ route('services.invoices.store') }}"
+        <form id="invoiceForm" @submit="onSubmitCheck($event)" @keydown.enter="if ($event.target.tagName !== 'TEXTAREA' && $event.target.type !== 'submit') $event.preventDefault()" action="{{ route('services.invoices.store') }}"
               method="POST" enctype="multipart/form-data" class="space-y-8">
             @csrf
             <input type="hidden" name="invoice_type" value="{{ $type }}">
@@ -242,7 +373,7 @@
                                class="mt-2 text-xs text-gray-400 px-1">مشتری‌ای یافت نشد.</p>
                         </div>
 
-                        <div x-show="selectedCustomer" x-transition class="max-w-xl">
+                        <div x-show="selectedCustomer" x-transition class="max-w-xl space-y-3">
                             <div
                                 class="flex items-center gap-4 p-4 rounded-2xl border-2 border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/60 dark:bg-indigo-500/10">
                                 <span
@@ -263,6 +394,47 @@
                                     تغییر
                                 </button>
                             </div>
+
+                            <template x-if="selectedCustomerData?.multi_sub_fields && selectedCustomerData.multi_sub_fields.length > 0">
+                                <div class="p-5 rounded-2xl border border-indigo-200 dark:border-indigo-800/60 bg-white dark:bg-gray-800 shadow-sm space-y-4">
+                                    <div class="flex flex-wrap items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2.5 gap-2">
+                                        <div class="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                            </svg>
+                                            <span>انتخاب زیرمجموعه‌های مشتری در فاکتور (چند انتخابی / Multi-Select)</span>
+                                        </div>
+                                        <span class="text-[10px] text-gray-400 font-medium">امکان انتخاب چند زیرمجموعه به صورت همزمان</span>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <template x-for="field in selectedCustomerData.multi_sub_fields" :key="field.id">
+                                            <div class="space-y-2 p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
+                                                <div class="flex items-center justify-between">
+                                                    <label class="block text-xs font-bold text-gray-800 dark:text-gray-200" x-text="field.label"></label>
+                                                    <div class="flex items-center gap-2">
+                                                        <button type="button" @click="selectAllSubItems(field.id, field.options)" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">انتخاب همه</button>
+                                                        <span class="text-[10px] text-gray-300">|</span>
+                                                        <button type="button" @click="deselectAllSubItems(field.id)" class="text-[10px] text-gray-400 hover:text-gray-600">پاک کردن</button>
+                                                    </div>
+                                                </div>
+                                                <div class="max-h-40 overflow-y-auto space-y-1.5 pe-1">
+                                                    <template x-for="(opt, idx) in field.options" :key="idx">
+                                                        <label class="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors text-xs text-gray-700 dark:text-gray-300">
+                                                            <input type="checkbox"
+                                                                   :name="'client_selected_fields[' + field.id + '][]'"
+                                                                   :value="opt"
+                                                                   :checked="isSubItemChecked(field.id, opt)"
+                                                                   @change="toggleSubItem(field.id, opt)"
+                                                                   class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                                                            <span x-text="opt" class="min-w-0 truncate"></span>
+                                                        </label>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -284,6 +456,49 @@
                         اقلام فاکتور
                     </h2>
                     <div class="flex flex-wrap items-center gap-2">
+                        {{-- Inline Package Search (type-to-search, like service search) --}}
+                        <div class="relative w-64" @click.outside="showPackageDropdown = false" x-show="packagesList && packagesList.length > 0">
+                            <div class="relative">
+                                <svg class="w-4.5 h-4.5 absolute right-3 top-1/2 -translate-y-1/2 text-amber-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                </svg>
+                                <input type="text" x-model="packageSearch"
+                                       @focus="showPackageDropdown = true"
+                                       @input.debounce.150ms="showPackageDropdown = true"
+                                       class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 pr-9 pl-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/20 outline-none transition-all shadow-sm"
+                                       placeholder="جست و جوی پکیج..." autocomplete="off"
+                                       @keydown.escape="showPackageDropdown = false">
+                            </div>
+
+                            <div x-show="showPackageDropdown && packageSearch.trim().length > 0 && filteredPackagesList().length > 0"
+                                 x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95 -translate-y-2" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
+                                 style="display:none;"
+                                 class="absolute right-0 top-full mt-1 z-[200] w-80 max-h-80 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl">
+                                <template x-for="pkg in filteredPackagesList()" :key="pkg.id">
+                                    <button type="button" @click="selectPackage(pkg); showPackageDropdown = false; packageSearch = ''"
+                                            class="w-full text-start px-4 py-3 hover:bg-amber-50 dark:hover:bg-amber-500/10 border-b border-gray-100 dark:border-gray-700/50 last:border-0 transition-colors group">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-2 min-w-0">
+                        <span class="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        </span>
+                                                <div class="min-w-0">
+                                                    <span class="font-bold text-sm text-gray-800 dark:text-white block truncate" x-text="pkg.name"></span>
+                                                    <span class="text-[10px] text-gray-400" x-text="pkg.items.length + ' ردیف'"></span>
+                                                </div>
+                                            </div>
+                                            <span class="shrink-0 text-xs font-black text-amber-600 dark:text-amber-400 tabular-nums" x-text="formatMoney(pkg.final_price) + ' {{ $currencyLabel }}'"></span>
+                                        </div>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <p x-show="showPackageDropdown && packageSearch.trim().length > 0 && filteredPackagesList().length === 0"
+                               class="absolute right-0 top-full mt-1 z-[200] w-80 px-4 py-3 text-xs font-bold text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl">
+                                هیچ پکیجی یافت نشد.
+                            </p>
+                        </div>
                         <button type="button" @click="addItem('service')"
                                 class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-xl transition-all dark:bg-indigo-500/20 dark:text-indigo-400 dark:hover:bg-indigo-500/30 active:scale-95 shadow-sm">
                             <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -335,8 +550,37 @@
                         <template x-for="(item, index) in items" :key="index">
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all"
                                    :class="(item._showServiceDropdown || item._showProductDropdown) ? 'relative z-50' : 'relative z-10'">
+                            {{-- Package Group Header Row --}}
+                            <template x-if="item._packageGroupId && (index === 0 || items[index-1]._packageGroupId !== item._packageGroupId)">
+                                <tr class="bg-amber-50/80 dark:bg-amber-900/10 border-t-2 border-amber-200 dark:border-amber-700/50">
+                                    <td :colspan="taxMode === 'item' ? 8 : 7" class="px-4 py-2">
+                                        <div class="flex items-center gap-3">
+                                            <button type="button"
+                                                    @click="collapsedPackages[item._packageGroupId] = !collapsedPackages[item._packageGroupId]"
+                                                    class="shrink-0 flex items-center gap-2 text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 transition-colors">
+                                                <span class="w-6 h-6 flex items-center justify-center rounded-md bg-amber-200/70 dark:bg-amber-500/20">
+                                                    <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="collapsedPackages[item._packageGroupId] ? '' : 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                                    </svg>
+                                                </span>
+                                                <span class="text-xs font-black" x-text="item._packageTitle"></span>
+                                            </button>
+                                            <span class="text-[10px] font-bold text-amber-500 dark:text-amber-500/70 bg-amber-100 dark:bg-amber-500/10 px-2 py-0.5 rounded-md" x-text="items.filter(i => i._packageGroupId === item._packageGroupId).length + ' ردیف'"></span>
+                                            <span x-show="collapsedPackages[item._packageGroupId]" class="text-[10px] font-bold text-gray-400">(مخفی شده)</span>
+                                            <div class="ms-auto">
+                                                <button type="button" @click="removePackage(item._packageGroupId)"
+                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/30 transition-colors active:scale-95">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    حذف پکیج
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
                             <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group"
-                                :class="(item._showServiceDropdown || item._showProductDropdown) ? 'relative z-50' : 'relative z-10'">
+                                :class="(item._showServiceDropdown || item._showProductDropdown) ? 'relative z-50' : 'relative z-10'"
+                                x-show="!item._packageGroupId || !collapsedPackages[item._packageGroupId]">
                                 <td class="px-4 py-3 align-top"
                                     :class="(item._showServiceDropdown || item._showProductDropdown) ? 'overflow-visible' : ''">
                                     <input type="hidden" :name="'items[' + index + '][service_id]'"
@@ -345,10 +589,16 @@
                                            :value="item.product_id || ''">
                                     <input type="hidden" :name="'items[' + index + '][product_variant_id]'"
                                            :value="item.product_variant_id || ''">
+                                    <input type="hidden" :name="'items[' + index + '][_packageGroupId]'"
+                                           :value="item._packageGroupId || ''">
+                                    <input type="hidden" :name="'items[' + index + '][_packageTitle]'"
+                                           :value="item._packageTitle || ''">
 
                                     <template x-if="item.mode === 'manual'">
                                         <input type="text" :name="'items[' + index + '][custom_service_name]'"
                                                x-model="item.custom_service_name"
+                                               :readonly="!!item._packageGroupId"
+                                               :class="item._packageGroupId ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                class="{{ $inputClass }} py-2.5 text-xs w-full"
                                                placeholder="نام سرویس / کالا را تایپ کنید...">
                                     </template>
@@ -361,8 +611,10 @@
                                                     <input type="text"
                                                            :name="'items[' + index + '][custom_service_name]'"
                                                            :value="item.custom_service_name"
-                                                           @focus="item._showProductDropdown = true"
-                                                           @input.debounce.300ms="item.custom_service_name = $event.target.value; onProductInput(index)"
+                                                           @focus="if(!item._packageGroupId) item._showProductDropdown = true"
+                                                           @input.debounce.300ms="if(!item._packageGroupId){ item.custom_service_name = $event.target.value; onProductInput(index); }"
+                                                           :readonly="!!item._packageGroupId"
+                                                           :class="item._packageGroupId ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                            class="{{ $inputClass }} py-2.5 text-xs w-full"
                                                            placeholder="جستجوی محصول فروشگاه...">
                                                     <div
@@ -409,8 +661,10 @@
                                                     <input type="text"
                                                            :name="'items[' + index + '][custom_service_name]'"
                                                            :value="item.custom_service_name"
-                                                           @focus="item._showServiceDropdown = true"
-                                                           @input.debounce.300ms="item.custom_service_name = $event.target.value; onServiceInput(index)"
+                                                           @focus="if(!item._packageGroupId) item._showServiceDropdown = true"
+                                                           @input.debounce.300ms="if(!item._packageGroupId){ item.custom_service_name = $event.target.value; onServiceInput(index); }"
+                                                           :readonly="!!item._packageGroupId"
+                                                           :class="item._packageGroupId ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                            class="{{ $inputClass }} py-2.5 text-xs w-full"
                                                            placeholder="جستجوی سرویس...">
                                                     <div
@@ -451,20 +705,32 @@
                                                 class="mt-2">
                                                 <input type="hidden" :name="'items[' + index + '][billing_period]'"
                                                        :value="item.billing_period">
-                                                <select x-model="item.billing_period"
-                                                        @change="updatePriceForPeriod(index)"
-                                                        class="{{ $inputClass }} py-2 text-xs">
-                                                    <option value="">انتخاب دوره</option>
-                                                    <template x-for="(label, period) in periodLabels" :key="period">
-                                                        <option :value="period" x-text="label"></option>
-                                                    </template>
-                                                </select>
+                                                {{-- Locked badge for package or merged items --}}
+                                                <template x-if="item._packageGroupId || item._isMerged">
+                                                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-400">
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                        <span x-text="periodLabels[item.billing_period] || item.billing_period || 'دوره تعریف نشده'"></span>
+                                                    </div>
+                                                </template>
+                                                {{-- Editable select for non-package non-merged items --}}
+                                                <template x-if="!item._packageGroupId && !item._isMerged">
+                                                    <select x-model="item.billing_period"
+                                                            @change="updatePriceForPeriod(index)"
+                                                            class="{{ $inputClass }} py-2 text-xs">
+                                                        <option value="">انتخاب دوره</option>
+                                                        <template x-for="(label, period) in periodLabels" :key="period">
+                                                            <option :value="period" x-text="label"></option>
+                                                        </template>
+                                                    </select>
+                                                </template>
                                             </div>
                                         </div>
                                     </template>
                                 </td>
                                 <td class="px-4 py-3 align-top"><input type="text" x-model="item.description"
                                                                        :name="'items[' + index + '][description]'"
+                                                                       :readonly="!!item._packageGroupId"
+                                                                       :class="item._packageGroupId ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                                        class="{{ $inputClass }} py-2.5 text-xs w-full"
                                                                        placeholder="توضیحات ردیف"></td>
                                 <td class="px-4 py-3 align-top">
@@ -577,7 +843,8 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-center align-top">
-                                    <button type="button" @click="removeItem(index)"
+                                    {{-- Non-package items: normal delete button --}}
+                                    <button type="button" x-show="!item._packageGroupId" @click="removeItem(index)"
                                             class="mt-1 text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-2 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                              stroke-width="2">
@@ -585,13 +852,17 @@
                                                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                         </svg>
                                     </button>
+                                    {{-- Package items: locked icon (delete via package header) --}}
+                                    <span x-show="item._packageGroupId" class="mt-1 flex items-center justify-center w-9 h-9 rounded-lg opacity-20" title="برای حذف پکیج، روی دکمه 'حذف پکیج' در سربرگ کلیک کنید">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                    </span>
                                 </td>
                             </tr>
 
                             {{-- ردیف‌های قیمتی فیلدهای سفارشی --}}
                             <template x-if="item.service_custom_fields && item.service_custom_fields.length > 0">
                                 <template x-for="field in item.service_custom_fields" :key="field.id + '_subrow'">
-                                    <tr x-show="field.has_pricing && isFieldSelected(field, item.custom_field_values[field.id])"
+                                    <tr x-show="(field.has_pricing && isFieldSelected(field, item.custom_field_values[field.id])) && (!item._packageGroupId || !collapsedPackages[item._packageGroupId])"
                                         class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10 transition-all group relative">
                                         <td class="px-4 py-2.5 relative align-middle">
                                             <div
@@ -634,7 +905,7 @@
                                                     <span
                                                         class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                                 </div>
-                                                <button type="button"
+                                                <button type="button" x-show="!item._packageGroupId"
                                                         @click="item._customPricesUnlocked = item._customPricesUnlocked || {}; item._customPricesUnlocked[field.id] = !item._customPricesUnlocked[field.id]"
                                                         class="shrink-0 p-1.5 rounded-lg border transition-colors"
                                                         :class="item._customPricesUnlocked?.[field.id] ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
@@ -715,7 +986,7 @@
                             </template>
 
                             {{-- بخش تنظیمات فیلدهای سفارشی --}}
-                            <tr x-show="item.service_custom_fields && item.service_custom_fields.length > 0">
+                            <tr x-show="(item.service_custom_fields && item.service_custom_fields.length > 0) && (!item._packageGroupId || !collapsedPackages[item._packageGroupId])">
                                 <td colspan="8" class="p-0 border-0">
                                     <div x-show="item._showCustomFields"
                                          x-transition:enter="transition ease-out duration-200"
@@ -752,27 +1023,37 @@
                                                                 </div>
                                                             </div>
                                                             <div class="w-full flex items-center">
-                                                                <template
-                                                                    x-if="['text', 'email', 'phone', 'url'].includes(field.type)">
-                                                                    <input
-                                                                        :type="field.type === 'url' ? 'url' : field.type"
+                                                                <template x-if="item._packageGroupId || item._isMerged">
+                                                                     <div class="w-full">
+                                                                         <div class="w-full flex items-center justify-between p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs font-bold text-amber-800 dark:text-amber-300">
+                                                                             <div class="flex items-center gap-1.5 min-w-0">
+                                                                                 <svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                                                 <span class="truncate" x-text="getFieldValueLabel(field, item.custom_field_values[field.id]) || 'تنظیم نشده'"></span>
+                                                                             </div>
+                                                                             <span class="text-[10px] text-amber-600 dark:text-amber-400 font-normal shrink-0 me-1">(قفل شده)</span>
+                                                                         </div>
+                                                                         <input type="hidden" :name="'items[' + index + '][custom_fields][' + field.id + ']'" :value="item.custom_field_values[field.id]">
+                                                                     </div>
+                                                                </template>
+                                                                <template x-if="!item._packageGroupId">
+                                                                    <div class="w-full">
+                                                                <template x-if="['text', 'email', 'phone', 'url'].includes(field.type)">
+                                                                    <input :type="field.type === 'url' ? 'url' : field.type" :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all" :required="field.is_required">
+                                                                </template>
+                                                                <template x-if="field.type === 'datetime'"><input
+                                                                        type="text" readonly data-jdp data-jdp-time
                                                                         :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                         x-model="item.custom_field_values[field.id]"
-                                                                        class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                        class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
+                                                                        placeholder="انتخاب تاریخ و ساعت"
+                                                                        autocomplete="off"
                                                                         :required="field.is_required"></template>
                                                                 <template x-if="field.type === 'date'"><input
                                                                         type="text" readonly data-jdp data-jdp-only-date
                                                                         :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                         x-model="item.custom_field_values[field.id]"
                                                                         class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
-                                                                        placeholder="انتخاب تاریخ" autocomplete="off"
-                                                                        :required="field.is_required"></template>
-                                                                <template x-if="field.type === 'datetime'"><input
-                                                                        type="text" readonly data-jdp
-                                                                        :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                        x-model="item.custom_field_values[field.id]"
-                                                                        class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
-                                                                        placeholder="انتخاب تاریخ و ساعت"
+                                                                        placeholder="انتخاب تاریخ"
                                                                         autocomplete="off"
                                                                         :required="field.is_required"></template>
                                                                 <template x-if="field.type === 'number'"><input
@@ -851,6 +1132,8 @@
                                                                         class="w-full text-xs rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400"
                                                                         :required="field.is_required"></template>
                                                             </div>
+                                                            </template>
+                                                            </div>
                                                         </div>
                                                     </template>
                                                 </div>
@@ -873,25 +1156,6 @@
                             <div class="flex justify-between text-gray-600 dark:text-gray-400 font-medium"><span>جمع کل مبالغ</span><span
                                     class="tabular-nums font-medium"><span x-text="formatMoney(totals.subtotal)"></span><span
                                         class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span></span></div>
-                            <div
-                                class="flex justify-between items-center text-red-500 dark:text-red-400 font-medium gap-3">
-                                <span class="flex items-center gap-2 shrink-0 flex-wrap">جمع تخفیف‌ها<span
-                                        class="relative inline-flex items-center gap-1"><input type="text"
-                                                                                               :value="extraDiscountType === 'percent' ? toPersianNum(extraDiscountValue) : formatPriceInput(extraDiscountValue)"
-                                                                                               @input="onExtraDiscountInput($event)"
-                                                                                               :class="extraDiscountType === 'percent' ? 'w-14' : 'w-28'"
-                                                                                               class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-2 py-1 text-xs text-center tabular-nums font-bold text-red-700 dark:text-red-400 focus:ring-2 focus:ring-red-500/20 outline-none transition-all"
-                                                                                               dir="ltr"
-                                                                                               placeholder="۰"><button
-                                            type="button" @click="toggleExtraDiscountType()"
-                                            class="px-2 py-1 rounded-lg text-[10px] font-black border transition-colors"
-                                            :class="extraDiscountType === 'percent' ? 'bg-red-600 text-white border-red-600' : 'bg-white dark:bg-gray-800 text-red-500 border-red-200 dark:border-red-800'"
-                                            title="تغییر نوع تخفیف (مبلغ / درصد)"><span
-                                                x-text="extraDiscountType === 'percent' ? '٪' : '{{ $currencyLabel }}'"></span></button></span></span>
-                                <span class="tabular-nums font-medium">− <span
-                                        x-text="formatMoney(totals.discount)"></span><span
-                                        class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span></span>
-                            </div>
                             <div x-show="taxMode !== 'item'"
                                  class="flex justify-between items-center text-amber-600 dark:text-amber-400 font-medium gap-3">
                                 <span class="flex items-center gap-2 shrink-0">مالیات فاکتور<span
@@ -925,6 +1189,33 @@
                                         class="text-[10px] font-normal text-gray-400">(از تنظیمات هر ردیف)</span></span>
                                 <span class="tabular-nums font-medium">+ <span
                                         x-text="formatMoney(totals.tax)"></span><span
+                                        class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span></span>
+                            </div>
+                            <div x-show="totals.tax > 0"
+                                 class="flex justify-between items-center text-gray-700 dark:text-gray-300 font-medium bg-amber-50/50 dark:bg-amber-900/10 px-2.5 py-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                                <span class="text-xs">مبلغ با احتساب مالیات</span>
+                                <span class="tabular-nums font-bold">
+                                    <span x-text="formatMoney(totals.subtotalWithTax)"></span>
+                                    <span class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                </span>
+                            </div>
+                            <div
+                                class="flex justify-between items-center text-red-500 dark:text-red-400 font-medium gap-3">
+                                <span class="flex items-center gap-2 shrink-0 flex-wrap">جمع تخفیف‌ها<span
+                                        class="relative inline-flex items-center gap-1"><input type="text"
+                                                                                               :value="extraDiscountType === 'percent' ? toPersianNum(extraDiscountValue) : formatPriceInput(extraDiscountValue)"
+                                                                                               @input="onExtraDiscountInput($event)"
+                                                                                               :class="extraDiscountType === 'percent' ? 'w-14' : 'w-28'"
+                                                                                               class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-2 py-1 text-xs text-center tabular-nums font-bold text-red-700 dark:text-red-400 focus:ring-2 focus:ring-red-500/20 outline-none transition-all"
+                                                                                               dir="ltr"
+                                                                                               placeholder="۰"><button
+                                            type="button" @click="toggleExtraDiscountType()"
+                                            class="px-2 py-1 rounded-lg text-[10px] font-black border transition-colors"
+                                            :class="extraDiscountType === 'percent' ? 'bg-red-600 text-white border-red-600' : 'bg-white dark:bg-gray-800 text-red-500 border-red-200 dark:border-red-800'"
+                                            title="تغییر نوع تخفیف (مبلغ / درصد)"><span
+                                                x-text="extraDiscountType === 'percent' ? '٪' : '{{ $currencyLabel }}'"></span></button></span></span>
+                                <span class="tabular-nums font-medium">− <span
+                                        x-text="formatMoney(totals.discount)"></span><span
                                         class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span></span>
                             </div>
                         </div>
@@ -1143,6 +1434,8 @@
             </div>
         </div>
 
+        {{-- Package modal removed: package selection is now inline dropdown --}}
+
     </div>
 
     @push('scripts')
@@ -1158,6 +1451,10 @@
                     proformaInvoiceNumber: @json($proformaInvoiceNumber ?? ''),
                     proformaInvoiceAuto: @json($proformaAuto ?? false),
                     servicesList: @json($services),
+                    packagesList: @json($packages ?? []),
+                    showPackageDropdown: false,
+                    packageSearch: '',
+                    collapsedPackages: {},
                     productsList: @json($products ?? []),
                     marketAttributesList: @json($marketAttributesForJs ?? []),
                     modalSelectedAttributes: {},
@@ -1173,6 +1470,7 @@
                     extraDiscountValue: 0,
                     selectedCustomer: @json(old('customer_id', request('customer_id')) ?? ''),
                     selectedCustomerData: null,
+                    clientSelectedFields: @json(old('client_selected_fields', (object)[])),
                     isMergeMode: @json(!empty($mergedFromIds)),
                     customersList: @json($customersListForJs),
                     customerQuery: '',
@@ -1291,11 +1589,43 @@
                         this.selectedCustomerData = c;
                         this.customerQuery = '';
                         this.customerDropdownOpen = false;
+                        if (c && c.multi_sub_fields) {
+                            c.multi_sub_fields.forEach(f => {
+                                if (!this.clientSelectedFields[f.id]) {
+                                    this.clientSelectedFields[f.id] = [...(f.options || [])];
+                                }
+                            });
+                        }
                     },
                     clearCustomer() {
                         this.selectedCustomer = '';
                         this.selectedCustomerData = null;
                         this.customerQuery = '';
+                        this.clientSelectedFields = {};
+                    },
+                    isSubItemChecked(fieldId, opt) {
+                        if (!this.clientSelectedFields[fieldId]) return false;
+                        const arr = Array.isArray(this.clientSelectedFields[fieldId])
+                            ? this.clientSelectedFields[fieldId]
+                            : [this.clientSelectedFields[fieldId]];
+                        return arr.includes(opt);
+                    },
+                    toggleSubItem(fieldId, opt) {
+                        if (!this.clientSelectedFields[fieldId] || !Array.isArray(this.clientSelectedFields[fieldId])) {
+                            this.clientSelectedFields[fieldId] = [];
+                        }
+                        const idx = this.clientSelectedFields[fieldId].indexOf(opt);
+                        if (idx > -1) {
+                            this.clientSelectedFields[fieldId].splice(idx, 1);
+                        } else {
+                            this.clientSelectedFields[fieldId].push(opt);
+                        }
+                    },
+                    selectAllSubItems(fieldId, options) {
+                        this.clientSelectedFields[fieldId] = [...(options || [])];
+                    },
+                    deselectAllSubItems(fieldId) {
+                        this.clientSelectedFields[fieldId] = [];
                     },
                     onExtraDiscountInput(e) {
                         let v = e.target.value;
@@ -1327,7 +1657,13 @@
                             });
                         });
                         this.$nextTick(() => {
-                            if (typeof jalaliDatepicker !== 'undefined') jalaliDatepicker.startWatch();
+                            if (typeof jalaliDatepicker !== 'undefined') {
+                                jalaliDatepicker.startWatch({
+                                    date: true,
+                                    time: true,
+                                    hasSecond: false
+                                });
+                            }
                         });
                         document.addEventListener('jdp:change', (e) => {
                             e.target.dispatchEvent(new Event('input', {bubbles: true}));
@@ -1364,6 +1700,94 @@
                     },
                     removeItem(i) {
                         this.items.splice(i, 1);
+                    },
+                    removePackage(groupId) {
+                        this.items = this.items.filter(i => i._packageGroupId !== groupId);
+                        delete this.collapsedPackages[groupId];
+                    },
+                    filteredPackagesList() {
+                        const q = this.packageSearch.trim().toLowerCase();
+                        if (!q) return [];
+                        return this.packagesList.filter(p => p.name.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q))).slice(0, 8);
+                    },
+
+                    togglePackageDropdown() {
+                        this.showPackageDropdown = !this.showPackageDropdown;
+                    },
+                    selectPackage(pkg) {
+                        if (!pkg || !pkg.items || pkg.items.length === 0) return;
+
+                        const groupId = pkg.id + '_' + Date.now();
+
+                        pkg.items.forEach(item => {
+                            let serviceRaw = null;
+                            let customFieldsArray = [];
+
+                            if (item.service_id && this.servicesList) {
+                                const sMatch = this.servicesList.find(s => String(s.id) === String(item.service_id));
+                                if (sMatch) {
+                                    serviceRaw = sMatch;
+                                    if (sMatch.custom_fields) {
+                                        customFieldsArray = sMatch.custom_fields.filter(f => f.show_in_invoice === true || f.show_in_invoice === 1 || f.show_in_invoice === '1' || f.show_in_invoice === null);
+                                    }
+                                }
+                            }
+
+                            this.items.push({
+                                mode: item.service_id ? 'service' : 'manual',
+                                service_id: item.service_id ? String(item.service_id) : '',
+                                product_id: '',
+                                product_variant_id: '',
+                                stock: null,
+                                service_raw: serviceRaw,
+                                custom_service_name: item.custom_service_name || (serviceRaw ? serviceRaw.name : ''),
+                                _showServiceDropdown: false,
+                                _showProductDropdown: false,
+                                _selectedGroup: '',
+                                description: item.description || '',
+                                unit: item.unit || 'عدد',
+                                quantity: item.quantity || 1,
+                                unit_price: item.unit_price || 0,
+                                discount: item.discount_amount ? parseFloat(item.discount_amount) : (item.discount_value ? parseFloat(item.discount_value) : 0),
+                                billing_period: item.billing_period || '',
+                                service_custom_fields: customFieldsArray,
+                                custom_field_values: item.custom_fields || {},
+                                custom_field_custom_prices: item.custom_fields_prices || {},
+                                custom_field_custom_discounts: {},
+                                custom_field_tax_percents: {},
+                                tax_percent: this.defaultTaxRate,
+                                _priceUnlocked: false,
+                                _unitUnlocked: false,
+                                _taxUnlocked: false,
+                                _customPricesUnlocked: {},
+                                _customFieldTaxUnlocked: {},
+                                _showCustomFields: false,
+                                _packageGroupId: groupId,
+                                _packageTitle: pkg.name
+                            });
+                        });
+
+                        let pkgDiscAmount = 0;
+                        if (pkg.total_amount && pkg.final_price && pkg.total_amount > pkg.final_price) {
+                            pkgDiscAmount = parseFloat(pkg.total_amount) - parseFloat(pkg.final_price);
+                        } else if (pkg.discount_value > 0) {
+                            if (pkg.discount_type === 'percent' || pkg.discount_type === 'percentage') {
+                                let tot = parseFloat(pkg.total_amount) || 0;
+                                pkgDiscAmount = (tot * parseFloat(pkg.discount_value)) / 100;
+                            } else {
+                                pkgDiscAmount = parseFloat(pkg.discount_value);
+                            }
+                        }
+
+                        if (pkgDiscAmount > 0) {
+                            this.extraDiscountType = 'amount';
+                            this.extraDiscountValue = (parseFloat(this.extraDiscountValue) || 0) + pkgDiscAmount;
+                        }
+
+                        this.showPackageDropdown = false;
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
+                        }
                     },
 
                     openProductModal(index) {
@@ -1509,7 +1933,7 @@
                     selectProductInline(i, prod) {
                         this.items[i].custom_service_name = prod.master_title || prod.name;
                         this.items[i]._showProductDropdown = false;
-                        
+
                         const variants = (this.productsList || []).filter(p => String(p.master_id) === String(prod.master_id));
                         if (variants.length === 1) {
                             this.activeProductModalIndex = i;
@@ -1632,55 +2056,72 @@
                         return v;
                     },
                     getCustomFieldPrice(it, f) {
-                        if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] !== undefined) return Number(it.custom_field_custom_prices[f.id]);
+                        if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] !== undefined && it.custom_field_custom_prices[f.id] !== null && it.custom_field_custom_prices[f.id] !== '') {
+                            let customVal = Number(it.custom_field_custom_prices[f.id]);
+                            if (!isNaN(customVal) && (customVal > 0 || (it._customPricesUnlocked && it._customPricesUnlocked[f.id]))) {
+                                return customVal;
+                            }
+                        }
                         let p = parseFloat(it.unit_price) || 0;
                         let a = Number(f.pricing_amount) || 0;
-                        return f.pricing_type === 'percentage' ? p * (a / 100) : a;
+                        if (isNaN(a)) a = 0;
+                        let price = f.pricing_type === 'percentage' ? p * (a / 100) : a;
+                        return isNaN(price) ? 0 : price;
                     },
                     getCustomFieldDiscount(it, f) {
-                        if (it.custom_field_custom_discounts && it.custom_field_custom_discounts[f.id] !== undefined) return Number(it.custom_field_custom_discounts[f.id]);
+                        if (it.custom_field_custom_discounts && it.custom_field_custom_discounts[f.id] !== undefined && it.custom_field_custom_discounts[f.id] !== null && it.custom_field_custom_discounts[f.id] !== '') {
+                            let d = Number(it.custom_field_custom_discounts[f.id]);
+                            return isNaN(d) ? 0 : d;
+                        }
                         return 0;
                     },
                     getCustomFieldRowTotal(it, f) {
                         let q = parseFloat(it.quantity) || 0;
-                        let cP = this.getCustomFieldPrice(it, f) * q;
-                        let cD = this.getCustomFieldDiscount(it, f);
+                        if (isNaN(q)) q = 0;
+                        let cP = (parseFloat(this.getCustomFieldPrice(it, f)) || 0) * q;
+                        let cD = parseFloat(this.getCustomFieldDiscount(it, f)) || 0;
+                        if (isNaN(cP)) cP = 0;
+                        if (isNaN(cD)) cD = 0;
                         let cT = Math.max(0, cP - cD);
                         if (this.taxMode === 'item' && this.taxApplyCustomFields) {
                             let cTP = it.custom_field_tax_percents?.[f.id] ?? this.defaultTaxRate;
-                            let t = cT * ((Number(cTP) || 0) / 100);
-                            return cT + t;
+                            let t = cP * ((Number(cTP) || 0) / 100);
+                            let res = cT + t;
+                            return isNaN(res) ? 0 : res;
                         }
-                        return cT;
+                        return isNaN(cT) ? 0 : cT;
                     },
                     calculateRowTotal(it) {
                         let q = parseFloat(it.quantity) || 0;
                         let p = parseFloat(it.unit_price) || 0;
                         let d = parseFloat(it.discount) || 0;
+                        if (isNaN(q)) q = 0;
+                        if (isNaN(p)) p = 0;
+                        if (isNaN(d)) d = 0;
                         let rB = p * q;
-                        let mT = Math.max(0, rB - d);
                         let rT = 0;
-                        if (this.taxMode === 'item') rT += mT * ((Number(it.tax_percent) || 0) / 100);
+                        if (this.taxMode === 'item') rT += rB * ((Number(it.tax_percent) || 0) / 100);
                         let cG = 0;
                         let cD = 0;
                         if (it.service_custom_fields && it.custom_field_values) {
                             it.service_custom_fields.forEach(f => {
                                 if (f.has_pricing && this.isFieldSelected(f, it.custom_field_values[f.id])) {
-                                    let cP = this.getCustomFieldPrice(it, f) * q;
-                                    let cD2 = this.getCustomFieldDiscount(it, f);
+                                    let cP = (parseFloat(this.getCustomFieldPrice(it, f)) || 0) * q;
+                                    let cD2 = parseFloat(this.getCustomFieldDiscount(it, f)) || 0;
+                                    if (isNaN(cP)) cP = 0;
+                                    if (isNaN(cD2)) cD2 = 0;
                                     cG += cP;
                                     cD += cD2;
                                     if (this.taxMode === 'item' && this.taxApplyCustomFields) {
-                                        let cT = Math.max(0, cP - cD2);
                                         let cTP = it.custom_field_tax_percents?.[f.id] ?? this.defaultTaxRate;
-                                        rT += cT * ((Number(cTP) || 0) / 100);
+                                        rT += cP * ((Number(cTP) || 0) / 100);
                                     }
                                 }
                             });
                         }
                         let tT = Math.max(0, rB - d) + Math.max(0, cG - cD);
-                        if (this.taxMode === 'item') return tT + rT;
-                        return tT;
+                        let res = (this.taxMode === 'item') ? (tT + rT) : tT;
+                        return isNaN(res) ? 0 : res;
                     },
                     get totals() {
                         let bS = 0, iD = 0, tC = 0, iTT = 0;
@@ -1694,8 +2135,7 @@
                             bS += rB;
                             iD += d;
                             if (this.taxMode === 'item') {
-                                let mT = Math.max(0, rB - d);
-                                iTT += mT * ((Number(it.tax_percent) || 0) / 100);
+                                iTT += rB * ((Number(it.tax_percent) || 0) / 100);
                             }
                             if (it.service_custom_fields && it.custom_field_values) {
                                 it.service_custom_fields.forEach(f => {
@@ -1705,9 +2145,8 @@
                                         cP += cP2;
                                         cD += cD2;
                                         if (this.taxMode === 'item' && this.taxApplyCustomFields) {
-                                            let cT = Math.max(0, cP2 - cD2);
                                             let cTP = it.custom_field_tax_percents?.[f.id] ?? this.defaultTaxRate;
-                                            iTT += cT * ((Number(cTP) || 0) / 100);
+                                            iTT += cP2 * ((Number(cTP) || 0) / 100);
                                         }
                                     }
                                 });
@@ -1716,13 +2155,14 @@
                             iD += cD;
                         });
                         let s = bS + tC;
-                        let aI = Math.max(0, s - iD);
+                        let tT = this.taxMode === 'item' ? Math.max(0, iTT) : s * ((Number(this.taxPercent) || 0) / 100);
+                        let sWithTax = Math.max(0, s + tT);
+                        let baseForExtraDisc = Math.max(0, sWithTax - iD);
                         let eD = 0;
-                        if (this.extraDiscountType === 'percent') eD = aI * ((Number(this.extraDiscountValue) || 0) / 100); else eD = Number(this.extraDiscountValue) || 0;
-                        eD = Math.max(0, Math.min(eD, aI));
-                        let tA = Math.max(0, aI - eD);
-                        let tT = this.taxMode === 'item' ? Math.max(0, iTT) : tA * ((Number(this.taxPercent) || 0) / 100);
-                        let gT = tA + tT;
+                        if (this.extraDiscountType === 'percent') eD = baseForExtraDisc * ((Number(this.extraDiscountValue) || 0) / 100); else eD = Number(this.extraDiscountValue) || 0;
+                        eD = Math.max(0, Math.min(eD, baseForExtraDisc));
+                        let totalDiscount = Math.max(0, iD + eD);
+                        let gT = Math.max(0, sWithTax - totalDiscount);
                         let uG = Math.round(gT);
                         let rG = uG;
                         let rD = 0;
@@ -1740,6 +2180,7 @@
                             baseSubtotal: Math.max(0, bS),
                             customFieldsTotal: Math.max(0, tC),
                             subtotal: Math.max(0, s),
+                            subtotalWithTax: sWithTax,
                             itemsDiscount: Math.max(0, iD),
                             extraDiscount: Math.max(0, eD),
                             discount: Math.max(0, iD + eD),
@@ -1774,7 +2215,9 @@
                         return Object.keys(s).map(k => ({label: k, amount: s[k]}));
                     },
                     formatMoney(v) {
-                        return new Intl.NumberFormat('fa-IR').format(Math.round(v));
+                        let num = Number(v);
+                        if (isNaN(num) || !isFinite(num)) num = 0;
+                        return new Intl.NumberFormat('fa-IR').format(Math.round(num));
                     },
                     formatPriceInput(v) {
                         if (v === '' || v === null || v === undefined) return '';
@@ -1799,6 +2242,11 @@
                     },
                     onSubmitCheck(e) {
                         const f = e.target;
+                        if (!this.items || this.items.length === 0) {
+                            e.preventDefault();
+                            alert('ثبت فاکتور بدون آیتم امکان‌پذیر نیست. لطفاً حداقل یک سرویس یا کالا اضافه کنید.');
+                            return;
+                        }
                         const iI = f.querySelector('input[name="invoice_type"]').value === 'invoice';
                         if (!this.selectedCustomer) {
                             e.preventDefault();

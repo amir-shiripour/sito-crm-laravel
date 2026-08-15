@@ -105,6 +105,15 @@
                                             فروش واحدی ({{ $service->unit_name }})
                                         </span>
                                     @endif
+
+                                    @if($service->accountingCategory)
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                            </svg>
+                                            سرفصل مالی: @if($service->accountingCategory->account_code)کد {{ $service->accountingCategory->account_code }} - @endif{{ $service->accountingCategory->title }}
+                                        </span>
+                                    @endif
                                 </div>
 
                                 <div class="bg-gray-50/50 dark:bg-gray-900/30 rounded-xl p-4 border border-gray-100 dark:border-gray-700/50">
@@ -271,6 +280,26 @@
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-gray-500 dark:text-gray-400">دوره پیش‌فرض</span>
                                 <span class="font-bold text-gray-800 dark:text-gray-200">{{ $periodLabels[$service->recurring_period] ?? '—' }}</span>
+                            </div>
+                        @endif
+
+                        @if($service->accountingCategory)
+                            <div class="pt-3 border-t border-gray-100 dark:border-gray-700/50 space-y-2">
+                                <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400">سرفصل مالی (حسابداری)</span>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-sm font-bold text-gray-800 dark:text-gray-100">
+                                        @if($service->accountingCategory->account_code)کد {{ $service->accountingCategory->account_code }} - @endif{{ $service->accountingCategory->title }}
+                                    </span>
+                                    <span class="shrink-0 text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded border border-amber-200/50 dark:border-amber-500/20">
+                                        {{ match($service->accountingCategory->type){ 'income' => 'درآمد', 'expense' => 'هزینه', 'asset' => 'دارایی', 'liability' => 'بدهی', 'equity' => 'سرمایه', default => $service->accountingCategory->type } }}
+                                    </span>
+                                </div>
+                                @if($service->accountingCategory->fundAccounts && $service->accountingCategory->fundAccounts->isNotEmpty())
+                                    <div class="p-2.5 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl text-xs space-y-1">
+                                        <span class="font-bold text-amber-800 dark:text-amber-300 block">حساب‌های متصل خزانه/بانک:</span>
+                                        <span class="text-gray-600 dark:text-gray-300 block">{{ $service->accountingCategory->fundAccounts->pluck('name')->implode('، ') }}</span>
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </div>

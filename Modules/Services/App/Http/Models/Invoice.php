@@ -24,7 +24,6 @@ class Invoice extends Model
     protected $fillable = [
         'invoice_number',
         'proforma_invoice_number',
-        'project_id',
         'service_id',
         'customer_id',
         'created_by',
@@ -157,11 +156,6 @@ class Invoice extends Model
         return $this->belongsTo(Status::class);
     }
 
-    public function project(): BelongsTo
-    {
-        return $this->belongsTo(Project::class);
-    }
-
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
@@ -185,6 +179,11 @@ class Invoice extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'invoice_id');
+    }
+
+    public function validPayments(): HasMany
+    {
+        return $this->hasMany(Payment::class, 'invoice_id')->where('status', '!=', 'canceled');
     }
 
     public function activities(): MorphMany
@@ -272,6 +271,14 @@ class Invoice extends Model
         // Calculate paid_at dynamically
         if ($this->isPaid() && !$this->paid_at) {
             $this->paid_at = now();
+        }
+
+        if ($this->isPaid() && !$this->isCanceled() && !$this->isMerged() && empty($this->proforma_invoice_number)) {
+            $paidStatus = Status::where('name', 'پرداخت شده')->first()
+                ?? Status::where('name', 'LIKE', '%پرداخت شده%')->first();
+            if ($paidStatus && $this->status_id !== $paidStatus->id) {
+                $this->status_id = $paidStatus->id;
+            }
         }
 
         if ($save) {

@@ -117,10 +117,61 @@
     $savedBuyerFieldIds = array_key_exists('services_invoice_client_fields', $settings)
         ? (json_decode($settings['services_invoice_client_fields'] ?? '[]', true) ?: [])
         : $defaultBuyerFieldIds;
+    $clientSelectedFields = is_array($invoice->meta) ? ($invoice->meta['client_selected_fields'] ?? []) : [];
 
-    $buyerDisplayFields = $invoice->customer
+    $initialBuyerFields = $invoice->customer
         ? $invoice->customer->getFormFieldValues($savedBuyerFieldIds)
         : [];
+
+    $fieldsById = [];
+    foreach ($initialBuyerFields as $f) {
+        $fieldsById[$f['id']] = $f;
+    }
+
+    $systemLabels = [
+        'full_name' => 'نام و نام خانوادگی',
+        'phone' => 'شماره تماس',
+        'email' => 'پست الکترونیک',
+        'national_code' => 'کد / شناسه ملی',
+        'case_number' => 'شماره پرونده',
+        'address' => 'نشانی',
+    ];
+    $activeClientForm = class_exists(\Modules\Clients\Entities\ClientForm::class)
+        ? \Modules\Clients\Entities\ClientForm::active()
+        : null;
+
+    foreach ($savedBuyerFieldIds as $fid) {
+        $selectedVal = $clientSelectedFields[$fid] ?? null;
+        if (!empty($selectedVal)) {
+            $formattedVal = is_array($selectedVal)
+                ? implode(' ، ', array_filter(array_map('trim', $selectedVal)))
+                : trim((string)$selectedVal);
+
+            if ($formattedVal !== '') {
+                if (isset($fieldsById[$fid])) {
+                    $fieldsById[$fid]['value'] = $formattedVal;
+                } else {
+                    $label = $systemLabels[$fid] ?? null;
+                    if (!$label && $activeClientForm) {
+                        $fieldDef = $activeClientForm->field($fid);
+                        $label = $fieldDef['label'] ?? null;
+                    }
+                    $fieldsById[$fid] = [
+                        'id' => $fid,
+                        'label' => $label ?: $fid,
+                        'value' => $formattedVal,
+                    ];
+                }
+            }
+        }
+    }
+
+    $buyerDisplayFields = [];
+    foreach ($savedBuyerFieldIds as $fid) {
+        if (isset($fieldsById[$fid]) && !empty($fieldsById[$fid]['value'])) {
+            $buyerDisplayFields[] = $fieldsById[$fid];
+        }
+    }
 
     $buyerNameField = collect($buyerDisplayFields)->firstWhere('id', 'full_name');
     $buyerOtherFields = collect($buyerDisplayFields)->reject(fn($f) => $f['id'] === 'full_name');
@@ -449,6 +500,11 @@
             break-inside: avoid !important;
         }
 
+        .no-page-break-before {
+            page-break-before: avoid !important;
+            break-before: avoid !important;
+        }
+
         .payments-table {
             width: 100%;
             border-collapse: collapse;
@@ -457,16 +513,16 @@
         .payments-table thead th {
             background-color: #f8fafc;
             color: #475569;
-            font-size: 9.5px;
+            font-size: 9px;
             font-weight: 700;
-            padding: 5px 8px;
+            padding: 4px 6px;
             border: 1px solid #e2e8f0;
         }
 
         .payments-table tbody td {
-            padding: 5px 8px;
+            padding: 4px 6px;
             border: 1px solid #e2e8f0;
-            font-size: 9.5px;
+            font-size: 9px;
         }
 
         .invoice-footer {
@@ -474,23 +530,31 @@
             justify-content: flex-end;
             align-items: flex-start;
             gap: 20px;
+            page-break-before: avoid !important;
+            break-before: avoid !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
 
         .signature-block {
             text-align: center;
             width: 170px;
             flex-shrink: 0;
+            page-break-before: avoid !important;
+            break-before: avoid !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
 
         .signature-block p.label {
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 700;
             color: #475569;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .signature-box {
-            height: 48px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -498,8 +562,8 @@
 
         .signature-block .seller-name {
             border-top: 1px dashed #cbd5e1;
-            font-size: 10px;
-            padding-top: 4px;
+            font-size: 9.5px;
+            padding-top: 2px;
             margin-top: 2px;
             color: #0f172a;
             font-weight: 700;
@@ -512,19 +576,46 @@
             }
 
             .print-container {
-                margin: 0;
-                box-shadow: none;
-                width: 100%;
-                min-height: auto;
+                margin: 0 !important;
+                box-shadow: none !important;
+                width: 100% !important;
+                min-height: auto !important;
+                padding: 4mm 6mm !important;
             }
 
             .print-fab {
-                display: none;
+                display: none !important;
             }
 
             @page {
                 size: A4 portrait;
-                margin: 5mm;
+                margin: 3mm;
+            }
+
+            tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            .invoice-footer, .signature-block {
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            .items-table td, .items-table th {
+                padding: 4px 6px !important;
+            }
+
+            .payments-table td, .payments-table th {
+                padding: 3px 5px !important;
+                font-size: 8.5px !important;
+            }
+
+            .section-title {
+                margin-top: 6px !important;
+                margin-bottom: 4px !important;
             }
         }
     </style>
@@ -555,9 +646,6 @@
                     <span class="status-tag" style="background-color: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}44;">
                         {{ $statusName }}
                     </span>
-                    @if(!empty($invoice->meta['is_merged_invoice']))
-                        <span class="merged-tag">حاصل ادغام</span>
-                    @endif
                 </div>
                 <div class="invoice-meta-dates">
                     @if($invoice->issue_date)
@@ -638,6 +726,7 @@
                                     if (!$fieldDef) continue;
                                     if (is_array($value)) { $displayValue = implode('، ', $value); }
                                     elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
+                                    elseif ($fieldDef->type === 'file') { $displayValue = $value ? 'فایل پیوست شده' : null; }
                                     else { $displayValue = $value ?: null; }
                                     if ($displayValue) {
                                         $printedFields[] = $fieldDef->label . ': ' . $displayValue;
@@ -670,13 +759,6 @@
                 <td class="text-right">جمع مبالغ پایه</td>
                 <td class="col-total">{{ $faNum(number_format($invoice->subtotal)) }} {{ $currencyLabel }}</td>
             </tr>
-            @if($invoice->discount_amount > 0)
-                <tr>
-                    <td class="text-right" style="color:#dc2626;">مجموع تخفیف‌ها</td>
-                    <td class="col-total" style="color:#dc2626;">
-                        − {{ $faNum(number_format($invoice->discount_amount)) }} {{ $currencyLabel }}</td>
-                </tr>
-            @endif
             @if($invoice->tax_amount > 0)
                 <tr>
                     <td class="text-right">مالیات
@@ -685,6 +767,17 @@
                         @endif
                     </td>
                     <td class="col-total">+ {{ $faNum(number_format($invoice->tax_amount)) }} {{ $currencyLabel }}</td>
+                </tr>
+                <tr>
+                    <td class="text-right">مبلغ با احتساب مالیات</td>
+                    <td class="col-total">{{ $faNum(number_format($invoice->subtotal + $invoice->tax_amount)) }} {{ $currencyLabel }}</td>
+                </tr>
+            @endif
+            @if($invoice->discount_amount > 0)
+                <tr>
+                    <td class="text-right" style="color:#dc2626;">مجموع تخفیف‌ها</td>
+                    <td class="col-total" style="color:#dc2626;">
+                        − {{ $faNum(number_format($invoice->discount_amount)) }} {{ $currencyLabel }}</td>
                 </tr>
             @endif
             @if($paid > 0)
@@ -711,9 +804,13 @@
             </tfoot>
         </table>
 
-        @if($invoice->payments->isNotEmpty())
-            <h3 class="section-title mt-8">تاریخچه پرداخت</h3>
-            <table class="payments-table mb-8 avoid-break">
+        @php
+            $validPayments = $invoice->payments->reject(fn($p) => ($p->status ?? '') === 'canceled');
+        @endphp
+
+        @if($validPayments->isNotEmpty())
+            <h3 class="section-title mt-3 mb-1">تاریخچه پرداخت</h3>
+            <table class="payments-table mb-3">
                 <thead>
                 <tr>
                     <th class="text-right">تاریخ</th>
@@ -723,7 +820,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                @foreach($invoice->payments as $payment)
+                @foreach($validPayments as $payment)
                     <tr>
                         <td class="text-right">{{ $toJalali($payment->paid_at) }}</td>
                         <td class="text-center font-bold"

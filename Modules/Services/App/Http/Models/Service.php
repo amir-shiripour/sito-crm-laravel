@@ -21,6 +21,7 @@ class Service extends Model
         'name',
         'code',
         'category_id',
+        'accounting_category_id',
         'description',
         'status_id',
         'base_price',
@@ -53,6 +54,11 @@ class Service extends Model
         return $this->belongsTo(ServiceCategory::class, 'category_id');
     }
 
+    public function accountingCategory(): BelongsTo
+    {
+        return $this->belongsTo(\Modules\Accounting\App\Models\Category::class, 'accounting_category_id');
+    }
+
     public function status(): BelongsTo
     {
         return $this->belongsTo(Status::class, 'status_id');
@@ -61,11 +67,6 @@ class Service extends Model
     public function customFields(): MorphMany
     {
         return $this->morphMany(CustomField::class, 'fieldable')->orderBy('sort_order');
-    }
-
-    public function projects(): Service|Builder|HasMany
-    {
-        return $this->hasMany(Project::class);
     }
 
     public function invoices(): Service|Builder|HasMany

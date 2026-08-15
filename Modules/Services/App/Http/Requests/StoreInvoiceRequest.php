@@ -36,6 +36,8 @@ class StoreInvoiceRequest extends FormRequest
             'client_name' => 'required|string|max:255',
             'client_phone' => 'nullable|string|max:20',
             'client_email' => 'nullable|email|max:255',
+            'client_selected_fields' => 'nullable|array',
+            'client_selected_fields.*' => 'nullable',
             'status_id' => 'nullable|exists:services_statuses,id',
             'notes' => 'nullable|string',
             'tax_percent' => 'nullable|numeric|min:0|max:100',
@@ -56,6 +58,8 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.tax_percent' => 'nullable|numeric|min:0|max:100',
 
             'items.*.custom_fields' => 'nullable|array',
+            'items.*.custom_fields_old' => 'nullable|array',
+            'items.*.custom_fields_old.*' => 'nullable',
             'items.*.custom_fields.*' => 'nullable',
             'items.*.custom_fields_prices' => 'nullable|array',
             'items.*.custom_fields_prices.*' => 'nullable|numeric',
