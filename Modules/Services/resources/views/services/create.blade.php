@@ -129,7 +129,7 @@
                         </h2>
                     </div>
                     {{-- آپدیت گرید برای فرم‌های عریض --}}
-                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-6">
                         <div class="md:col-span-2 xl:col-span-2">
                             <label class="{{ $labelClass }}">نام سرویس</label>
                             <input type="text" name="name" value="{{ old('name', $service->name ?? '') }}"
@@ -150,6 +150,93 @@
                                 @endforeach
                             </select>
                         </div>
+                        @if(isset($accountingCategories) && count($accountingCategories) > 0)
+                            @php
+                                $selectedAccCatId = old('accounting_category_id', $service->accounting_category_id ?? '');
+                                $selectedAccCatTitle = '';
+                                $accCatOptions = [];
+                                foreach($accountingCategories as $accCat) {
+                                    $typeTitle = match($accCat->type){
+                                        'income' => 'درآمد',
+                                        'expense' => 'هزینه',
+                                        'asset' => 'دارایی',
+                                        'liability' => 'بدهی',
+                                        'equity' => 'سرمایه',
+                                        default => $accCat->type
+                                    };
+                                    $codePrefix = $accCat->account_code ? "کد {$accCat->account_code} - " : "";
+                                    $connectedAccounts = ($accCat->fundAccounts && $accCat->fundAccounts->count() > 0)
+                                        ? " | متصل به: " . $accCat->fundAccounts->pluck('name')->implode('، ')
+                                        : "";
+                                    $fullTitle = "{$codePrefix}{$accCat->title} ({$typeTitle}){$connectedAccounts}";
+                                    if ((string)$selectedAccCatId === (string)$accCat->id) {
+                                        $selectedAccCatTitle = $fullTitle;
+                                    }
+                                    $accCatOptions[] = [
+                                        'id' => (string)$accCat->id,
+                                        'title' => $fullTitle
+                                    ];
+                                }
+                            @endphp
+                            <div>
+                                <label class="{{ $labelClass }}">سرفصل مالی (حسابداری)</label>
+                                <div x-data="{
+                                    open: false,
+                                    search: '',
+                                    selectedId: '{{ $selectedAccCatId }}',
+                                    selectedTitle: '{{ addslashes($selectedAccCatTitle) }}',
+                                    options: @js($accCatOptions),
+                                    get filteredOptions() {
+                                        if (!this.search.trim()) return this.options;
+                                        return this.options.filter(o => o.title.toLowerCase().includes(this.search.toLowerCase()));
+                                    },
+                                    select(opt) {
+                                        if (opt) {
+                                            this.selectedId = opt.id;
+                                            this.selectedTitle = opt.title;
+                                        } else {
+                                            this.selectedId = '';
+                                            this.selectedTitle = '';
+                                        }
+                                        this.open = false;
+                                        this.search = '';
+                                    }
+                                }" class="relative">
+                                    <input type="hidden" name="accounting_category_id" :value="selectedId">
+                                    
+                                    <button type="button" @click="open = !open" 
+                                            class="{{ $inputClass }} flex items-center justify-between cursor-pointer w-full text-start">
+                                        <span x-text="selectedTitle || 'بدون سرفصل مالی'" class="truncate text-sm"></span>
+                                        <svg class="w-4 h-4 text-gray-400 shrink-0 ms-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </button>
+
+                                    <div x-show="open" @click.outside="open = false" x-cloak 
+                                         class="absolute z-50 mt-1.5 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-2 max-h-64 overflow-y-auto">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو در سرفصل‌ها..." 
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        
+                                        <div @click="select(null)" 
+                                             class="px-3 py-2 text-xs rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-gray-500 font-bold mb-1">
+                                            بدون سرفصل مالی
+                                        </div>
+
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)" 
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors"
+                                                 :class="{ 'bg-indigo-50/70 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-bold': selectedId === opt.id }"
+                                                 x-text="opt.title">
+                                            </div>
+                                        </template>
+
+                                        <div x-show="filteredOptions.length === 0" class="p-3 text-xs text-gray-400 text-center">
+                                            هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                         <div>
                             <label class="{{ $labelClass }}">وضعیت نمایش</label>
                             <select name="status_id" class="{{ $inputClass }} cursor-pointer">
@@ -160,10 +247,10 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="md:col-span-2 xl:col-span-5">
+                        <div class="md:col-span-2 xl:col-span-6">
                             <label class="{{ $labelClass }}">توضیحات کلی</label>
                             <textarea name="description" rows="4" class="{{ $inputClass }} resize-none"
-                                      placeholder="توضیحات و ویژگی‌های کلی این سرویس را اینجا بنویسید...">{{ old('description', $service->description ?? '') }}</textarea>
+                                       placeholder="توضیحات و ویژگی‌های کلی این سرویس را اینجا بنویسید...">{{ old('description', $service->description ?? '') }}</textarea>
                         </div>
                     </div>
                 </div>

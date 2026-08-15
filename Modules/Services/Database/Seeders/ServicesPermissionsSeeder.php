@@ -15,12 +15,6 @@ class ServicesPermissionsSeeder extends Seeder
         'services.delete',
         'services.duplicate',
 
-        // Projects
-        'services.projects.view',
-        'services.projects.create',
-        'services.projects.manage',
-        'services.projects.delete',
-
         // Invoices
         'services.invoices.view',
         'services.invoices.create',

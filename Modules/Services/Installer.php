@@ -146,12 +146,6 @@ class Installer extends BaseModuleInstaller
             'services.delete',
             'services.duplicate',
 
-            // پروژه‌ها
-            'services.projects.view',
-            'services.projects.create',
-            'services.projects.manage',
-            'services.projects.delete',
-
             // فاکتورها
             'services.invoices.view',
             'services.invoices.view.all',
@@ -194,8 +188,15 @@ class Installer extends BaseModuleInstaller
         }
 
         Log::info('Services Installer: Syncing permissions with admin roles...');
+        $roleDisplayNames = [
+            'super-admin' => 'مدیر کل',
+            'admin'       => 'مدیر',
+        ];
         foreach (['super-admin', 'admin'] as $sysRole) {
-            $role = Role::firstOrCreate(['name' => $sysRole, 'guard_name' => $guard]);
+            $role = Role::firstOrCreate(
+                ['name' => $sysRole, 'guard_name' => $guard],
+                ['display_name' => $roleDisplayNames[$sysRole] ?? $sysRole]
+            );
             $role->givePermissionTo($definedPermissions);
         }
 

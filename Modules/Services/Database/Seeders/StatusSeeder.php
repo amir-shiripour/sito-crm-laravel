@@ -13,9 +13,6 @@ class StatusSeeder extends Seeder
     public function run(): void
     {
         $statuses = [
-            // ================= Projects =================
-            ['name' => 'در انتظار بررسی', 'color' => '#eff264', 'type' => 'project', 'is_final' => 0, 'is_default' => 0, 'is_readonly' => 1, 'allowed_roles' => null, 'allowed_users' => null],
-
             // ================= Orders =================
             ['name' => 'در انتظار', 'color' => '#f59e0b', 'type' => 'order', 'is_final' => 0, 'is_default' => 1, 'is_readonly' => 0, 'allowed_roles' => null, 'allowed_users' => null],
             ['name' => 'فعال', 'color' => '#10b981', 'type' => 'order', 'is_final' => 1, 'is_default' => 0, 'is_readonly' => 0, 'allowed_roles' => null, 'allowed_users' => null],

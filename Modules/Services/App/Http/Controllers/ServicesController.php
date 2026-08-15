@@ -23,7 +23,6 @@ class ServicesController extends Controller
         $this->authorize('viewAny', Service::class);
 
         $services = Service::with('category')
-            ->withCount('projects')
             ->withSum(['invoices as revenue' => fn($q) => $q->whereHas('status', fn($s) => $s->where('name', 'paid'))], 'total')
             ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%$s%")->orWhere('code', 'like', "%$s%"))
             ->when($request->category_id, fn($q, $v) => $q->where('category_id', $v))
@@ -47,6 +46,7 @@ class ServicesController extends Controller
         return view('services::services.create', [
             'categories' => ServiceCategory::active()->orderBy('name')->get(),
             'statuses' => Status::where('type', 'service')->orderBy('sort_order')->get(),
+            'accountingCategories' => $this->getAccountingCategories(),
             'currency' => $currency,
         ]);
     }
@@ -71,22 +71,19 @@ class ServicesController extends Controller
 
         $service->load([
             'category',
+            'accountingCategory.fundAccounts',
             'customFields' => fn($q) => $q->orderBy('sort_order'),
         ]);
-
-        $service->loadCount('projects');
 
         $revenue = $service->invoices()
             ->whereHas('status', fn($s) => $s->where('name', 'paid'))->sum('total') ?? 0;
 
-        $recentProjects = $service->projects()->with('status')->latest()->limit(5)->get();
         $recentInvoices = $service->invoices()->with('status')->latest()->limit(5)->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
 
         return view('services::services.show', compact(
             'service',
             'revenue',
-            'recentProjects',
             'recentInvoices',
             'currency'
         ));
@@ -102,8 +99,22 @@ class ServicesController extends Controller
             'service' => $service,
             'categories' => ServiceCategory::active()->orderBy('name')->get(),
             'statuses' => Status::where('type', 'service')->orderBy('sort_order')->get(),
+            'accountingCategories' => $this->getAccountingCategories(),
             'currency' => $currency,
         ]);
+    }
+
+    protected function getAccountingCategories()
+    {
+        if (\Nwidart\Modules\Facades\Module::has('Accounting') && \Nwidart\Modules\Facades\Module::isEnabled('Accounting') && class_exists(\Modules\Accounting\App\Models\Category::class)) {
+            return \Modules\Accounting\App\Models\Category::with('fundAccounts')
+                ->where('status', true)
+                ->orderBy('account_code')
+                ->orderBy('title')
+                ->get();
+        }
+
+        return collect();
     }
 
     public function update(UpdateServiceRequest $request, Service $service)

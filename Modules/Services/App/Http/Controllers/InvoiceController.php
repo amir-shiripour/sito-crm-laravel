@@ -4,6 +4,7 @@ namespace Modules\Services\App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Clients\Entities\Client;
@@ -152,10 +153,24 @@ class InvoiceController extends Controller
                 foreach ($inv->items as $item) {
                     $service = $services->firstWhere('id', $item->service_id);
                     $meta = is_array($item->meta) ? $item->meta : (json_decode($item->meta, true) ?? []);
-                    
+
                     $isProduct = !empty($meta['product_id']) || (isset($meta['type']) && $meta['type'] === 'product');
                     $mode = $item->service_id ? 'service' : ($isProduct ? 'product' : 'manual');
-                    
+
+                    $packageGroupId = $meta['_packageGroupId'] ?? $meta['package_group_id'] ?? null;
+                    $packageTitle = $meta['_packageTitle'] ?? $meta['package_title'] ?? null;
+
+                    if (!$packageGroupId && !empty($meta['package_id'])) {
+                        $pkg = \Modules\Services\App\Http\Models\ServicePackage::find($meta['package_id']);
+                        $packageGroupId = 'pkg_' . $inv->id . '_' . $meta['package_id'];
+                        $packageTitle = $pkg ? $pkg->name : 'پکیج خدمات';
+                    }
+
+                    if (!$packageGroupId) {
+                        $packageGroupId = 'merged_inv_' . $inv->id;
+                        $packageTitle = 'اقلام فاکتور شماره ' . ($inv->invoice_number ?? $inv->id);
+                    }
+
                     $stock = null;
                     if ($isProduct && !empty($products)) {
                         $prodMatch = collect($products)->first(function($p) use ($meta) {
@@ -171,7 +186,7 @@ class InvoiceController extends Controller
                             $stock = isset($prodMatch['stock']) ? (int)$prodMatch['stock'] : null;
                         }
                     }
-                    
+
                     $customFieldsArray = [];
                     $serviceRawArray = null;
                     if ($service) {
@@ -216,6 +231,9 @@ class InvoiceController extends Controller
                         'custom_field_tax_percents' => $meta['custom_fields_taxes'] ?? [],
                         'tax_percent' => $item->tax_percent > 0 ? (float) $item->tax_percent : ($defaultTaxRate ?? 9),
                         '_taxUnlocked' => false,
+                        '_isMerged' => true,
+                        '_packageGroupId' => $packageGroupId,
+                        '_packageTitle' => $packageTitle,
                     ];
                 }
             }
@@ -242,6 +260,7 @@ class InvoiceController extends Controller
             'marketModuleEnabled' => $this->isMarketModuleEnabled(),
             'mergedItems' => $mergedItems,
             'mergedFromIds' => $mergedFromIds,
+            'packages' => \Modules\Services\App\Http\Models\ServicePackage::where('status', 'active')->with('items.service.customFields')->get(),
         ]);
     }
 
@@ -255,9 +274,10 @@ class InvoiceController extends Controller
         $taxApplyCustomFields = !empty($settings['services_tax_apply_custom_fields']);
 
         [$preparedItems, $subtotal, $totalDiscount, $itemsTotal, $itemsTaxTotal] = $this->buildItems($data['items'], $taxMode, $taxApplyCustomFields);
-        $extraDiscount = $this->computeExtraDiscount($data, $itemsTotal);
-        [$totalTax, $grandTotal] = $this->applyInvoiceTax($itemsTotal, $data['tax_percent'] ?? 0, $extraDiscount, $taxMode, $itemsTaxTotal);
+        $totalTax = $this->applyInvoiceTax($subtotal, $data['tax_percent'] ?? 0, $taxMode, $itemsTaxTotal);
+        $extraDiscount = $this->computeExtraDiscount($data, $subtotal, $totalTax, $totalDiscount);
         $totalDiscount += $extraDiscount;
+        $grandTotal = max(0, $subtotal + $totalTax - $totalDiscount);
 
         if ($taxMode === 'item') {
             $data['tax_percent'] = 0;
@@ -282,15 +302,15 @@ class InvoiceController extends Controller
         DB::transaction(function () use (&$invoice, $invoiceData, $preparedItems, $data, $grandTotal, $isProforma, $request) {
             $invoice = Invoice::create($invoiceData);
             $invoice->items()->createMany($preparedItems);
-            
+
             if ($request->filled('merged_from_invoice_ids') && !$isProforma) {
                 $sourceInvoiceIds = explode(',', $request->merged_from_invoice_ids);
                 $sourceInvoices = Invoice::whereIn('id', $sourceInvoiceIds)->get();
-                
+
                 // Transfer payments
                 Payment::whereIn('invoice_id', $sourceInvoiceIds)
                        ->update(['invoice_id' => $invoice->id]);
-                       
+
                 // Mark old invoices as merged
                 $mergedStatus = Status::where('type', 'invoice')->where('name', 'ادغام شده')->first();
                 foreach ($sourceInvoices as $sourceInv) {
@@ -302,7 +322,7 @@ class InvoiceController extends Controller
                         'meta' => $meta,
                     ]);
                 }
-                
+
                 // Update new invoice meta
                 $newMeta = is_array($invoice->meta) ? $invoice->meta : (json_decode($invoice->meta, true) ?? []);
                 $newMeta['is_merged_invoice'] = true;
@@ -319,11 +339,28 @@ class InvoiceController extends Controller
 
         $invoice->save();
 
+        if (!$isProforma && Module::has('Accounting') && Module::isEnabled('Accounting')) {
+            try {
+                app(\Modules\Accounting\App\Services\AccountingEngine::class)->recordFromServiceInvoice($invoice);
+            } catch (\Throwable $e) {
+                Log::error('[AccountingEngine] Error recording service invoice on store: ' . $e->getMessage());
+            }
+        }
+
         if (class_exists(WorkflowEngine::class)) {
             try {
                 app(WorkflowEngine::class)->start('invoice_created', 'INVOICE', $invoice->id, [
                     'is_proforma' => $isProforma,
                 ]);
+
+                if ($invoice->isPaid() && !$isProforma) {
+                    app(WorkflowEngine::class)->start('invoice_paid', 'INVOICE', $invoice->id, [
+                        'amount'      => 0,
+                        'is_paid'     => true,
+                        'is_overdue'  => false,
+                        'remaining'   => 0,
+                    ]);
+                }
             } catch (\Throwable $e) {
                 Log::error('[Workflows] Error starting invoice_created workflow: ' . $e->getMessage());
             }
@@ -406,6 +443,7 @@ class InvoiceController extends Controller
             'servicesRoundingMode' => $settings['services_rounding_mode'] ?? 'none',
             'servicesRoundingFactor' => (int)($settings['services_rounding_factor'] ?? 1000),
             'marketModuleEnabled' => $this->isMarketModuleEnabled(),
+            'packages' => \Modules\Services\App\Http\Models\ServicePackage::where('status', 'active')->with('items.service.customFields')->get(),
         ]);
     }
 
@@ -423,9 +461,10 @@ class InvoiceController extends Controller
         $taxApplyCustomFields = !empty($settings['services_tax_apply_custom_fields']);
 
         [$preparedItems, $subtotal, $totalDiscount, $itemsTotal, $itemsTaxTotal] = $this->buildItems($data['items'], $taxMode, $taxApplyCustomFields);
-        $extraDiscount = $this->computeExtraDiscount($data, $itemsTotal);
-        [$totalTax, $grandTotal] = $this->applyInvoiceTax($itemsTotal, $data['tax_percent'] ?? 0, $extraDiscount, $taxMode, $itemsTaxTotal);
+        $totalTax = $this->applyInvoiceTax($subtotal, $data['tax_percent'] ?? 0, $taxMode, $itemsTaxTotal);
+        $extraDiscount = $this->computeExtraDiscount($data, $subtotal, $totalTax, $totalDiscount);
         $totalDiscount += $extraDiscount;
+        $grandTotal = max(0, $subtotal + $totalTax - $totalDiscount);
 
         if ($taxMode === 'item') {
             $data['tax_percent'] = 0;
@@ -440,8 +479,29 @@ class InvoiceController extends Controller
         if (!empty($roundingMeta)) {
             $existingMeta['rounding'] = $roundingMeta;
         }
+        if (isset($data['client_selected_fields']) && is_array($data['client_selected_fields'])) {
+            $cleanedSelectedFields = [];
+            foreach ($data['client_selected_fields'] as $fid => $vals) {
+                if (is_array($vals)) {
+                    $cleanedSelectedFields[$fid] = array_values(array_filter(array_map('trim', $vals)));
+                } elseif (is_string($vals) && trim($vals) !== '') {
+                    $cleanedSelectedFields[$fid] = [trim($vals)];
+                }
+            }
+            $existingMeta['client_selected_fields'] = $cleanedSelectedFields;
+        }
+
+        $statusId = $invoice->status_id;
+        if (!$invoice->proforma_invoice_number && (int)round($roundedGrandTotal) <= 0) {
+            $paidStatus = Status::where('name', 'پرداخت شده')->first()
+                ?? Status::where('name', 'LIKE', '%پرداخت شده%')->first();
+            if ($paidStatus) {
+                $statusId = $paidStatus->id;
+            }
+        }
 
         $invoiceData = [
+            'status_id' => $statusId,
             'proforma_invoice_number' => $data['proforma_invoice_number'] ?? $invoice->proforma_invoice_number,
             'customer_id' => $data['customer_id'] ?? null,
             'client_name' => $data['client_name'],
@@ -503,27 +563,70 @@ class InvoiceController extends Controller
 
         $invoice->load('items.service', 'customer', 'status');
         $settings = Setting::pluck('value', 'key')->toArray();
-        $currency = $settings['currency'] ?? $settings['payment_currency'] ?? 'toman';
+        $servicesCurrency = strtolower($invoice->currency ?? $settings['currency'] ?? 'toman');
+        $paymentCurrency  = strtolower($settings['payment_currency'] ?? 'toman');
+
+        $conversionFactor = 1.0;
+        if (in_array($servicesCurrency, ['rial', 'irr', 'ریال']) && in_array($paymentCurrency, ['toman', 'tmn', 'تومان'])) {
+            $conversionFactor = 0.1;
+        } elseif (in_array($servicesCurrency, ['toman', 'tmn', 'تومان']) && in_array($paymentCurrency, ['rial', 'irr', 'ریال'])) {
+            $conversionFactor = 10.0;
+        }
 
         $customerCheques = [];
-        if (\Nwidart\Modules\Facades\Module::has('Accounting') && \Nwidart\Modules\Facades\Module::isEnabled('Accounting')) {
+        if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
             if ($invoice->customer_id) {
                 $customerCheques = \Modules\Accounting\Entities\Cheque::where('client_id', $invoice->customer_id)
                     ->where('type', 'receivable')
                     ->where('status', 'pending')
                     ->get()
-                    ->map(function ($cheque) {
+                    ->filter(function ($cheque) {
+                        $hasRelatedInvoice = !empty($cheque->related_invoice_id);
+                        $hasAttachedInvoices = $cheque->attachedInvoices()->exists();
+                        $hasAttachedDocuments = $cheque->attachedDocuments()->exists();
+                        $hasExpenseDocuments = $cheque->expenseDocuments()->exists();
+
+                        $hasServicePayment = false;
+                        if (Module::has('Services') && Module::isEnabled('Services')) {
+                            $hasServicePayment = Payment::where('method', 'cheque-' . $cheque->id)
+                                ->where('status', '!=', 'canceled')
+                                ->exists();
+                        }
+
+                        return !$hasRelatedInvoice && !$hasAttachedInvoices && !$hasAttachedDocuments && !$hasExpenseDocuments && !$hasServicePayment;
+                    })
+                    ->values()
+                    ->map(function ($cheque) use ($conversionFactor) {
                         $cheque->due_date_jalali = \Morilog\Jalali\Jalalian::fromCarbon($cheque->due_date)->format('Y/m/d');
+                        $cheque->display_amount = $cheque->amount * $conversionFactor;
                         return $cheque;
                     });
             }
         }
 
+        $customerWallet = null;
+        if (Module::has('Wallet') && Module::isEnabled('Wallet')) {
+            if ($invoice->customer_id) {
+                $clientClass = (new \Modules\Clients\Entities\Client())->getMorphClass();
+                $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', $clientClass)
+                    ->where('holder_id', $invoice->customer_id)
+                    ->first();
+
+                if (!$customerWallet && $invoice->customer) {
+                    $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', get_class($invoice->customer))
+                        ->where('holder_id', $invoice->customer->id)
+                        ->first();
+                }
+            }
+        }
+
         return view('services::invoices.payment', [
-            'invoice' => $invoice,
-            'currency' => $currency,
-            'settings' => $settings,
-            'customerCheques' => $customerCheques,
+            'invoice'          => $invoice,
+            'currency'         => $paymentCurrency,
+            'settings'         => $settings,
+            'customerCheques'  => $customerCheques,
+            'customerWallet'   => $customerWallet,
+            'conversionFactor' => $conversionFactor,
         ]);
     }
 
@@ -535,27 +638,116 @@ class InvoiceController extends Controller
             return redirect()->route('services.invoices.show', $invoice)->with('error', 'امکان ثبت پرداخت برای فاکتور ادغام شده وجود ندارد.');
         }
 
-        $request->validate([
-            'payment_method' => 'required|string',
-            'gateway'        => 'nullable|string',
-            'amount'         => 'required|numeric|min:1',
-            'paid_at'        => 'required|string',
-            'transaction_id' => 'nullable|string',
-        ]);
+        $settings = Setting::pluck('value', 'key')->toArray();
+        $servicesCurrency = strtolower($invoice->currency ?? $settings['currency'] ?? 'toman');
+        $paymentCurrency  = strtolower($settings['payment_currency'] ?? 'toman');
 
-        $newPaidAmount = (int)str_replace(',', '', $request->amount);
-        $paymentStatus = 'paid';
-        if (str_starts_with($request->payment_method, 'cheque-')) {
-            $checkSetting = \Modules\Accounting\App\Models\AccountingSetting::get('general.check_cheque_due_dates');
-            if ($checkSetting) {
-                $paymentStatus = 'pending';
+        $conversionFactor = 1.0;
+        if (in_array($servicesCurrency, ['rial', 'irr', 'ریال']) && in_array($paymentCurrency, ['toman', 'tmn', 'تومان'])) {
+            $conversionFactor = 0.1;
+        } elseif (in_array($servicesCurrency, ['toman', 'tmn', 'تومان']) && in_array($paymentCurrency, ['rial', 'irr', 'ریال'])) {
+            $conversionFactor = 10.0;
+        }
+
+        $paymentCurrencyLabel = in_array($paymentCurrency, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
+
+        $useWallet = $request->boolean('use_wallet');
+        $chequeIds = array_filter(array_map('intval', (array)$request->input('cheque_ids', [])));
+
+        $rawPaymentItems = (array)$request->input('payment_items', []);
+        $paymentItems = [];
+
+        foreach ($rawPaymentItems as $item) {
+            if (is_array($item) && !empty($item['method'])) {
+                $submittedAmt = (float)str_replace(',', '', (string)($item['amount'] ?? 0));
+                if ($submittedAmt > 0) {
+                    $amtInServicesCurrency = (int)round($submittedAmt / $conversionFactor);
+                    if ($amtInServicesCurrency > 0) {
+                        $paymentItems[] = [
+                            'method'         => $item['method'],
+                            'amount'         => $amtInServicesCurrency,
+                            'transaction_id' => $item['transaction_id'] ?? null,
+                            'gateway'        => $item['gateway'] ?? null,
+                        ];
+                    }
+                }
             }
         }
 
-        $payment = null;
+        $singleMethod = $request->input('payment_method');
+        $singleAmount = (float)str_replace(',', '', $request->input('amount', '0'));
+        if (empty($paymentItems) && !empty($singleMethod) && $singleMethod !== 'wallet' && !str_starts_with($singleMethod, 'cheque-') && $singleAmount > 0) {
+            $amtInServicesCurrency = (int)round($singleAmount / $conversionFactor);
+            if ($amtInServicesCurrency > 0) {
+                $paymentItems[] = [
+                    'method'         => $singleMethod,
+                    'amount'         => $amtInServicesCurrency,
+                    'transaction_id' => $request->input('transaction_id'),
+                    'gateway'        => $request->input('gateway'),
+                ];
+            }
+        }
+
+        if (!empty($singleMethod) && str_starts_with($singleMethod, 'cheque-')) {
+            $cId = (int)str_replace('cheque-', '', $singleMethod);
+            if ($cId && !in_array($cId, $chequeIds)) {
+                $chequeIds[] = $cId;
+            }
+        }
+
+        $hasCheques = !empty($chequeIds);
+        $hasMethodPayments = !empty($paymentItems);
+
+        if (!$useWallet && !$hasCheques && !$hasMethodPayments) {
+            return back()->withInput()->with('error', 'لطفاً حداقل یک روش پرداخت (کیف پول، چک، یا پرداخت نقدی/آنلاین) را انتخاب فرمایید.');
+        }
+
+        $currentDue = $invoice->total - $invoice->calculatePaidAmount();
+        if ($currentDue <= 0) {
+            return back()->with('error', 'این فاکتور قبلاً به طور کامل تسویه شده است.');
+        }
+
+        // Calculate total amount requested across all methods in this form submission
+        $reqWalletAmt = 0;
+        if ($useWallet) {
+            if ($request->filled('wallet_amount')) {
+                $rawWalletAmt = (float)str_replace(',', '', $request->input('wallet_amount'));
+                $reqWalletAmt = (int)round($rawWalletAmt / $conversionFactor);
+            } else {
+                $reqWalletAmt = (int)$currentDue;
+            }
+        }
+
+        $chequesTotal = 0;
+        if (!empty($chequeIds) && Module::has('Accounting') && Module::isEnabled('Accounting')) {
+            $chequesTotal = (int)\Modules\Accounting\Entities\Cheque::whereIn('id', $chequeIds)
+                ->where('type', 'receivable')
+                ->where('status', 'pending')
+                ->sum('amount');
+        }
+
+        $directTotal = 0;
+        foreach ($paymentItems as $item) {
+            $directTotal += (int)($item['amount'] ?? 0);
+        }
+
+        $totalSubmittedInRequest = $reqWalletAmt + $chequesTotal + $directTotal;
+
+        if ($totalSubmittedInRequest > ($currentDue + 10)) {
+            $submittedDisplay = (int)round($totalSubmittedInRequest * $conversionFactor);
+            $dueDisplay       = (int)round($currentDue * $conversionFactor);
+            return back()->withInput()->with('error', 'مجموع پرداختی‌های انتخاب شده در این فرم (' . number_format($submittedDisplay) . ' ' . $paymentCurrencyLabel . ') بیشتر از مانده بدهی فاکتور (' . number_format($dueDisplay) . ' ' . $paymentCurrencyLabel . ') است.');
+        }
+
+        $checkSetting = true;
+        if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
+            $checkSetting = \Modules\Accounting\App\Models\AccountingSetting::get('general.check_cheque_due_dates', true);
+        }
+
+        $lastPayment = null;
 
         try {
-            DB::transaction(function () use ($invoice, $request, $newPaidAmount, &$payment, $paymentStatus) {
+            DB::transaction(function () use ($invoice, $request, $paymentItems, &$lastPayment, $checkSetting, $useWallet, $chequeIds) {
                 $paidAt = now();
                 if ($request->filled('paid_at')) {
                     try {
@@ -563,20 +755,150 @@ class InvoiceController extends Controller
                     } catch (\Exception $e) {}
                 }
 
-                $payment = $invoice->payments()->create([
-                    'user_id'        => $request->user()->id,
-                    'amount'         => $newPaidAmount,
-                    'method'         => $request->payment_method,
-                    'gateway'        => $request->gateway,
-                    'paid_at'        => $paidAt,
-                    'transaction_id' => $request->transaction_id,
-                    'notes'          => 'پرداخت برای فاکتور #' . $invoice->invoice_number,
-                    'status'         => $paymentStatus,
-                ]);
+                $dueAmount = $invoice->total - $invoice->calculatePaidAmount();
 
+                // 1. Process Wallet Payment if requested
+                if ($useWallet && $dueAmount > 0) {
+                    $customerWallet = null;
+                    if (Module::has('Wallet') && Module::isEnabled('Wallet')) {
+                        if ($invoice->customer_id) {
+                            $clientClass = (new \Modules\Clients\Entities\Client())->getMorphClass();
+                            $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', $clientClass)
+                                ->where('holder_id', $invoice->customer_id)
+                                ->first();
+
+                            if (!$customerWallet && $invoice->customer) {
+                                $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', get_class($invoice->customer))
+                                    ->where('holder_id', $invoice->customer->id)
+                                    ->first();
+                            }
+                        }
+                    }
+
+                    if (!$customerWallet || (float)$customerWallet->balance <= 0) {
+                        throw new \Exception('کیف پول مشتری یافت نشد یا موجودی کافی ندارد.');
+                    }
+
+                    $walletBalance = (float)$customerWallet->balance;
+                    $reqWalletAmt = $request->filled('wallet_amount')
+                        ? (int)str_replace(',', '', $request->input('wallet_amount'))
+                        : (int)$dueAmount;
+
+                    if ($reqWalletAmt <= 0) {
+                        $reqWalletAmt = (int)$dueAmount;
+                    }
+
+                    $walletAmountToUse = min($reqWalletAmt, $walletBalance, $dueAmount);
+
+                    if ($walletAmountToUse > 0) {
+                        $walletHolder = $customerWallet->holder ?? $invoice->customer;
+                        if ($walletHolder) {
+                            app(\Modules\Wallet\App\Services\WalletService::class)->withdraw(
+                                holder: $walletHolder,
+                                amount: $walletAmountToUse,
+                                type: \Modules\Wallet\App\Enums\TransactionType::PAYMENT,
+                                payable: $invoice,
+                                description: 'پرداخت فاکتور خدمات #' . $invoice->invoice_number,
+                                meta: ['invoice_id' => $invoice->id]
+                            );
+
+                            $walletPayment = $invoice->payments()->create([
+                                'user_id'        => $request->user()->id,
+                                'amount'         => $walletAmountToUse,
+                                'method'         => 'wallet',
+                                'gateway'        => null,
+                                'paid_at'        => $paidAt,
+                                'transaction_id' => 'WALLET-' . time(),
+                                'notes'          => 'پرداخت از کیف پول مشتری برای فاکتور #' . $invoice->invoice_number,
+                                'status'         => 'paid',
+                            ]);
+
+                            $lastPayment = $walletPayment;
+
+                            if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                                $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
+                                $engine->recordServicePayment($walletPayment);
+                            }
+                        }
+                    }
+                }
+
+                // 2. Process Cheque Payments if provided
+                $remainingDue = $invoice->total - $invoice->calculatePaidAmount();
+
+                if (!empty($chequeIds) && $remainingDue > 0) {
+                    if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                        $cheques = \Modules\Accounting\Entities\Cheque::whereIn('id', $chequeIds)
+                            ->where('type', 'receivable')
+                            ->where('status', 'pending')
+                            ->get();
+
+                        foreach ($cheques as $cheque) {
+                            if ($remainingDue <= 0) break;
+
+                            $chequeStatus = $checkSetting ? 'pending' : 'paid';
+                            $chequeAmountToPay = min($cheque->amount, $remainingDue);
+                            $chequePaidAt = $cheque->due_date ? \Carbon\Carbon::parse($cheque->due_date) : $paidAt;
+
+                            $chequePayment = $invoice->payments()->create([
+                                'user_id'        => $request->user()->id,
+                                'amount'         => $chequeAmountToPay,
+                                'method'         => 'cheque-' . $cheque->id,
+                                'gateway'        => null,
+                                'paid_at'        => $chequePaidAt,
+                                'transaction_id' => $cheque->cheque_number,
+                                'notes'          => 'پرداخت با چک صیادی #' . $cheque->cheque_number . ' برای فاکتور #' . $invoice->invoice_number,
+                                'status'         => $chequeStatus,
+                            ]);
+
+                            $lastPayment = $chequePayment;
+
+                            app(\Modules\Accounting\App\Services\ChequeService::class)->attachToInvoice($cheque, $invoice->id);
+
+                            $remainingDue -= $chequeAmountToPay;
+                        }
+                    }
+                }
+
+                // 3. Process Direct/Manual Payment Items
+                // Continuously track remainingDue without resetting (since pending cheques are already counted in $remainingDue)
+
+                foreach ($paymentItems as $item) {
+                    if ($remainingDue <= 0) break;
+
+                    $method = $item['method'] ?? null;
+                    $itemAmt = (int)($item['amount'] ?? 0);
+
+                    if (empty($method) || $itemAmt <= 0 || $method === 'wallet' || str_starts_with($method, 'cheque-')) {
+                        continue;
+                    }
+
+                    $amountToPay = min($itemAmt, $remainingDue);
+
+                    $payment = $invoice->payments()->create([
+                        'user_id'        => $request->user()->id,
+                        'amount'         => $amountToPay,
+                        'method'         => $method,
+                        'gateway'        => $item['gateway'] ?? null,
+                        'paid_at'        => $paidAt,
+                        'transaction_id' => $item['transaction_id'] ?? null,
+                        'notes'          => 'پرداخت برای فاکتور #' . $invoice->invoice_number,
+                        'status'         => 'paid',
+                    ]);
+
+                    $lastPayment = $payment;
+
+                    if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                        $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
+                        $engine->recordServicePayment($payment);
+                    }
+
+                    $remainingDue -= $amountToPay;
+                }
+
+                // 4. Update Invoice Payment Status
                 $invoice->paid_amount = $invoice->calculatePaidAmount();
 
-                // محاسبه وضعیت بومی
                 $StatusModel = Status::class;
                 if ($invoice->isPaid()) {
                     $status = $StatusModel::where('name', 'پرداخت شده')->where('type', 'payment')->first();
@@ -589,38 +911,28 @@ class InvoiceController extends Controller
                 if ($status) {
                     $invoice->status_id = $status->id;
                 }
-                $invoice->save();
-                $this->syncOrdersForInvoice($invoice);
-                
-                if (\Nwidart\Modules\Facades\Module::has('Accounting') && \Nwidart\Modules\Facades\Module::isEnabled('Accounting')) {
-                    $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
-                    $engine->recordServicePayment($payment);
 
-                    if (str_starts_with($request->payment_method, 'cheque-')) {
-                        $chequeId = str_replace('cheque-', '', $request->payment_method);
-                        $cheque = \Modules\Accounting\Entities\Cheque::find($chequeId);
-                        if ($cheque) {
-                            $otherPaymentsSum = $invoice->payments()->where('id', '!=', $payment->id)->whereNotIn('status', ['canceled', 'pending'])->sum('amount');
-                            $dueAmount = $invoice->total - $otherPaymentsSum;
-                            if ($cheque->amount > $dueAmount) {
-                                throw new \Exception('مبلغ چک انتخاب شده بیشتر از مانده بدهی فاکتور است.');
-                            }
-                            app(\Modules\Accounting\App\Services\ChequeService::class)->attachToInvoice($cheque, $invoice->id);
-                            // We do not change the cheque status to 'transferred' anymore. It stays 'pending'.
-                        }
+                if ($invoice->isPaid() && Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                    try {
+                        app(\Modules\Accounting\App\Services\AccountingEngine::class)->recordFromServiceInvoice($invoice);
+                    } catch (\Throwable $e) {
+                        Log::error('[AccountingEngine] Error recording service invoice on payment: ' . $e->getMessage());
                     }
                 }
+
+                $invoice->save();
+                $this->syncOrdersForInvoice($invoice);
             });
         } catch (\Exception $e) {
-            return back()->with('error', 'خطا در ثبت پرداخت: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'خطا در ثبت پرداخت: ' . $e->getMessage());
         }
 
         // شلیک رویدادهای فاکتور به جای پرداخت
-        if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class)) {
+        if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class) && $lastPayment) {
             try {
                 $eventKey = $invoice->isPaid() ? 'invoice_paid' : 'invoice_unpaid';
                 app(\Modules\Workflows\Services\WorkflowEngine::class)->start($eventKey, 'INVOICE', $invoice->id, [
-                    'amount'      => $payment->amount,
+                    'amount'      => $lastPayment->amount,
                     'is_paid'     => $invoice->isPaid(),
                     'is_overdue'  => $invoice->isOverdue(),
                     'remaining'   => $invoice->remainingAmount(),
@@ -667,10 +979,10 @@ class InvoiceController extends Controller
                 }
                 $invoice->save();
                 $this->syncOrdersForInvoice($invoice);
-                
-                if (\Nwidart\Modules\Facades\Module::has('Accounting') && \Nwidart\Modules\Facades\Module::isEnabled('Accounting')) {
+
+                if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
                     $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
-                    $engine->deleteDocumentForSource($payment);
+                    $engine->cancelServicePayment($payment);
                 }
             });
         } catch (\Exception $e) {
@@ -751,6 +1063,25 @@ class InvoiceController extends Controller
         $invoice->save();
         $this->syncOrdersForInvoice($invoice);
 
+        if ($invoice->invoice_number && Module::has('Accounting') && Module::isEnabled('Accounting')) {
+            try {
+                if (mb_strpos($status->name, 'لغو') !== false || mb_strpos($status->name, 'باطل') !== false) {
+                    $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
+                    foreach ($invoice->payments as $payment) {
+                        if ($payment->status !== 'canceled') {
+                            $payment->update(['status' => 'canceled']);
+                            $engine->cancelServicePayment($payment);
+                        }
+                    }
+                    $engine->cancelServiceInvoice($invoice);
+                } else {
+                    app(\Modules\Accounting\App\Services\AccountingEngine::class)->recordFromServiceInvoice($invoice);
+                }
+            } catch (\Throwable $e) {
+                Log::error('[AccountingEngine] Error recording service invoice on updateStatus: ' . $e->getMessage());
+            }
+        }
+
         if (class_exists(WorkflowEngine::class)) {
             try {
                 app(WorkflowEngine::class)->start('invoice_status_changed', 'INVOICE', $invoice->id, [
@@ -786,6 +1117,21 @@ class InvoiceController extends Controller
 
         DB::transaction(function () use ($invoice, $cancelledStatus) {
             $invoice->status_id = $cancelledStatus->id;
+
+            if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                try {
+                    $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
+                    foreach ($invoice->payments as $payment) {
+                        if ($payment->status !== 'canceled') {
+                            $engine->cancelServicePayment($payment);
+                        }
+                    }
+                    $engine->cancelServiceInvoice($invoice);
+                } catch (\Throwable $e) {
+                    Log::error('[AccountingEngine] Error cancelling service invoice in Accounting: ' . $e->getMessage());
+                }
+            }
+
             $invoice->payments()->update(['status' => 'canceled']);
             $invoice->paid_amount = 0;
             $invoice->save();
@@ -831,7 +1177,7 @@ class InvoiceController extends Controller
             abort(401, 'لینک نامعتبر یا منقضی شده است.');
         }
 
-        $invoice->load('items.service.customFields', 'customer', 'status');
+        $invoice->load('items.service.customFields', 'customer', 'status', 'payments');
 
         $settings = Setting::pluck('value', 'key')->toArray();
         $currency = $settings['currency'] ?? 'toman';
@@ -851,7 +1197,7 @@ class InvoiceController extends Controller
 
         set_time_limit(300);
         @ini_set('memory_limit', '512M');
-        $invoice->load('items.service.customFields', 'customer', 'status');
+        $invoice->load('items.service.customFields', 'customer', 'status', 'payments');
 
         $settings = Setting::pluck('value', 'key')->toArray();
         $currency = $settings['currency'] ?? 'toman';
@@ -973,6 +1319,14 @@ class InvoiceController extends Controller
         $invoice->save();
         $this->syncOrdersForInvoice($invoice);
 
+        if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
+            try {
+                app(\Modules\Accounting\App\Services\AccountingEngine::class)->recordFromServiceInvoice($invoice);
+            } catch (\Throwable $e) {
+                Log::error('[AccountingEngine] Error recording service invoice on convertToInvoice: ' . $e->getMessage());
+            }
+        }
+
         return redirect()
             ->route('services.invoices.show', $invoice)
             ->with('success', 'پیش‌فاکتور با موفقیت به فاکتور تبدیل شد.');
@@ -998,6 +1352,21 @@ class InvoiceController extends Controller
             $billingPeriod = $item['billing_period'] ?? null;
 
             $customFieldsValues = $item['custom_fields'] ?? [];
+            $customFieldsOld = $item['custom_fields_old'] ?? [];
+
+            foreach ($customFieldsValues as $key => $val) {
+                if ($val instanceof UploadedFile || $val instanceof \Illuminate\Http\UploadedFile) {
+                    $path = $val->store('invoice_custom_fields', 'public');
+                    $customFieldsValues[$key] = $path;
+                }
+            }
+
+            foreach ($customFieldsOld as $key => $oldVal) {
+                if (!empty($oldVal) && empty($customFieldsValues[$key])) {
+                    $customFieldsValues[$key] = $oldVal;
+                }
+            }
+
             $customFieldsPrices = $item['custom_fields_prices'] ?? [];
             $customFieldsDiscounts = $item['custom_fields_discounts'] ?? [];
             $customFieldsTaxes = $item['custom_fields_taxes'] ?? [];
@@ -1041,7 +1410,7 @@ class InvoiceController extends Controller
 
                     if ($taxMode === 'item' && $taxApplyCustomFields) {
                         $cfTaxPercent = (float)($customFieldsTaxes[$field->id] ?? 0);
-                        $cfBase = max(0, ($amount * $qty) - $fieldDiscount);
+                        $cfBase = $amount * $qty;
                         $customFieldsTaxTotal += $cfBase * ($cfTaxPercent / 100);
                     }
                 }
@@ -1060,7 +1429,7 @@ class InvoiceController extends Controller
 
             if ($taxMode === 'item') {
                 $rowTaxPercent = (float)($item['tax_percent'] ?? 0);
-                $rowTaxableBase = max(0, ($price * $qty) - $discount);
+                $rowTaxableBase = $price * $qty;
                 $rowTaxAmount = $rowTaxableBase * ($rowTaxPercent / 100);
                 $itemsTaxTotal += $rowTaxAmount + $customFieldsTaxTotal;
             }
@@ -1084,6 +1453,9 @@ class InvoiceController extends Controller
                     'custom_fields_taxes' => $customFieldsTaxes,
                     'product_id' => $item['product_id'] ?? null,
                     'product_variant_id' => $item['product_variant_id'] ?? null,
+                    '_packageGroupId' => $item['_packageGroupId'] ?? null,
+                    '_packageTitle' => $item['_packageTitle'] ?? null,
+                    '_isMerged' => $item['_isMerged'] ?? false,
                     'type' => (!empty($item['product_id']) || !empty($item['product_variant_id'])) ? 'product' : (!empty($item['service_id']) ? 'service' : 'manual'),
                 ],
             ];
@@ -1227,36 +1599,31 @@ class InvoiceController extends Controller
         }
         return $products;
     }
-    private function computeExtraDiscount(array $data, float $itemsTotal): int
+    private function computeExtraDiscount(array $data, float $subtotal, float $totalTax = 0, int $itemsDiscount = 0): int
     {
         $type = $data['extra_discount_type'] ?? 'amount';
         $value = (float)($data['extra_discount_value'] ?? 0);
 
-        if ($value <= 0 || $itemsTotal <= 0) {
+        $base = max(0, $subtotal + $totalTax - $itemsDiscount);
+
+        if ($value <= 0 || $base <= 0) {
             return 0;
         }
 
         $discount = $type === 'percent'
-            ? $itemsTotal * ($value / 100)
+            ? $base * ($value / 100)
             : $value;
 
-        return (int)round(min(max(0, $discount), $itemsTotal));
+        return (int)round(min(max(0, $discount), $base));
     }
 
-    private function applyInvoiceTax(float $itemsTotal, mixed $taxPercent, int $extraDiscount = 0, string $taxMode = 'invoice', float $itemsTaxTotal = 0): array
+    private function applyInvoiceTax(float $subtotal, mixed $taxPercent, string $taxMode = 'invoice', float $itemsTaxTotal = 0): float
     {
-        $taxableAmount = max(0, $itemsTotal - $extraDiscount);
-
         if ($taxMode === 'item') {
-            $totalTax = $itemsTaxTotal;
-        } else {
-            $taxPercent = (float)$taxPercent;
-            $totalTax = $taxableAmount * ($taxPercent / 100);
+            return $itemsTaxTotal;
         }
-
-        $grandTotal = $taxableAmount + $totalTax;
-
-        return [$totalTax, $grandTotal];
+        $taxPercent = (float)$taxPercent;
+        return $subtotal * ($taxPercent / 100);
     }
 
     private function applyRounding(float $grandTotal, array $settings): array
@@ -1306,6 +1673,14 @@ class InvoiceController extends Controller
             ->first();
         $statusId = $defaultStatus ? $defaultStatus->id : null;
 
+        if (!$isProforma && (int)round($grandTotal) <= 0) {
+            $paidStatus = Status::where('name', 'پرداخت شده')->first()
+                ?? Status::where('name', 'LIKE', '%پرداخت شده%')->first();
+            if ($paidStatus) {
+                $statusId = $paidStatus->id;
+            }
+        }
+
         $existingMeta = $data['meta'] ?? [];
         if (is_string($existingMeta)) {
             $existingMeta = json_decode($existingMeta, true) ?? [];
@@ -1315,6 +1690,17 @@ class InvoiceController extends Controller
         }
         if (!empty($roundingMeta)) {
             $existingMeta['rounding'] = $roundingMeta;
+        }
+        if (isset($data['client_selected_fields']) && is_array($data['client_selected_fields'])) {
+            $cleanedSelectedFields = [];
+            foreach ($data['client_selected_fields'] as $fid => $vals) {
+                if (is_array($vals)) {
+                    $cleanedSelectedFields[$fid] = array_values(array_filter(array_map('trim', $vals)));
+                } elseif (is_string($vals) && trim($vals) !== '') {
+                    $cleanedSelectedFields[$fid] = [trim($vals)];
+                }
+            }
+            $existingMeta['client_selected_fields'] = $cleanedSelectedFields;
         }
 
         return [
@@ -1624,9 +2010,9 @@ class InvoiceController extends Controller
             if (isset($item['tax_amount']) && $item['tax_amount'] > 0) {
                 $itemTax = (float) $item['tax_amount'];
             } elseif (isset($item['tax_percent']) && $item['tax_percent'] > 0) {
-                $itemTax = max(0, $itemGross - $itemDiscount) * ((float) $item['tax_percent'] / 100);
+                $itemTax = $itemGross * ((float) $item['tax_percent'] / 100);
             } elseif ($invoiceTax > 0 && $invoiceSubtotal > 0) {
-                $itemTax = ($invoiceTax / $invoiceSubtotal) * max(0, $itemGross - $itemDiscount);
+                $itemTax = ($invoiceTax / $invoiceSubtotal) * $itemGross;
             } else {
                 $itemTax = 0;
             }

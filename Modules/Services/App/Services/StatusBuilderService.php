@@ -15,7 +15,6 @@ class StatusBuilderService
         $all = Status::orderBy('sort_order')->get()->groupBy('type');
 
         return [
-            'project' => $all->get('project', collect()),
             'order' => $all->get('order', collect()),
             'service' => $all->get('service', collect()),
             'invoice' => $all->get('invoice', collect()),
