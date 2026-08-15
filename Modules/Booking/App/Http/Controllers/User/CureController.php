@@ -1176,7 +1176,7 @@ class CureController extends Controller
                     'role_name' => $role->name,
                     'role_label' => match ($role->name) {
                         'admin' => 'مدیر',
-                        'doctor' => 'پزشک',
+                        'doctor' => config('booking.labels.provider'),
                         'assistant' => 'دستیار',
                         default => $role->name,
                     },

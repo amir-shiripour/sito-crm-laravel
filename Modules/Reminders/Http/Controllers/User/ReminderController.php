@@ -43,8 +43,22 @@ class ReminderController extends Controller
         $selectedUserId = $user->id;
 
         if ($user->can('reminders.manage') || $user->can('reminders.view')) {
-            $users = User::select('id', 'name')->get();
+            $usersQuery = User::select('id', 'name');
+            if (!$user->hasRole('super-admin')) {
+                $usersQuery->whereDoesntHave('roles', function ($q) {
+                    $q->where('name', 'super-admin');
+                });
+            }
+            $users = $usersQuery->get();
             $selectedUserId = $request->get('user_id', $user->id);
+
+            if (!$user->hasRole('super-admin') && $selectedUserId != $user->id) {
+                $targetUser = $users->firstWhere('id', (int)$selectedUserId);
+                if (!$targetUser) {
+                    $selectedUserId = $user->id;
+                }
+            }
+
             $baseQuery->where('user_id', $selectedUserId);
         } else {
             $baseQuery->where('user_id', $user->id);

@@ -167,6 +167,7 @@ class WorkflowController extends Controller
 
         $users = $usersQuery->get();
         $cureRoles = !empty($cureAssignableRoles) ? $cureRolesQuery->get() : collect();
+        $providers = $this->getBookingProviders();
 
         $clientStatuses = (class_exists(\Modules\Clients\Entities\ClientStatus::class) && \Illuminate\Support\Facades\Schema::hasTable('client_statuses'))
             ? \Modules\Clients\Entities\ClientStatus::active()->get()
@@ -187,7 +188,7 @@ class WorkflowController extends Controller
             }
         }
 
-        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
+        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'providers', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
     }
 
     public function store(Request $request)
@@ -281,6 +282,7 @@ class WorkflowController extends Controller
 
         $users = $usersQuery->get();
         $cureRoles = !empty($cureAssignableRoles) ? $cureRolesQuery->get() : collect();
+        $providers = $this->getBookingProviders();
 
         $clientStatuses = (class_exists(\Modules\Clients\Entities\ClientStatus::class) && \Illuminate\Support\Facades\Schema::hasTable('client_statuses'))
             ? \Modules\Clients\Entities\ClientStatus::active()->get()
@@ -301,7 +303,7 @@ class WorkflowController extends Controller
             }
         }
 
-        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
+        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'providers', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
     }
 
     public function update(Request $request, Workflow $workflow)
@@ -1259,5 +1261,64 @@ class WorkflowController extends Controller
                 'last_page' => $instances->lastPage(),
             ],
         ]);
+    }
+
+    /**
+     * Get providers based on Booking system settings (allowed_roles) and super-admin visibility.
+     */
+    protected function getBookingProviders(): \Illuminate\Support\Collection
+    {
+        if (file_exists(base_path('Modules/Booking/Entities/BookingSetting.php')) && class_exists('Modules\\Booking\\Entities\\BookingSetting') && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
+            try {
+                $setting = \Modules\Booking\Entities\BookingSetting::current();
+                $rolesInput = $setting?->allowed_roles ?? [];
+                if (is_string($rolesInput)) {
+                    $decoded = json_decode($rolesInput, true);
+                    $rolesInput = is_array($decoded) ? $decoded : preg_split('/\s*,\s*/', trim($rolesInput), -1, PREG_SPLIT_NO_EMPTY);
+                }
+                $roleIds = [];
+                $roleNames = [];
+                if (is_array($rolesInput)) {
+                    foreach ($rolesInput as $v) {
+                        if (is_numeric($v) && (int)$v > 0) {
+                            $roleIds[] = (int)$v;
+                        } elseif (is_string($v) && trim($v) !== '') {
+                            $roleNames[] = trim($v);
+                        }
+                    }
+                }
+
+                $providersQuery = User::query()->select(['id', 'name'])->orderBy('name');
+
+                if (!empty($roleIds) || !empty($roleNames)) {
+                    $providersQuery->whereHas('roles', function ($q) use ($roleIds, $roleNames) {
+                        $q->where(function ($subQ) use ($roleIds, $roleNames) {
+                            if (!empty($roleIds)) {
+                                $subQ->whereIn('id', $roleIds);
+                            }
+                            if (!empty($roleNames)) {
+                                $subQ->orWhereIn('name', $roleNames);
+                            }
+                        });
+                    });
+                } else {
+                    $providersQuery->whereIn('id', function ($q) {
+                        $q->select('provider_user_id')->from('booking_service_providers');
+                    });
+                }
+
+                if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+                    $providersQuery->whereDoesntHave('roles', function ($q) {
+                        $q->where('name', 'super-admin');
+                    });
+                }
+
+                return $providersQuery->get();
+            } catch (\Throwable $e) {
+                return collect();
+            }
+        }
+
+        return collect();
     }
 }

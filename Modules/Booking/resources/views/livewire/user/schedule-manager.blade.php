@@ -169,12 +169,12 @@
                 search: '',
                 selectedId: @entangle('selectedProviderId').live,
                 get selectedName() {
-                    if (!this.selectedId) return 'همه پزشکان';
+                    if (!this.selectedId) return 'همه {{ config("booking.labels.providers") }}';
                     const el = document.getElementById('prov-opt-' + this.selectedId);
-                    return el ? el.dataset.name : 'همه پزشکان';
+                    return el ? el.dataset.name : 'همه {{ config("booking.labels.providers") }}';
                 }
             }" @click.outside="open = false" class="relative">
-                <label class="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">👨‍⚕️ ارائه‌دهنده / پزشک</label>
+                <label class="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">👨‍⚕️ {{ config('booking.labels.provider') }}</label>
                 <button @click="open = !open" type="button" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-black text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-800 transition-all text-right shadow-xs">
                     <div class="flex items-center gap-2 truncate">
                         <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
@@ -185,12 +185,12 @@
 
                 <div x-show="open" x-transition.opacity.duration.150ms class="absolute z-50 mt-1 w-full min-w-[220px] bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-2 space-y-1 text-xs" style="display: none;">
                     <div class="relative mb-1">
-                        <input type="text" x-model="search" placeholder="جستجوی پزشک..." class="w-full pl-3 pr-8 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="text" x-model="search" placeholder="جستجوی {{ config('booking.labels.provider') }}..." class="w-full pl-3 pr-8 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <svg class="w-4 h-4 text-gray-400 absolute right-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
                     <div class="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar">
                         <button type="button" @click="selectedId = null; $wire.set('selectedProviderId', null); open = false;" class="w-full text-right px-3 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 flex items-center justify-between font-bold" :class="!selectedId ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40' : 'text-gray-700 dark:text-gray-300'">
-                            <span>همه پزشکان</span>
+                            <span>همه {{ config('booking.labels.providers') }}</span>
                             <template x-if="!selectedId">
                                 <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                             </template>
@@ -425,7 +425,7 @@
                                         @if (!$pData['policy']['is_closed'] && !empty($pData['policy']['rule_source']))
                                             @php
                                                 $sourceBadge = match($pData['policy']['rule_source']) {
-                                                    'SERVICE_PROVIDER' => ['label' => 'برنامه اختصاصی پزشک', 'class' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'],
+                                                    'SERVICE_PROVIDER' => ['label' => 'برنامه اختصاصی ' . config('booking.labels.provider'), 'class' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'],
                                                     'SERVICE' => ['label' => 'برنامه سرویس', 'class' => 'bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200 dark:border-purple-800'],
                                                     'EXCEPTION' => ['label' => 'استثنای تاریخی', 'class' => 'bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200 dark:border-amber-800'],
                                                     default => ['label' => 'برنامه عمومی سیستم', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'],
@@ -796,7 +796,7 @@
                             @if ($pData['policy']['is_closed'] && empty($pData['appointments']))
                                 <div class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50/95 dark:bg-gray-900/95 z-10">
                                     <svg class="w-16 h-16 mb-4 text-indigo-500 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                                    <span class="text-lg font-black text-gray-800 dark:text-gray-200">پزشک در این تاریخ حضور ندارد</span>
+                                    <span class="text-lg font-black text-gray-800 dark:text-gray-200">{{ config('booking.labels.provider') }} در این تاریخ حضور ندارد</span>
                                 </div>
                             @else
                                 @if ($pData['policy']['is_closed'])
@@ -914,7 +914,7 @@
 
                         {{-- ستون ثابت راست برای اسامی پزشکان --}}
                         <div class="w-44 sm:w-52 flex-none sticky right-0 border-l border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700/80 z-30 shadow-sm">
-                            <div class="h-14 px-4 flex items-center font-black text-xs text-gray-800 dark:text-gray-200 bg-gray-100/90 dark:bg-gray-900">پزشکان / منابع</div>
+                            <div class="h-14 px-4 flex items-center font-black text-xs text-gray-800 dark:text-gray-200 bg-gray-100/90 dark:bg-gray-900">{{ config('booking.labels.providers') }} / منابع</div>
                             @foreach ($providerSchedules as $pData)
                                 <div class="h-32 px-3 flex items-center gap-2.5">
                                     <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center flex-none shadow-sm">
@@ -1116,7 +1116,7 @@
                                 <div class="p-3.5 flex-1 space-y-3 min-h-[170px]">
                                     @if ($wDay['is_closed'] && empty($wDay['appointments']))
                                         <div class="p-6 text-center text-xs font-black text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 rounded-2xl border border-rose-200 dark:border-rose-900/60">
-                                            پزشک در این روز حضور ندارد یا تعطیل رسمی است.
+                                            {{ config('booking.labels.provider') }} در این روز حضور ندارد یا تعطیل رسمی است.
                                         </div>
                                     @elseif (empty($wDay['appointments']))
                                         <div class="p-6 text-center text-xs font-black text-gray-400 dark:text-gray-500 bg-white/70 dark:bg-gray-800/60 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
@@ -1316,9 +1316,9 @@
                         {{-- Provider & Service Row --}}
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-gray-700 dark:text-gray-300 mb-1.5 font-semibold">پزشک / ارائه‌دهنده</label>
+                                <label class="block text-gray-700 dark:text-gray-300 mb-1.5 font-semibold">{{ config('booking.labels.provider') }}</label>
                                 <select wire:model.live="modalProviderId" class="w-full bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl px-3 py-2.5 text-gray-900 dark:text-gray-100 text-xs font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                    <option value="">انتخاب پزشک...</option>
+                                    <option value="">انتخاب {{ config('booking.labels.provider') }}...</option>
                                     @foreach ($providers as $prov) <option value="{{ $prov->id }}">{{ $prov->name }}</option> @endforeach
                                 </select>
                             </div>
@@ -1518,7 +1518,7 @@
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg>
                                 </div>
                                 <div class="truncate">
-                                    <span class="text-[11px] font-medium text-gray-400 block mb-0.5">پزشک / ارائه‌دهنده</span>
+                                    <span class="text-[11px] font-medium text-gray-400 block mb-0.5">{{ config('booking.labels.provider') }}</span>
                                     <span class="text-xs font-black text-gray-900 dark:text-gray-100 block truncate">{{ $detailsAppointment['provider_name'] }}</span>
                                     <span class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 block mt-1 truncate">{{ $detailsAppointment['service_name'] }}</span>
                                 </div>

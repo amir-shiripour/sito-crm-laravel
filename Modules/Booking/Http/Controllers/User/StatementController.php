@@ -436,7 +436,7 @@ class StatementController extends Controller
         $allUserIds = array_unique($allUserIds);
 
         if (empty($allUserIds)) {
-            return redirect()->back()->with('error', 'هیچ کاربری (پزشک یا نقش‌های دیگر) برای گزارش انتخاب نشده است.');
+            return redirect()->back()->with('error', 'هیچ کاربری (' . config('booking.labels.provider') . ' یا نقش‌های دیگر) برای گزارش انتخاب نشده است.');
         }
 
         $result = $this->getAppointments($allUserIds, $startDateLocal, $endDateLocal);
