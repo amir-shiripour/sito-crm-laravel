@@ -82,12 +82,26 @@ class AppointmentController extends Controller
             'pay_now' => ['nullable', 'boolean'],
         ]);
 
-        $result = $this->service->confirmOnlineHold(
-            (int) $data['hold_id'],
-            $data['client'],
-            $data['appointment_form_response_json'] ?? null,
-            (bool) ($data['pay_now'] ?? true),
-        );
+        try {
+            $result = $this->service->confirmOnlineHold(
+                (int) $data['hold_id'],
+                $data['client'],
+                $data['appointment_form_response_json'] ?? null,
+                (bool) ($data['pay_now'] ?? true),
+            );
+        } catch (\RuntimeException $e) {
+            $message = match ($e->getMessage()) {
+                'Slot hold expired.' => 'زمان نگه‌داشتن موقت نوبت به پایان رسیده است. لطفاً دوباره تلاش کنید.',
+                'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل شده است.',
+                'Day capacity is full.' => 'ظرفیت این روز تکمیل شده است.',
+                default => $e->getMessage(),
+            };
+
+            return response()->json([
+                'message' => $message,
+                'error_code' => 'HOLD_EXPIRED',
+            ], 422);
+        }
 
         return response()->json([
             'data' => [

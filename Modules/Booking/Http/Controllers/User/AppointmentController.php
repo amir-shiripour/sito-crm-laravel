@@ -314,7 +314,11 @@ class AppointmentController extends Controller
 
         // زمان‌ها
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
-        $usesCustomSchedule = (bool) $service->custom_schedule_enabled;
+        $allowManualTimeOverride = (bool) ($settings->allow_manual_time_override ?? false);
+        $hasManualTimeInputs = !empty($data['date_local']) && !empty($data['start_time_local']) && !empty($data['end_time_local']);
+
+        $usesCustomSchedule = (bool) $service->custom_schedule_enabled
+            || ($allowManualTimeOverride && $hasManualTimeInputs && (empty($data['start_at_utc']) || empty($data['end_at_utc'])));
 
         if ($usesCustomSchedule) {
             if (empty($data['date_local']) || empty($data['start_time_local']) || empty($data['end_time_local'])) {
@@ -1531,7 +1535,12 @@ class AppointmentController extends Controller
                 $remainingDayCap = max(0, (int)$capDay - (int)$booked - (int)$held);
             }
 
-            $availableSlots = $slotsByDay[$localDate] ?? [];
+            $allDaySlots = $slotsByDay[$localDate] ?? [];
+            $availableSlots = array_filter($allDaySlots, function($s) {
+                $remCap = $s['remaining_capacity'] ?? null;
+                $isBlocked = !empty($s['sync_blocked']);
+                return !$isBlocked && ($remCap === null || (int)$remCap > 0);
+            });
             $availableSlotsCount = count($availableSlots);
 
             $isClosed = !$hasWork;

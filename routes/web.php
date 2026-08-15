@@ -69,7 +69,11 @@ Route::middleware([
 Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/layout', [UserDashboardController::class, 'updateLayout'])->name('dashboard.update-layout');
-    // سایر روت‌های مربوط به Jetstream / profile اینجا هستند
+
+    // روت‌های ویجت و صفحه تقویم
+    Route::get('/calendar', [\App\Http\Controllers\User\CalendarController::class, 'index'])->name('calendar');
+    Route::get('/calendar/events', [\App\Http\Controllers\User\CalendarController::class, 'events'])->name('calendar.events');
+    Route::get('/calendar/widget-data', [\App\Http\Controllers\User\CalendarController::class, 'widgetData'])->name('calendar.widget-data');
 });
 
 // Override Fortify's default register routes
@@ -77,3 +81,5 @@ Route::middleware(['web', 'guest'])->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store']);
 });
+
+Route::get('/ping', function() { return 'pong-crm'; });

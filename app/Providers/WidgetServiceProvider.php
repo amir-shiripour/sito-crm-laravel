@@ -15,10 +15,11 @@ class WidgetServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // ویجت‌های هسته (غیر ماژولی)
-        WidgetRegistry::register('task_summary_widget', [
-            'label'      => 'خلاصه وظایف',
-            'view'       => 'widgets.task_summary', // بعداً خودت این view رو می‌سازی
-            'permission' => null, // یا مثلاً 'tasks.view'
+        WidgetRegistry::register('calendar_widget', [
+            'label'      => 'تقویم و رویدادها',
+            'view'       => 'widgets.calendar.card',
+            'permission' => null,
+            'group'      => 'هسته',
         ]);
 
         // اینجا هر ویجت هسته‌ای دیگری خواستی اضافه کن

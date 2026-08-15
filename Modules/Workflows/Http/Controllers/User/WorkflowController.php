@@ -62,10 +62,12 @@ class WorkflowController extends Controller
     {
         $triggerOptions = [];
 
-        $svc = \Modules\Booking\Services\AppointmentService::class;
-
-        if (class_exists($svc) && method_exists($svc, 'workflowTriggerOptions')) {
-            $triggerOptions['APPOINTMENT'] = $svc::workflowTriggerOptions();
+        $bookingSvcFile = base_path('Modules/Booking/Services/AppointmentService.php');
+        if (file_exists($bookingSvcFile)) {
+            $svc = 'Modules\\Booking\\Services\\AppointmentService';
+            if (class_exists($svc) && method_exists($svc, 'workflowTriggerOptions')) {
+                $triggerOptions['APPOINTMENT'] = $svc::workflowTriggerOptions();
+            }
         }
 
         $clientSvc = \Modules\Clients\App\Services\ClientWorkflowService::class;
@@ -125,7 +127,7 @@ class WorkflowController extends Controller
         $usersQuery = User::query()->select(['id', 'name'])->orderBy('name');
 
         $services = collect();
-        if (class_exists(\Modules\Booking\Entities\BookingService::class) && \Illuminate\Support\Facades\Schema::hasTable('booking_services')) {
+        if (file_exists(base_path('Modules/Booking/Entities/BookingService.php')) && class_exists('Modules\\Booking\\Entities\\BookingService') && \Illuminate\Support\Facades\Schema::hasTable('booking_services')) {
             try {
                 $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
             } catch (\Throwable $e) {
@@ -137,7 +139,7 @@ class WorkflowController extends Controller
 
         $cureStatuses = [];
         $cureAssignableRoles = [];
-        if (class_exists(\Modules\Booking\Entities\BookingSetting::class) && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
+        if (file_exists(base_path('Modules/Booking/Entities/BookingSetting.php')) && class_exists('Modules\\Booking\\Entities\\BookingSetting') && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
             try {
                 $setting = \Modules\Booking\Entities\BookingSetting::current();
                 $cureStatuses = $setting?->cure_statuses ?? [];
@@ -238,7 +240,7 @@ class WorkflowController extends Controller
         $usersQuery = User::query()->select(['id', 'name'])->orderBy('name');
 
         $services = collect();
-        if (class_exists(\Modules\Booking\Entities\BookingService::class) && \Illuminate\Support\Facades\Schema::hasTable('booking_services')) {
+        if (file_exists(base_path('Modules/Booking/Entities/BookingService.php')) && class_exists('Modules\\Booking\\Entities\\BookingService') && \Illuminate\Support\Facades\Schema::hasTable('booking_services')) {
             try {
                 $services = \Modules\Booking\Entities\BookingService::query()->where('status', 'ACTIVE')->get();
             } catch (\Throwable $e) {
@@ -251,7 +253,7 @@ class WorkflowController extends Controller
 
         $cureStatuses = [];
         $cureAssignableRoles = [];
-        if (class_exists(\Modules\Booking\Entities\BookingSetting::class) && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
+        if (file_exists(base_path('Modules/Booking/Entities/BookingSetting.php')) && class_exists('Modules\\Booking\\Entities\\BookingSetting') && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
             try {
                 $setting = \Modules\Booking\Entities\BookingSetting::current();
                 $cureStatuses = $setting?->cure_statuses ?? [];
@@ -578,11 +580,20 @@ class WorkflowController extends Controller
             ->where('is_active', true)
             ->get();
 
-        $cureStatuses = \Modules\Booking\Entities\BookingSetting::current()?->cure_statuses ?? [];
-        $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
-        
-        if (is_string($cureAssignableRoles)) {
-            $cureAssignableRoles = json_decode($cureAssignableRoles, true) ?? [];
+        $cureStatuses = [];
+        $cureAssignableRoles = [];
+        if (file_exists(base_path('Modules/Booking/Entities/BookingSetting.php')) && class_exists('Modules\\Booking\\Entities\\BookingSetting') && \Illuminate\Support\Facades\Schema::hasTable('booking_settings')) {
+            try {
+                $setting = \Modules\Booking\Entities\BookingSetting::current();
+                $cureStatuses = $setting?->cure_statuses ?? [];
+                $cureAssignableRoles = $setting?->cure_assignable_roles ?? [];
+                if (is_string($cureAssignableRoles)) {
+                    $cureAssignableRoles = json_decode($cureAssignableRoles, true) ?? [];
+                }
+            } catch (\Throwable $e) {
+                $cureStatuses = [];
+                $cureAssignableRoles = [];
+            }
         }
 
         $cureRolesQuery = \Spatie\Permission\Models\Role::whereIn('id', $cureAssignableRoles)->orderBy('name');
@@ -992,9 +1003,13 @@ class WorkflowController extends Controller
                 if ($inst->related_type === 'CLIENT') {
                     $inst->subject = \Modules\Clients\Entities\Client::find($inst->related_id);
                 } elseif ($inst->related_type === 'APPOINTMENT') {
-                    $inst->subject = \Modules\Booking\Entities\Appointment::with('client')->find($inst->related_id);
+                    if (file_exists(base_path('Modules/Booking/Entities/Appointment.php')) && class_exists('Modules\\Booking\\Entities\\Appointment')) {
+                        $inst->subject = \Modules\Booking\Entities\Appointment::with('client')->find($inst->related_id);
+                    }
                 } elseif ($inst->related_type === 'TREATMENT_PLAN') {
-                    $inst->subject = \Modules\Booking\App\Models\TreatmentPlan::with('client')->find($inst->related_id);
+                    if (file_exists(base_path('Modules/Booking/App/Models/TreatmentPlan.php')) && class_exists('Modules\\Booking\\App\\Models\\TreatmentPlan')) {
+                        $inst->subject = \Modules\Booking\App\Models\TreatmentPlan::with('client')->find($inst->related_id);
+                    }
                 }
             }
         } else {
@@ -1013,19 +1028,6 @@ class WorkflowController extends Controller
 
         $user = auth()->user();
 
-        // 1. Build search query for clients visible to user
-        $search = $request->get('q');
-        $visibleClientsQuery = \Modules\Clients\Entities\Client::visibleForUser($user);
-        if ($search) {
-            $visibleClientsQuery->where(function($qq) use ($search) {
-                $qq->where('full_name', 'like', "%{$search}%")
-                   ->orWhere('phone', 'like', "%{$search}%")
-                   ->orWhere('national_code', 'like', "%{$search}%")
-                   ->orWhere('case_number', 'like', "%{$search}%");
-            });
-        }
-        $clientIdsSubquery = $visibleClientsQuery->select('id');
-
         // Helper filter for graphical canvas workflows that are not automatic system processes
         $canvasWorkflowFilter = function($wQuery) {
             $wQuery->whereHas('nodes')
@@ -1033,43 +1035,109 @@ class WorkflowController extends Controller
                    ->where('key', 'not like', 'auto_%');
         };
 
-        // 2. Fetch workflow instances related to these clients
-        $query = \Modules\Workflows\Entities\WorkflowInstance::query()
-            ->whereHas('workflow', $canvasWorkflowFilter)
-            ->where(function($q) use ($clientIdsSubquery) {
-                $q->where(function($q1) use ($clientIdsSubquery) {
-                    $q1->where('related_type', 'CLIENT')
-                       ->whereIn('related_id', $clientIdsSubquery);
+        // Determine if user is Admin or Super Admin
+        $isAdmin = $user && ($user->hasRole('super-admin') || $user->hasRole('admin') || $user->can('workflows.manage_all'));
+
+        // Client search filter (if search term 'q' is provided)
+        $search = $request->get('q');
+        $matchingClientIds = null;
+        if ($search) {
+            $matchingClientIds = \Modules\Clients\Entities\Client::query()
+                ->where(function($qq) use ($search) {
+                    $qq->where('full_name', 'like', "%{$search}%")
+                       ->orWhere('phone', 'like', "%{$search}%")
+                       ->orWhere('national_code', 'like', "%{$search}%")
+                       ->orWhere('case_number', 'like', "%{$search}%");
                 })
-                ->orWhere(function($q2) use ($clientIdsSubquery) {
-                    $q2->where('related_type', 'APPOINTMENT')
-                       ->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                           $sub->select('id')
-                               ->from('appointments')
-                               ->whereIn('client_id', $clientIdsSubquery);
-                       });
+                ->pluck('id');
+        }
+
+        // Visible clients subquery for standard visibility
+        $userVisibleClientIds = null;
+        $userTaskInstanceIds = [];
+        if (!$isAdmin && $user) {
+            $userVisibleClientIds = \Modules\Clients\Entities\Client::visibleForUser($user)->pluck('id');
+            $userTaskInstanceIds = \Modules\Tasks\Entities\Task::where(function($tq) use ($user) {
+                    $tq->where('assignee_id', $user->id)->orWhere('creator_id', $user->id);
                 })
-                ->orWhere(function($q3) use ($clientIdsSubquery) {
-                    $q3->where('related_type', 'TREATMENT_PLAN')
-                       ->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                           $sub->select('id')
-                               ->from('treatment_plans')
-                               ->whereIn('client_id', $clientIdsSubquery);
-                       });
+                ->get()
+                ->pluck('meta.workflow_instance_id')
+                ->filter()
+                ->unique()
+                ->toArray();
+        }
+
+        // Base query builder closure
+        $buildQuery = function($statusFilter = null) use ($request, $user, $isAdmin, $canvasWorkflowFilter, $matchingClientIds, $userVisibleClientIds, $userTaskInstanceIds) {
+            $query = \Modules\Workflows\Entities\WorkflowInstance::query()
+                ->whereHas('workflow', $canvasWorkflowFilter);
+
+            // Status filter
+            $status = $statusFilter ?? ($request->filled('status') ? $request->status : 'ACTIVE');
+            if ($status && $status !== 'ALL') {
+                $query->where('status', $status);
+            }
+
+            // Workflow ID filter
+            if ($request->filled('workflow_id')) {
+                $query->where('workflow_id', $request->workflow_id);
+            }
+
+            // Helper for matching workflow instance related clients
+            $applyClientRelationFilter = function($q, $clientIds) {
+                $q->where(function($qInner) use ($clientIds) {
+                    $qInner->where(function($q1) use ($clientIds) {
+                        $q1->where('related_type', 'CLIENT')
+                           ->whereIn('related_id', $clientIds);
+                    })
+                    ->orWhere(function($q2) use ($clientIds) {
+                        $q2->where('related_type', 'APPOINTMENT')
+                           ->whereIn('related_id', function($sub) use ($clientIds) {
+                               $sub->select('id')
+                                   ->from('appointments')
+                                   ->whereIn('client_id', $clientIds);
+                           });
+                    })
+                    ->orWhere(function($q3) use ($clientIds) {
+                        $q3->where('related_type', 'TREATMENT_PLAN')
+                           ->whereIn('related_id', function($sub) use ($clientIds) {
+                               $sub->select('id')
+                                   ->from('treatment_plans')
+                                   ->whereIn('client_id', $clientIds);
+                           });
+                    });
                 });
-            });
+            };
 
-        // Filters
-        if ($request->filled('workflow_id')) {
-            $query->where('workflow_id', $request->workflow_id);
-        }
+            // User scope for non-admins
+            if (!$isAdmin && $user) {
+                $query->where(function($q) use ($user, $userVisibleClientIds, $userTaskInstanceIds, $applyClientRelationFilter) {
+                    $q->where('created_by', $user->id)
+                      ->orWhereHas('logs', function($lq) use ($user) {
+                          $lq->where('user_id', $user->id);
+                      });
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        } else {
-            $query->where('status', 'ACTIVE');
-        }
+                    if (!empty($userTaskInstanceIds)) {
+                        $q->orWhereIn('id', $userTaskInstanceIds);
+                    }
 
+                    if ($userVisibleClientIds && $userVisibleClientIds->isNotEmpty()) {
+                        $q->orWhere(function($subQ) use ($userVisibleClientIds, $applyClientRelationFilter) {
+                            $applyClientRelationFilter($subQ, $userVisibleClientIds);
+                        });
+                    }
+                });
+            }
+
+            // Search query filter ('q')
+            if ($matchingClientIds !== null) {
+                $applyClientRelationFilter($query, $matchingClientIds);
+            }
+
+            return $query;
+        };
+
+        $query = $buildQuery();
         $query->with([
             'workflow.nodes',
             'workflow.edges',
@@ -1089,10 +1157,10 @@ class WorkflowController extends Controller
         if (isset($instancesGrouped['CLIENT'])) {
             $clients = \Modules\Clients\Entities\Client::whereIn('id', $instancesGrouped['CLIENT']->pluck('related_id'))->get()->keyBy('id');
         }
-        if (isset($instancesGrouped['APPOINTMENT'])) {
+        if (isset($instancesGrouped['APPOINTMENT']) && file_exists(base_path('Modules/Booking/Entities/Appointment.php')) && class_exists('Modules\\Booking\\Entities\\Appointment')) {
             $appointments = \Modules\Booking\Entities\Appointment::with('client')->whereIn('id', $instancesGrouped['APPOINTMENT']->pluck('related_id'))->get()->keyBy('id');
         }
-        if (isset($instancesGrouped['TREATMENT_PLAN'])) {
+        if (isset($instancesGrouped['TREATMENT_PLAN']) && file_exists(base_path('Modules/Booking/App/Models/TreatmentPlan.php')) && class_exists('Modules\\Booking\\App\\Models\\TreatmentPlan')) {
             $treatmentPlans = \Modules\Booking\App\Models\TreatmentPlan::with('client')->whereIn('id', $instancesGrouped['TREATMENT_PLAN']->pluck('related_id'))->get()->keyBy('id');
         }
 
@@ -1166,51 +1234,9 @@ class WorkflowController extends Controller
 
         // Get total stats for the active filters
         $stats = [
-            'active' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'ACTIVE')
-                ->whereHas('workflow', $canvasWorkflowFilter)
-                ->where(function($q) use ($clientIdsSubquery) {
-                    $q->where(function($q1) use ($clientIdsSubquery) {
-                        $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
-                    })->orWhere(function($q2) use ($clientIdsSubquery) {
-                        $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                            $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
-                        });
-                    })->orWhere(function($q3) use ($clientIdsSubquery) {
-                        $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                            $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
-                        });
-                    });
-                })->count(),
-            'completed' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'COMPLETED')
-                ->whereHas('workflow', $canvasWorkflowFilter)
-                ->where(function($q) use ($clientIdsSubquery) {
-                    $q->where(function($q1) use ($clientIdsSubquery) {
-                        $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
-                    })->orWhere(function($q2) use ($clientIdsSubquery) {
-                        $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                            $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
-                        });
-                    })->orWhere(function($q3) use ($clientIdsSubquery) {
-                        $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                            $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
-                        });
-                    });
-                })->count(),
-            'canceled' => \Modules\Workflows\Entities\WorkflowInstance::where('status', 'CANCELED')
-                ->whereHas('workflow', $canvasWorkflowFilter)
-                ->where(function($q) use ($clientIdsSubquery) {
-                    $q->where(function($q1) use ($clientIdsSubquery) {
-                        $q1->where('related_type', 'CLIENT')->whereIn('related_id', $clientIdsSubquery);
-                    })->orWhere(function($q2) use ($clientIdsSubquery) {
-                        $q2->where('related_type', 'APPOINTMENT')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                            $sub->select('id')->from('appointments')->whereIn('client_id', $clientIdsSubquery);
-                        });
-                    })->orWhere(function($q3) use ($clientIdsSubquery) {
-                        $q3->where('related_type', 'TREATMENT_PLAN')->whereIn('related_id', function($sub) use ($clientIdsSubquery) {
-                            $sub->select('id')->from('treatment_plans')->whereIn('client_id', $clientIdsSubquery);
-                        });
-                    });
-                })->count(),
+            'active' => $buildQuery('ACTIVE')->count(),
+            'completed' => $buildQuery('COMPLETED')->count(),
+            'canceled' => $buildQuery('CANCELED')->count(),
         ];
 
         // Available workflows for dropdown

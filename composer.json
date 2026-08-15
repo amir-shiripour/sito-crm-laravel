@@ -11,6 +11,7 @@
         "php": "^8.2",
         "blade-ui-kit/blade-heroicons": "2.4",
         "guzzlehttp/guzzle": "^7.2",
+        "google/apiclient": "^2.15",
         "intervention/image": "*",
         "laravel/fortify": "^1.31",
         "laravel/framework": "^10.10",
@@ -52,7 +53,7 @@
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi",
-            "@php artisan storage:link"
+            "@php artisan storage:link --force"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"

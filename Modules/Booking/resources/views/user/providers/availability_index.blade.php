@@ -54,10 +54,14 @@
                                 <td class="px-3 py-2 text-gray-900 dark:text-gray-100">{{ $user->name }}</td>
                                 <td class="px-3 py-2 text-gray-700 dark:text-gray-200">{{ $user->email }}</td>
                                 <td class="px-3 py-2 text-gray-700 dark:text-gray-200">{{ $user->phone ?? '-' }}</td>
-                                <td class="px-3 py-2 text-left">
+                                <td class="px-3 py-2 text-left flex items-center gap-2 justify-end">
                                     <a href="{{ route('user.booking.providers.availability.edit', $user) }}"
                                        class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-200 dark:hover:bg-indigo-900/50 transition">
                                         برنامه زمانی
+                                    </a>
+                                    <a href="{{ route('user.booking.providers.exceptions.index', $user) }}"
+                                       class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-200 dark:hover:bg-rose-900/50 transition">
+                                        استثناها و تعطیلات
                                     </a>
                                 </td>
                             </tr>

@@ -674,8 +674,27 @@ class OnlineBookingController extends Controller
                 appointmentFormResponse: $formResponse,
                 payNow: true
             );
+        } catch (\RuntimeException $e) {
+            $message = match ($e->getMessage()) {
+                'Slot hold expired.' => 'زمان نگه‌داشتن موقت نوبت به پایان رسیده است. لطفاً مجدداً بازه زمانی مورد نظر را انتخاب و ثبت کنید.',
+                'Slot capacity is full.' => 'ظرفیت این بازه زمانی تکمیل شده است.',
+                'Day capacity is full.' => 'ظرفیت روز تکمیل شده است.',
+                'This day is closed.' => 'این روز بسته است.',
+                'Slot is outside work windows.' => 'این بازه خارج از ساعات کاری است.',
+                'Slot overlaps with break.' => 'این بازه با زمان استراحت تداخل دارد.',
+                default => 'امکان تایید نوبت وجود ندارد. ' . $e->getMessage(),
+            };
+
+            Log::warning('[Booking][OnlineBooking] confirm failed (business validation)', [
+                'hold_id' => $hold->id,
+                'service_id' => $service->id,
+                'provider_user_id' => $providerId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['start_at_utc' => $message])->withInput();
         } catch (\Throwable $e) {
-            Log::error('[Booking][OnlineBooking] confirm failed', [
+            Log::error('[Booking][OnlineBooking] confirm failed unexpectedly', [
                 'hold_id' => $hold->id,
                 'service_id' => $service->id,
                 'provider_user_id' => $providerId,

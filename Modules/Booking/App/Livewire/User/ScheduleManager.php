@@ -77,7 +77,8 @@ class ScheduleManager extends Component
                 $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
                 $localDate = $this->getGregorianCarbon() ?? now($scheduleTz)->startOfDay();
                 $bookingEngine = new BookingEngine();
-                $policy = $bookingEngine->resolveDayPolicy($service->id, Auth::id() ?? 1, $localDate);
+                $providerId = $this->selectedProviderId ?? Auth::id() ?? 1;
+                $policy = $bookingEngine->resolveDayPolicy($service->id, $providerId, $localDate);
                 if (!empty($policy['slot_duration_minutes'])) {
                     $this->timeStepMinutes = max(5, (int)$policy['slot_duration_minutes']);
                 }
@@ -253,6 +254,13 @@ class ScheduleManager extends Component
         $this->selectedDateJalali = $dateJalali;
     }
 
+    public function resetFilters(): void
+    {
+        $this->selectedProviderId = null;
+        $this->selectedServiceId = null;
+        $this->statusFilter = '';
+    }
+
     public function confirmAllDrafts(): void
     {
         $localDate = $this->getGregorianCarbon();
@@ -314,90 +322,25 @@ class ScheduleManager extends Component
             $newStartUtc = $newStartLocal->copy()->timezone('UTC');
             $newEndUtc = $newEndLocal->copy()->timezone('UTC');
 
-            $bookingEngine = new BookingEngine();
-            $policy = $bookingEngine->resolveDayPolicy($appointment->service_id, $newProviderId, $localDate);
-
-            if ($policy['is_closed']) {
-                $this->toastError = 'پزشک انتخابی در این روز برنامه کاری ندارد.';
-                return;
-            }
-
-            // Check if within work windows
-            if (!empty($policy['work_windows'])) {
-                $inWorkWindow = false;
-                foreach ($policy['work_windows'] as $win) {
-                    [$wSH, $wSM] = explode(':', $win['start']);
-                    [$wEH, $wEM] = explode(':', $win['end']);
-                    $winStart = $localDate->copy()->setTime((int)$wSH, (int)$wSM, 0);
-                    $winEnd = $localDate->copy()->setTime((int)$wEH, (int)$wEM, 0);
-                    if ($newStartLocal->gte($winStart) && $newEndLocal->lte($winEnd)) {
-                        $inWorkWindow = true;
-                        break;
-                    }
-                }
-                if (!$inWorkWindow) {
-                    $this->toastError = 'ساعت انتخابی خارج از ساعات کاری پزشک در این روز است.';
-                    return;
-                }
-            }
-
-            // Check if in break
-            if (!empty($policy['breaks'])) {
-                foreach ($policy['breaks'] as $b) {
-                    $bStartStr = $b['start_local'] ?? null;
-                    $bEndStr = $b['end_local'] ?? null;
-                    if ($bStartStr && $bEndStr) {
-                        [$bSH, $bSM] = explode(':', $bStartStr);
-                        [$bEH, $bEM] = explode(':', $bEndStr);
-                        $bStart = $localDate->copy()->setTime((int)$bSH, (int)$bSM, 0);
-                        $bEnd = $localDate->copy()->setTime((int)$bEH, (int)$bEM, 0);
-                        if ($newStartLocal->lt($bEnd) && $newEndLocal->gt($bStart)) {
-                            $this->toastError = 'ساعت انتخابی با زمان استراحت پزشک تداخل دارد.';
-                            return;
-                        }
-                    }
-                }
-            }
-
-            $capacityPerSlot = (int)($policy['capacity_per_slot'] ?? 0);
-            $capacityPerDay = $policy['capacity_per_day'] ?? null;
-
-            if ($capacityPerDay !== null && (int)$capacityPerDay > 0) {
-                $startUtcOfDay = $localDate->copy()->timezone('UTC');
-                $endUtcOfDay = $localDate->copy()->endOfDay()->timezone('UTC');
-                $dailyBookedCount = Appointment::query()
-                    ->where('provider_user_id', $newProviderId)
-                    ->where('id', '!=', $appointmentId)
-                    ->whereNotIn('status', [
-                        Appointment::STATUS_CANCELED_BY_ADMIN,
-                        Appointment::STATUS_CANCELED_BY_CLIENT,
-                    ])
-                    ->where('start_at_utc', '<=', $endUtcOfDay)
-                    ->where('end_at_utc', '>=', $startUtcOfDay)
-                    ->count();
-
-                if ($dailyBookedCount >= (int)$capacityPerDay) {
-                    $this->toastError = sprintf('ظرفیت کل روزانه پزشک تکمیل است (حداکثر %d نوبت در روز).', (int)$capacityPerDay);
-                    return;
-                }
-            }
-
-            $existingOverlapCount = Appointment::query()
-                ->where('provider_user_id', $newProviderId)
-                ->where('id', '!=', $appointmentId)
-                ->whereNotIn('status', [
-                    Appointment::STATUS_CANCELED_BY_ADMIN,
-                    Appointment::STATUS_CANCELED_BY_CLIENT,
-                ])
-                ->where(function ($q) use ($newStartUtc, $newEndUtc) {
-                    $q->where(function ($sub) use ($newStartUtc, $newEndUtc) {
-                        $sub->where('start_at_utc', '<', $newEndUtc)
-                            ->where('end_at_utc', '>', $newStartUtc);
-                    });
-                })->count();
-
-            if ($capacityPerSlot > 0 && $existingOverlapCount >= $capacityPerSlot) {
-                $this->toastError = sprintf('ظرفیت نوبت‌دهی پزشک در این ساعت تکمیل است (حداکثر %d نوبت).', $capacityPerSlot);
+            $appointmentService = app(AppointmentService::class);
+            try {
+                $appointmentService->validateSlotAvailableForUpdate(
+                    serviceId: $appointment->service_id,
+                    providerUserId: $newProviderId,
+                    localDate: $localDate->toDateString(),
+                    startUtc: $newStartUtc,
+                    endUtc: $newEndUtc,
+                    excludeAppointmentId: $appointment->id
+                );
+            } catch (\RuntimeException $re) {
+                $msgMap = [
+                    'This day is closed.' => 'ارائه‌دهنده انتخابی در این روز برنامه کاری ندارد.',
+                    'Time range is outside work windows.' => 'ساعت انتخابی خارج از ساعات کاری ارائه‌دهنده در این روز است.',
+                    'Time range overlaps with a break.' => 'ساعت انتخابی با زمان استراحت ارائه‌دهنده تداخل دارد.',
+                    'Slot capacity is full.' => 'ظرفیت نوبت‌دهی (با احتساب زمان استراحت قبل/بعد نوبت) در این ساعت تکمیل است.',
+                    'Day capacity is full.' => 'ظرفیت کل روزانه ارائه‌دهنده تکمیل است.',
+                ];
+                $this->toastError = $msgMap[$re->getMessage()] ?? ('خطا در جابجایی: ' . $re->getMessage());
                 return;
             }
 
@@ -408,7 +351,7 @@ class ScheduleManager extends Component
             ]);
 
             $newProvider = User::find($newProviderId);
-            $newProviderName = $newProvider?->name ?? 'پزشک جدید';
+            $newProviderName = $newProvider?->name ?? 'ارائه‌دهنده جدید';
 
             $this->toastSuccess = sprintf(
                 'زمان نوبت با موفقیت به ساعت %s (%s) منتقل شد.',
@@ -434,10 +377,63 @@ class ScheduleManager extends Component
     {
         $this->modalProviderId = $providerId ?? $this->selectedProviderId;
         $this->modalServiceId = $this->selectedServiceId;
+
+        // Check if selected time slot is outside official work windows or during breaks
+        if (!empty($startTimeStr) && $this->modalProviderId) {
+            $bookingEngine = new BookingEngine();
+            $localDate = $this->getGregorianCarbon() ?? now();
+            $policy = $bookingEngine->resolveDayPolicy($this->modalServiceId, $this->modalProviderId, $localDate);
+
+            if ($policy['is_closed']) {
+                $this->toastError = 'ثبت نوبت در این تاریخ به دلیل تعطیلی یا غیرفعال بودن امکان‌پذیر نیست.';
+                return;
+            }
+
+            [$h, $m] = explode(':', $startTimeStr);
+            $slotStart = $localDate->copy()->setTime((int)$h, (int)$m);
+            $wWindows = $policy['work_windows'] ?? [];
+
+            $inWorkWindow = false;
+            foreach ($wWindows as $w) {
+                $wS = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $w['start'], $slotStart->getTimezone());
+                $wE = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $w['end'], $slotStart->getTimezone());
+                if ($slotStart->gte($wS) && $slotStart->lt($wE)) {
+                    $inWorkWindow = true;
+                    break;
+                }
+            }
+
+            if (!empty($wWindows) && !$inWorkWindow) {
+                $this->toastError = 'امکان ثبت نوبت جدید خارج از ساعات کاری رسمی ارائه دهنده وجود ندارد.';
+                return;
+            }
+
+            if ($this->modalServiceId) {
+                $dur = max(5, (int)($policy['slot_duration_minutes'] ?? 30));
+                $slotEnd = $slotStart->copy()->addMinutes($dur);
+                $startUtc = $slotStart->copy()->timezone('UTC');
+                $endUtc = $slotEnd->copy()->timezone('UTC');
+
+                $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+                $statuses = (array) config('booking.capacity_consuming_statuses', [
+                    Appointment::STATUS_CONFIRMED,
+                    Appointment::STATUS_PENDING_PAYMENT,
+                    Appointment::STATUS_PENDING,
+                    Appointment::STATUS_DRAFT,
+                    Appointment::STATUS_DONE,
+                ]);
+
+                if ($syncService->isSyncBlocked($this->modalServiceId, $this->modalProviderId, $startUtc, $endUtc, $statuses)) {
+                    $this->toastError = 'امکان ثبت نوبت در این ساعت به دلیل رزرو بودن سرویس هماهنگ‌شده وجود ندارد.';
+                    return;
+                }
+            }
+        }
+
         $this->modalClientId = null;
         $this->modalClientSearch = '';
         $this->modalStartTime = $startTimeStr;
-        $this->modalStatus = Appointment::STATUS_CONFIRMED;
+        $this->modalStatus = Appointment::STATUS_DRAFT;
 
         if (!empty($startTimeStr)) {
             [$h, $m] = explode(':', $startTimeStr);
@@ -498,35 +494,6 @@ class ScheduleManager extends Component
                 return;
             }
 
-            $bookingEngine = new BookingEngine();
-            $policy = $bookingEngine->resolveDayPolicy($this->modalServiceId, $this->modalProviderId, $localDate);
-
-            if ($policy['is_closed']) {
-                $this->modalError = 'پزشک انتخابی در این روز برنامه کاری ندارد.';
-                return;
-            }
-
-            // Check capacity per day
-            $capacityPerDay = $policy['capacity_per_day'] ?? null;
-            if ($capacityPerDay !== null && (int)$capacityPerDay > 0) {
-                $startUtcOfDay = $localDate->copy()->timezone('UTC');
-                $endUtcOfDay = $localDate->copy()->endOfDay()->timezone('UTC');
-                $dailyBookedCount = Appointment::query()
-                    ->where('provider_user_id', $this->modalProviderId)
-                    ->whereNotIn('status', [
-                        Appointment::STATUS_CANCELED_BY_ADMIN,
-                        Appointment::STATUS_CANCELED_BY_CLIENT,
-                    ])
-                    ->where('start_at_utc', '<=', $endUtcOfDay)
-                    ->where('end_at_utc', '>=', $startUtcOfDay)
-                    ->count();
-
-                if ($dailyBookedCount >= (int)$capacityPerDay) {
-                    $this->modalError = sprintf('ظرفیت کل روزانه پزشک تکمیل است (حداکثر %d نوبت در روز).', (int)$capacityPerDay);
-                    return;
-                }
-            }
-
             [$sH, $sM] = explode(':', $this->modalStartTime);
             $startLocal = $localDate->copy()->setTime((int)$sH, (int)$sM, 0);
 
@@ -534,24 +501,68 @@ class ScheduleManager extends Component
                 [$eH, $eM] = explode(':', $this->modalEndTime);
                 $endLocal = $localDate->copy()->setTime((int)$eH, (int)$eM, 0);
             } else {
+                $bookingEngine = new BookingEngine();
+                $policy = $bookingEngine->resolveDayPolicy($this->modalServiceId, $this->modalProviderId, $localDate);
                 $dur = max(5, (int)($policy['slot_duration_minutes'] ?? 30));
                 $endLocal = $startLocal->copy()->addMinutes($dur);
             }
 
-            $startUtc = $startLocal->copy()->timezone('UTC');
-            $endUtc = $endLocal->copy()->timezone('UTC');
+            // Validate against provider work windows
+            $bookingEngine = new BookingEngine();
+            $policy = $bookingEngine->resolveDayPolicy($this->modalServiceId, $this->modalProviderId, $localDate);
 
-            $appointment = Appointment::create([
-                'service_id' => $this->modalServiceId,
-                'provider_user_id' => $this->modalProviderId,
-                'client_id' => $this->modalClientId,
-                'status' => $this->modalStatus ?: Appointment::STATUS_CONFIRMED,
-                'start_at_utc' => $startUtc,
-                'end_at_utc' => $endUtc,
-                'created_by_type' => Appointment::CREATED_BY_OPERATOR,
-                'created_by_user_id' => Auth::id(),
-                'notes' => $this->modalNotes,
+            if ($policy['is_closed']) {
+                $this->modalError = 'ثبت نوبت در این تاریخ به دلیل تعطیلی ارائه دهنده امکان‌پذیر نیست.';
+                return;
+            }
+
+            $wWindows = $policy['work_windows'] ?? [];
+            if (!empty($wWindows)) {
+                $inWorkWindow = false;
+                foreach ($wWindows as $w) {
+                    $wS = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $w['start'], $startLocal->getTimezone());
+                    $wE = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $w['end'], $startLocal->getTimezone());
+                    if ($startLocal->gte($wS) && $endLocal->lte($wE)) {
+                        $inWorkWindow = true;
+                        break;
+                    }
+                }
+
+                if (!$inWorkWindow) {
+                    $this->modalError = 'ثبت نوبت در این ساعت به دلیل قرارگیری خارج از ساعات کاری رسمی ارائه دهنده امکان‌پذیر نیست.';
+                    return;
+                }
+            }
+
+            $startUtc = $startLocal->copy()->timezone('UTC');
+            $endUtc   = $endLocal->copy()->timezone('UTC');
+
+            $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+            $statuses = (array) config('booking.capacity_consuming_statuses', [
+                Appointment::STATUS_CONFIRMED,
+                Appointment::STATUS_PENDING_PAYMENT,
+                Appointment::STATUS_PENDING,
+                Appointment::STATUS_DRAFT,
+                Appointment::STATUS_DONE,
             ]);
+
+            if ($syncService->isSyncBlocked($this->modalServiceId, $this->modalProviderId, $startUtc, $endUtc, $statuses)) {
+                $this->modalError = 'ثبت نوبت در این زمان امکان‌پذیر نیست؛ یک سرویس هماهنگ‌شده قبلاً در این بازه زمانی رزرو شده است.';
+                return;
+            }
+
+            $status = !empty($this->modalStatus) ? $this->modalStatus : null;
+
+            $appointmentService->createAppointmentByOperator(
+                serviceId: $this->modalServiceId,
+                providerUserId: $this->modalProviderId,
+                clientId: $this->modalClientId,
+                startAtUtcIso: $startUtc->toIso8601String(),
+                endAtUtcIso: $endUtc->toIso8601String(),
+                createdByUserId: Auth::id(),
+                notes: $this->modalNotes,
+                status: $status
+            );
 
             $this->closeModal();
             $this->toastSuccess = 'نوبت با موفقیت ثبت شد.';
@@ -871,7 +882,8 @@ class ScheduleManager extends Component
             $activeService = BookingService::find($this->selectedServiceId);
             if ($activeService && !$activeService->custom_schedule_enabled) {
                 $isStepLocked = true;
-                $pServicePolicy = $bookingEngine->resolveDayPolicy($activeService->id, Auth::id() ?? 1, $localDate);
+                $providerIdForStep = $this->selectedProviderId ?? Auth::id() ?? 1;
+                $pServicePolicy = $bookingEngine->resolveDayPolicy($activeService->id, $providerIdForStep, $localDate);
                 $this->timeStepMinutes = max(5, (int)($pServicePolicy['slot_duration_minutes'] ?? 30));
             }
         }
@@ -888,20 +900,31 @@ class ScheduleManager extends Component
             fn($v) => $v > 0
         ));
 
-        $providersQuery = User::query();
+        $baseProvidersQuery = User::query();
 
         if (!empty($roleIds)) {
-            $providersQuery->whereHas('roles', fn($r) => $r->whereIn('id', $roleIds));
+            $baseProvidersQuery->whereHas('roles', fn($r) => $r->whereIn('id', $roleIds));
         } else {
-            $providersQuery->whereIn('id', function ($q) {
+            $baseProvidersQuery->whereIn('id', function ($q) {
                 $q->select('provider_user_id')->from('booking_service_providers')->where('is_active', true);
             });
         }
 
         if (!$this->isAdminUser($user) && !$user->can('booking.appointments.view.all')) {
-            $providersQuery->where('id', $user->id);
+            $baseProvidersQuery->where('id', $user->id);
         }
 
+        $filterProviders = (clone $baseProvidersQuery)->orderBy('name')->get();
+
+        $providersQuery = clone $baseProvidersQuery;
+        if ($this->selectedServiceId) {
+            $providersQuery->whereIn('id', function ($q) {
+                $q->select('provider_user_id')
+                  ->from('booking_service_providers')
+                  ->where('service_id', $this->selectedServiceId)
+                  ->where('is_active', true);
+            });
+        }
         if ($this->selectedProviderId) {
             $providersQuery->where('id', $this->selectedProviderId);
         }
@@ -923,22 +946,16 @@ class ScheduleManager extends Component
             $weekAppointmentsQuery = Appointment::query()
                 ->with(['service', 'provider', 'client'])
                 ->where('start_at_utc', '<=', $weekEndUtc)
-                ->where('end_at_utc', '>=', $weekStartUtc)
-                ->whereNotIn('status', [
-                    Appointment::STATUS_CANCELED_BY_ADMIN,
-                    Appointment::STATUS_CANCELED_BY_CLIENT,
-                ]);
-
-            if ($this->selectedServiceId) {
-                $weekAppointmentsQuery->where('service_id', $this->selectedServiceId);
-            }
-            if ($this->statusFilter) {
-                $weekAppointmentsQuery->where('status', $this->statusFilter);
-            }
+                ->where('end_at_utc', '>=', $weekStartUtc);
 
             $allWeekAppointments = $weekAppointmentsQuery->get();
 
-            $totalAppointmentsCount = $allWeekAppointments->count();
+            $nonCanceledWeekAppts = $allWeekAppointments->whereNotIn('status', [
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+            ]);
+
+            $totalAppointmentsCount = $nonCanceledWeekAppts->count();
             $confirmedCount = $allWeekAppointments->where('status', Appointment::STATUS_CONFIRMED)->count();
             $draftCount = $allWeekAppointments->where('status', Appointment::STATUS_DRAFT)->count();
             $pendingCount = $allWeekAppointments->whereIn('status', [Appointment::STATUS_PENDING, Appointment::STATUS_PENDING_PAYMENT])->count();
@@ -951,10 +968,6 @@ class ScheduleManager extends Component
                 foreach ($weekDays as $wDay) {
                     $dayCarbon = $wDay['carbon'];
                     $serviceId = $this->selectedServiceId;
-                    if (!$serviceId) {
-                        $spRow = BookingServiceProvider::where('provider_user_id', $provider->id)->where('is_active', true)->first();
-                        $serviceId = $spRow?->service_id ?? ($services->first()?->id ?? 1);
-                    }
 
                     $policy = $bookingEngine->resolveDayPolicy($serviceId, (int)$provider->id, $dayCarbon);
                     $workWindows = $policy['work_windows'] ?? [];
@@ -1120,24 +1133,17 @@ class ScheduleManager extends Component
             $appointmentsQuery = Appointment::query()
                 ->with(['service', 'provider', 'client'])
                 ->where('start_at_utc', '<=', $endUtc)
-                ->where('end_at_utc', '>=', $startUtc)
-                ->whereNotIn('status', [
-                    Appointment::STATUS_CANCELED_BY_ADMIN,
-                    Appointment::STATUS_CANCELED_BY_CLIENT,
-                ]);
-
-            if ($this->selectedServiceId) {
-                $appointmentsQuery->where('service_id', $this->selectedServiceId);
-            }
-
-            if ($this->statusFilter) {
-                $appointmentsQuery->where('status', $this->statusFilter);
-            }
+                ->where('end_at_utc', '>=', $startUtc);
 
             $allAppointments = $appointmentsQuery->get();
 
-        // Dashboard Metrics
-        $totalAppointmentsCount = $allAppointments->count();
+        // Dashboard Metrics (Calculated on all non-canceled appointments)
+        $nonCanceledDayAppts = $allAppointments->whereNotIn('status', [
+            Appointment::STATUS_CANCELED_BY_ADMIN,
+            Appointment::STATUS_CANCELED_BY_CLIENT,
+        ]);
+
+        $totalAppointmentsCount = $nonCanceledDayAppts->count();
         $confirmedCount = $allAppointments->where('status', Appointment::STATUS_CONFIRMED)->count();
         $draftCount = $allAppointments->where('status', Appointment::STATUS_DRAFT)->count();
         $pendingCount = $allAppointments->whereIn('status', [Appointment::STATUS_PENDING, Appointment::STATUS_PENDING_PAYMENT])->count();
@@ -1149,10 +1155,6 @@ class ScheduleManager extends Component
 
         foreach ($providers as $p) {
             $svcId = $this->selectedServiceId;
-            if (!$svcId) {
-                $spRow = BookingServiceProvider::where('provider_user_id', $p->id)->where('is_active', true)->first();
-                $svcId = $spRow?->service_id ?? ($services->first()?->id ?? 1);
-            }
             $pPol = $bookingEngine->resolveDayPolicy($svcId, (int)$p->id, $localDate);
             if (!$pPol['is_closed'] && !empty($pPol['work_windows'])) {
                 foreach ($pPol['work_windows'] as $win) {
@@ -1216,11 +1218,6 @@ class ScheduleManager extends Component
 
         foreach ($providers as $provider) {
             $serviceId = $this->selectedServiceId;
-            if (!$serviceId) {
-                $spRow = BookingServiceProvider::where('provider_user_id', $provider->id)->where('is_active', true)->first();
-                $serviceId = $spRow?->service_id ?? ($services->first()?->id ?? 1);
-            }
-
             $policy = $bookingEngine->resolveDayPolicy($serviceId, (int)$provider->id, $localDate);
 
             // Effective Slot Duration: use timeStepMinutes when unlocked so UI toolbar step changes take immediate effect
@@ -1234,53 +1231,139 @@ class ScheduleManager extends Component
             $capacityPerDay = $policy['capacity_per_day'] ?? null;
             $workWindows = $policy['work_windows'] ?? [];
             $breaks = $policy['breaks'] ?? [];
+            $bufBefore = (int)($policy['buffer_before_minutes'] ?? 0);
+            $bufAfter = (int)($policy['buffer_after_minutes'] ?? 0);
+            $stepMinutes = max(5, $effectiveSlotDuration + $bufAfter);
             $isClosed = $policy['is_closed'] || empty($workWindows);
 
-            // Total booked appointments for this provider today
-            $providerAppointmentsToday = $allAppointments->where('provider_user_id', $provider->id);
-            $dailyBookedTotal = $providerAppointmentsToday->count();
+            // Total booked appointments for this provider and service today
+            $providerAppointmentsTodayQuery = $allAppointments
+                ->where('provider_user_id', $provider->id);
+            if ($serviceId) {
+                $providerAppointmentsTodayQuery = $providerAppointmentsTodayQuery->where('service_id', $serviceId);
+            }
+            $dailyBookedTotal = $providerAppointmentsTodayQuery->count();
             $dailyRemaining = ($capacityPerDay !== null && (int)$capacityPerDay > 0)
                 ? max(0, (int)$capacityPerDay - $dailyBookedTotal)
                 : null;
 
             // Dynamic Slots for Grid View
             $providerSlots = [];
-            if (!$isClosed) {
-                foreach ($workWindows as $win) {
-                    $winStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $win['start'], $scheduleTz);
-                    $winEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $win['end'], $scheduleTz);
+            $placedApptIds = [];
 
-                    if ($winEnd->lte($winStart)) continue;
+            // Calculate effective work windows merging official work windows and any appointments today
+            $rawWindows = $workWindows;
+            $providerApptsForWindows = $allAppointments->where('provider_user_id', $provider->id);
+            if ($this->selectedServiceId) {
+                $providerApptsForWindows = $providerApptsForWindows->where('service_id', $this->selectedServiceId);
+            }
 
-                    $cursor = $winStart->copy();
-                    while ($cursor->copy()->addMinutes($effectiveSlotDuration)->lte($winEnd)) {
-                        $slotStart = $cursor->copy();
-                        $slotEnd = $cursor->copy()->addMinutes($effectiveSlotDuration);
+            foreach ($providerApptsForWindows as $apt) {
+                if (in_array($apt->status, [Appointment::STATUS_CANCELED_BY_ADMIN, Appointment::STATUS_CANCELED_BY_CLIENT])) {
+                    continue;
+                }
+                $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
+                $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
+                $rawWindows[] = [
+                    'start' => $aptStartLocal->format('H:i'),
+                    'end' => $aptEndLocal->format('H:i'),
+                ];
+            }
 
-                        $inBreak = false;
-                        foreach ($breaks as $b) {
-                            $bStartStr = $b['start_local'] ?? null;
-                            $bEndStr = $b['end_local'] ?? null;
-                            if ($bStartStr && $bEndStr) {
-                                $bStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $bStartStr, $scheduleTz);
-                                $bEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $bEndStr, $scheduleTz);
-                                if ($slotStart->lt($bEnd) && $slotEnd->gt($bStart)) {
-                                    $inBreak = true;
+            usort($rawWindows, fn($a, $b) => strcmp($a['start'], $b['start']));
+            $mergedWindows = [];
+            foreach ($rawWindows as $w) {
+                if (empty($w['start']) || empty($w['end'])) continue;
+                if ($w['end'] <= $w['start']) continue;
+
+                if (empty($mergedWindows)) {
+                    $mergedWindows[] = $w;
+                } else {
+                    $lastIdx = count($mergedWindows) - 1;
+                    if ($w['start'] <= $mergedWindows[$lastIdx]['end']) {
+                        $mergedWindows[$lastIdx]['end'] = max($mergedWindows[$lastIdx]['end'], $w['end']);
+                    } else {
+                        $mergedWindows[] = $w;
+                    }
+                }
+            }
+
+            $effectiveWorkWindows = !empty($mergedWindows) ? $mergedWindows : $workWindows;
+            $hasEffectiveWindows = !empty($effectiveWorkWindows);
+
+            if ($hasEffectiveWindows) {
+                $isSlotBased = $serviceId ? !($policy['custom_schedule_enabled'] ?? false) : false;
+                if ($isSlotBased) {
+                    $engineSlots = $bookingEngine->generateSlots(
+                        serviceId: $serviceId,
+                        providerUserId: (int)$provider->id,
+                        fromLocalDate: $localDate->toDateString(),
+                        toLocalDate: $localDate->toDateString(),
+                        viewerTimezone: $scheduleTz,
+                        includePast: true
+                    );
+
+                    foreach ($engineSlots as $eSlot) {
+                        $slotStart = Carbon::parse($eSlot['start_at_view'], $scheduleTz);
+                        $slotEnd = Carbon::parse($eSlot['end_at_view'], $scheduleTz);
+                        $slotStartUtc = Carbon::parse($eSlot['start_at_utc']);
+                        $slotEndUtc = Carbon::parse($eSlot['end_at_utc']);
+
+                        $nowLocal = now($scheduleTz);
+                        $isPast = $slotEnd->lte($nowLocal) || ($slotStart->lt($nowLocal) && $localDate->isToday());
+
+                        $inWorkWindow = false;
+                        if (!$isClosed && !empty($workWindows)) {
+                            foreach ($workWindows as $w) {
+                                $wStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $w['start'], $scheduleTz);
+                                $wEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $w['end'], $scheduleTz);
+                                if ($slotStart->gte($wStart) && $slotEnd->lte($wEnd)) {
+                                    $inWorkWindow = true;
                                     break;
                                 }
                             }
                         }
 
-                        $slotStartUtc = $slotStart->copy()->timezone('UTC');
-                        $slotEndUtc = $slotEnd->copy()->timezone('UTC');
+                        $inBreak = $bookingEngine->isInBreak($slotStart, $slotEnd, $breaks);
 
-                        $slotAppts = $allAppointments->where('provider_user_id', $provider->id)
+                        $reqStartWithBuf = $slotStartUtc->copy()->subMinutes((int)($eSlot['buffer_before_minutes'] ?? 0));
+                        $reqEndWithBuf = $slotEndUtc->copy()->addMinutes((int)($eSlot['buffer_after_minutes'] ?? 0));
+
+                        $slotStartingAppts = $allAppointments->where('provider_user_id', $provider->id)
                             ->filter(function ($apt) use ($slotStartUtc, $slotEndUtc) {
-                                return $apt->start_at_utc < $slotEndUtc && $apt->end_at_utc > $slotStartUtc;
+                                return $apt->start_at_utc >= $slotStartUtc && $apt->start_at_utc < $slotEndUtc;
                             });
 
+                        $slotOverlappingAppts = $allAppointments->where('provider_user_id', $provider->id)
+                            ->filter(function ($apt) use ($reqStartWithBuf, $reqEndWithBuf) {
+                                return $apt->start_at_utc < $reqEndWithBuf && $apt->end_at_utc > $reqStartWithBuf;
+                            });
+
+                        $busySlotAppts = $slotOverlappingAppts->filter(function ($apt) use ($serviceId) {
+                            if ((int)$apt->service_id !== (int)$serviceId) {
+                                return false;
+                            }
+                            return !in_array($apt->status, [
+                                Appointment::STATUS_CANCELED_BY_ADMIN,
+                                Appointment::STATUS_CANCELED_BY_CLIENT,
+                            ]);
+                        });
+
+                        $displaySlotAppts = $slotOverlappingAppts->filter(function ($apt) {
+                            if ($this->selectedServiceId && (int)$apt->service_id !== (int)$this->selectedServiceId) {
+                                return false;
+                            }
+                            if ($this->statusFilter) {
+                                return $apt->status === $this->statusFilter;
+                            }
+                            return !in_array($apt->status, [
+                                Appointment::STATUS_CANCELED_BY_ADMIN,
+                                Appointment::STATUS_CANCELED_BY_CLIENT,
+                            ]);
+                        });
+
                         $formattedSlotAppts = [];
-                        foreach ($slotAppts as $apt) {
+                        foreach ($busySlotAppts as $apt) {
                             $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
                             $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
 
@@ -1299,28 +1382,111 @@ class ScheduleManager extends Component
                             ];
                         }
 
+                        $capacityPerSlot = (int)($eSlot['capacity_per_slot'] ?? 1);
                         $bookedCount = count($formattedSlotAppts);
-                        $slotRemaining = $capacityPerSlot > 0 ? max(0, $capacityPerSlot - $bookedCount) : null;
 
-                        if ($dailyRemaining !== null) {
-                            if ($slotRemaining === null) {
-                                $slotRemaining = $dailyRemaining;
-                            } else {
-                                $slotRemaining = min($slotRemaining, $dailyRemaining);
+                        if (!$inWorkWindow || $inBreak || $isPast) {
+                            $slotRemaining = 0;
+                        } else {
+                            $slotRemaining = $eSlot['remaining_capacity'];
+                            if ($dailyRemaining !== null) {
+                                if ($slotRemaining === null) {
+                                    $slotRemaining = $dailyRemaining;
+                                } else {
+                                    $slotRemaining = min($slotRemaining, $dailyRemaining);
+                                }
                             }
                         }
 
-                        // Calculate free time segments inside this slot
-                        $freeSegments = $this->calculateFreeSegments($slotStart, $slotEnd, $formattedSlotAppts, $breaks);
+                        $freeSegments = ($inWorkWindow && !$inBreak && !$isPast)
+                            ? $this->calculateFreeSegments($slotStart, $slotEnd, $formattedSlotAppts, $breaks)
+                            : [];
                         $totalFreeMinsInSlot = array_sum(array_column($freeSegments, 'duration_minutes'));
 
-                        $isFull = ($capacityPerSlot > 0 && $bookedCount >= $capacityPerSlot)
-                            || ($dailyRemaining !== null && $dailyRemaining <= 0)
-                            || ($totalFreeMinsInSlot <= 0 && !empty($formattedSlotAppts));
+                        if (!$inWorkWindow || $inBreak || $isPast) {
+                            $isFull = true;
+                        } elseif ($capacityPerSlot > 1) {
+                            $isFull = ($bookedCount >= $capacityPerSlot)
+                                || ($eSlot['capacity_per_day_remaining'] !== null && $eSlot['capacity_per_day_remaining'] <= 0);
+                        } else {
+                            $isFull = ($capacityPerSlot > 0 && $bookedCount >= $capacityPerSlot)
+                                || ($eSlot['capacity_per_day_remaining'] !== null && $eSlot['capacity_per_day_remaining'] <= 0)
+                                || ($totalFreeMinsInSlot <= 0 && !empty($formattedSlotAppts));
+                        }
 
-                        if (!$inBreak && $slotRemaining !== null) {
+                        if ($inWorkWindow && !$inBreak && !$isPast && $slotRemaining !== null) {
                             $totalRemainingCapacitySum += $slotRemaining;
                         }
+
+                        $slotItems = [];
+                        if ($capacityPerSlot <= 1) {
+                            if ($busySlotAppts->isEmpty() && $displaySlotAppts->isEmpty()) {
+                                if ($inWorkWindow && !$inBreak && !$isPast) {
+                                    if (!empty($eSlot['sync_blocked']) || ($eSlot['remaining_capacity'] !== null && $eSlot['remaining_capacity'] <= 0)) {
+                                        $slotItems[] = [
+                                            'type' => 'closed_slot',
+                                            'start_time' => $slotStart->format('H:i'),
+                                            'end_time' => $slotEnd->format('H:i'),
+                                            'label' => !empty($eSlot['sync_blocked']) ? 'تکمیل ظرفیت (هماهنگ‌شده)' : 'تکمیل ظرفیت',
+                                        ];
+                                    } else {
+                                        $slotItems[] = [
+                                            'type' => 'empty_slot',
+                                            'start_time' => $slotStart->format('H:i'),
+                                            'end_time' => $slotEnd->format('H:i'),
+                                        ];
+                                    }
+                                } else {
+                                    $label = $isPast ? 'زمان گذشته' : ($inBreak ? 'زمان استراحت' : 'خارج از ساعات کاری');
+                                    $slotItems[] = [
+                                        'type' => 'closed_slot',
+                                        'start_time' => $slotStart->format('H:i'),
+                                        'end_time' => $slotEnd->format('H:i'),
+                                        'label' => $label,
+                                    ];
+                                }
+                            } else {
+                                foreach ($displaySlotAppts as $apt) {
+                                    if (in_array($apt->id, $placedApptIds)) {
+                                        continue;
+                                    }
+                                    $placedApptIds[] = $apt->id;
+
+                                    $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
+                                    $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
+                                    $slotItems[] = [
+                                        'type' => 'appointment',
+                                        'start_time' => $aptStartLocal->format('H:i'),
+                                        'end_time' => $aptEndLocal->format('H:i'),
+                                        'data' => [
+                                            'id' => $apt->id,
+                                            'client_name' => $apt->client?->full_name ?? 'بیمار جدید',
+                                            'client_phone' => $apt->client?->phone ?? '',
+                                            'service_name' => $apt->service?->name ?? 'خدمت عمومی',
+                                            'status' => $apt->status,
+                                            'start_time' => $aptStartLocal->format('H:i'),
+                                            'end_time' => $aptEndLocal->format('H:i'),
+                                            'notes' => $apt->notes,
+                                        ],
+                                    ];
+                                }
+
+                                if ($inWorkWindow && !$inBreak && !$isPast) {
+                                    foreach ($freeSegments as $seg) {
+                                        $slotItems[] = [
+                                            'type' => 'free_segment',
+                                            'start_time' => $seg['start_time'],
+                                            'end_time' => $seg['end_time'],
+                                            'data' => $seg,
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+
+                        usort($slotItems, function ($a, $b) {
+                            return strcmp($a['start_time'], $b['start_time']);
+                        });
 
                         $providerSlots[] = [
                             'start_time' => $slotStart->format('H:i'),
@@ -1333,44 +1499,289 @@ class ScheduleManager extends Component
                             'free_segments' => $freeSegments,
                             'is_full' => $isFull,
                             'appointments' => $formattedSlotAppts,
+                            'items' => $slotItems,
                         ];
+                    }
+                } else {
+                    foreach ($effectiveWorkWindows as $win) {
+                        $winStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $win['start'], $scheduleTz);
+                        $winEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $win['end'], $scheduleTz);
 
-                        $cursor->addMinutes($effectiveSlotDuration);
+                        if ($winEnd->lte($winStart)) continue;
+
+                        $cursor = $winStart->copy();
+                        while ($cursor->copy()->addMinutes($effectiveSlotDuration)->lte($winEnd)) {
+                            $slotStart = $cursor->copy();
+                            $slotEnd = $cursor->copy()->addMinutes($effectiveSlotDuration);
+
+                            $inWorkWindow = false;
+                            if (!$isClosed && !empty($workWindows)) {
+                                foreach ($workWindows as $w) {
+                                    $wStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $w['start'], $scheduleTz);
+                                    $wEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $w['end'], $scheduleTz);
+                                    if ($slotStart->gte($wStart) && $slotEnd->lte($wEnd)) {
+                                        $inWorkWindow = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            $inBreak = false;
+                            foreach ($breaks as $b) {
+                                $bStartStr = $b['start_local'] ?? null;
+                                $bEndStr = $b['end_local'] ?? null;
+                                if ($bStartStr && $bEndStr) {
+                                    $bStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $bStartStr, $scheduleTz);
+                                    $bEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $bEndStr, $scheduleTz);
+                                    if ($slotStart->lt($bEnd) && $slotEnd->gt($bStart)) {
+                                        $inBreak = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            $slotStartUtc = $slotStart->copy()->timezone('UTC');
+                            $slotEndUtc = $slotEnd->copy()->timezone('UTC');
+                            $reqStartWithBuf = $slotStartUtc->copy()->subMinutes($bufBefore);
+                            $reqEndWithBuf = $slotEndUtc->copy()->addMinutes($bufAfter);
+
+                            $slotStartingAppts = $allAppointments->where('provider_user_id', $provider->id)
+                                ->filter(function ($apt) use ($slotStartUtc, $slotEndUtc) {
+                                    return $apt->start_at_utc >= $slotStartUtc && $apt->start_at_utc < $slotEndUtc;
+                                });
+
+                            $slotOverlappingAppts = $allAppointments->where('provider_user_id', $provider->id)
+                                ->filter(function ($apt) use ($reqStartWithBuf, $reqEndWithBuf) {
+                                    return $apt->start_at_utc < $reqEndWithBuf && $apt->end_at_utc > $reqStartWithBuf;
+                                });
+
+                            $busySlotAppts = $slotOverlappingAppts->filter(function ($apt) use ($serviceId) {
+                                if ($serviceId && (int)$apt->service_id !== (int)$serviceId) {
+                                    return false;
+                                }
+                                return !in_array($apt->status, [
+                                    Appointment::STATUS_CANCELED_BY_ADMIN,
+                                    Appointment::STATUS_CANCELED_BY_CLIENT,
+                                ]);
+                            });
+
+                            $displaySlotAppts = $slotOverlappingAppts->filter(function ($apt) {
+                                if ($this->selectedServiceId && (int)$apt->service_id !== (int)$this->selectedServiceId) {
+                                    return false;
+                                }
+                                if ($this->statusFilter) {
+                                    return $apt->status === $this->statusFilter;
+                                }
+                                return !in_array($apt->status, [
+                                    Appointment::STATUS_CANCELED_BY_ADMIN,
+                                    Appointment::STATUS_CANCELED_BY_CLIENT,
+                                ]);
+                            });
+
+                            $formattedSlotAppts = [];
+                            foreach ($busySlotAppts as $apt) {
+                                $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
+                                $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
+
+                                $formattedSlotAppts[] = [
+                                    'id' => $apt->id,
+                                    'client_name' => $apt->client?->full_name ?? 'بیمار جدید',
+                                    'client_phone' => $apt->client?->phone ?? '',
+                                    'service_name' => $apt->service?->name ?? 'خدمت عمومی',
+                                    'status' => $apt->status,
+                                    'start_time' => $aptStartLocal->format('H:i'),
+                                    'end_time' => $aptEndLocal->format('H:i'),
+                                    'start_time_carbon' => $aptStartLocal,
+                                    'end_time_carbon' => $aptEndLocal,
+                                    'duration_minutes' => $aptStartLocal->diffInMinutes($aptEndLocal),
+                                    'notes' => $apt->notes,
+                                ];
+                            }
+
+                            $bookedCount = count($formattedSlotAppts);
+                            $nowLocal = now($scheduleTz);
+                            $isPast = $slotEnd->lte($nowLocal) || ($slotStart->lt($nowLocal) && $localDate->isToday());
+
+                            if (!$inWorkWindow || $inBreak || $isPast) {
+                                $slotRemaining = 0;
+                            } else {
+                                $slotRemaining = $capacityPerSlot > 0 ? max(0, $capacityPerSlot - $bookedCount) : null;
+                                if ($dailyRemaining !== null) {
+                                    if ($slotRemaining === null) {
+                                        $slotRemaining = $dailyRemaining;
+                                    } else {
+                                        $slotRemaining = min($slotRemaining, $dailyRemaining);
+                                    }
+                                }
+                            }
+
+                            $freeSegments = ($inWorkWindow && !$inBreak && !$isPast)
+                                ? $this->calculateFreeSegments($slotStart, $slotEnd, $formattedSlotAppts, $breaks)
+                                : [];
+                            $totalFreeMinsInSlot = array_sum(array_column($freeSegments, 'duration_minutes'));
+
+                            if (!$inWorkWindow || $inBreak || $isPast) {
+                                $isFull = true;
+                            } elseif ($capacityPerSlot > 1) {
+                                $isFull = ($bookedCount >= $capacityPerSlot)
+                                    || ($dailyRemaining !== null && $dailyRemaining <= 0);
+                            } else {
+                                $isFull = ($capacityPerSlot > 0 && $bookedCount >= $capacityPerSlot)
+                                    || ($dailyRemaining !== null && $dailyRemaining <= 0)
+                                    || ($totalFreeMinsInSlot <= 0 && !empty($formattedSlotAppts));
+                            }
+
+                            if ($inWorkWindow && !$inBreak && !$isPast && $slotRemaining !== null) {
+                                $totalRemainingCapacitySum += $slotRemaining;
+                            }
+
+                            $slotItems = [];
+                            if ($capacityPerSlot <= 1) {
+                                if ($busySlotAppts->isEmpty() && $displaySlotAppts->isEmpty()) {
+                                    if ($inWorkWindow && !$inBreak && !$isPast) {
+                                        $slotItems[] = [
+                                            'type' => 'empty_slot',
+                                            'start_time' => $slotStart->format('H:i'),
+                                            'end_time' => $slotEnd->format('H:i'),
+                                        ];
+                                    } else {
+                                        $label = $isPast ? 'زمان گذشته' : ($inBreak ? 'زمان استراحت' : 'خارج از ساعات کاری');
+                                        $slotItems[] = [
+                                            'type' => 'closed_slot',
+                                            'start_time' => $slotStart->format('H:i'),
+                                            'end_time' => $slotEnd->format('H:i'),
+                                            'label' => $label,
+                                        ];
+                                    }
+                                } else {
+                                    foreach ($displaySlotAppts as $apt) {
+                                        if (in_array($apt->id, $placedApptIds)) {
+                                            continue;
+                                        }
+                                        $placedApptIds[] = $apt->id;
+
+                                        $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
+                                        $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
+                                        $slotItems[] = [
+                                            'type' => 'appointment',
+                                            'start_time' => $aptStartLocal->format('H:i'),
+                                            'end_time' => $aptEndLocal->format('H:i'),
+                                            'data' => [
+                                                'id' => $apt->id,
+                                                'client_name' => $apt->client?->full_name ?? 'بیمار جدید',
+                                                'client_phone' => $apt->client?->phone ?? '',
+                                                'service_name' => $apt->service?->name ?? 'خدمت عمومی',
+                                                'status' => $apt->status,
+                                                'start_time' => $aptStartLocal->format('H:i'),
+                                                'end_time' => $aptEndLocal->format('H:i'),
+                                                'notes' => $apt->notes,
+                                            ],
+                                        ];
+                                    }
+
+                                    if ($inWorkWindow && !$inBreak && !$isPast) {
+                                        foreach ($freeSegments as $seg) {
+                                            $slotItems[] = [
+                                                'type' => 'free_segment',
+                                                'start_time' => $seg['start_time'],
+                                                'end_time' => $seg['end_time'],
+                                                'data' => $seg,
+                                            ];
+                                        }
+                                    }
+                                }
+                            }
+
+                            usort($slotItems, function ($a, $b) {
+                                return strcmp($a['start_time'], $b['start_time']);
+                            });
+
+                            $providerSlots[] = [
+                                'start_time' => $slotStart->format('H:i'),
+                                'end_time' => $slotEnd->format('H:i'),
+                                'in_break' => $inBreak,
+                                'capacity' => $capacityPerSlot,
+                                'booked_count' => $bookedCount,
+                                'remaining_capacity' => $slotRemaining,
+                                'total_free_minutes' => $totalFreeMinsInSlot,
+                                'free_segments' => $freeSegments,
+                                'is_full' => $isFull,
+                                'appointments' => $formattedSlotAppts,
+                                'items' => $slotItems,
+                            ];
+
+                            $cursor->addMinutes($stepMinutes);
+                        }
                     }
                 }
-            } elseif ($providerAppointmentsToday->count() > 0) {
-                foreach ($providerAppointmentsToday as $apt) {
-                    $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
-                    $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
-
-                    $formattedSlotAppts = [[
-                        'id' => $apt->id,
-                        'client_name' => $apt->client?->full_name ?? 'بیمار جدید',
-                        'client_phone' => $apt->client?->phone ?? '',
-                        'service_name' => $apt->service?->name ?? 'خدمت عمومی',
-                        'status' => $apt->status,
-                        'start_time' => $aptStartLocal->format('H:i'),
-                        'end_time' => $aptEndLocal->format('H:i'),
-                        'start_time_carbon' => $aptStartLocal,
-                        'end_time_carbon' => $aptEndLocal,
-                        'duration_minutes' => $aptStartLocal->diffInMinutes($aptEndLocal),
-                        'notes' => $apt->notes,
-                    ]];
-
-                    $providerSlots[] = [
-                        'start_time' => $aptStartLocal->format('H:i'),
-                        'end_time' => $aptEndLocal->format('H:i'),
-                        'in_break' => false,
-                        'capacity' => 1,
-                        'booked_count' => 1,
-                        'remaining_capacity' => 0,
-                        'total_free_minutes' => 0,
-                        'free_segments' => [],
-                        'is_full' => true,
-                        'appointments' => $formattedSlotAppts,
-                    ];
-                }
             }
+
+            // Safety catch: Ensure all active appointments for this provider are placed in a slot
+            $unplacedAppts = $allAppointments->where('provider_user_id', $provider->id)->filter(function ($apt) use ($placedApptIds) {
+                if ($this->selectedServiceId && (int)$apt->service_id !== (int)$this->selectedServiceId) {
+                    return false;
+                }
+                if ($this->statusFilter && $apt->status !== $this->statusFilter) {
+                    return false;
+                }
+                if (in_array($apt->status, [Appointment::STATUS_CANCELED_BY_ADMIN, Appointment::STATUS_CANCELED_BY_CLIENT])) {
+                    return false;
+                }
+                return !in_array($apt->id, $placedApptIds);
+            });
+
+            foreach ($unplacedAppts as $apt) {
+                $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
+                $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
+                $placedApptIds[] = $apt->id;
+
+                $formattedUnplaced = [[
+                    'id' => $apt->id,
+                    'client_name' => $apt->client?->full_name ?? 'بیمار جدید',
+                    'client_phone' => $apt->client?->phone ?? '',
+                    'service_name' => $apt->service?->name ?? 'خدمت عمومی',
+                    'status' => $apt->status,
+                    'start_time' => $aptStartLocal->format('H:i'),
+                    'end_time' => $aptEndLocal->format('H:i'),
+                    'start_time_carbon' => $aptStartLocal,
+                    'end_time_carbon' => $aptEndLocal,
+                    'duration_minutes' => $aptStartLocal->diffInMinutes($aptEndLocal),
+                    'notes' => $apt->notes,
+                ]];
+
+                $providerSlots[] = [
+                    'start_time' => $aptStartLocal->format('H:i'),
+                    'end_time' => $aptEndLocal->format('H:i'),
+                    'in_break' => false,
+                    'capacity' => 1,
+                    'booked_count' => 1,
+                    'remaining_capacity' => 0,
+                    'total_free_minutes' => 0,
+                    'free_segments' => [],
+                    'is_full' => true,
+                    'appointments' => $formattedUnplaced,
+                    'items' => [[
+                        'type' => 'appointment',
+                        'start_time' => $aptStartLocal->format('H:i'),
+                        'end_time' => $aptEndLocal->format('H:i'),
+                        'data' => [
+                            'id' => $apt->id,
+                            'client_name' => $apt->client?->full_name ?? 'بیمار جدید',
+                            'client_phone' => $apt->client?->phone ?? '',
+                            'service_name' => $apt->service?->name ?? 'خدمت عمومی',
+                            'status' => $apt->status,
+                            'start_time' => $aptStartLocal->format('H:i'),
+                            'end_time' => $aptEndLocal->format('H:i'),
+                            'notes' => $apt->notes,
+                        ],
+                    ]],
+                ];
+            }
+
+            // Always sort provider slots chronologically by start_time
+            usort($providerSlots, function ($a, $b) {
+                return strcmp($a['start_time'], $b['start_time']);
+            });
 
             // Mapped Appointments for Gantt Timeline Track
             $providerAppointments = $allAppointments->where('provider_user_id', $provider->id);
@@ -1481,7 +1892,7 @@ class ScheduleManager extends Component
                             'width_percent' => $widthPercent,
                         ];
 
-                        $cursor->addMinutes($effectiveSlotDuration);
+                        $cursor->addMinutes($stepMinutes);
                     }
                 }
             }
@@ -1513,6 +1924,39 @@ class ScheduleManager extends Component
                 ->get();
         }
 
+        $selectedModalClient = null;
+        if ($this->showModal && $this->modalClientId) {
+            $selectedModalClient = Client::find($this->modalClientId);
+        }
+
+        \Illuminate\Support\Facades\Log::info('[ScheduleManager::render]', [
+            'calendarView' => $this->calendarView,
+            'viewMode' => $this->viewMode,
+            'selectedServiceId' => $this->selectedServiceId,
+            'selectedProviderId' => $this->selectedProviderId,
+            'timeStepMinutes' => $this->timeStepMinutes,
+            'isStepLocked' => $isStepLocked,
+            'activeService' => $activeService?->name,
+            'providerSchedulesCount' => count($providerSchedules),
+            'schedules' => array_map(function ($p) {
+                return [
+                    'provider' => $p['provider']->name,
+                    'policy' => [
+                        'slot_duration_minutes' => $p['policy']['slot_duration_minutes'] ?? null,
+                        'buffer_before_minutes' => $p['policy']['buffer_before_minutes'] ?? null,
+                        'buffer_after_minutes' => $p['policy']['buffer_after_minutes'] ?? null,
+                    ],
+                    'slots' => array_map(function ($s) {
+                        return [
+                            'start_time' => $s['start_time'],
+                            'end_time' => $s['end_time'],
+                            'items' => array_map(fn($it) => $it['type'] . ' (' . $it['start_time'] . '-' . $it['end_time'] . ')', $s['items'] ?? []),
+                        ];
+                    }, $p['slots'] ?? []),
+                ];
+            }, $providerSchedules ?? []),
+        ]);
+
         return view('booking::livewire.user.schedule-manager', [
             'localDate' => $localDate,
             'dayOfWeekJalali' => $dayOfWeekJalali,
@@ -1522,9 +1966,11 @@ class ScheduleManager extends Component
             'monthData' => $monthData,
             'services' => $services,
             'providers' => $providers,
+            'filterProviders' => $filterProviders,
             'timelineHeaders' => $timelineHeaders,
             'providerSchedules' => $providerSchedules,
             'clientsForModal' => $clientsForModal,
+            'selectedModalClient' => $selectedModalClient,
             'gridStartHour' => $gridStartHour,
             'gridEndHour' => $gridEndHour,
             'isStepLocked' => $isStepLocked,

@@ -17,6 +17,37 @@ use Illuminate\Support\Arr;
 
 class ServiceAvailabilityController extends Controller
 {
+    protected function getScopeContext(User $user, BookingService $service): array
+    {
+        $settings = BookingSetting::current();
+        $adminOwnerIds = $this->getAdminOwnerIds();
+        $isAdminUser = $this->isAdminUser($user);
+        $isOwnerService = ((int)$service->owner_user_id === (int)$user->id);
+
+        if (! $isAdminUser && ! $isOwnerService) {
+            $sp = \Modules\Booking\Entities\BookingServiceProvider::query()
+                ->where('service_id', $service->id)
+                ->where('provider_user_id', $user->id)
+                ->first();
+
+            if ($sp) {
+                return [
+                    'scope_type' => BookingAvailabilityRule::SCOPE_SERVICE_PROVIDER,
+                    'scope_id'   => $sp->id,
+                    'is_provider_custom' => true,
+                    'sp'         => $sp,
+                ];
+            }
+        }
+
+        return [
+            'scope_type' => BookingAvailabilityRule::SCOPE_SERVICE,
+            'scope_id'   => $service->id,
+            'is_provider_custom' => false,
+            'sp'         => null,
+        ];
+    }
+
     public function edit(BookingService $service)
     {
         $user     = Auth::user();
@@ -27,17 +58,33 @@ class ServiceAvailabilityController extends Controller
             abort(403, 'You are not allowed to manage availability for this service.');
         }
 
+        $scopeCtx = $this->getScopeContext($user, $service);
+
         $rules = BookingAvailabilityRule::query()
-            ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
-            ->where('scope_id', $service->id)
+            ->where('scope_type', $scopeCtx['scope_type'])
+            ->where('scope_id', $scopeCtx['scope_id'])
             ->get()
             ->keyBy('weekday');
+
+        if ($scopeCtx['is_provider_custom'] && $rules->isEmpty()) {
+            $fallbackRules = BookingAvailabilityRule::query()
+                ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
+                ->where('scope_id', $service->id)
+                ->get()
+                ->keyBy('weekday');
+            if ($fallbackRules->isNotEmpty()) {
+                $rules = $fallbackRules;
+            }
+        }
 
         return view('booking::user.services.availability', compact('service', 'rules'));
     }
 
     public function update(Request $request, BookingService $service)
     {
+        $user = Auth::user();
+        $scopeCtx = $this->getScopeContext($user, $service);
+
         // --- normalize times before validation ---
         $rulesInput = (array) $request->input('rules', []);
 
@@ -81,6 +128,8 @@ class ServiceAvailabilityController extends Controller
             // ✅ اجازه 0 (برای نامحدود/اختیاری)
             'rules.*.capacity_per_slot' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'rules.*.capacity_per_day'  => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'rules.*.buffer_before_minutes' => ['nullable', 'integer', 'min:0', 'max:240'],
+            'rules.*.buffer_after_minutes'  => ['nullable', 'integer', 'min:0', 'max:240'],
         ]);
 
         $rules = $data['rules'] ?? [];
@@ -98,15 +147,19 @@ class ServiceAvailabilityController extends Controller
             $slotDur = Arr::get($ruleRow, 'slot_duration_minutes');
             $capSlot = Arr::get($ruleRow, 'capacity_per_slot');
             $capDay  = Arr::get($ruleRow, 'capacity_per_day');
+            $bufBefore = Arr::get($ruleRow, 'buffer_before_minutes');
+            $bufAfter  = Arr::get($ruleRow, 'buffer_after_minutes');
 
             $slotDur = ($slotDur === '' || $slotDur === null) ? null : (int) $slotDur;
             $capSlot = ($capSlot === '' || $capSlot === null) ? null : (int) $capSlot; // ✅ 0 حفظ می‌شود
             $capDay  = ($capDay === ''  || $capDay === null)  ? null : (int) $capDay;  // ✅ 0 حفظ می‌شود
+            $bufBefore = ($bufBefore === '' || $bufBefore === null) ? null : (int) $bufBefore;
+            $bufAfter  = ($bufAfter === ''  || $bufAfter === null)  ? null : (int) $bufAfter;
 
             $payload = [
-                'scope_type' => BookingAvailabilityRule::SCOPE_SERVICE,
-                'scope_id' => $service->id,
-                'weekday' => $weekday,
+                'scope_type' => $scopeCtx['scope_type'],
+                'scope_id'   => $scopeCtx['scope_id'],
+                'weekday'    => $weekday,
 
                 'is_closed' => ((string)Arr::get($ruleRow, 'is_closed', '0') === '1'),
 
@@ -120,6 +173,8 @@ class ServiceAvailabilityController extends Controller
                 'slot_duration_minutes' => $slotDur,
                 'capacity_per_slot' => $capSlot,
                 'capacity_per_day'  => $capDay,
+                'buffer_before_minutes' => $bufBefore,
+                'buffer_after_minutes'  => $bufAfter,
             ];
 
             // ✅ allNull فقط با null چک شود، نه falsy (تا 0 باعث حذف نشود)
@@ -130,11 +185,13 @@ class ServiceAvailabilityController extends Controller
                 $payload['breaks_json'] === null &&
                 $payload['slot_duration_minutes'] === null &&
                 $payload['capacity_per_slot'] === null &&
-                $payload['capacity_per_day'] === null;
+                $payload['capacity_per_day'] === null &&
+                $payload['buffer_before_minutes'] === null &&
+                $payload['buffer_after_minutes'] === null;
 
             $existing = BookingAvailabilityRule::query()
-                ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
-                ->where('scope_id', $service->id)
+                ->where('scope_type', $scopeCtx['scope_type'])
+                ->where('scope_id', $scopeCtx['scope_id'])
                 ->where('weekday', $weekday)
                 ->first();
 
@@ -145,21 +202,14 @@ class ServiceAvailabilityController extends Controller
 
             BookingAvailabilityRule::query()->updateOrCreate(
                 [
-                    'scope_type' => BookingAvailabilityRule::SCOPE_SERVICE,
-                    'scope_id' => $service->id,
-                    'weekday' => $weekday,
+                    'scope_type' => $scopeCtx['scope_type'],
+                    'scope_id'   => $scopeCtx['scope_id'],
+                    'weekday'    => $weekday,
                 ],
                 $payload
             );
         }
 
-        // Automatically sync custom_schedule_enabled flag on service
-        $hasCustomRules = BookingAvailabilityRule::query()
-            ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
-            ->where('scope_id', $service->id)
-            ->exists();
-
-        $service->update(['custom_schedule_enabled' => $hasCustomRules]);
 
         return redirect()
             ->route('user.booking.services.availability.edit', $service)

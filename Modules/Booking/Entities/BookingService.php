@@ -48,6 +48,8 @@ class BookingService extends Model
         'client_profile_required_fields',
         'provider_can_customize',
         'custom_schedule_enabled',
+        'buffer_before_minutes',
+        'buffer_after_minutes',
         'custom_prices',
         'installments',
         'installment_settings',

@@ -44,6 +44,11 @@
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     بازگشت
                 </a>
+                <a href="{{ route('user.booking.providers.exceptions.index', $provider) }}"
+                   class="flex-1 sm:flex-none justify-center px-4 py-2 text-sm font-medium rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-200 dark:hover:bg-rose-900/50 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    روزهای خاص / تعطیلات
+                </a>
             </div>
         </div>
 
@@ -80,6 +85,8 @@
                         $dur      = old('rules.'.$d.'.slot_duration_minutes', $r?->slot_duration_minutes);
                         $capSlot  = old('rules.'.$d.'.capacity_per_slot', $r?->capacity_per_slot);
                         $capDay   = old('rules.'.$d.'.capacity_per_day', $r?->capacity_per_day);
+                        $bufBefore = old('rules.'.$d.'.buffer_before_minutes', $r?->buffer_before_minutes);
+                        $bufAfter  = old('rules.'.$d.'.buffer_after_minutes', $r?->buffer_after_minutes);
 
                         $breaksArray = old('rules.'.$d.'.breaks');
                         if (is_null($breaksArray) && is_array($r?->breaks_json)) {
@@ -157,7 +164,7 @@
                              class="p-4 sm:p-6 space-y-6">
 
                             {{-- ردیف تنظیمات اصلی --}}
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 sm:gap-6">
+                            <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
                                 <div>
                                     <label class="{{ $labelClass }}">شروع کار</label>
                                     <input type="text" data-jdp-only-time name="rules[{{ $d }}][work_start_local]"
@@ -182,10 +189,22 @@
                                            class="{{ $inputClass }}" min="1" placeholder="1" value="{{ $capSlot }}">
                                 </div>
 
-                                <div class="col-span-2 md:col-span-1">
+                                <div>
                                     <label class="{{ $labelClass }}">ظرفیت روز (اختیاری)</label>
                                     <input type="number" name="rules[{{ $d }}][capacity_per_day]"
                                            class="{{ $inputClass }}" min="0" placeholder="20" value="{{ $capDay }}">
+                                </div>
+
+                                <div>
+                                    <label class="{{ $labelClass }}">استراحت قبل (دقیقه)</label>
+                                    <input type="number" name="rules[{{ $d }}][buffer_before_minutes]"
+                                           class="{{ $inputClass }}" min="0" placeholder="0" value="{{ $bufBefore }}">
+                                </div>
+
+                                <div>
+                                    <label class="{{ $labelClass }}">استراحت بعد (دقیقه)</label>
+                                    <input type="number" name="rules[{{ $d }}][buffer_after_minutes]"
+                                           class="{{ $inputClass }}" min="0" placeholder="0" value="{{ $bufAfter }}">
                                 </div>
                             </div>
 

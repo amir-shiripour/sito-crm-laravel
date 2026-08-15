@@ -10,7 +10,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
 
-    <title>{{ $title }}</title>
+    <title>@yield('title', $title ?? config('app.name', 'Laravel')) - {{ config('app.name', 'Laravel') }}</title>
 
     <script>
         (() => {
@@ -65,7 +65,7 @@
             notify({ type: 'info', text: '{{ session('info') }}' });
         @endif
 
-        @if($errors->any())
+        @if(isset($errors) && method_exists($errors, 'any') && $errors->any())
             @foreach($errors->all() as $error)
                 notify({ type: 'error', text: '{{ $error }}' });
             @endforeach

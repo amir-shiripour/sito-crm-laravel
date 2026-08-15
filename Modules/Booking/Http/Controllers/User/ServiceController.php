@@ -163,6 +163,8 @@ class ServiceController extends Controller
             'appointment_form_id'   => ['nullable', 'integer', 'exists:booking_forms,id'],
             'provider_can_customize'=> ['nullable', 'boolean'],
             'custom_schedule_enabled' => ['nullable', 'boolean'],
+            'buffer_before_minutes' => ['nullable', 'integer', 'min:0', 'max:240'],
+            'buffer_after_minutes'  => ['nullable', 'integer', 'min:0', 'max:240'],
             'provider_ids'          => ['nullable', 'array'],
             'provider_ids.*'        => ['integer', 'exists:users,id'],
         ]);
@@ -410,6 +412,8 @@ class ServiceController extends Controller
 
             'appointment_form_id'   => ['nullable', 'integer', 'exists:booking_forms,id'],
             'custom_schedule_enabled' => ['nullable', 'boolean'],
+            'buffer_before_minutes' => ['nullable', 'integer', 'min:0', 'max:240'],
+            'buffer_after_minutes'  => ['nullable', 'integer', 'min:0', 'max:240'],
         ];
 
         // فقط admin می‌تواند provider_can_customize و provider_ids را تغییر دهد

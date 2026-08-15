@@ -75,12 +75,16 @@ class ProviderExceptionController extends Controller
                 $existing->delete();
             }
 
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'action' => 'deleted']);
+            }
+
             return redirect()
                 ->route('user.booking.providers.exceptions.index', $provider)
                 ->with('success', 'استثنا برای این تاریخ حذف شد (بازگشت به تنظیمات عادی).');
         }
 
-        BookingAvailabilityException::query()->updateOrCreate(
+        $ex = BookingAvailabilityException::query()->updateOrCreate(
             [
                 'scope_type' => BookingAvailabilityException::SCOPE_SERVICE_PROVIDER,
                 'scope_id'   => $provider->id,
@@ -89,9 +93,75 @@ class ProviderExceptionController extends Controller
             $payload
         );
 
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'exception' => $ex]);
+        }
+
         return redirect()
             ->route('user.booking.providers.exceptions.index', $provider)
             ->with('success', 'استثنای این تاریخ با موفقیت ثبت شد.');
+    }
+
+    public function batch(Request $request, User $provider)
+    {
+        $data = $request->validate([
+            'dates'      => ['required_without_all:start_date,end_date', 'nullable', 'array'],
+            'dates.*'    => ['date_format:Y-m-d'],
+            'start_date' => ['required_with:end_date', 'nullable', 'date_format:Y-m-d'],
+            'end_date'   => ['required_with:start_date', 'nullable', 'date_format:Y-m-d'],
+            'is_closed'  => ['required', 'boolean'],
+        ]);
+
+        $datesToProcess = [];
+
+        if (!empty($data['dates'])) {
+            $datesToProcess = $data['dates'];
+        } elseif (!empty($data['start_date']) && !empty($data['end_date'])) {
+            $start = \Carbon\Carbon::parse($data['start_date']);
+            $end   = \Carbon\Carbon::parse($data['end_date']);
+
+            if ($end->lt($start)) {
+                $temp = $start;
+                $start = $end;
+                $end = $temp;
+            }
+
+            while ($start->lte($end)) {
+                $datesToProcess[] = $start->toDateString();
+                $start->addDay();
+            }
+        }
+
+        $isClosed = (bool) $data['is_closed'];
+
+        foreach ($datesToProcess as $dateStr) {
+            if ($isClosed) {
+                BookingAvailabilityException::query()->updateOrCreate(
+                    [
+                        'scope_type' => BookingAvailabilityException::SCOPE_SERVICE_PROVIDER,
+                        'scope_id'   => $provider->id,
+                        'local_date' => $dateStr,
+                    ],
+                    [
+                        'is_closed' => true,
+                    ]
+                );
+            } else {
+                BookingAvailabilityException::query()
+                    ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE_PROVIDER)
+                    ->where('scope_id', $provider->id)
+                    ->where('local_date', $dateStr)
+                    ->delete();
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'count' => count($datesToProcess)]);
+        }
+
+        return redirect()
+            ->route('user.booking.providers.exceptions.index', $provider)
+            ->with('success', 'تعطیلات گروهی ارائه‌دهنده با موفقیت ثبت شد.');
     }
 
     public function destroy(User $provider, BookingAvailabilityException $exception)

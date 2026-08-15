@@ -805,16 +805,40 @@
                                 </div>
                             </div>
                         </div>
-                        <button type="button"
-                                class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                @click="fetchSlots()" x-show="!isCustomScheduleEnabled()">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                                </path>
-                            </svg>
-                            بروزرسانی
-                        </button>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <template x-if="allowManualTimeOverride && !(selectedService && selectedService.custom_schedule_enabled)">
+                                <div class="inline-flex items-center p-1 bg-gray-200/70 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-300/60 dark:border-gray-700/60 shadow-inner">
+                                    <button type="button" 
+                                            @click="if(manualModeActive) { manualModeActive = false; fetchSlots(); }"
+                                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 font-semibold focus:outline-none"
+                                            :class="!manualModeActive ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm border border-gray-200/60 dark:border-gray-600/60' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                        <span>اسلات‌های زمان</span>
+                                    </button>
+                                    <button type="button" 
+                                            @click="manualModeActive = true"
+                                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 font-semibold focus:outline-none"
+                                            :class="manualModeActive ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm border border-gray-200/60 dark:border-gray-600/60' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span>تنظیم دستی</span>
+                                    </button>
+                                </div>
+                            </template>
+                            <button type="button"
+                                    class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    @click="fetchSlots()" x-show="!isCustomScheduleEnabled()">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                    </path>
+                                </svg>
+                                بروزرسانی
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -846,14 +870,25 @@
                          x-show="slots.length && !slotsLoading && !isCustomScheduleEnabled()">
                         <template x-for="slot in slots" :key="slot.start_at_utc">
                             <button type="button"
-                                    class="group relative border-2 rounded-xl p-3 text-center transition-all duration-200 hover:shadow-lg"
+                                    :disabled="isSlotDisabled(slot)"
+                                    class="group relative border-2 rounded-xl p-3 text-center transition-all duration-200"
                                     :class="selectedSlotKey === slot.start_at_utc
-                                ? 'border-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-950/40 text-indigo-900 dark:text-indigo-100 shadow-md ring-2 ring-indigo-200 dark:ring-indigo-800'
-                                : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md'"
+                                        ? 'border-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-950/40 text-indigo-900 dark:text-indigo-100 shadow-md ring-2 ring-indigo-200 dark:ring-indigo-800'
+                                        : (isSlotDisabled(slot)
+                                            ? 'border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800/40 cursor-not-allowed opacity-60'
+                                            : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md')"
                                     @click="selectSlot(slot)">
                                 <div class="font-bold text-sm mb-1" x-text="formatTime(slot.start_at_view)"></div>
-                                <div class="text-[10px] text-gray-500 dark:text-gray-400">
-                                    ظرفیت: <span class="font-semibold" x-text="slotCapacityDisplay(slot)"></span>
+                                <div class="text-[10px]" :class="isSlotDisabled(slot) ? 'text-red-500 font-semibold dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
+                                    <template x-if="slot.sync_blocked">
+                                        <span>تکمیل ظرفیت (هماهنگ‌شده)</span>
+                                    </template>
+                                    <template x-if="!slot.sync_blocked && isSlotDisabled(slot)">
+                                        <span>تکمیل ظرفیت</span>
+                                    </template>
+                                    <template x-if="!isSlotDisabled(slot)">
+                                        <span>ظرفیت: <span class="font-semibold" x-text="slotCapacityDisplay(slot)"></span></span>
+                                    </template>
                                 </div>
                                 <div class="absolute top-2 left-2" x-show="selectedSlotKey === slot.start_at_utc">
                                     <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none"
@@ -1347,6 +1382,9 @@
                 manualDuration: '',
                 notes: '',
                 status: 'CONFIRMED',
+
+                manualModeActive: false,
+                allowManualTimeOverride: {{ \Modules\Booking\Entities\BookingSetting::current()->allow_manual_time_override ? 'true' : 'false' }},
 
                 providers: [],
                 services: [],
@@ -2079,7 +2117,17 @@
                     }
                 },
 
+                isSlotDisabled(slot) {
+                    if (!slot) return false;
+                    if (slot.sync_blocked) return true;
+                    if (slot.remaining_capacity !== null && slot.remaining_capacity !== undefined && Number(slot.remaining_capacity) <= 0) {
+                        return true;
+                    }
+                    return false;
+                },
+
                 async selectSlot(slot) {
+                    if (this.isSlotDisabled(slot)) return;
                     this.selectedSlotKey = slot.start_at_utc;
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = slot.start_at_utc;
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = slot.end_at_utc;
@@ -2117,7 +2165,8 @@
                 },
 
                 isCustomScheduleEnabled() {
-                    return Boolean(this.selectedService && this.selectedService.custom_schedule_enabled);
+                    const serviceForced = Boolean(this.selectedService && this.selectedService.custom_schedule_enabled);
+                    return serviceForced || this.manualModeActive;
                 },
 
                 formatTime(isoString) {

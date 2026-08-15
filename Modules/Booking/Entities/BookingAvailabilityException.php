@@ -21,6 +21,8 @@ class BookingAvailabilityException extends Model
         'override_breaks_json',
         'override_capacity_per_slot',
         'override_capacity_per_day',
+        'override_buffer_before_minutes',
+        'override_buffer_after_minutes',
     ];
 
     protected $casts = [
@@ -30,5 +32,7 @@ class BookingAvailabilityException extends Model
         'override_breaks_json' => 'array',
         'override_capacity_per_slot' => 'int',
         'override_capacity_per_day' => 'int',
+        'override_buffer_before_minutes' => 'int',
+        'override_buffer_after_minutes' => 'int',
     ];
 }

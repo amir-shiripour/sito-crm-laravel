@@ -98,6 +98,7 @@
             <div x-data="{ activeTab: window.location.hash ? window.location.hash.substring(1) : 'general' }"
                  x-init="$watch('activeTab', value => window.location.hash = value)"
                  class="space-y-6">
+                <input type="hidden" name="active_tab" x-model="activeTab">
 
                 <!-- Horizontal Tabs -->
                 <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl p-2 shadow-sm flex flex-wrap gap-2">
@@ -136,6 +137,12 @@
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                         </div>
                         مالی و پرداخت
+                    </button>
+                    <button type="button" @click="activeTab = 'widgets'" :class="activeTab === 'widgets' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div :class="activeTab === 'widgets' ? 'bg-rose-100 text-rose-600 dark:bg-rose-800/50 dark:text-rose-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                        </div>
+                        ویجت‌ها
                     </button>
                 </div>
 
@@ -643,6 +650,9 @@
                     <div x-show="activeTab === 'payment'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
                         @include('settings::partials.payment_settings')
                     </div> {{-- پایان تب مالی --}}
+
+                    {{-- تب تنظیمات ویجت‌ها --}}
+                    @include('settings::partials.widget_settings')
 
                 </div> {{-- پایان پنل‌ها --}}
             </div> {{-- پایان کانتینر رپ اصلی (Sidebar + Panels) --}}

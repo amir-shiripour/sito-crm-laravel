@@ -1,5 +1,4 @@
 <?php
-// app/Support/PermissionCatalog.php
 
 namespace App\Support;
 
@@ -8,400 +7,484 @@ use Spatie\Permission\Models\Permission;
 
 class PermissionCatalog
 {
-    /**
-     * تعریف گروه‌ها و الگوهای تشخیص (بر اساس پیشوند/وایلدکارد ساده)
-     * key = شناسه گروه، title = تیتر فارسی، matchers = الگوهای شروع (prefix)
-     */
+
     public static function groups(): array
     {
         return [
             'users' => [
-                'title'    => 'کاربران',
+                'title' => 'کاربران',
                 'matchers' => ['users.', 'menu.see.users'],
             ],
             'roles' => [
-                'title'    => 'نقش‌ها و دسترسی‌ها',
+                'title' => 'نقش‌ها و دسترسی‌ها',
                 'matchers' => ['roles.', 'menu.see.roles', 'roles.assign-permissions'],
             ],
             'custom_fields' => [
-                'title'    => 'فیلدهای سفارشی',
+                'title' => 'فیلدهای سفارشی',
                 'matchers' => ['custom-fields.', 'menu.see.custom-fields'],
             ],
             'menus' => [
-                'title'    => 'منوها',
+                'title' => 'منوها',
                 'matchers' => ['menu.'],
             ],
             'clients' => [
-                'title'    => 'مشتریان',
+                'title' => 'مشتریان',
                 'matchers' => ['clients.'],
             ],
             'client_calls' => [
-                'title'    => 'تماس‌های مشتریان',
+                'title' => 'تماس‌های مشتریان',
                 'matchers' => ['client-calls.'],
             ],
             'followups' => [
-                'title'    => 'پیگیری‌ها (FollowUps)',
+                'title' => 'پیگیری‌ها (FollowUps)',
                 'matchers' => ['followups.'],
             ],
             'reminders' => [
-                'title'    => 'یادآوری‌ها (Reminders)',
+                'title' => 'یادآوری‌ها (Reminders)',
                 'matchers' => ['reminders.'],
             ],
             'sms' => [
-                'title'    => 'پیامک (SMS)',
+                'title' => 'پیامک (SMS)',
                 'matchers' => ['sms.'],
             ],
             'tasks' => [
-                'title'    => 'وظایف (Tasks)',
+                'title' => 'وظایف (Tasks)',
                 'matchers' => ['tasks.'],
             ],
             'workflows' => [
-                'title'    => 'گردش کار (Workflows)',
+                'title' => 'گردش کار (Workflows)',
                 'matchers' => ['workflows.'],
             ],
             'modules' => [
-                'title'    => 'مدیریت ماژول‌ها',
+                'title' => 'مدیریت ماژول‌ها',
                 'matchers' => ['modules.'],
             ],
 
             // Booking module (based on Modules/Booking/Installer.php)
             'booking' => [
-                'title'    => 'نوبت‌دهی (Booking)',
+                'title' => 'نوبت‌دهی (Booking)',
                 'matchers' => ['booking.view', 'booking.manage'],
             ],
             'booking_settings' => [
-                'title'    => 'نوبت‌دهی: تنظیمات',
+                'title' => 'نوبت‌دهی: تنظیمات',
                 'matchers' => ['booking.settings.'],
             ],
             'booking_categories' => [
-                'title'    => 'نوبت‌دهی: دسته‌بندی‌ها',
+                'title' => 'نوبت‌دهی: دسته‌بندی‌ها',
                 'matchers' => ['booking.categories.'],
             ],
             'booking_forms' => [
-                'title'    => 'نوبت‌دهی: فرم‌ها',
+                'title' => 'نوبت‌دهی: فرم‌ها',
                 'matchers' => ['booking.forms.'],
             ],
             'booking_services' => [
-                'title'    => 'نوبت‌دهی: سرویس‌ها',
+                'title' => 'نوبت‌دهی: سرویس‌ها',
                 'matchers' => ['booking.services.'],
             ],
             'booking_availability' => [
-                'title'    => 'نوبت‌دهی: ظرفیت/دسترس‌پذیری',
+                'title' => 'نوبت‌دهی: ظرفیت/دسترس‌پذیری',
                 'matchers' => ['booking.availability.'],
             ],
             'booking_appointments' => [
-                'title'    => 'نوبت‌دهی: نوبت‌ها',
+                'title' => 'نوبت‌دهی: نوبت‌ها',
                 'matchers' => ['booking.appointments.'],
             ],
             'booking_reports' => [
-                'title'    => 'نوبت‌دهی: گزارش‌ها',
+                'title' => 'نوبت‌دهی: گزارش‌ها',
                 'matchers' => ['booking.reports.'],
             ],
             'booking_statements' => [
-                'title'    => 'نوبت‌دهی: صورت وضعیت',
+                'title' => 'نوبت‌دهی: صورت وضعیت',
                 'matchers' => ['booking.statement.'],
             ],
 
             // Properties module
             'properties' => [
-                'title'    => 'املاک',
+                'title' => 'املاک',
                 'matchers' => ['properties.view', 'properties.create', 'properties.edit', 'properties.delete', 'properties.manage'],
             ],
             'properties_settings' => [
-                'title'    => 'املاک: تنظیمات',
+                'title' => 'املاک: تنظیمات',
                 'matchers' => ['properties.settings.'],
             ],
             'properties_categories' => [
-                'title'    => 'املاک: دسته‌بندی‌ها',
+                'title' => 'املاک: دسته‌بندی‌ها',
                 'matchers' => ['properties.categories.'],
             ],
             'properties_attributes' => [
-                'title'    => 'املاک: ویژگی‌ها و امکانات',
+                'title' => 'املاک: ویژگی‌ها و امکانات',
                 'matchers' => ['properties.attributes.'],
             ],
             'properties_owners' => [
-                'title'    => 'املاک: مالکین',
+                'title' => 'املاک: مالکین',
                 'matchers' => ['properties.owners.'],
             ],
             'properties_buildings' => [
-                'title'    => 'املاک: ساختمان‌ها',
+                'title' => 'املاک: ساختمان‌ها',
                 'matchers' => ['properties.buildings.'],
             ],
 
             // Market module
             'market' => [
-                'title'    => 'فروشگاه (Market)',
+                'title' => 'فروشگاه (Market)',
                 'matchers' => ['market.manage', 'market.dashboard.', 'market.settings.'],
             ],
             'market_products' => [
-                'title'    => 'فروشگاه: محصولات و برندها',
+                'title' => 'فروشگاه: محصولات و برندها',
                 'matchers' => ['market.products.', 'market.master-products.', 'market.brands.', 'market.attributes.'],
             ],
             'market_orders' => [
-                'title'    => 'فروشگاه: سفارشات و فیلدها',
+                'title' => 'فروشگاه: سفارشات و فیلدها',
                 'matchers' => ['market.orders.', 'market.order-statuses.', 'market.checkout-forms.'],
             ],
             'market_categories' => [
-                'title'    => 'فروشگاه: دسته‌بندی‌ها',
+                'title' => 'فروشگاه: دسته‌بندی‌ها',
                 'matchers' => ['market.categories.'],
             ],
             'market_vendors' => [
-                'title'    => 'فروشگاه: فروشندگان',
+                'title' => 'فروشگاه: فروشندگان',
                 'matchers' => ['market.vendors.'],
             ],
             'market_warehouses' => [
-                'title'    => 'فروشگاه: انبارها',
+                'title' => 'فروشگاه: انبارها',
                 'matchers' => ['market.warehouses.'],
             ],
             'market_shipping' => [
-                'title'    => 'فروشگاه: حمل و نقل',
+                'title' => 'فروشگاه: حمل و نقل',
                 'matchers' => ['market.shipping.'],
             ],
             'market_reviews' => [
-                'title'    => 'فروشگاه: دیدگاه‌ها',
+                'title' => 'فروشگاه: دیدگاه‌ها',
                 'matchers' => ['market.reviews.'],
             ],
             'market_questions' => [
-                'title'    => 'فروشگاه: پرسش‌ها',
+                'title' => 'فروشگاه: پرسش‌ها',
                 'matchers' => ['market.questions.'],
             ],
 
             'registration' => [
-                'title'    => 'درخواست‌های ثبت‌نام',
+                'title' => 'درخواست‌های ثبت‌نام',
                 'matchers' => ['registration-requests.', 'menu.see.registration-requests'],
             ],
             'settings' => [
-                'title'    => 'تنظیمات سیستم',
+                'title' => 'تنظیمات سیستم',
                 'matchers' => ['settings.payment.'],
             ],
             'notifications' => [
-                'title'    => 'اطلاعیه‌ها و نوتیفیکیشن‌ها',
+                'title' => 'اطلاعیه‌ها و نوتیفیکیشن‌ها',
                 'matchers' => ['notifications.'],
             ],
             'contractforge' => [
-                'title'    => 'طراحی قرارداد (ContractForge)',
+                'title' => 'طراحی قرارداد (ContractForge)',
                 'matchers' => ['contractforge.'],
             ],
             'booking_cure' => [
-                'title'    => 'نوبت‌دهی: طرح درمان (Cure)',
+                'title' => 'نوبت‌دهی: طرح درمان (Cure)',
                 'matchers' => ['booking.cure.'],
             ],
 
+            // Accounting module
+            'accounting' => [
+                'title' => 'حسابداری',
+                'matchers' => ['accounting.view', 'accounting.manage', 'accounting.dashboard.view'],
+            ],
+            'accounting_categories' => [
+                'title' => 'حسابداری: سرفصل‌ها',
+                'matchers' => ['accounting.categories.'],
+            ],
+            'accounting_fund_accounts' => [
+                'title' => 'حسابداری: خزانه‌داری و بانک‌ها',
+                'matchers' => ['accounting.fund_accounts.', 'accounting.banks.'],
+            ],
+            'accounting_documents' => [
+                'title' => 'حسابداری: اسناد و تراکنش‌ها',
+                'matchers' => ['accounting.documents.', 'accounting.transactions.'],
+            ],
+            'accounting_cheques' => [
+                'title' => 'حسابداری: سیستم چک‌ها',
+                'matchers' => ['accounting.cheques.'],
+            ],
+            'accounting_invoices' => [
+                'title' => 'حسابداری: فاکتورها و پیش‌فاکتورها',
+                'matchers' => ['accounting.invoices.', 'accounting.proformas.'],
+            ],
+            'accounting_expenses' => [
+                'title' => 'حسابداری: هزینه‌ها',
+                'matchers' => ['accounting.expenses.'],
+            ],
+            'accounting_settings' => [
+                'title' => 'حسابداری: گزارش‌ها و تنظیمات',
+                'matchers' => ['accounting.reports.', 'accounting.settings.'],
+            ],
+
+            // Services module
+            'services' => [
+                'title' => 'سرویس و خدمات',
+                'matchers' => ['services.view', 'services.manage', 'services.create', 'services.edit', 'services.delete', 'services.duplicate', 'services.settings.'],
+            ],
+            'services_projects' => [
+                'title' => 'سرویس و خدمات: پروژه‌ها',
+                'matchers' => ['services.projects.'],
+            ],
+            'services_orders' => [
+                'title' => 'سرویس و خدمات: سفارشات',
+                'matchers' => ['services.orders.'],
+            ],
+            'services_invoices' => [
+                'title' => 'سرویس و خدمات: فاکتورها',
+                'matchers' => ['services.invoices.'],
+            ],
+
+            // Sales module
+            'sales' => [
+                'title' => 'فروش (Sales)',
+                'matchers' => ['sales.view', 'sales.manage', 'sales.cockpit.view', 'sales.reports.view'],
+            ],
+            'sales_calls' => [
+                'title' => 'فروش: تماس‌ها',
+                'matchers' => ['sales.calls.'],
+            ],
+            'sales_campaigns' => [
+                'title' => 'فروش: کمپین‌ها',
+                'matchers' => ['sales.campaigns.'],
+            ],
+            'sales_followups' => [
+                'title' => 'فروش: پیگیری‌ها',
+                'matchers' => ['sales.followups.'],
+            ],
+
+            // Wallet module
+            'wallet' => [
+                'title' => 'کیف پول (Wallet)',
+                'matchers' => ['wallet.'],
+            ],
+
+            // Status Builder
+            'status_builder' => [
+                'title' => 'وضعیت‌ساز (Status Builder)',
+                'matchers' => ['status-builder.'],
+            ],
+
             'other' => [
-                'title'    => 'سایر',
+                'title' => 'سایر',
                 'matchers' => [''], // fallback
             ],
         ];
     }
 
-    /**
-     * ترجمه فارسی هر permission key
-     */
+
     public static function translate(string $name): string
     {
         static $map = [
             // Users
-            'users.view'           => 'مشاهده کاربران',
-            'users.create'         => 'ایجاد کاربر',
-            'users.update'         => 'ویرایش کاربر',
-            'users.delete'         => 'حذف کاربر',
-            'users.assign-roles'   => 'تخصیص نقش به کاربر',
+            'users.view' => 'مشاهده کاربران',
+            'users.create' => 'ایجاد کاربر',
+            'users.update' => 'ویرایش کاربر',
+            'users.delete' => 'حذف کاربر',
+            'users.assign-roles' => 'تخصیص نقش به کاربر',
 
             // Roles
-            'roles.view'               => 'مشاهده نقش‌ها',
-            'roles.create'             => 'ایجاد نقش',
-            'roles.update'             => 'ویرایش نقش',
-            'roles.delete'             => 'حذف نقش',
+            'roles.view' => 'مشاهده نقش‌ها',
+            'roles.create' => 'ایجاد نقش',
+            'roles.update' => 'ویرایش نقش',
+            'roles.delete' => 'حذف نقش',
             'roles.assign-permissions' => 'تخصیص مجوز به نقش',
 
             // Menus
-            'menu.see.users'           => 'نمایش منوی کاربران',
-            'menu.see.roles'           => 'نمایش منوی نقش‌ها',
+            'menu.see.users' => 'نمایش منوی کاربران',
+            'menu.see.roles' => 'نمایش منوی نقش‌ها',
 
             // Custom Fields
-            'menu.see.custom-fields'   => 'نمایش منوی فیلدهای سفارشی',
-            'custom-fields.view'       => 'مشاهده فیلدها',
-            'custom-fields.create'     => 'ایجاد فیلد',
-            'custom-fields.update'     => 'ویرایش فیلد',
-            'custom-fields.delete'     => 'حذف فیلد',
+            'menu.see.custom-fields' => 'نمایش منوی فیلدهای سفارشی',
+            'custom-fields.view' => 'مشاهده فیلدها',
+            'custom-fields.create' => 'ایجاد فیلد',
+            'custom-fields.update' => 'ویرایش فیلد',
+            'custom-fields.delete' => 'حذف فیلد',
 
             // Clients
-            'clients.manage'         => 'مدیریت مشتریان',
-            'clients.view'           => 'مشاهده مشتریان',
-            'clients.view.all'       => 'مشاهده همه مشتریان',
-            'clients.view.assigned'  => 'مشاهده مشتریان مرتبط',
-            'clients.view.own'       => 'مشاهده مشتریان ایجاد شده توسط خود',
-            'clients.create'         => 'ایجاد مشتری',
-            'clients.edit'           => 'ویرایش مشتری',
-            'clients.delete'         => 'حذف مشتری',
+            'clients.manage' => 'مدیریت مشتریان',
+            'clients.view' => 'مشاهده مشتریان',
+            'clients.view.all' => 'مشاهده همه مشتریان',
+            'clients.view.assigned' => 'مشاهده مشتریان مرتبط',
+            'clients.view.own' => 'مشاهده مشتریان ایجاد شده توسط خود',
+            'clients.create' => 'ایجاد مشتری',
+            'clients.edit' => 'ویرایش مشتری',
+            'clients.delete' => 'حذف مشتری',
 
             // Client Calls
-            'client-calls.manage'        => 'مدیریت تماس‌های مشتریان',
-            'client-calls.view'          => 'مشاهده تماس‌های مشتریان',
-            'client-calls.view.all'      => 'مشاهده همه تماس‌های مشتریان',
+            'client-calls.manage' => 'مدیریت تماس‌های مشتریان',
+            'client-calls.view' => 'مشاهده تماس‌های مشتریان',
+            'client-calls.view.all' => 'مشاهده همه تماس‌های مشتریان',
             'client-calls.view.assigned' => 'مشاهده تماس‌های مشتریان مرتبط',
-            'client-calls.view.own'      => 'مشاهده تماس‌های ثبت‌شده توسط خود',
-            'client-calls.create'        => 'ثبت تماس جدید',
-            'client-calls.edit'          => 'ویرایش تماس‌ها',
-            'client-calls.delete'        => 'حذف تماس‌ها',
+            'client-calls.view.own' => 'مشاهده تماس‌های ثبت‌شده توسط خود',
+            'client-calls.create' => 'ثبت تماس جدید',
+            'client-calls.edit' => 'ویرایش تماس‌ها',
+            'client-calls.delete' => 'حذف تماس‌ها',
 
             // FollowUps
-            'followups.manage'        => 'مدیریت پیگیری‌ها',
-            'followups.view'          => 'مشاهده پیگیری‌ها',
-            'followups.view.all'      => 'مشاهده همه پیگیری‌ها',
+            'followups.manage' => 'مدیریت پیگیری‌ها',
+            'followups.view' => 'مشاهده پیگیری‌ها',
+            'followups.view.all' => 'مشاهده همه پیگیری‌ها',
             'followups.view.assigned' => 'مشاهده پیگیری‌های مرتبط',
-            'followups.view.own'      => 'مشاهده پیگیری‌های ثبت‌شده توسط خود',
-            'followups.create'        => 'ثبت پیگیری جدید',
-            'followups.edit'          => 'ویرایش پیگیری‌ها',
-            'followups.delete'        => 'حذف پیگیری‌ها',
+            'followups.view.own' => 'مشاهده پیگیری‌های ثبت‌شده توسط خود',
+            'followups.create' => 'ثبت پیگیری جدید',
+            'followups.edit' => 'ویرایش پیگیری‌ها',
+            'followups.delete' => 'حذف پیگیری‌ها',
 
             // Reminders
-            'reminders.manage'        => 'مدیریت یادآوری‌ها',
-            'reminders.view'          => 'مشاهده یادآوری‌ها',
-            'reminders.view.all'      => 'مشاهده همه یادآوری‌ها',
+            'reminders.manage' => 'مدیریت یادآوری‌ها',
+            'reminders.view' => 'مشاهده یادآوری‌ها',
+            'reminders.view.all' => 'مشاهده همه یادآوری‌ها',
             'reminders.view.assigned' => 'مشاهده یادآوری‌های مرتبط',
-            'reminders.view.own'      => 'مشاهده یادآوری‌های ثبت‌شده توسط خود',
-            'reminders.create'        => 'ثبت یادآوری جدید',
-            'reminders.edit'          => 'ویرایش یادآوری‌ها',
-            'reminders.delete'        => 'حذف یادآوری‌ها',
+            'reminders.view.own' => 'مشاهده یادآوری‌های ثبت‌شده توسط خود',
+            'reminders.create' => 'ثبت یادآوری جدید',
+            'reminders.edit' => 'ویرایش یادآوری‌ها',
+            'reminders.delete' => 'حذف یادآوری‌ها',
+            'reminders.settings.view' => 'مشاهده تنظیمات یادآوری‌ها',
+            'reminders.settings.manage' => 'مدیریت تنظیمات یادآوری‌ها',
 
             // SMS
-            'sms.manage'              => 'مدیریت پیامک‌ها',
-            'sms.messages.view'       => 'مشاهده پیامک‌ها',
-            'sms.messages.view.all'   => 'مشاهده همه پیامک‌ها',
-            'sms.messages.view.own'   => 'مشاهده پیامک‌های خود',
-            'sms.messages.create'     => 'ارسال پیامک',
-            'sms.messages.delete'     => 'حذف پیامک‌ها',
-            'sms.templates.manage'    => 'مدیریت قالب‌های پیامک',
-            'sms.settings.manage'     => 'مدیریت تنظیمات پیامک',
+            'sms.manage' => 'مدیریت پیامک‌ها',
+            'sms.view' => 'مشاهده ماژول پیامک',
+            'sms.send' => 'ارسال پیامک',
+            'sms.messages.view' => 'مشاهده پیامک‌ها',
+            'sms.messages.view.all' => 'مشاهده همه پیامک‌ها',
+            'sms.messages.view.own' => 'مشاهده پیامک‌های خود',
+            'sms.messages.create' => 'ارسال پیامک جدید',
+            'sms.messages.send' => 'ارسال پیامک',
+            'sms.messages.delete' => 'حذف پیامک‌ها',
+            'sms.templates.manage' => 'مدیریت قالب‌های پیامک',
+            'sms.settings.view' => 'مشاهده تنظیمات پیامک',
+            'sms.settings.manage' => 'مدیریت تنظیمات پیامک',
+            'sms.reports.view' => 'مشاهده گزارش‌های پیامک',
 
             // Tasks
-            'tasks.manage'            => 'مدیریت وظایف',
-            'tasks.view'              => 'مشاهده وظایف',
-            'tasks.view.all'          => 'مشاهده همه وظایف',
-            'tasks.view.assigned'     => 'مشاهده وظایف محول شده',
-            'tasks.view.own'          => 'مشاهده وظایف خود',
-            'tasks.create'            => 'ایجاد وظیفه',
-            'tasks.edit'              => 'ویرایش وظیفه',
-            'tasks.delete'            => 'حذف وظیفه',
+            'tasks.manage' => 'مدیریت وظایف',
+            'tasks.view' => 'مشاهده وظایف',
+            'tasks.view.all' => 'مشاهده همه وظایف',
+            'tasks.view.assigned' => 'مشاهده وظایف محول شده',
+            'tasks.view.own' => 'مشاهده وظایف خود',
+            'tasks.create' => 'ایجاد وظیفه',
+            'tasks.edit' => 'ویرایش وظیفه',
+            'tasks.delete' => 'حذف وظیفه',
 
             // Workflows
-            'workflows.manage'        => 'مدیریت و تنظیمات کلان گردش کار',
-            'workflows.view'          => 'مشاهده گردش کارها',
-            'workflows.create'        => 'ایجاد گردش کار جدید',
-            'workflows.edit'          => 'ویرایش گردش کار',
-            'workflows.delete'        => 'حذف گردش کار',
-            'workflows.run'           => 'اجرای گردش کار',
+            'workflows.manage' => 'مدیریت و تنظیمات کلان گردش کار',
+            'workflows.view' => 'مشاهده گردش کارها',
+            'workflows.create' => 'ایجاد گردش کار جدید',
+            'workflows.edit' => 'ویرایش گردش کار',
+            'workflows.delete' => 'حذف گردش کار',
+            'workflows.run' => 'اجرای گردش کار',
 
             // Modules
-            'modules.manage'          => 'مدیریت ماژول‌ها (نصب/حذف)',
+            'modules.manage' => 'مدیریت ماژول‌ها (نصب/حذف)',
 
             // Booking (Modules/Booking/Installer.php)
-            'booking.view'                 => 'مشاهده ماژول نوبت‌دهی',
-            'booking.manage'               => 'مدیریت کامل نوبت‌دهی',
+            'booking.view' => 'مشاهده ماژول نوبت‌دهی',
+            'booking.manage' => 'مدیریت کامل نوبت‌دهی',
 
-            'booking.settings.manage'      => 'مدیریت تنظیمات نوبت‌دهی',
+            'booking.settings.manage' => 'مدیریت تنظیمات نوبت‌دهی',
 
-            'booking.categories.view'      => 'مشاهده دسته‌بندی‌های نوبت‌دهی',
-            'booking.categories.create'    => 'ایجاد دسته‌بندی نوبت‌دهی',
-            'booking.categories.edit'      => 'ویرایش دسته‌بندی نوبت‌دهی',
-            'booking.categories.delete'    => 'حذف دسته‌بندی نوبت‌دهی',
-            'booking.categories.manage'    => 'مدیریت دسته‌بندی‌های نوبت‌دهی',
+            'booking.categories.view' => 'مشاهده دسته‌بندی‌های نوبت‌دهی',
+            'booking.categories.create' => 'ایجاد دسته‌بندی نوبت‌دهی',
+            'booking.categories.edit' => 'ویرایش دسته‌بندی نوبت‌دهی',
+            'booking.categories.delete' => 'حذف دسته‌بندی نوبت‌دهی',
+            'booking.categories.manage' => 'مدیریت دسته‌بندی‌های نوبت‌دهی',
 
-            'booking.forms.view'           => 'مشاهده فرم‌های نوبت‌دهی',
-            'booking.forms.create'         => 'ایجاد فرم نوبت‌دهی',
-            'booking.forms.edit'           => 'ویرایش فرم نوبت‌دهی',
-            'booking.forms.delete'         => 'حذف فرم نوبت‌دهی',
-            'booking.forms.manage'         => 'مدیریت فرم‌های نوبت‌دهی',
+            'booking.forms.view' => 'مشاهده فرم‌های نوبت‌دهی',
+            'booking.forms.create' => 'ایجاد فرم نوبت‌دهی',
+            'booking.forms.edit' => 'ویرایش فرم نوبت‌دهی',
+            'booking.forms.delete' => 'حذف فرم نوبت‌دهی',
+            'booking.forms.manage' => 'مدیریت فرم‌های نوبت‌دهی',
 
-            'booking.services.view'        => 'مشاهده سرویس‌های نوبت‌دهی',
-            'booking.services.create'      => 'ایجاد سرویس نوبت‌دهی',
-            'booking.services.edit'        => 'ویرایش سرویس نوبت‌دهی',
-            'booking.services.delete'      => 'حذف سرویس نوبت‌دهی',
-            'booking.services.manage'      => 'مدیریت سرویس‌های نوبت‌دهی',
+            'booking.services.view' => 'مشاهده سرویس‌های نوبت‌دهی',
+            'booking.services.create' => 'ایجاد سرویس نوبت‌دهی',
+            'booking.services.edit' => 'ویرایش سرویس نوبت‌دهی',
+            'booking.services.delete' => 'حذف سرویس نوبت‌دهی',
+            'booking.services.manage' => 'مدیریت سرویس‌های نوبت‌دهی',
 
-            'booking.availability.manage'  => 'مدیریت ظرفیت/دسترس‌پذیری نوبت‌دهی',
+            'booking.availability.manage' => 'مدیریت ظرفیت/دسترس‌پذیری نوبت‌دهی',
 
-            'booking.appointments.view'     => 'مشاهده نوبت‌ها',
+            'booking.appointments.view' => 'مشاهده نوبت‌ها',
             'booking.appointments.view.all' => 'مشاهده همه نوبت‌ها',
             'booking.appointments.view.own' => 'مشاهده نوبت‌های ثبت‌شده توسط خود',
-            'booking.appointments.create'   => 'ایجاد/ثبت نوبت جدید',
-            'booking.appointments.edit'     => 'ویرایش نوبت',
-            'booking.appointments.cancel'   => 'لغو نوبت',
-            'booking.appointments.manage'   => 'مدیریت نوبت‌ها',
+            'booking.appointments.create' => 'ایجاد/ثبت نوبت جدید',
+            'booking.appointments.edit' => 'ویرایش نوبت',
+            'booking.appointments.cancel' => 'لغو نوبت',
+            'booking.appointments.manage' => 'مدیریت نوبت‌ها',
 
-            'booking.reports.view'          => 'مشاهده گزارش‌های نوبت‌دهی',
+            'booking.reports.view' => 'مشاهده گزارش‌های نوبت‌دهی',
 
-            'booking.statement.view'        => 'مشاهده صورت وضعیت‌ها',
-            'booking.statement.view.all'    => 'مشاهده همه صورت وضعیت‌ها',
-            'booking.statement.view.own'    => 'مشاهده صورت وضعیت‌های خود',
-            'booking.statement.create'      => 'ایجاد صورت وضعیت',
-            'booking.statement.edit'        => 'ویرایش صورت وضعیت',
-            'booking.statement.delete'      => 'حذف صورت وضعیت',
-            'booking.statement.manage'      => 'مدیریت کامل صورت وضعیت‌ها',
+            'booking.statement.view' => 'مشاهده صورت وضعیت‌ها',
+            'booking.statement.view.all' => 'مشاهده همه صورت وضعیت‌ها',
+            'booking.statement.view.own' => 'مشاهده صورت وضعیت‌های خود',
+            'booking.statement.create' => 'ایجاد صورت وضعیت',
+            'booking.statement.edit' => 'ویرایش صورت وضعیت',
+            'booking.statement.delete' => 'حذف صورت وضعیت',
+            'booking.statement.manage' => 'مدیریت کامل صورت وضعیت‌ها',
 
             // Properties
-            'properties.view'               => 'مشاهده املاک',
-            'properties.view.all'           => 'مشاهده همه املاک',
-            'properties.view.own'           => 'مشاهده املاک خود',
-            'properties.create'             => 'ایجاد ملک',
-            'properties.edit'               => 'ویرایش ملک',
-            'properties.edit.all'           => 'ویرایش همه املاک',
-            'properties.edit.own'           => 'ویرایش املاک خود',
-            'properties.delete'             => 'حذف ملک',
-            'properties.delete.all'         => 'حذف همه املاک',
-            'properties.delete.own'         => 'حذف املاک خود',
-            'properties.manage'             => 'مدیریت کامل املاک',
+            'properties.view' => 'مشاهده املاک',
+            'properties.view.all' => 'مشاهده همه املاک',
+            'properties.view.own' => 'مشاهده املاک خود',
+            'properties.create' => 'ایجاد ملک',
+            'properties.edit' => 'ویرایش ملک',
+            'properties.edit.all' => 'ویرایش همه املاک',
+            'properties.edit.own' => 'ویرایش املاک خود',
+            'properties.delete' => 'حذف ملک',
+            'properties.delete.all' => 'حذف همه املاک',
+            'properties.delete.own' => 'حذف املاک خود',
+            'properties.manage' => 'مدیریت کامل املاک',
 
-            'properties.settings.manage'    => 'مدیریت تنظیمات املاک',
+            'properties.settings.manage' => 'مدیریت تنظیمات املاک',
 
-            'properties.categories.view'    => 'مشاهده دسته‌بندی‌های املاک',
-            'properties.categories.create'  => 'ایجاد دسته‌بندی املاک',
-            'properties.categories.edit'    => 'ویرایش دسته‌بندی املاک',
-            'properties.categories.delete'  => 'حذف دسته‌بندی املاک',
-            'properties.categories.manage'  => 'مدیریت دسته‌بندی‌های املاک',
+            'properties.categories.view' => 'مشاهده دسته‌بندی‌های املاک',
+            'properties.categories.create' => 'ایجاد دسته‌بندی املاک',
+            'properties.categories.edit' => 'ویرایش دسته‌بندی املاک',
+            'properties.categories.delete' => 'حذف دسته‌بندی املاک',
+            'properties.categories.manage' => 'مدیریت دسته‌بندی‌های املاک',
 
-            'properties.attributes.view'    => 'مشاهده ویژگی‌ها و امکانات',
-            'properties.attributes.create'  => 'ایجاد ویژگی/امکانات',
-            'properties.attributes.edit'    => 'ویرایش ویژگی/امکانات',
-            'properties.attributes.delete'  => 'حذف ویژگی/امکانات',
-            'properties.attributes.manage'  => 'مدیریت ویژگی‌ها و امکانات',
+            'properties.attributes.view' => 'مشاهده ویژگی‌ها و امکانات',
+            'properties.attributes.create' => 'ایجاد ویژگی/امکانات',
+            'properties.attributes.edit' => 'ویرایش ویژگی/امکانات',
+            'properties.attributes.delete' => 'حذف ویژگی/امکانات',
+            'properties.attributes.manage' => 'مدیریت ویژگی‌ها و امکانات',
 
-            'properties.owners.view'        => 'مشاهده مالکین',
-            'properties.owners.create'      => 'ایجاد مالک',
-            'properties.owners.edit'        => 'ویرایش مالک',
-            'properties.owners.delete'      => 'حذف مالک',
-            'properties.owners.manage'      => 'مدیریت مالکین',
+            'properties.owners.view' => 'مشاهده مالکین',
+            'properties.owners.create' => 'ایجاد مالک',
+            'properties.owners.edit' => 'ویرایش مالک',
+            'properties.owners.delete' => 'حذف مالک',
+            'properties.owners.manage' => 'مدیریت مالکین',
 
-            'properties.buildings.view'     => 'مشاهده ساختمان‌ها',
-            'properties.buildings.create'   => 'ایجاد ساختمان',
-            'properties.buildings.edit'     => 'ویرایش ساختمان',
-            'properties.buildings.delete'   => 'حذف ساختمان',
-            'properties.buildings.manage'   => 'مدیریت ساختمان‌ها',
+            'properties.buildings.view' => 'مشاهده ساختمان‌ها',
+            'properties.buildings.create' => 'ایجاد ساختمان',
+            'properties.buildings.edit' => 'ویرایش ساختمان',
+            'properties.buildings.delete' => 'حذف ساختمان',
+            'properties.buildings.manage' => 'مدیریت ساختمان‌ها',
 
             // Market
-            'market.manage'                 => 'مدیریت کلان فروشگاه (Super Admin)',
-            'market.dashboard.view'         => 'مشاهده داشبورد فروشگاه',
+            'market.manage' => 'مدیریت کلان فروشگاه (Super Admin)',
+            'market.dashboard.view' => 'مشاهده داشبورد فروشگاه',
             'market.master-products.manage' => 'مدیریت کاتالوگ محصولات مرجع (Catalog)',
-            'market.products.view'          => 'مشاهده محصولات فروشنده',
-            'market.products.create'        => 'ایجاد محصول فروشنده',
-            'market.products.edit'          => 'ویرایش محصول فروشنده',
-            'market.products.delete'        => 'حذف محصول فروشنده',
-            'market.orders.view'            => 'مشاهده سفارشات',
-            'market.orders.manage'          => 'مدیریت سفارشات',
-            'market.categories.manage'      => 'مدیریت کاتالوگ و دسته‌بندی‌ها',
-            'market.vendors.view'           => 'مشاهده فروشندگان',
-            'market.vendors.manage'         => 'مدیریت فروشندگان',
-            'market.warehouses.view'        => 'مشاهده انبارها',
-            'market.warehouses.manage'      => 'مدیریت انبارها',
-            'market.shipping.manage'        => 'مدیریت حمل و نقل و ارسال',
-            'market.questions.manage'       => 'مدیریت پرسش‌ها و پاسخ‌ها',
-            'market.reviews.manage'         => 'مدیریت دیدگاه‌ها',
-            'market.brands.manage'          => 'مدیریت برندها',
-            'market.attributes.manage'      => 'مدیریت ویژگی‌های تنوع‌ساز',
-            'market.settings.manage'        => 'مدیریت تنظیمات فروشگاه',
-            'market.checkout-forms.manage'  => 'مدیریت فرم‌های تسویه حساب',
-            'market.order-statuses.manage'  => 'مدیریت وضعیت‌های سفارش',
+            'market.products.view' => 'مشاهده محصولات فروشنده',
+            'market.products.create' => 'ایجاد محصول فروشنده',
+            'market.products.edit' => 'ویرایش محصول فروشنده',
+            'market.products.delete' => 'حذف محصول فروشنده',
+            'market.orders.view' => 'مشاهده سفارشات',
+            'market.orders.manage' => 'مدیریت سفارشات',
+            'market.categories.manage' => 'مدیریت کاتالوگ و دسته‌بندی‌ها',
+            'market.vendors.view' => 'مشاهده فروشندگان',
+            'market.vendors.manage' => 'مدیریت فروشندگان',
+            'market.warehouses.view' => 'مشاهده انبارها',
+            'market.warehouses.manage' => 'مدیریت انبارها',
+            'market.shipping.manage' => 'مدیریت حمل و نقل و ارسال',
+            'market.questions.manage' => 'مدیریت پرسش‌ها و پاسخ‌ها',
+            'market.reviews.manage' => 'مدیریت دیدگاه‌ها',
+            'market.brands.manage' => 'مدیریت برندها',
+            'market.attributes.manage' => 'مدیریت ویژگی‌های تنوع‌ساز',
+            'market.settings.manage' => 'مدیریت تنظیمات فروشگاه',
+            'market.checkout-forms.manage' => 'مدیریت فرم‌های تسویه حساب',
+            'market.order-statuses.manage' => 'مدیریت وضعیت‌های سفارش',
 
             // Registration Requests
             'registration-requests.view' => 'مشاهده درخواست‌های ثبت‌نام',
@@ -436,9 +519,140 @@ class PermissionCatalog
             'booking.cure.delete.assigned' => 'حذف طرح درمان منتسب شده',
             'booking.cure.confirm' => 'تایید طرح درمان',
             'booking.cure.manage' => 'مدیریت طرح‌های درمان',
+
+            // Accounting
+            'accounting.view' => 'مشاهده ماژول حسابداری',
+            'accounting.manage' => 'مدیریت حسابداری',
+            'accounting.dashboard.view' => 'مشاهده داشبورد حسابداری',
+
+            'accounting.banks.view' => 'مشاهده بانک‌ها',
+            'accounting.banks.create' => 'ایجاد بانک',
+            'accounting.banks.edit' => 'ویرایش بانک',
+            'accounting.banks.delete' => 'حذف بانک',
+
+            'accounting.categories.view' => 'مشاهده سرفصل‌های حسابداری',
+            'accounting.categories.create' => 'ایجاد سرفصل حسابداری',
+            'accounting.categories.edit' => 'ویرایش سرفصل حسابداری',
+            'accounting.categories.delete' => 'حذف سرفصل حسابداری',
+            'accounting.categories.manage' => 'مدیریت سرفصل‌های حسابداری',
+
+            'accounting.fund_accounts.view' => 'مشاهده حساب‌های خزانه‌داری',
+            'accounting.fund_accounts.create' => 'ایجاد حساب خزانه‌داری',
+            'accounting.fund_accounts.edit' => 'ویرایش حساب خزانه‌داری',
+            'accounting.fund_accounts.delete' => 'حذف حساب خزانه‌داری',
+            'accounting.fund_accounts.manage' => 'مدیریت حساب‌های خزانه‌داری',
+
+            'accounting.documents.view' => 'مشاهده اسناد حسابداری',
+            'accounting.documents.create' => 'ثبت سند حسابداری جدید',
+            'accounting.documents.edit' => 'ویرایش سند حسابداری',
+            'accounting.documents.delete' => 'حذف سند حسابداری',
+            'accounting.documents.manage' => 'مدیریت اسناد حسابداری',
+
+            'accounting.transactions.view' => 'مشاهده تراکنش‌های مالی',
+
+            'accounting.cheques.view' => 'مشاهده چک‌ها',
+            'accounting.cheques.create' => 'ثبت چک جدید',
+            'accounting.cheques.edit' => 'ویرایش چک',
+            'accounting.cheques.delete' => 'حذف چک',
+            'accounting.cheques.action' => 'عملیات و تعیین تکلیف چک‌ها',
+            'accounting.cheques.manage' => 'مدیریت کامل چک‌ها',
+
+            'accounting.invoices.view' => 'مشاهده فاکتورهای حسابداری',
+            'accounting.invoices.create' => 'صدور فاکتور حسابداری',
+            'accounting.invoices.edit' => 'ویرایش فاکتور حسابداری',
+            'accounting.invoices.delete' => 'حذف فاکتور حسابداری',
+            'accounting.invoices.manage' => 'مدیریت فاکتورهای حسابداری',
+
+            'accounting.proformas.view' => 'مشاهده پیش‌فاکتورهای حسابداری',
+            'accounting.proformas.create' => 'صدور پیش‌فاکتور حسابداری',
+            'accounting.proformas.edit' => 'ویرایش پیش‌فاکتور حسابداری',
+            'accounting.proformas.delete' => 'حذف پیش‌فاکتور حسابداری',
+            'accounting.proformas.manage' => 'مدیریت پیش‌فاکتورهای حسابداری',
+
+            'accounting.expenses.view' => 'مشاهده هزینه‌ها',
+            'accounting.expenses.create' => 'ثبت هزینه جدید',
+            'accounting.expenses.edit' => 'ویرایش هزینه',
+            'accounting.expenses.delete' => 'حذف هزینه',
+            'accounting.expenses.manage' => 'مدیریت هزینه‌ها',
+
+            'accounting.reports.view' => 'مشاهده گزارش‌های حسابداری',
+            'accounting.settings.view' => 'مشاهده تنظیمات حسابداری',
+            'accounting.settings.manage' => 'مدیریت تنظیمات حسابداری',
+
+            // Services
+            'services.view' => 'مشاهده ماژول سرویس و خدمات',
+            'services.manage' => 'مدیریت سرویس و خدمات',
+            'services.create' => 'ایجاد خدمت جدید',
+            'services.edit' => 'ویرایش خدمت',
+            'services.delete' => 'حذف خدمت',
+            'services.duplicate' => 'تکثیر/کپی خدمت',
+
+            'services.projects.view' => 'مشاهده پروژه‌های خدمات',
+            'services.projects.create' => 'ایجاد پروژه خدمات جدید',
+            'services.projects.edit' => 'ویرایش پروژه خدمات',
+            'services.projects.delete' => 'حذف پروژه خدمات',
+            'services.projects.manage' => 'مدیریت پروژه‌های خدمات',
+
+            'services.orders.view' => 'مشاهده سفارشات خدمات',
+            'services.orders.view.all' => 'مشاهده همه سفارشات خدمات',
+            'services.orders.create' => 'ثبت سفارش خدمت جدید',
+            'services.orders.edit' => 'ویرایش سفارش خدمت',
+            'services.orders.delete' => 'حذف سفارش خدمت',
+            'services.orders.manage' => 'مدیریت سفارشات خدمات',
+
+            'services.invoices.view' => 'مشاهده فاکتورهای خدمات',
+            'services.invoices.view.all' => 'مشاهده همه فاکتورهای خدمات',
+            'services.invoices.create' => 'صدور فاکتور خدمت',
+            'services.invoices.edit' => 'ویرایش فاکتور خدمت',
+            'services.invoices.delete' => 'حذف فاکتور خدمت',
+            'services.invoices.manage' => 'مدیریت فاکتورهای خدمات',
+            'services.invoices.pay' => 'ثبت پرداخت فاکتور خدمت',
+            'services.invoices.cancel' => 'لغو فاکتور خدمت',
+            'services.invoices.cancel-payment' => 'لغو پرداخت فاکتور خدمت',
+            'services.invoices.convert' => 'تبدیل سفارش به فاکتور خدمت',
+
+            'services.settings.manage' => 'مدیریت تنظیمات خدمات',
+
+            // Sales
+            'sales.view' => 'مشاهده ماژول فروش',
+            'sales.manage' => 'مدیریت فروش',
+            'sales.cockpit.view' => 'مشاهده داشبورد (کاکپیت) فروش',
+            'sales.reports.view' => 'مشاهده گزارش‌های فروش',
+
+            'sales.calls.view' => 'مشاهده تماس‌های فروش',
+            'sales.calls.view.all' => 'مشاهده همه تماس‌های فروش',
+            'sales.calls.view.own' => 'مشاهده تماس‌های فروش خود',
+            'sales.calls.create' => 'ثبت تماس فروش جدید',
+            'sales.calls.edit' => 'ویرایش تماس فروش',
+            'sales.calls.delete' => 'حذف تماس فروش',
+            'sales.calls.manage' => 'مدیریت تماس‌های فروش',
+
+            'sales.campaigns.view' => 'مشاهده کمپین‌های فروش',
+            'sales.campaigns.create' => 'ایجاد کمپین فروش',
+            'sales.campaigns.edit' => 'ویرایش کمپین فروش',
+            'sales.campaigns.delete' => 'حذف کمپین فروش',
+            'sales.campaigns.export' => 'خروجی گرفتن از کمپین فروش',
+            'sales.campaigns.manage' => 'مدیریت کمپین‌های فروش',
+
+            'sales.followups.view' => 'مشاهده پیگیری‌های فروش',
+            'sales.followups.view.all' => 'مشاهده همه پیگیری‌های فروش',
+            'sales.followups.view.own' => 'مشاهده پیگیری‌های فروش خود',
+            'sales.followups.create' => 'ثبت پیگیری فروش جدید',
+            'sales.followups.edit' => 'ویرایش پیگیری فروش',
+            'sales.followups.delete' => 'حذف پیگیری فروش',
+            'sales.followups.manage' => 'مدیریت پیگیری‌های فروش',
+
+            // Wallet
+            'wallet.view' => 'مشاهده کیف پول',
+            'wallet.manage' => 'مدیریت کیف پول',
+            'wallet.deposit' => 'شارژ / واریز به کیف پول',
+            'wallet.withdraw' => 'برداشت از کیف پول',
+            'wallet.transactions.view' => 'مشاهده تراکنش‌های کیف پول',
+
+            // Status Builder
+            'status-builder.manage' => 'مدیریت وضعیت‌ساز (Status Builder)',
         ];
 
-        // اگر ترجمه صریح نداریم، یک تبدیل خوانا بساز:
         if (!isset($map[$name])) {
             $tmp = str_replace(['.', '-', '_'], ' ', $name);
             return trim($tmp);
@@ -447,9 +661,6 @@ class PermissionCatalog
         return $map[$name];
     }
 
-    /**
-     * تشخیص گروه برای یک نام مجوز
-     */
     public static function detectGroup(string $name): string
     {
         foreach (self::groups() as $key => $g) {
@@ -462,27 +673,18 @@ class PermissionCatalog
         return 'other';
     }
 
-    /**
-     * خروجی نهایی برای ویو: [
-     * groupKey => ['title' => ..., 'items' => [ ['name'=>'users.view','label'=>'مشاهده کاربران'], ... ] ]
-     * ]
-     */
     public static function groupAndTranslate(Collection $permissions): array
     {
         $out = [];
         foreach (self::groups() as $k => $g) {
             $out[$k] = ['title' => $g['title'], 'items' => []];
         }
-
-        // دریافت کاربر جاری برای بررسی نقش سوپر ادمین
         $user = auth()->user();
         $isSuperAdmin = $user && $user->hasRole('super-admin');
 
         foreach ($permissions as $perm) {
             /** @var Permission $perm */
             $name  = $perm->name;
-
-            // اگر مجوز modules.manage است و کاربر سوپر ادمین نیست، آن را نادیده بگیر
             if ($name === 'modules.manage' && !$isSuperAdmin) {
                 continue;
             }
@@ -493,14 +695,12 @@ class PermissionCatalog
             $out[$group]['items'][] = ['name' => $name, 'label' => $label];
         }
 
-        // گروه‌هایی که خالی مانده‌اند را حذف کن
         foreach ($out as $k => $g) {
             if (empty($g['items'])) {
                 unset($out[$k]);
             }
         }
 
-        // مرتب‌سازی داخلی هر گروه بر اساس برچسب فارسی
         foreach ($out as &$g) {
             usort($g['items'], fn($a, $b) => strcmp($a['label'], $b['label']));
         }

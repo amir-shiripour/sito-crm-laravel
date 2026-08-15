@@ -38,12 +38,12 @@ class HandleNodeReached
     protected function resolveClientId(WorkflowInstance $instance): ?int
     {
         if ($instance->related_type === 'TREATMENT_PLAN') {
-            if (class_exists(\Modules\Booking\App\Models\TreatmentPlan::class)) {
+            if (file_exists(base_path('Modules/Booking/App/Models/TreatmentPlan.php')) && class_exists('Modules\\Booking\\App\\Models\\TreatmentPlan')) {
                 $plan = \Modules\Booking\App\Models\TreatmentPlan::find($instance->related_id);
                 return $plan?->client_id;
             }
         } elseif ($instance->related_type === 'APPOINTMENT') {
-            if (class_exists(\Modules\Booking\Entities\Appointment::class)) {
+            if (file_exists(base_path('Modules/Booking/Entities/Appointment.php')) && class_exists('Modules\\Booking\\Entities\\Appointment')) {
                 $appt = \Modules\Booking\Entities\Appointment::find($instance->related_id);
                 return $appt?->client_id;
             }

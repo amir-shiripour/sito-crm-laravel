@@ -47,7 +47,26 @@ class SettingsController extends Controller
         $roles = $rolesQuery->get();
         $categories = \Modules\Booking\Entities\BookingCategory::orderBy('name')->get();
 
-        return view('booking::user.settings.edit', compact('settings', 'rules', 'roles', 'categories'));
+        $globalExceptions = \Modules\Booking\Entities\BookingAvailabilityException::query()
+            ->where('scope_type', \Modules\Booking\Entities\BookingAvailabilityException::SCOPE_GLOBAL)
+            ->whereNull('scope_id')
+            ->get();
+
+        $services = \Modules\Booking\Entities\BookingService::query()
+            ->where('status', \Modules\Booking\Entities\BookingService::STATUS_ACTIVE)
+            ->orderBy('name')
+            ->get(['id', 'name', 'status', 'owner_user_id']);
+
+        $providers = \App\Models\User::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+        $syncGroups = $syncService->getGroups();
+
+        return view('booking::user.settings.edit', compact(
+            'settings', 'rules', 'roles', 'categories', 'globalExceptions', 'services', 'providers', 'syncGroups'
+        ));
     }
 
     public function update(Request $request)
@@ -108,6 +127,8 @@ class SettingsController extends Controller
             'default_slot_duration_minutes' => ['required', 'integer', 'min:5', 'max:720'],
             'default_capacity_per_slot' => ['required', 'integer', 'min:1', 'max:1000'],
             'default_capacity_per_day' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'default_buffer_before_minutes' => ['nullable', 'integer', 'min:0', 'max:240'],
+            'default_buffer_after_minutes'  => ['nullable', 'integer', 'min:0', 'max:240'],
             'allow_role_service_creation' => ['required'],
             'allowed_roles' => ['nullable'],
             'statement_roles' => ['nullable'],
@@ -118,6 +139,7 @@ class SettingsController extends Controller
             'operator_appointment_flow' => ['required', 'in:PROVIDER_FIRST,SERVICE_FIRST'],
             'user_appointment_flow' => ['required', 'in:PROVIDER_FIRST,SERVICE_FIRST'],
             'allow_appointment_entry_exit_times' => ['required'],
+            'allow_manual_time_override' => ['required'],
             'tax_enabled' => ['required'],
             'tax_type' => ['nullable', 'in:PERCENT,FIXED'],
             'tax_amount' => ['nullable', 'numeric', 'min:0'],
@@ -129,6 +151,7 @@ class SettingsController extends Controller
         $generalData['global_online_booking_enabled'] = (bool) $generalData['global_online_booking_enabled'];
         $generalData['allow_role_service_creation'] = (bool) $generalData['allow_role_service_creation'];
         $generalData['allow_appointment_entry_exit_times'] = (bool) $generalData['allow_appointment_entry_exit_times'];
+        $generalData['allow_manual_time_override'] = (bool) $generalData['allow_manual_time_override'];
         $generalData['tax_enabled'] = $request->boolean('tax_enabled');
         $generalData['show_service_description'] = $request->boolean('show_service_description');
         $generalData['show_supplementary_info'] = $request->boolean('show_supplementary_info');
@@ -306,6 +329,8 @@ class SettingsController extends Controller
             $slotDuration = isset($input['slot_duration_minutes']) && $input['slot_duration_minutes'] !== '' ? (int)$input['slot_duration_minutes'] : null;
             $capSlot = isset($input['capacity_per_slot']) && $input['capacity_per_slot'] !== '' ? (int)$input['capacity_per_slot'] : null;
             $capDay = isset($input['capacity_per_day']) && $input['capacity_per_day'] !== '' ? (int)$input['capacity_per_day'] : null;
+            $bufBefore = isset($input['buffer_before_minutes']) && $input['buffer_before_minutes'] !== '' ? (int)$input['buffer_before_minutes'] : null;
+            $bufAfter  = isset($input['buffer_after_minutes']) && $input['buffer_after_minutes'] !== '' ? (int)$input['buffer_after_minutes'] : null;
 
             BookingAvailabilityRule::updateOrCreate(
                 ['scope_type' => BookingAvailabilityRule::SCOPE_GLOBAL, 'scope_id' => null, 'weekday' => $weekday],
@@ -317,12 +342,24 @@ class SettingsController extends Controller
                     'slot_duration_minutes' => $isClosed ? null : $slotDuration,
                     'capacity_per_slot' => $isClosed ? null : $capSlot,
                     'capacity_per_day' => $isClosed ? null : $capDay,
+                    'buffer_before_minutes' => $isClosed ? null : $bufBefore,
+                    'buffer_after_minutes'  => $isClosed ? null : $bufAfter,
                 ]
             );
         }
 
         // ═══════════════════════════════════════
-        //  PART 5: Redirect back to the same tab
+        //  PART 5: Save Service Sync Groups
+        // ═══════════════════════════════════════
+        $syncInput = $request->input('sync_groups', null);
+        if ($syncInput !== null) {
+            $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+            $rawGroups = is_string($syncInput) ? json_decode($syncInput, true) : (is_array($syncInput) ? $syncInput : []);
+            $syncService->saveGroups(is_array($rawGroups) ? $rawGroups : []);
+        }
+
+        // ═══════════════════════════════════════
+        //  PART 6: Redirect back to the same tab
         // ═══════════════════════════════════════
         $activeTab = $request->input('_active_tab', 'general');
         return redirect()->route('user.booking.settings.edit', ['tab' => $activeTab])

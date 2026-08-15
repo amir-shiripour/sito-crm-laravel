@@ -68,6 +68,9 @@ class WorkflowInstance extends Model
 
     public function binding(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Booking\App\Models\TreatmentPlanWorkflowBinding::class, 'binding_id');
+        if (file_exists(base_path('Modules/Booking/App/Models/TreatmentPlanWorkflowBinding.php')) && class_exists('Modules\\Booking\\App\\Models\\TreatmentPlanWorkflowBinding')) {
+            return $this->belongsTo(\Modules\Booking\App\Models\TreatmentPlanWorkflowBinding::class, 'binding_id');
+        }
+        return $this->belongsTo(\App\Models\User::class, 'id')->whereRaw('1 = 0');
     }
 }

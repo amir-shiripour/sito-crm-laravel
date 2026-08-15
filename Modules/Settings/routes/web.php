@@ -6,11 +6,13 @@ use Modules\Settings\Http\Controllers\GapGPTLogController;
 use Modules\Settings\Http\Controllers\PaymentController;
 use Modules\Settings\Http\Controllers\ApiKeyController;
 use Modules\Settings\Http\Controllers\UserPaymentSettingsController;
+use Modules\Settings\Http\Controllers\GoogleCalendarController;
 
 Route::prefix('settings')->middleware(['auth'])->group(function () {
     Route::get('/', [SettingsController::class, 'index'])->name('settings.index');
     Route::post('/', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('/test-gapgpt', [SettingsController::class, 'testGapGPT'])->name('settings.test-gapgpt');
+    Route::post('/sync-holidays', [SettingsController::class, 'syncHolidays'])->name('settings.sync-holidays');
 
     // روت‌های لاگ هوش مصنوعی
     Route::get('/gapgpt-logs', [GapGPTLogController::class, 'index'])->name('settings.gapgpt-logs.index');
@@ -25,6 +27,19 @@ Route::prefix('settings')->middleware(['auth'])->group(function () {
     Route::delete('/api-keys/{apiKey}', [ApiKeyController::class, 'destroy'])->name('settings.api-keys.destroy');
     Route::patch('/api-keys/{apiKey}/toggle', [ApiKeyController::class, 'toggleActive'])->name('settings.api-keys.toggle');
     Route::get('/api-keys/{apiKey}/preview', [ApiKeyController::class, 'preview'])->name('settings.api-keys.preview');
+
+    // روت‌های اتصال، مدیریت و ایمپورت دستی Google Calendar
+    Route::prefix('google-calendar')->name('settings.google-calendar.')->group(function () {
+        Route::get('/connect', [GoogleCalendarController::class, 'connect'])->name('connect');
+        Route::get('/callback', [GoogleCalendarController::class, 'callback'])->name('callback');
+        Route::post('/disconnect', [GoogleCalendarController::class, 'disconnect'])->name('disconnect');
+        Route::get('/calendars', [GoogleCalendarController::class, 'listCalendars'])->name('calendars');
+        Route::post('/calendars', [GoogleCalendarController::class, 'saveCalendars'])->name('calendars.save');
+
+        // ایمپورت دستی فایل iCal / ICS / ZIP
+        Route::post('/import', [GoogleCalendarController::class, 'importFile'])->name('import');
+        Route::post('/clear-imported', [GoogleCalendarController::class, 'clearImported'])->name('clear-imported');
+    });
 });
 
 // روت عمومی مستندات کلید API
@@ -35,4 +50,3 @@ Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(functio
     Route::get('/settings/payment', [UserPaymentSettingsController::class, 'edit'])->name('settings.payment');
     Route::post('/settings/payment', [UserPaymentSettingsController::class, 'update'])->name('settings.payment.update');
 });
-
