@@ -7,17 +7,23 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('booking_services', function (Blueprint $table) {
-
-            $table->json('custom_prices')->nullable()->after('base_price');
-
-        });
+        if (Schema::hasTable('booking_services')) {
+            Schema::table('booking_services', function (Blueprint $table) {
+                if (!Schema::hasColumn('booking_services', 'custom_prices')) {
+                    $table->json('custom_prices')->nullable()->after('base_price');
+                }
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('booking_services', function (Blueprint $table) {
-            $table->dropColumn('custom_prices');
-        });
+        if (Schema::hasTable('booking_services')) {
+            Schema::table('booking_services', function (Blueprint $table) {
+                if (Schema::hasColumn('booking_services', 'custom_prices')) {
+                    $table->dropColumn('custom_prices');
+                }
+            });
+        }
     }
 };

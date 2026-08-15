@@ -577,6 +577,16 @@
             },
 
             loadData(silent = false) {
+                // If auto-refreshing in silent background and user is actively interacting (focused element in widget or action loading), defer auto-refresh
+                if (silent) {
+                    if (this.actionLoading) return;
+                    const widgetEl = document.getElementById('patient-journey-canvas-widget');
+                    const activeEl = document.activeElement;
+                    if (widgetEl && activeEl && widgetEl.contains(activeEl) && ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(activeEl.tagName)) {
+                        return;
+                    }
+                }
+
                 if (!silent) this.loading = true;
                 
                 const url = `/user/workflows/canvas-data?q=${encodeURIComponent(this.filters.q)}&workflow_id=${this.filters.workflow_id}&status=${this.filters.status}&page=${this.filters.page}`;
@@ -590,9 +600,9 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        this.instances = data.instances;
-                        this.stats = data.stats;
-                        this.workflows = data.workflows;
+                        this.updateInstances(data.instances);
+                        this.updateStats(data.stats);
+                        this.updateWorkflows(data.workflows);
                         this.pagination = data.pagination;
                     }
                 })
@@ -600,6 +610,48 @@
                 .finally(() => {
                     this.loading = false;
                 });
+            },
+
+            updateInstances(newInstances) {
+                if (!this.instances || this.instances.length === 0) {
+                    this.instances = newInstances;
+                    return;
+                }
+
+                const newMap = new Map((newInstances || []).map(item => [item.id, item]));
+
+                // Remove instances no longer present
+                this.instances = this.instances.filter(item => newMap.has(item.id));
+
+                // In-place update existing or append new
+                (newInstances || []).forEach((newItem, index) => {
+                    const existingIndex = this.instances.findIndex(item => item.id === newItem.id);
+                    if (existingIndex !== -1) {
+                        // Update properties in-place so Alpine preserves DOM identity and active state
+                        Object.assign(this.instances[existingIndex], newItem);
+                    } else {
+                        this.instances.splice(index, 0, newItem);
+                    }
+                });
+            },
+
+            updateStats(newStats) {
+                if (newStats) {
+                    this.stats = { ...newStats };
+                }
+            },
+
+            updateWorkflows(newWorkflows) {
+                if (!newWorkflows) return;
+                if (!this.workflows || this.workflows.length === 0) {
+                    this.workflows = newWorkflows;
+                    return;
+                }
+                const currIds = this.workflows.map(w => w.id).join(',');
+                const newIds = newWorkflows.map(w => w.id).join(',');
+                if (currIds !== newIds) {
+                    this.workflows = newWorkflows;
+                }
             },
 
             toggleExpand(id) {

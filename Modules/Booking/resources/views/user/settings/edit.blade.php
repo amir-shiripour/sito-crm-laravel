@@ -8,6 +8,11 @@
     $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2";
     $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800";
     $selectClass = $inputClass . " appearance-none cursor-pointer";
+
+    $globalExceptions = \Modules\Booking\Entities\BookingAvailabilityException::query()
+        ->where('scope_type', \Modules\Booking\Entities\BookingAvailabilityException::SCOPE_GLOBAL)
+        ->whereNull('scope_id')
+        ->get();
 @endphp
 
 @section('content')
@@ -66,7 +71,7 @@
 
         @includeIf('partials.jalali-date-picker')
 
-        <form method="POST" action="{{ route('user.booking.settings.update') }}" class="space-y-8 pb-24">
+        <form method="POST" action="{{ route('user.booking.settings.update') }}" class="space-y-8 pb-24" novalidate>
             @csrf
             <input type="hidden" name="_active_tab" id="active-tab-input" value="{{ request('tab', 'general') }}">
             <div class="border-b border-gray-200 dark:border-gray-700 mb-8">
@@ -105,6 +110,24 @@
                             class="pb-4 px-5 transition-all whitespace-nowrap flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                         تنظیمات ظاهری
+                    </button>
+
+                    <button type="button" @click="activeTab = 'holidays'"
+                            :class="activeTab === 'holidays'
+                                ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border-b-2 border-transparent'"
+                            class="pb-4 px-5 transition-all whitespace-nowrap flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        تعطیلات عمومی سیستم
+                    </button>
+
+                    <button type="button" @click="activeTab = 'sync'"
+                            :class="activeTab === 'sync'
+                                ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border-b-2 border-transparent'"
+                            class="pb-4 px-5 transition-all whitespace-nowrap flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        هماهنگ‌سازی سرویس‌ها
                     </button>
                 </div>
             </div>
@@ -154,6 +177,16 @@
                             </div>
 
                             <div>
+                                <label class="{{ $labelClass }}">استراحت پیش‌فرض قبل نوبت (دقیقه)</label>
+                                <input type="number" name="default_buffer_before_minutes" min="0" max="240" class="{{ $inputClass }} text-center" value="{{ old('default_buffer_before_minutes', $settings->default_buffer_before_minutes ?? 0) }}" placeholder="0">
+                            </div>
+
+                            <div>
+                                <label class="{{ $labelClass }}">استراحت پیش‌فرض بعد نوبت (دقیقه)</label>
+                                <input type="number" name="default_buffer_after_minutes" min="0" max="240" class="{{ $inputClass }} text-center" value="{{ old('default_buffer_after_minutes', $settings->default_buffer_after_minutes ?? 0) }}" placeholder="0">
+                            </div>
+
+                            <div>
                                 <label class="{{ $labelClass }}">جریان ثبت نوبت (اپراتور)</label>
                                 <select name="operator_appointment_flow" class="{{ $selectClass }}">
                                     <option value="PROVIDER_FIRST" @selected(old('operator_appointment_flow', $settings->operator_appointment_flow)==='PROVIDER_FIRST')>ابتدا ارائه‌دهنده</option>
@@ -175,6 +208,15 @@
                                     <option value="1" @selected((string)old('allow_appointment_entry_exit_times', $settings->allow_appointment_entry_exit_times)==='1')>فعال</option>
                                     <option value="0" @selected((string)old('allow_appointment_entry_exit_times', $settings->allow_appointment_entry_exit_times)==='0')>غیرفعال</option>
                                 </select>
+                            </div>
+
+                            <div>
+                                <label class="{{ $labelClass }}">امکان تغییر به زمان‌بندی دستی (هنگام ثبت نوبت)</label>
+                                <select name="allow_manual_time_override" class="{{ $selectClass }}">
+                                    <option value="1" @selected((string)old('allow_manual_time_override', $settings->allow_manual_time_override)==='1')>فعال (نمایش دکمه سوییچ)</option>
+                                    <option value="0" @selected((string)old('allow_manual_time_override', $settings->allow_manual_time_override)==='0')>غیرفعال</option>
+                                </select>
+                                <p class="text-[11px] text-gray-400 mt-2">در صورت فعال بودن، اپراتور می‌تواند در هنگام ثبت نوبت اسلاتی، حالت زمان را به وارد کردن دستی ساعت تغییر دهد.</p>
                             </div>
                         </div>
                     </div>
@@ -1032,6 +1074,8 @@
                                 $dur      = old('rules.'.$d.'.slot_duration_minutes', $r?->slot_duration_minutes);
                                 $capSlot  = old('rules.'.$d.'.capacity_per_slot', $r?->capacity_per_slot);
                                 $capDay   = old('rules.'.$d.'.capacity_per_day', $r?->capacity_per_day);
+                                $bufBefore = old('rules.'.$d.'.buffer_before_minutes', $r?->buffer_before_minutes);
+                                $bufAfter  = old('rules.'.$d.'.buffer_after_minutes', $r?->buffer_after_minutes);
 
                                 $breaksArray = [];
                                 if (old('rules.'.$d.'.breaks')) {
@@ -1085,7 +1129,7 @@
                                 {{-- محتوای روز --}}
                                 <div x-show="isOpen" x-collapse class="border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
                                     <div class="p-5 space-y-6">
-                                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
                                             <div>
                                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">شروع کار</label>
                                                 <div class="relative">
@@ -1120,6 +1164,16 @@
                                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">ظرفیت کل روز</label>
                                                 <input type="number" name="rules[{{ $d }}][capacity_per_day]"
                                                        class="{{ $inputClass }} text-center" value="{{ $capDay }}" placeholder="{{ $settings->default_capacity_per_day }}">
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-gray-500 mb-1.5">استراحت قبل (دقیقه)</label>
+                                                <input type="number" name="rules[{{ $d }}][buffer_before_minutes]"
+                                                       class="{{ $inputClass }} text-center" value="{{ $bufBefore }}" placeholder="{{ $settings->default_buffer_before_minutes ?? 0 }}">
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-gray-500 mb-1.5">استراحت بعد (دقیقه)</label>
+                                                <input type="number" name="rules[{{ $d }}][buffer_after_minutes]"
+                                                       class="{{ $inputClass }} text-center" value="{{ $bufAfter }}" placeholder="{{ $settings->default_buffer_after_minutes ?? 0 }}">
                                             </div>
                                         </div>
 
@@ -1317,12 +1371,288 @@
                     </div>
                 </div>
             </div>
+
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            {{--                  HOLIDAYS TAB                             --}}
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            <div x-show="activeTab === 'holidays'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-6">
+                <x-booking::jalali-holiday-calendar
+                    scopeType="GLOBAL"
+                    :storeUrl="route('user.booking.settings.holidays.store')"
+                    :batchUrl="route('user.booking.settings.holidays.batch')"
+                    :exceptions="$globalExceptions"
+                />
+            </div>
+
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            {{--                  SYNC SERVICES TAB                        --}}
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            <div x-show="activeTab === 'sync'"
+                 x-data="serviceSyncComponent()"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 class="space-y-8">
+
+                <input type="hidden" name="sync_groups" :value="JSON.stringify(groups)">
+
+                {{-- راهنما --}}
+                <div class="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/30">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="space-y-1">
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white">راهنمای هماهنگ‌سازی سرویس‌ها</h3>
+                        <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                            در این بخش می‌توانید سرویس‌هایی که از نظر زمان و ظرفیت هم‌پوشانی دارند را در یک ردیف هماهنگی قرار دهید.
+                            هنگامی که برای یکی از سرویس‌های موجود در یک ردیف نوبت ثبت شود، همان اسلات زمانی برای سایر سرویس‌های هم‌ردیف مسدود می‌گردد.
+                            سرویس‌هایی که در هیچ ردیفی قرار نگرفته‌اند روند عادی خود را خواهند داشت.
+                        </p>
+                    </div>
+                </div>
+
+                {{-- بخش ۱: لیست سرویس‌ها و وضعیت هماهنگی --}}
+                <div class="{{ $cardClass }}">
+                    <div class="{{ $headerClass }}">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-white">۱. سرویس‌ها</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">مشاهده وضعیت هماهنگی سرویس‌های فعال سیستم</p>
+                        </div>
+                    </div>
+
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <template x-for="service in services" :key="service.id">
+                                <div class="p-4 rounded-xl border transition-all flex items-center justify-between gap-3"
+                                     :class="getServiceGroupNames(service.id).length > 0
+                                        ? 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/20 dark:border-indigo-800/40'
+                                        : 'border-gray-200 bg-gray-50/50 dark:bg-gray-900/40 dark:border-gray-700'">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div class="w-3 h-3 rounded-full flex-shrink-0"
+                                             :class="getServiceGroupNames(service.id).length > 0 ? 'bg-indigo-500 shadow-sm shadow-indigo-500/50' : 'bg-gray-300 dark:bg-gray-600'"></div>
+                                        <div class="min-w-0">
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white truncate block" x-text="service.name"></span>
+                                            <template x-if="getServiceGroupNames(service.id).length > 0">
+                                                <div class="flex flex-wrap gap-1 mt-1">
+                                                    <template x-for="gName in getServiceGroupNames(service.id)" :key="gName">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300" x-text="gName"></span>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                            <template x-if="getServiceGroupNames(service.id).length === 0">
+                                                <span class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 block">روند فعلی (بدون هماهنگی)</span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- بخش ۲: ایجاد ردیف‌ها و قرار دادن سرویس‌ها --}}
+                <div class="{{ $cardClass }}">
+                    <div class="{{ $headerClass }} justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">۲. ردیف‌های هماهنگی</h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">تعریف ردیف و قرار دادن سرویس‌های هم‌نیازمند در هر ردیف</p>
+                            </div>
+                        </div>
+
+                        <button type="button" @click="addGroup()"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-bold transition-all shadow-md shadow-indigo-500/20">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            افزودن ردیف جدید
+                        </button>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        <template x-if="groups.length === 0">
+                            <div class="text-center py-12 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/20">
+                                <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">هیچ ردیف هماهنگی تعریف نشده است</p>
+                                <p class="text-xs text-gray-400 mt-1">با کلیک روی دکمه «افزودن ردیف جدید»، سرویس‌ها را با یکدیگر هماهنگ کنید.</p>
+                                <button type="button" @click="addGroup()" class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100 transition-colors">
+                                    + ایجاد اولین ردیف
+                                </button>
+                            </div>
+                        </template>
+
+                        <template x-for="(group, gIdx) in groups" :key="group.id">
+                            <div class="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm space-y-4 relative group/row transition-all hover:border-indigo-300 dark:hover:border-indigo-700">
+                                {{-- هدر ردیف --}}
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-700/60 pb-3">
+                                    <div class="flex items-center gap-3 flex-1">
+                                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-black" x-text="gIdx + 1"></span>
+                                        <input type="text" x-model="group.name"
+                                               class="text-sm font-bold text-gray-900 dark:text-white bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:outline-none px-1 py-0.5 w-48"
+                                               placeholder="عنوان ردیف (مثلاً: هماهنگی ۱)">
+                                    </div>
+
+                                    <div class="flex items-center gap-3">
+                                        {{-- فیلتر ارائه‌دهنده --}}
+                                        <div class="flex items-center gap-2">
+                                            <label class="text-xs font-medium text-gray-500 whitespace-nowrap">ارائه‌دهنده:</label>
+                                            <select x-model="group.provider_user_id" class="text-xs rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-1.5 dark:text-gray-200 focus:ring-indigo-500">
+                                                <option value="">همه ارائه‌دهندگان (سراسر سیستم)</option>
+                                                @foreach($providers as $p)
+                                                    <option value="{{ $p->id }}">{{ $p->name }} {{ $p->email ? "({$p->email})" : '' }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <button type="button" @click="removeGroup(gIdx)"
+                                                class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                title="حذف این ردیف">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- انتخاب سرویس‌های این ردیف --}}
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
+                                        سرویس‌های موجود در این ردیف:
+                                        <span class="text-[11px] font-normal text-gray-400 mr-1">(هر سرویس می‌تواند تنها در یک ردیف فعال باشد)</span>
+                                    </label>
+
+                                    <div class="flex flex-wrap gap-2 min-h-[44px] p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/80">
+                                        <template x-for="service in services" :key="service.id">
+                                            <button type="button"
+                                                    @click="toggleServiceInGroup(gIdx, service.id)"
+                                                    :class="group.service_ids.includes(service.id)
+                                                        ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30 font-bold border-indigo-600'
+                                                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-indigo-300'"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-all transform active:scale-95">
+                                                <span x-text="service.name"></span>
+                                                <template x-if="group.service_ids.includes(service.id)">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
+                                                </template>
+                                                <template x-if="!group.service_ids.includes(service.id)">
+                                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                                </template>
+                                            </button>
+                                        </template>
+                                    </div>
+
+                                    <template x-if="group.service_ids.length === 1">
+                                        <p class="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            برای هماهنگ‌سازی حداقل ۲ سرویس باید انتخاب شوند.
+                                        </p>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- دکمه ذخیره‌سازی --}}
+                <div class="flex justify-end pt-4">
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/50 transition-all transform active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                        ذخیره هماهنگ‌سازی سرویس‌ها
+                    </button>
+                </div>
+            </div>
         </form>
     </div>
 
     {{-- اسکریپت‌ها --}}
     <script>
         document.addEventListener('alpine:init', () => {
+            Alpine.data('serviceSyncComponent', () => ({
+                groups: (@json($syncGroups ?? [])).map(g => ({
+                    ...g,
+                    provider_user_id: (g.provider_user_id !== null && g.provider_user_id !== undefined && g.provider_user_id !== '') ? String(g.provider_user_id) : ''
+                })),
+                services: @json($services ?? []),
+                providers: @json($providers ?? []),
+
+                addGroup() {
+                    const nextNum = this.groups.length + 1;
+                    this.groups.push({
+                        id: 'group_' + Date.now(),
+                        name: 'هماهنگی ' + nextNum,
+                        provider_user_id: '',
+                        service_ids: []
+                    });
+                },
+
+                removeGroup(index) {
+                    if (confirm('آیا از حذف این ردیف هماهنگی اطمینان دارید؟')) {
+                        this.groups.splice(index, 1);
+                    }
+                },
+
+                toggleServiceInGroup(groupIndex, serviceId) {
+                    const targetGroup = this.groups[groupIndex];
+                    if (!targetGroup) return;
+
+                    const isCurrentlyInTarget = targetGroup.service_ids.includes(serviceId);
+
+                    if (isCurrentlyInTarget) {
+                        // Remove from current group
+                        targetGroup.service_ids = targetGroup.service_ids.filter(id => id !== serviceId);
+                        return;
+                    }
+
+                    // Check if this service is already in another group
+                    let existingGroupIndex = -1;
+                    let existingGroupName = '';
+
+                    for (let i = 0; i < this.groups.length; i++) {
+                        if (i !== groupIndex && this.groups[i].service_ids.includes(serviceId)) {
+                            existingGroupIndex = i;
+                            existingGroupName = this.groups[i].name || ('ردیف ' + (i + 1));
+                            break;
+                        }
+                    }
+
+                    if (existingGroupIndex !== -1) {
+                        const sObj = this.services.find(s => s.id === serviceId);
+                        const sName = sObj ? sObj.name : 'این سرویس';
+                        const proceed = confirm(`سرویس «${sName}» در حال حاضر در «${existingGroupName}» قرار دارد.\nآیا مایلید این سرویس از آن ردیف حذف شده و به «${targetGroup.name}» منتقل شود؟`);
+
+                        if (!proceed) {
+                            return; // User canceled
+                        }
+
+                        // Remove from existing group
+                        this.groups[existingGroupIndex].service_ids = this.groups[existingGroupIndex].service_ids.filter(id => id !== serviceId);
+                    }
+
+                    // Add to target group
+                    targetGroup.service_ids.push(serviceId);
+                },
+
+                getServiceGroupNames(serviceId) {
+                    const names = [];
+                    for (const group of this.groups) {
+                        if (group.service_ids.includes(serviceId)) {
+                            names.push(group.name);
+                        }
+                    }
+                    return names;
+                }
+            }));
+
             Alpine.data('taxSettings', () => ({
                 taxEnabled: '{{ (string)(old('tax_enabled', $settings->tax_enabled ?? false) ? '1' : '0') }}',
                 taxType: '{{ old('tax_type', $settings->tax_type ?? 'PERCENT') }}',

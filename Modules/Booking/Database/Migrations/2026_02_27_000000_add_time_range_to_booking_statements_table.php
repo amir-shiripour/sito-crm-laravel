@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class AddTimeRangeToBookingStatementsTable extends Migration
+return new class extends Migration
 {
     public function up()
     {
@@ -20,4 +20,4 @@ class AddTimeRangeToBookingStatementsTable extends Migration
             $table->dropColumn(['first_appointment_time', 'last_appointment_time']);
         });
     }
-}
+};

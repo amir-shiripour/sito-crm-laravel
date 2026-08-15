@@ -94,23 +94,24 @@
         </div>
     </div>
 
-    {{-- Main Toolbar --}}
-    <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
-        <div class="flex flex-col xl:flex-row items-center justify-between gap-4">
+    {{-- Main Toolbar & Advanced Searchable Filters --}}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-5 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+        {{-- Row 1: Date Navigation & Calendar View Switchers --}}
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
 
-            {{-- Navigation & DatePicker --}}
-            <div class="flex items-center gap-3 w-full xl:w-auto flex-wrap sm:flex-nowrap">
-                <div class="flex items-center bg-gray-50 dark:bg-gray-900 rounded-xl p-1 border border-gray-200 dark:border-gray-700/80">
+            {{-- Date Navigation & Jalali DatePicker --}}
+            <div class="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+                <div class="flex items-center bg-gray-50 dark:bg-gray-900 rounded-xl p-1 border border-gray-200 dark:border-gray-700/80 shrink-0">
                     <button wire:click="previousPeriod" class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition" title="بازه قبل">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
-                    <button wire:click="today" class="px-4 py-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition">امروز</button>
+                    <button wire:click="today" class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition">امروز</button>
                     <button wire:click="nextPeriod" class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition" title="بازه بعد">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     </button>
                 </div>
 
-                <div class="relative flex-1 sm:w-64 min-w-[200px]">
+                <div class="relative flex-1 min-w-[160px] sm:min-w-[200px]">
                     <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-indigo-600 dark:text-indigo-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     </div>
@@ -118,11 +119,11 @@
                            wire:model.live="selectedDateJalali"
                            data-jdp
                            data-jdp-only-date
-                           class="w-full pr-10 pl-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 cursor-pointer text-center hover:bg-white dark:hover:bg-gray-800 transition-colors"
+                           class="w-full pr-10 pl-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm font-black text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 cursor-pointer text-center hover:bg-white dark:hover:bg-gray-800 transition-colors"
                            placeholder="انتخاب تاریخ...">
                 </div>
 
-                <div class="hidden md:block text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/50 px-4 py-3 rounded-xl whitespace-nowrap border border-indigo-100 dark:border-indigo-900/60 shadow-sm">
+                <div class="hidden sm:block text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/50 px-3.5 py-2.5 rounded-xl whitespace-nowrap border border-indigo-100 dark:border-indigo-900/60 shadow-xs">
                     @if ($calendarView === 'week')
                         📅 هفته: {{ $weekDays[0]['jalali_date'] ?? '' }} تا {{ $weekDays[6]['jalali_date'] ?? '' }}
                     @elseif ($calendarView === 'month')
@@ -133,84 +134,217 @@
                 </div>
             </div>
 
-            {{-- Calendar View Switcher & Filters --}}
-            <div class="flex items-center gap-3 w-full xl:w-auto flex-wrap sm:flex-nowrap justify-end">
-                {{-- Main Calendar View Switcher --}}
+            {{-- View Switchers (Day/Week/Month & Grid/Timeline) --}}
+            <div class="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
                 <div class="flex items-center bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700/80">
-                    <button wire:click="setCalendarView('day')" class="px-3.5 py-2 rounded-lg text-xs font-black transition flex items-center gap-1.5 {{ $calendarView === 'day' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
+                    <button wire:click="setCalendarView('day')" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-black transition flex items-center gap-1 {{ $calendarView === 'day' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-xs border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
                         📅 روزانه
                     </button>
-                    <button wire:click="setCalendarView('week')" class="px-3.5 py-2 rounded-lg text-xs font-black transition flex items-center gap-1.5 {{ $calendarView === 'week' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
+                    <button wire:click="setCalendarView('week')" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-black transition flex items-center gap-1 {{ $calendarView === 'week' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-xs border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
                         📋 هفتگی
                     </button>
-                    <button wire:click="setCalendarView('month')" class="px-3.5 py-2 rounded-lg text-xs font-black transition flex items-center gap-1.5 {{ $calendarView === 'month' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
+                    <button wire:click="setCalendarView('month')" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-black transition flex items-center gap-1 {{ $calendarView === 'month' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-xs border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
                         🗓️ ماهانه
                     </button>
                 </div>
 
                 @if ($calendarView === 'day')
                     <div class="flex items-center bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700/80">
-                        <button wire:click="setViewMode('grid')" class="px-3.5 py-2 rounded-lg text-xs font-black transition flex items-center gap-1.5 {{ $viewMode === 'grid' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
+                        <button wire:click="setViewMode('grid')" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-black transition flex items-center gap-1 {{ $viewMode === 'grid' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-xs border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
                             ماتریسی
                         </button>
-                        <button wire:click="setViewMode('timeline')" class="px-3.5 py-2 rounded-lg text-xs font-black transition flex items-center gap-1.5 {{ $viewMode === 'timeline' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
+                        <button wire:click="setViewMode('timeline')" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-black transition flex items-center gap-1 {{ $viewMode === 'timeline' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-xs border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
                             تایم‌لاین
                         </button>
                     </div>
                 @endif
-
-                <select wire:model.live="selectedProviderId" class="text-xs font-black bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 hover:bg-white dark:hover:bg-gray-800 transition-colors">
-                    <option value="" class="dark:bg-gray-800 dark:text-white">همه پزشکان</option>
-                    @foreach ($providers as $prov)
-                        <option value="{{ $prov->id }}" class="dark:bg-gray-800 dark:text-white">{{ $prov->name }}</option>
-                    @endforeach
-                </select>
-
-                <select wire:model.live="selectedServiceId" class="text-xs font-black bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 hover:bg-white dark:hover:bg-gray-800 transition-colors">
-                    <option value="" class="dark:bg-gray-800 dark:text-white">همه سرویس‌ها</option>
-                    @foreach ($services as $svc)
-                        <option value="{{ $svc->id }}" class="dark:bg-gray-800 dark:text-white">{{ $svc->name }} {{ $svc->custom_schedule_enabled ? '⚡' : '' }}</option>
-                    @endforeach
-                </select>
-
-                <select wire:model.live="statusFilter" class="text-xs font-black bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 hover:bg-white dark:hover:bg-gray-800 transition-colors">
-                    <option value="" class="dark:bg-gray-800 dark:text-white">همه وضعیت‌ها</option>
-                    <option value="CONFIRMED" class="dark:bg-gray-800 dark:text-white">قطعی / تایید شده</option>
-                    <option value="PENDING" class="dark:bg-gray-800 dark:text-white">در انتظار تایید</option>
-                    <option value="PENDING_PAYMENT" class="dark:bg-gray-800 dark:text-white">در انتظار پرداخت</option>
-                    <option value="DONE" class="dark:bg-gray-800 dark:text-white">انجام شده</option>
-                    <option value="DRAFT" class="dark:bg-gray-800 dark:text-white">پیش‌نویس</option>
-                    <option value="NO_SHOW" class="dark:bg-gray-800 dark:text-white">عدم حضور</option>
-                    <option value="RESCHEDULED" class="dark:bg-gray-800 dark:text-white">جابجا شده</option>
-                    <option value="CANCELED_BY_ADMIN" class="dark:bg-gray-800 dark:text-white">لغو شده (ادمین)</option>
-                    <option value="CANCELED_BY_CLIENT" class="dark:bg-gray-800 dark:text-white">لغو شده (مشتری)</option>
-                </select>
-
-                <button wire:click="openCreateModal()" class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-black hover:bg-indigo-700 active:scale-95 shadow-md shadow-indigo-500/20 whitespace-nowrap transition-all">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-                    نوبت جدید
-                </button>
             </div>
         </div>
 
-        {{-- Step Control & Hint --}}
-        <div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700 flex-wrap gap-3">
-            <div class="flex items-center gap-3">
-                <span class="text-xs font-bold text-gray-600 dark:text-gray-400">⏱️ گام زمانی تقویم:</span>
+        {{-- Row 2: Advanced Searchable Filters Grid --}}
+        <div class="pt-4 border-t border-gray-100 dark:border-gray-700/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {{-- 1. Provider Searchable Dropdown --}}
+            <div x-data="{
+                open: false,
+                search: '',
+                selectedId: @entangle('selectedProviderId').live,
+                get selectedName() {
+                    if (!this.selectedId) return 'همه پزشکان';
+                    const el = document.getElementById('prov-opt-' + this.selectedId);
+                    return el ? el.dataset.name : 'همه پزشکان';
+                }
+            }" @click.outside="open = false" class="relative">
+                <label class="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">👨‍⚕️ ارائه‌دهنده / پزشک</label>
+                <button @click="open = !open" type="button" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-black text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-800 transition-all text-right shadow-xs">
+                    <div class="flex items-center gap-2 truncate">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                        <span class="truncate" x-text="selectedName"></span>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+
+                <div x-show="open" x-transition.opacity.duration.150ms class="absolute z-50 mt-1 w-full min-w-[220px] bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-2 space-y-1 text-xs" style="display: none;">
+                    <div class="relative mb-1">
+                        <input type="text" x-model="search" placeholder="جستجوی پزشک..." class="w-full pl-3 pr-8 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <svg class="w-4 h-4 text-gray-400 absolute right-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <div class="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar">
+                        <button type="button" @click="selectedId = null; $wire.set('selectedProviderId', null); open = false;" class="w-full text-right px-3 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 flex items-center justify-between font-bold" :class="!selectedId ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40' : 'text-gray-700 dark:text-gray-300'">
+                            <span>همه پزشکان</span>
+                            <template x-if="!selectedId">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </template>
+                        </button>
+                        @foreach ($filterProviders as $prov)
+                            <div id="prov-opt-{{ $prov->id }}" data-name="{{ $prov->name }}" class="hidden"></div>
+                            <button type="button"
+                                    x-show="search === '' || '{{ addslashes($prov->name) }}'.toLowerCase().includes(search.toLowerCase())"
+                                    @click="selectedId = {{ $prov->id }}; $wire.set('selectedProviderId', {{ $prov->id }}); open = false;"
+                                    class="w-full text-right px-3 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 flex items-center justify-between font-bold transition-colors"
+                                    :class="selectedId == {{ $prov->id }} ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40' : 'text-gray-700 dark:text-gray-300'">
+                                <div class="flex items-center gap-2 truncate">
+                                    <div class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 text-[10px] font-black flex items-center justify-center shrink-0">
+                                        {{ mb_substr($prov->name, 0, 1) }}
+                                    </div>
+                                    <span class="truncate">{{ $prov->name }}</span>
+                                </div>
+                                <template x-if="selectedId == {{ $prov->id }}">
+                                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </template>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            {{-- 2. Service Searchable Dropdown --}}
+            <div x-data="{
+                open: false,
+                search: '',
+                selectedId: @entangle('selectedServiceId').live,
+                get selectedName() {
+                    if (!this.selectedId) return 'همه سرویس‌ها';
+                    const el = document.getElementById('svc-opt-' + this.selectedId);
+                    return el ? el.dataset.name : 'همه سرویس‌ها';
+                }
+            }" @click.outside="open = false" class="relative">
+                <label class="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">🛠️ سرویس نوبت‌دهی</label>
+                <button @click="open = !open" type="button" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-black text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-800 transition-all text-right shadow-xs">
+                    <div class="flex items-center gap-2 truncate">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span class="truncate" x-text="selectedName"></span>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+
+                <div x-show="open" x-transition.opacity.duration.150ms class="absolute z-50 mt-1 w-full min-w-[220px] bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-2 space-y-1 text-xs" style="display: none;">
+                    <div class="relative mb-1">
+                        <input type="text" x-model="search" placeholder="جستجوی سرویس..." class="w-full pl-3 pr-8 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <svg class="w-4 h-4 text-gray-400 absolute right-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <div class="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar">
+                        <button type="button" @click="selectedId = null; $wire.set('selectedServiceId', null); open = false;" class="w-full text-right px-3 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 flex items-center justify-between font-bold" :class="!selectedId ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/40' : 'text-gray-700 dark:text-gray-300'">
+                            <span>همه سرویس‌ها</span>
+                            <template x-if="!selectedId">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </template>
+                        </button>
+                        @foreach ($services as $svc)
+                            <div id="svc-opt-{{ $svc->id }}" data-name="{{ $svc->name }}{{ $svc->custom_schedule_enabled ? ' ⚡' : '' }}" class="hidden"></div>
+                            <button type="button"
+                                    x-show="search === '' || '{{ addslashes($svc->name) }}'.toLowerCase().includes(search.toLowerCase())"
+                                    @click="selectedId = {{ $svc->id }}; $wire.set('selectedServiceId', {{ $svc->id }}); open = false;"
+                                    class="w-full text-right px-3 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 flex items-center justify-between font-bold transition-colors"
+                                    :class="selectedId == {{ $svc->id }} ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/40' : 'text-gray-700 dark:text-gray-300'">
+                                <span class="truncate">{{ $svc->name }} {{ $svc->custom_schedule_enabled ? '⚡' : '' }}</span>
+                                <template x-if="selectedId == {{ $svc->id }}">
+                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </template>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            {{-- 3. Status Searchable Dropdown --}}
+            <div x-data="{
+                open: false,
+                search: '',
+                selectedVal: @entangle('statusFilter').live,
+                statuses: [
+                    { val: '', label: 'همه وضعیت‌ها', color: 'bg-gray-400' },
+                    { val: 'CONFIRMED', label: 'قطعی / تایید شده', color: 'bg-emerald-500' },
+                    { val: 'PENDING', label: 'در انتظار تایید', color: 'bg-amber-500' },
+                    { val: 'PENDING_PAYMENT', label: 'در انتظار پرداخت', color: 'bg-yellow-500' },
+                    { val: 'DONE', label: 'انجام شده', color: 'bg-blue-500' },
+                    { val: 'DRAFT', label: 'پیش‌نویس', color: 'bg-gray-400' },
+                    { val: 'NO_SHOW', label: 'عدم حضور', color: 'bg-rose-400' },
+                    { val: 'RESCHEDULED', label: 'جابجا شده', color: 'bg-purple-500' },
+                    { val: 'CANCELED_BY_ADMIN', label: 'لغو شده (ادمین)', color: 'bg-rose-600' },
+                    { val: 'CANCELED_BY_CLIENT', label: 'لغو شده (مشتری)', color: 'bg-rose-600' }
+                ],
+                get selectedStatus() {
+                    return this.statuses.find(s => s.val === (this.selectedVal || '')) || this.statuses[0];
+                }
+            }" @click.outside="open = false" class="relative">
+                <label class="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">🏷️ وضعیت نوبت</label>
+                <button @click="open = !open" type="button" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-black text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-800 transition-all text-right shadow-xs">
+                    <div class="flex items-center gap-2 truncate">
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0" :class="selectedStatus.color"></span>
+                        <span class="truncate" x-text="selectedStatus.label"></span>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+
+                <div x-show="open" x-transition.opacity.duration.150ms class="absolute z-50 mt-1 w-full min-w-[220px] bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-2 space-y-1 text-xs" style="display: none;">
+                    <div class="relative mb-1">
+                        <input type="text" x-model="search" placeholder="جستجوی وضعیت..." class="w-full pl-3 pr-8 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <svg class="w-4 h-4 text-gray-400 absolute right-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <div class="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar">
+                        <template x-for="st in statuses" :key="st.val">
+                            <button type="button"
+                                    x-show="search === '' || st.label.toLowerCase().includes(search.toLowerCase())"
+                                    @click="selectedVal = st.val; $wire.set('statusFilter', st.val); open = false;"
+                                    class="w-full text-right px-3 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 flex items-center justify-between font-bold transition-colors"
+                                    :class="selectedVal === st.val ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40' : 'text-gray-700 dark:text-gray-300'">
+                                <div class="flex items-center gap-2 truncate">
+                                    <span class="w-2.5 h-2.5 rounded-full shrink-0" :class="st.color"></span>
+                                    <span class="truncate" x-text="st.label"></span>
+                                </div>
+                                <template x-if="selectedVal === st.val">
+                                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </template>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 4. Step Control & Reset Action Column --}}
+            <div>
+                <div class="flex items-center justify-between gap-1 mb-1">
+                    <label class="block text-[11px] font-bold text-gray-500 dark:text-gray-400">⏱️ گام زمانی تقویم</label>
+                    @if ($selectedProviderId || $selectedServiceId || $statusFilter)
+                        <button wire:click="resetFilters" class="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-0.5">
+                            ✕ پاکسازی فیلترها
+                        </button>
+                    @endif
+                </div>
                 @if ($isStepLocked)
-                    <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg text-amber-800 text-xs font-bold dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-200">
+                    <div class="flex items-center gap-2 h-[42px] px-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-bold dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-200">
                         🔒 ثابت ({{ $timeStepMinutes }} دقیقه)
                     </div>
                 @else
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 h-[42px] px-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
                         <input type="number" min="5" max="480" step="5" wire:model.blur="timeStepMinutes"
-                               class="w-20 px-2 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-center text-xs font-black text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500"
-                               title="برای اعمال، عدد مورد نظر را تایپ کرده و کلیک کنید">
-                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">دقیقه</span>
-                        <div class="hidden sm:flex gap-1">
-                            @foreach([15, 30, 45, 60, 90, 120] as $step)
+                               class="w-16 px-1 py-0.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-center text-xs font-black text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500"
+                               title="گام زمانی (دقیقه)">
+                        <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 shrink-0">دقیقه</span>
+                        <div class="hidden xl:flex gap-1 pr-1">
+                            @foreach([15, 30, 60] as $step)
                                 <button wire:click="setStep({{ $step }})"
-                                        class="px-2.5 py-1 rounded-lg text-[11px] font-black transition-all {{ $timeStepMinutes == $step ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-800' }}">
+                                        class="px-2 py-0.5 rounded text-[10px] font-black transition-all {{ $timeStepMinutes == $step ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700' }}">
                                     {{ $step }}
                                 </button>
                             @endforeach
@@ -218,43 +352,48 @@
                     </div>
                 @endif
             </div>
-            <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 px-3.5 py-1.5 rounded-xl shadow-xs">
-                💡 نکته: کلیک روی نوبت = مشاهده جزئیات | درگ نوبت = تغییر ساعت
+
+        </div>
+
+        {{-- Hint Banner --}}
+        <div class="pt-2 flex justify-end">
+            <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 px-3.5 py-1.5 rounded-xl shadow-xs inline-flex items-center gap-1.5">
+                <span>💡 ثبت نوبت فقط با کلیک روی تایم‌های خالی جدول انجام می‌شود. (کلیک روی نوبت = جزئیات | درگ = تغییر ساعت)</span>
             </div>
         </div>
     </div>
 
-    {{-- Status Legend (راهنمای وضعیت‌های نوبت) --}}
-    <div class="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center gap-3 overflow-x-auto text-xs font-bold">
-        <span class="text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center gap-1.5 pl-3 border-l border-gray-200 dark:border-gray-700">
-            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            راهنمای وضعیت‌ها:
-        </span>
-        <div class="flex items-center gap-4 flex-wrap">
-            <span class="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900"></span> قطعی
+    {{-- Status & Slot Type Legend (راهنمای تفکیک رنگی زمان‌ها و وضعیت‌های نوبت) --}}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between gap-4 overflow-x-auto text-xs font-bold">
+        <div class="flex items-center gap-3 shrink-0">
+            <span class="text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center gap-1.5 pl-3 border-l border-gray-200 dark:border-gray-700">
+                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                راهنمای انواع زمان‌ها:
             </span>
-            <span class="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-200 dark:ring-amber-900"></span> در انتظار
-            </span>
-            <span class="inline-flex items-center gap-1.5 text-yellow-700 dark:text-yellow-300">
-                <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 ring-2 ring-yellow-200 dark:ring-yellow-900"></span> در انتظار پرداخت
-            </span>
-            <span class="inline-flex items-center gap-1.5 text-blue-700 dark:text-blue-300">
-                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-blue-200 dark:ring-blue-900"></span> انجام شده
-            </span>
-            <span class="inline-flex items-center gap-1.5 text-purple-700 dark:text-purple-300">
-                <span class="w-2.5 h-2.5 rounded-full bg-purple-500 ring-2 ring-purple-200 dark:ring-purple-900"></span> جابجا شده
-            </span>
-            <span class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                <span class="w-2.5 h-2.5 rounded-full bg-gray-400 border border-dashed border-gray-600"></span> پیش‌نویس
-            </span>
-            <span class="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                <span class="w-2.5 h-2.5 rounded-full bg-slate-500 ring-2 ring-slate-200 dark:ring-slate-800"></span> عدم حضور
-            </span>
-            <span class="inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
-                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200 dark:ring-rose-900"></span> لغو شده
-            </span>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 shadow-2xs">
+                    <span class="w-2 h-2 rounded-full bg-gray-400"></span> ⚪ زمان کاملاً آزاد
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs">
+                    <span class="w-2 h-2 rounded-full bg-slate-500"></span> 👥 گروه چندظرفیتی
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gray-50 dark:bg-gray-900/60 border border-dotted border-gray-400 dark:border-gray-600 text-gray-600 dark:text-gray-400 shadow-2xs">
+                    <span class="w-2 h-2 rounded-full bg-gray-400"></span> 🔹 تایم آزاد بین نوبت‌ها
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-200/60 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 shadow-2xs">
+                    <span class="w-2 h-2 rounded-full bg-slate-400"></span> ☕ استراحت
+                </span>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 shrink-0 border-r border-gray-200 dark:border-gray-700 pr-3">
+            <span class="text-gray-400 dark:text-gray-500">کارت‌های وضعیت نوبت:</span>
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> قطعی</span>
+                <span class="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300"><span class="w-2 h-2 rounded-full bg-amber-500"></span> در انتظار</span>
+                <span class="inline-flex items-center gap-1 text-blue-700 dark:text-blue-300"><span class="w-2 h-2 rounded-full bg-blue-500"></span> انجام شده</span>
+                <span class="inline-flex items-center gap-1 text-gray-600 dark:text-gray-400"><span class="w-2 h-2 rounded-full bg-gray-400"></span> پیش‌نویس</span>
+                <span class="inline-flex items-center gap-1 text-rose-700 dark:text-rose-300"><span class="w-2 h-2 rounded-full bg-rose-500"></span> لغو</span>
+            </div>
         </div>
     </div>
 
@@ -324,7 +463,7 @@
                     </div>
 
                     {{-- Time Slots Matrix (Right Content) --}}
-                    <div class="flex-1 p-5">
+<div class="flex-1 p-5">
                         @if ($pData['policy']['is_closed'] && empty($pData['slots']))
                             <div class="h-full flex flex-col items-center justify-center text-gray-400 py-10">
                                 <span class="text-3xl mb-2">🌙</span>
@@ -339,139 +478,246 @@
                                     <span class="text-[11px] font-bold opacity-80">{{ count($pData['slots']) }} نوبت ثبت‌شده</span>
                                 </div>
                             @endif
-                            {{-- Grid of Time Slots: 1 to 3 spacious columns instead of cramped 5 columns --}}
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                                 @forelse ($pData['slots'] as $slot)
+                                    @php
+                                        $isMulti = ($slot['capacity'] ?? 1) > 1;
+                                    @endphp
 
-                                    {{-- 1. EMPTY SLOT (Neutral Light/Dark Dashed Card, Visually Distinct from Booked Items) --}}
-                                    @if(empty($slot['appointments']) && !$slot['in_break'])
-                                        <div @dragover.prevent @drop="handleDrop($event, {{ $pData['provider']->id }}, '{{ $slot['start_time'] }}')"
-                                             wire:click="openCreateModal({{ $pData['provider']->id }}, '{{ $slot['start_time'] }}')"
-                                             :class="{ 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-950/80': isDragging }"
-                                             class="group flex flex-col justify-between p-3.5 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/50 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/40 cursor-pointer transition-all min-h-[105px] shadow-2xs">
+                                    {{-- 1. BREAK SLOT --}}
+                                    @if ($slot['in_break'])
+                                        <div class="flex flex-col justify-between p-3.5 rounded-2xl bg-slate-100/90 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-800 opacity-65 cursor-not-allowed min-h-[105px]">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-xs font-black text-slate-800 dark:text-slate-200 bg-slate-200 dark:bg-slate-800 px-2.5 py-1 rounded-xl dir-ltr">
+                                                    {{ $slot['start_time'] }} - {{ $slot['end_time'] }}
+                                                </span>
+                                                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-lg">
+                                                    ☕ استراحت
+                                                </span>
+                                            </div>
+                                            <p class="text-xs font-bold text-slate-500 dark:text-slate-400 mt-2">خارج از ساعات پذیرش نوبت</p>
+                                        </div>
 
-                                            <div class="flex items-center justify-between gap-2">
-                                                <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 group-hover:bg-indigo-600 group-hover:text-white transition-colors font-black text-xs dir-ltr shadow-xs">
+                                    {{-- 2. MULTI-CAPACITY GROUP CONTAINER (Renders 0 or 1+ booked appointments + next booking button) --}}
+                                    @elseif ($isMulti)
+                                        <div class="p-3.5 rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-900/50 shadow-xs flex flex-col justify-between min-h-[110px] space-y-2.5 relative">
+                                            {{-- Group Header --}}
+                                            <div class="flex items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+                                                <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 font-black text-xs dir-ltr shadow-xs">
                                                     <span>{{ $slot['start_time'] }}</span>
                                                     <span class="text-[10px] opacity-75 font-normal">تا</span>
                                                     <span>{{ $slot['end_time'] }}</span>
                                                 </div>
-                                                <span class="text-[10px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-lg">
-                                                    ⚪ اسلات خالی
-                                                </span>
-                                            </div>
-
-                                            <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-800 group-hover:border-indigo-200 dark:group-hover:border-indigo-900/60">
-                                                <span class="text-xs font-black text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-                                                    <span>ثبت نوبت</span>
-                                                </span>
-                                                <span class="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">آماده رزرو</span>
-                                            </div>
-                                        </div>
-
-                                        {{-- 2. BREAK SLOT (Gray, Disabled) --}}
-                                    @elseif($slot['in_break'])
-                                        <div class="flex flex-col justify-between p-3.5 rounded-2xl bg-gray-100 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700/80 opacity-70 cursor-not-allowed min-h-[105px]">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-xs font-black text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-800 px-2.5 py-1 rounded-xl dir-ltr">
-                                                    {{ $slot['start_time'] }} - {{ $slot['end_time'] }}
-                                                </span>
-                                                <span class="text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-lg">
-                                                    ☕ استراحت
-                                                </span>
-                                            </div>
-                                            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 mt-2">خارج از ساعات پذیرش نوبت</p>
-                                        </div>
-
-                                        {{-- 3. BOOKED SLOT (Solid Colored Card with full details) --}}
-                                    @else
-                                        @foreach ($slot['appointments'] as $apt)
-                                            @php
-                                                $cardBg = match($apt['status']) {
-                                                    \Modules\Booking\Entities\Appointment::STATUS_DRAFT => 'border-r-4 border-r-slate-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 border-dashed',
-                                                    \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'border-r-4 border-r-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-950 dark:text-emerald-100 border border-emerald-300 dark:border-emerald-700',
-                                                    \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'border-r-4 border-r-amber-500 bg-amber-50/90 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700',
-                                                    \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'border-r-4 border-r-yellow-500 bg-yellow-50/90 dark:bg-yellow-950/60 text-yellow-950 dark:text-yellow-100 border border-yellow-300 dark:border-yellow-700',
-                                                    \Modules\Booking\Entities\Appointment::STATUS_DONE => 'border-r-4 border-r-blue-500 bg-blue-50/90 dark:bg-blue-950/60 text-blue-950 dark:text-blue-100 border border-blue-300 dark:border-blue-700',
-                                                    \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW => 'border-r-4 border-r-slate-500 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700',
-                                                    \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => 'border-r-4 border-r-rose-500 bg-rose-50/90 dark:bg-rose-950/60 text-rose-950 dark:text-rose-100 border border-rose-300 dark:border-rose-700',
-                                                    \Modules\Booking\Entities\Appointment::STATUS_RESCHEDULED => 'border-r-4 border-r-purple-500 bg-purple-50/90 dark:bg-purple-950/60 text-purple-950 dark:text-purple-100 border border-purple-300 dark:border-purple-700',
-                                                    default => 'border-r-4 border-r-indigo-500 bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-700',
-                                                };
-
-                                                $statusBadge = match($apt['status']) {
-                                                    \Modules\Booking\Entities\Appointment::STATUS_DRAFT => ['label' => 'پیش‌نویس', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => ['label' => 'قطعی', 'class' => 'bg-emerald-200/80 text-emerald-900 dark:bg-emerald-900/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_PENDING => ['label' => 'در انتظار', 'class' => 'bg-amber-200/80 text-amber-900 dark:bg-amber-900/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => ['label' => 'در انتظار پرداخت', 'class' => 'bg-yellow-200/80 text-yellow-900 dark:bg-yellow-900/80 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_DONE => ['label' => 'انجام شده', 'class' => 'bg-blue-200/80 text-blue-900 dark:bg-blue-900/80 dark:text-blue-200 border border-blue-300 dark:border-blue-700'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW => ['label' => 'عدم حضور', 'class' => 'bg-slate-200/80 text-slate-800 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN => ['label' => 'لغو ادمین', 'class' => 'bg-rose-200/80 text-rose-900 dark:bg-rose-900/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => ['label' => 'لغو بیمار', 'class' => 'bg-rose-200/80 text-rose-900 dark:bg-rose-900/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_RESCHEDULED => ['label' => 'جابجا شده', 'class' => 'bg-purple-200/80 text-purple-900 dark:bg-purple-900/80 dark:text-purple-200 border border-purple-300 dark:border-purple-700'],
-                                                    default => ['label' => $apt['status'], 'class' => 'bg-gray-100 text-gray-700'],
-                                                };
-                                            @endphp
-                                            <div draggable="true" @dragstart="handleDragStart($event, {{ $apt['id'] }})" @dragend="handleDragEnd($event)"
-                                                 wire:click="openDetailsModal({{ $apt['id'] }})"
-                                                 class="flex flex-col justify-between p-3.5 rounded-2xl {{ $cardBg }} shadow-sm cursor-pointer hover:shadow-md transition-all relative group min-h-[105px]">
-
-                                                {{-- سطر اول: نام بیمار و وضعیت --}}
-                                                <div class="flex justify-between items-center gap-2">
-                                                    <span class="text-sm font-black truncate text-gray-900 dark:text-white">{{ $apt['client_name'] }}</span>
-                                                    <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-lg flex-none {{ $statusBadge['class'] }}">
-                                                        {{ $statusBadge['label'] }}
-                                                    </span>
-
-                                                    {{-- دکمه‌های سریع --}}
-                                                    <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 left-2 bg-white/95 dark:bg-gray-900/95 rounded-xl flex gap-1 p-1 shadow-md border border-gray-200 dark:border-gray-700 z-20">
-                                                        @if ($apt['status'] === \Modules\Booking\Entities\Appointment::STATUS_DRAFT)
-                                                            <button wire:click.stop="updateStatus({{ $apt['id'] }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED }}')" class="bg-emerald-600 text-white p-1 rounded-lg hover:bg-emerald-700" title="تایید قطعی"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></button>
-                                                        @endif
-                                                        <button wire:click.stop="cancelAppointment({{ $apt['id'] }})" class="bg-rose-600 text-white p-1 rounded-lg hover:bg-rose-700" title="لغو نوبت"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-                                                    </div>
-                                                </div>
-
-                                                {{-- سطر دوم: نام سرویس --}}
-                                                <div class="text-xs font-bold opacity-85 truncate mt-1">
-                                                    {{ $apt['service_name'] }} @if($apt['client_phone']) <span class="opacity-60">• {{ $apt['client_phone'] }}</span> @endif
-                                                </div>
-
-                                                {{-- سطر سوم: زمان دقیق با بج مشکی/سفید خالص --}}
-                                                <div class="flex items-center justify-between mt-3 pt-2 border-t border-current/15">
-                                                    <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-black text-xs dir-ltr shadow-xs">
-                                                        <svg class="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        <span>{{ $apt['start_time'] }}</span>
-                                                        <span class="text-[10px] opacity-70 font-normal">تا</span>
-                                                        <span>{{ $apt['end_time'] }}</span>
-                                                    </div>
-                                                    <span class="text-[10px] font-bold opacity-75">نوبت ثبت‌شده</span>
+                                                <div class="flex items-center gap-1.5 text-[10px] font-black text-slate-700 dark:text-slate-300 bg-slate-200/80 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2.5 py-1 rounded-xl shadow-2xs">
+                                                    <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20H2v-2a3 3 0 015.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                                    <span>ظرفیت {{ $slot['capacity'] }} نفر</span>
                                                 </div>
                                             </div>
-                                        @endforeach
 
-                                        {{-- Free Time Segments within partially booked slot --}}
-                                        @if (!$slot['is_full'] && !empty($slot['free_segments']))
-                                            @foreach ($slot['free_segments'] as $seg)
-                                                <div wire:click="openCreateModal({{ $pData['provider']->id }}, '{{ $seg['start_time'] }}')"
-                                                     class="flex flex-col justify-between p-3.5 rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/20 hover:border-indigo-500 hover:bg-indigo-100/60 dark:hover:bg-indigo-900/40 cursor-pointer min-h-[105px] group transition-all">
-                                                    <div class="flex items-center justify-between">
-                                                        <div class="flex items-center gap-1.5 text-xs font-black text-indigo-800 dark:text-indigo-200">
-                                                            <span>+ ثبت نوبت</span>
+                                            {{-- Existing Booked Appointments inside Group --}}
+                                            @if (!empty($slot['appointments']))
+                                                <div class="space-y-2">
+                                                    @foreach ($slot['appointments'] as $apt)
+                                                        @php
+                                                            $cardBg = match($apt['status']) {
+                                                                \Modules\Booking\Entities\Appointment::STATUS_DRAFT => 'border-r-4 border-r-dashed border-r-indigo-500 bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-700 border-dashed shadow-2xs',
+                                                                \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'border-r-4 border-r-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-950 dark:text-emerald-100 border border-emerald-300 dark:border-emerald-700',
+                                                                \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'border-r-4 border-r-amber-500 bg-amber-50/90 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700',
+                                                                \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'border-r-4 border-r-yellow-500 bg-yellow-50/90 dark:bg-yellow-950/60 text-yellow-950 dark:text-yellow-100 border border-yellow-300 dark:border-yellow-700',
+                                                                \Modules\Booking\Entities\Appointment::STATUS_DONE => 'border-r-4 border-r-blue-500 bg-blue-50/90 dark:bg-blue-950/60 text-blue-950 dark:text-blue-100 border border-blue-300 dark:border-blue-700',
+                                                                \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW => 'border-r-4 border-r-slate-500 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700',
+                                                                \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => 'border-r-4 border-r-rose-500 bg-rose-50/90 dark:bg-rose-950/60 text-rose-950 dark:text-rose-100 border border-rose-300 dark:border-rose-700',
+                                                                \Modules\Booking\Entities\Appointment::STATUS_RESCHEDULED => 'border-r-4 border-r-purple-500 bg-purple-50/90 dark:bg-purple-950/60 text-purple-950 dark:text-purple-100 border border-purple-300 dark:border-purple-700',
+                                                                default => 'border-r-4 border-r-indigo-500 bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-700',
+                                                            };
+                                                            $statusBadge = match($apt['status']) {
+                                                                \Modules\Booking\Entities\Appointment::STATUS_DRAFT => ['label' => 'پیش‌نویس', 'class' => 'bg-indigo-200/90 text-indigo-900 dark:bg-indigo-900/90 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-extrabold'],
+                                                                \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => ['label' => 'قطعی', 'class' => 'bg-emerald-200/80 text-emerald-900 dark:bg-emerald-900/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'],
+                                                                \Modules\Booking\Entities\Appointment::STATUS_PENDING => ['label' => 'در انتظار', 'class' => 'bg-amber-200/80 text-amber-900 dark:bg-amber-900/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700'],
+                                                                \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => ['label' => 'در انتظار پرداخت', 'class' => 'bg-yellow-200/80 text-yellow-900 dark:bg-yellow-900/80 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700'],
+                                                                \Modules\Booking\Entities\Appointment::STATUS_DONE => ['label' => 'انجام شده', 'class' => 'bg-blue-200/80 text-blue-900 dark:bg-blue-900/80 dark:text-blue-200 border border-blue-300 dark:border-blue-700'],
+                                                                \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW => ['label' => 'عدم حضور', 'class' => 'bg-slate-200/80 text-slate-800 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600'],
+                                                                \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN => ['label' => 'لغو ادمین', 'class' => 'bg-rose-200/80 text-rose-900 dark:bg-rose-900/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700'],
+                                                                \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => ['label' => 'لغو بیمار', 'class' => 'bg-rose-200/80 text-rose-900 dark:bg-rose-900/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700'],
+                                                                \Modules\Booking\Entities\Appointment::STATUS_RESCHEDULED => ['label' => 'جابجا شده', 'class' => 'bg-purple-200/80 text-purple-900 dark:bg-purple-900/80 dark:text-purple-200 border border-purple-300 dark:border-purple-700'],
+                                                                default => ['label' => $apt['status'], 'class' => 'bg-gray-100 text-gray-700'],
+                                                            };
+                                                        @endphp
+                                                        <div draggable="true" @dragstart="handleDragStart($event, {{ $apt['id'] }})" @dragend="handleDragEnd($event)"
+                                                             wire:click="openDetailsModal({{ $apt['id'] }})"
+                                                             class="flex flex-col justify-between p-3 rounded-xl {{ $cardBg }} shadow-2xs cursor-pointer hover:shadow-xs transition-all relative group">
+                                                            <div class="flex justify-between items-center gap-2">
+                                                                <span class="text-xs font-black truncate text-gray-900 dark:text-white">{{ $apt['client_name'] }}</span>
+                                                                <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg flex-none {{ $statusBadge['class'] }}">
+                                                                    {{ $statusBadge['label'] }}
+                                                                </span>
+                                                                <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute top-1.5 left-1.5 bg-white/95 dark:bg-gray-900/95 rounded-xl flex gap-1 p-1 shadow-md border border-gray-200 dark:border-gray-700 z-20">
+                                                                    @if ($apt['status'] === \Modules\Booking\Entities\Appointment::STATUS_DRAFT)
+                                                                        <button wire:click.stop="updateStatus({{ $apt['id'] }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED }}')" class="bg-emerald-600 text-white p-1 rounded-lg hover:bg-emerald-700" title="تایید قطعی"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></button>
+                                                                    @endif
+                                                                    <button wire:click.stop="cancelAppointment({{ $apt['id'] }})" class="bg-rose-600 text-white p-1 rounded-lg hover:bg-rose-700" title="لغو نوبت"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                                                                </div>
+                                                            </div>
+                                                            <div class="text-[11px] font-bold opacity-85 truncate mt-1">
+                                                                {{ $apt['service_name'] }} @if($apt['client_phone']) <span class="opacity-60">• {{ $apt['client_phone'] }}</span> @endif
+                                                            </div>
                                                         </div>
-                                                        <span class="text-[10px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/70 border border-indigo-300 dark:border-indigo-700 px-2 py-0.5 rounded-lg">
-                                                            ⚡ {{ $seg['formatted_duration'] }} آزاد
-                                                        </span>
-                                                    </div>
-                                                    <div class="flex items-center justify-between mt-2 pt-2 border-t border-indigo-200/70 dark:border-indigo-800/70">
-                                                        <span class="text-xs font-black text-indigo-700 dark:text-indigo-300 dir-ltr bg-indigo-100 dark:bg-indigo-900/60 px-2.5 py-1 rounded-xl">
-                                                            {{ $seg['start_time'] }} - {{ $seg['end_time'] }}
-                                                        </span>
-                                                    </div>
+                                                    @endforeach
                                                 </div>
+                                            @endif
+
+                                            {{-- Next Booking Button or Full Capacity Badge --}}
+                                            @php
+                                                $isSyncBlocked = !empty($slot['sync_blocked']);
+                                                $remCap = $isSyncBlocked ? 0 : ($slot['remaining_capacity'] ?? ($slot['capacity'] - count($slot['appointments'] ?? [])));
+                                            @endphp
+                                            @if ($remCap > 0 && !$isSyncBlocked)
+                                                <div wire:click="openCreateModal({{ $pData['provider']->id }}, '{{ $slot['start_time'] }}')"
+                                                     class="group flex items-center justify-between p-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 cursor-pointer transition-all">
+                                                    <span class="text-xs font-black text-slate-800 dark:text-slate-200 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
+                                                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                                        <span>ثبت نوبت</span>
+                                                    </span>
+                                                    <span class="text-[10px] font-black text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-md border border-slate-300 dark:border-slate-600">
+                                                        {{ $remCap }} ظرفیت آزاد
+                                                    </span>
+                                                </div>
+                                            @else
+                                                <div class="p-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 text-center text-[11px] font-extrabold text-rose-600 dark:text-rose-400 border border-rose-200/80 dark:border-rose-900/40">
+                                                    @if($isSyncBlocked)
+                                                        تکمیل ظرفیت (هماهنگ‌شده)
+                                                    @else
+                                                        تکمیل ظرفیت ({{ count($slot['appointments'] ?? []) }}/{{ $slot['capacity'] }})
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                    {{-- 3. SINGLE CAPACITY SLOT ($slot['capacity'] <= 1) --}}
+                                    @else
+                                        @if (!empty($slot['items']))
+                                            @foreach ($slot['items'] as $item)
+
+                                                {{-- 3A. EMPTY SLOT --}}
+                                                @if ($item['type'] === 'empty_slot')
+                                                    <div @dragover.prevent @drop="handleDrop($event, {{ $pData['provider']->id }}, '{{ $item['start_time'] }}')"
+                                                         wire:click="openCreateModal({{ $pData['provider']->id }}, '{{ $item['start_time'] }}')"
+                                                         :class="{ 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-950/50': isDragging }"
+                                                         class="group flex flex-col justify-between p-3.5 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-900/40 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 cursor-pointer transition-all min-h-[105px] shadow-2xs">
+
+                                                        <div class="flex items-center justify-between gap-2">
+                                                            <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-200 group-hover:bg-indigo-600 group-hover:text-white dark:group-hover:bg-indigo-500 dark:group-hover:text-white transition-colors font-black text-xs dir-ltr shadow-xs">
+                                                                <span>{{ $item['start_time'] }}</span>
+                                                                <span class="text-[10px] opacity-75 font-normal">تا</span>
+                                                                <span>{{ $item['end_time'] }}</span>
+                                                            </div>
+                                                            <span class="text-[10px] font-black text-slate-600 dark:text-slate-400 bg-slate-200/80 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-lg">
+                                                                زمان کاملاً آزاد
+                                                            </span>
+                                                        </div>
+
+                                                        <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 group-hover:border-indigo-200 dark:group-hover:border-indigo-900">
+                                                            <span class="text-xs font-black text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-1 transition-all flex items-center gap-1">
+                                                                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                                                <span>ثبت نوبت</span>
+                                                            </span>
+                                                            <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500">آزاد پذیرش</span>
+                                                        </div>
+                                                    </div>
+
+                                                {{-- 3B. BOOKED APPOINTMENT --}}
+                                                @elseif ($item['type'] === 'appointment')
+                                                    @php
+                                                        $apt = $item['data'];
+                                                        $cardBg = match($apt['status']) {
+                                                            \Modules\Booking\Entities\Appointment::STATUS_DRAFT => 'border-r-4 border-r-dashed border-r-indigo-500 bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-700 border-dashed shadow-2xs',
+                                                            \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'border-r-4 border-r-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-950 dark:text-emerald-100 border border-emerald-300 dark:border-emerald-700',
+                                                            \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'border-r-4 border-r-amber-500 bg-amber-50/90 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700',
+                                                            \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'border-r-4 border-r-yellow-500 bg-yellow-50/90 dark:bg-yellow-950/60 text-yellow-950 dark:text-yellow-100 border border-yellow-300 dark:border-yellow-700',
+                                                            \Modules\Booking\Entities\Appointment::STATUS_DONE => 'border-r-4 border-r-blue-500 bg-blue-50/90 dark:bg-blue-950/60 text-blue-950 dark:text-blue-100 border border-blue-300 dark:border-blue-700',
+                                                            \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW => 'border-r-4 border-r-slate-500 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700',
+                                                            \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => 'border-r-4 border-r-rose-500 bg-rose-50/90 dark:bg-rose-950/60 text-rose-950 dark:text-rose-100 border border-rose-300 dark:border-rose-700',
+                                                            \Modules\Booking\Entities\Appointment::STATUS_RESCHEDULED => 'border-r-4 border-r-purple-500 bg-purple-50/90 dark:bg-purple-950/60 text-purple-950 dark:text-purple-100 border border-purple-300 dark:border-purple-700',
+                                                            default => 'border-r-4 border-r-indigo-500 bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-700',
+                                                        };
+                                                        $statusBadge = match($apt['status']) {
+                                                            \Modules\Booking\Entities\Appointment::STATUS_DRAFT => ['label' => 'پیش‌نویس', 'class' => 'bg-indigo-200/90 text-indigo-900 dark:bg-indigo-900/90 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-extrabold'],
+                                                            \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => ['label' => 'قطعی', 'class' => 'bg-emerald-200/80 text-emerald-900 dark:bg-emerald-900/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'],
+                                                            \Modules\Booking\Entities\Appointment::STATUS_PENDING => ['label' => 'در انتظار', 'class' => 'bg-amber-200/80 text-amber-900 dark:bg-amber-900/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700'],
+                                                            \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => ['label' => 'در انتظار پرداخت', 'class' => 'bg-yellow-200/80 text-yellow-900 dark:bg-yellow-900/80 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700'],
+                                                            \Modules\Booking\Entities\Appointment::STATUS_DONE => ['label' => 'انجام شده', 'class' => 'bg-blue-200/80 text-blue-900 dark:bg-blue-900/80 dark:text-blue-200 border border-blue-300 dark:border-blue-700'],
+                                                            \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW => ['label' => 'عدم حضور', 'class' => 'bg-slate-200/80 text-slate-800 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600'],
+                                                            \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN => ['label' => 'لغو ادمین', 'class' => 'bg-rose-200/80 text-rose-900 dark:bg-rose-900/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700'],
+                                                            \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => ['label' => 'لغو بیمار', 'class' => 'bg-rose-200/80 text-rose-900 dark:bg-rose-900/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700'],
+                                                            \Modules\Booking\Entities\Appointment::STATUS_RESCHEDULED => ['label' => 'جابجا شده', 'class' => 'bg-purple-200/80 text-purple-900 dark:bg-purple-900/80 dark:text-purple-200 border border-purple-300 dark:border-purple-700'],
+                                                            default => ['label' => $apt['status'], 'class' => 'bg-gray-100 text-gray-700'],
+                                                        };
+                                                    @endphp
+                                                    <div draggable="true" @dragstart="handleDragStart($event, {{ $apt['id'] }})" @dragend="handleDragEnd($event)"
+                                                         wire:click="openDetailsModal({{ $apt['id'] }})"
+                                                         class="flex flex-col justify-between p-3.5 rounded-2xl {{ $cardBg }} shadow-sm cursor-pointer hover:shadow-md transition-all relative group min-h-[105px]">
+                                                        <div class="flex justify-between items-center gap-2">
+                                                            <span class="text-sm font-black truncate text-gray-900 dark:text-white">{{ $apt['client_name'] }}</span>
+                                                            <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-lg flex-none {{ $statusBadge['class'] }}">
+                                                                {{ $statusBadge['label'] }}
+                                                            </span>
+                                                            <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 left-2 bg-white/95 dark:bg-gray-900/95 rounded-xl flex gap-1 p-1 shadow-md border border-gray-200 dark:border-gray-700 z-20">
+                                                                @if ($apt['status'] === \Modules\Booking\Entities\Appointment::STATUS_DRAFT)
+                                                                    <button wire:click.stop="updateStatus({{ $apt['id'] }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED }}')" class="bg-emerald-600 text-white p-1 rounded-lg hover:bg-emerald-700" title="تایید قطعی"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></button>
+                                                                @endif
+                                                                <button wire:click.stop="cancelAppointment({{ $apt['id'] }})" class="bg-rose-600 text-white p-1 rounded-lg hover:bg-rose-700" title="لغو نوبت"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="text-xs font-bold opacity-85 truncate mt-1">
+                                                            {{ $apt['service_name'] }} @if($apt['client_phone']) <span class="opacity-60">• {{ $apt['client_phone'] }}</span> @endif
+                                                        </div>
+                                                        <div class="flex items-center justify-between mt-3 pt-2 border-t border-current/15">
+                                                            <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-black text-xs dir-ltr shadow-xs">
+                                                                <svg class="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                                <span>{{ $apt['start_time'] }}</span>
+                                                                <span class="text-[10px] opacity-70 font-normal">تا</span>
+                                                                <span>{{ $apt['end_time'] }}</span>
+                                                            </div>
+                                                            <span class="text-[10px] font-bold opacity-75">نوبت ثبت‌شده</span>
+                                                        </div>
+                                                    </div>
+
+                                                {{-- 3C. FREE SEGMENT BETWEEN APPOINTMENTS --}}
+                                                @elseif ($item['type'] === 'free_segment')
+                                                    @php $seg = $item['data']; @endphp
+                                                    <div wire:click="openCreateModal({{ $pData['provider']->id }}, '{{ $seg['start_time'] }}')"
+                                                         class="flex flex-col justify-between p-3 rounded-2xl border-2 border-dashed border-sky-400/80 dark:border-sky-700/80 bg-sky-50/70 dark:bg-sky-950/40 hover:border-sky-500 dark:hover:border-sky-500 hover:bg-sky-100/80 dark:hover:bg-sky-900/60 cursor-pointer min-h-[90px] group transition-all shadow-2xs">
+                                                        <div class="flex items-center justify-between gap-2">
+                                                            <div class="flex items-center gap-1.5 text-xs font-black text-sky-950 dark:text-sky-100 group-hover:text-sky-700 dark:group-hover:text-sky-300">
+                                                                <svg class="w-4 h-4 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                                                <span>ثبت در بازه آزاد</span>
+                                                            </div>
+                                                            <span class="text-[10px] font-black text-sky-900 dark:text-sky-200 bg-sky-100 dark:bg-sky-900/90 border border-sky-300 dark:border-sky-700 px-2.5 py-0.5 rounded-lg shadow-2xs">
+                                                                {{ $seg['formatted_duration'] }} زمان آزاد
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-sky-200/80 dark:border-sky-800/80">
+                                                            <span class="text-xs font-black text-sky-900 dark:text-sky-200 dir-ltr bg-sky-200/70 dark:bg-sky-900/90 border border-sky-300 dark:border-sky-700 px-2.5 py-0.5 rounded-lg">
+                                                                {{ $seg['start_time'] }} تا {{ $seg['end_time'] }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                {{-- 3D. CLOSED / NON-BOOKABLE SLOT --}}
+                                                @elseif ($item['type'] === 'closed_slot')
+                                                    <div class="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-900/30 text-slate-400 dark:text-slate-500 min-h-[60px] opacity-75 select-none">
+                                                        <div class="flex items-center gap-2 text-xs font-bold dir-ltr">
+                                                            <svg class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                            <span>{{ $item['start_time'] }} - {{ $item['end_time'] }}</span>
+                                                        </div>
+                                                        <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-slate-200/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300/60 dark:border-slate-700/60">
+                                                            {{ $item['label'] ?? 'غیرقابل رزرو' }}
+                                                        </span>
+                                                    </div>
+                                                @endif
+
                                             @endforeach
                                         @endif
                                     @endif
@@ -517,10 +763,9 @@
                                 </div>
                             </div>
                         </div>
-                        <button wire:click="openCreateModal({{ $pData['provider']->id }})" class="flex items-center gap-1.5 px-3.5 py-2.5 bg-indigo-600 text-white rounded-2xl text-xs font-black hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-                            <span>ثبت نوبت جدید</span>
-                        </button>
+                        <div class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 px-3 py-1.5 rounded-xl shadow-xs">
+                            💡 ثبت نوبت فقط با کلیک روی تایم‌های خالی جدول
+                        </div>
                     </div>
 
                     {{-- بدنه اسکرول‌پذیر تایم‌لاین عمودی (با ارتفاع داخلی ۲۲۰۰ پیکسل و اسکرول داخلی نرم) --}}
@@ -1031,85 +1276,171 @@
 
     {{-- Quick Create Appointment Modal --}}
     @if ($showModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 dark:border-gray-700 space-y-5 animate-in fade-in zoom-in duration-200">
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4"
+             x-data
+             @keydown.escape.window="$wire.closeModal()">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-700/80 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 
-                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-4">
-                    <h3 class="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
-                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        ثبت سریع نوبت
-                    </h3>
-                    <button wire:click="closeModal" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">✕</button>
-                </div>
+                {{-- Top Gradient Accent Line --}}
+                <div class="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
 
-                @if ($modalError)
-                    <div class="p-3 bg-rose-50 border-l-4 border-rose-500 text-rose-800 rounded-lg text-xs font-bold">
-                        {{ $modalError }}
-                    </div>
-                @endif
-
-                <div class="space-y-4 text-xs font-bold">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-gray-700 dark:text-gray-300 mb-1.5">پزشک / ارائه‌دهنده</label>
-                            <select wire:model.live="modalProviderId" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
-                                <option value="">انتخاب پزشک...</option>
-                                @foreach ($providers as $prov) <option value="{{ $prov->id }}">{{ $prov->name }}</option> @endforeach
-                            </select>
+                <div class="p-6 space-y-5">
+                    {{-- Modal Header --}}
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/70 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-black text-gray-900 dark:text-white">
+                                    ثبت سریع نوبت
+                                </h3>
+                                <p class="text-xs font-bold text-gray-400 mt-0.5">ثبت پیش‌نویس اولیه برای {{ $selectedDateJalali }}</p>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-gray-700 dark:text-gray-300 mb-1.5">نوع سرویس</label>
-                            <select wire:model.live="modalServiceId" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
-                                <option value="">انتخاب سرویس...</option>
-                                @foreach ($services as $svc) <option value="{{ $svc->id }}">{{ $svc->name }}</option> @endforeach
-                            </select>
-                        </div>
+                        <button wire:click="closeModal" class="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
                     </div>
 
-                    <div>
-                        <label class="block text-gray-700 dark:text-gray-300 mb-1.5">جستجوی بیمار</label>
-                        <input type="text" wire:model.live.debounce.300ms="modalClientSearch" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" placeholder="نام یا شماره تماس...">
-                        @if (!empty($clientsForModal))
-                            <div class="mt-2 border border-gray-200 dark:border-gray-700 rounded-xl max-h-32 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 shadow-sm bg-white dark:bg-gray-800">
-                                @foreach ($clientsForModal as $c)
-                                    <div wire:click="$set('modalClientId', {{ $c->id }})" class="p-2 hover:bg-indigo-50 dark:hover:bg-gray-700 cursor-pointer flex justify-between items-center {{ $modalClientId == $c->id ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-200' }}">
-                                        <span>{{ $c->full_name }}</span>
-                                        <span class="text-[10px] text-gray-400 dark:text-gray-500">{{ $c->phone }}</span>
+                    @if ($modalError)
+                        <div class="p-3 bg-rose-50 dark:bg-rose-900/30 border-r-4 border-rose-500 text-rose-800 dark:text-rose-200 rounded-xl text-xs font-bold flex items-center gap-2">
+                            <svg class="w-4 h-4 text-rose-500 flex-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>{{ $modalError }}</span>
+                        </div>
+                    @endif
+
+                    <div class="space-y-4 text-xs font-bold">
+                        {{-- Provider & Service Row --}}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-gray-700 dark:text-gray-300 mb-1.5 font-semibold">پزشک / ارائه‌دهنده</label>
+                                <select wire:model.live="modalProviderId" class="w-full bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl px-3 py-2.5 text-gray-900 dark:text-gray-100 text-xs font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                                    <option value="">انتخاب پزشک...</option>
+                                    @foreach ($providers as $prov) <option value="{{ $prov->id }}">{{ $prov->name }}</option> @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 dark:text-gray-300 mb-1.5 font-semibold">نوع سرویس</label>
+                                <select wire:model.live="modalServiceId" class="w-full bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl px-3 py-2.5 text-gray-900 dark:text-gray-100 text-xs font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                                    <option value="">انتخاب سرویس...</option>
+                                    @foreach ($services as $svc) <option value="{{ $svc->id }}">{{ $svc->name }}</option> @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        {{-- Client Selector Component (Harmonized with create.blade.php) --}}
+                        <div class="space-y-2">
+                            <label class="block text-gray-700 dark:text-gray-300 font-semibold flex items-center justify-between">
+                                <span>انتخاب بیمار / مشتری</span>
+                                @if ($modalClientId)
+                                    <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">بیمار انتخاب شد</span>
+                                @endif
+                            </label>
+
+                            @if (!empty($selectedModalClient))
+                                {{-- Selected Client Card --}}
+                                <div class="bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-300 dark:border-emerald-700/70 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-2xs">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-sm flex-none">
+                                            {{ mb_substr($selectedModalClient->full_name, 0, 1) }}
+                                        </div>
+                                        <div>
+                                            <div class="font-black text-xs text-emerald-950 dark:text-emerald-100">{{ $selectedModalClient->full_name }}</div>
+                                            <div class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mt-0.5 flex items-center gap-2">
+                                                @if ($selectedModalClient->phone) <span>📞 {{ $selectedModalClient->phone }}</span> @endif
+                                                @if ($selectedModalClient->national_code) <span>🆔 {{ $selectedModalClient->national_code }}</span> @endif
+                                            </div>
+                                        </div>
                                     </div>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
+                                    <button type="button" wire:click="$set('modalClientId', null)" class="px-2.5 py-1 rounded-xl bg-emerald-200/80 dark:bg-emerald-900/80 text-emerald-900 dark:text-emerald-100 text-[11px] font-bold hover:bg-emerald-300 transition">
+                                        تغییر بیمار
+                                    </button>
+                                </div>
+                            @else
+                                {{-- Search Input with Icon --}}
+                                <div class="relative">
+                                    <input type="text"
+                                           wire:model.live.debounce.300ms="modalClientSearch"
+                                           class="w-full bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl pr-10 pl-3 py-2.5 text-xs font-bold text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                           placeholder="جستجوی نام، شماره تماس یا کد ملی...">
+                                    <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                                {{-- Search Results List --}}
+                                @if (!empty($clientsForModal) && count($clientsForModal) > 0)
+                                    <div class="border border-gray-200 dark:border-gray-700/80 rounded-2xl max-h-40 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 shadow-lg bg-white dark:bg-gray-800 p-1 space-y-1">
+                                        @foreach ($clientsForModal as $c)
+                                            <div wire:click="$set('modalClientId', {{ $c->id }})"
+                                                 class="p-2.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer flex items-center justify-between transition-colors text-gray-800 dark:text-gray-200">
+                                                <div>
+                                                    <span class="font-black text-xs block text-gray-900 dark:text-white">{{ $c->full_name }}</span>
+                                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block mt-0.5 dir-ltr text-right">
+                                                        {{ $c->phone }} @if($c->national_code) • {{ $c->national_code }} @endif
+                                                    </span>
+                                                </div>
+                                                <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                                                    انتخاب
+                                                </span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @elseif ($modalClientSearch && empty($clientsForModal))
+                                    <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl text-center text-amber-800 dark:text-amber-200 text-xs font-bold">
+                                        هیچ بیماری پیدا نشد
+                                    </div>
+                                @endif
+                            @endif
+                        </div>
+
+                        {{-- Status & Time Row --}}
+                        <div class="grid grid-cols-2 gap-3">
+                            {{-- Locked Draft Status Badge --}}
+                            <div>
+                                <label class="block text-gray-700 dark:text-gray-300 mb-1.5 font-semibold">وضعیت نوبت</label>
+                                <div class="w-full bg-indigo-50/90 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-xl px-3 py-2.5 text-indigo-950 dark:text-indigo-100 text-xs font-extrabold flex items-center justify-between shadow-2xs">
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                        پیش‌نویس
+                                    </span>
+                                    <span class="text-[9px] font-normal opacity-70">ثبت اولیه</span>
+                                </div>
+                            </div>
+
+                            {{-- Time Input --}}
+                            <div class="flex gap-2">
+                                <div class="w-1/2">
+                                    <label class="block text-gray-700 dark:text-gray-300 mb-1.5 font-semibold">شروع</label>
+                                    <input type="text" wire:model="modalStartTime" class="w-full text-center bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl px-2 py-2.5 text-xs font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dir-ltr">
+                                </div>
+                                <div class="w-1/2">
+                                    <label class="block text-gray-700 dark:text-gray-300 mb-1.5 font-semibold">پایان</label>
+                                    <input type="text" wire:model="modalEndTime" class="w-full text-center bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl px-2 py-2.5 text-xs font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dir-ltr">
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Notes --}}
                         <div>
-                            <label class="block text-gray-700 dark:text-gray-300 mb-1.5">وضعیت اولیه</label>
-                            <select wire:model="modalStatus" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
-                                <option value="{{ \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED }}">قطعی</option>
-                                <option value="{{ \Modules\Booking\Entities\Appointment::STATUS_DRAFT }}">پیش‌نویس</option>
-                            </select>
-                        </div>
-                        <div class="flex gap-2">
-                            <div class="w-1/2">
-                                <label class="block text-gray-700 dark:text-gray-300 mb-1.5">شروع</label>
-                                <input type="text" wire:model="modalStartTime" class="w-full text-center bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-2 py-2 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
-                            </div>
-                            <div class="w-1/2">
-                                <label class="block text-gray-700 dark:text-gray-300 mb-1.5">پایان</label>
-                                <input type="text" wire:model="modalEndTime" class="w-full text-center bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-2 py-2 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
-                            </div>
+                            <label class="block text-gray-700 dark:text-gray-300 mb-1.5 font-semibold">توضیحات / یادداشت</label>
+                            <textarea wire:model="modalNotes" rows="2" class="w-full bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="توضیحات اختیاری..."></textarea>
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-gray-700 dark:text-gray-300 mb-1.5">توضیحات</label>
-                        <textarea wire:model="modalNotes" rows="2" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"></textarea>
+                    {{-- Modal Footer --}}
+                    <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/70">
+                        <button wire:click="closeModal" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700/70 text-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+                            انصراف
+                        </button>
+                        <button wire:click="saveNewAppointment" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            ثبت پیش‌نویس نوبت
+                        </button>
                     </div>
-                </div>
-
-                <div class="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/80">
-                    <button wire:click="closeModal" class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700/70 text-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition">انصراف</button>
-                    <button wire:click="saveNewAppointment" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition shadow-sm">ثبت نوبت</button>
                 </div>
             </div>
         </div>

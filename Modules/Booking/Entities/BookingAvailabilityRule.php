@@ -23,6 +23,8 @@ class BookingAvailabilityRule extends Model
         'slot_duration_minutes',
         'capacity_per_slot',
         'capacity_per_day',
+        'buffer_before_minutes',
+        'buffer_after_minutes',
     ];
 
     protected $casts = [
@@ -32,5 +34,7 @@ class BookingAvailabilityRule extends Model
         'slot_duration_minutes' => 'int',
         'capacity_per_slot' => 'int',
         'capacity_per_day' => 'int',
+        'buffer_before_minutes' => 'int',
+        'buffer_after_minutes' => 'int',
     ];
 }

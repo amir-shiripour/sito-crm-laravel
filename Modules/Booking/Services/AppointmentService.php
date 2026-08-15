@@ -100,8 +100,8 @@ class AppointmentService
                 'client_temp_key' => $clientTempKey,
                 'start_at_utc' => $startUtc,
                 'end_at_utc' => $endUtc,
-                'expires_at_utc' => now()->addMinutes($ttl),
-                'created_at' => now(),
+                'expires_at_utc' => now('UTC')->addMinutes($ttl),
+                'created_at' => now('UTC'),
             ]);
         });
     }
@@ -592,28 +592,46 @@ class AppointmentService
         $capSlot = (int) ($policy['capacity_per_slot'] ?? 0); // 0 => unlimited
         $capDay  = $policy['capacity_per_day'] !== null ? (int) $policy['capacity_per_day'] : null; // null => unlimited
 
-        $statuses = (array) config('booking.capacity_consuming_statuses', []);
+        $bufBefore = (int) ($policy['buffer_before_minutes'] ?? 0);
+        $bufAfter  = (int) ($policy['buffer_after_minutes'] ?? 0);
+
+        $checkStartUtc = $startUtc->copy()->subMinutes($bufBefore);
+        $checkEndUtc   = $endUtc->copy()->addMinutes($bufAfter);
+
+        $statuses = (array) config('booking.capacity_consuming_statuses', [
+            Appointment::STATUS_CONFIRMED,
+            Appointment::STATUS_PENDING_PAYMENT,
+            Appointment::STATUS_PENDING,
+            Appointment::STATUS_DRAFT,
+            Appointment::STATUS_DONE,
+        ]);
 
         $slotBooked = Appointment::query()
             ->where('service_id', $serviceId)
             ->where('provider_user_id', $providerUserId)
             ->whereIn('status', $statuses)
-            ->where('start_at_utc', '<', $endUtc)
-            ->where('end_at_utc', '>', $startUtc)
+            ->where('start_at_utc', '<', $checkEndUtc)
+            ->where('end_at_utc', '>', $checkStartUtc)
             ->count();
 
         $slotHeldQ = BookingSlotHold::query()
             ->where('service_id', $serviceId)
             ->where('provider_user_id', $providerUserId)
             ->where('expires_at_utc', '>', now('UTC'))
-            ->where('start_at_utc', '<', $endUtc)
-            ->where('end_at_utc', '>', $startUtc);
+            ->where('start_at_utc', '<', $checkEndUtc)
+            ->where('end_at_utc', '>', $checkStartUtc);
 
         if ($excludeHoldId) {
             $slotHeldQ->where('id', '!=', $excludeHoldId);
         }
 
         $slotHeld = $slotHeldQ->count();
+
+        // Check synchronized service rows
+        $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+        if ($syncService->isSyncBlocked($serviceId, $providerUserId, $checkStartUtc, $checkEndUtc, $statuses, excludeHoldId: $excludeHoldId)) {
+            throw new \RuntimeException('Slot is occupied by a synchronized service.');
+        }
 
         // Slot capacity check (skip if unlimited)
         if ($capSlot > 0) {
@@ -675,14 +693,32 @@ class AppointmentService
         $capSlot = (int) ($policy['capacity_per_slot'] ?? 0);
         $capDay  = $policy['capacity_per_day'] !== null ? (int) $policy['capacity_per_day'] : null;
 
-        $statuses = (array) config('booking.capacity_consuming_statuses', []);
+        $bufBefore = (int) ($policy['buffer_before_minutes'] ?? 0);
+        $bufAfter  = (int) ($policy['buffer_after_minutes'] ?? 0);
+
+        $checkStartUtc = $startUtc->copy()->subMinutes($bufBefore);
+        $checkEndUtc   = $endUtc->copy()->addMinutes($bufAfter);
+
+        $statuses = (array) config('booking.capacity_consuming_statuses', [
+            Appointment::STATUS_CONFIRMED,
+            Appointment::STATUS_PENDING_PAYMENT,
+            Appointment::STATUS_PENDING,
+            Appointment::STATUS_DRAFT,
+            Appointment::STATUS_DONE,
+        ]);
+
+        // Check synchronized service rows
+        $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+        if ($syncService->isSyncBlocked($serviceId, $providerUserId, $checkStartUtc, $checkEndUtc, $statuses, excludeAppointmentId: $excludeAppointmentId)) {
+            throw new \RuntimeException('Slot is occupied by a synchronized service.');
+        }
 
         $slotBookedQ = Appointment::query()
             ->where('service_id', $serviceId)
             ->where('provider_user_id', $providerUserId)
             ->whereIn('status', $statuses)
-            ->where('start_at_utc', '<', $endUtc)
-            ->where('end_at_utc', '>', $startUtc);
+            ->where('start_at_utc', '<', $checkEndUtc)
+            ->where('end_at_utc', '>', $checkStartUtc);
 
         if ($excludeAppointmentId) {
             $slotBookedQ->where('id', '!=', $excludeAppointmentId);
@@ -694,8 +730,8 @@ class AppointmentService
             ->where('service_id', $serviceId)
             ->where('provider_user_id', $providerUserId)
             ->where('expires_at_utc', '>', now('UTC'))
-            ->where('start_at_utc', '<', $endUtc)
-            ->where('end_at_utc', '>', $startUtc)
+            ->where('start_at_utc', '<', $checkEndUtc)
+            ->where('end_at_utc', '>', $checkStartUtc)
             ->count();
 
         if ($capSlot > 0 && ($slotBooked + $slotHeld) >= $capSlot) {
@@ -750,13 +786,38 @@ class AppointmentService
         }
 
         $windows = $policy['work_windows'] ?? [];
-        $withinWindow = false;
+        $mergedWindows = [];
 
         foreach ($windows as $win) {
-            $startLocalWindow = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$win['start']}", $scheduleTz);
-            $endLocalWindow   = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$win['end']}", $scheduleTz);
+            if (empty($win['start']) || empty($win['end'])) {
+                continue;
+            }
+            $sWin = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$win['start']}", $scheduleTz);
+            $eWin = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$win['end']}", $scheduleTz);
+            $mergedWindows[] = ['start' => $sWin, 'end' => $eWin];
+        }
 
-            if ($startLocal->gte($startLocalWindow) && $endLocal->lte($endLocalWindow)) {
+        // Sort by start time and merge contiguous/overlapping windows
+        usort($mergedWindows, fn($a, $b) => $a['start']->timestamp - $b['start']->timestamp);
+        $combinedWindows = [];
+        foreach ($mergedWindows as $w) {
+            if (empty($combinedWindows)) {
+                $combinedWindows[] = $w;
+            } else {
+                $last = &$combinedWindows[count($combinedWindows) - 1];
+                if ($w['start']->lte($last['end'])) {
+                    if ($w['end']->gt($last['end'])) {
+                        $last['end'] = $w['end'];
+                    }
+                } else {
+                    $combinedWindows[] = $w;
+                }
+            }
+        }
+
+        $withinWindow = false;
+        foreach ($combinedWindows as $win) {
+            if ($startLocal->gte($win['start']) && $endLocal->lte($win['end'])) {
                 $withinWindow = true;
                 break;
             }

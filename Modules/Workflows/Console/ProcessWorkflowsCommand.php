@@ -48,6 +48,10 @@ class ProcessWorkflowsCommand extends Command
 
     protected function processAppointmentReminders(WorkflowEngine $engine): void
     {
+        if (!file_exists(base_path('Modules/Booking/Entities/Appointment.php')) || !class_exists('Modules\\Booking\\Entities\\Appointment') || !\Illuminate\Support\Facades\Schema::hasTable('appointments')) {
+            return;
+        }
+
         $workflows = Workflow::where('is_active', true)
             ->whereHas('triggers', function ($query) {
                 $query->where('type', WorkflowTrigger::TYPE_APPOINTMENT_REMINDER);
@@ -373,7 +377,7 @@ class ProcessWorkflowsCommand extends Command
 
     protected function processBookingPaymentReminders(WorkflowEngine $engine): void
     {
-        if (!class_exists(\Modules\Booking\Entities\BookingPayment::class) || !\Illuminate\Support\Facades\Schema::hasTable('booking_payments')) {
+        if (!file_exists(base_path('Modules/Booking/Entities/BookingPayment.php')) || !class_exists('Modules\\Booking\\Entities\\BookingPayment') || !\Illuminate\Support\Facades\Schema::hasTable('booking_payments')) {
             return;
         }
 

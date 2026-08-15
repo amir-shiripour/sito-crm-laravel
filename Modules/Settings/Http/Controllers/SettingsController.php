@@ -179,7 +179,8 @@ class SettingsController extends Controller
             'identity_seal_signature.max' => 'حجم تصویر مهر و امضا نباید بیشتر از ۵ مگابایت باشد.',
         ]);
 
-        $data = $request->except('_token');
+        $activeTab = $request->input('active_tab');
+        $data = $request->except(['_token', 'active_tab']);
         $this->handleIdentitySealUpload($request);
         unset($data['identity_seal_signature']);
 
@@ -188,7 +189,8 @@ class SettingsController extends Controller
             'pos_devices',
             'bank_transfer_accounts',
             'active_payment_methods',
-            'installment_due_days'
+            'installment_due_days',
+            'widget_calendar_enabled_sources'
         ];
         foreach ($nullableArrayKeys as $key) {
             if (!$request->has($key)) {
@@ -281,8 +283,14 @@ class SettingsController extends Controller
             );
         }
 
-        return redirect()->back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
+        $redirect = redirect()->route('settings.index')->with('success', 'تنظیمات با موفقیت ذخیره شد.');
+        if ($activeTab) {
+            $redirect->withFragment($activeTab);
+        }
+
+        return $redirect;
     }
+
     private function handleIdentitySealUpload(Request $request): void
     {
         $key = 'identity_seal_signature';
@@ -414,5 +422,16 @@ class SettingsController extends Controller
             'success' => false,
             'message' => 'خطا در برقرار ارتباط. لطفاً کلید API و آدرس پایه را بررسی کنید.',
         ], 400);
+    }
+
+    public function syncHolidays(Request $request, \App\Services\JalaliHolidayService $holidayService)
+    {
+        try {
+            $result = $holidayService->syncCurrentAndNextYears();
+            $yearsStr = implode(' و ', array_keys($result['years']));
+            return redirect()->back()->with('success', "مناسبت‌ها و تعطیلات سال‌های {$yearsStr} با موفقیت در پایگاه داده محلی به‌روزرسانی شد. (مجموع کل: {$result['total_events']} مورد)");
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'خطا در به‌روزرسانی داده‌های مناسبت‌ها: ' . $e->getMessage());
+        }
     }
 }

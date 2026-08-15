@@ -10,6 +10,7 @@ use Modules\Booking\Http\Controllers\User\ServiceAvailabilityController as UserS
 use Modules\Booking\Http\Controllers\User\ProviderAvailabilityController;
 use Modules\Booking\Http\Controllers\User\ServiceExceptionController;
 use Modules\Booking\Http\Controllers\User\ProviderExceptionController;
+use Modules\Booking\Http\Controllers\User\GlobalExceptionController;
 use Modules\Booking\Http\Controllers\User\CategoryController as UserCategoryController;
 use Modules\Booking\Http\Controllers\User\FormController as UserFormController;
 use Modules\Booking\Http\Controllers\User\StatementController;
@@ -215,6 +216,12 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::get('settings', [UserSettingsController::class, 'edit'])->name('settings.edit')->middleware('can:booking.settings.manage');
         Route::post('settings', [UserSettingsController::class, 'update'])->name('settings.update')->middleware('can:booking.settings.manage');
 
+        // تعطیلات عمومی و سراسری سیستم
+        Route::get('settings/holidays', [GlobalExceptionController::class, 'index'])->name('settings.holidays.index')->middleware('can:booking.settings.manage');
+        Route::post('settings/holidays', [GlobalExceptionController::class, 'store'])->name('settings.holidays.store')->middleware('can:booking.settings.manage');
+        Route::post('settings/holidays/batch', [GlobalExceptionController::class, 'batch'])->name('settings.holidays.batch')->middleware('can:booking.settings.manage');
+        Route::delete('settings/holidays/{exception}', [GlobalExceptionController::class, 'destroy'])->name('settings.holidays.destroy')->middleware('can:booking.settings.manage');
+
         // استثناهای سرویس - فقط مدیریت (ادمین‌ها)
         Route::get('services/{service}/exceptions', [ServiceExceptionController::class, 'index'])
             ->name('services.exceptions.index')
@@ -222,6 +229,10 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
 
         Route::post('services/{service}/exceptions', [ServiceExceptionController::class, 'store'])
             ->name('services.exceptions.store')
+            ->middleware('can:booking.availability.manage');
+
+        Route::post('services/{service}/exceptions/batch', [ServiceExceptionController::class, 'batch'])
+            ->name('services.exceptions.batch')
             ->middleware('can:booking.availability.manage');
 
         Route::delete('services/{service}/exceptions/{exception}', [ServiceExceptionController::class, 'destroy'])
@@ -235,6 +246,10 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
 
         Route::post('providers/{provider}/exceptions', [ProviderExceptionController::class, 'store'])
             ->name('providers.exceptions.store')
+            ->middleware('can:booking.availability.manage');
+
+        Route::post('providers/{provider}/exceptions/batch', [ProviderExceptionController::class, 'batch'])
+            ->name('providers.exceptions.batch')
             ->middleware('can:booking.availability.manage');
 
         Route::delete('providers/{provider}/exceptions/{exception}', [ProviderExceptionController::class, 'destroy'])

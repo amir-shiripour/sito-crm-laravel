@@ -41,163 +41,360 @@ class BookingEngine
      *   'rule_source' => string, // GLOBAL, SERVICE, SERVICE_PROVIDER, EXCEPTION
      * ]
      */
-    public function resolveDayPolicy(int $serviceId, int $providerUserId, Carbon $localDate): array
+    public function resolveDayPolicy(?int $serviceId, int $providerUserId, Carbon $localDate): array
     {
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
         $localDate = $localDate->copy()->timezone($scheduleTz)->startOfDay();
-
         $weekday = ((int)$localDate->dayOfWeek + 1) % 7; // 0=Sat .. 6=Fri
+        $localDateStr = $localDate->toDateString();
 
         $settings = BookingSetting::current();
 
-        // Base defaults
-        $policy = [
-            'is_closed' => true,
-            'work_windows' => [],
-            'inherited_work_windows' => [],
-            'breaks' => [],
-            'slot_duration_minutes' => (int)($settings->default_slot_duration_minutes ?? config('booking.defaults.slot_duration_minutes', 30)),
-            'capacity_per_slot' => (int)($settings->default_capacity_per_slot ?? config('booking.defaults.capacity_per_slot', 1)),
-            'capacity_per_day' => $settings->default_capacity_per_day ?? config('booking.defaults.capacity_per_day', null),
-            'rule_source' => 'GLOBAL',
-        ];
-
-        $svc = BookingService::query()->find($serviceId);
-        if (!$svc) {
-            $policy['is_closed'] = true;
-            $policy['work_windows'] = [];
-            return $policy;
+        $svc = $serviceId ? BookingService::query()->find($serviceId) : null;
+        if ($serviceId !== null && (!$svc || $svc->status !== BookingService::STATUS_ACTIVE)) {
+            \Illuminate\Support\Facades\Log::warning('[BookingEngine::resolveDayPolicy] Service inactive or not found', [
+                'serviceId' => $serviceId,
+                'status' => $svc?->status ?? 'NOT_FOUND',
+            ]);
+            return [
+                'is_closed' => true,
+                'work_windows' => [],
+                'inherited_work_windows' => [],
+                'breaks' => [],
+                'slot_duration_minutes' => (int)($settings->default_slot_duration_minutes ?? config('booking.defaults.slot_duration_minutes', 30)),
+                'capacity_per_slot' => (int)($settings->default_capacity_per_slot ?? config('booking.defaults.capacity_per_slot', 1)),
+                'capacity_per_day' => $settings->default_capacity_per_day ?? config('booking.defaults.capacity_per_day', null),
+                'rule_source' => 'SERVICE',
+            ];
         }
 
-        if ($svc->status !== BookingService::STATUS_ACTIVE) {
-            $policy['is_closed'] = true;
-            $policy['work_windows'] = [];
-            return $policy;
-        }
+        $sp = $serviceId ? $this->getServiceProvider($serviceId, $providerUserId) : null;
 
-        $sp = $this->getServiceProvider($serviceId, $providerUserId);
-
-        if (!$sp || !$sp->is_active) {
-            $policy['is_closed'] = true;
-            $policy['work_windows'] = [];
-            return $policy;
-        }
-
-        if ($sp->effectiveStatus() !== BookingService::STATUS_ACTIVE) {
-            $policy['is_closed'] = true;
-            $policy['work_windows'] = [];
-            return $policy;
+        if ($serviceId !== null && (!$sp || !$sp->is_active || $sp->effectiveStatus() !== BookingService::STATUS_ACTIVE)) {
+            \Illuminate\Support\Facades\Log::warning('[BookingEngine::resolveDayPolicy] Provider-Service pivot link inactive or missing', [
+                'serviceId' => $serviceId,
+                'providerUserId' => $providerUserId,
+                'sp_exists' => (bool)$sp,
+                'is_active' => $sp?->is_active ?? false,
+                'effective_status' => $sp?->effectiveStatus() ?? 'NONE',
+            ]);
+            return [
+                'is_closed' => true,
+                'work_windows' => [],
+                'inherited_work_windows' => [],
+                'breaks' => [],
+                'slot_duration_minutes' => (int)($settings->default_slot_duration_minutes ?? config('booking.defaults.slot_duration_minutes', 30)),
+                'capacity_per_slot' => (int)($settings->default_capacity_per_slot ?? config('booking.defaults.capacity_per_slot', 1)),
+                'capacity_per_day' => $settings->default_capacity_per_day ?? config('booking.defaults.capacity_per_day', null),
+                'rule_source' => 'SERVICE_PROVIDER',
+            ];
         }
 
         // --------------------
-        // Rules: GLOBAL -> SERVICE -> PROVIDER(USER) -> PROVIDER(PIVOT)
+        // Check scope presence for Provider, Service, Global
+        // If a scope has configured rules in DB, but no rule/exception for today,
+        // then that scope is NOT active today (is_closed = true).
         // --------------------
-
-        $globalRule = BookingAvailabilityRule::query()
-            ->where('scope_type', BookingAvailabilityRule::SCOPE_GLOBAL)
-            ->where('weekday', $weekday)
-            ->first();
-
-        $policy = $this->applyRule($policy, $globalRule, 'GLOBAL');
-
-        $hasServiceRules = $svc->custom_schedule_enabled || BookingAvailabilityRule::query()
-            ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
-            ->where('scope_id', $serviceId)
-            ->exists();
-
-        if ($hasServiceRules) {
-            $serviceRule = BookingAvailabilityRule::query()
-                ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
-                ->where('scope_id', $serviceId)
-                ->where('weekday', $weekday)
-                ->first();
-
-            $policy = $this->applyRule($policy, $serviceRule, 'SERVICE');
-        }
-
-        // Provider rule stored by UI: scope_id = provider_user_id
-        $providerUserRule = BookingAvailabilityRule::query()
+        $providerHasAnyRules = BookingAvailabilityRule::query()
             ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE_PROVIDER)
             ->where('scope_id', $providerUserId)
-            ->where('weekday', $weekday)
-            ->first();
+            ->exists() || BookingAvailabilityException::query()
+            ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE_PROVIDER)
+            ->where('scope_id', $providerUserId)
+            ->exists();
 
-        $policy = $this->applyRule($policy, $providerUserRule, 'SERVICE_PROVIDER');
+        $serviceHasAnyRules = $serviceId ? (BookingAvailabilityRule::query()
+            ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
+            ->where('scope_id', $serviceId)
+            ->exists() || BookingAvailabilityException::query()
+            ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE)
+            ->where('scope_id', $serviceId)
+            ->exists()) : false;
 
-        // Optional more-specific layer: scope_id = booking_service_providers.id (pivot)
-        $providerPivotRule = BookingAvailabilityRule::query()
-            ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE_PROVIDER)
-            ->where('scope_id', (int)$sp->id)
-            ->where('weekday', $weekday)
-            ->first();
+        $globalHasAnyRules = BookingAvailabilityRule::query()
+            ->where('scope_type', BookingAvailabilityRule::SCOPE_GLOBAL)
+            ->exists() || BookingAvailabilityException::query()
+            ->where('scope_type', BookingAvailabilityException::SCOPE_GLOBAL)
+            ->exists();
 
-        $policy = $this->applyRule($policy, $providerPivotRule, 'SERVICE_PROVIDER');
+        $layers = [];
 
-        // --------------------
-        // Exceptions: GLOBAL -> SERVICE -> PROVIDER(USER) -> PROVIDER(PIVOT)  (last wins)
-        // --------------------
-
-        $localDateStr = $localDate->toDateString();
-
+        // 1. GLOBAL Layer
         $globalEx = BookingAvailabilityException::query()
             ->where('scope_type', BookingAvailabilityException::SCOPE_GLOBAL)
             ->whereDate('local_date', $localDateStr)
             ->first();
-
-        $policy = $this->applyException($policy, $globalEx, 'EXCEPTION');
-
-        if ($hasServiceRules || BookingAvailabilityException::query()->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE)->where('scope_id', $serviceId)->exists()) {
-            $serviceEx = BookingAvailabilityException::query()
-                ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE)
-                ->where('scope_id', $serviceId)
-                ->whereDate('local_date', $localDateStr)
-                ->first();
-
-            $policy = $this->applyException($policy, $serviceEx, 'EXCEPTION');
+        $globalRule = BookingAvailabilityRule::query()
+            ->where('scope_type', BookingAvailabilityRule::SCOPE_GLOBAL)
+            ->where('weekday', $weekday)
+            ->first();
+        $globalCfg = $this->extractLayerConfig($globalEx, $globalRule, 'GLOBAL');
+        if ($globalHasAnyRules && !$globalCfg) {
+            $globalCfg = ['is_closed' => true, 'work_windows' => null, 'breaks' => [], 'slot_duration_minutes' => null, 'capacity_per_slot' => null, 'capacity_per_day' => null, 'source_label' => 'GLOBAL'];
         }
+        $layers['GLOBAL'] = $globalCfg;
 
-        // Provider exception stored by UI: scope_id = provider_user_id
+        // 2. PROVIDER USER Layer
         $providerUserEx = BookingAvailabilityException::query()
             ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE_PROVIDER)
             ->where('scope_id', $providerUserId)
             ->whereDate('local_date', $localDateStr)
             ->first();
-
-        $policy = $this->applyException($policy, $providerUserEx, 'EXCEPTION');
-
-        // Optional more-specific: scope_id = booking_service_providers.id (pivot)
-        $providerPivotEx = BookingAvailabilityException::query()
-            ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE_PROVIDER)
-            ->where('scope_id', (int)$sp->id)
-            ->whereDate('local_date', $localDateStr)
+        $providerUserRule = BookingAvailabilityRule::query()
+            ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE_PROVIDER)
+            ->where('scope_id', $providerUserId)
+            ->where('weekday', $weekday)
             ->first();
+        $providerCfg = $this->extractLayerConfig($providerUserEx, $providerUserRule, 'SERVICE_PROVIDER');
+        if ($providerHasAnyRules && !$providerCfg) {
+            $providerCfg = ['is_closed' => true, 'work_windows' => null, 'breaks' => [], 'slot_duration_minutes' => null, 'capacity_per_slot' => null, 'capacity_per_day' => null, 'source_label' => 'SERVICE_PROVIDER'];
+        }
+        $layers['PROVIDER_USER'] = $providerCfg;
 
-        $policy = $this->applyException($policy, $providerPivotEx, 'EXCEPTION');
-
-        // --------------------
-        // Normalize
-        // --------------------
-
-        $policy['slot_duration_minutes'] = max(5, (int)($policy['slot_duration_minutes'] ?? 30));
-
-        // capacity_per_slot: 0 or null => unlimited
-        $capSlot = $policy['capacity_per_slot'];
-        $policy['capacity_per_slot'] = max(0, (int)($capSlot ?? 0));
-
-        // capacity_per_day: null or <=0 => unlimited (keep null)
-        $capDay = $policy['capacity_per_day'];
-        if ($capDay === null) {
-            $policy['capacity_per_day'] = null;
-        } else {
-            $capDay = (int)$capDay;
-            $policy['capacity_per_day'] = $capDay <= 0 ? null : $capDay;
+        // 3. SERVICE Layer
+        if ($serviceId !== null && $svc && ($serviceHasAnyRules || $svc->custom_schedule_enabled || $svc->capacity_per_slot !== null || $svc->capacity_per_day !== null)) {
+            $serviceEx = BookingAvailabilityException::query()
+                ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE)
+                ->where('scope_id', $serviceId)
+                ->whereDate('local_date', $localDateStr)
+                ->first();
+            $serviceRule = BookingAvailabilityRule::query()
+                ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE)
+                ->where('scope_id', $serviceId)
+                ->where('weekday', $weekday)
+                ->first();
+            $serviceCfg = $this->extractLayerConfig($serviceEx, $serviceRule, 'SERVICE');
+            if (!$serviceCfg && ($svc->capacity_per_slot !== null || $svc->capacity_per_day !== null)) {
+                $serviceCfg = [
+                    'is_closed' => false,
+                    'work_windows' => null,
+                    'breaks' => [],
+                    'slot_duration_minutes' => null,
+                    'capacity_per_slot' => $svc->capacity_per_slot,
+                    'capacity_per_day' => $svc->capacity_per_day,
+                    'source_label' => 'SERVICE',
+                ];
+            } elseif ($serviceCfg) {
+                if (($serviceCfg['capacity_per_slot'] ?? null) === null && $svc->capacity_per_slot !== null) {
+                    $serviceCfg['capacity_per_slot'] = (int)$svc->capacity_per_slot;
+                }
+                if (($serviceCfg['capacity_per_day'] ?? null) === null && $svc->capacity_per_day !== null) {
+                    $serviceCfg['capacity_per_day'] = (int)$svc->capacity_per_day;
+                }
+            } elseif ($serviceHasAnyRules && !$serviceCfg) {
+                $serviceCfg = ['is_closed' => true, 'work_windows' => null, 'breaks' => [], 'slot_duration_minutes' => null, 'capacity_per_slot' => null, 'capacity_per_day' => null, 'source_label' => 'SERVICE'];
+            }
+            $layers['SERVICE'] = $serviceCfg;
         }
 
-        // Normalize windows and breaks (accept start/end OR start_local/end_local)
-        $policy['work_windows'] = $this->normalizeWorkWindows($policy['work_windows'] ?? []);
-        $policy['breaks'] = array_values(array_filter($policy['breaks'] ?? [], fn($b) => !empty($b['start_local']) && !empty($b['end_local'])));
+        // 4. PROVIDER PIVOT Layer (Pivot ID)
+        if ($sp) {
+            $providerPivotEx = BookingAvailabilityException::query()
+                ->where('scope_type', BookingAvailabilityException::SCOPE_SERVICE_PROVIDER)
+                ->where('scope_id', (int)$sp->id)
+                ->whereDate('local_date', $localDateStr)
+                ->first();
+            $providerPivotRule = BookingAvailabilityRule::query()
+                ->where('scope_type', BookingAvailabilityRule::SCOPE_SERVICE_PROVIDER)
+                ->where('scope_id', (int)$sp->id)
+                ->where('weekday', $weekday)
+                ->first();
+            if ($providerPivotEx || $providerPivotRule) {
+                $layers['PROVIDER_PIVOT'] = $this->extractLayerConfig($providerPivotEx, $providerPivotRule, 'SERVICE_PROVIDER');
+            }
+        }
 
-        return $policy;
+        // --------------------
+        // Combine Layers via Intersection of Windows, Union of Breaks, Closures, and Minimum Capacity Constraints
+        // --------------------
+        $isClosed = false;
+        $ruleSource = 'GLOBAL';
+        $effectiveWindows = null;
+        $allBreaks = [];
+        $windowDefinedByAnyLayer = false;
+
+        $slotDuration = null;
+        $slotCapacities = [];
+        $dayCapacities = [];
+        $bufferBefore = null;
+        $bufferAfter = null;
+
+        if ($svc && $svc->buffer_before_minutes !== null) {
+            $bufferBefore = (int)$svc->buffer_before_minutes;
+        }
+        if ($svc && $svc->buffer_after_minutes !== null) {
+            $bufferAfter = (int)$svc->buffer_after_minutes;
+        }
+
+        foreach ($layers as $cfg) {
+            if (!$cfg) {
+                continue;
+            }
+
+            if ($cfg['is_closed']) {
+                $isClosed = true;
+                $ruleSource = $cfg['source_label'];
+                break;
+            }
+
+            if ($cfg['work_windows'] !== null) {
+                $windowDefinedByAnyLayer = true;
+                if ($effectiveWindows === null) {
+                    $effectiveWindows = $cfg['work_windows'];
+                } else {
+                    $effectiveWindows = $this->intersectWorkWindows($effectiveWindows, $cfg['work_windows']);
+                }
+                $ruleSource = $cfg['source_label'];
+            }
+
+            if (!empty($cfg['breaks'])) {
+                $allBreaks = array_merge($allBreaks, $cfg['breaks']);
+            }
+
+            if (!empty($cfg['slot_duration_minutes'])) {
+                $slotDuration = (int)$cfg['slot_duration_minutes'];
+            }
+
+            if (isset($cfg['capacity_per_slot']) && $cfg['capacity_per_slot'] !== null && (int)$cfg['capacity_per_slot'] > 0) {
+                $slotCapacities[] = (int)$cfg['capacity_per_slot'];
+            }
+
+            if (isset($cfg['capacity_per_day']) && $cfg['capacity_per_day'] !== null && (int)$cfg['capacity_per_day'] > 0) {
+                $dayCapacities[] = (int)$cfg['capacity_per_day'];
+            }
+
+            if (isset($cfg['buffer_before_minutes']) && $cfg['buffer_before_minutes'] !== null) {
+                $bufferBefore = (int)$cfg['buffer_before_minutes'];
+            }
+
+            if (isset($cfg['buffer_after_minutes']) && $cfg['buffer_after_minutes'] !== null) {
+                $bufferAfter = (int)$cfg['buffer_after_minutes'];
+            }
+        }
+
+        // If work windows were defined by layers but intersection yielded no overlapping times, close the day
+        if ($windowDefinedByAnyLayer && empty($effectiveWindows)) {
+            $isClosed = true;
+        }
+
+        // Capacity per slot is the MINIMUM limitation among configured active layers
+        $capacityPerSlot = !empty($slotCapacities)
+            ? min($slotCapacities)
+            : (int)($settings->default_capacity_per_slot ?? config('booking.defaults.capacity_per_slot', 1));
+
+        $capacityPerDay = !empty($dayCapacities)
+            ? min($dayCapacities)
+            : ($settings->default_capacity_per_day ?? config('booking.defaults.capacity_per_day', null));
+
+        $slotDuration = $slotDuration ?? (int)($settings->default_slot_duration_minutes ?? config('booking.defaults.slot_duration_minutes', 30));
+        $bufferBefore = max(0, (int)($bufferBefore ?? $settings->default_buffer_before_minutes ?? 0));
+        $bufferAfter = max(0, (int)($bufferAfter ?? $settings->default_buffer_after_minutes ?? 0));
+
+        $finalWindows = ($isClosed || $effectiveWindows === null) ? [] : $this->normalizeWorkWindows($effectiveWindows);
+
+        if ($isClosed || empty($finalWindows)) {
+            \Illuminate\Support\Facades\Log::info('[BookingEngine::resolveDayPolicy] Day is closed or no work windows', [
+                'serviceId' => $serviceId,
+                'providerUserId' => $providerUserId,
+                'date' => $localDateStr,
+                'weekday' => $weekday,
+                'is_closed' => $isClosed,
+                'rule_source' => $ruleSource,
+                'work_windows' => $finalWindows,
+            ]);
+        }
+
+        return [
+            'is_closed' => $isClosed,
+            'work_windows' => $finalWindows,
+            'inherited_work_windows' => $finalWindows,
+            'breaks' => array_values(array_filter($allBreaks, fn($b) => !empty($b['start_local']) && !empty($b['end_local']))),
+            'slot_duration_minutes' => max(5, (int)$slotDuration),
+            'capacity_per_slot' => max(0, (int)$capacityPerSlot),
+            'capacity_per_day' => $capacityPerDay !== null ? ((int)$capacityPerDay <= 0 ? null : (int)$capacityPerDay) : null,
+            'buffer_before_minutes' => $bufferBefore,
+            'buffer_after_minutes' => $bufferAfter,
+            'custom_schedule_enabled' => (bool)($svc->custom_schedule_enabled ?? false),
+            'rule_source' => $ruleSource,
+        ];
+    }
+
+    protected function extractLayerConfig(
+        ?BookingAvailabilityException $ex,
+        ?BookingAvailabilityRule $rule,
+        string $scopeLabel
+    ): ?array {
+        if ($ex) {
+            $windows = null;
+            if ($ex->override_work_windows_json !== null) {
+                $windows = $this->normalizeWorkWindows($this->ensureArray($ex->override_work_windows_json));
+            }
+
+            return [
+                'is_closed' => (bool)$ex->is_closed,
+                'work_windows' => $windows,
+                'breaks' => $ex->override_breaks_json !== null ? $this->ensureArray($ex->override_breaks_json) : [],
+                'slot_duration_minutes' => null,
+                'capacity_per_slot' => $ex->override_capacity_per_slot,
+                'capacity_per_day' => $ex->override_capacity_per_day,
+                'buffer_before_minutes' => $ex->override_buffer_before_minutes,
+                'buffer_after_minutes' => $ex->override_buffer_after_minutes,
+                'source_label' => 'EXCEPTION_' . $scopeLabel,
+            ];
+        }
+
+        if ($rule) {
+            $windows = null;
+            if ($rule->work_start_local && $rule->work_end_local) {
+                $windows = [[
+                    'start' => substr((string)$rule->work_start_local, 0, 5),
+                    'end' => substr((string)$rule->work_end_local, 0, 5),
+                ]];
+            }
+
+            return [
+                'is_closed' => (bool)$rule->is_closed,
+                'work_windows' => $windows,
+                'breaks' => $rule->breaks_json !== null ? $this->ensureArray($rule->breaks_json) : [],
+                'slot_duration_minutes' => $rule->slot_duration_minutes,
+                'capacity_per_slot' => $rule->capacity_per_slot,
+                'capacity_per_day' => $rule->capacity_per_day,
+                'buffer_before_minutes' => $rule->buffer_before_minutes,
+                'buffer_after_minutes' => $rule->buffer_after_minutes,
+                'source_label' => $scopeLabel,
+            ];
+        }
+
+        return null;
+    }
+
+    protected function intersectWorkWindows(array $windows1, array $windows2): array
+    {
+        if (empty($windows1) || empty($windows2)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($windows1 as $w1) {
+            $s1 = substr(trim($w1['start'] ?? ''), 0, 5);
+            $e1 = substr(trim($w1['end'] ?? ''), 0, 5);
+            if (!$s1 || !$e1) continue;
+
+            foreach ($windows2 as $w2) {
+                $s2 = substr(trim($w2['start'] ?? ''), 0, 5);
+                $e2 = substr(trim($w2['end'] ?? ''), 0, 5);
+                if (!$s2 || !$e2) continue;
+
+                $start = max($s1, $s2);
+                $end   = min($e1, $e2);
+
+                if ($start < $end) {
+                    $out[] = ['start' => $start, 'end' => $end];
+                }
+            }
+        }
+
+        return array_values($out);
     }
 
     protected function applyRule(array $policy, ?BookingAvailabilityRule $rule, string $scopeLabel = 'GLOBAL'): array
@@ -335,7 +532,8 @@ class BookingEngine
         int     $providerUserId,
         string  $fromLocalDate,
         string  $toLocalDate,
-        ?string $viewerTimezone = null
+        ?string $viewerTimezone = null,
+        bool    $includePast = false
     ): array
     {
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
@@ -354,6 +552,14 @@ class BookingEngine
             $policy = $this->resolveDayPolicy($serviceId, $providerUserId, $date);
 
             if ($policy['is_closed'] || empty($policy['work_windows'])) {
+                \Illuminate\Support\Facades\Log::warning('[BookingEngine::generateSlots] Day skipped because closed or work_windows empty', [
+                    'date' => $date->toDateString(),
+                    'serviceId' => $serviceId,
+                    'providerUserId' => $providerUserId,
+                    'is_closed' => $policy['is_closed'],
+                    'work_windows' => $policy['work_windows'],
+                    'rule_source' => $policy['rule_source'],
+                ]);
                 continue;
             }
 
@@ -363,38 +569,60 @@ class BookingEngine
 
             $statuses = (array)config('booking.capacity_consuming_statuses', []);
 
-            // appointments by slot start
-            $apptCounts = Appointment::query()
-                ->selectRaw('start_at_utc, COUNT(*) as cnt')
+            $dayAppointments = Appointment::query()
                 ->where('service_id', $serviceId)
                 ->where('provider_user_id', $providerUserId)
                 ->whereIn('status', $statuses)
-                ->where('start_at_utc', '>=', $dayStartUtc)
                 ->where('start_at_utc', '<', $dayEndUtc)
-                ->groupBy('start_at_utc')
-                ->pluck('cnt', 'start_at_utc');
+                ->where('end_at_utc', '>', $dayStartUtc)
+                ->get(['start_at_utc', 'end_at_utc']);
 
-            // holds by slot start
-            $holdCounts = BookingSlotHold::query()
-                ->selectRaw('start_at_utc, COUNT(*) as cnt')
+            $dayHolds = BookingSlotHold::query()
                 ->where('service_id', $serviceId)
                 ->where('provider_user_id', $providerUserId)
                 ->where('expires_at_utc', '>', now('UTC'))
-                ->where('start_at_utc', '>=', $dayStartUtc)
                 ->where('start_at_utc', '<', $dayEndUtc)
-                ->groupBy('start_at_utc')
-                ->pluck('cnt', 'start_at_utc');
+                ->where('end_at_utc', '>', $dayStartUtc)
+                ->get(['start_at_utc', 'end_at_utc']);
 
-            $dailyBooked = (int)($apptCounts->sum() ?? 0);
-            $dailyHeld   = (int)($holdCounts->sum() ?? 0);
+            $dailyBooked = $dayAppointments->count();
+            $dailyHeld   = $dayHolds->count();
+
+            // Fetch sibling service appointments and holds for the day
+            $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+            $siblingServiceIds = $syncService->getSiblingServiceIds($serviceId, $providerUserId);
+
+            $siblingAppointments = collect();
+            $siblingHolds = collect();
+            if (!empty($siblingServiceIds)) {
+                $siblingAppointments = Appointment::query()
+                    ->whereIn('service_id', $siblingServiceIds)
+                    ->where('provider_user_id', $providerUserId)
+                    ->whereIn('status', $statuses)
+                    ->where('start_at_utc', '<', $dayEndUtc)
+                    ->where('end_at_utc', '>', $dayStartUtc)
+                    ->get(['start_at_utc', 'end_at_utc']);
+
+                $siblingHolds = BookingSlotHold::query()
+                    ->whereIn('service_id', $siblingServiceIds)
+                    ->where('provider_user_id', $providerUserId)
+                    ->where('expires_at_utc', '>', now('UTC'))
+                    ->where('start_at_utc', '<', $dayEndUtc)
+                    ->where('end_at_utc', '>', $dayStartUtc)
+                    ->get(['start_at_utc', 'end_at_utc']);
+            }
 
             $slotDuration    = (int)$policy['slot_duration_minutes'];
             $capacityPerSlot = (int)($policy['capacity_per_slot'] ?? 0); // 0 => unlimited
+            $bufBefore       = (int)($policy['buffer_before_minutes'] ?? 0);
+            $bufAfter        = (int)($policy['buffer_after_minutes'] ?? 0);
 
             $capacityPerDay = $policy['capacity_per_day']; // null => unlimited
             $dailyRemaining = $capacityPerDay !== null
                 ? max(0, (int)$capacityPerDay - $dailyBooked - $dailyHeld)
                 : null;
+
+            $stepMinutes = max(5, $slotDuration + $bufAfter);
 
             foreach ($policy['work_windows'] as $win) {
                 $winStart = $this->makeLocalDateTime($date, $win['start'], $scheduleTz);
@@ -410,27 +638,34 @@ class BookingEngine
                     $slotEndLocal   = $cursor->copy()->addMinutes($slotDuration);
 
                     if ($this->isInBreak($slotStartLocal, $slotEndLocal, $policy['breaks'] ?? [])) {
-                        $cursor->addMinutes($slotDuration);
+                        $cursor->addMinutes($stepMinutes);
                         continue;
                     }
 
                     $slotStartUtc = $slotStartLocal->copy()->timezone('UTC');
                     $slotEndUtc   = $slotEndLocal->copy()->timezone('UTC');
 
-                    // Skip past slots
-                    if ($slotStartUtc->lt(now('UTC'))) {
-                        $cursor->addMinutes($slotDuration);
+                    // Skip past slots unless includePast is requested
+                    if (!$includePast && $slotStartUtc->lt(now('UTC'))) {
+                        $cursor->addMinutes($stepMinutes);
                         continue;
                     }
 
-                    // NOTE: pluck keys for timestamps usually come as "Y-m-d H:i:s"
-                    $key = $slotStartUtc->format('Y-m-d H:i:s');
+                    $reqStartWithBuf = $slotStartUtc->copy()->subMinutes($bufBefore);
+                    $reqEndWithBuf   = $slotEndUtc->copy()->addMinutes($bufAfter);
 
-                    $booked = (int)($apptCounts[$key] ?? 0);
-                    $held   = (int)($holdCounts[$key] ?? 0);
+                    $booked = $dayAppointments->filter(fn($a) => $a->start_at_utc < $reqEndWithBuf && $a->end_at_utc > $reqStartWithBuf)->count();
+                    $held   = $dayHolds->filter(fn($h) => $h->start_at_utc < $reqEndWithBuf && $h->end_at_utc > $reqStartWithBuf)->count();
+
+                    // Check if sibling services occupied this slot
+                    $siblingBookedCount = $siblingAppointments->filter(fn($a) => $a->start_at_utc < $reqEndWithBuf && $a->end_at_utc > $reqStartWithBuf)->count();
+                    $siblingHeldCount   = $siblingHolds->filter(fn($h) => $h->start_at_utc < $reqEndWithBuf && $h->end_at_utc > $reqStartWithBuf)->count();
+                    $isSyncBlocked = ($siblingBookedCount + $siblingHeldCount) > 0;
 
                     // slot capacity
-                    if ($capacityPerSlot <= 0) {
+                    if ($isSyncBlocked) {
+                        $slotRemaining = 0;
+                    } elseif ($capacityPerSlot <= 0) {
                         $slotRemaining = null; // unlimited per slot
                     } else {
                         $slotRemaining = max(0, $capacityPerSlot - $booked - $held);
@@ -445,7 +680,7 @@ class BookingEngine
                         }
                     }
 
-                    if ($slotRemaining === null || $slotRemaining > 0) {
+                    if ($includePast || $slotRemaining === null || $slotRemaining > 0 || $isSyncBlocked) {
                         $slotsOut[] = [
                             'local_date' => $date->toDateString(),
                             'start_at_utc' => $slotStartUtc->toIso8601String(),
@@ -457,15 +692,29 @@ class BookingEngine
                             'remaining_capacity' => $slotRemaining, // null => unlimited
                             'capacity_per_slot' => $capacityPerSlot,
                             'capacity_per_day_remaining' => $dailyRemaining,
+                            'buffer_before_minutes' => $bufBefore,
+                            'buffer_after_minutes' => $bufAfter,
+                            'sync_blocked' => $isSyncBlocked,
                         ];
                     }
 
-                    $cursor->addMinutes($slotDuration);
+                    $cursor->addMinutes($stepMinutes);
                 }
             }
         }
 
         usort($slotsOut, fn($a, $b) => strcmp($a['start_at_utc'], $b['start_at_utc']));
+
+        \Illuminate\Support\Facades\Log::info('[BookingEngine::generateSlots] Diagnostic Result', [
+            'serviceId' => $serviceId,
+            'providerUserId' => $providerUserId,
+            'fromLocalDate' => $fromLocalDate,
+            'toLocalDate' => $toLocalDate,
+            'includePast' => $includePast,
+            'slots_count' => count($slotsOut),
+            'slots' => array_map(fn($s) => $s['start_time'] . ' - ' . $s['end_time'] . ' (Cap: ' . var_export($s['remaining_capacity'], true) . ')', $slotsOut),
+        ]);
+
         return $slotsOut;
     }
 
@@ -480,7 +729,7 @@ class BookingEngine
         return $localDate->copy()->timezone($tz)->setTime($h, $m, 0);
     }
 
-    protected function isInBreak(Carbon $slotStartLocal, Carbon $slotEndLocal, array $breaks): bool
+    public function isInBreak(Carbon $slotStartLocal, Carbon $slotEndLocal, array $breaks): bool
     {
         foreach ($breaks as $b) {
             $s = $b['start_local'] ?? null;

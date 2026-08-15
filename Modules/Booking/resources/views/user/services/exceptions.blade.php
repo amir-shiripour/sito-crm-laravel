@@ -40,6 +40,24 @@
             <p>تاریخ در فرانت شمسی است (jalaliDatepicker) ولی در دیتابیس به‌صورت تاریخ استاندارد ذخیره می‌شود.</p>
         </div>
 
+        @php
+            $globalExceptions = \Modules\Booking\Entities\BookingAvailabilityException::query()
+                ->where('scope_type', \Modules\Booking\Entities\BookingAvailabilityException::SCOPE_GLOBAL)
+                ->whereNull('scope_id')
+                ->where('is_closed', true)
+                ->get();
+        @endphp
+
+        {{-- تقویم شمسی مدیریت تعطیلات --}}
+        <x-booking::jalali-holiday-calendar
+            scopeType="SERVICE"
+            :scopeId="$service->id"
+            :storeUrl="route('user.booking.services.exceptions.store', $service)"
+            :batchUrl="route('user.booking.services.exceptions.batch', $service)"
+            :exceptions="$exceptions"
+            :globalExceptions="$globalExceptions"
+        />
+
         {{-- فرم ایجاد / بروزرسانی استثنا --}}
         <form method="POST" action="{{ route('user.booking.services.exceptions.store', $service) }}"
               class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 space-y-4"

@@ -19,6 +19,10 @@
                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
                     برنامه هفتگی
                 </a>
+                <a href="{{ route('user.booking.providers.index') }}"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition">
+                    لیست {{ config('booking.labels.providers') }}
+                </a>
             </div>
         </div>
 
@@ -34,6 +38,24 @@
             class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 text-sm text-gray-700 dark:text-gray-300 space-y-1">
             <p>در این بخش می‌توانید روزهایی که این {{ config('booking.labels.provider') }} استثنائاً تعطیل است یا ساعات متفاوتی دارد را تنظیم کنید.</p>
         </div>
+
+        @php
+            $globalExceptions = \Modules\Booking\Entities\BookingAvailabilityException::query()
+                ->where('scope_type', \Modules\Booking\Entities\BookingAvailabilityException::SCOPE_GLOBAL)
+                ->whereNull('scope_id')
+                ->where('is_closed', true)
+                ->get();
+        @endphp
+
+        {{-- تقویم شمسی مدیریت تعطیلات --}}
+        <x-booking::jalali-holiday-calendar
+            scopeType="SERVICE_PROVIDER"
+            :scopeId="$provider->id"
+            :storeUrl="route('user.booking.providers.exceptions.store', $provider)"
+            :batchUrl="route('user.booking.providers.exceptions.batch', $provider)"
+            :exceptions="$exceptions"
+            :globalExceptions="$globalExceptions"
+        />
 
         {{-- فرم --}}
         <form method="POST" action="{{ route('user.booking.providers.exceptions.store', $provider) }}"

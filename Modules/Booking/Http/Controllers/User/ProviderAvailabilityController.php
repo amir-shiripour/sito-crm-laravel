@@ -120,6 +120,8 @@ class ProviderAvailabilityController extends Controller
             'rules.*.slot_duration_minutes' => ['nullable', 'integer', 'min:5', 'max:720'],
             'rules.*.capacity_per_slot'     => ['nullable', 'integer', 'min:0', 'max:1000'],
             'rules.*.capacity_per_day'      => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'rules.*.buffer_before_minutes' => ['nullable', 'integer', 'min:0', 'max:240'],
+            'rules.*.buffer_after_minutes'  => ['nullable', 'integer', 'min:0', 'max:240'],
 
             'rules.*.breaks' => ['nullable', 'array'],
             'rules.*.breaks.*.start_local' => ['required_with:rules.*.breaks', 'date_format:H:i'],
@@ -139,10 +141,14 @@ class ProviderAvailabilityController extends Controller
             $slotDur = Arr::get($ruleRow, 'slot_duration_minutes');
             $capSlot = Arr::get($ruleRow, 'capacity_per_slot');
             $capDay = Arr::get($ruleRow, 'capacity_per_day');
+            $bufBefore = Arr::get($ruleRow, 'buffer_before_minutes');
+            $bufAfter = Arr::get($ruleRow, 'buffer_after_minutes');
 
             $slotDur = ($slotDur === '' || $slotDur === null) ? null : (int) $slotDur;
             $capSlot = ($capSlot === '' || $capSlot === null) ? null : (int) $capSlot;
             $capDay = ($capDay === '' || $capDay === null) ? null : (int) $capDay;
+            $bufBefore = ($bufBefore === '' || $bufBefore === null) ? null : (int) $bufBefore;
+            $bufAfter = ($bufAfter === '' || $bufAfter === null) ? null : (int) $bufAfter;
 
             $payload = [
                 'scope_type' => BookingAvailabilityRule::SCOPE_SERVICE_PROVIDER,
@@ -156,6 +162,8 @@ class ProviderAvailabilityController extends Controller
                 'slot_duration_minutes' => $slotDur,
                 'capacity_per_slot'     => $capSlot,
                 'capacity_per_day'      => $capDay,
+                'buffer_before_minutes' => $bufBefore,
+                'buffer_after_minutes'  => $bufAfter,
 
                 'breaks_json' => isset($ruleRow['breaks'])
                     ? array_values($ruleRow['breaks'] ?? [])
@@ -169,6 +177,8 @@ class ProviderAvailabilityController extends Controller
                 $payload['slot_duration_minutes'] = null;
                 $payload['capacity_per_slot'] = null;
                 $payload['capacity_per_day'] = null;
+                $payload['buffer_before_minutes'] = null;
+                $payload['buffer_after_minutes'] = null;
             }
 
             $allNull =
@@ -178,6 +188,8 @@ class ProviderAvailabilityController extends Controller
                 $payload['slot_duration_minutes'] === null &&
                 $payload['capacity_per_slot'] === null &&
                 $payload['capacity_per_day'] === null &&
+                $payload['buffer_before_minutes'] === null &&
+                $payload['buffer_after_minutes'] === null &&
                 $payload['breaks_json'] === null;
 
             $existing = BookingAvailabilityRule::query()

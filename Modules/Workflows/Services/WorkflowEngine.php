@@ -123,7 +123,7 @@ class WorkflowEngine
                 $config = $trigger->config;
 
                 // 1. Service Filter
-                if ($relatedType === 'APPOINTMENT') {
+                if ($relatedType === 'APPOINTMENT' && file_exists(base_path('Modules/Booking/Entities/Appointment.php')) && class_exists('Modules\\Booking\\Entities\\Appointment')) {
                     $appt = \Modules\Booking\Entities\Appointment::find($relatedId);
                     if ($appt) {
                         $serviceIds = $config['service_ids'] ?? (isset($config['service_id']) ? [$config['service_id']] : []);
@@ -153,7 +153,7 @@ class WorkflowEngine
                 }
 
                 // 2. Treatment Plan Filter
-                if ($relatedType === 'TREATMENT_PLAN') {
+                if ($relatedType === 'TREATMENT_PLAN' && file_exists(base_path('Modules/Booking/App/Models/TreatmentPlan.php')) && class_exists('Modules\\Booking\\App\\Models\\TreatmentPlan')) {
                     $plan = \Modules\Booking\App\Models\TreatmentPlan::find($relatedId);
                     if ($plan) {
                         // Previous status filter
@@ -1054,7 +1054,7 @@ class WorkflowEngine
             $data['tokens'] = array_merge($data['tokens'], $payload);
         }
 
-        if ($instance->related_type === 'APPOINTMENT' && class_exists('Modules\\Booking\\Entities\\Appointment')) {
+        if ($instance->related_type === 'APPOINTMENT' && file_exists(base_path('Modules/Booking/Entities/Appointment.php')) && class_exists('Modules\\Booking\\Entities\\Appointment')) {
             $appt = \Modules\Booking\Entities\Appointment::query()
                 ->with(['client', 'service', 'provider', 'payments'])
                 ->find($instance->related_id);
@@ -1078,7 +1078,7 @@ class WorkflowEngine
                 // Resolve currency settings from BookingSetting
                 $currencyUnit = 'IRR';
                 $currencyLabel = 'ریال';
-                if (class_exists(\Modules\Booking\Entities\BookingSetting::class)) {
+                if (file_exists(base_path('Modules/Booking/Entities/BookingSetting.php')) && class_exists('Modules\\Booking\\Entities\\BookingSetting')) {
                     try {
                         $bs = \Modules\Booking\Entities\BookingSetting::current();
                         $currencyUnit = $bs->currency_unit ?? 'IRR';
@@ -1130,7 +1130,7 @@ class WorkflowEngine
         }
 
         // Handle STATEMENT context
-        if ($instance->related_type === 'STATEMENT' && class_exists('Modules\\Booking\\Entities\\BookingStatement')) {
+        if ($instance->related_type === 'STATEMENT' && file_exists(base_path('Modules/Booking/Entities/BookingStatement.php')) && class_exists('Modules\\Booking\\Entities\\BookingStatement')) {
             $statement = \Modules\Booking\Entities\BookingStatement::with(['provider', 'user'])->find($instance->related_id);
 
             if ($statement) {
@@ -1155,7 +1155,7 @@ class WorkflowEngine
         }
 
         // Handle TREATMENT_PLAN context
-        if ($instance->related_type === 'TREATMENT_PLAN' && class_exists('Modules\\Booking\\App\\Models\\TreatmentPlan')) {
+        if ($instance->related_type === 'TREATMENT_PLAN' && file_exists(base_path('Modules/Booking/App/Models/TreatmentPlan.php')) && class_exists('Modules\\Booking\\App\\Models\\TreatmentPlan')) {
             $plan = \Modules\Booking\App\Models\TreatmentPlan::with(['client', 'patient', 'user'])->find($instance->related_id);
             if ($plan) {
                 $data['treatment_plan'] = $plan;
@@ -1164,7 +1164,12 @@ class WorkflowEngine
                 $assignedUserModels = [];
                 $assignedByRole = [];
                 
-                $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
+                $cureAssignableRoles = [];
+                if (file_exists(base_path('Modules/Booking/Entities/BookingSetting.php')) && class_exists('Modules\\Booking\\Entities\\BookingSetting')) {
+                    try {
+                        $cureAssignableRoles = \Modules\Booking\Entities\BookingSetting::current()?->cure_assignable_roles ?? [];
+                    } catch (\Throwable $e) {}
+                }
                 
                 foreach ($assignedUsers as $assignment) {
                     $userId = $assignment['user_id'] ?? null;
@@ -1484,12 +1489,12 @@ class WorkflowEngine
     protected function resolveClientId(WorkflowInstance $instance): ?int
     {
         if ($instance->related_type === 'TREATMENT_PLAN') {
-            if (class_exists(\Modules\Booking\App\Models\TreatmentPlan::class)) {
+            if (file_exists(base_path('Modules/Booking/App/Models/TreatmentPlan.php')) && class_exists('Modules\\Booking\\App\\Models\\TreatmentPlan')) {
                 $plan = \Modules\Booking\App\Models\TreatmentPlan::find($instance->related_id);
                 return $plan?->client_id;
             }
         } elseif ($instance->related_type === 'APPOINTMENT') {
-            if (class_exists(\Modules\Booking\Entities\Appointment::class)) {
+            if (file_exists(base_path('Modules/Booking/Entities/Appointment.php')) && class_exists('Modules\\Booking\\Entities\\Appointment')) {
                 $appt = \Modules\Booking\Entities\Appointment::find($instance->related_id);
                 return $appt?->client_id;
             }
