@@ -17,7 +17,7 @@
         }
     </style>
     <div dir="rtl" class="antialiased text-gray-800 bg-gray-50">
-        <section class="relative flex flex-col items-center justify-center min-h-[100vh] h-[100vh] max-h-[100vh] bg-gradient-to-br from-[#f8faf9] via-[#f0f5f1] to-[#e8f0eb] overflow-hidden pt-18 pb-8">
+        <section class="relative flex flex-col items-center justify-center min-h-[100vh] bg-gradient-to-br from-[#f8faf9] via-[#f0f5f1] to-[#e8f0eb] overflow-hidden pt-18 pb-8">
 
             {{-- المان‌های نوری پس‌زمینه برای جلوه دادن به افکت شیشه‌ای (Glassmorphism) --}}
             <div class="absolute top-[10%] right-[10%] w-[60vw] max-w-[400px] h-[60vw] max-h-[400px] bg-[#3F7D20]/15 rounded-full blur-[80px] pointer-events-none"></div>
