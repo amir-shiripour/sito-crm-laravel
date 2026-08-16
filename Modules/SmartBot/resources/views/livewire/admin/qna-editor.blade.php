@@ -30,7 +30,8 @@
             tag = '[card number=&quot;' + this.card_number + '&quot; bank=&quot;' + (this.bank_name || 'کارت بانکی') + '&quot; owner=&quot;' + (this.card_holder || '') + '&quot;]';
         } else if (this.activeTagType === 'iban') {
             if (!this.iban_code) return;
-            tag = '[iban code=&quot;' + this.iban_code + '&quot; owner=&quot;' + (this.account_holder || '') + '&quot;]';
+            const cleanIban = this.iban_code.replace(/\s+/g, '').replace(/^IR/i, '');
+            tag = '[iban code=&quot;' + cleanIban + '&quot; owner=&quot;' + (this.account_holder || '') + '&quot;]';
         } else if (this.activeTagType === 'crypto') {
             if (!this.crypto_address) return;
             tag = '[crypto currency=&quot;' + (this.crypto_currency || 'USDT') + '&quot; network=&quot;' + (this.crypto_network || 'TRC20') + '&quot; address=&quot;' + this.crypto_address + '&quot;]';
@@ -346,12 +347,12 @@
                                 </div>
                             @elseif(($att['type'] ?? '') === 'iban')
                                 <div class="flex items-center gap-2 mb-3">
-                                    <span class="px-2.5 py-1 rounded-md text-[10px] font-extrabold bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-800">شماره شبا (IBAN)</span>
+                                    <span class="px-2.5 py-1 rounded-md text-[10px] font-extrabold bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-800">شماره شبا</span>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     <div class="sm:col-span-2">
-                                        <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">شماره شبا (با IR)</label>
-                                        <input type="text" wire:model="smart_attachments.{{ $index }}.iban_code" placeholder="IR700550332144407818976001" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white dir-ltr text-right outline-none focus:border-indigo-500" />
+                                        <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">شماره شبا (بدون IR)</label>
+                                        <input type="text" wire:model="smart_attachments.{{ $index }}.iban_code" placeholder="012345678901234567890123" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:bg-slate-800 dark:text-white dir-ltr text-left outline-none focus:border-indigo-500" />
                                     </div>
                                     <div>
                                         <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">نام صاحب حساب</label>
@@ -1030,8 +1031,8 @@
                 <template x-if="activeTagType === 'iban'">
                     <div class="space-y-3 text-xs">
                         <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">شماره شبا (با IR)</label>
-                            <input type="text" x-model="iban_code" placeholder="IR700550332144407818976001" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white dir-ltr text-right outline-none focus:border-indigo-500" />
+                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">شماره شبا (بدون IR)</label>
+                            <input type="text" x-model="iban_code" placeholder="012345678901234567890123" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white dir-ltr text-left outline-none focus:border-indigo-500" />
                         </div>
                         <div>
                             <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">نام صاحب حساب (اختیاری)</label>

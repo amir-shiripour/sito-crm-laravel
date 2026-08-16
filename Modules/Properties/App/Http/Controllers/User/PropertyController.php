@@ -130,18 +130,18 @@ class PropertyController extends Controller
 
         // Data for filters
         $statuses = PropertyStatus::where('is_active', true)->orderBy('sort_order')->get();
-        
-        $canViewAllCategories = $user->hasRole(['super-admin', 'admin']) || 
-                                $user->can('properties.categories.view') || 
-                                $user->can('properties.categories.manage') || 
-                                $user->can('properties.view.all') || 
+
+        $canViewAllCategories = $user->hasRole(['super-admin', 'admin']) ||
+                                $user->can('properties.categories.view') ||
+                                $user->can('properties.categories.manage') ||
+                                $user->can('properties.view.all') ||
                                 $user->can('properties.manage');
         if ($canViewAllCategories) {
             $categories = PropertyCategory::all();
         } else {
             $categories = PropertyCategory::where('user_id', $user->id)->get();
         }
-        
+
         $buildings = PropertyBuilding::latest()->get();
         $propertyAttributes = PropertyAttribute::where('is_active', true)->get()->keyBy('id');
 

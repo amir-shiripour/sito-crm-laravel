@@ -47,8 +47,8 @@ final class SmartTagParserService
         </div>
         <span class="text-[11px] font-semibold text-slate-400">{$ownerText}</span>
     </div>
-    <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
-        <span class="text-sm sm:text-base font-bold tracking-widest text-emerald-300">
+    <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr" dir="ltr">
+        <span class="text-sm sm:text-base font-bold tracking-widest text-emerald-300 dir-ltr" style="direction: ltr !important; text-align: left;">
             {$formattedNumber}
         </span>
         <button 
@@ -92,15 +92,16 @@ HTML;
         // 2. Parse [iban ...] tags
         $html = preg_replace_callback('/\[iban\s+([^\]]+)\]/i', function ($matches) {
             $attrs = self::parseAttributes($matches[1]);
-            $code = e($attrs['code'] ?? $attrs['iban'] ?? '');
-            $bank = e($attrs['bank'] ?? 'شماره شبا (IBAN)');
+            $rawCode = trim($attrs['code'] ?? $attrs['iban'] ?? '');
+            $bank = e($attrs['bank'] ?? 'شماره شبا');
             $owner = e($attrs['owner'] ?? '');
 
-            if (empty($code)) {
+            if (empty($rawCode)) {
                 return '';
             }
 
-            $cleanCode = str_replace(' ', '', $code);
+            $cleanCode = preg_replace('/^IR/i', '', str_replace(' ', '', $rawCode));
+            $displayCode = 'IR' . $cleanCode;
             $ownerText = $owner ? 'به نام: ' . $owner : '';
 
             return <<<HTML
@@ -114,9 +115,9 @@ HTML;
         </div>
         <span class="text-[11px] font-semibold text-slate-400">{$ownerText}</span>
     </div>
-    <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
-        <span class="text-xs sm:text-sm font-bold tracking-wider text-sky-300 truncate mr-2">
-            {$code}
+    <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr" dir="ltr">
+        <span class="text-xs sm:text-sm font-bold tracking-wider text-sky-300 truncate mr-2 dir-ltr" style="direction: ltr !important; text-align: left;">
+            {$displayCode}
         </span>
         <button 
             type="button"
@@ -124,7 +125,7 @@ HTML;
                 (function(val){
                     var p=['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], a=['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
                     for(var i=0;i<10;i++){ val=val.replace(new RegExp(p[i],'g'),i).replace(new RegExp(a[i],'g'),i); }
-                    val = val.replace(/\s+/g, '').trim();
+                    val = val.replace(/^ir/i, '').replace(/[^0-9]/g, '').trim();
                     if (navigator.clipboard && window.isSecureContext) {
                         return navigator.clipboard.writeText(val);
                     } else {
@@ -180,8 +181,8 @@ HTML;
             {$network}
         </span>
     </div>
-    <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
-        <span class="text-xs font-semibold tracking-wider text-purple-200 truncate mr-2">
+    <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr" dir="ltr">
+        <span class="text-xs font-semibold tracking-wider text-purple-200 truncate mr-2 dir-ltr" style="direction: ltr !important; text-align: left;">
             {$address}
         </span>
         <button 
@@ -299,7 +300,7 @@ HTML;
             $label = e($attrs['label'] ?? $attrs['text'] ?? 'مشاهده و اقدام');
 
             return <<<HTML
-<a href="{$url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 mx-1 my-1 px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all font-bold not-prose dir-rtl align-middle shadow-2xs">
+<a href="{$url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto mx-0 sm:mx-1 my-1.5 px-4 py-2 sm:px-3 sm:py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all font-bold not-prose dir-rtl align-middle shadow-2xs text-center">
     <span>{$label}</span>
     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
 </a>
