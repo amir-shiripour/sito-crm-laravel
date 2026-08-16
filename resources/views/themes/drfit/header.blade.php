@@ -178,7 +178,7 @@
 
 @if(!request()->is('chat') && !request()->is('chat/*'))
 {{-- ================= نوار ناوبری پایین (Bottom App Bar) مخصوص موبایل - طراحی بومی و شناور ================= --}}
-<div class="md:hidden fixed bottom-4 left-4 right-4 z-[60] pointer-events-none pb-safe">
+<div id="mobile-bottom-nav" class="md:hidden fixed bottom-4 left-4 right-4 z-[60] pointer-events-none pb-safe">
     <nav class="pointer-events-auto bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border border-white/60 dark:border-gray-800/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] rounded-[2rem] overflow-hidden">
         <div class="flex items-center justify-around h-[4.5rem] px-1 relative">
 

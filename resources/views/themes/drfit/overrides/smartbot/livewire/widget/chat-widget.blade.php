@@ -117,7 +117,6 @@
             100% { background-color: transparent !important; }
         }
 
-
         .bg-gradient-to-tr.from-indigo-600 {
             --tw-gradient-from: var(--bot-primary) !important;
             --tw-gradient-to: rgba(var(--bot-primary-rgb), 0.5) !important;
@@ -423,7 +422,7 @@
                         <div class="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-xl">
                             <!-- Auth Header -->
                             <div class="text-center mb-6">
-                                <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 mx-auto mb-3 border border-indigo-100 dark:border-indigo-500/20 shadow-sm">
+                                <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 mx-auto mb-6 border border-indigo-100 dark:border-indigo-500/20 shadow-sm">
                                     @if($botIconSvg)
                                         {!! $botIconSvg !!}
                                     @elseif($botIcon)
@@ -432,8 +431,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg>
                                     @endif
                                 </div>
-                                <h3 class="text-lg font-bold text-zinc-900 dark:text-white">ورود / ثبت‌نام در {{ $botName }}</h3>
-                                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">جهت استفاده از دستیار، ابتدا وارد شوید.</p>
+                                <h3 class="text-lg font-bold text-zinc-900 dark:text-white">شمارتو وارد کن که شروع کنیم</h3>
                             </div>
 
                             @if($authError)
@@ -454,11 +452,11 @@
                                 @if($authStep === 'identifier')
                                     <form wire:submit.prevent="checkIdentifier" class="space-y-4">
                                         <div>
-                                            <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 text-right">{{ $usernameLabel }}</label>
+{{--                                            <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-3 text-right">{{ $usernameLabel }}</label>--}}
                                             <input
                                                 type="text"
                                                 wire:model="authUsername"
-                                                placeholder="ورود {{ $usernameLabel }}..."
+                                                placeholder="{{ $usernameLabel }} خود را وارد نمایید"
                                                 class="w-full px-4 py-3 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-right"
                                             />
                                         </div>
@@ -478,7 +476,7 @@
                                             <button type="button" wire:click="resetAuthStep" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">تغییر</button>
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 text-right">رمز عبور</label>
+{{--                                            <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 text-right">رمز عبور</label>--}}
                                             <input
                                                 type="password"
                                                 wire:model="authPassword"
@@ -510,7 +508,7 @@
                                             <button type="button" wire:click="resetAuthStep" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">تغییر</button>
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 text-right">کد تأیید پیامک‌شده</label>
+{{--                                            <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 text-right">کد تأیید پیامک‌شده</label>--}}
                                             <input
                                                 type="text"
                                                 wire:model="authOtp"
@@ -1437,7 +1435,7 @@
                                     type="submit"
                                     class="w-full py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl transition-all shadow-md shadow-indigo-500/20 cursor-pointer"
                                 >
-                                    ورود به حساب
+                                    تایید
                                 </button>
 
                                 @if($authMode === 'both' || $authMode === 'otp')
@@ -1469,7 +1467,7 @@
                                     type="submit"
                                     class="w-full py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl transition-all shadow-md shadow-indigo-500/20 cursor-pointer"
                                 >
-                                    تأیید و ورود
+                                    تأیید
                                 </button>
                             </form>
 
@@ -1487,7 +1485,7 @@
                                         $isRequired = !empty($field['required']);
                                     @endphp
                                     <div>
-                                        <label class="block text-[11px] font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                                        <label class="block text-[11px] font-bold text-zinc-700 dark:text-zinc-300 mb-3">
                                             {{ $field['label'] ?? $fid }}
                                             @if($isRequired)<span class="text-red-500">*</span>@endif
                                         </label>
@@ -1542,7 +1540,7 @@
                                         type="submit"
                                         class="w-full py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl transition-all shadow-md shadow-indigo-500/20 cursor-pointer"
                                     >
-                                        تکمیل ثبت‌نام و ورود
+                                        ادامه
                                     </button>
                                     <button type="button" wire:click="resetAuthStep" class="w-full mt-2 text-[11px] font-bold text-zinc-500 hover:underline">
                                         انصراف
