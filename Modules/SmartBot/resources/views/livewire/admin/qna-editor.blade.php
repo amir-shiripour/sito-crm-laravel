@@ -11,7 +11,7 @@
     crypto_network: 'TRC20',
     crypto_address: '',
     copy_text: '',
-    copy_label: 'کد تخفیف',
+    copy_label: '',
     phone_number: '',
     phone_label: '',
     btn_label: '',
@@ -36,7 +36,8 @@
             tag = '[crypto currency=&quot;' + (this.crypto_currency || 'USDT') + '&quot; network=&quot;' + (this.crypto_network || 'TRC20') + '&quot; address=&quot;' + this.crypto_address + '&quot;]';
         } else if (this.activeTagType === 'copy') {
             if (!this.copy_text) return;
-            tag = '[copy text=&quot;' + this.copy_text + '&quot; label=&quot;' + (this.copy_label || 'کپی') + '&quot;]';
+            const labelAttr = this.copy_label ? (' label=&quot;' + this.copy_label + '&quot;') : '';
+            tag = '[copy text=&quot;' + this.copy_text + '&quot;' + labelAttr + ']';
         } else if (this.activeTagType === 'phone') {
             if (!this.phone_number) return;
             tag = '[phone number=&quot;' + this.phone_number + '&quot; label=&quot;' + (this.phone_label || ('تماس با ' + this.phone_number)) + '&quot;]';
@@ -59,7 +60,7 @@
         this.insertModalOpen = false;
         this.card_number = ''; this.bank_name = ''; this.card_holder = '';
         this.iban_code = ''; this.account_holder = ''; this.crypto_address = '';
-        this.copy_text = ''; this.phone_number = ''; this.phone_label = '';
+        this.copy_text = ''; this.copy_label = ''; this.phone_number = ''; this.phone_label = '';
         this.btn_label = ''; this.btn_url = '';
     }
 }" class="space-y-8 font-iranYekan pb-16">
@@ -1061,8 +1062,8 @@
                 <template x-if="activeTagType === 'copy'">
                     <div class="space-y-3 text-xs">
                         <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">عنوان / برچسب</label>
-                            <input type="text" x-model="copy_label" placeholder="مثلاً: کد تخفیف، کد سریال" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
+                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">عنوان / برچسب (اختیاری)</label>
+                            <input type="text" x-model="copy_label" placeholder="مثلاً: کد تخفیف، کد سریال (اختیاری)" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
                         </div>
                         <div>
                             <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">متنی که باید کپی شود</label>

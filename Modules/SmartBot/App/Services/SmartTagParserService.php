@@ -236,7 +236,7 @@ HTML;
             $textHtml = !empty($text) ? '<span class="font-bold text-indigo-600 dark:text-indigo-400 dir-ltr">' . $text . '</span>' : '';
 
             return <<<HTML
-<span x-data="{ copied: false }" class="inline-flex items-center gap-1.5 mx-1 my-0.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 align-middle not-prose dir-rtl shadow-2xs">
+<span x-data="{ copied: false }" class="inline-flex max-w-full items-center gap-1.5 mx-1 my-1 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 align-middle not-prose dir-rtl shadow-2xs">
     {$labelHtml}
     {$textHtml}
     <button 
@@ -262,7 +262,7 @@ HTML;
                 }
             })('{$text}').then(() => { copied = true; setTimeout(() => copied = false, 2000); });
         "
-        class="mr-0.5 px-1.5 py-0.5 text-[11px] font-bold rounded transition-all cursor-pointer shrink-0"
+        class="mr-0.5 px-2 py-0.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer shrink-0"
         :class="copied ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200'"
     >
         <template x-if="!copied">
@@ -285,8 +285,8 @@ HTML;
             $cleanPhone = preg_replace('/[^0-9\+]/', '', $number);
 
             return <<<HTML
-<a href="tel:{$cleanPhone}" class="inline-flex items-center gap-1.5 mx-1 my-0.5 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all font-bold not-prose dir-rtl align-middle shadow-2xs">
-    <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.826-1.01-5.09-3.274-6.1-6.1l1.292-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+<a href="tel:{$cleanPhone}" class="inline-flex items-center gap-1.5 mx-1 my-1 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all font-bold not-prose dir-rtl align-middle shadow-2xs">
+    <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.826-1.01-5.09-3.274-6.1-6.1l1.292-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
     <span>{$label}</span>
 </a>
 HTML;
@@ -299,18 +299,16 @@ HTML;
             $label = e($attrs['label'] ?? $attrs['text'] ?? 'مشاهده و اقدام');
 
             return <<<HTML
-<a href="{$url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 mx-1 my-0.5 px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all font-bold not-prose dir-rtl align-middle shadow-2xs">
+<a href="{$url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 mx-1 my-1 px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all font-bold not-prose dir-rtl align-middle shadow-2xs">
     <span>{$label}</span>
-    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
 </a>
 HTML;
         }, $html);
 
-        // 7. Clean up extra <br> line breaks immediately preceding or following block and inline widgets
+        // 7. Clean up extra <br> line breaks immediately preceding or following block widgets (cards/iban/crypto)
         $html = preg_replace('/(?:<br\s*\/?>\s*)+(<div\s+)/i', '$1', $html);
         $html = preg_replace('/(<\/div>)\s*(?:<br\s*\/?>\s*)+/i', '$1', $html);
-        $html = preg_replace('/(?:<br\s*\/?>\s*)+(<(?:span|a)\s+)/i', ' $1', $html);
-        $html = preg_replace('/(<\/(?:span|a)>)\s*(?:<br\s*\/?>\s*)+/i', '$1 ', $html);
 
         return $html;
     }
