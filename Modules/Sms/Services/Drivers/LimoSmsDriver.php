@@ -191,10 +191,14 @@ class LimoSmsDriver implements DriverInterface
 
 
     /**
-     * OTP هم فعلاً مثل پیام ساده ارسال می‌شود
+     * ارسال OTP
      */
     public function sendOtp(SmsMessage $message): void
     {
+        if (!empty($message->template_key)) {
+            $this->sendPattern($message, is_array($message->params) ? $message->params : []);
+            return;
+        }
         $this->sendText($message);
     }
 

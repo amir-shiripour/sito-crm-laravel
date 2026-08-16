@@ -52,14 +52,20 @@ class ClientAuthSettings extends Component
             && \Illuminate\Support\Facades\Schema::hasTable('sms_gateway_settings');
 
         if ($this->smsModuleAvailable && class_exists(\Modules\Sms\Entities\SmsGatewaySetting::class)) {
-            $user = auth()->user();
-            if ($user) {
-                $setting = \Modules\Sms\Entities\SmsGatewaySetting::query()
-                    ->where('user_id', $user->id)
-                    ->first();
+            $setting = \Modules\Sms\Entities\SmsGatewaySetting::query()
+                ->whereNull('user_id')
+                ->whereNotNull('driver')
+                ->orderByDesc('id')
+                ->first();
 
-                $this->smsClientOtpPattern = data_get($setting, 'config.client_otp_pattern');
+            if (! $setting) {
+                $setting = \Modules\Sms\Entities\SmsGatewaySetting::query()
+                    ->whereNotNull('driver')
+                    ->orderByDesc('id')
+                    ->first();
             }
+
+            $this->smsClientOtpPattern = data_get($setting, 'config.client_otp_pattern');
         }
 
         // خواندن تنظیمات ذخیره شده

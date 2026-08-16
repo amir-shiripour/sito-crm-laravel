@@ -51,6 +51,13 @@ class SmsManager implements SmsSender
             ->orderByDesc('id')
             ->first();
 
+        if (! $globalSetting) {
+            $globalSetting = SmsGatewaySetting::query()
+                ->whereNotNull('driver')
+                ->orderByDesc('id')
+                ->first();
+        }
+
         if ($globalSetting && $globalSetting->driver) {
             return $globalSetting->driver;
         }
@@ -87,6 +94,13 @@ class SmsManager implements SmsSender
             ->where('driver', $name)
             ->orderByDesc('id')
             ->first();
+
+        if (! $setting) {
+            $setting = SmsGatewaySetting::query()
+                ->where('driver', $name)
+                ->orderByDesc('id')
+                ->first();
+        }
 
         if ($setting) {
             $dbConfig = $setting->config ?? [];
@@ -207,6 +221,13 @@ class SmsManager implements SmsSender
                 ->whereNotNull('driver')
                 ->orderByDesc('id')
                 ->first();
+
+            if (! $setting) {
+                $setting = \Modules\Sms\Entities\SmsGatewaySetting::query()
+                    ->whereNotNull('driver')
+                    ->orderByDesc('id')
+                    ->first();
+            }
 
             $otpPatternId = data_get($setting, 'config.client_otp_pattern');
         }
