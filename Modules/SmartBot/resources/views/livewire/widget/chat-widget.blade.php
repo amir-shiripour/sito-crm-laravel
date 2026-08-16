@@ -728,8 +728,8 @@
                                                             @endif
                                                         </div>
 
-                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
-                                                            <span class="text-sm sm:text-base font-bold tracking-widest text-emerald-300">
+                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr" dir="ltr">
+                                                            <span class="text-sm sm:text-base font-bold tracking-widest text-emerald-300 dir-ltr" style="direction: ltr !important; text-align: left;">
                                                                 {{ implode(' ', str_split(preg_replace('/[^0-9]/', '', $att['card_number']), 4)) }}
                                                             </span>
                                                             <button 
@@ -773,21 +773,24 @@
                                                                 <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-500/30 text-xs">
                                                                     🏦
                                                                 </div>
-                                                                <span class="text-xs font-bold text-slate-200">شماره شبا (IBAN)</span>
+                                                                <span class="text-xs font-bold text-slate-200">شماره شبا</span>
                                                             </div>
                                                             @if(!empty($att['account_holder']))
                                                                 <span class="text-[11px] font-semibold text-slate-400">به نام: {{ $att['account_holder'] }}</span>
                                                             @endif
                                                         </div>
 
-                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
-                                                            <span class="text-xs sm:text-sm font-bold tracking-wider text-sky-300 truncate mr-2">
-                                                                {{ $att['iban_code'] }}
+                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr" dir="ltr">
+                                                            <span class="text-xs sm:text-sm font-bold tracking-wider text-sky-300 truncate mr-2 dir-ltr" style="direction: ltr !important; text-align: left;">
+                                                                {{ 'IR' . preg_replace('/^IR/i', '', str_replace(' ', '', $att['iban_code'])) }}
                                                             </span>
                                                             <button 
                                                                 type="button"
                                                                 @click="
                                                                     (function(val){
+                                                                        var p=['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], a=['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+                                                                        for(var i=0;i<10;i++){ val=val.replace(new RegExp(p[i],'g'),i).replace(new RegExp(a[i],'g'),i); }
+                                                                        val = val.replace(/^ir/i, '').replace(/[^0-9]/g, '').trim();
                                                                         if (navigator.clipboard && window.isSecureContext) {
                                                                             return navigator.clipboard.writeText(val);
                                                                         } else {
@@ -802,7 +805,7 @@
                                                                             document.body.removeChild(el);
                                                                             return Promise.resolve();
                                                                         }
-                                                                    })('{{ str_replace(' ', '', $att['iban_code']) }}').then(() => { copied = true; setTimeout(() => copied = false, 2000); });
+                                                                    })('{{ preg_replace('/^IR/i', '', str_replace(' ', '', $att['iban_code'])) }}').then(() => { copied = true; setTimeout(() => copied = false, 2000); });
                                                                 "
                                                                 class="shrink-0 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl"
                                                                 :class="copied ? 'bg-sky-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
@@ -834,8 +837,8 @@
                                                             @endif
                                                         </div>
 
-                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
-                                                            <span class="text-xs font-semibold tracking-wider text-purple-200 truncate mr-2">
+                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr" dir="ltr">
+                                                            <span class="text-xs font-semibold tracking-wider text-purple-200 truncate mr-2 dir-ltr" style="direction: ltr !important; text-align: left;">
                                                                 {{ $att['address'] }}
                                                             </span>
                                                             <button 
