@@ -4,7 +4,8 @@
 
 @push('styles')
     <style>
-        main { padding-bottom: 0 !important; }
+        header { display: none !important; }
+        main { padding-bottom: 0 !important; margin-top: 0 !important; }
         :root {
             --bot-primary: #3F7D20 !important;
             --bot-primary-rgb: 63, 125, 32 !important;
@@ -13,7 +14,7 @@
 @endpush
 
 @section('content')
-    <div dir="rtl" class="relative flex flex-col flex-grow min-h-[calc(100vh-5.5rem)] bg-gradient-to-br from-[#f8faf9] via-[#f0f5f1] to-[#e8f0eb] dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 overflow-hidden">
+    <div dir="rtl" class="relative flex flex-col flex-grow min-h-screen bg-gradient-to-br from-[#f8faf9] via-[#f0f5f1] to-[#e8f0eb] dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 overflow-hidden">
 
         {{-- المان‌های نوری پس‌زمینه (Glassmorphism Glows) مطابق با برند دکتر فیت --}}
         <div class="absolute top-[10%] right-[10%] w-[60vw] max-w-[400px] h-[60vw] max-h-[400px] bg-[#3F7D20]/15 dark:bg-[#3F7D20]/20 rounded-full blur-[80px] pointer-events-none"></div>
