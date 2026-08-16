@@ -636,9 +636,7 @@
                                 <h2 class="text-xl md:text-2xl font-medium text-zinc-500 dark:text-zinc-300 tracking-tight">
                                     سلام {{ auth('client')->check() ? auth('client')->user()->full_name : 'کاربر گرامی' }}،
                                 </h2>
-                                <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                                    امروز چطور می‌توانم راهنماییتان کنم؟
-                                </h1>
+{{--                                <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white"></h1>--}}
                             </div>
 
                             <!-- Suggestions Cards (Horizontal scroll or Grid) -->

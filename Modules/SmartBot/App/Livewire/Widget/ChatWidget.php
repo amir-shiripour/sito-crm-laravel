@@ -53,8 +53,10 @@ class ChatWidget extends Component
     public string $usernameLabel = 'شناسه کاربری';
     public bool $registerEnabled = false;
     public string $authMode = 'password'; // password | otp | both
+    public string $authDefault = 'password'; // password | otp
     public array $regFormFields = [];
     public array $regInputs = [];
+    public array $pendingRegistrationData = [];
 
     // Assistant Level 2 Properties
     public int $assistantLevel = 1;
@@ -147,6 +149,7 @@ class ChatWidget extends Component
         if (class_exists(ClientSetting::class)) {
             $this->usernameStrategy = (string) ClientSetting::getValue('username_strategy', 'email_local');
             $this->authMode = (string) ClientSetting::getValue('auth.mode', 'password');
+            $this->authDefault = (string) ClientSetting::getValue('auth.default', 'password');
             $this->registerEnabled = (bool) ClientSetting::getValue('auth.register_enabled', false);
 
             $this->usernameLabel = match ($this->usernameStrategy) {
@@ -213,12 +216,15 @@ class ChatWidget extends Component
         $client = $clientQuery->first();
 
         if ($client) {
-            if ($this->authMode === 'otp') {
+            // اگر کاربر از قبل عضو بود، بر اساس تنظیمات ورود هدایت می‌شود
+            $shouldUseOtp = ($this->authMode === 'otp' || ($this->authMode === 'both' && $this->authDefault === 'otp'));
+            if ($shouldUseOtp) {
                 $this->sendOtpCode();
             } else {
                 $this->authStep = 'password';
             }
         } else {
+            // اگر کاربر عضو نبود، مستقیماً به فرم ثبت‌نام می‌رود (کد تایید در مرحله اول ارسال نمی‌شود)
             if ($this->registerEnabled) {
                 $this->prepareRegistrationForm();
             } else {
@@ -274,8 +280,12 @@ class ChatWidget extends Component
             $fid = $field['id'];
             $this->regInputs[$fid] = '';
 
-            if ($fid === 'phone' && $this->usernameStrategy === 'mobile') {
-                $this->regInputs['phone'] = $this->authUsername;
+            if ($fid === 'phone') {
+                $normalizedPhone = preg_replace('/[^0-9]/', '', $this->authUsername);
+                if (strlen($normalizedPhone) === 10 && str_starts_with($normalizedPhone, '9')) {
+                    $normalizedPhone = '0' . $normalizedPhone;
+                }
+                $this->regInputs['phone'] = (strlen($normalizedPhone) === 11 && str_starts_with($normalizedPhone, '09')) ? $normalizedPhone : ($this->usernameStrategy === 'mobile' ? $this->authUsername : '');
             } elseif ($fid === 'email' && ($this->usernameStrategy === 'email_local' || $this->usernameStrategy === 'email')) {
                 $this->regInputs['email'] = str_contains($this->authUsername, '@') ? $this->authUsername : '';
             } elseif ($fid === 'national_code' && $this->usernameStrategy === 'national_code') {
@@ -294,12 +304,28 @@ class ChatWidget extends Component
         $email = trim((string)($this->regInputs['email'] ?? ''));
         $nationalCode = trim((string)($this->regInputs['national_code'] ?? ''));
 
+        // اگر استراتژی موبایل است و فیلد شماره خالی است، از authUsername استفاده شود
+        if ($this->usernameStrategy === 'mobile' && empty($phone)) {
+            $normalized = preg_replace('/[^0-9]/', '', $this->authUsername);
+            if (strlen($normalized) === 10 && str_starts_with($normalized, '9')) {
+                $normalized = '0' . $normalized;
+            }
+            if (strlen($normalized) === 11 && str_starts_with($normalized, '09')) {
+                $phone = $normalized;
+                $this->regInputs['phone'] = $phone;
+            }
+        }
+
         // Validate only fields present in regFormFields
         foreach ($this->regFormFields as $field) {
             $fid = $field['id'];
             $label = $field['label'] ?? $fid;
             $isRequired = !empty($field['required']);
             $val = trim((string)($this->regInputs[$fid] ?? ''));
+
+            if ($fid === 'password' && $this->authMode === 'otp') {
+                continue;
+            }
 
             if ($isRequired && empty($val)) {
                 $this->authError = "فیلد {$label} الزامی است.";
@@ -374,13 +400,36 @@ class ChatWidget extends Component
             'meta' => $meta,
         ];
 
+        // پس از تکمیل اطلاعات، اگر در تنظیمات ورود، حالت OTP فعال بود در مرحله آخر کد تایید ارسال می‌شود
+        $needsOtp = ($this->authMode === 'otp' || ($this->authMode === 'both' && $this->authDefault === 'otp'));
+
+        if ($needsOtp) {
+            $regPhone = $phone;
+            if (empty($regPhone)) {
+                $regPhone = preg_replace('/[^0-9]/', '', $this->authUsername);
+                if (strlen($regPhone) === 10 && str_starts_with($regPhone, '9')) {
+                    $regPhone = '0' . $regPhone;
+                }
+            }
+
+            if (empty($regPhone) || strlen($regPhone) !== 11 || !str_starts_with($regPhone, '09')) {
+                $this->authError = 'برای تأیید حساب، وارد کردن شماره موبایل معتبر (۱۱ رقمی) الزامی است.';
+                return;
+            }
+
+            $clientData['phone'] = $regPhone;
+            $this->pendingRegistrationData = $clientData;
+            $this->sendOtpCode($regPhone);
+            return;
+        }
+
         $client = Client::create($clientData);
 
         Auth::guard('client')->login($client);
         $this->afterAuthSuccess();
     }
 
-    public function sendOtpCode(): void
+    public function sendOtpCode(?string $targetPhone = null): void
     {
         $this->authError = '';
         if (!class_exists(\Modules\Sms\Services\SmsManager::class)) {
@@ -388,43 +437,134 @@ class ChatWidget extends Component
             return;
         }
 
-        $phone = preg_replace('/[^0-9]/', '', $this->authUsername);
-        if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
-            $phone = '0' . $phone;
+        $phone = $targetPhone;
+
+        if (empty($phone) && !empty($this->pendingRegistrationData['phone'])) {
+            $phone = $this->pendingRegistrationData['phone'];
         }
 
-        $client = Client::query()
-            ->where('username', $this->authUsername)
-            ->orWhere('email', $this->authUsername)
-            ->orWhere('phone', $this->authUsername)
-            ->orWhere('national_code', $this->authUsername)
-            ->first();
+        $client = null;
 
-        if ($client && !empty($client->phone)) {
-            $phone = $client->phone;
+        if (empty($phone)) {
+            $phone = preg_replace('/[^0-9]/', '', $this->authUsername);
+            if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
+                $phone = '0' . $phone;
+            }
+
+            $client = Client::query()
+                ->where('username', $this->authUsername)
+                ->orWhere('email', $this->authUsername)
+                ->orWhere('phone', $this->authUsername)
+                ->orWhere('national_code', $this->authUsername);
+
+            if (strlen($phone) === 11 && str_starts_with($phone, '09')) {
+                $client->orWhere('phone', $phone)
+                       ->orWhere('username', $phone);
+            }
+
+            $client = $client->first();
+
+            if ($client && !empty($client->phone)) {
+                $phone = $client->phone;
+            }
         }
 
         if (empty($phone) || strlen($phone) !== 11 || !str_starts_with($phone, '09')) {
-            $this->authError = 'شماره موبایل معتبر جهت ارسال کد پیامکی یافت نشد.';
+            $this->authError = 'شماره موبایل معتبر جهت ارسال کد پیامکی یافت نشد. لطفاً شماره موبایل خود را وارد کنید.';
             return;
         }
 
-        $otpLength = (int) ClientSetting::getValue('auth.otp_length', 5);
-        $otpTtl = (int) ClientSetting::getValue('auth.otp_ttl', 5);
+        $otpLength         = (int) ClientSetting::getValue('auth.otp_length', 5);
+        $otpTtl            = (int) ClientSetting::getValue('auth.otp_ttl', 5);
+        $otpResendInterval = (int) ClientSetting::getValue('auth.otp_resend_interval', 60);
+        $otpMaxRequests    = (int) ClientSetting::getValue('auth.otp_max_requests', 3);
+
+        $otpLength         = max(3, min(10, $otpLength));
+        $otpTtl            = max(1, min(60, $otpTtl));
+        $otpResendInterval = max(10, min(600, $otpResendInterval));
+        $otpMaxRequests    = max(1, min(10, $otpMaxRequests));
+
+        $context = 'login_client';
+
+        if (class_exists(\Modules\Sms\Entities\SmsOtp::class)) {
+            // 1) Cooldown check
+            $last = \Modules\Sms\Entities\SmsOtp::query()
+                ->where('phone', $phone)
+                ->where('context', $context)
+                ->latest()
+                ->first();
+
+            if ($last && $last->created_at && now()->diffInSeconds($last->created_at) < $otpResendInterval) {
+                $remain = $otpResendInterval - now()->diffInSeconds($last->created_at);
+                $this->authError = "برای ارسال مجدد، {$remain} ثانیه صبر کنید.";
+                return;
+            }
+
+            // 2) Max requests check
+            $windowMinutes = max(5, $otpTtl);
+            $recentCount = \Modules\Sms\Entities\SmsOtp::query()
+                ->where('phone', $phone)
+                ->where('context', $context)
+                ->where('created_at', '>=', now()->subMinutes($windowMinutes))
+                ->count();
+
+            if ($recentCount >= $otpMaxRequests) {
+                $this->authError = 'تعداد درخواست‌های ارسال کد بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.';
+                return;
+            }
+        }
+
         $code = (string) random_int(10 ** ($otpLength - 1), (10 ** $otpLength) - 1);
 
         if (class_exists(\Modules\Sms\Entities\SmsOtp::class)) {
             \Modules\Sms\Entities\SmsOtp::create([
-                'phone' => $phone,
-                'code' => $code,
-                'context' => 'login_client',
-                'client_id' => $client ? $client->id : null,
+                'phone'      => $phone,
+                'code'       => $code,
+                'context'    => $context,
+                'client_id'  => $client ? $client->id : null,
                 'expires_at' => now()->addMinutes($otpTtl),
+                'meta'       => [
+                    'username' => $client ? $client->username : (!empty($this->pendingRegistrationData['username']) ? $this->pendingRegistrationData['username'] : $phone),
+                    'is_registration' => !empty($this->pendingRegistrationData) || !$client,
+                ],
             ]);
         }
 
+        // پترن OTP کلاینت از تنظیمات SMS (سراسری یا آخرین رکورد)
+        $patternId = null;
+        if (class_exists(\Modules\Sms\Entities\SmsGatewaySetting::class) && \Illuminate\Support\Facades\Schema::hasTable('sms_gateway_settings')) {
+            $globalSetting = \Modules\Sms\Entities\SmsGatewaySetting::query()
+                ->whereNull('user_id')
+                ->whereNotNull('driver')
+                ->orderByDesc('id')
+                ->first();
+
+            if (! $globalSetting) {
+                $globalSetting = \Modules\Sms\Entities\SmsGatewaySetting::query()
+                    ->whereNotNull('driver')
+                    ->orderByDesc('id')
+                    ->first();
+            }
+
+            $patternId = data_get($globalSetting, 'config.client_otp_pattern');
+        }
+
+        $options = [
+            'type'        => \Modules\Sms\Entities\SmsMessage::TYPE_OTP,
+            'related_type'=> 'CLIENT',
+            'related_id'  => $client ? $client->id : null,
+            'meta'        => [
+                'context' => $context,
+                'otp'     => $code,
+            ],
+        ];
+
         $sms = app(\Modules\Sms\Services\SmsManager::class);
-        $sms->sendText($phone, "کد ورود شما: {$code}");
+        if (!empty($patternId)) {
+            $sms->sendPattern($phone, (string) $patternId, [$code], $options);
+        } else {
+            $sms->sendText($phone, "کد ورود شما: {$code}", $options);
+        }
 
         $this->authStep = 'otp';
         $this->authSuccessMsg = "کد تأیید به شماره {$phone} ارسال شد.";
@@ -438,20 +578,34 @@ class ChatWidget extends Component
             return;
         }
 
-        $phone = preg_replace('/[^0-9]/', '', $this->authUsername);
-        if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
-            $phone = '0' . $phone;
+        $phone = '';
+        if (!empty($this->pendingRegistrationData['phone'])) {
+            $phone = $this->pendingRegistrationData['phone'];
+        } else {
+            $phone = preg_replace('/[^0-9]/', '', $this->authUsername);
+            if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
+                $phone = '0' . $phone;
+            }
         }
 
-        $client = Client::query()
-            ->where('username', $this->authUsername)
-            ->orWhere('email', $this->authUsername)
-            ->orWhere('phone', $this->authUsername)
-            ->orWhere('national_code', $this->authUsername)
-            ->first();
+        $client = null;
+        if (empty($this->pendingRegistrationData)) {
+            $client = Client::query()
+                ->where('username', $this->authUsername)
+                ->orWhere('email', $this->authUsername)
+                ->orWhere('phone', $this->authUsername)
+                ->orWhere('national_code', $this->authUsername);
 
-        if ($client && !empty($client->phone)) {
-            $phone = $client->phone;
+            if (strlen($phone) === 11 && str_starts_with($phone, '09')) {
+                $client->orWhere('phone', $phone)
+                       ->orWhere('username', $phone);
+            }
+
+            $client = $client->first();
+
+            if ($client && !empty($client->phone)) {
+                $phone = $client->phone;
+            }
         }
 
         if (class_exists(\Modules\Sms\Entities\SmsOtp::class)) {
@@ -470,10 +624,16 @@ class ChatWidget extends Component
             $otp->update(['used_at' => now()]);
         }
 
-        if ($client) {
+        if (!empty($this->pendingRegistrationData)) {
+            $client = Client::create($this->pendingRegistrationData);
+            $this->pendingRegistrationData = [];
+            Auth::guard('client')->login($client);
+            $this->afterAuthSuccess();
+        } elseif ($client) {
             Auth::guard('client')->login($client);
             $this->afterAuthSuccess();
         } else {
+            $this->prepareRegistrationForm();
             $this->regInputs['phone'] = $phone;
             $this->authStep = 'register';
         }
@@ -481,9 +641,21 @@ class ChatWidget extends Component
 
     public function resetAuthStep(): void
     {
+        $this->pendingRegistrationData = [];
         $this->authStep = 'identifier';
         $this->authError = '';
         $this->authSuccessMsg = '';
+    }
+
+    public function backFromOtp(): void
+    {
+        if (!empty($this->pendingRegistrationData)) {
+            $this->authStep = 'register';
+            $this->authError = '';
+            $this->authSuccessMsg = '';
+        } else {
+            $this->resetAuthStep();
+        }
     }
 
     public function afterAuthSuccess(): void

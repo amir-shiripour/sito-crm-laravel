@@ -16,6 +16,7 @@ use Spatie\Permission\PermissionRegistrar;
 class Installer extends BaseModuleInstaller
 {
     protected array $tables = [
+        'bot_menu_items',
         'bot_settings',
         'bot_messages',
         'bot_sessions',
