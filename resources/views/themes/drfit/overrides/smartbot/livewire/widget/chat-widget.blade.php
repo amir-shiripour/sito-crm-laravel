@@ -431,7 +431,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg>
                                     @endif
                                 </div>
-                                <h3 class="text-lg font-bold text-zinc-900 dark:text-white">شمارتو وارد کن که شروع کنیم</h3>
+                                <h3 class="text-lg font-bold text-zinc-900 dark:text-white">اطلاعاتتو وارد کن که شروع کنیم</h3>
                             </div>
 
                             @if($authError)
@@ -488,7 +488,7 @@
                                             type="submit"
                                             class="w-full py-3 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl transition-all shadow-md shadow-indigo-500/20 cursor-pointer"
                                         >
-                                            ورود به حساب
+                                            تایید و شروع
                                         </button>
 
                                         @if($authMode === 'both' || $authMode === 'otp')
@@ -520,16 +520,16 @@
                                             type="submit"
                                             class="w-full py-3 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl transition-all shadow-md shadow-indigo-500/20 cursor-pointer"
                                         >
-                                            تأیید و ورود
+                                            تأیید و شروع
                                         </button>
                                     </form>
 
                                 <!-- Step 4: Register -->
                                 @elseif($authStep === 'register')
                                     <form wire:submit.prevent="attemptRegister" class="space-y-3 text-right">
-                                        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] font-semibold text-amber-700 dark:text-amber-300 leading-relaxed mb-3">
-                                            حساب کاربری یافت نشد. جهت استفاده از دستیار، ثبت‌نام خود را تکمیل کنید.
-                                        </div>
+{{--                                        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] font-semibold text-amber-700 dark:text-amber-300 leading-relaxed mb-3">--}}
+{{--                                            حساب کاربری یافت نشد. جهت استفاده از دستیار، ثبت‌نام خود را تکمیل کنید.--}}
+{{--                                        </div>--}}
 
                                         @foreach($regFormFields as $field)
                                             @php
@@ -538,7 +538,7 @@
                                                 $isRequired = !empty($field['required']);
                                             @endphp
                                             <div>
-                                                <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                                                <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-3">
                                                     {{ $field['label'] ?? $fid }}
                                                     @if($isRequired)<span class="text-red-500">*</span>@endif
                                                 </label>
@@ -593,9 +593,9 @@
                                                 type="submit"
                                                 class="w-full py-3 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl transition-all shadow-md shadow-indigo-500/20 cursor-pointer"
                                             >
-                                                تکمیل ثبت‌نام و ورود
+                                                ادامه
                                             </button>
-                                            <button type="button" wire:click="resetAuthStep" class="w-full mt-2 text-[11px] font-bold text-zinc-500 hover:underline">
+                                            <button type="button" wire:click="resetAuthStep" class="w-full mt-4 text-[11px] font-bold text-zinc-500 hover:underline">
                                                 انصراف
                                             </button>
                                         </div>
