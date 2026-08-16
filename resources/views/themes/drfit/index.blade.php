@@ -10,14 +10,14 @@
             animation: float-subtle 4s ease-in-out infinite;
         }
         main {
-             padding-bottom: 0 !important;
+            padding-bottom: 0 !important;
         }
         #mobile-bottom-nav {
             display: none !important;
         }
     </style>
     <div dir="rtl" class="antialiased text-gray-800 bg-gray-50">
-        <section class="relative flex flex-col items-center justify-center min-h-[100svh] bg-gradient-to-br from-[#f8faf9] via-[#f0f5f1] to-[#e8f0eb] overflow-hidden pt-24 pb-8">
+        <section class="relative flex flex-col items-center justify-center min-h-[100vh] h-[100vh] max-h-[100vh] bg-gradient-to-br from-[#f8faf9] via-[#f0f5f1] to-[#e8f0eb] overflow-hidden pt-18 pb-8">
 
             {{-- المان‌های نوری پس‌زمینه برای جلوه دادن به افکت شیشه‌ای (Glassmorphism) --}}
             <div class="absolute top-[10%] right-[10%] w-[60vw] max-w-[400px] h-[60vw] max-h-[400px] bg-[#3F7D20]/15 rounded-full blur-[80px] pointer-events-none"></div>
@@ -31,10 +31,10 @@
                     <div class="w-full lg:w-7/12 flex flex-col items-center lg:items-start text-center lg:text-right">
 
                         {{-- نشانگر بالا (Badge) - مینیمال و ساختاریافته --}}
-{{--                        <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-6 bg-[#3F7D20]/10 border border-[#3F7D20]/20 rounded-full">--}}
-{{--                            <span class="flex w-2 h-2 rounded-full bg-[#3F7D20]"></span>--}}
-{{--                            <span class="text-xs sm:text-sm font-semibold text-[#3F7D20]">دکتر فیت | تیم تخصصی پزشکی و ورزشی</span>--}}
-{{--                        </div>--}}
+                        {{--                        <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-6 bg-[#3F7D20]/10 border border-[#3F7D20]/20 rounded-full">--}}
+                        {{--                            <span class="flex w-2 h-2 rounded-full bg-[#3F7D20]"></span>--}}
+                        {{--                            <span class="text-xs sm:text-sm font-semibold text-[#3F7D20]">دکتر فیت | تیم تخصصی پزشکی و ورزشی</span>--}}
+                        {{--                        </div>--}}
 
                         {{-- عنوان اصلی - مستقیم، تمیز و برجسته --}}
                         <h1 class="text-3xl sm:text-5xl lg:text-[2.75rem] xl:text-[3.25rem] font-extrabold text-gray-900 leading-tight mb-6">
@@ -43,7 +43,7 @@
                         </h1>
 
                         {{-- متن توضیحات - یکدست، خاکستری ملایم و خوانا --}}
-                        <p class="max-w-2xl text-sm sm:text-lg text-gray-500 mb-8 leading-relaxed px-4 lg:px-0">
+                        <p class="max-w-2xl text-sm sm:text-lg text-gray-500 mb-4 leading-relaxed px-4 lg:px-0">
                             بدون آزمون و خطا. ما با بررسی دقیق شرایط بیولوژیکی شما، مسیری را طراحی می‌کنیم که هم سلامت شما را تضمین کند و هم شما را به اندام ایده‌آلتان برساند.
                         </p>
 

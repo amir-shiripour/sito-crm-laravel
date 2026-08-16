@@ -1,7 +1,7 @@
 <header class="fixed w-full top-0 z-50 transition-all duration-300 bg-white/70 dark:bg-gray-950/70 backdrop-blur-xl border-b border-white/60 dark:border-gray-800/60 shadow-[0_4px_30px_rgb(0,0,0,0.03)]">
 
     {{-- نوار اصلی هدر --}}
-    <div class="max-w-5xl mx-auto px-5 h-20 flex items-center justify-between gap-4">
+    <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between gap-4">
 
         {{-- دکمه منوی همبرگری (فقط در موبایل) و لوگو --}}
         <div class="flex items-center gap-3 flex-shrink-0">
