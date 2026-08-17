@@ -142,6 +142,13 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        .smartbot-ai-msg {
+            scroll-margin-top: 5.5rem;
+        }
+        .smartbot-cmp-ai-msg {
+            scroll-margin-top: 4.5rem;
+        }
+
         .prose-ai p { margin-bottom: 0.85em; line-height: 1.8; }
         .prose-ai p:last-child { margin-bottom: 0; }
         .prose-ai strong { color: inherit; font-weight: 700; }
@@ -172,8 +179,8 @@
                 inputHeight: 56,
                 bottomHeight: 180,
                 init() {
-                    this.scrollToBottom();
-                    window.addEventListener('chatScrollToBottom', () => this.scrollToBottom());
+                    this.scrollToLatestResponse();
+                    window.addEventListener('chatScrollToBottom', () => this.scrollToLatestResponse());
 
                     let stored = localStorage.getItem('theme');
                     if (stored !== 'light' && stored !== 'dark' && stored !== 'auto') {
@@ -210,10 +217,22 @@
                         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                     });
                 },
+                scrollToLatestResponse() {
+                    this.$nextTick(() => {
+                        const botMessages = document.querySelectorAll('.smartbot-ai-msg');
+                        if (botMessages.length > 0) {
+                            const latestMsg = botMessages[botMessages.length - 1];
+                            latestMsg.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                        }
+                    });
+                },
                 submitForm() {
                     const val = this.$refs.inputField.value.trim();
                     if (val && !this.$wire.isThinking) {
                         this.$wire.sendMessage();
+                        this.scrollToBottom();
                         if (this.$refs.inputField) {
                             this.$refs.inputField.style.height = '56px';
                             this.inputHeight = 56;
@@ -493,7 +512,7 @@
                             </div>
                         @else
                             <!-- پاسخ دستیار: ترازبندی در راست (RTL)، بدون حباب، ظاهر مستند‌گونه شبیه ChatGPT -->
-                            <div wire:key="msg-sa-b-{{ $msg['id'] ?? $loop->index }}" id="msg-sa-row-{{ $msg['id'] ?? $loop->index }}" class="flex justify-start w-full gap-4 md:gap-6 smartbot-fade-in">
+                            <div wire:key="msg-sa-b-{{ $msg['id'] ?? $loop->index }}" id="msg-sa-row-{{ $msg['id'] ?? $loop->index }}" class="smartbot-ai-msg flex justify-start w-full gap-4 md:gap-6 smartbot-fade-in scroll-mt-24 md:scroll-mt-28">
                                 <!-- آواتار هوش مصنوعی -->
                                 <div class="flex-shrink-0 mt-1 w-8 h-8 md:w-9 md:h-9 rounded-full border border-indigo-100 dark:border-indigo-500/30 bg-gradient-to-tr from-indigo-50 dark:from-indigo-950/50 to-purple-50 dark:to-purple-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm overflow-hidden p-0.5">
                                     @if($botIconSvg)
@@ -1132,8 +1151,8 @@
             x-data="{
                 inputValue: $wire.entangle('userMessage'),
                 init() {
-                    this.scrollToBottom();
-                    window.addEventListener('chatScrollToBottom', () => this.scrollToBottom());
+                    this.scrollToLatestResponse();
+                    window.addEventListener('chatScrollToBottom', () => this.scrollToLatestResponse());
                 },
                 scrollToBottom() {
                     this.$nextTick(() => {
@@ -1141,10 +1160,28 @@
                         if (el) el.scrollTop = el.scrollHeight;
                     });
                 },
+                scrollToLatestResponse() {
+                    this.$nextTick(() => {
+                        const el = this.$refs.chatBody;
+                        if (!el) return;
+                        const botMessages = el.querySelectorAll('.smartbot-cmp-ai-msg');
+                        if (botMessages.length > 0) {
+                            const latestMsg = botMessages[botMessages.length - 1];
+                            const targetTop = latestMsg.offsetTop - 75;
+                            el.scrollTo({
+                                top: Math.max(0, targetTop),
+                                behavior: 'smooth'
+                            });
+                        } else {
+                            el.scrollTop = el.scrollHeight;
+                        }
+                    });
+                },
                 submitForm() {
                     const val = this.$refs.inputField.value.trim();
                     if (val && !this.$wire.isThinking) {
                         this.$wire.sendMessage();
+                        this.scrollToBottom();
                     }
                 }
             }"
@@ -1374,7 +1411,7 @@
                     @endif
 
                     @foreach($messages as $msg)
-                        <div wire:key="msg-cmp-row-{{ $msg['id'] ?? $loop->index }}" id="msg-cmp-row-{{ $msg['id'] ?? $loop->index }}" class="flex {{ $msg['role'] === 'user' ? 'justify-end' : 'justify-start' }} w-full smartbot-fade-in">
+                        <div wire:key="msg-cmp-row-{{ $msg['id'] ?? $loop->index }}" id="msg-cmp-row-{{ $msg['id'] ?? $loop->index }}" class="{{ $msg['role'] !== 'user' ? 'smartbot-cmp-ai-msg ' : '' }}flex {{ $msg['role'] === 'user' ? 'justify-end' : 'justify-start' }} w-full smartbot-fade-in scroll-mt-20">
                             @if($msg['role'] === 'user')
                                 <div class="max-w-[85%] bg-indigo-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-sm text-[13px] leading-relaxed shadow-sm">
                                     {!! nl2br(e($msg['content'])) !!}
