@@ -33,7 +33,7 @@ class SettingsManager extends Component
         }
 
         $this->name = (string) BotSetting::getValue('name', 'SmartBot');
-        $this->welcome_message = (string) BotSetting::getValue('welcome_message', 'سلام! من دستیار هوشمند شما هستم. چطور می‌توانم کمکتان کنم؟');
+        $this->welcome_message = (string) BotSetting::getValue('welcome_message', '');
         $this->primary_color = (string) BotSetting::getValue('primary_color', '#6366f1');
         $this->is_widget_enabled = filter_var(BotSetting::getValue('is_widget_enabled', true), FILTER_VALIDATE_BOOLEAN);
         $this->match_threshold = (float) BotSetting::getValue('match_threshold', 0.25);
@@ -59,7 +59,7 @@ class SettingsManager extends Component
     {
         $rules = [
             'name' => 'required|string|max:50',
-            'welcome_message' => 'required|string|max:500',
+            'welcome_message' => 'nullable|string|max:500',
             'primary_color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
             'is_widget_enabled' => 'required|boolean',
             'match_threshold' => 'required|numeric|between:0.0,1.0',
@@ -88,7 +88,7 @@ class SettingsManager extends Component
         }
 
         BotSetting::setValue('name', $this->name);
-        BotSetting::setValue('welcome_message', $this->welcome_message);
+        BotSetting::setValue('welcome_message', (string) ($this->welcome_message ?? ''));
         BotSetting::setValue('primary_color', $this->primary_color);
         BotSetting::setValue('is_widget_enabled', $this->is_widget_enabled ? '1' : '0');
         BotSetting::setValue('match_threshold', (string) $this->match_threshold);

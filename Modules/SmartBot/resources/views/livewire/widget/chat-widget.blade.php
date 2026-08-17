@@ -639,7 +639,16 @@
                     wire:key="sa-chat-container"
                 >
                     <!-- CASE A: ONLY WELCOME STATE (SayHalo Inspiration) -->
-                    @if(count($messages) <= 1)
+                    @php
+                        $hasUserMessages = false;
+                        foreach($messages as $m) {
+                            if (($m['role'] ?? '') === 'user') {
+                                $hasUserMessages = true;
+                                break;
+                            }
+                        }
+                    @endphp
+                    @if(!$hasUserMessages && !$isThinking)
                         <div class="flex-1 flex flex-col items-center justify-center min-h-[50vh] smartbot-fade-in">
 
                             <!-- AI Orb / Logo -->
@@ -1607,7 +1616,16 @@
             @else
                 <!-- Messages List -->
                 <div class="flex-grow overflow-y-auto pt-20 p-4 space-y-6 bg-zinc-50/50 dark:bg-[#0f0f12]" x-ref="chatBody">
-                    @if(count($messages) <= 1)
+                    @php
+                        $hasUserMessagesCmp = false;
+                        foreach($messages as $m) {
+                            if (($m['role'] ?? '') === 'user') {
+                                $hasUserMessagesCmp = true;
+                                break;
+                            }
+                        }
+                    @endphp
+                    @if(!$hasUserMessagesCmp && !$isThinking)
                         <div class="text-center py-10">
                             <div class="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-900 mx-auto mb-4 flex items-center justify-center">
                                 <svg class="w-6 h-6 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/></svg>
