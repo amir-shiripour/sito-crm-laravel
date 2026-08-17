@@ -59,16 +59,16 @@
                 </button>
             @endif
 
-            @if(!request()->is('chat*') && auth()->check() && isset($isMarketActive) && $isMarketActive)
+            {{--@if(!request()->is('chat*') && auth()->check() && isset($isMarketActive) && $isMarketActive)
                 <div class="hidden md:block">
                     @livewire('market::web.cart-counter')
                 </div>
-            @endif
+            @endif--}}
 
-            <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden md:block"></div>
+{{--            <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden md:block"></div>--}}
 
             {{-- دکمه حساب کاربری / ورود --}}
-            @auth
+            {{--@auth
                 <a href="{{ url('/clients/dashboard') }}" class="hidden md:flex items-center gap-2 p-2 sm:px-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
                     <svg class="w-6 h-6 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none" />
@@ -86,7 +86,7 @@
                     </svg>
                     <span class="text-sm font-bold hidden sm:block">ورود / ثبت‌نام</span>
                 </a>
-            @endauth
+            @endauth--}}
         </div>
     </div>
 </header>
@@ -124,7 +124,7 @@
     {{-- محتوای سایدبار --}}
     <div class="flex-1 overflow-y-auto p-4 space-y-6">
         <nav class="space-y-2">
-            <a href="{{ url('/') }}" class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl transition-colors">
+            {{--<a href="{{ url('/') }}" class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl transition-colors">
                 <svg class="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
@@ -132,17 +132,17 @@
                     <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
                 </svg>
                 صفحه اصلی
-            </a>
+            </a>--}}
 
             <a href="{{ url('/chat') }}" class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl transition-colors">
                 <svg class="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M12 3c.375 0 .711 .231 .846 .581l1.65 4.29a2.85 2.85 0 0 0 1.632 1.633l4.291 1.65a.906 .906 0 0 1 0 1.692l-4.29 1.65a2.84 2.84 0 0 0 -1.633 1.632l-1.65 4.291a.906 .906 0 0 1 -1.692 0l-1.65 -4.29a2.84 2.84 0 0 0 -1.632 -1.633l-4.291 -1.65a.906 .906 0 0 1 0 -1.692l4.29 -1.65a2.84 2.84 0 0 0 1.633 -1.632l1.65 -4.291a.91 .91 0 0 1 .846 -.581" />
                 </svg>
-                دستیار هوشمند
+                مشاوره رایگان
             </a>
 
-            @if(auth()->check() && isset($isMarketActive) && $isMarketActive)
+            {{--@if(auth()->check() && isset($isMarketActive) && $isMarketActive)
                 <button onclick="toggleMobileMenu(); window.Livewire.dispatch('showCartPopup')" class="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl transition-colors text-right">
                     <svg class="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none" />
@@ -153,16 +153,16 @@
                     </svg>
                     سبد خرید
                 </button>
-            @endif
+            @endif--}}
 
-            <a href="{{ url('/clients/dashboard') }}" class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl transition-colors">
+            {{--<a href="{{ url('/clients/dashboard') }}" class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-xl transition-colors">
                 <svg class="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
                     <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
                 </svg>
                 @auth حساب کاربری @else ورود / ثبت‌نام @endauth
-            </a>
+            </a>--}}
         </nav>
     </div>
 
