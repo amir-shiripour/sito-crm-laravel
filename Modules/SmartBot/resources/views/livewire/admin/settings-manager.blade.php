@@ -67,12 +67,15 @@
 
                 <!-- Welcome Message -->
                 <div>
-                    <label class="{{ $labelClass }}">پیام خوش‌آمدگویی اولیه چت</label>
+                    <label class="{{ $labelClass }}">
+                        پیام خوش‌آمدگویی اولیه چت
+                        <span class="text-[11px] font-normal text-gray-400 dark:text-gray-500 mr-1.5">(اختیاری - در صورت خالی بودن، پیامی به عنوان حباب در ابتدای چت درج نمی‌شود)</span>
+                    </label>
                     <textarea
                         wire:model="welcome_message"
                         rows="3"
                         class="{{ $inputClass }} resize-y"
-                        placeholder="سلام! چطور می‌توانم کمکتان کنم؟"
+                        placeholder="اختیاری: مثلاً «سلام! چطور می‌توانم کمکتان کنم؟»..."
                     ></textarea>
                     @error('welcome_message') <span class="text-xs text-red-500 mt-1.5 block font-medium">{{ $message }}</span> @enderror
                 </div>

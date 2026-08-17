@@ -686,17 +686,29 @@ class ChatWidget extends Component
     {
         $this->messages = [];
 
-        // Add welcome message if conversation is empty
+        $welcomeMsg = trim((string) BotSetting::getValue('welcome_message', ''));
+
+        // Add welcome message if conversation is empty and welcome message is configured
         if ($session->messages()->count() === 0) {
-            $this->messages[] = [
-                'role' => 'bot',
-                'content' => (string) BotSetting::getValue('welcome_message', 'سلام! چطور می‌توانم کمکتان کنم؟'),
-                'answer_type' => 'text',
-                'products' => [],
-                'menu_items' => [],
-                'url' => null,
-                'created_at' => now()->toIso8601String(),
-            ];
+            if (!empty($welcomeMsg)) {
+                $botMsg = $session->messages()->create([
+                    'role' => 'bot',
+                    'content' => $welcomeMsg,
+                    'resolved' => true,
+                ]);
+
+                $this->messages[] = [
+                    'id' => $botMsg->id,
+                    'role' => 'bot',
+                    'content' => $welcomeMsg,
+                    'answer_type' => 'text',
+                    'products' => [],
+                    'smart_attachments' => [],
+                    'menu_items' => [],
+                    'url' => null,
+                    'created_at' => $botMsg->created_at->toIso8601String(),
+                ];
+            }
         } else {
             $resolver = app(EntityResolverService::class);
             foreach ($session->messages()->orderBy('id', 'asc')->get() as $msg) {
@@ -787,6 +799,12 @@ class ChatWidget extends Component
             $this->selectedMenuItemLabel = null;
 
             $botReply = $engine->processMenuItemClick($session, $menuItemId, $userLabel);
+            if (isset($botReply['user_message_id']) && !empty($this->messages)) {
+                $lastIndex = count($this->messages) - 1;
+                if (($this->messages[$lastIndex]['role'] ?? '') === 'user') {
+                    $this->messages[$lastIndex]['id'] = $botReply['user_message_id'];
+                }
+            }
             $this->messages[] = $botReply;
         } else {
             $text = $this->lastUserMessage;
@@ -796,6 +814,12 @@ class ChatWidget extends Component
             }
 
             $botReply = $engine->sendMessage($session, $text);
+            if (isset($botReply['user_message_id']) && !empty($this->messages)) {
+                $lastIndex = count($this->messages) - 1;
+                if (($this->messages[$lastIndex]['role'] ?? '') === 'user') {
+                    $this->messages[$lastIndex]['id'] = $botReply['user_message_id'];
+                }
+            }
             $this->messages[] = $botReply;
             $this->lastUserMessage = '';
         }
@@ -946,35 +970,59 @@ class ChatWidget extends Component
         }
 
         if ($targetIndex !== null) {
-            $indicesToRemove = [$targetIndex];
-            
-            // If the preceding message is a user message for this step, remove it too
+            // Target message and its preceding user message (if any) + all messages after targetIndex should be removed
+            $startDeleteIndex = $targetIndex;
             if ($targetIndex > 0 && ($this->messages[$targetIndex - 1]['role'] ?? '') === 'user') {
-                $indicesToRemove[] = $targetIndex - 1;
+                $startDeleteIndex = $targetIndex - 1;
+            }
+
+            $messagesToDelete = array_slice($this->messages, $startDeleteIndex);
+            $dbIdsToDelete = [];
+            foreach ($messagesToDelete as $m) {
+                if (!empty($m['id']) && is_numeric($m['id'])) {
+                    $dbIdsToDelete[] = (int) $m['id'];
+                }
             }
 
             // Remove from Database if session exists
             if (!empty($this->uuid)) {
                 $session = \Modules\SmartBot\App\Models\BotSession::where('session_uuid', $this->uuid)->first();
                 if ($session) {
-                    foreach ($indicesToRemove as $idx) {
-                        $msgDbId = $this->messages[$idx]['id'] ?? null;
-                        if ($msgDbId && is_numeric($msgDbId)) {
-                            \Modules\SmartBot\App\Models\BotMessage::where('session_id', $session->id)
-                                ->where('id', $msgDbId)
-                                ->delete();
-                        }
+                    if (!empty($dbIdsToDelete)) {
+                        \Modules\SmartBot\App\Models\BotMessage::where('session_id', $session->id)
+                            ->whereIn('id', $dbIdsToDelete)
+                            ->delete();
+                    }
+
+                    // Fallback to guarantee no orphaned records remain if DB ID was missed
+                    $targetDbId = $this->messages[$targetIndex]['id'] ?? null;
+                    if ($targetDbId && is_numeric($targetDbId)) {
+                        \Modules\SmartBot\App\Models\BotMessage::where('session_id', $session->id)
+                            ->where('id', '>=', (int) $targetDbId - 1)
+                            ->delete();
                     }
                 }
             }
 
-            $this->messages = array_values(array_filter($this->messages, function($msg, $idx) use ($indicesToRemove) {
-                return !in_array($idx, $indicesToRemove, true);
-            }, ARRAY_FILTER_USE_BOTH));
+            $this->messages = array_slice($this->messages, 0, $startDeleteIndex);
         }
 
-        // If no messages left or returning to beginning, reset session to home state
-        if (empty($this->messages) || count($this->messages) <= 1) {
+        // If no user messages left or empty, reset session so home state is clean
+        $hasRemainingUserMessages = false;
+        foreach ($this->messages as $m) {
+            if (($m['role'] ?? '') === 'user') {
+                $hasRemainingUserMessages = true;
+                break;
+            }
+        }
+
+        if (!$hasRemainingUserMessages) {
+            if (!empty($this->uuid)) {
+                $session = \Modules\SmartBot\App\Models\BotSession::where('session_uuid', $this->uuid)->first();
+                if ($session) {
+                    $session->messages()->delete();
+                }
+            }
             $this->resetSession();
             return;
         }

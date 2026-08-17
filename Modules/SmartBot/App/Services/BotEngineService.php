@@ -58,7 +58,7 @@ final class BotEngineService
     public function sendMessage(BotSession $session, string $text): array
     {
         // Save user message
-        BotMessage::create([
+        $userMsg = BotMessage::create([
             'session_id' => $session->id,
             'role' => 'user',
             'content' => $text,
@@ -98,6 +98,7 @@ final class BotEngineService
 
         return [
             'id' => $botMsg->id,
+            'user_message_id' => $userMsg->id,
             'role' => 'bot',
             'content' => $response['answer_text'],
             'answer_type' => $response['answer_type'],
@@ -117,7 +118,7 @@ final class BotEngineService
         $item = \Modules\SmartBot\App\Models\BotMenuItem::with('activeChildren')->findOrFail($menuItemId);
 
         // 1. Save user message with item's label in DB
-        BotMessage::create([
+        $userMsg = BotMessage::create([
             'session_id' => $session->id,
             'role' => 'user',
             'content' => $userLabel,
@@ -169,6 +170,7 @@ final class BotEngineService
 
         return [
             'id' => $botMsg->id,
+            'user_message_id' => $userMsg->id,
             'role' => 'bot',
             'content' => $answerText,
             'answer_type' => $answerType,
