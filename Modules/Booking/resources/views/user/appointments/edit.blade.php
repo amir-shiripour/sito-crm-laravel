@@ -341,6 +341,21 @@
                           class="{{ $inputClass }}">{{ old('notes', $appointment->notes) }}</textarea>
             </div>
 
+            <div x-show="status === 'CANCELED_BY_ADMIN' || status === 'CANCELED_BY_CLIENT' || {{ !empty($appointment->cancel_reason) ? 'true' : 'false' }}"
+                 x-transition
+                 class="p-4 rounded-xl bg-rose-50/70 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/60 space-y-2">
+                <label class="block text-xs font-bold text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-rose-600 dark:text-rose-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                    دلیل لغو نوبت
+                </label>
+                <input type="text" name="cancel_reason" value="{{ old('cancel_reason', $appointment->cancel_reason) }}"
+                       placeholder="علت لغو نوبت را وارد کنید..."
+                       class="{{ $inputClass }} border-rose-200 dark:border-rose-800/80 focus:border-rose-500 focus:ring-rose-500/20">
+                @error('cancel_reason')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+            </div>
+
             <div class="border-t border-gray-100 dark:border-gray-700 pt-6 space-y-4">
                 <div class="flex items-center justify-between">
                     <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">فرم اطلاعات نوبت</h2>

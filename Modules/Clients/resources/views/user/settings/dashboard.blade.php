@@ -191,6 +191,37 @@
                                         </div>
                                     </label>
                                 </div>
+
+                                {{-- صفحات اختصاصی با نمایش اجباری قوانین --}}
+                                <div class="pt-5 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                                    <div>
+                                        <h4 class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                            <span class="w-1.5 h-3.5 bg-indigo-600 rounded-full"></span>
+                                            صفحات با نمایش اجباری قوانین و مقررات
+                                        </h4>
+                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                                            در صورت فعال‌سازی هر یک از گزینه‌های زیر، مودال قوانین با هر بار ورود کاربر به آن صفحه به صورت اجباری باز شده و به نسخه قوانین یا پذیرش قبلی وابسته نخواهد بود.
+                                        </p>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <label class="flex items-start gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 cursor-pointer group hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
+                                            <input type="checkbox" wire:model="termsForceAppointmentShow" class="mt-1 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600">
+                                            <div class="flex flex-col">
+                                                <span class="text-xs font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 transition-colors">صفحه جزئیات نوبت</span>
+                                                <span class="text-[10px] text-gray-400 mt-0.5 font-mono" dir="ltr">/clients/appointments/{id}</span>
+                                            </div>
+                                        </label>
+
+                                        <label class="flex items-start gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 cursor-pointer group hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
+                                            <input type="checkbox" wire:model="termsForceBookingPaymentShow" class="mt-1 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600">
+                                            <div class="flex flex-col">
+                                                <span class="text-xs font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 transition-colors">صفحه صورت‌حساب مالی نوبت</span>
+                                                <span class="text-[10px] text-gray-400 mt-0.5 font-mono" dir="ltr">/clients/payments/booking/{id}</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         @endif
 

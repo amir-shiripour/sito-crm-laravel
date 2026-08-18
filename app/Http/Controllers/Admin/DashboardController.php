@@ -68,7 +68,8 @@ class DashboardController extends Controller
                 continue;
             }
 
-            $files = Storage::disk('public')->files($directory);
+            $allFiles = Storage::disk('public')->allFiles($directory);
+            $files = array_values(array_filter($allFiles, fn($f) => in_array(strtolower(pathinfo($f, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif'])));
             $dirOptimizedCount = 0;
             $dirOptimizedSize = 0;
 
@@ -83,7 +84,7 @@ class DashboardController extends Controller
                 }
             }
 
-            $dirOriginalSize = $dirOptimizedSize > 0 && $dirOptimizedCount > 0 ? ($dirOptimizedSize / ($dirOptimizedCount / count($files))) / 0.3 : 0;
+            $dirOriginalSize = $dirOptimizedSize > 0 && $dirOptimizedCount > 0 && count($files) > 0 ? ($dirOptimizedSize / ($dirOptimizedCount / count($files))) / 0.3 : 0;
             $totalOriginalSize += $dirOriginalSize;
 
             $stats[$directory] = [
@@ -126,14 +127,19 @@ class DashboardController extends Controller
         if (class_exists(\Modules\Market\Entities\MasterProduct::class)) {
             $modelsToProcess[\Modules\Market\Entities\MasterProduct::class] = 'main_image';
         }
+        if (class_exists(\Modules\Booking\App\Models\DoctorMedia::class)) {
+            $modelsToProcess[\Modules\Booking\App\Models\DoctorMedia::class] = 'file_path';
+        }
 
         $processedCount = 0;
         $errorCount = 0;
 
         foreach ($modelsToProcess as $modelClass => $field) {
-            $items = $modelClass::where($field, 'not like', '%.webp')
-                ->whereNotNull($field)
-                ->get();
+            $query = $modelClass::where($field, 'not like', '%.webp')->whereNotNull($field);
+            if ($modelClass === \Modules\Booking\App\Models\DoctorMedia::class) {
+                $query->where('type', 'photo');
+            }
+            $items = $query->get();
 
             foreach ($items as $item) {
                 $oldPath = $item->$field;
@@ -148,6 +154,13 @@ class DashboardController extends Controller
 
                     if ($result['status'] === 'success') {
                         $item->$field = $result['new_path'];
+                        if ($modelClass === \Modules\Booking\App\Models\DoctorMedia::class) {
+                            $item->mime_type = 'image/webp';
+                            $fullPath = Storage::disk('public')->path($result['new_path']);
+                            if (file_exists($fullPath)) {
+                                $item->file_size = filesize($fullPath);
+                            }
+                        }
                         $item->save();
                         $processedCount++;
                     }
@@ -227,6 +240,40 @@ class DashboardController extends Controller
                 } catch (\Exception $e) {
                     Log::error("Image optimization failed for DoctorMedia ID {$photo->id}: " . $e->getMessage());
                     $errorCount++;
+                }
+            }
+        }
+
+        // بهینه‌سازی رسیدهای پرداخت نوبت‌دهی (Booking Payments)
+        if (class_exists(\Modules\Booking\Entities\BookingPayment::class)) {
+            $payments = \Modules\Booking\Entities\BookingPayment::whereNotNull('meta')->get();
+            foreach ($payments as $payment) {
+                $meta = $payment->meta;
+                if (!is_array($meta) || empty($meta['receipt_path'])) {
+                    continue;
+                }
+
+                $oldPath = $meta['receipt_path'];
+                if (!is_string($oldPath) || str_ends_with(strtolower($oldPath), '.webp') || str_ends_with(strtolower($oldPath), '.pdf')) {
+                    continue;
+                }
+
+                $diskPath = ltrim(str_replace(['uploads/', 'storage/'], '', $oldPath), '/');
+
+                if (Storage::disk('public')->exists($diskPath)) {
+                    try {
+                        $result = $optimizer->optimizeExistingImage($diskPath, 'public');
+                        if ($result['status'] === 'success') {
+                            $meta['receipt_path'] = $result['new_path'];
+                            $meta['receipt_url'] = asset('storage/' . $result['new_path']);
+                            $payment->meta = $meta;
+                            $payment->save();
+                            $processedCount++;
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Image optimization failed for BookingPayment ID {$payment->id} receipt {$oldPath}: " . $e->getMessage());
+                        $errorCount++;
+                    }
                 }
             }
         }

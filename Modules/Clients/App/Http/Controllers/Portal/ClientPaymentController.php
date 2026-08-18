@@ -284,13 +284,23 @@ class ClientPaymentController extends Controller
             $receiptPath = null;
             if ($request->hasFile('receipt_file')) {
                 try {
-                    $receiptPath = $request->file('receipt_file')->store('payment-receipts', 'public');
+                    $optimizer = app(\App\Services\ImageOptimizerService::class);
+                    $receiptPath = $optimizer->uploadAndOptimize(
+                        file: $request->file('receipt_file'),
+                        directory: 'payment-receipts',
+                        disk: 'public'
+                    );
                 } catch (\Exception $e) {
-                    // Fallback to local uploads directory if public disk fails
-                    $file = $request->file('receipt_file');
-                    $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    $file->move(public_path('uploads/payment-receipts'), $filename);
-                    $receiptPath = 'uploads/payment-receipts/' . $filename;
+                    // Fallback to standard store if optimization throws
+                    try {
+                        $receiptPath = $request->file('receipt_file')->store('payment-receipts', 'public');
+                    } catch (\Exception $ex) {
+                        // Fallback to local uploads directory if public disk fails
+                        $file = $request->file('receipt_file');
+                        $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                        $file->move(public_path('uploads/payment-receipts'), $filename);
+                        $receiptPath = 'uploads/payment-receipts/' . $filename;
+                    }
                 }
             }
 

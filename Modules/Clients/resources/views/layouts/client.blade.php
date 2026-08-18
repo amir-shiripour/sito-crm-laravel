@@ -98,8 +98,19 @@
     @php
         $termsEnabled     = (bool) \Modules\Clients\Entities\ClientSetting::getValue('dashboard.terms.enabled', false);
         $termsVersion     = (string) \Modules\Clients\Entities\ClientSetting::getValue('dashboard.terms.version', '1.0');
+        $forceApptShow    = (bool) \Modules\Clients\Entities\ClientSetting::getValue('dashboard.terms.force_appointment_show', false);
+        $forcePaymentShow = (bool) \Modules\Clients\Entities\ClientSetting::getValue('dashboard.terms.force_booking_payment_show', false);
+
         $clientUser       = auth('client')->user();
-        $showTermsModal   = $termsEnabled && $clientUser && !$clientUser->hasAcceptedTerms($termsVersion);
+
+        // بررسی اینکه آیا کاربر در یکی از صفحات مشخص‌شده با نمایش اجباری است
+        $isAppointmentShowPage = request()->routeIs('client.appointments.show') || request()->is('clients/appointments/*');
+        $isBookingPaymentShowPage = (request()->routeIs('client.payments.show') && request()->route('type') === 'booking') || request()->is('clients/payments/booking/*');
+
+        $isForcedPage = ($forceApptShow && $isAppointmentShowPage) || ($forcePaymentShow && $isBookingPaymentShowPage);
+
+        // در صفحات اجباری، فارغ از تایید قبلی یا نسخه قوانین، مودال نمایش داده می‌شود
+        $showTermsModal   = $termsEnabled && $clientUser && ($isForcedPage || !$clientUser->hasAcceptedTerms($termsVersion));
 
         if ($showTermsModal) {
             $termsTitle       = \Modules\Clients\Entities\ClientSetting::getValue('dashboard.terms.title', 'قوانین و مقررات استفاده از پرتال');
@@ -117,11 +128,12 @@
                 loading: false,
                 forceScroll: {{ $termsForceScroll ? 'true' : 'false' }},
                 allowLater: {{ $termsAllowLater ? 'true' : 'false' }},
+                isForcedPage: {{ $isForcedPage ? 'true' : 'false' }},
                 hasScrolledToBottom: {{ $termsForceScroll ? 'false' : 'true' }},
                 version: '{{ $termsVersion }}',
                 init() {
-                    // اگر در این session دکمه بعداً خوانده شده باشد، نشان نده
-                    if (this.allowLater && sessionStorage.getItem('terms_dismissed_' + this.version)) {
+                    // در صفحات دارای نمایش اجباری، به sessionStorage وابسته نیست و در هر بار ورود باز می‌شود
+                    if (!this.isForcedPage && this.allowLater && sessionStorage.getItem('terms_dismissed_' + this.version)) {
                         this.open = false;
                         return;
                     }

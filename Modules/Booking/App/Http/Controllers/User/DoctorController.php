@@ -31,7 +31,7 @@ class DoctorController extends Controller
         $photos  = collect();
         $videos  = collect();
 
-        if ($isBookingActive && $user->hasRole('doctor')) {
+        if ($isBookingActive && $user->canAccessDoctorTab()) {
             $profile = DoctorProfile::firstOrCreate(['user_id' => $user->id]);
 
             $photos = DoctorMedia::where('user_id', $user->id)
@@ -54,15 +54,80 @@ class DoctorController extends Controller
      */
     public function updateAbout(Request $request): RedirectResponse
     {
+        if (!auth()->user()->canAccessDoctorTab()) {
+            abort(403);
+        }
+
         $data = $request->validate([
-            'about_me'              => 'nullable|string|max:2000',
-            'education'             => 'nullable|string|max:255',
+            'medical_system_number' => 'nullable|string|max:255',
+            'specialty'             => 'nullable',
             'experience'            => 'nullable|string|max:255',
+            'education'             => 'nullable',
             'clinic_name'           => 'nullable|string|max:255',
-            'medical_system_number' => 'required|string|max:255',
-            'specialty'             => 'nullable|string|max:255',
-            'clinic_address'        => 'nullable|string|max:255',
+            'province'              => 'nullable|string|max:100',
+            'city'                  => 'nullable|string|max:100',
+            'clinic_address'        => 'nullable|string|max:500',
+            'about_me'              => 'nullable|string|max:2000',
         ]);
+
+        if (array_key_exists('specialty', $data)) {
+            $spec = $data['specialty'];
+            if (is_string($spec)) {
+                $decoded = json_decode($spec, true);
+                if (is_array($decoded)) {
+                    $spec = $decoded;
+                } elseif (trim($spec) !== '') {
+                    $spec = [trim($spec)];
+                } else {
+                    $spec = [];
+                }
+            }
+            if (is_array($spec)) {
+                $clean = array_values(array_filter(array_map('trim', $spec)));
+                $data['specialty'] = count($clean) > 0 ? json_encode($clean, JSON_UNESCAPED_UNICODE) : null;
+            } else {
+                $data['specialty'] = null;
+            }
+        }
+
+        if (array_key_exists('education', $data)) {
+            $edu = $data['education'];
+            if (is_string($edu)) {
+                $decoded = json_decode($edu, true);
+                if (is_array($decoded)) {
+                    $edu = $decoded;
+                } elseif (trim($edu) !== '') {
+                    $edu = [trim($edu)];
+                } else {
+                    $edu = [];
+                }
+            }
+            if (is_array($edu)) {
+                $clean = array_values(array_filter(array_map('trim', $edu)));
+                $data['education'] = count($clean) > 0 ? json_encode($clean, JSON_UNESCAPED_UNICODE) : null;
+            } else {
+                $data['education'] = null;
+            }
+        }
+
+        if (array_key_exists('experience', $data)) {
+            $exp = $data['experience'];
+            if ($exp !== null && $exp !== '') {
+                // Convert Persian/Arabic digits to English
+                $enExp = str_replace(
+                    ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'],
+                    ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'],
+                    (string)$exp
+                );
+                if (preg_match('/\d+/', $enExp, $matches)) {
+                    $data['experience'] = (string)(int)$matches[0];
+                } else {
+                    $data['experience'] = trim((string)$exp);
+                }
+            } else {
+                $data['experience'] = null;
+            }
+        }
 
         $profile = DoctorProfile::firstOrCreate(['user_id' => auth()->id()]);
         $visibility = $profile->visibility ?? [];
@@ -73,6 +138,8 @@ class DoctorController extends Controller
             'visibility_clinic_name'           => 'clinic_name',
             'visibility_education'             => 'education',
             'visibility_medical_system_number' => 'medical_system_number',
+            'visibility_experience'            => 'experience',
+            'visibility_location'              => 'location',
             'visibility_insurances'            => 'insurances',
             'visibility_gallery'               => 'gallery',
             'visibility_video'                 => 'video',
@@ -96,6 +163,10 @@ class DoctorController extends Controller
      */
     public function updateInsurance(Request $request): RedirectResponse
     {
+        if (!auth()->user()->canAccessDoctorTab()) {
+            abort(403);
+        }
+
         // We only need to validate the insurances JSON string now
         $request->validate([
             'insurances' => 'nullable|string',
@@ -155,6 +226,10 @@ class DoctorController extends Controller
      */
     public function uploadPhoto(Request $request): RedirectResponse
     {
+        if (!auth()->user()->canAccessDoctorTab()) {
+            abort(403);
+        }
+
         $request->validate([
             'photos'   => 'required|array|max:12',
             'photos.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:10240',
@@ -164,13 +239,14 @@ class DoctorController extends Controller
 
         foreach ($request->file('photos') as $file) {
             $path = $this->uploadFile($file, "doctor-media/$userId/photos");
+            $fullPath = Storage::disk('public')->path($path);
             DoctorMedia::create([
                 'user_id'       => $userId,
                 'type'          => 'photo',
                 'file_path'     => $path,
                 'original_name' => $file->getClientOriginalName(),
-                'mime_type'     => $file->getMimeType(),
-                'file_size'     => $file->getSize(),
+                'mime_type'     => file_exists($fullPath) ? (mime_content_type($fullPath) ?: 'image/webp') : $file->getMimeType(),
+                'file_size'     => file_exists($fullPath) ? filesize($fullPath) : $file->getSize(),
                 'sort_order'    => 0,
             ]);
         }
@@ -183,6 +259,10 @@ class DoctorController extends Controller
      */
     public function uploadVideo(Request $request): RedirectResponse
     {
+        if (!auth()->user()->canAccessDoctorTab()) {
+            abort(403);
+        }
+
         $request->validate([
             'videos'   => 'required|array|max:5',
             'videos.*' => 'required|file|mimes:mp4,webm,ogg|max:20480',
@@ -211,6 +291,10 @@ class DoctorController extends Controller
      */
     public function deleteMedia(int $id): RedirectResponse
     {
+        if (!auth()->user()->canAccessDoctorTab()) {
+            abort(403);
+        }
+
         $media = DoctorMedia::where('id', $id)
             ->where('user_id', auth()->id())
             ->firstOrFail();
@@ -237,8 +321,70 @@ class DoctorController extends Controller
         return back();
     }
 
+    /**
+     * Update doctor stats, ratings & trust indicators
+     */
+    public function updateStats(Request $request): RedirectResponse
+    {
+        if (!auth()->user()->canAccessDoctorTab()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'mode'                      => 'required|in:manual,auto',
+            'rating'                    => 'nullable|numeric|min:0|max:5',
+            'reviews_count'             => 'nullable|integer|min:0',
+            'satisfaction_rate'         => 'nullable|integer|min:0|max:100',
+            'successful_bookings_count' => 'nullable|integer|min:0',
+            'platform_name'             => 'nullable|string|max:100',
+            'endorsements_count'        => 'nullable|integer|min:0',
+            'endorsements_text'         => 'nullable|string|max:255',
+        ]);
+
+        $profile = DoctorProfile::firstOrCreate(['user_id' => auth()->id()]);
+
+        $stats = [
+            'mode'                      => $request->input('mode', 'manual'),
+            'rating'                    => (float) $request->input('rating', 4.8),
+            'reviews_count'             => (int) $request->input('reviews_count', 0),
+            'satisfaction_rate'         => (int) $request->input('satisfaction_rate', 95),
+            'successful_bookings_count' => (int) $request->input('successful_bookings_count', 0),
+            'platform_name'             => trim((string) $request->input('platform_name', '')),
+            'endorsements_count'        => (int) $request->input('endorsements_count', 0),
+            'endorsements_text'         => trim((string) $request->input('endorsements_text', '')),
+        ];
+
+        $profile->stats = $stats;
+
+        // Visibility switches
+        $visibility = $profile->visibility ?? [];
+        $checkboxMap = [
+            'visibility_stats'               => 'stats',
+            'visibility_rating'              => 'rating',
+            'visibility_satisfaction'        => 'satisfaction',
+            'visibility_successful_bookings' => 'successful_bookings',
+            'visibility_endorsements'        => 'endorsements',
+        ];
+
+        foreach ($checkboxMap as $formKey => $visKey) {
+            $visibility[$visKey] = $request->boolean($formKey);
+        }
+
+        $profile->visibility = $visibility;
+        $profile->save();
+
+        return redirect()
+            ->route('user.doctor-profile.show')
+            ->with('success', 'تنظیمات آمار و اعتبارسنجی با موفقیت ذخیره شد.')
+            ->with('active_tab', 'doctor');
+    }
+
     public function toggleVisibility(Request $request): \Illuminate\Http\JsonResponse
     {
+        if (!auth()->user()->canAccessDoctorTab()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         $request->validate([
             'key'   => 'required|string',
             'value' => 'required|boolean',

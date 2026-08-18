@@ -50,7 +50,7 @@
                 {{ session('success') }}
                 @if(request('tab'))
                     <span class="text-xs bg-emerald-100 dark:bg-emerald-800/40 px-2 py-0.5 rounded-lg">
-                @if(request('tab') === 'cure')طرح درمان@elseif(request('tab') === 'schedule')برنامه زمانی@elseif(request('tab') === 'appearance')تنظیمات ظاهری@elseعمومی@endif
+                @if(request('tab') === 'cure')طرح درمان@elseif(request('tab') === 'schedule')برنامه زمانی@elseif(request('tab') === 'appearance')تنظیمات ظاهری@elseif(request('tab') === 'ads')تبلیغات و بنرها@elseعمومی@endif
             </span>
                 @endif
             </div>
@@ -71,9 +71,9 @@
 
         @includeIf('partials.jalali-date-picker')
 
-        <form method="POST" action="{{ route('user.booking.settings.update') }}" class="space-y-8 pb-24" novalidate>
-            @csrf
+        <form method="POST" action="{{ route('user.booking.settings.update') }}" enctype="multipart/form-data" class="space-y-8 pb-24" novalidate>
             <input type="hidden" name="_active_tab" id="active-tab-input" value="{{ request('tab', 'general') }}">
+            @csrf
             <div class="border-b border-gray-200 dark:border-gray-700 mb-8">
                 <div class="flex gap-1 text-sm font-semibold overflow-x-auto scrollbar-thin">
                     <button type="button" @click="activeTab = 'general'"
@@ -110,6 +110,15 @@
                             class="pb-4 px-5 transition-all whitespace-nowrap flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                         تنظیمات ظاهری
+                    </button>
+
+                    <button type="button" @click="activeTab = 'ads'"
+                            :class="activeTab === 'ads'
+                                ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border-b-2 border-transparent'"
+                            class="pb-4 px-5 transition-all whitespace-nowrap flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                        تبلیغات و بنرها
                     </button>
 
                     <button type="button" @click="activeTab = 'holidays'"
@@ -1571,6 +1580,277 @@
                     </button>
                 </div>
             </div>
+
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            {{--                  ADS & BANNERS TAB                        --}}
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            <div x-show="activeTab === 'ads'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-8" x-data="adsTabManager()">
+                
+                {{-- هدر بخش تبلیغات و اتصال به بهینه‌ساز هوشمند هسته --}}
+                <div class="p-6 rounded-2xl bg-gradient-to-l from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-100 dark:border-indigo-900/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                مدیریت تبلیغات و بنرهای سیستم
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                    بهینه‌ساز هوشمند WebP فعال
+                                </span>
+                            </h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                تصاویر آپلود شده به صورت خودکار با موتور بهینه‌ساز هسته فشرده‌سازی شده و به فرمت پرسرعت WebP تبدیل می‌شوند.
+                            </p>
+                        </div>
+                    </div>
+
+                    @if(auth()->user() && auth()->user()->hasRole('super-admin'))
+                        <a href="{{ url('/admin/optimizer-report') }}" target="_blank"
+                           class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-gray-700/60 transition-colors shadow-sm shrink-0">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            مشاهده گزارش بهینه‌ساز
+                        </a>
+                    @endif
+                </div>
+
+                {{-- کارت ۱: بخش صفحه پزشکان --}}
+                <div class="{{ $cardClass }}">
+                    <div class="{{ $headerClass }} justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            </span>
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-900 dark:text-white">۱. بنر اختصاصی صفحه پزشکان (Doctor Profile Banner)</h3>
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400">نمایش بنر تبلیغاتی یا اطلاع‌رسانی در بالای هدر صفحه اختصاصی هر ارائه‌دهنده</p>
+                            </div>
+                        </div>
+
+                        {{-- کلید فعال/غیرفعال‌سازی بنر صفحه پزشک --}}
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold" :class="doctorBannerEnabled ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'">
+                                <span x-text="doctorBannerEnabled ? 'فعال' : 'غیرفعال'"></span>
+                            </span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="ads_doctor_enabled" value="1" x-model="doctorBannerEnabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        {{-- فیلدهای آپلودر و تنظیمات --}}
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                            {{-- آپلودر ۱: تصویر بنر اصلی (دسکتاپ) --}}
+                            <div class="p-5 rounded-2xl border border-gray-200 dark:border-gray-700/80 bg-gray-50/50 dark:bg-gray-900/20 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="text-xs font-bold text-gray-800 dark:text-gray-200">تصویر بنر دسکتاپ (اصلی)</span>
+                                    </div>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                        پیشنهاد: ۱۹۲۰×۴۰۰ px
+                                    </span>
+                                </div>
+
+                                {{-- اینپوت فایل دائمی در DOM --}}
+                                <input type="file" x-ref="desktopInput" name="ads_doctor_desktop_image" accept="image/jpeg,image/png,image/webp,image/jpg" class="hidden" @change="handleDesktopFile($event)">
+                                <input type="hidden" name="delete_ads_doctor_desktop_image" :value="deleteDesktopImage ? '1' : '0'">
+
+                                {{-- ناحیه پیش‌نمایش تصویر دسکتاپ --}}
+                                <div x-show="desktopPreviewUrl && !deleteDesktopImage" class="relative group rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 shadow-inner">
+                                    <img :src="desktopPreviewUrl" alt="پیش‌نمایش بنر دسکتاپ" class="w-full h-32 object-cover">
+                                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-xs">
+                                        <button type="button" @click="$refs.desktopInput.click()" class="px-3 py-1.5 rounded-lg bg-white/90 hover:bg-white text-gray-800 text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-95">
+                                            تغییر تصویر
+                                        </button>
+                                        <button type="button" @click="removeDesktopImage()" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-95">
+                                            حذف تصویر
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- ناحیه درگ اند دراپ یا انتخاب فایل در صورت عدم وجود تصویر --}}
+                                <div x-show="!desktopPreviewUrl || deleteDesktopImage" @click="$refs.desktopInput.click()" class="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors group bg-white dark:bg-gray-800/60">
+                                    <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1-1m6-5l-1.5-1.5a2.25 2.25 0 00-3.182 0L12 12M9 3l-1.5 1.5a2.25 2.25 0 000 3.182L12 12m3-9l-1.5 1.5a2.25 2.25 0 000 3.182L12 12" />
+                                        </svg>
+                                    </div>
+                                    <span class="text-xs font-bold text-gray-700 dark:text-gray-300">کلیک برای انتخاب یا رها کردن تصویر بنر</span>
+                                    <span class="text-[11px] text-gray-400">فرمت‌های مجاز: JPG, PNG, WEBP (حداکثر ۵ مگابایت)</span>
+                                </div>
+                            </div>
+
+                            {{-- آپلودر ۲: تصویر بنر تفکیک‌شده موبایل (اختیاری) --}}
+                            <div class="p-5 rounded-2xl border border-gray-200 dark:border-gray-700/80 bg-gray-50/50 dark:bg-gray-900/20 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="text-xs font-bold text-gray-800 dark:text-gray-200">تصویر اختصاصی موبایل (اختیاری)</span>
+                                    </div>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300">
+                                        پیشنهاد: ۱۰۸۰×۶۰۰ px
+                                    </span>
+                                </div>
+
+                                {{-- اینپوت فایل دائمی در DOM --}}
+                                <input type="file" x-ref="mobileInput" name="ads_doctor_mobile_image" accept="image/jpeg,image/png,image/webp,image/jpg" class="hidden" @change="handleMobileFile($event)">
+                                <input type="hidden" name="delete_ads_doctor_mobile_image" :value="deleteMobileImage ? '1' : '0'">
+
+                                {{-- ناحیه پیش‌نمایش تصویر موبایل --}}
+                                <div x-show="mobilePreviewUrl && !deleteMobileImage" class="relative group rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 shadow-inner">
+                                    <img :src="mobilePreviewUrl" alt="پیش‌نمایش بنر موبایل" class="w-full h-32 object-cover">
+                                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-xs">
+                                        <button type="button" @click="$refs.mobileInput.click()" class="px-3 py-1.5 rounded-lg bg-white/90 hover:bg-white text-gray-800 text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-95">
+                                            تغییر تصویر
+                                        </button>
+                                        <button type="button" @click="removeMobileImage()" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-95">
+                                            حذف تصویر
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- ناحیه انتخاب فایل موبایل در صورت عدم وجود تصویر --}}
+                                <div x-show="!mobilePreviewUrl || deleteMobileImage" @click="$refs.mobileInput.click()" class="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-400 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors group bg-white dark:bg-gray-800/60">
+                                    <div class="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <span class="text-xs font-bold text-gray-700 dark:text-gray-300">بارگذاری تصویر تفکیک‌شده برای موبایل</span>
+                                    <span class="text-[11px] text-gray-400">(در صورت خالی ماندن، تصویر دسکتاپ به صورت خودکار مقیاس داده می‌شود)</span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {{-- فیلدهای لینک و سئو --}}
+                        <div class="p-5 rounded-2xl border border-gray-200 dark:border-gray-700/80 bg-gray-50/50 dark:bg-gray-900/20 space-y-4">
+                            <div class="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                تنظیمات مقصد، لینک و دسترسی‌پذیری بنر
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="{{ $labelClass }}">آدرس لینک بنر (URL)</label>
+                                    <input type="text" name="ads_doctor_link" x-model="doctorBannerLink"
+                                           class="{{ $inputClass }} text-left ltr font-mono"
+                                           placeholder="https://example.com/promo یا /booking">
+                                    <p class="text-[11px] text-gray-400 mt-1">در صورت تمایل به کلیک‌پذیر بودن بنر، آدرس اینترنتی یا مسیر داخلی را وارد کنید.</p>
+                                </div>
+
+                                <div>
+                                    <label class="{{ $labelClass }}">متن جایگزین بنر (Alt Text)</label>
+                                    <input type="text" name="ads_doctor_alt_text" x-model="doctorBannerAlt"
+                                           class="{{ $inputClass }}"
+                                           placeholder="مثال: جشنواره خدمات تخصصی کلینیک">
+                                    <p class="text-[11px] text-gray-400 mt-1">برای سئو و خوانایی مناسب برای موتورهای جستجو</p>
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <label class="inline-flex items-center gap-2.5 cursor-pointer">
+                                    <input type="checkbox" name="ads_doctor_open_new_tab" value="1" x-model="doctorBannerOpenNewTab"
+                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:border-gray-700 dark:bg-gray-900">
+                                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300">باز شدن لینک در تب جدید مرورگر (target="_blank")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {{-- بخش پیش‌نمایش زنده در پروفایل پزشک --}}
+                        <div class="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-950/20 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="text-xs font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    پیش‌نمایش زنده هدر صفحه پزشک
+                                </div>
+
+                                <div class="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700 text-xs">
+                                    <button type="button" @click="previewViewport = 'desktop'"
+                                            :class="previewViewport === 'desktop' ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'"
+                                            class="px-3 py-1 rounded-lg transition-colors">
+                                        نمای دسکتاپ 💻
+                                    </button>
+                                    <button type="button" @click="previewViewport = 'mobile'"
+                                            :class="previewViewport === 'mobile' ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'"
+                                            class="px-3 py-1 rounded-lg transition-colors">
+                                        نمای موبایل 📱
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-2xl bg-slate-900/5 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex justify-center">
+                                <div :class="previewViewport === 'mobile' ? 'max-w-xs w-full' : 'w-full'" class="transition-all duration-300">
+                                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-200/80 dark:border-gray-700/80 space-y-4">
+                                        
+                                        {{-- بنر در پیش‌نمایش --}}
+                                        <template x-if="doctorBannerEnabled && (previewViewport === 'mobile' ? (mobilePreviewUrl || desktopPreviewUrl) : desktopPreviewUrl) && !deleteDesktopImage">
+                                            <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm relative group">
+                                                <img :src="previewViewport === 'mobile' ? (mobilePreviewUrl && !deleteMobileImage ? mobilePreviewUrl : desktopPreviewUrl) : desktopPreviewUrl"
+                                                     :alt="doctorBannerAlt || 'بنر تبلیغاتی'"
+                                                     class="w-full h-auto max-h-32 object-cover">
+                                                <template x-if="doctorBannerLink">
+                                                    <span class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-white font-mono" x-text="doctorBannerLink"></span>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="!doctorBannerEnabled || (!desktopPreviewUrl && !mobilePreviewUrl) || deleteDesktopImage">
+                                            <div class="p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-xs text-gray-400">
+                                                (بنر در صفحه نمایش داده نمی‌شود - غیرفعال یا تصویری بارگذاری نشده است)
+                                            </div>
+                                        </template>
+
+                                        {{-- ماک‌آپ مشخصات پزشک در زیر بنر --}}
+                                        <div class="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                            <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0">
+                                                پزشک
+                                            </div>
+                                            <div>
+                                                <div class="h-3 w-28 bg-gray-200 dark:bg-gray-700 rounded mb-1.5"></div>
+                                                <div class="h-2 w-20 bg-gray-100 dark:bg-gray-800 rounded"></div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                {{-- دکمه ذخیره‌سازی تب تبلیغات --}}
+                <div class="flex justify-end pt-4">
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/50 transition-all transform active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        ذخیره تنظیمات تبلیغات و بنرها
+                    </button>
+                </div>
+            </div>
         </form>
     </div>
 
@@ -1674,7 +1954,51 @@
                         hiddenInput.value = value;
                     }
                 }
-            }))
+            }));
+
+            Alpine.data('adsTabManager', () => ({
+                doctorBannerEnabled: @json((bool) ($settings->ads['doctor_page']['enabled'] ?? false)),
+                desktopPreviewUrl: @json($settings->doctor_banner_desktop_url),
+                mobilePreviewUrl: @json($settings->doctor_banner_mobile_url),
+                doctorBannerLink: @json($settings->doctor_banner_link ?? ''),
+                doctorBannerOpenNewTab: @json((bool) ($settings->doctor_banner_open_new_tab ?? true)),
+                doctorBannerAlt: @json($settings->doctor_banner_alt ?? ''),
+                deleteDesktopImage: false,
+                deleteMobileImage: false,
+                previewViewport: 'desktop',
+
+                handleDesktopFile(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.desktopPreviewUrl = URL.createObjectURL(file);
+                        this.deleteDesktopImage = false;
+                    }
+                },
+
+                removeDesktopImage() {
+                    this.desktopPreviewUrl = null;
+                    this.deleteDesktopImage = true;
+                    if (this.$refs.desktopInput) {
+                        this.$refs.desktopInput.value = '';
+                    }
+                },
+
+                handleMobileFile(event) {
+                    const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+                    if (file) {
+                        this.mobilePreviewUrl = URL.createObjectURL(file);
+                        this.deleteMobileImage = false;
+                    }
+                },
+
+                removeMobileImage() {
+                    this.mobilePreviewUrl = null;
+                    this.deleteMobileImage = true;
+                    if (this.$refs.mobileInput) {
+                        this.$refs.mobileInput.value = '';
+                    }
+                }
+            }));
         })
 
         function addBreak(day) {

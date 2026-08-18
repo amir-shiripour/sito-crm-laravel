@@ -223,9 +223,16 @@
                             </td>
 
                             <td class="px-4 py-3 text-left">
-                                <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold {{ $statusMeta['class'] }}">
-                                    {{ $statusMeta['label'] }}
-                                </span>
+                                <div class="flex flex-col items-start gap-1">
+                                    <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold {{ $statusMeta['class'] }}">
+                                        {{ $statusMeta['label'] }}
+                                    </span>
+                                    @if($a->cancel_reason)
+                                        <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium line-clamp-1 max-w-[140px]" title="{{ $a->cancel_reason }}">
+                                            {{ $a->cancel_reason }}
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
 
                             <td class="px-4 py-3 text-left">
