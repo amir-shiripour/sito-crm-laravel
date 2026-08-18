@@ -20,17 +20,21 @@ class ClientDashboardSettings extends Component
     public string $termsBtnLater = 'بعداً می‌خوانم';
     public bool $termsAllowLater = true;
     public bool $termsForceScroll = true;
+    public bool $termsForceAppointmentShow = false;
+    public bool $termsForceBookingPaymentShow = false;
 
     public function mount(): void
     {
-        $this->termsEnabled     = (bool) ClientSetting::getValue('dashboard.terms.enabled', false);
-        $this->termsTitle       = (string) ClientSetting::getValue('dashboard.terms.title', 'قوانین و مقررات استفاده از پرتال');
-        $this->termsContent     = (string) ClientSetting::getValue('dashboard.terms.content', '');
-        $this->termsVersion     = (string) ClientSetting::getValue('dashboard.terms.version', '1.0');
-        $this->termsBtnAccept   = (string) ClientSetting::getValue('dashboard.terms.btn_accept', 'قوانین را می‌پذیرم');
-        $this->termsBtnLater    = (string) ClientSetting::getValue('dashboard.terms.btn_later', 'بعداً می‌خوانم');
-        $this->termsAllowLater  = (bool) ClientSetting::getValue('dashboard.terms.allow_later', true);
-        $this->termsForceScroll = (bool) ClientSetting::getValue('dashboard.terms.force_scroll', true);
+        $this->termsEnabled                 = (bool) ClientSetting::getValue('dashboard.terms.enabled', false);
+        $this->termsTitle                   = (string) ClientSetting::getValue('dashboard.terms.title', 'قوانین و مقررات استفاده از پرتال');
+        $this->termsContent                 = (string) ClientSetting::getValue('dashboard.terms.content', '');
+        $this->termsVersion                 = (string) ClientSetting::getValue('dashboard.terms.version', '1.0');
+        $this->termsBtnAccept               = (string) ClientSetting::getValue('dashboard.terms.btn_accept', 'قوانین را می‌پذیرم');
+        $this->termsBtnLater                = (string) ClientSetting::getValue('dashboard.terms.btn_later', 'بعداً می‌خوانم');
+        $this->termsAllowLater              = (bool) ClientSetting::getValue('dashboard.terms.allow_later', true);
+        $this->termsForceScroll             = (bool) ClientSetting::getValue('dashboard.terms.force_scroll', true);
+        $this->termsForceAppointmentShow    = (bool) ClientSetting::getValue('dashboard.terms.force_appointment_show', false);
+        $this->termsForceBookingPaymentShow = (bool) ClientSetting::getValue('dashboard.terms.force_booking_payment_show', false);
     }
 
     public function saveTerms(): void
@@ -50,6 +54,8 @@ class ClientDashboardSettings extends Component
         ClientSetting::setValue('dashboard.terms.btn_later', $this->termsBtnLater);
         ClientSetting::setValue('dashboard.terms.allow_later', $this->termsAllowLater);
         ClientSetting::setValue('dashboard.terms.force_scroll', $this->termsForceScroll);
+        ClientSetting::setValue('dashboard.terms.force_appointment_show', $this->termsForceAppointmentShow);
+        ClientSetting::setValue('dashboard.terms.force_booking_payment_show', $this->termsForceBookingPaymentShow);
 
         session()->flash('success', 'تنظیمات قوانین و مقررات داشبورد کلاینت با موفقیت ذخیره شد.');
     }

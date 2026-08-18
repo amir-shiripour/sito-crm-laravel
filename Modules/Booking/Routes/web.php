@@ -287,6 +287,7 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             Route::post('/videos', [DoctorController::class, 'uploadVideo'])->name('video-upload');
             Route::delete('/media/{id}', [DoctorController::class, 'deleteMedia'])->name('media.delete');
             Route::post('/insurance/update', [DoctorController::class, 'updateInsurance'])->name('update.insurance');
+            Route::post('/stats/update', [DoctorController::class, 'updateStats'])->name('update.stats');
             Route::post('/visibility/toggle', [DoctorController::class, 'toggleVisibility'])
                 ->name('visibility.toggle');
 

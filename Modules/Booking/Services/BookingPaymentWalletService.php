@@ -140,6 +140,14 @@ class BookingPaymentWalletService
         }
 
         foreach ($appointment->payments as $payment) {
+            // اگر پرداخت در وضعیت در انتظار پرداخت (PENDING) باشد، خودکار لغو می‌شود
+            if ($payment->status === BookingPayment::STATUS_PENDING) {
+                $payment->update([
+                    'status' => BookingPayment::STATUS_CANCELLED,
+                ]);
+                continue;
+            }
+
             if ($payment->status !== BookingPayment::STATUS_PAID && $payment->status !== BookingPayment::STATUS_CANCELLED && $payment->status !== BookingPayment::STATUS_FAILED) {
                 continue;
             }

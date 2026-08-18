@@ -134,9 +134,54 @@ class User extends Authenticatable
     }
     public function canAccessDoctorTab(): bool
     {
-        return $this->hasRole('doctor')
-            && Module::has('Booking')
-            && Module::isEnabled('Booking');
+        if (!Module::has('Booking') || !Module::isEnabled('Booking')) {
+            return false;
+        }
+
+        if ($this->hasRole('doctor')) {
+            return true;
+        }
+
+        try {
+            if (!class_exists(\Modules\Booking\Entities\BookingSetting::class)) {
+                return false;
+            }
+
+            $settings = \Modules\Booking\Entities\BookingSetting::current();
+            if (!$settings) {
+                return false;
+            }
+
+            $rolesInput = $settings->allowed_roles;
+            if (is_string($rolesInput)) {
+                $decoded = json_decode($rolesInput, true);
+                $rolesInput = is_array($decoded) ? $decoded : preg_split('/\s*,\s*/', trim($rolesInput), -1, PREG_SPLIT_NO_EMPTY);
+            }
+
+            if (!is_array($rolesInput) || empty($rolesInput)) {
+                return false;
+            }
+
+            $roleIds = [];
+            $roleNames = [];
+            foreach ($rolesInput as $v) {
+                if (is_numeric($v) && (int)$v > 0) {
+                    $roleIds[] = (int)$v;
+                } elseif (is_string($v) && trim($v) !== '') {
+                    $roleNames[] = trim($v);
+                }
+            }
+
+            if (empty($roleIds) && empty($roleNames)) {
+                return false;
+            }
+
+            return $this->roles->contains(function ($role) use ($roleIds, $roleNames) {
+                return in_array((int)$role->id, $roleIds, true) || in_array($role->name, $roleNames, true);
+            });
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
     public function doctorMedia()
     {

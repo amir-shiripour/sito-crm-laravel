@@ -65,7 +65,7 @@
                 </div>
             @endif--}}
 
-{{--            <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden md:block"></div>--}}
+            {{--            <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden md:block"></div>--}}
 
             {{-- دکمه حساب کاربری / ورود --}}
             {{--@auth
@@ -177,119 +177,119 @@
 </aside>
 
 @if(!request()->is('chat') && !request()->is('chat/*'))
-{{-- ================= نوار ناوبری پایین (Bottom App Bar) مخصوص موبایل - طراحی بومی و شناور ================= --}}
-<div id="mobile-bottom-nav" class="md:hidden fixed bottom-4 left-4 right-4 z-[60] pointer-events-none pb-safe">
-    <nav class="pointer-events-auto bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border border-white/60 dark:border-gray-800/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] rounded-[2rem] overflow-hidden">
-        <div class="flex items-center justify-around h-[4.5rem] px-1 relative">
+    {{-- ================= نوار ناوبری پایین (Bottom App Bar) مخصوص موبایل - طراحی بومی و شناور ================= --}}
+    <div id="mobile-bottom-nav" class="md:hidden fixed bottom-4 left-4 right-4 z-[60] pointer-events-none pb-safe">
+        <nav class="pointer-events-auto bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border border-white/60 dark:border-gray-800/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] rounded-[2rem] overflow-hidden">
+            <div class="flex items-center justify-around h-[4.5rem] px-1 relative">
 
-            {{-- دکمه خانه --}}
-            @php $isActive = request()->is('/'); @endphp
-            <a href="{{ url('/') }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
-                @if($isActive)
-                    <div class="absolute top-3 w-10 h-10 bg-[#3F7D20] opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
-                    <span class="absolute top-0 w-8 h-1 bg-[#3F7D20] rounded-b-full"></span>
-                @endif
-                <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isActive ? '-translate-y-0.5' : '' }}">
+                {{-- دکمه خانه --}}
+                @php $isActive = request()->is('/'); @endphp
+                <a href="{{ url('/') }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
                     @if($isActive)
-                        <svg class="w-6 h-6 mb-1 text-[#3F7D20] dark:text-[#5cba2f] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M12.707 2.293l9 9c.63 .63 .184 1.707 -.707 1.707h-1v6a3 3 0 0 1 -3 3h-1v-7a3 3 0 0 0 -2.824 -2.995l-.176 -.005h-2a3 3 0 0 0 -3 3v7h-1a3 3 0 0 1 -3 -3v-6h-1c-.89 0 -1.337 -1.077 -.707 -1.707l9 -9a1 1 0 0 1 1.414 0m.293 11.707a1 1 0 0 1 1 1v7h-4v-7a1 1 0 0 1 .883 -.993l.117 -.007z" />
-                        </svg>
-                    @else
-                        <svg class="w-6 h-6 mb-1 text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
-                            <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
-                            <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
-                        </svg>
+                        <div class="absolute top-3 w-10 h-10 bg-[#3F7D20] opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
+                        <span class="absolute top-0 w-8 h-1 bg-[#3F7D20] rounded-b-full"></span>
                     @endif
-                    <span class="text-[10px] font-bold {{ $isActive ? 'text-[#3F7D20] dark:text-[#5cba2f]' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">خانه</span>
-                </div>
-            </a>
+                    <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isActive ? '-translate-y-0.5' : '' }}">
+                        @if($isActive)
+                            <svg class="w-6 h-6 mb-1 text-[#3F7D20] dark:text-[#5cba2f] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                <path d="M12.707 2.293l9 9c.63 .63 .184 1.707 -.707 1.707h-1v6a3 3 0 0 1 -3 3h-1v-7a3 3 0 0 0 -2.824 -2.995l-.176 -.005h-2a3 3 0 0 0 -3 3v7h-1a3 3 0 0 1 -3 -3v-6h-1c-.89 0 -1.337 -1.077 -.707 -1.707l9 -9a1 1 0 0 1 1.414 0m.293 11.707a1 1 0 0 1 1 1v7h-4v-7a1 1 0 0 1 .883 -.993l.117 -.007z" />
+                            </svg>
+                        @else
+                            <svg class="w-6 h-6 mb-1 text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
+                                <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
+                                <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+                            </svg>
+                        @endif
+                        <span class="text-[10px] font-bold {{ $isActive ? 'text-[#3F7D20] dark:text-[#5cba2f]' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">خانه</span>
+                    </div>
+                </a>
 
-            {{-- دکمه دستیار --}}
-            @php $isChatActive = request()->is('chat') || request()->is('chat/*'); @endphp
-            <a href="{{ url('/chat') }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
-                @if($isChatActive)
-                    <div class="absolute top-3 w-10 h-10 bg-[#3F7D20] opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
-                    <span class="absolute top-0 w-8 h-1 bg-[#3F7D20] rounded-b-full"></span>
-                @endif
-                <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isChatActive ? '-translate-y-0.5' : '' }}">
+                {{-- دکمه دستیار --}}
+                @php $isChatActive = request()->is('chat') || request()->is('chat/*'); @endphp
+                <a href="{{ url('/chat') }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
                     @if($isChatActive)
-                        <svg class="w-6 h-6 mb-1 text-[#3F7D20] dark:text-[#5cba2f] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M12 3c.375 0 .711 .231 .846 .581l1.65 4.29a2.85 2.85 0 0 0 1.632 1.633l4.291 1.65a.906 .906 0 0 1 0 1.692l-4.29 1.65a2.84 2.84 0 0 0 -1.633 1.632l-1.65 4.291a.906 .906 0 0 1 -1.692 0l-1.65 -4.29a2.84 2.84 0 0 0 -1.632 -1.633l-4.291 -1.65a.906 .906 0 0 1 0 -1.692l4.29 -1.65a2.84 2.84 0 0 0 1.633 -1.632l1.65 -4.291a.91 .91 0 0 1 .846 -.581" />
-                        </svg>
-                    @else
-                        <svg class="w-6 h-6 mb-1 text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M12 3c.375 0 .711 .231 .846 .581l1.65 4.29a2.85 2.85 0 0 0 1.632 1.633l4.291 1.65a.906 .906 0 0 1 0 1.692l-4.29 1.65a2.84 2.84 0 0 0 -1.633 1.632l-1.65 4.291a.906 .906 0 0 1 -1.692 0l-1.65 -4.29a2.84 2.84 0 0 0 -1.632 -1.633l-4.291 -1.65a.906 .906 0 0 1 0 -1.692l4.29 -1.65a2.84 2.84 0 0 0 1.633 -1.632l1.65 -4.291a.91 .91 0 0 1 .846 -.581" />
-                        </svg>
-                    @endif
-                    <span class="text-[10px] font-bold {{ $isChatActive ? 'text-[#3F7D20] dark:text-[#5cba2f]' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">دستیار</span>
-                </div>
-            </a>
-
-            {{-- دکمه سبد خرید --}}
-            @php $isActive = request()->routeIs('market.public.cart*') || request()->routeIs('checkout*'); @endphp
-            @if(auth()->check() && isset($isMarketActive) && $isMarketActive)
-                <div class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
-                    @livewire('market::web.cart-counter', ['isBottomNav' => true])
-                </div>
-            @endif
-
-            {{-- دکمه پروفایل / ورود --}}
-            @php $isActive = request()->is('clients/dashboard') || request()->is('clients/dashboard/*') || request()->routeIs('user.dashboard') || request()->routeIs('admin.dashboard') || request()->routeIs('login'); @endphp
-            @auth
-                <a href="{{ url('/clients/dashboard') }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
-                    @if($isActive)
                         <div class="absolute top-3 w-10 h-10 bg-[#3F7D20] opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
                         <span class="absolute top-0 w-8 h-1 bg-[#3F7D20] rounded-b-full"></span>
                     @endif
-                    <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isActive ? '-translate-y-0.5' : '' }}">
-                        @if($isActive)
+                    <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isChatActive ? '-translate-y-0.5' : '' }}">
+                        @if($isChatActive)
                             <svg class="w-6 h-6 mb-1 text-[#3F7D20] dark:text-[#5cba2f] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
                                 <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M12 2a5 5 0 1 1 -5 5l.005 -.217a5 5 0 0 1 4.995 -4.783z" />
-                                <path d="M14 14a5 5 0 0 1 5 5v1a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-1a5 5 0 0 1 5 -5h4z" />
+                                <path d="M12 3c.375 0 .711 .231 .846 .581l1.65 4.29a2.85 2.85 0 0 0 1.632 1.633l4.291 1.65a.906 .906 0 0 1 0 1.692l-4.29 1.65a2.84 2.84 0 0 0 -1.633 1.632l-1.65 4.291a.906 .906 0 0 1 -1.692 0l-1.65 -4.29a2.84 2.84 0 0 0 -1.632 -1.633l-4.291 -1.65a.906 .906 0 0 1 0 -1.692l4.29 -1.65a2.84 2.84 0 0 0 1.633 -1.632l1.65 -4.291a.91 .91 0 0 1 .846 -.581" />
                             </svg>
                         @else
                             <svg class="w-6 h-6 mb-1 text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
-                                <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                                <path d="M12 3c.375 0 .711 .231 .846 .581l1.65 4.29a2.85 2.85 0 0 0 1.632 1.633l4.291 1.65a.906 .906 0 0 1 0 1.692l-4.29 1.65a2.84 2.84 0 0 0 -1.633 1.632l-1.65 4.291a.906 .906 0 0 1 -1.692 0l-1.65 -4.29a2.84 2.84 0 0 0 -1.632 -1.633l-4.291 -1.65a.906 .906 0 0 1 0 -1.692l4.29 -1.65a2.84 2.84 0 0 0 1.633 -1.632l1.65 -4.291a.91 .91 0 0 1 .846 -.581" />
                             </svg>
                         @endif
-                        <span class="text-[10px] font-bold {{ $isActive ? 'text-[#3F7D20] dark:text-[#5cba2f]' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">پروفایل من</span>
+                        <span class="text-[10px] font-bold {{ $isChatActive ? 'text-[#3F7D20] dark:text-[#5cba2f]' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">دستیار</span>
                     </div>
                 </a>
-            @else
-                <a href="{{ url('/clients/dashboard') }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
-                    @if($isActive)
-                        <div class="absolute top-3 w-10 h-10 bg-[#3F7D20] opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
-                        <span class="absolute top-0 w-8 h-1 bg-[#3F7D20] rounded-b-full"></span>
-                    @endif
-                    <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isActive ? '-translate-y-0.5' : '' }}">
+
+                {{-- دکمه سبد خرید --}}
+                @php $isActive = request()->routeIs('market.public.cart*') || request()->routeIs('checkout*'); @endphp
+                @if(auth()->check() && isset($isMarketActive) && $isMarketActive)
+                    <div class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
+                        @livewire('market::web.cart-counter', ['isBottomNav' => true])
+                    </div>
+                @endif
+
+                {{-- دکمه پروفایل / ورود --}}
+                @php $isActive = request()->is('clients/dashboard') || request()->is('clients/dashboard/*') || request()->routeIs('user.dashboard') || request()->routeIs('admin.dashboard') || request()->routeIs('login'); @endphp
+                @auth
+                    <a href="{{ url('/clients/dashboard') }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
                         @if($isActive)
-                            <svg class="w-6 h-6 mb-1 text-[#3F7D20] dark:text-[#5cba2f] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M12 2a5 5 0 1 1 -5 5l.005 -.217a5 5 0 0 1 4.995 -4.783z" />
-                                <path d="M14 14a5 5 0 0 1 5 5v1a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-1a5 5 0 0 1 5 -5h4z" />
-                            </svg>
-                        @else
-                            <svg class="w-6 h-6 mb-1 text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
-                                <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-                            </svg>
+                            <div class="absolute top-3 w-10 h-10 bg-[#3F7D20] opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
+                            <span class="absolute top-0 w-8 h-1 bg-[#3F7D20] rounded-b-full"></span>
                         @endif
-                        <span class="text-[10px] font-bold {{ $isActive ? 'text-[#3F7D20] dark:text-[#5cba2f]' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">ورود</span>
-                    </div>
-                </a>
-            @endauth
-        </div>
-    </nav>
-</div>
+                        <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isActive ? '-translate-y-0.5' : '' }}">
+                            @if($isActive)
+                                <svg class="w-6 h-6 mb-1 text-[#3F7D20] dark:text-[#5cba2f] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M12 2a5 5 0 1 1 -5 5l.005 -.217a5 5 0 0 1 4.995 -4.783z" />
+                                    <path d="M14 14a5 5 0 0 1 5 5v1a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-1a5 5 0 0 1 5 -5h4z" />
+                                </svg>
+                            @else
+                                <svg class="w-6 h-6 mb-1 text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+                                    <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                                </svg>
+                            @endif
+                            <span class="text-[10px] font-bold {{ $isActive ? 'text-[#3F7D20] dark:text-[#5cba2f]' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">پروفایل من</span>
+                        </div>
+                    </a>
+                @else
+                    <a href="{{ url('/clients/dashboard') }}" class="flex-1 flex flex-col items-center justify-center h-full relative group transition-all duration-300 active:scale-90">
+                        @if($isActive)
+                            <div class="absolute top-3 w-10 h-10 bg-[#3F7D20] opacity-15 dark:opacity-20 blur-xl rounded-full"></div>
+                            <span class="absolute top-0 w-8 h-1 bg-[#3F7D20] rounded-b-full"></span>
+                        @endif
+                        <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300 {{ $isActive ? '-translate-y-0.5' : '' }}">
+                            @if($isActive)
+                                <svg class="w-6 h-6 mb-1 text-[#3F7D20] dark:text-[#5cba2f] transition-colors duration-300" viewBox="0 0 24 24" fill="currentColor">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M12 2a5 5 0 1 1 -5 5l.005 -.217a5 5 0 0 1 4.995 -4.783z" />
+                                    <path d="M14 14a5 5 0 0 1 5 5v1a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-1a5 5 0 0 1 5 -5h4z" />
+                                </svg>
+                            @else
+                                <svg class="w-6 h-6 mb-1 text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+                                    <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                                </svg>
+                            @endif
+                            <span class="text-[10px] font-bold {{ $isActive ? 'text-[#3F7D20] dark:text-[#5cba2f]' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200' }} transition-colors duration-300">ورود</span>
+                        </div>
+                    </a>
+                @endauth
+            </div>
+        </nav>
+    </div>
 @endif
 
 {{-- اسکریپت کنترل نوار کناری --}}

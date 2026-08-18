@@ -6,5 +6,9 @@ return [
         'properties/gallery',
         'products/masters',
         'products/gallery',
+        'booking/banners',
+        'doctor-media',
+        'insurances',
+        'payment-receipts',
     ],
 ];

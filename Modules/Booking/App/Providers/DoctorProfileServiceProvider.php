@@ -29,7 +29,7 @@ class DoctorProfileServiceProvider extends ServiceProvider
 
             $user = auth()->user();
 
-            if (!$user->hasRole('doctor')) {
+            if (!method_exists($user, 'canAccessDoctorTab') || !$user->canAccessDoctorTab()) {
                 return;
             }
 

@@ -78,6 +78,20 @@
             </div>
         @endif
 
+        @if(!empty($appointment->cancel_reason) || in_array($appointment->status, [\Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT]))
+            <div class="flex items-start gap-4 rounded-2xl border border-rose-200 dark:border-rose-800/80 bg-rose-50/80 dark:bg-rose-900/30 text-rose-900 dark:text-rose-100 p-5 shadow-sm">
+                <div class="p-2.5 rounded-xl bg-rose-100 dark:bg-rose-800/60 text-rose-600 dark:text-rose-300 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-rose-700 dark:text-rose-300">علت لغو نوبت:</div>
+                    <div class="text-sm font-bold mt-1 text-rose-900 dark:text-rose-100">{{ $appointment->cancel_reason ?: 'دلیلی ثبت نشده است.' }}</div>
+                </div>
+            </div>
+        @endif
+
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 lg:p-8">
             <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">اطلاعات اصلی نوبت</h2>
 

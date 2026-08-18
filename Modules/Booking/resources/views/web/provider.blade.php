@@ -203,8 +203,34 @@
     </div>
 
     {{-- PROFILE HERO (امکانات جدید) --}}
-    <div class="profile-hero -mt-4 sm:-mt-[48px] border-t-0 w-full relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div class="profile-hero mt-20 sm:mt-20 border-t-0 w-full relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div class="container max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-8 pb-8">
+
+            {{-- تبلیغات و بنر اختصاصی صفحه پزشکان (Doctor Profile Banner) --}}
+            @if(isset($settings) && $settings->isDoctorBannerEnabled() && $settings->doctor_banner_desktop_url)
+                <div class="mb-6 sm:mb-8 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md border border-gray-200/80 dark:border-gray-700/80 bg-gray-50 dark:bg-gray-800/60 transition-all duration-300 group">
+                    @if($settings->doctor_banner_link)
+                        <a href="{{ $settings->doctor_banner_link }}"
+                           @if($settings->doctor_banner_open_new_tab) target="_blank" rel="noopener noreferrer" @endif
+                           class="block w-full h-full relative cursor-pointer overflow-hidden focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-2xl sm:rounded-3xl">
+                    @endif
+
+                    <picture class="block w-full">
+                        @if($settings->doctor_banner_mobile_url)
+                            <source media="(max-width: 640px)" srcset="{{ $settings->doctor_banner_mobile_url }}">
+                        @endif
+                        <img src="{{ $settings->doctor_banner_desktop_url }}"
+                             alt="{{ $settings->doctor_banner_alt ?: 'بنر تبلیغاتی و اطلاع‌رسانی' }}"
+                             class="w-full h-auto object-cover max-h-[260px] sm:max-h-[360px] w-full transition-transform duration-500 group-hover:scale-[1.008]"
+                             loading="eager">
+                    </picture>
+
+                    @if($settings->doctor_banner_link)
+                        </a>
+                    @endif
+                </div>
+            @endif
+
             {{-- Back Button --}}
             <a href="{{ route('booking.public.index') }}"
                class="relative z-20 inline-flex items-center gap-2 mb-6 sm:mb-8 text-sm font-bold text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors group w-fit">
@@ -235,11 +261,104 @@
                 <div class="flex-1 text-center sm:text-right">
                     <h1 class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-1 tracking-tight">{{ $providerName }}</h1>
 
-                    @if($provProfile?->specialty)
-                        <p class="text-indigo-600 dark:text-indigo-400 font-semibold text-base mb-1">{{ $provProfile->specialty }}</p>
+                    @if(!empty($provProfile?->specialties_list))
+                        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 mb-1.5">
+                            @foreach($provProfile->specialties_list as $spec)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/60">
+                                    {{ $spec }}
+                                </span>
+                            @endforeach
+                        </div>
                     @endif
-                    @if($provProfile?->education)
-                        <p class="text-gray-600 dark:text-gray-400 text-sm mb-3">{{ $provProfile->education }}</p>
+                    @if(!empty($provProfile?->education_list))
+                        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1 text-xs text-gray-600 dark:text-gray-400 mb-2">
+                            @foreach($provProfile->education_list as $edu)
+                                <span class="inline-flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+                                    {{ $edu }}
+                                </span>
+                                @if(!$loop->last) <span class="text-gray-300 dark:text-gray-600">•</span> @endif
+                            @endforeach
+                        </div>
+                    @endif
+
+                    {{-- STATS & TRUST INDICATORS (۴ مورد آمار، امتیاز و اعتبارسنجی) --}}
+                    @if($provProfile?->isVisible('stats'))
+                        @php
+                            $toFa = function($num) {
+                                return str_replace(
+                                    ['0','1','2','3','4','5','6','7','8','9'],
+                                    ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'],
+                                    (string)$num
+                                );
+                            };
+                            $hasRating = $provProfile->isVisible('rating') && $provProfile->effective_rating > 0;
+                            $hasSatisfaction = $provProfile->isVisible('satisfaction') && $provProfile->effective_satisfaction_rate > 0;
+                            $hasBookings = $provProfile->isVisible('successful_bookings') && $provProfile->effective_successful_bookings_count > 0;
+                            $hasEndorsements = $provProfile->isVisible('endorsements') && ($provProfile->effective_endorsements_count > 0 || !empty($provProfile->effective_endorsements_text));
+                        @endphp
+
+                        @if($hasRating || $hasSatisfaction || $hasBookings || $hasEndorsements)
+                            <div class="my-3.5 space-y-2.5">
+                                {{-- Row 1: Rating, Reviews & Satisfaction --}}
+                                @if($hasRating || $hasSatisfaction)
+                                    <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 text-xs sm:text-sm">
+                                        {{-- Rating & Reviews Badge --}}
+                                        @if($hasRating)
+                                            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 shadow-2xs transition hover:border-amber-300">
+                                                <svg class="w-4 h-4 text-amber-500 fill-amber-400 shrink-0" viewBox="0 0 20 20">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                </svg>
+                                                <span class="font-extrabold text-gray-900 dark:text-white text-sm">{{ $toFa($provProfile->effective_rating) }}</span>
+                                                @if($provProfile->effective_reviews_count > 0)
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">({{ $toFa(number_format($provProfile->effective_reviews_count)) }} نظر)</span>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        {{-- Satisfaction percentage Badge --}}
+                                        @if($hasSatisfaction)
+                                            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300 shadow-2xs transition hover:border-emerald-300">
+                                                <span class="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                                    </svg>
+                                                </span>
+                                                <span class="font-extrabold text-sm">{{ $toFa($provProfile->effective_satisfaction_rate) }}٪</span>
+                                                <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">پیشنهاد کاربران</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endif
+
+                                {{-- Row 2: Successful bookings count --}}
+                                @if($hasBookings)
+                                    <div class="flex items-center justify-center sm:justify-start gap-2 text-xs sm:text-sm">
+                                        <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/50 text-sky-900 dark:text-sky-200 shadow-2xs">
+                                            <span class="w-4 h-4 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0">
+                                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </span>
+                                            <span class="font-extrabold text-sm text-gray-900 dark:text-white">{{ $toFa(number_format($provProfile->effective_successful_bookings_count)) }}</span>
+                                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">نوبت موفق در {{ $provProfile->effective_platform_name }}</span>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Row 3: Golden Colleague/Doctor Endorsement Card --}}
+                                @if($hasEndorsements)
+                                    <div class="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-100/40 to-amber-50 dark:from-amber-950/50 dark:via-amber-900/30 dark:to-amber-950/50 border border-amber-300/70 dark:border-amber-700/60 text-amber-950 dark:text-amber-100 text-xs sm:text-sm font-bold shadow-xs transition hover:shadow-sm">
+                                        <div class="w-6 h-6 rounded-full bg-amber-400/20 dark:bg-amber-400/10 border border-amber-400/40 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-400 shadow-2xs">
+                                            <svg class="w-3.5 h-3.5 fill-amber-500" viewBox="0 0 20 20">
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                            </svg>
+                                        </div>
+                                        <span>{{ $toFa($provProfile->effective_endorsements_text) }}</span>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
                     @endif
 
                     {{-- Stat Badges Row --}}
@@ -248,6 +367,18 @@
                             <span class="stat-badge text-gray-700 dark:text-gray-300">
                             <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
                             {{ $provProfile->clinic_name }}
+                        </span>
+                        @endif
+                        @if($provProfile?->province || $provProfile?->city)
+                            <span class="stat-badge text-gray-700 dark:text-gray-300">
+                            <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            {{ implode('، ', array_filter([$provProfile->province, $provProfile->city])) }}
+                        </span>
+                        @endif
+                        @if($provProfile?->experience_text || $provProfile?->experience)
+                            <span class="stat-badge text-amber-700 dark:text-amber-300">
+                            <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            {{ $provProfile->experience_text ?: ($provProfile->experience . (is_numeric($provProfile->experience) ? ' سال سابقه' : '')) }}
                         </span>
                         @endif
                         @if($provProfile?->medical_system_number)
@@ -948,7 +1079,7 @@
                     const circle = el.querySelector('.step-circle');
                     const label = el.querySelector('.step-label');
 
-                    circle.className = 'step-circle w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-300 shadow-sm bg-white dark:bg-gray-800 text-lg font-black';
+                    circle.className = 'step-circle w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-300 shadow-sm text-lg font-black';
                     label.className = 'step-label mt-3 text-sm font-bold transition-all duration-300';
 
                     let isPassed = false;
@@ -959,18 +1090,18 @@
                     let isActive = stepNum === step;
 
                     if (isPassed) {
-                        circle.classList.add('border-emerald-500','bg-emerald-500','text-white');
-                        label.classList.add('text-emerald-600','dark:text-emerald-400');
-                        circle.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`;
+                        circle.classList.add('border-emerald-500', 'bg-emerald-500', 'text-white', 'dark:border-emerald-500', 'dark:bg-emerald-500', 'dark:text-white', 'shadow-md', 'shadow-emerald-500/25');
+                        label.classList.add('text-emerald-600', 'dark:text-emerald-400');
+                        circle.innerHTML = `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`;
                     } else if (isActive) {
-                        // استایل جدید و ملایم مرحله فعال هماهنگ با تم لایت
-                        circle.classList.add('border-indigo-600','bg-indigo-50','text-indigo-700','ring-4','ring-indigo-50','dark:bg-indigo-900/40','dark:border-indigo-500','dark:text-indigo-300','dark:ring-indigo-900/20');
-                        label.classList.add('text-indigo-700','dark:text-indigo-300');
-                        circle.innerHTML = toPersianDigits(!window.hasForm && stepNum===5 ? 4 : stepNum);
+                        // استایل جدید و ملایم مرحله فعال هماهنگ با تم لایت و دارک
+                        circle.classList.add('border-indigo-600', 'bg-indigo-50', 'text-indigo-700', 'ring-4', 'ring-indigo-50', 'dark:bg-indigo-900/40', 'dark:border-indigo-500', 'dark:text-indigo-300', 'dark:ring-indigo-900/20');
+                        label.classList.add('text-indigo-700', 'dark:text-indigo-300');
+                        circle.innerHTML = toPersianDigits(!window.hasForm && stepNum === 5 ? 4 : stepNum);
                     } else {
-                        circle.classList.add('border-gray-200','dark:border-gray-700','bg-white','dark:bg-gray-800','text-gray-400');
-                        label.classList.add('text-gray-400','dark:text-gray-500');
-                        circle.innerHTML = toPersianDigits(!window.hasForm && stepNum===5 ? 4 : stepNum);
+                        circle.classList.add('border-gray-200', 'bg-white', 'text-gray-400', 'dark:border-gray-700', 'dark:bg-gray-800', 'dark:text-gray-500');
+                        label.classList.add('text-gray-400', 'dark:text-gray-500');
+                        circle.innerHTML = toPersianDigits(!window.hasForm && stepNum === 5 ? 4 : stepNum);
                     }
                 });
 

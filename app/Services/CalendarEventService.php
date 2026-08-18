@@ -81,7 +81,7 @@ class CalendarEventService
     /**
      * دریافت کلیه رویدادهای یک روز خاص برای کاربر
      */
-    public function getEventsForDate(Carbon $date, User $user, array $sourceFilter = []): Collection
+    public function getEventsForDate(Carbon $date, User $user, ?array $sourceFilter = null): Collection
     {
         $startOfDay = $date->copy()->startOfDay();
         $endOfDay   = $date->copy()->endOfDay();
@@ -92,32 +92,42 @@ class CalendarEventService
     /**
      * دریافت رویدادهای یک بازه زمانی مشخص برای کاربر
      */
-    public function getEventsForRange(Carbon $from, Carbon $to, User $user, array $sourceFilter = []): Collection
+    public function getEventsForRange(Carbon $from, Carbon $to, User $user, ?array $sourceFilter = null): Collection
     {
         $events = collect();
 
+        $shouldInclude = function (string $key) use ($sourceFilter): bool {
+            if (!$this->isSourceEnabled($key)) {
+                return false;
+            }
+            if ($sourceFilter === null) {
+                return true;
+            }
+            return in_array($key, $sourceFilter, true);
+        };
+
         // 1. ماژول نوبت‌دهی (Booking)
-        if ($this->isSourceEnabled('booking') && (empty($sourceFilter) || in_array('booking', $sourceFilter))) {
+        if ($shouldInclude('booking')) {
             $events = $events->concat($this->getBookingEvents($from, $to, $user));
         }
 
         // 2. ماژول وظایف (Tasks)
-        if ($this->isSourceEnabled('tasks') && (empty($sourceFilter) || in_array('tasks', $sourceFilter))) {
+        if ($shouldInclude('tasks')) {
             $events = $events->concat($this->getTaskEvents($from, $to, $user));
         }
 
         // 3. ماژول یادآوری‌ها (Reminders)
-        if ($this->isSourceEnabled('reminders') && (empty($sourceFilter) || in_array('reminders', $sourceFilter))) {
+        if ($shouldInclude('reminders')) {
             $events = $events->concat($this->getReminderEvents($from, $to, $user));
         }
 
         // 4. مناسبت‌ها و تعطیلات شمسی (Jalali Holidays)
-        if ($this->isSourceEnabled('jalali_holidays') && (empty($sourceFilter) || in_array('jalali_holidays', $sourceFilter))) {
+        if ($shouldInclude('jalali_holidays')) {
             $events = $events->concat($this->getJalaliHolidayEvents($from, $to, $user));
         }
 
         // 5. گوگل کلندر (Google Calendar)
-        if ($this->isSourceEnabled('google_calendar') && (empty($sourceFilter) || in_array('google_calendar', $sourceFilter))) {
+        if ($shouldInclude('google_calendar')) {
             if ($this->canUserViewGoogleCalendar($user)) {
                 $events = $events->concat($this->getGoogleCalendarEvents($from, $to, $user));
             }
@@ -356,6 +366,8 @@ class CalendarEventService
                 $startLocal  = $app->start_at_utc ? $app->start_at_utc->copy()->setTimezone($appTimezone) : null;
                 $jalaliDate  = $startLocal ? Jalalian::fromCarbon($startLocal) : null;
 
+                $clientLabel = config('clients.labels.singular', 'مشتری');
+
                 $client = $app->client;
                 $clientName = '';
                 if ($client) {
@@ -375,7 +387,7 @@ class CalendarEventService
                 }
 
                 if (empty($clientName)) {
-                    $clientName = 'کلاینت نامشخص';
+                    $clientName = $clientLabel . ' نامشخص';
                 }
 
                 $serviceName  = $app->service->name ?? 'نوبت';
@@ -385,7 +397,7 @@ class CalendarEventService
                     'id'          => 'booking_' . $app->id,
                     'raw_id'      => $app->id,
                     'title'       => "نوبت: {$serviceName} - {$clientName}",
-                    'description' => "کلاینت: {$clientName} | ارائه دهنده: {$providerName}",
+                    'description' => "{$clientLabel}: {$clientName} | ارائه دهنده: {$providerName}",
                     'datetime'    => $startLocal ? $startLocal->toIso8601String() : null,
                     'time'        => $jalaliDate ? $jalaliDate->format('H:i') : '',
                     'date_fa'     => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',

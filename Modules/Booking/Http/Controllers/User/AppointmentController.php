@@ -953,6 +953,7 @@ class AppointmentController extends Controller
             'notes'             => ['nullable', 'string'],
             'entry_time_local'  => ['nullable', 'string'],
             'exit_time_local'   => ['nullable', 'string'],
+            'cancel_reason'     => ['nullable', 'string', 'max:500'],
             'appointment_form_response_json' => ['nullable', 'string'],
         ]);
 
@@ -1046,6 +1047,15 @@ class AppointmentController extends Controller
         $appointment->provider_user_id = (int) $data['provider_user_id'];
         $appointment->client_id = (int) $client->id;
         $appointment->status = $data['status'];
+
+        if (in_array($data['status'], [Appointment::STATUS_CANCELED_BY_ADMIN, Appointment::STATUS_CANCELED_BY_CLIENT])) {
+            $appointment->cancel_reason = !empty($data['cancel_reason']) 
+                ? $data['cancel_reason'] 
+                : ($appointment->cancel_reason ?: ($data['status'] === Appointment::STATUS_CANCELED_BY_ADMIN ? 'لغو توسط ادمین' : 'لغو توسط مشتری'));
+        } elseif ($previousStatus !== $data['status']) {
+            $appointment->cancel_reason = null;
+        }
+
         $appointment->start_at_utc = $startUtc;
         $appointment->end_at_utc = $endUtc;
         $appointment->notes = $data['notes'] ?? null;

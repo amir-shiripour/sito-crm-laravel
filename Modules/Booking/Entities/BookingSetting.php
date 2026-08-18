@@ -50,6 +50,7 @@ class BookingSetting extends Model
             'show_service_description',
             'show_supplementary_info',
             'show_provider_info',
+            'ads',
             'key',
             'value',
         ];
@@ -75,7 +76,65 @@ class BookingSetting extends Model
             'show_service_description' => 'boolean',
             'show_supplementary_info' => 'boolean',
             'show_provider_info' => 'boolean',
+            'ads' => 'array',
         ];
+
+        public function getAdsAttribute($value): array
+        {
+            $defaults = [
+                'doctor_page' => [
+                    'enabled'         => false,
+                    'desktop_image'   => null,
+                    'mobile_image'    => null,
+                    'link'            => null,
+                    'open_in_new_tab' => true,
+                    'alt_text'        => null,
+                ],
+            ];
+
+            if (empty($value)) {
+                return $defaults;
+            }
+
+            $decoded = is_string($value) ? json_decode($value, true) : $value;
+            if (!is_array($decoded)) {
+                return $defaults;
+            }
+
+            return array_replace_recursive($defaults, $decoded);
+        }
+
+        public function isDoctorBannerEnabled(): bool
+        {
+            return (bool) ($this->ads['doctor_page']['enabled'] ?? false);
+        }
+
+        public function getDoctorBannerDesktopUrlAttribute(): ?string
+        {
+            $path = $this->ads['doctor_page']['desktop_image'] ?? null;
+            return $path ? asset('storage/' . $path) : null;
+        }
+
+        public function getDoctorBannerMobileUrlAttribute(): ?string
+        {
+            $path = $this->ads['doctor_page']['mobile_image'] ?? null;
+            return $path ? asset('storage/' . $path) : null;
+        }
+
+        public function getDoctorBannerLinkAttribute(): ?string
+        {
+            return $this->ads['doctor_page']['link'] ?? null;
+        }
+
+        public function getDoctorBannerOpenNewTabAttribute(): bool
+        {
+            return (bool) ($this->ads['doctor_page']['open_in_new_tab'] ?? true);
+        }
+
+        public function getDoctorBannerAltAttribute(): ?string
+        {
+            return $this->ads['doctor_page']['alt_text'] ?? null;
+        }
 
         public static function current(): self
         {

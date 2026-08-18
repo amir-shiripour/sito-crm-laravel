@@ -438,9 +438,71 @@ class SettingsController extends Controller
         }
 
         // ═══════════════════════════════════════
-        //  PART 6: Redirect back to the same tab
+        //  PART 6: Save Ads & Promotion Settings
+        // ═══════════════════════════════════════
+        $optimizer = app(\App\Services\ImageOptimizerService::class);
+        $currentAds = $settings->ads ?? [];
+        $doctorAds = $currentAds['doctor_page'] ?? [
+            'enabled'         => false,
+            'desktop_image'   => null,
+            'mobile_image'    => null,
+            'link'            => null,
+            'open_in_new_tab' => true,
+            'alt_text'        => null,
+        ];
+
+        $doctorAds['enabled'] = $request->boolean('ads_doctor_enabled');
+        $doctorAds['link'] = $request->filled('ads_doctor_link') ? trim((string)$request->input('ads_doctor_link')) : null;
+        $doctorAds['open_in_new_tab'] = $request->boolean('ads_doctor_open_new_tab', true);
+        $doctorAds['alt_text'] = $request->filled('ads_doctor_alt_text') ? trim((string)$request->input('ads_doctor_alt_text')) : null;
+
+        // Desktop Image Deletion
+        if ($request->boolean('delete_ads_doctor_desktop_image')) {
+            if (!empty($doctorAds['desktop_image'])) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($doctorAds['desktop_image']);
+            }
+            $doctorAds['desktop_image'] = null;
+        }
+
+        // Desktop Image Upload & Optimization
+        if ($request->hasFile('ads_doctor_desktop_image')) {
+            $desktopFile = $request->file('ads_doctor_desktop_image');
+            if ($desktopFile->isValid()) {
+                if (!empty($doctorAds['desktop_image'])) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($doctorAds['desktop_image']);
+                }
+                $doctorAds['desktop_image'] = $optimizer->uploadAndOptimize($desktopFile, 'booking/banners', 'public', 1920, 85);
+            }
+        }
+
+        // Mobile Image Deletion
+        if ($request->boolean('delete_ads_doctor_mobile_image')) {
+            if (!empty($doctorAds['mobile_image'])) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($doctorAds['mobile_image']);
+            }
+            $doctorAds['mobile_image'] = null;
+        }
+
+        // Mobile Image Upload & Optimization
+        if ($request->hasFile('ads_doctor_mobile_image')) {
+            $mobileFile = $request->file('ads_doctor_mobile_image');
+            if ($mobileFile->isValid()) {
+                if (!empty($doctorAds['mobile_image'])) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($doctorAds['mobile_image']);
+                }
+                $doctorAds['mobile_image'] = $optimizer->uploadAndOptimize($mobileFile, 'booking/banners', 'public', 1080, 85);
+            }
+        }
+
+        $currentAds['doctor_page'] = $doctorAds;
+        $settings->ads = $currentAds;
+        $settings->save();
+
+        // ═══════════════════════════════════════
+        //  PART 7: Redirect back to the same tab
         // ═══════════════════════════════════════
         $activeTab = $request->input('_active_tab', 'general');
         return redirect()->route('user.booking.settings.edit', ['tab' => $activeTab])
-            ->with('success', 'تنظیمات و برنامه زمانی ذخیره شد.');
-    }}
+            ->with('success', 'تنظیمات با موفقیت ذخیره شد.');
+    }
+}
