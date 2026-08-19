@@ -16,7 +16,7 @@ class Kernel extends ConsoleKernel
         //        $schedule->command('sms:process-scheduled')->everyMinute();
         $schedule->command('workflows:process')->everyMinute();
         //        $schedule->command('workflows:process')->everyFiveMinutes();
-        $schedule->command('booking:dispatch-reminders')->everyMinute();
+        // $schedule->command('booking:dispatch-reminders')->everyMinute();
         $schedule->command('booking:handle-payment-timeouts')->everyMinute();
 
         // دستور تست کرون - بعد از اطمینان از کارکرد، این خط را حذف کنید

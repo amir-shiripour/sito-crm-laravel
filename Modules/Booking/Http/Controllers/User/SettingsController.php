@@ -216,6 +216,27 @@ class SettingsController extends Controller
         $settings->allowed_roles = $syncRoleInput($normalizeRolesToIds($request->input('allowed_roles', [])), $oldAllowedRoles);
         $settings->statement_roles = $syncRoleInput($normalizeRolesToIds($request->input('statement_roles', [])), $normalizeRolesToIds($settings->statement_roles ?? []));
 
+        // ── Appointment Statuses ──
+        $appointmentStatusesInput = $request->input('appointment_statuses', []);
+        if (is_array($appointmentStatusesInput) && !empty($appointmentStatusesInput)) {
+            usort($appointmentStatusesInput, fn($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99));
+            $formattedAppointmentStatuses = [];
+            foreach ($appointmentStatusesInput as $st) {
+                if (empty($st['id'])) continue;
+                $formattedAppointmentStatuses[] = [
+                    'id' => trim($st['id']),
+                    'name' => trim($st['name'] ?? $st['id']),
+                    'color' => trim($st['color'] ?? '#6b7280'),
+                    'order' => (int) ($st['order'] ?? 1),
+                    'step_booking_enabled' => !empty($st['step_booking_enabled']),
+                    'schedule_booking_enabled' => !empty($st['schedule_booking_enabled']),
+                ];
+            }
+            if (!empty($formattedAppointmentStatuses)) {
+                $settings->appointment_statuses = $formattedAppointmentStatuses;
+            }
+        }
+
         // ═══════════════════════════════════════
         //  PART 2: Save Cure Settings DIRECTLY
         // ═══════════════════════════════════════

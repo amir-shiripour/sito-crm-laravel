@@ -119,13 +119,6 @@ class ClientPaymentController extends Controller
                 'cod' => 'پرداخت در محل / نقدی',
             ];
 
-            $availablePaymentMethods = [];
-            foreach ($activeMethods as $m) {
-                if (isset($allMethodLabels[$m])) {
-                    $availablePaymentMethods[$m] = $allMethodLabels[$m];
-                }
-            }
-
             $onlineGateways = [];
             if (($settingsMap['zarinpal_status'] ?? '') === 'active') {
                 $onlineGateways[] = ['id' => 'zarinpal', 'label' => 'درگاه زرین‌پال'];
@@ -136,31 +129,73 @@ class ClientPaymentController extends Controller
             if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
                 $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
             }
-            if (empty($onlineGateways)) {
-                $onlineGateways[] = ['id' => 'zarinpal', 'label' => 'زرین‌پال'];
-                $onlineGateways[] = ['id' => 'zibal', 'label' => 'زیبال'];
-            }
 
             $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) 
                 ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) 
                 : (is_array($settingsMap['bank_transfer_accounts'] ?? null) ? $settingsMap['bank_transfer_accounts'] : []);
 
-            $bankAccounts = array_map(function($acc) {
+            $bankAccounts = array_map(function($acc, $index) {
                 return [
-                    'id' => $acc['id'] ?? ($acc['bank_name'] ?? 'bank'),
+                    'id' => $acc['id'] ?? ($acc['bank_name'] ?? ('acc_' . $index)),
                     'bank_name' => $acc['bank_name'] ?? 'بانک',
                     'owner_name' => $acc['owner_name'] ?? ($acc['owner'] ?? ''),
-                    'card_number' => $acc['card_number'] ?? '',
+                    'card_number' => !empty($acc['card_number']) ? preg_replace('/[^0-9]/', '', $acc['card_number']) : '',
                     'account_number' => $acc['account_number'] ?? '',
                     'iban' => $acc['iban'] ?? '',
                 ];
-            }, $rawAccounts);
+            }, $rawAccounts, array_keys($rawAccounts));
+
+            $rawPos = is_string($settingsMap['pos_devices'] ?? null) ? (json_decode($settingsMap['pos_devices'], true) ?: []) : (array)($settingsMap['pos_devices'] ?? []);
+            $posDevices = array_values(array_map(fn($d) => [
+                'id' => $d['id'] ?? ($d['name'] ?? ''),
+                'label' => ($d['name'] ?? 'کارتخوان') . (!empty($d['account_number']) ? ' (حساب: ' . $d['account_number'] . ')' : '')
+            ], $rawPos));
+
+            $rawInstallments = is_string($settingsMap['installment_types'] ?? null)
+                ? (json_decode($settingsMap['installment_types'], true) ?: [])
+                : (array)($settingsMap['installment_types'] ?? []);
+
+            $installmentTypes = array_values(array_map(fn($i) => [
+                'id' => $i['id'] ?? ($i['title'] ?? ''),
+                'label' => ($i['title'] ?? 'طرح اقساطی') . (!empty($i['default_tier_config']['max_months']) ? ' (' . $i['default_tier_config']['max_months'] . ' ماهه)' : '')
+            ], $rawInstallments));
+
+            // بررسی دوطرفه: ۱. فعال بودن در چک‌باکس‌های "روش‌های پرداخت فعال سیستم" ۲. فعال بودن وضعیت اختصاصی آن روش
+            $availablePaymentMethods = [];
+
+            // ۱. درگاه پرداخت آنلاین
+            if (in_array('online', $activeMethods) && !empty($onlineGateways)) {
+                $availablePaymentMethods['online'] = $allMethodLabels['online'];
+            }
+
+            // ۲. انتقال بانکی (کارت به کارت / شبا)
+            if (in_array('transfer', $activeMethods) && ($settingsMap['bank_transfer_status'] ?? '') === 'active') {
+                $availablePaymentMethods['transfer'] = $allMethodLabels['transfer'];
+            }
+
+            // ۳. دستگاه کارتخوان (POS)
+            if (in_array('pos', $activeMethods) && ($settingsMap['pos_status'] ?? '') === 'active') {
+                $availablePaymentMethods['pos'] = $allMethodLabels['pos'];
+            }
+
+            // ۴. پرداخت اقساطی / چک
+            if (in_array('installment', $activeMethods) && ($settingsMap['installment_status'] ?? '') === 'active') {
+                $availablePaymentMethods['installment'] = $allMethodLabels['installment'];
+            }
+
+            // ۵. پرداخت در محل (نقد)
+            if (in_array('cod', $activeMethods) && ($settingsMap['cod_status'] ?? '') === 'active') {
+                $availablePaymentMethods['cod'] = $allMethodLabels['cod'];
+            }
 
             $paymentSubItems = [
                 'online' => $onlineGateways,
-                'transfer' => array_map(fn($a) => ['id' => $a['id'], 'label' => $a['bank_name'] . ' - ' . $a['owner_name']], $bankAccounts),
-                'pos' => [],
-                'installment' => [],
+                'transfer' => array_values(array_map(fn($a) => [
+                    'id' => $a['id'],
+                    'label' => ($a['bank_name'] ?: 'بانک') . ($a['owner_name'] ? ' - ' . $a['owner_name'] : '') . ($a['card_number'] ? ' (' . $a['card_number'] . ')' : '')
+                ], $bankAccounts)),
+                'pos' => $posDevices,
+                'installment' => $installmentTypes,
                 'cod' => []
             ];
 
@@ -239,6 +274,36 @@ class ClientPaymentController extends Controller
         ], [
             'receipt_file.required' => 'لطفاً تصویر یا فایل رسید پرداخت را آپلود نمایید.',
         ]);
+
+        $settingsMap = \Illuminate\Support\Facades\Schema::hasTable('settings')
+            ? \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray()
+            : [];
+
+        $activeRaw = $settingsMap['active_payment_methods'] ?? '[]';
+        $activeMethods = is_string($activeRaw) ? json_decode($activeRaw, true) : (array) $activeRaw;
+        if (empty($activeMethods) || !is_array($activeMethods)) {
+            $activeMethods = ['online', 'pos', 'transfer', 'cod', 'installment'];
+        }
+
+        $isMethodValid = false;
+        if ($method === 'online') {
+            $hasActiveGateway = ($settingsMap['zarinpal_status'] ?? '') === 'active'
+                || ($settingsMap['zibal_status'] ?? '') === 'active'
+                || ($settingsMap['behpardakht_status'] ?? '') === 'active';
+            $isMethodValid = in_array('online', $activeMethods) && $hasActiveGateway;
+        } elseif ($method === 'pos') {
+            $isMethodValid = in_array('pos', $activeMethods) && ($settingsMap['pos_status'] ?? '') === 'active';
+        } elseif ($method === 'transfer') {
+            $isMethodValid = in_array('transfer', $activeMethods) && ($settingsMap['bank_transfer_status'] ?? '') === 'active';
+        } elseif ($method === 'cod') {
+            $isMethodValid = in_array('cod', $activeMethods) && ($settingsMap['cod_status'] ?? '') === 'active';
+        } elseif ($method === 'installment') {
+            $isMethodValid = in_array('installment', $activeMethods) && ($settingsMap['installment_status'] ?? '') === 'active';
+        }
+
+        if (!$isMethodValid) {
+            return back()->with('error', 'روش پرداخت انتخاب شده غیرفعال یا نامعتبر است.');
+        }
 
         if ($method === 'online') {
             try {

@@ -51,6 +51,7 @@ class BookingSetting extends Model
             'show_supplementary_info',
             'show_provider_info',
             'ads',
+            'appointment_statuses',
             'key',
             'value',
         ];
@@ -77,6 +78,7 @@ class BookingSetting extends Model
             'show_supplementary_info' => 'boolean',
             'show_provider_info' => 'boolean',
             'ads' => 'array',
+            'appointment_statuses' => 'array',
         ];
 
         public function getAdsAttribute($value): array
@@ -136,6 +138,128 @@ class BookingSetting extends Model
             return $this->ads['doctor_page']['alt_text'] ?? null;
         }
 
+        public static function defaultAppointmentStatuses(): array
+        {
+            return [
+                [
+                    'id' => 'CONFIRMED',
+                    'name' => 'تایید شده',
+                    'color' => '#10b981',
+                    'order' => 1,
+                    'step_booking_enabled' => true,
+                    'schedule_booking_enabled' => true,
+                ],
+                [
+                    'id' => 'PENDING',
+                    'name' => 'در انتظار تایید',
+                    'color' => '#f59e0b',
+                    'order' => 2,
+                    'step_booking_enabled' => true,
+                    'schedule_booking_enabled' => true,
+                ],
+                [
+                    'id' => 'PENDING_PAYMENT',
+                    'name' => 'در انتظار پرداخت',
+                    'color' => '#f97316',
+                    'order' => 3,
+                    'step_booking_enabled' => true,
+                    'schedule_booking_enabled' => true,
+                ],
+                [
+                    'id' => 'DONE',
+                    'name' => 'انجام شده',
+                    'color' => '#3b82f6',
+                    'order' => 4,
+                    'step_booking_enabled' => true,
+                    'schedule_booking_enabled' => true,
+                ],
+                [
+                    'id' => 'CANCELED_BY_CLIENT',
+                    'name' => 'لغو توسط مشتری',
+                    'color' => '#ef4444',
+                    'order' => 5,
+                    'step_booking_enabled' => true,
+                    'schedule_booking_enabled' => true,
+                ],
+                [
+                    'id' => 'CANCELED_BY_ADMIN',
+                    'name' => 'لغو توسط ادمین',
+                    'color' => '#dc2626',
+                    'order' => 6,
+                    'step_booking_enabled' => true,
+                    'schedule_booking_enabled' => true,
+                ],
+                [
+                    'id' => 'NO_SHOW',
+                    'name' => 'عدم حضور',
+                    'color' => '#64748b',
+                    'order' => 7,
+                    'step_booking_enabled' => true,
+                    'schedule_booking_enabled' => true,
+                ],
+                [
+                    'id' => 'RESCHEDULED',
+                    'name' => 'جابجا شده',
+                    'color' => '#8b5cf6',
+                    'order' => 8,
+                    'step_booking_enabled' => true,
+                    'schedule_booking_enabled' => true,
+                ],
+                [
+                    'id' => 'DRAFT',
+                    'name' => 'پیش‌نویس',
+                    'color' => '#6b7280',
+                    'order' => 9,
+                    'step_booking_enabled' => true,
+                    'schedule_booking_enabled' => true,
+                ],
+            ];
+        }
+
+        public function getAppointmentStatusesAttribute($value): array
+        {
+            $defaults = static::defaultAppointmentStatuses();
+            if (empty($value)) {
+                return $defaults;
+            }
+
+            $saved = is_string($value) ? json_decode($value, true) : $value;
+            if (!is_array($saved) || empty($saved)) {
+                return $defaults;
+            }
+
+            $savedMap = [];
+            foreach ($saved as $item) {
+                if (!empty($item['id'])) {
+                    $savedMap[$item['id']] = $item;
+                }
+            }
+
+            $result = [];
+            foreach ($defaults as $def) {
+                $id = $def['id'];
+                if (isset($savedMap[$id])) {
+                    $merged = array_merge($def, $savedMap[$id]);
+                    $merged['step_booking_enabled'] = (bool)($merged['step_booking_enabled'] ?? true);
+                    $merged['schedule_booking_enabled'] = (bool)($merged['schedule_booking_enabled'] ?? true);
+                    $result[] = $merged;
+                    unset($savedMap[$id]);
+                } else {
+                    $result[] = $def;
+                }
+            }
+
+            foreach ($savedMap as $extra) {
+                $extra['step_booking_enabled'] = (bool)($extra['step_booking_enabled'] ?? true);
+                $extra['schedule_booking_enabled'] = (bool)($extra['schedule_booking_enabled'] ?? true);
+                $result[] = $extra;
+            }
+
+            usort($result, fn($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99));
+
+            return $result;
+        }
+
         public static function current(): self
         {
             $row = static::query()->whereNull('key')->first();
@@ -189,6 +313,7 @@ class BookingSetting extends Model
             'show_service_description' => true,
             'show_supplementary_info' => true,
             'show_provider_info' => true,
+            'appointment_statuses' => static::defaultAppointmentStatuses(),
         ]);
     }
 
