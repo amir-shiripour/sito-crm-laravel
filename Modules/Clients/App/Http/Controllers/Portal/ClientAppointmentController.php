@@ -151,13 +151,6 @@ class ClientAppointmentController extends Controller
             'installment' => 'پرداخت قسطی / چک',
         ];
 
-        $availablePaymentMethods = [];
-        foreach ($activeMethods as $m) {
-            if (isset($allMethodLabels[$m])) {
-                $availablePaymentMethods[$m] = $allMethodLabels[$m];
-            }
-        }
-
         $posDevices = is_string($settingsMap['pos_devices'] ?? null) ? (json_decode($settingsMap['pos_devices'], true) ?: []) : [];
         $bankAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) : [];
         $installmentTypes = is_string($settingsMap['installment_types'] ?? null) ? (json_decode($settingsMap['installment_types'], true) ?: []) : [];
@@ -171,6 +164,34 @@ class ClientAppointmentController extends Controller
         }
         if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
             $onlineGateways[] = ['id' => 'بهپرداخت ملت', 'label' => 'درگاه بهپرداخت ملت'];
+        }
+
+        // بررسی دوطرفه: ۱. فعال بودن در چک‌باکس‌های "روش‌های پرداخت فعال سیستم" ۲. فعال بودن وضعیت اختصاصی آن روش
+        $availablePaymentMethods = [];
+
+        // ۱. درگاه پرداخت آنلاین
+        if (in_array('online', $activeMethods) && !empty($onlineGateways)) {
+            $availablePaymentMethods['online'] = $allMethodLabels['online'];
+        }
+
+        // ۲. دستگاه کارتخوان (POS)
+        if (in_array('pos', $activeMethods) && ($settingsMap['pos_status'] ?? '') === 'active') {
+            $availablePaymentMethods['pos'] = $allMethodLabels['pos'];
+        }
+
+        // ۳. انتقال بانکی (کارت به کارت / شبا)
+        if (in_array('transfer', $activeMethods) && ($settingsMap['bank_transfer_status'] ?? '') === 'active') {
+            $availablePaymentMethods['transfer'] = $allMethodLabels['transfer'];
+        }
+
+        // ۴. پرداخت در محل (نقد)
+        if (in_array('cod', $activeMethods) && ($settingsMap['cod_status'] ?? '') === 'active') {
+            $availablePaymentMethods['cod'] = $allMethodLabels['cod'];
+        }
+
+        // ۵. پرداخت اقساطی / چک
+        if (in_array('installment', $activeMethods) && ($settingsMap['installment_status'] ?? '') === 'active') {
+            $availablePaymentMethods['installment'] = $allMethodLabels['installment'];
         }
 
         $paymentSubItems = [

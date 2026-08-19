@@ -278,10 +278,6 @@ class AppointmentService
 
                     $this->triggerStatusWorkflows($appt, $oldStatus);
 
-                    if ($appt->status === Appointment::STATUS_CONFIRMED) {
-                        $this->onAppointmentConfirmed($appt);
-                    }
-
                     $this->audit->log(
                         action: 'PAYMENT_PAID_AND_APPOINTMENT_STATUS_UPDATED',
                         entityType: 'APPOINTMENT',
@@ -1201,8 +1197,12 @@ class AppointmentService
         // 1. تریگر کلی تغییر وضعیت
         $this->triggerWorkflow('appointment_status_changed', $appointment);
 
-        // 2. تریگر اختصاصی برای وضعیت جدید (مثلاً status_pending, status_confirmed)
-        $this->triggerWorkflow('status_' . $appointment->status, $appointment);
+        // 2. تریگر اختصاصی برای وضعیت جدید
+        if ($appointment->status === Appointment::STATUS_CONFIRMED) {
+            $this->onAppointmentConfirmed($appointment);
+        } else {
+            $this->triggerWorkflow('status_' . $appointment->status, $appointment);
+        }
 
         // 3. تریگرهای گروهی (برای سازگاری با قبل یا گروه‌بندی منطقی)
         if (in_array($appointment->status, [Appointment::STATUS_CANCELED_BY_ADMIN, Appointment::STATUS_CANCELED_BY_CLIENT])) {

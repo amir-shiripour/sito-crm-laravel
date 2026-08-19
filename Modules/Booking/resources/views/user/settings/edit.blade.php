@@ -380,6 +380,121 @@
                             </div>
                         </div>
                     </div>
+
+                    {{-- کارت ۳: مدیریت وضعیت‌های نوبت --}}
+                    @php
+                        $appointmentStatusesList = old('appointment_statuses', $settings->appointment_statuses ?? []);
+                        if (empty($appointmentStatusesList) || !is_array($appointmentStatusesList)) {
+                            $appointmentStatusesList = \Modules\Booking\Entities\BookingSetting::defaultAppointmentStatuses();
+                        }
+                    @endphp
+                    <div class="{{ $cardClass }}">
+                        <div class="{{ $headerClass }}">
+                            <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">مدیریت وضعیت‌های نوبت</h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی وضعیت‌های نوبت، پالت رنگ و فعال‌سازی در ثبت نوبت مرحله‌ای و برنامه زمانی</p>
+                            </div>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div class="space-y-3">
+                                @foreach($appointmentStatusesList as $idx => $st)
+                                    @php
+                                        $stId = $st['id'] ?? '';
+                                        $stName = $st['name'] ?? $stId;
+                                        $stColor = $st['color'] ?? '#6b7280';
+                                        $stOrder = $st['order'] ?? ($idx + 1);
+                                        $stepEnabled = isset($st['step_booking_enabled']) ? (bool)$st['step_booking_enabled'] : true;
+                                        $schedEnabled = isset($st['schedule_booking_enabled']) ? (bool)$st['schedule_booking_enabled'] : true;
+                                    @endphp
+                                    <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20 transition hover:border-indigo-200 dark:hover:border-indigo-800"
+                                         x-data="{
+                                             color: '{{ $stColor }}',
+                                             name: '{{ addslashes($stName) }}',
+                                             stepBooking: {{ $stepEnabled ? 'true' : 'false' }},
+                                             scheduleBooking: {{ $schedEnabled ? 'true' : 'false' }}
+                                         }">
+                                        <input type="hidden" name="appointment_statuses[{{ $idx }}][id]" value="{{ $stId }}">
+                                        <input type="hidden" name="appointment_statuses[{{ $idx }}][order]" value="{{ $stOrder }}">
+
+                                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                            {{-- شناسه، نام و رنگ وضعیت --}}
+                                            <div class="flex flex-wrap items-center gap-3 flex-1">
+                                                {{-- پیش‌نمایش نشان (Badge) --}}
+                                                <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition shadow-sm min-w-[110px] justify-center"
+                                                     :style="`background-color: ${color}15; color: ${color}; border-color: ${color}35;`">
+                                                    <span class="w-2 h-2 rounded-full shrink-0" :style="`background-color: ${color}`"></span>
+                                                    <span x-text="name || '{{ $stId }}'"></span>
+                                                </div>
+
+                                                {{-- انتخابگر رنگ --}}
+                                                <div class="flex items-center gap-1.5">
+                                                    <input type="color"
+                                                           name="appointment_statuses[{{ $idx }}][color]"
+                                                           x-model="color"
+                                                           class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer shrink-0 p-0.5">
+                                                    <input type="text"
+                                                           x-model="color"
+                                                           class="{{ $inputClass }} text-xs text-center font-mono py-1.5 px-2 w-24 shrink-0"
+                                                           placeholder="#000000">
+                                                </div>
+
+                                                {{-- نام نمایشی --}}
+                                                <div class="flex-1 min-w-[140px]">
+                                                    <input type="text"
+                                                           name="appointment_statuses[{{ $idx }}][name]"
+                                                           x-model="name"
+                                                           class="{{ $inputClass }} text-xs py-1.5 font-medium"
+                                                           placeholder="نام وضعیت">
+                                                </div>
+                                            </div>
+
+                                            {{-- سوییچ‌ها / گزینه‌ها --}}
+                                            <div class="flex flex-wrap items-center gap-4 sm:gap-6 pt-3 lg:pt-0 border-t lg:border-t-0 border-gray-200 dark:border-gray-700 shrink-0">
+                                                {{-- گزینه ۱: فعال برای ثبت نوبت مرحله ایی --}}
+                                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                                    <input type="hidden" name="appointment_statuses[{{ $idx }}][step_booking_enabled]" value="0">
+                                                    <div class="relative inline-flex items-center shrink-0">
+                                                        <input type="checkbox"
+                                                               name="appointment_statuses[{{ $idx }}][step_booking_enabled]"
+                                                               value="1"
+                                                               x-model="stepBooking"
+                                                               @checked($stepEnabled)
+                                                               class="sr-only peer">
+                                                        <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                                    </div>
+                                                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                                        فعال برای ثبت نوبت مرحله ایی
+                                                    </span>
+                                                </label>
+
+                                                {{-- گزینه ۲: فعال برای برنامه زمانی نوبت دهی --}}
+                                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                                    <input type="hidden" name="appointment_statuses[{{ $idx }}][schedule_booking_enabled]" value="0">
+                                                    <div class="relative inline-flex items-center shrink-0">
+                                                        <input type="checkbox"
+                                                               name="appointment_statuses[{{ $idx }}][schedule_booking_enabled]"
+                                                               value="1"
+                                                               x-model="scheduleBooking"
+                                                               @checked($schedEnabled)
+                                                               class="sr-only peer">
+                                                        <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                                    </div>
+                                                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                                        فعال برای برنامه زمانی نوبت دهی
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- ستون راست (کوچکتر) --}}

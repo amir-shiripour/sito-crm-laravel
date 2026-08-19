@@ -541,7 +541,8 @@
             paymentId: null,
             paymentAmount: '0',
             rawAmountNumber: '0',
-            method: 'online',
+            availableMethods: @json(array_keys($availablePaymentMethods ?? [])),
+            method: (@json(array_keys($availablePaymentMethods ?? [])))[0] || '',
             subItem: '',
             subItemsMap: @json($paymentSubItems ?? []),
             baseUrl: '{{ url("clients/payments") }}',
@@ -594,8 +595,8 @@
                 this.paymentAmount = amount;
                 this.rawAmountNumber = amount.toString().replace(/,/g, '').replace(/[^0-9]/g, '');
                 
-                const methods = Object.keys(this.subItemsMap || {});
-                this.method = methods.length > 0 ? methods[0] : 'online';
+                const defaultMethod = (this.availableMethods && this.availableMethods.length > 0) ? this.availableMethods[0] : '';
+                this.method = defaultMethod;
                 this.activeBankIndex = 0;
                 this.copiedKey = null;
                 this.receiptFileName = '';
