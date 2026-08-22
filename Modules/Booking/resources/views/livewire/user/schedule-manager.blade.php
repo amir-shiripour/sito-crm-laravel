@@ -134,8 +134,20 @@
                 </div>
             </div>
 
-            {{-- View Switchers (Day/Week/Month & Grid/Timeline) --}}
+            {{-- View Switchers (Day/Week/Month & Grid/Timeline & Show Empty Slots) --}}
             <div class="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+                {{-- Show Empty Slots Toggle (Visible in Weekly view) --}}
+                @if ($calendarView === 'week')
+                    <button type="button"
+                            wire:click="toggleShowEmptySlots"
+                            class="px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 border shadow-2xs {{ $showEmptySlots ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200' : 'bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700/80 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800' }}"
+                            title="نمایش یا عدم نمایش اسلات‌های خالی در تقویم هفتگی">
+                        <span class="w-2.5 h-2.5 rounded-full {{ $showEmptySlots ? 'bg-emerald-500 ring-2 ring-emerald-300 dark:ring-emerald-800' : 'bg-gray-400' }}"></span>
+                        <span>نمایش اسلات‌های خالی:</span>
+                        <span class="font-extrabold">{{ $showEmptySlots ? 'فعال' : 'غیرفعال' }}</span>
+                    </button>
+                @endif
+
                 <div class="flex items-center bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700/80">
                     <button wire:click="setCalendarView('day')" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-black transition flex items-center gap-1 {{ $calendarView === 'day' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-xs border border-gray-200/50 dark:border-gray-700' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/50 dark:hover:bg-gray-800/50' }}">
                         📅 روزانه
@@ -1112,13 +1124,17 @@
                                     </div>
                                 </div>
 
-                                 {{-- Appointments List --}}
-                                <div class="p-3.5 flex-1 space-y-3 min-h-[170px]">
+                                 {{-- Appointments & Empty Slots List --}}
+                                <div class="p-3.5 flex-1 space-y-2.5 min-h-[170px]">
                                     @if ($wDay['is_closed'] && empty($wDay['appointments']))
                                         <div class="p-6 text-center text-xs font-black text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 rounded-2xl border border-rose-200 dark:border-rose-900/60">
                                             {{ config('booking.labels.provider') }} در این روز حضور ندارد یا تعطیل رسمی است.
                                         </div>
-                                    @elseif (empty($wDay['appointments']))
+                                    @elseif ($showEmptySlots && empty($wDay['items']))
+                                        <div class="p-6 text-center text-xs font-black text-gray-400 dark:text-gray-500 bg-white/70 dark:bg-gray-800/60 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+                                            هیچ نوبت یا اسلات کاری فعالی برای این روز وجود ندارد.
+                                        </div>
+                                    @elseif (!$showEmptySlots && empty($wDay['appointments']))
                                         <div class="p-6 text-center text-xs font-black text-gray-400 dark:text-gray-500 bg-white/70 dark:bg-gray-800/60 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
                                             هیچ نوبتی برای این روز ثبت نشده است.
                                         </div>
@@ -1128,59 +1144,93 @@
                                                 🌙 این روز تعطیل است (نوبت‌های ثبت‌شده قبلی)
                                             </div>
                                         @endif
-                                        @foreach ($wDay['appointments'] as $mApt)
-                                            @php
-                                                $wStatusBadge = match($mApt['status']) {
-                                                    \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => ['label' => 'قطعی', 'class' => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_DRAFT => ['label' => 'پیش‌نویس', 'class' => 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 border-slate-300 dark:border-slate-700'],
-                                                    \Modules\Booking\Entities\Appointment::STATUS_DONE => ['label' => 'انجام شده', 'class' => 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-700'],
-                                                    default => ['label' => 'در انتظار', 'class' => 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-700'],
-                                                };
-                                            @endphp
-                                            <div wire:click="openDetailsModal({{ $mApt['id'] }})"
-                                                 class="p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-500 dark:hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group border-r-4 border-r-indigo-500 shadow-2xs">
-                                                
-                                                {{-- Patient & Service Details --}}
-                                                <div class="flex items-center gap-3 min-w-0 flex-1">
-                                                    <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center flex-none shadow-xs">
-                                                        {{ mb_substr($mApt['client_name'], 0, 1) }}
-                                                    </div>
-                                                    <div class="truncate">
-                                                        <h5 class="text-sm font-black text-gray-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                                            {{ $mApt['client_name'] }}
-                                                        </h5>
-                                                        <p class="text-xs font-bold text-gray-600 dark:text-gray-300 truncate mt-0.5">
-                                                            {{ $mApt['service_name'] }}
-                                                        </p>
-                                                    </div>
-                                                </div>
 
-                                                {{-- Time & Status Badges --}}
-                                                <div class="flex items-center justify-between sm:justify-end gap-2 flex-none pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700/60">
-                                                    {{-- Time Badge (Pure Black in Light / Pure White in Dark) --}}
-                                                    <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-black text-xs dir-ltr shadow-xs">
-                                                        <svg class="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        <span>{{ $mApt['start_time'] }}</span>
-                                                        <span class="text-[10px] opacity-70 font-normal">تا</span>
-                                                        <span>{{ $mApt['end_time'] }}</span>
+                                        @php
+                                            $displayList = $showEmptySlots ? ($wDay['items'] ?? []) : array_map(fn($a) => ['type' => 'appointment', 'data' => $a], $wDay['appointments'] ?? []);
+                                        @endphp
+
+                                        @foreach ($displayList as $item)
+                                            @if ($item['type'] === 'appointment')
+                                                @php
+                                                    $mApt = $item['data'];
+                                                    $wStatusBadge = match($mApt['status']) {
+                                                        \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => ['label' => 'قطعی', 'class' => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'],
+                                                        \Modules\Booking\Entities\Appointment::STATUS_DRAFT => ['label' => 'پیش‌نویس', 'class' => 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 border-slate-300 dark:border-slate-700'],
+                                                        \Modules\Booking\Entities\Appointment::STATUS_DONE => ['label' => 'انجام شده', 'class' => 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-700'],
+                                                        default => ['label' => 'در انتظار', 'class' => 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-700'],
+                                                    };
+                                                @endphp
+                                                <div wire:click="openDetailsModal({{ $mApt['id'] }})"
+                                                     class="p-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-500 dark:hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group border-r-4 border-r-indigo-500 shadow-2xs">
+                                                    
+                                                    {{-- Patient & Service Details --}}
+                                                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                                                        <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center flex-none shadow-xs">
+                                                            {{ mb_substr($mApt['client_name'], 0, 1) }}
+                                                        </div>
+                                                        <div class="truncate">
+                                                            <h5 class="text-sm font-black text-gray-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                                                {{ $mApt['client_name'] }}
+                                                            </h5>
+                                                            <p class="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                                                {{ $mApt['service_name'] }}
+                                                            </p>
+                                                        </div>
                                                     </div>
 
-                                                    {{-- Status Badge --}}
-                                                    <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg border {{ $wStatusBadge['class'] }}">
-                                                        {{ $wStatusBadge['label'] }}
-                                                    </span>
+                                                    {{-- Time & Status Badges --}}
+                                                    <div class="flex items-center justify-between sm:justify-end gap-2 flex-none pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700/60">
+                                                        {{-- Time Badge --}}
+                                                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-black text-xs dir-ltr shadow-xs">
+                                                            <svg class="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span>{{ $mApt['start_time'] }}</span>
+                                                            <span class="text-[10px] opacity-70 font-normal">تا</span>
+                                                            <span>{{ $mApt['end_time'] }}</span>
+                                                        </div>
+
+                                                        {{-- Status Badge --}}
+                                                        <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg border {{ $wStatusBadge['class'] }}">
+                                                            {{ $wStatusBadge['label'] }}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            @elseif ($item['type'] === 'empty_slot')
+                                                @php $eSlot = $item['data']; @endphp
+                                                <div wire:click="openCreateModal({{ $wpData['provider']->id }}, '{{ $eSlot['start_time'] }}', '{{ $wDay['jalali_date'] }}')"
+                                                     class="p-2.5 rounded-2xl border border-dashed border-emerald-300 dark:border-emerald-700/70 bg-emerald-50/40 dark:bg-emerald-950/20 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40 hover:border-emerald-500 transition-all cursor-pointer flex items-center justify-between gap-2 group shadow-2xs">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-black text-xs flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                            +
+                                                        </div>
+                                                        <span class="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                                                            اسلات خالی
+                                                        </span>
+                                                        @if (($eSlot['capacity'] ?? 1) > 1)
+                                                            <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-200/70 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
+                                                                {{ $eSlot['remaining_capacity'] }} از {{ $eSlot['capacity'] }}
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="px-2 py-0.5 rounded-lg bg-white/90 dark:bg-gray-800 text-[11px] font-black text-gray-800 dark:text-gray-200 dir-ltr border border-emerald-200 dark:border-emerald-800/80 shadow-2xs">
+                                                            {{ $eSlot['start_time'] }} - {{ $eSlot['end_time'] }}
+                                                        </span>
+                                                        <span class="text-[10px] font-black text-emerald-700 dark:text-emerald-400 group-hover:underline">
+                                                            ثبت ↵
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            @endif
                                         @endforeach
                                     @endif
                                 </div>
 
                                 {{-- Card Footer --}}
-                                @if (!$wDay['is_closed'])
+                                @if (!$wDay['is_closed'] && empty($wDay['is_past']))
                                     <div class="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700/80 flex items-center justify-between gap-2">
-                                        <button wire:click="openCreateModal({{ $wpData['provider']->id }}, '09:00')"
+                                        <button wire:click="openCreateModal({{ $wpData['provider']->id }}, '09:00', '{{ $wDay['jalali_date'] }}')"
                                                 class="flex-1 py-2.5 px-3 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-500/20">
                                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                                             ثبت نوبت جدید
@@ -1188,6 +1238,17 @@
                                         <button wire:click="goToDay('{{ $wDay['jalali_date'] }}')"
                                                 class="px-3.5 py-2.5 rounded-xl text-xs font-extrabold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700/80 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center gap-1 border border-gray-200 dark:border-gray-600"
                                                 title="ورود به تقویم کامل روز">
+                                            روزانه ↵
+                                        </button>
+                                    </div>
+                                @elseif (!$wDay['is_closed'])
+                                    <div class="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700/80 flex items-center justify-between gap-2">
+                                        <div class="flex-1 py-2 text-center text-xs font-extrabold text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-xl">
+                                            ⏳ زمان این روز سپری شده است
+                                        </div>
+                                        <button wire:click="goToDay('{{ $wDay['jalali_date'] }}')"
+                                                class="px-3.5 py-2.5 rounded-xl text-xs font-extrabold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700/80 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center gap-1 border border-gray-200 dark:border-gray-600"
+                                                title="مشاهده جزئیات روز">
                                             روزانه ↵
                                         </button>
                                     </div>
@@ -1399,15 +1460,26 @@
 
                         {{-- Status & Time Row --}}
                         <div class="grid grid-cols-2 gap-3">
-                            {{-- Locked Draft Status Badge --}}
+                            {{-- Dynamic Status Selector from Settings --}}
                             <div>
                                 <label class="block text-gray-700 dark:text-gray-300 mb-1.5 font-semibold">وضعیت نوبت</label>
-                                <div class="w-full bg-indigo-50/90 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-xl px-3 py-2.5 text-indigo-950 dark:text-indigo-100 text-xs font-extrabold flex items-center justify-between shadow-2xs">
-                                    <span class="flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-                                        پیش‌نویس
-                                    </span>
-                                    <span class="text-[9px] font-normal opacity-70">ثبت اولیه</span>
+                                @php
+                                    $availableStatuses = $this->modalAvailableStatuses;
+                                    $currentSelectedStatus = collect($availableStatuses)->firstWhere('id', $modalStatus);
+                                    $currentColor = $currentSelectedStatus['color'] ?? '#6366f1';
+                                @endphp
+                                <div class="relative">
+                                    <select wire:model.live="modalStatus"
+                                            class="w-full bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl pr-8 pl-3 py-2.5 text-gray-900 dark:text-gray-100 text-xs font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer">
+                                        @forelse ($availableStatuses as $st)
+                                            <option value="{{ $st['id'] }}">{{ $st['name'] }}</option>
+                                        @empty
+                                            <option value="{{ \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED }}">تایید شده</option>
+                                        @endforelse
+                                    </select>
+                                    <div class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center">
+                                        <span class="w-3 h-3 rounded-full shrink-0 shadow-xs" style="background-color: {{ $currentColor }};"></span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1438,7 +1510,7 @@
                         </button>
                         <button wire:click="saveNewAppointment" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            ثبت پیش‌نویس نوبت
+                            ثبت نوبت
                         </button>
                     </div>
                 </div>

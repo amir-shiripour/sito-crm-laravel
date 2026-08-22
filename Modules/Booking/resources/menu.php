@@ -97,6 +97,25 @@ return [
         'position'  => 13,
     ],
 
+    // صف انتظار
+    [
+        'title'      => __('booking::menu.waitlist'),
+        'route'      => 'user.booking.waitlist.index',
+        'permission' => 'booking.appointments.view',
+        'show'       => function() {
+            return \Modules\Booking\Entities\BookingSetting::isQueueEnabled() &&
+                   auth()->user()?->can('booking.appointments.view');
+        },
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <circle cx="9" cy="7" r="4" />
+            <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+            <path d="M16 11l2 2l4 -4" />
+        </svg>',
+        'group'     => 'booking',
+        'position'  => 13.5,
+    ],
+
     // صورت وضعیت
     [
         'title'      => __('booking::menu.statement'),

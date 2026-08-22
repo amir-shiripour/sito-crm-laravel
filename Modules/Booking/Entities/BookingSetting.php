@@ -52,12 +52,16 @@ class BookingSetting extends Model
             'show_provider_info',
             'ads',
             'appointment_statuses',
+            'queue_enabled',
+            'queue_max_size',
             'key',
             'value',
         ];
 
         protected $casts = [
             'global_online_booking_enabled' => 'boolean',
+            'queue_enabled' => 'boolean',
+            'queue_max_size' => 'integer',
             'allow_role_service_creation' => 'boolean',
             'allowed_roles' => 'array',
             'statement_roles' => 'array',
@@ -315,6 +319,12 @@ class BookingSetting extends Model
             'show_provider_info' => true,
             'appointment_statuses' => static::defaultAppointmentStatuses(),
         ]);
+    }
+
+    public static function isQueueEnabled(): bool
+    {
+        $setting = static::current();
+        return (bool) ($setting->queue_enabled ?? false);
     }
 
     public static function getValue(string $key, $default = null)
