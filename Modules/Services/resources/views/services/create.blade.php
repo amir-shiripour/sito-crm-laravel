@@ -203,27 +203,27 @@
                                     }
                                 }" class="relative">
                                     <input type="hidden" name="accounting_category_id" :value="selectedId">
-                                    
-                                    <button type="button" @click="open = !open" 
+
+                                    <button type="button" @click="open = !open"
                                             class="{{ $inputClass }} flex items-center justify-between cursor-pointer w-full text-start">
                                         <span x-text="selectedTitle || 'بدون سرفصل مالی'" class="truncate text-sm"></span>
                                         <svg class="w-4 h-4 text-gray-400 shrink-0 ms-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                                     </button>
 
-                                    <div x-show="open" @click.outside="open = false" x-cloak 
+                                    <div x-show="open" @click.outside="open = false" x-cloak
                                          class="absolute z-50 mt-1.5 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-2 max-h-64 overflow-y-auto">
                                         <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
-                                            <input type="text" x-model="search" placeholder="جستجو در سرفصل‌ها..." 
+                                            <input type="text" x-model="search" placeholder="جستجو در سرفصل‌ها..."
                                                    class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
                                         </div>
-                                        
-                                        <div @click="select(null)" 
+
+                                        <div @click="select(null)"
                                              class="px-3 py-2 text-xs rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-gray-500 font-bold mb-1">
                                             بدون سرفصل مالی
                                         </div>
 
                                         <template x-for="opt in filteredOptions" :key="opt.id">
-                                            <div @click="select(opt)" 
+                                            <div @click="select(opt)"
                                                  class="px-3 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors"
                                                  :class="{ 'bg-indigo-50/70 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-bold': selectedId === opt.id }"
                                                  x-text="opt.title">
@@ -447,13 +447,56 @@
 
                                 <div
                                     x-show="field.type === 'select' || field.type === 'radio' || field.type === 'multiselect'"
-                                    class="mb-5">
-                                    <label class="block text-xs font-bold text-gray-600 mb-2">گزینه‌ها (هر خط یک
-                                        گزینه)</label>
-                                    <textarea :name="'custom_fields[' + idx + '][options_text]'"
-                                              x-model="field.options_text" rows="4"
-                                              class="{{ $inputClass }} resize-none"
-                                              placeholder="گزینه اول&#10;گزینه دوم"></textarea>
+                                    class="mb-5 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                            گزینه‌ها
+                                            <span x-show="field.has_pricing" class="text-indigo-600 dark:text-indigo-400 font-semibold">(تعیین عنوان و قیمت اختصاصی هر گزینه)</span>
+                                        </label>
+                                        <button type="button" @click="addOption(field)"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg hover:bg-indigo-100 transition-colors">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                            افزودن گزینه
+                                        </button>
+                                    </div>
+
+                                    <div class="space-y-2">
+                                        <template x-for="(opt, optIdx) in (field.options || [])" :key="optIdx">
+                                            <div class="flex items-center gap-2 p-2.5 bg-gray-50/80 dark:bg-gray-900/40 rounded-xl border border-gray-200/70 dark:border-gray-700/60">
+                                                <span class="w-6 h-6 flex items-center justify-center text-xs font-bold text-gray-400 dark:text-gray-500 shrink-0" x-text="optIdx + 1"></span>
+                                                <div class="flex-1">
+                                                    <input type="text"
+                                                           :name="'custom_fields[' + idx + '][options][' + optIdx + '][label]'"
+                                                           x-model="opt.label"
+                                                           class="{{ $inputClass }} py-2 text-xs"
+                                                           placeholder="عنوان گزینه (مثال: هاست ۱ گیگ)" required>
+                                                </div>
+                                                <div class="w-36 sm:w-44" x-show="field.has_pricing">
+                                                    <div class="relative">
+                                                        <input type="text"
+                                                               :value="formatPriceDisplay(opt.price)"
+                                                               @input="handleOptionPriceInput($event, opt)"
+                                                               class="{{ $inputClass }} py-2 text-xs text-center dir-ltr pe-12"
+                                                               placeholder="قیمت: ۰">
+                                                        <input type="hidden"
+                                                               :name="'custom_fields[' + idx + '][options][' + optIdx + '][price]'"
+                                                               :value="opt.price || 0">
+                                                        <span class="absolute end-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                    </div>
+                                                </div>
+                                                <input type="hidden" :name="'custom_fields[' + idx + '][options][' + optIdx + '][pricing_type]'" :value="opt.pricing_type || 'fixed'">
+                                                <button type="button" @click="removeOption(field, optIdx)"
+                                                        class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0"
+                                                        title="حذف گزینه">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                </button>
+                                            </div>
+                                        </template>
+
+                                        <div x-show="!field.options || field.options.length === 0" class="p-4 text-center text-xs text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
+                                            هنوز گزینه‌ای اضافه نشده است. روی دکمه «افزودن گزینه» کلیک کنید.
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
@@ -483,7 +526,12 @@
 
                                 <div x-show="field.has_pricing" x-collapse
                                      class="p-5 bg-linear-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-xl">
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <template x-if="field.type === 'multiselect' || field.type === 'select' || field.type === 'radio'">
+                                        <div class="text-xs text-indigo-800 dark:text-indigo-300 font-medium">
+                                             قیمت هر گزینه را می‌توانید به صورت مجزا در بخش «گزینه‌ها» بالا وارد کنید. همچنین در صورت تمایل می‌توانید مبلغ پیش‌فرضی در زیر تعیین نمایید.
+                                        </div>
+                                    </template>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" :class="(field.type === 'multiselect' || field.type === 'select' || field.type === 'radio') ? 'mt-3' : ''">
                                         <div>
                                             <label class="block text-xs font-bold text-gray-600 mb-2">نوع
                                                 قیمت‌گذاری</label>
@@ -595,20 +643,44 @@
                     });
 
                     // Init Custom Fields
-                    this.fields = (data.custom_fields || []).map((f, i) => ({
-                        ...f,
-                        _key: i + '_' + Math.random().toString(36).substr(2, 9),
-                        _open: false,
-                        _dragging: false,
-                        options_text: Array.isArray(f.options) ? f.options.join('\n') : (f.options || ''),
-                        pricing_type: f.pricing_type || 'fixed',
-                        pricing_amount: f.pricing_type === 'percentage'
-                            ? Math.min(100, Math.max(0, Number(f.pricing_amount) || 0))
-                            : (f.pricing_amount || 0),
-                        has_pricing: !!f.has_pricing,
-                        is_required: !!f.is_required,
-                        show_in_invoice: f.show_in_invoice !== false,
-                    }));
+                    this.fields = (data.custom_fields || []).map((f, i) => {
+                        let rawOptions = f.options || [];
+                        if (typeof rawOptions === 'string') {
+                            try { rawOptions = JSON.parse(rawOptions); } catch (e) { rawOptions = []; }
+                        }
+                        let normalizedOptions = [];
+                        if (Array.isArray(rawOptions)) {
+                            normalizedOptions = rawOptions.map(opt => {
+                                if (typeof opt === 'object' && opt !== null) {
+                                    return {
+                                        label: opt.label || opt.title || opt.name || '',
+                                        price: Number(opt.price || opt.pricing_amount || 0),
+                                        pricing_type: opt.pricing_type || 'fixed'
+                                    };
+                                }
+                                return {
+                                    label: String(opt || ''),
+                                    price: 0,
+                                    pricing_type: 'fixed'
+                                };
+                            }).filter(o => o.label.trim() !== '');
+                        }
+
+                        return {
+                            ...f,
+                            _key: i + '_' + Math.random().toString(36).substr(2, 9),
+                            _open: false,
+                            _dragging: false,
+                            options: normalizedOptions,
+                            pricing_type: f.pricing_type || 'fixed',
+                            pricing_amount: f.pricing_type === 'percentage'
+                                ? Math.min(100, Math.max(0, Number(f.pricing_amount) || 0))
+                                : (f.pricing_amount || 0),
+                            has_pricing: !!f.has_pricing,
+                            is_required: !!f.is_required,
+                            show_in_invoice: f.show_in_invoice !== false,
+                        };
+                    });
                 },
 
                 onBasePriceInput(input) {
@@ -642,7 +714,8 @@
                 // Custom Fields Methods
                 addField() {
                     this.fields.push({
-                        id: null, label: '', type: 'text', options: [], options_text: '',
+                        id: null, label: '', type: 'text',
+                        options: [{ label: '', price: 0, pricing_type: 'fixed' }],
                         is_required: false, has_pricing: false, show_in_invoice: true,
                         pricing_type: 'fixed', pricing_amount: 0, sort_order: this.fields.length,
                         _key: Date.now(), _open: true, _dragging: false,
@@ -656,6 +729,13 @@
                     if (confirm('این فیلد حذف شود؟')) {
                         this.fields.splice(idx, 1);
                     }
+                },
+                addOption(field) {
+                    if (!Array.isArray(field.options)) field.options = [];
+                    field.options.push({ label: '', price: 0, pricing_type: 'fixed' });
+                },
+                removeOption(field, optIdx) {
+                    field.options.splice(optIdx, 1);
                 },
                 typeLabel(type) {
                     const map = {
@@ -702,6 +782,13 @@
                     }
 
                     field.pricing_amount = num;
+                    e.target.value = num > 0 ? num.toLocaleString('en-US') : '';
+                },
+
+                handleOptionPriceInput(e, opt) {
+                    let raw = toEnglishNumber(e.target.value).replace(/[^\d]/g, '');
+                    let num = raw ? Number(raw) : 0;
+                    opt.price = num;
                     e.target.value = num > 0 ? num.toLocaleString('en-US') : '';
                 }
             }));

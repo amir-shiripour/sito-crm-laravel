@@ -33,6 +33,8 @@ class ScheduleManager extends Component
     public ?int $modalProviderId = null;
     public ?int $modalServiceId = null;
     public ?int $modalClientId = null;
+    public ?int $modalWaitlistId = null;
+    public string $modalClientTab = 'search'; // 'search', 'waitlist', 'new'
     public string $modalClientSearch = '';
     public string $modalStartTime = '';
     public string $modalEndTime = '';
@@ -51,6 +53,7 @@ class ScheduleManager extends Component
     protected $listeners = [
         'dateSelected' => 'onDateSelected',
         'rescheduleAppointment' => 'rescheduleAppointment',
+        'client-quick-saved' => 'onClientQuickSaved',
     ];
 
     public function mount(): void
@@ -80,6 +83,18 @@ class ScheduleManager extends Component
         $this->modalStatus = $this->resolveDefaultModalStatus($this->selectedServiceId);
 
         $this->evaluateStepLock();
+
+        // Support direct opening via URL query parameters
+        if (request()->filled('waitlist_id')) {
+            $this->selectWaitlistEntry((int) request('waitlist_id'));
+            $this->showModal = true;
+        } elseif (request()->filled('client_id')) {
+            $this->modalClientId = (int) request('client_id');
+            if (request()->filled('service_id')) {
+                $this->modalServiceId = (int) request('service_id');
+            }
+            $this->showModal = true;
+        }
     }
 
     public function updatedModalServiceId($value): void
@@ -496,6 +511,8 @@ class ScheduleManager extends Component
         }
 
         $this->modalClientId = null;
+        $this->modalWaitlistId = null;
+        $this->modalClientTab = 'search';
         $this->modalClientSearch = '';
         $this->modalStartTime = $startTimeStr;
         $this->modalStatus = $this->resolveDefaultModalStatus($this->modalServiceId);
@@ -520,6 +537,56 @@ class ScheduleManager extends Component
         $this->modalNotes = '';
         $this->modalError = '';
         $this->showModal = true;
+    }
+
+    public function setModalClientTab(string $tab): void
+    {
+        $isQueueEnabled = class_exists(\Modules\Booking\Entities\BookingWaitlist::class) && BookingSetting::isQueueEnabled();
+        if ($tab === 'waitlist' && !$isQueueEnabled) {
+            $tab = 'search';
+        }
+        if (in_array($tab, ['search', 'waitlist', 'new'], true)) {
+            $this->modalClientTab = $tab;
+        }
+    }
+
+    public function selectWaitlistEntry(int $waitlistId): void
+    {
+        if (!class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            return;
+        }
+
+        $entry = \Modules\Booking\Entities\BookingWaitlist::with(['client', 'service', 'provider'])->find($waitlistId);
+        if (!$entry) {
+            return;
+        }
+
+        $this->modalWaitlistId = $entry->id;
+        $this->modalClientId = $entry->client_id;
+
+        if ($entry->service_id) {
+            $this->modalServiceId = $entry->service_id;
+            $this->updatedModalServiceId($entry->service_id);
+        }
+
+        if ($entry->provider_user_id) {
+            $this->modalProviderId = $entry->provider_user_id;
+        }
+
+        if (!empty($entry->notes) && empty($this->modalNotes)) {
+            $this->modalNotes = $entry->notes;
+        }
+    }
+
+    public function onClientQuickSaved($clientId = null, $clientName = null): void
+    {
+        if ($clientId) {
+            $this->modalClientId = (int) $clientId;
+            $this->modalWaitlistId = null;
+            $this->modalClientTab = 'search';
+            $clientLabel = config('clients.labels.singular', 'مشتری');
+            $this->toastSuccess = ($clientName ? "{$clientLabel} «{$clientName}»" : "{$clientLabel} جدید") . ' با موفقیت ایجاد و انتخاب شد.';
+        }
     }
 
     public function resolveDefaultModalStatus(?int $serviceId = null): string
@@ -577,6 +644,8 @@ class ScheduleManager extends Component
     {
         $this->showModal = false;
         $this->modalError = '';
+        $this->modalWaitlistId = null;
+        $this->modalClientTab = 'search';
     }
 
     public function saveNewAppointment(AppointmentService $appointmentService): void
@@ -686,6 +755,21 @@ class ScheduleManager extends Component
                 notes: $this->modalNotes,
                 status: $status
             );
+
+            // 🔸 به‌روزرسانی وضعیت در صف انتظار به تبدیل‌شده (Converted)
+            if ($this->modalWaitlistId && class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+                try {
+                    $waitlistEntry = \Modules\Booking\Entities\BookingWaitlist::find($this->modalWaitlistId);
+                    if ($waitlistEntry) {
+                        $waitlistEntry->update([
+                            'status' => \Modules\Booking\Entities\BookingWaitlist::STATUS_CONVERTED,
+                            'converted_at' => now(),
+                        ]);
+                    }
+                } catch (\Throwable $we) {
+                    Log::error('[ScheduleManager] Failed to mark waitlist as converted: ' . $we->getMessage());
+                }
+            }
 
             $this->closeModal();
             $this->toastSuccess = 'نوبت با موفقیت ثبت شد.';
@@ -2163,9 +2247,12 @@ class ScheduleManager extends Component
         if ($this->showModal && !empty($this->modalClientSearch)) {
             $q = $this->modalClientSearch;
             $clientsForModal = Client::query()
-                ->where('full_name', 'like', "%{$q}%")
-                ->orWhere('phone', 'like', "%{$q}%")
-                ->orWhere('national_code', 'like', "%{$q}%")
+                ->where(function ($query) use ($q) {
+                    $query->where('full_name', 'like', "%{$q}%")
+                        ->orWhere('phone', 'like', "%{$q}%")
+                        ->orWhere('national_code', 'like', "%{$q}%")
+                        ->orWhere('case_number', 'like', "%{$q}%");
+                })
                 ->limit(10)
                 ->get();
         }
@@ -2173,6 +2260,67 @@ class ScheduleManager extends Component
         $selectedModalClient = null;
         if ($this->showModal && $this->modalClientId) {
             $selectedModalClient = Client::find($this->modalClientId);
+        }
+
+        // 🔸 بررسی وضعیت فعال بودن صف انتظار و بارگذاری برای مودال ثبت سریع
+        $isQueueEnabled = class_exists(\Modules\Booking\Entities\BookingWaitlist::class) && BookingSetting::isQueueEnabled();
+        $waitlistForModal = collect();
+        $waitlistCount = 0;
+        $selectedWaitlistEntry = null;
+
+        if ($this->showModal && $isQueueEnabled) {
+            $waitlistQuery = \Modules\Booking\Entities\BookingWaitlist::query()
+                ->whereIn('status', [
+                    \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
+                    \Modules\Booking\Entities\BookingWaitlist::STATUS_NOTIFIED,
+                    \Modules\Booking\Entities\BookingWaitlist::STATUS_IN_PROGRESS
+                ])
+                ->with(['client', 'service', 'provider']);
+
+            $srvId = $this->modalServiceId ? (int)$this->modalServiceId : 0;
+            $prvId = $this->modalProviderId ? (int)$this->modalProviderId : 0;
+
+            $waitlistForModal = $waitlistQuery->get()->sort(function ($a, $b) use ($srvId, $prvId) {
+                // امتیاز اولویت:
+                // ۴۰: تطابق کامل سرویس و ارائه‌دهنده
+                // ۳۰: تطابق با سرویس انتخاب‌شده
+                // ۲۰: تطابق با ارائه‌دهنده انتخاب‌شده
+                // ۱۰: صف عمومی (بدون سرویس و بدون ارائه‌دهنده)
+                $scoreA = 0;
+                if ($srvId && $a->service_id == $srvId && $prvId && $a->provider_user_id == $prvId) {
+                    $scoreA = 40;
+                } elseif ($srvId && $a->service_id == $srvId) {
+                    $scoreA = 30;
+                } elseif ($prvId && $a->provider_user_id == $prvId) {
+                    $scoreA = 20;
+                } elseif (!$a->service_id && !$a->provider_user_id) {
+                    $scoreA = 10;
+                }
+
+                $scoreB = 0;
+                if ($srvId && $b->service_id == $srvId && $prvId && $b->provider_user_id == $prvId) {
+                    $scoreB = 40;
+                } elseif ($srvId && $b->service_id == $srvId) {
+                    $scoreB = 30;
+                } elseif ($prvId && $b->provider_user_id == $prvId) {
+                    $scoreB = 20;
+                } elseif (!$b->service_id && !$b->provider_user_id) {
+                    $scoreB = 10;
+                }
+
+                if ($scoreA !== $scoreB) {
+                    return $scoreB <=> $scoreA; // امتیاز بالاتر اول
+                }
+
+                // در صورت یکسان بودن اولویت تطابق، بر اساس رتبه / شماره صف
+                return ($a->queue_rank ?? $a->position ?? 0) <=> ($b->queue_rank ?? $b->position ?? 0);
+            })->values();
+
+            $waitlistCount = $waitlistForModal->count();
+
+            if ($this->modalWaitlistId) {
+                $selectedWaitlistEntry = \Modules\Booking\Entities\BookingWaitlist::with(['service', 'provider'])->find($this->modalWaitlistId);
+            }
         }
 
         \Illuminate\Support\Facades\Log::info('[ScheduleManager::render]', [
@@ -2217,6 +2365,11 @@ class ScheduleManager extends Component
             'providerSchedules' => $providerSchedules,
             'clientsForModal' => $clientsForModal,
             'selectedModalClient' => $selectedModalClient,
+            'isQueueEnabled' => $isQueueEnabled,
+            'waitlistForModal' => $waitlistForModal,
+            'waitlistCount' => $waitlistCount,
+            'selectedWaitlistEntry' => $selectedWaitlistEntry,
+            'clientLabel' => config('clients.labels.singular', 'مشتری'),
             'gridStartHour' => $gridStartHour,
             'gridEndHour' => $gridEndHour,
             'isStepLocked' => $isStepLocked,

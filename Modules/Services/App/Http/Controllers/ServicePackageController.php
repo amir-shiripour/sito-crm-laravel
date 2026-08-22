@@ -92,15 +92,33 @@ class ServicePackageController extends Controller
                                 }
                             }
                             if ($cf->has_pricing && $isSelected) {
-                                $cfPrice = 0;
-                                if (isset($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] > 0) {
-                                    $cfPrice = floatval($customFieldsPrices[$cf->id]);
+                                if ($cf->type === 'multiselect' && is_array($val)) {
+                                    $cfPriceTotal = 0;
+                                    foreach ($val as $opt) {
+                                        $optPrice = is_array($customFieldsPrices[$cf->id] ?? null)
+                                            ? ($customFieldsPrices[$cf->id][$opt] ?? null)
+                                            : null;
+                                        if ($optPrice === null) {
+                                            $optPrice = $cf->getOptionPrice($opt, $unitPrice);
+                                        }
+                                        $cfPriceTotal += floatval($optPrice);
+                                    }
+                                    $cfSubtotal += ($cfPriceTotal * $qty);
                                 } else {
-                                    $cfAmount = floatval($cf->pricing_amount ?? 0);
-                                    $cfPrice = ($cf->pricing_type === 'percentage') ? ($unitPrice * ($cfAmount / 100)) : $cfAmount;
-                                    $customFieldsPrices[$cf->id] = $cfPrice;
+                                    $cfPrice = 0;
+                                    if (isset($customFieldsPrices[$cf->id]) && !is_array($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] > 0) {
+                                        $cfPrice = floatval($customFieldsPrices[$cf->id]);
+                                    } else {
+                                        if (in_array($cf->type, ['select', 'radio'])) {
+                                            $cfPrice = $cf->getOptionPrice($val, $unitPrice);
+                                        } else {
+                                            $cfAmount = floatval($cf->pricing_amount ?? 0);
+                                            $cfPrice = ($cf->pricing_type === 'percentage') ? ($unitPrice * ($cfAmount / 100)) : $cfAmount;
+                                        }
+                                        $customFieldsPrices[$cf->id] = $cfPrice;
+                                    }
+                                    $cfSubtotal += ($cfPrice * $qty);
                                 }
-                                $cfSubtotal += ($cfPrice * $qty);
                             }
                         }
                     }
@@ -221,15 +239,33 @@ class ServicePackageController extends Controller
                                 }
                             }
                             if ($cf->has_pricing && $isSelected) {
-                                $cfPrice = 0;
-                                if (isset($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] > 0) {
-                                    $cfPrice = floatval($customFieldsPrices[$cf->id]);
+                                if ($cf->type === 'multiselect' && is_array($val)) {
+                                    $cfPriceTotal = 0;
+                                    foreach ($val as $opt) {
+                                        $optPrice = is_array($customFieldsPrices[$cf->id] ?? null)
+                                            ? ($customFieldsPrices[$cf->id][$opt] ?? null)
+                                            : null;
+                                        if ($optPrice === null) {
+                                            $optPrice = $cf->getOptionPrice($opt, $unitPrice);
+                                        }
+                                        $cfPriceTotal += floatval($optPrice);
+                                    }
+                                    $cfSubtotal += ($cfPriceTotal * $qty);
                                 } else {
-                                    $cfAmount = floatval($cf->pricing_amount ?? 0);
-                                    $cfPrice = ($cf->pricing_type === 'percentage') ? ($unitPrice * ($cfAmount / 100)) : $cfAmount;
-                                    $customFieldsPrices[$cf->id] = $cfPrice;
+                                    $cfPrice = 0;
+                                    if (isset($customFieldsPrices[$cf->id]) && !is_array($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] > 0) {
+                                        $cfPrice = floatval($customFieldsPrices[$cf->id]);
+                                    } else {
+                                        if (in_array($cf->type, ['select', 'radio'])) {
+                                            $cfPrice = $cf->getOptionPrice($val, $unitPrice);
+                                        } else {
+                                            $cfAmount = floatval($cf->pricing_amount ?? 0);
+                                            $cfPrice = ($cf->pricing_type === 'percentage') ? ($unitPrice * ($cfAmount / 100)) : $cfAmount;
+                                        }
+                                        $customFieldsPrices[$cf->id] = $cfPrice;
+                                    }
+                                    $cfSubtotal += ($cfPrice * $qty);
                                 }
-                                $cfSubtotal += ($cfPrice * $qty);
                             }
                         }
                     }

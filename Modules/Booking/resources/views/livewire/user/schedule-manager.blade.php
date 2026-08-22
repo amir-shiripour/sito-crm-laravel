@@ -1,6 +1,20 @@
 <div class="space-y-6" x-data="{
     draggedAppointmentId: null,
     isDragging: false,
+    showModal: @entangle('showModal'),
+    showDetailsModal: @entangle('showDetailsModal'),
+    init() {
+        this.$watch('showModal', value => this.updateBodyScroll());
+        this.$watch('showDetailsModal', value => this.updateBodyScroll());
+        this.updateBodyScroll();
+    },
+    updateBodyScroll() {
+        if (this.showModal || this.showDetailsModal) {
+            document.body.classList.add('overflow-hidden');
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+    },
     handleDragStart(e, id) {
         this.draggedAppointmentId = id;
         this.isDragging = true;
@@ -1338,9 +1352,9 @@
     {{-- Quick Create Appointment Modal --}}
     @if ($showModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4"
-             x-data
+             @click.self="$wire.closeModal()"
              @keydown.escape.window="$wire.closeModal()">
-            <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-700/80 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-xl w-full shadow-2xl border border-gray-100 dark:border-gray-700/80 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 
                 {{-- Top Gradient Accent Line --}}
                 <div class="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
@@ -1392,67 +1406,210 @@
                             </div>
                         </div>
 
-                        {{-- Client Selector Component (Harmonized with create.blade.php) --}}
+                        {{-- Client Selector Component (Dynamic Label, Waitlist & Quick Create Support) --}}
                         <div class="space-y-2">
-                            <label class="block text-gray-700 dark:text-gray-300 font-semibold flex items-center justify-between">
-                                <span>انتخاب بیمار / مشتری</span>
+                            <div class="flex items-center justify-between">
+                                <label class="block text-gray-700 dark:text-gray-300 font-semibold">
+                                    انتخاب {{ $clientLabel }}
+                                </label>
                                 @if ($modalClientId)
-                                    <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">بیمار انتخاب شد</span>
+                                    <span class="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                        {{ $clientLabel }} انتخاب شد
+                                    </span>
                                 @endif
-                            </label>
+                            </div>
 
                             @if (!empty($selectedModalClient))
                                 {{-- Selected Client Card --}}
                                 <div class="bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-300 dark:border-emerald-700/70 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-2xs">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-sm flex-none">
+                                        <div class="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-sm flex-none shadow-xs">
                                             {{ mb_substr($selectedModalClient->full_name, 0, 1) }}
                                         </div>
                                         <div>
-                                            <div class="font-black text-xs text-emerald-950 dark:text-emerald-100">{{ $selectedModalClient->full_name }}</div>
-                                            <div class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mt-0.5 flex items-center gap-2">
+                                            <div class="font-black text-xs text-emerald-950 dark:text-emerald-100 flex items-center flex-wrap gap-2">
+                                                <span>{{ $selectedModalClient->full_name }}</span>
+                                                @if ($modalWaitlistId)
+                                                    <span class="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-md font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700/70">
+                                                        ⚡ تخصیص از صف انتظار @if($selectedWaitlistEntry?->queue_rank) (نفر {{ $selectedWaitlistEntry->queue_rank }}) @endif
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mt-0.5 flex items-center flex-wrap gap-x-3 gap-y-1">
                                                 @if ($selectedModalClient->phone) <span>📞 {{ $selectedModalClient->phone }}</span> @endif
                                                 @if ($selectedModalClient->national_code) <span>🆔 {{ $selectedModalClient->national_code }}</span> @endif
+                                                @if ($selectedModalClient->case_number) <span>📋 پرونده: {{ $selectedModalClient->case_number }}</span> @endif
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" wire:click="$set('modalClientId', null)" class="px-2.5 py-1 rounded-xl bg-emerald-200/80 dark:bg-emerald-900/80 text-emerald-900 dark:text-emerald-100 text-[11px] font-bold hover:bg-emerald-300 transition">
-                                        تغییر بیمار
+                                    <button type="button" wire:click="$set('modalClientId', null); $set('modalWaitlistId', null);" class="px-2.5 py-1 rounded-xl bg-emerald-200/80 dark:bg-emerald-900/80 text-emerald-900 dark:text-emerald-100 text-[11px] font-bold hover:bg-emerald-300 dark:hover:bg-emerald-800 transition">
+                                        تغییر {{ $clientLabel }}
                                     </button>
                                 </div>
                             @else
-                                {{-- Search Input with Icon --}}
-                                <div class="relative">
-                                    <input type="text"
-                                           wire:model.live.debounce.300ms="modalClientSearch"
-                                           class="w-full bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl pr-10 pl-3 py-2.5 text-xs font-bold text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                                           placeholder="جستجوی نام، شماره تماس یا کد ملی...">
-                                    <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                    </svg>
+                                {{-- 2 or 3-Way Mode Switcher --}}
+                                <div class="grid {{ $isQueueEnabled ? 'grid-cols-3' : 'grid-cols-2' }} gap-1 p-1 bg-gray-100 dark:bg-gray-900/80 rounded-2xl border border-gray-200 dark:border-gray-700/80 text-[11px] font-bold">
+                                    <button type="button"
+                                            wire:click="setModalClientTab('search')"
+                                            class="py-1.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 {{ $modalClientTab === 'search' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm font-black' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200' }}">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        <span>جستجو</span>
+                                    </button>
+
+                                    @if($isQueueEnabled)
+                                        <button type="button"
+                                                wire:click="setModalClientTab('waitlist')"
+                                                class="py-1.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 {{ $modalClientTab === 'waitlist' ? 'bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400 shadow-sm font-black' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200' }}">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            <span>صف انتظار</span>
+                                            @if($waitlistCount > 0)
+                                                <span class="px-1.5 py-0.2 rounded-full text-[9px] font-black {{ $modalClientTab === 'waitlist' ? 'bg-amber-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300' }}">
+                                                    {{ $waitlistCount }}
+                                                </span>
+                                            @endif
+                                        </button>
+                                    @endif
+
+                                    <button type="button"
+                                            wire:click="setModalClientTab('new')"
+                                            class="py-1.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 {{ $modalClientTab === 'new' ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm font-black' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200' }}">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                        <span>{{ $clientLabel }} جدید</span>
+                                    </button>
                                 </div>
 
-                                {{-- Search Results List --}}
-                                @if (!empty($clientsForModal) && count($clientsForModal) > 0)
-                                    <div class="border border-gray-200 dark:border-gray-700/80 rounded-2xl max-h-40 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 shadow-lg bg-white dark:bg-gray-800 p-1 space-y-1">
-                                        @foreach ($clientsForModal as $c)
-                                            <div wire:click="$set('modalClientId', {{ $c->id }})"
-                                                 class="p-2.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer flex items-center justify-between transition-colors text-gray-800 dark:text-gray-200">
-                                                <div>
-                                                    <span class="font-black text-xs block text-gray-900 dark:text-white">{{ $c->full_name }}</span>
-                                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block mt-0.5 dir-ltr text-right">
-                                                        {{ $c->phone }} @if($c->national_code) • {{ $c->national_code }} @endif
-                                                    </span>
-                                                </div>
-                                                <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
-                                                    انتخاب
-                                                </span>
+                                {{-- Tab 1: Search Existing Client --}}
+                                @if ($modalClientTab === 'search')
+                                    <div class="space-y-2">
+                                        <div class="relative">
+                                            <input type="text"
+                                                   wire:model.live.debounce.300ms="modalClientSearch"
+                                                   class="w-full bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 rounded-xl pr-10 pl-3 py-2.5 text-xs font-bold text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                                   placeholder="جستجوی نام، شماره تماس، کد ملی یا شماره پرونده {{ $clientLabel }}...">
+                                            <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                            </svg>
+                                        </div>
+
+                                        {{-- Search Results List --}}
+                                        @if (!empty($clientsForModal) && count($clientsForModal) > 0)
+                                            <div class="border border-gray-200 dark:border-gray-700/80 rounded-2xl max-h-44 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 shadow-lg bg-white dark:bg-gray-800 p-1 space-y-1">
+                                                @foreach ($clientsForModal as $c)
+                                                    <div wire:click="$set('modalClientId', {{ $c->id }})"
+                                                         class="p-2.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer flex items-center justify-between transition-colors text-gray-800 dark:text-gray-200">
+                                                        <div>
+                                                            <span class="font-black text-xs block text-gray-900 dark:text-white">{{ $c->full_name }}</span>
+                                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 block mt-0.5 dir-ltr text-right">
+                                                                {{ $c->phone }} @if($c->national_code) • کد ملی: {{ $c->national_code }} @endif @if($c->case_number) • پرونده: {{ $c->case_number }} @endif
+                                                            </span>
+                                                        </div>
+                                                        <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                                                            انتخاب
+                                                        </span>
+                                                    </div>
+                                                @endforeach
                                             </div>
-                                        @endforeach
+                                        @elseif ($modalClientSearch && empty($clientsForModal))
+                                            <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl text-center text-amber-800 dark:text-amber-200 text-xs font-bold">
+                                                {{ $clientLabel }} یافت نشد
+                                            </div>
+                                        @endif
                                     </div>
-                                @elseif ($modalClientSearch && empty($clientsForModal))
-                                    <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl text-center text-amber-800 dark:text-amber-200 text-xs font-bold">
-                                        هیچ بیماری پیدا نشد
+
+                                {{-- Tab 2: Select from Waitlist Queue (Only if Queue Setting Enabled) --}}
+                                @elseif ($modalClientTab === 'waitlist' && $isQueueEnabled)
+                                    <div class="space-y-2">
+                                        @if($waitlistCount > 0)
+                                            <div class="text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-between px-1">
+                                                <span>اولویت‌بندی بر اساس موقعیت در صف و تطابق سرویس/ارائه‌دهنده:</span>
+                                                <span class="font-bold text-amber-600 dark:text-amber-400">{{ $waitlistCount }} مراجع در صف</span>
+                                            </div>
+
+                                            <div class="space-y-2 max-h-52 overflow-y-auto p-1 border border-gray-200 dark:border-gray-700/80 rounded-2xl bg-gray-50/50 dark:bg-gray-900/30">
+                                                @foreach($waitlistForModal as $wEntry)
+                                                    @php
+                                                        $isMatchBoth = ($modalServiceId && $wEntry->service_id == $modalServiceId && $modalProviderId && $wEntry->provider_user_id == $modalProviderId);
+                                                        $isMatchService = ($modalServiceId && $wEntry->service_id == $modalServiceId);
+                                                        $isMatchProvider = ($modalProviderId && $wEntry->provider_user_id == $modalProviderId);
+                                                        $isGeneral = (!$wEntry->service_id && !$wEntry->provider_user_id);
+                                                    @endphp
+                                                    <div wire:click="selectWaitlistEntry({{ $wEntry->id }})"
+                                                         class="p-2.5 rounded-xl border transition-all duration-150 cursor-pointer flex flex-col gap-1.5 hover:shadow-md
+                                                         {{ $isMatchBoth ? 'bg-indigo-50/80 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-800' : ($isMatchService ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/70' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-amber-400') }}">
+                                                        
+                                                        <div class="flex items-center justify-between gap-2">
+                                                            <div class="flex items-center gap-2">
+                                                                {{-- Queue Rank Badge --}}
+                                                                @if($wEntry->queue_rank === 1)
+                                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-black text-[10px] shadow-2xs">
+                                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                                        نفر ۱ (نوبت بعدی)
+                                                                    </span>
+                                                                @else
+                                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-[10px]">
+                                                                        نفر {{ $wEntry->queue_rank }}
+                                                                    </span>
+                                                                @endif
+
+                                                                <span class="font-black text-xs text-gray-900 dark:text-white">{{ $wEntry->client?->full_name ?? 'بدون نام' }}</span>
+                                                                @if($wEntry->client?->phone)
+                                                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 dir-ltr">({{ $wEntry->client->phone }})</span>
+                                                                @endif
+                                                            </div>
+
+                                                            {{-- Priority Match Tag --}}
+                                                            <div>
+                                                                @if($isMatchBoth)
+                                                                    <span class="text-[9px] font-black px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                                                        🎯 تطابق کامل
+                                                                    </span>
+                                                                @elseif($isMatchService)
+                                                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                                                                        🛠️ سرویس مرتبط
+                                                                    </span>
+                                                                @elseif($isMatchProvider)
+                                                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">
+                                                                        👤 ارائه‌دهنده
+                                                                    </span>
+                                                                @elseif($isGeneral)
+                                                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                                                        🌐 صف عمومی
+                                                                    </span>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+                                                            <div class="flex items-center gap-2">
+                                                                <span>سرویس: {{ $wEntry->service?->name ?? 'عمومی' }}</span>
+                                                                @if($wEntry->provider)
+                                                                    <span>• {{ config('booking.labels.provider') }}: {{ $wEntry->provider->name }}</span>
+                                                                @endif
+                                                                @if($wEntry->preferred_date)
+                                                                    <span>• تاریخ ترجیحی: {{ \Morilog\Jalali\Jalalian::fromDateTime($wEntry->preferred_date)->format('Y/m/d') }}</span>
+                                                                @endif
+                                                            </div>
+                                                            <span class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
+                                                                تخصیص نوبت ↵
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <div class="p-5 bg-gray-50 dark:bg-gray-900/40 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center space-y-1.5">
+                                                <div class="text-2xl">⏳</div>
+                                                <div class="text-xs font-bold text-gray-700 dark:text-gray-300">صف انتظار خالی است</div>
+                                                <div class="text-[10px] text-gray-400">در حال حاضر مراجعی در صف انتظار فعال ثبت نشده است.</div>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                {{-- Tab 3: Quick Create New Client --}}
+                                @elseif ($modalClientTab === 'new')
+                                    <div class="p-3 bg-gray-50/80 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700/80">
+                                        @includeIf('clients::widgets.client-quick-create')
                                     </div>
                                 @endif
                             @endif
@@ -1521,7 +1678,7 @@
     {{-- Quick Details Appointment Modal (نمایش جزئیات سریع نوبت با استایل هماهنگ پنل) --}}
     @if ($showDetailsModal && $detailsAppointment)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4"
-             x-data
+             @click.self="$wire.closeDetailsModal()"
              @keydown.escape.window="$wire.closeDetailsModal()">
 
             <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-700/80 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">

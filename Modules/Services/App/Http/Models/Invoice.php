@@ -133,7 +133,12 @@ class Invoice extends Model
 
         $seq = $lastSeq + 1;
 
-        return $prefix . $middle . '-' . str_pad($seq, $padding, '0', STR_PAD_LEFT) . $suffix;
+        do {
+            $number = $prefix . $middle . '-' . str_pad($seq, $padding, '0', STR_PAD_LEFT) . $suffix;
+            $seq++;
+        } while (static::withTrashed()->where('invoice_number', $number)->exists());
+
+        return $number;
     }
 
     public static function generateProformaNumber(): string
@@ -154,7 +159,12 @@ class Invoice extends Model
 
         $seq = $lastSeq + 1;
 
-        return $prefix . $middle . '-' . str_pad($seq, $padding, '0', STR_PAD_LEFT) . $suffix;
+        do {
+            $number = $prefix . $middle . '-' . str_pad($seq, $padding, '0', STR_PAD_LEFT) . $suffix;
+            $seq++;
+        } while (static::withTrashed()->where('proforma_invoice_number', $number)->exists());
+
+        return $number;
     }
 
     public function status(): BelongsTo

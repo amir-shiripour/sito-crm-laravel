@@ -181,13 +181,29 @@
                                                     $rawCfPrice = $item->custom_fields_prices[$cfId] ?? null;
                                                     $cfPrice = 0;
                                                     if ($cfDef && $cfDef->has_pricing) {
-                                                        if (!empty($rawCfPrice)) {
-                                                            $pStr = str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'], ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'], (string)$rawCfPrice);
-                                                            $cfPrice = floatval(preg_replace('/[^\d.]/', '', $pStr));
-                                                        }
-                                                        if ($cfPrice <= 0) {
-                                                            $cfAmount = floatval($cfDef->pricing_amount ?? 0);
-                                                            $cfPrice = ($cfDef->pricing_type === 'percentage') ? ($item->unit_price * ($cfAmount / 100)) : $cfAmount;
+                                                        if ($cfDef->type === 'multiselect' && is_array($cfValue)) {
+                                                            $totalPrice = 0;
+                                                            foreach ($cfValue as $opt) {
+                                                                $optPrice = is_array($rawCfPrice) ? ($rawCfPrice[$opt] ?? null) : null;
+                                                                if ($optPrice === null) {
+                                                                    $optPrice = $cfDef->getOptionPrice($opt, $item->unit_price);
+                                                                }
+                                                                $totalPrice += floatval($optPrice);
+                                                            }
+                                                            $cfPrice = $totalPrice;
+                                                        } else {
+                                                            if (!empty($rawCfPrice) && !is_array($rawCfPrice)) {
+                                                                $pStr = str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'], ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'], (string)$rawCfPrice);
+                                                                $cfPrice = floatval(preg_replace('/[^\d.]/', '', $pStr));
+                                                            }
+                                                            if ($cfPrice <= 0) {
+                                                                if (in_array($cfDef->type, ['select', 'radio'])) {
+                                                                    $cfPrice = $cfDef->getOptionPrice($cfValue, $item->unit_price);
+                                                                } else {
+                                                                    $cfAmount = floatval($cfDef->pricing_amount ?? 0);
+                                                                    $cfPrice = ($cfDef->pricing_type === 'percentage') ? ($item->unit_price * ($cfAmount / 100)) : $cfAmount;
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 @endphp
