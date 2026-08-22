@@ -26,6 +26,7 @@ class ScheduleManager extends Component
     public int $timeStepMinutes = 30; // Custom inputtable step
     public string $viewMode = 'grid'; // 'grid' or 'timeline'
     public string $calendarView = 'day'; // 'day', 'week', 'month'
+    public bool $showEmptySlots = true; // Show empty slots in weekly view
 
     // Quick Creation Modal State
     public bool $showModal = false;
@@ -61,7 +62,52 @@ class ScheduleManager extends Component
             $this->selectedDateJalali = Jalalian::fromDateTime($now)->format('Y/m/d');
         }
 
+        // Restore view preferences from session (persists across refreshes)
+        $savedCalendarView = session('schedule_calendar_view');
+        if ($savedCalendarView && in_array($savedCalendarView, ['day', 'week', 'month'], true)) {
+            $this->calendarView = $savedCalendarView;
+        }
+
+        $savedViewMode = session('schedule_view_mode');
+        if ($savedViewMode && in_array($savedViewMode, ['grid', 'timeline'], true)) {
+            $this->viewMode = $savedViewMode;
+        }
+
+        if (session()->has('schedule_show_empty_slots')) {
+            $this->showEmptySlots = (bool) session('schedule_show_empty_slots');
+        }
+
+        $this->modalStatus = $this->resolveDefaultModalStatus($this->selectedServiceId);
+
         $this->evaluateStepLock();
+    }
+
+    public function updatedModalServiceId($value): void
+    {
+        $this->modalStatus = $this->resolveDefaultModalStatus($value ? (int)$value : null);
+
+        if (!empty($this->modalStartTime) && $this->modalProviderId && $value) {
+            $bookingEngine = new BookingEngine();
+            $localDate = $this->getGregorianCarbon() ?? now();
+            $policy = $bookingEngine->resolveDayPolicy((int)$value, $this->modalProviderId, $localDate);
+            $dur = max(5, (int)($policy['slot_duration_minutes'] ?? 30));
+            [$h, $m] = explode(':', $this->modalStartTime);
+            $this->modalEndTime = Carbon::createFromTime((int)$h, (int)$m)->addMinutes($dur)->format('H:i');
+        }
+    }
+
+    public function updatedShowEmptySlots($val): void
+    {
+        $this->showEmptySlots = (bool) $val;
+        session(['schedule_show_empty_slots' => $this->showEmptySlots]);
+        $this->dispatch('schedule-pref-changed', key: 'showEmptySlots', value: $this->showEmptySlots);
+    }
+
+    public function toggleShowEmptySlots(): void
+    {
+        $this->showEmptySlots = !$this->showEmptySlots;
+        session(['schedule_show_empty_slots' => $this->showEmptySlots]);
+        $this->dispatch('schedule-pref-changed', key: 'showEmptySlots', value: $this->showEmptySlots);
     }
 
     public function updatedSelectedServiceId(): void
@@ -122,8 +168,10 @@ class ScheduleManager extends Component
 
     public function setViewMode(string $mode): void
     {
-        if (in_array($mode, ['grid', 'timeline'])) {
+        if (in_array($mode, ['grid', 'timeline'], true)) {
             $this->viewMode = $mode;
+            session(['schedule_view_mode' => $mode]);
+            $this->dispatch('schedule-pref-changed', key: 'viewMode', value: $mode);
         }
     }
 
@@ -135,8 +183,10 @@ class ScheduleManager extends Component
 
     public function setCalendarView(string $view): void
     {
-        if (in_array($view, ['day', 'week', 'month'])) {
+        if (in_array($view, ['day', 'week', 'month'], true)) {
             $this->calendarView = $view;
+            session(['schedule_calendar_view' => $view]);
+            $this->dispatch('schedule-pref-changed', key: 'calendarView', value: $view);
         }
     }
 
@@ -144,6 +194,8 @@ class ScheduleManager extends Component
     {
         $this->selectedDateJalali = $dateJalali;
         $this->calendarView = 'day';
+        session(['schedule_calendar_view' => 'day']);
+        $this->dispatch('schedule-pref-changed', key: 'calendarView', value: 'day');
     }
 
     public function previousPeriod(): void
@@ -373,8 +425,12 @@ class ScheduleManager extends Component
         }
     }
 
-    public function openCreateModal(?int $providerId = null, string $startTimeStr = ''): void
+    public function openCreateModal(?int $providerId = null, string $startTimeStr = '', ?string $jalaliDate = null): void
     {
+        if (!empty($jalaliDate)) {
+            $this->selectedDateJalali = $jalaliDate;
+        }
+
         $this->modalProviderId = $providerId ?? $this->selectedProviderId;
         $this->modalServiceId = $this->selectedServiceId;
 
@@ -391,6 +447,15 @@ class ScheduleManager extends Component
 
             [$h, $m] = explode(':', $startTimeStr);
             $slotStart = $localDate->copy()->setTime((int)$h, (int)$m);
+
+            // Check if slot time is in the past
+            $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+            $nowLocal = now($scheduleTz);
+            if ($slotStart->lt($nowLocal)) {
+                $this->toastError = 'امکان ثبت نوبت برای زمان‌های گذشته وجود ندارد.';
+                return;
+            }
+
             $wWindows = $policy['work_windows'] ?? [];
 
             $inWorkWindow = false;
@@ -433,7 +498,7 @@ class ScheduleManager extends Component
         $this->modalClientId = null;
         $this->modalClientSearch = '';
         $this->modalStartTime = $startTimeStr;
-        $this->modalStatus = Appointment::STATUS_DRAFT;
+        $this->modalStatus = $this->resolveDefaultModalStatus($this->modalServiceId);
 
         if (!empty($startTimeStr)) {
             [$h, $m] = explode(':', $startTimeStr);
@@ -455,6 +520,57 @@ class ScheduleManager extends Component
         $this->modalNotes = '';
         $this->modalError = '';
         $this->showModal = true;
+    }
+
+    public function resolveDefaultModalStatus(?int $serviceId = null): string
+    {
+        $availableStatuses = $this->modalAvailableStatuses;
+        $validStatusIds = array_column($availableStatuses, 'id');
+
+        if (empty($validStatusIds)) {
+            return Appointment::STATUS_CONFIRMED;
+        }
+
+        $targetStatus = Appointment::STATUS_CONFIRMED;
+
+        $targetServiceId = $serviceId ?? $this->modalServiceId ?? $this->selectedServiceId;
+        if ($targetServiceId) {
+            $service = BookingService::find($targetServiceId);
+            if ($service && $service->payment_mode === BookingService::PAYMENT_MODE_REQUIRED) {
+                $targetStatus = Appointment::STATUS_PENDING_PAYMENT;
+            } else {
+                $targetStatus = Appointment::STATUS_CONFIRMED;
+            }
+        }
+
+        if (in_array($targetStatus, $validStatusIds, true)) {
+            return $targetStatus;
+        }
+
+        if (in_array(Appointment::STATUS_CONFIRMED, $validStatusIds, true)) {
+            return Appointment::STATUS_CONFIRMED;
+        }
+        if (in_array(Appointment::STATUS_DRAFT, $validStatusIds, true)) {
+            return Appointment::STATUS_DRAFT;
+        }
+        if (in_array(Appointment::STATUS_PENDING, $validStatusIds, true)) {
+            return Appointment::STATUS_PENDING;
+        }
+
+        return $validStatusIds[0];
+    }
+
+    public function getModalAvailableStatusesProperty(): array
+    {
+        $settings = BookingSetting::current();
+        $statuses = $settings->appointment_statuses ?? [];
+        if (empty($statuses) || !is_array($statuses)) {
+            $statuses = BookingSetting::defaultAppointmentStatuses();
+        }
+
+        return array_values(array_filter($statuses, function ($st) {
+            return !empty($st['schedule_booking_enabled']);
+        }));
     }
 
     public function closeModal(): void
@@ -496,6 +612,13 @@ class ScheduleManager extends Component
 
             [$sH, $sM] = explode(':', $this->modalStartTime);
             $startLocal = $localDate->copy()->setTime((int)$sH, (int)$sM, 0);
+
+            $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+            $nowLocal = now($scheduleTz);
+            if ($startLocal->lt($nowLocal)) {
+                $this->modalError = 'امکان ثبت نوبت برای زمان‌های گذشته وجود ندارد.';
+                return;
+            }
 
             if (!empty($this->modalEndTime)) {
                 [$eH, $eM] = explode(':', $this->modalEndTime);
@@ -996,7 +1119,21 @@ class ScheduleManager extends Component
                     $trackTotalMins = 12 * 60; // 08:00 - 20:00
                     $formattedDayAppts = [];
 
-                    foreach ($dayAppts as $apt) {
+                    // Filter appointments for display based on selectedServiceId and statusFilter
+                    $displayDayAppts = $dayAppts->filter(function ($apt) {
+                        if ($this->selectedServiceId && (int)$apt->service_id !== (int)$this->selectedServiceId) {
+                            return false;
+                        }
+                        if ($this->statusFilter) {
+                            return $apt->status === $this->statusFilter;
+                        }
+                        return !in_array($apt->status, [
+                            Appointment::STATUS_CANCELED_BY_ADMIN,
+                            Appointment::STATUS_CANCELED_BY_CLIENT,
+                        ]);
+                    });
+
+                    foreach ($displayDayAppts as $apt) {
                         $aptStartLocal = $apt->start_at_utc->copy()->timezone($scheduleTz);
                         $aptEndLocal = $apt->end_at_utc->copy()->timezone($scheduleTz);
 
@@ -1018,17 +1155,126 @@ class ScheduleManager extends Component
                         ];
                     }
 
+                    $emptySlots = [];
+                    $nowLocal = now($scheduleTz);
+                    $isDayInPast = $dayCarbon->copy()->endOfDay()->lt($nowLocal);
+
+                    if (!$isClosed && $this->showEmptySlots && !$isDayInPast) {
+                        if ($isStepLocked) {
+                            $effectiveSlotDur = max(5, (int)($policy['slot_duration_minutes'] ?? 30));
+                        } else {
+                            $effectiveSlotDur = max(5, (int)($this->timeStepMinutes > 0 ? $this->timeStepMinutes : ($policy['slot_duration_minutes'] ?? 30)));
+                        }
+                        $capacityPerSlot = (int)($policy['capacity_per_slot'] ?? 1);
+                        $bufBefore = (int)($policy['buffer_before_minutes'] ?? 0);
+                        $bufAfter = (int)($policy['buffer_after_minutes'] ?? 0);
+                        $stepMinutes = max(5, $effectiveSlotDur + $bufAfter);
+                        $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+                        $capacityConsumingStatuses = (array) config('booking.capacity_consuming_statuses', [
+                            Appointment::STATUS_CONFIRMED,
+                            Appointment::STATUS_PENDING_PAYMENT,
+                            Appointment::STATUS_PENDING,
+                            Appointment::STATUS_DRAFT,
+                            Appointment::STATUS_DONE,
+                        ]);
+
+                        foreach ($workWindows as $win) {
+                            if (empty($win['start']) || empty($win['end'])) continue;
+                            [$wSH, $wSM] = explode(':', $win['start']);
+                            [$wEH, $wEM] = explode(':', $win['end']);
+
+                            $wStart = $dayCarbon->copy()->setTime((int)$wSH, (int)$wSM, 0);
+                            $wEnd = $dayCarbon->copy()->setTime((int)$wEH, (int)$wEM, 0);
+
+                            $cursor = $wStart->copy();
+                            while ($cursor->copy()->addMinutes($effectiveSlotDur)->lte($wEnd)) {
+                                $slotStart = $cursor->copy();
+                                $slotEnd = $cursor->copy()->addMinutes($effectiveSlotDur);
+
+                                // Check if slot is in the past: if slot start/end has passed
+                                $isPast = $slotEnd->lte($nowLocal) || ($slotStart->lt($nowLocal) && $dayCarbon->isToday());
+                                if ($isPast) {
+                                    $cursor->addMinutes($stepMinutes);
+                                    continue;
+                                }
+
+                                // Check break
+                                $inBreak = $bookingEngine->isInBreak($slotStart, $slotEnd, $breaks);
+                                if ($inBreak) {
+                                    $cursor->addMinutes($stepMinutes);
+                                    continue;
+                                }
+
+                                $slotStartUtc = $slotStart->copy()->timezone('UTC');
+                                $slotEndUtc = $slotEnd->copy()->timezone('UTC');
+                                $reqStartWithBuf = $slotStartUtc->copy()->subMinutes($bufBefore);
+                                $reqEndWithBuf = $slotEndUtc->copy()->addMinutes($bufAfter);
+
+                                // Check service sync blocked
+                                $isBlocked = $serviceId ? $syncService->isSyncBlocked($serviceId, (int)$provider->id, $slotStartUtc, $slotEndUtc, $capacityConsumingStatuses) : false;
+                                if ($isBlocked) {
+                                    $cursor->addMinutes($stepMinutes);
+                                    continue;
+                                }
+
+                                // Count booked appointments in this slot
+                                $slotOverlappingAppts = $dayAppts->filter(function ($apt) use ($reqStartWithBuf, $reqEndWithBuf) {
+                                    if (in_array($apt->status, [Appointment::STATUS_CANCELED_BY_ADMIN, Appointment::STATUS_CANCELED_BY_CLIENT], true)) {
+                                        return false;
+                                    }
+                                    return $apt->start_at_utc < $reqEndWithBuf && $apt->end_at_utc > $reqStartWithBuf;
+                                });
+
+                                $bookedCount = $slotOverlappingAppts->count();
+                                $remainingCap = max(0, $capacityPerSlot - $bookedCount);
+
+                                if ($remainingCap > 0) {
+                                    $emptySlots[] = [
+                                        'start_time' => $slotStart->format('H:i'),
+                                        'end_time' => $slotEnd->format('H:i'),
+                                        'capacity' => $capacityPerSlot,
+                                        'booked_count' => $bookedCount,
+                                        'remaining_capacity' => $remainingCap,
+                                        'is_past' => false,
+                                    ];
+                                }
+
+                                $cursor->addMinutes($stepMinutes);
+                            }
+                        }
+                    }
+
+                    $dayItems = [];
+                    foreach ($formattedDayAppts as $apt) {
+                        $dayItems[] = [
+                            'type' => 'appointment',
+                            'time_sort' => $apt['start_time'],
+                            'data' => $apt,
+                        ];
+                    }
+                    foreach ($emptySlots as $eSlot) {
+                        $dayItems[] = [
+                            'type' => 'empty_slot',
+                            'time_sort' => $eSlot['start_time'],
+                            'data' => $eSlot,
+                        ];
+                    }
+                    usort($dayItems, fn($a, $b) => strcmp($a['time_sort'], $b['time_sort']));
+
                     $providerDays[] = [
                         'jalali_date' => $wDay['jalali_date'],
                         'day_name' => $wDay['day_name'],
                         'day_num' => $wDay['day_num'],
                         'is_today' => $wDay['is_today'],
+                        'is_past' => $isDayInPast,
                         'is_closed' => $isClosed,
                         'policy' => $policy,
                         'capacity_per_day' => $capacityPerDay,
                         'daily_booked' => $dailyBookedTotal,
                         'daily_remaining' => $dailyRemaining,
                         'appointments' => $formattedDayAppts,
+                        'empty_slots' => $emptySlots,
+                        'items' => $dayItems,
                     ];
                 }
 

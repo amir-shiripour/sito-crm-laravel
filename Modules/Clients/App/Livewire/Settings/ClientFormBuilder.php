@@ -24,7 +24,7 @@ class ClientFormBuilder extends Component
     public bool $is_active = true;
 
     public array $schema = ['fields' => []];
-    public array $systemFieldIds = ['full_name', 'phone', 'email', 'national_code', 'notes', 'status_id', 'password'];
+    public array $systemFieldIds = ['full_name', 'phone', 'email', 'national_code', 'notes', 'status_id', 'password', 'booking_waitlist'];
 
     // لیست نقش‌ها برای select-user-by-role
     public array $roles = [];

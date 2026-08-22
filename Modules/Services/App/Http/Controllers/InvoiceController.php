@@ -290,11 +290,12 @@ class InvoiceController extends Controller
         }
 
         [$roundedGrandTotal, $roundingMeta] = $this->applyRounding($grandTotal, $settings);
+        $currency = $settings['currency'] ?? $settings['payment_currency'] ?? 'toman';
 
         $invoiceData = $this->buildInvoiceData(
             $data, $request->user()->id,
             $subtotal, $totalDiscount, $totalTax, $roundedGrandTotal,
-            $isProforma, $roundingMeta
+            $isProforma, $roundingMeta, $currency
         );
 
         $invoice = null;
@@ -502,6 +503,7 @@ class InvoiceController extends Controller
 
         $invoiceData = [
             'status_id' => $statusId,
+            'currency' => $data['currency'] ?? ($settings['currency'] ?? $invoice->currency ?? 'toman'),
             'proforma_invoice_number' => $data['proforma_invoice_number'] ?? $invoice->proforma_invoice_number,
             'customer_id' => $data['customer_id'] ?? null,
             'client_name' => $data['client_name'],
@@ -1662,7 +1664,8 @@ class InvoiceController extends Controller
         float $totalTax,
         float $grandTotal,
         bool  $isProforma = false,
-        array $roundingMeta = []
+        array $roundingMeta = [],
+        string $currency = 'toman'
     ): array
     {
         $invoiceNumber = $isProforma ? null : ($data['invoice_number'] ?? Invoice::generateNumber());
@@ -1712,6 +1715,7 @@ class InvoiceController extends Controller
             'client_phone' => $data['client_phone'] ?? null,
             'client_email' => $data['client_email'] ?? null,
             'created_by' => $userId,
+            'currency' => $data['currency'] ?? $currency,
             'issue_date' => $data['issue_date'] ?? now(),
             'due_date' => $data['due_date'] ?? null,
             'subtotal' => (int)round($subtotal),

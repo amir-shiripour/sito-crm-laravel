@@ -83,6 +83,12 @@ class Invoice extends Model
                 $inv->invoice_number ??= static::generateNumber();
             }
 
+            if (empty($inv->currency)) {
+                $inv->currency = Setting::where('key', 'currency')->value('value')
+                    ?? Setting::where('key', 'payment_currency')->value('value')
+                    ?? 'toman';
+            }
+
             if (is_null($inv->status_id)) {
                 // تعیین وضعیت اولیه در زمان ایجاد فاکتور بدون وابستگی به شناسه
                 $status = Status::where('type', 'payment')->where('name', 'در انتظار پرداخت')->first()

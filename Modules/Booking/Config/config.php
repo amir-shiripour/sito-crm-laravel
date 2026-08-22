@@ -100,6 +100,12 @@ return [
                 'statement_approved'         => null,
                 'statement_completed'        => null,
 
+                // Waitlist workflows
+                'waitlist_entry_created'     => null,
+                'waitlist_entry_notified'    => null,
+                'waitlist_entry_converted'   => null,
+                'waitlist_entry_canceled'    => null,
+
                 // Time-based triggers (mapped automatically in code, but listed here for reference)
                 'appointment_reminder_1_hour_before'  => null,
                 'appointment_reminder_2_hours_before' => null,

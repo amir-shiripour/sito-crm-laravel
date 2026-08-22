@@ -180,7 +180,7 @@
 
             @php
                 $systemFieldIds =
-                ['full_name','phone','email','national_code','case_number','notes','status_id','password'];
+                ['full_name','phone','email','national_code','case_number','notes','status_id','password','booking_waitlist'];
 
                 $systemFields = [];
                 $customFields = [];

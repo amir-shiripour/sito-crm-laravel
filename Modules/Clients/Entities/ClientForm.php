@@ -32,6 +32,7 @@ class ClientForm extends Model implements FormSchemaContract
         'status_id'     => ['label' => 'وضعیت',              'column' => 'status_id'],
         'notes'         => ['label' => 'یادداشت مدیریتی',    'column' => 'notes'],
         'password'      => ['label' => 'رمز عبور',           'column' => 'password'],
+        'booking_waitlist' => ['label' => 'صف انتظار نوبت',   'column' => null],
     ];
 
     public static function getSystemFields(): array
@@ -154,6 +155,19 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => 'full',
                 'required'     => false,
                 'quick_create' => true,
+                'client_auth'  => false,
+                'is_system'    => true,
+                'required_status_keys' => [],
+            ],
+            'booking_waitlist' => [
+                'id'           => 'booking_waitlist',
+                'type'         => 'booking_waitlist',
+                'label'        => 'صف انتظار نوبت',
+                'placeholder'  => '',
+                'group'        => 'نوبت‌دهی',
+                'width'        => 'full',
+                'required'     => false,
+                'quick_create' => false,
                 'client_auth'  => false,
                 'is_system'    => true,
                 'required_status_keys' => [],

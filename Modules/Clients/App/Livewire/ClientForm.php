@@ -60,6 +60,13 @@ class ClientForm extends Component
     // 🔸 حالت اختصاصی ویجت داشبورد
     public bool $forWidget = false;
 
+    // 🔸 صف انتظار نوبت (Booking Waitlist)
+    public bool $addToWaitlist = false;
+    public ?int $waitlistServiceId = null;
+    public ?int $waitlistProviderId = null;
+    public ?string $waitlistPreferredDate = null;
+    public ?string $waitlistNotes = null;
+
     // 🔸 ریفرنس به فرم فعال (برای استفاده از quickFields و ... در ویو)
     public ?ClientFormSchema $formDefinition = null;
 
@@ -729,6 +736,27 @@ class ClientForm extends Component
             throw $e;
         }
 
+        // 🔸 ثبت در صف انتظار نوبت در صورت انتخاب
+        if ($this->addToWaitlist && $client && $client->exists && class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            $prefDateG = null;
+            if (!empty($this->waitlistPreferredDate)) {
+                try {
+                    $j = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $this->waitlistPreferredDate);
+                    $prefDateG = $j->toCarbon()->toDateString();
+                } catch (\Throwable $e) {}
+            }
+            \Modules\Booking\Entities\BookingWaitlist::create([
+                'client_id'          => $client->id,
+                'service_id'         => $this->waitlistServiceId ? (int)$this->waitlistServiceId : null,
+                'provider_user_id'   => $this->waitlistProviderId ? (int)$this->waitlistProviderId : null,
+                'preferred_date'     => $prefDateG,
+                'notes'              => $this->waitlistNotes,
+                'status'             => \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
+                'created_by_user_id' => Auth::id(),
+            ]);
+            $this->reset(['addToWaitlist', 'waitlistServiceId', 'waitlistProviderId', 'waitlistPreferredDate', 'waitlistNotes']);
+        }
+
         $this->dispatch('notify', type: 'success', text: $isNew ? 'ایجاد شد.' : 'به‌روزرسانی شد.');
 
         if (!empty($plainPassword)) {
@@ -1079,5 +1107,60 @@ class ClientForm extends Component
 
         // ریست کردن ویژگی مربوط به آپلود
         unset($this->upload_files[$fid]);
+    }
+
+    /**
+     * ثبت مستقیم مراجع در صف انتظار نوبت از داخل فرم پرونده
+     */
+    public function addWaitlistEntryForClient(): void
+    {
+        if (!$this->client || !$this->client->exists) {
+            $this->dispatch('notify', type: 'error', text: 'لطفاً ابتدا پرونده را ذخیره کنید.');
+            return;
+        }
+
+        if (!class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            return;
+        }
+
+        $prefDateG = null;
+        if (!empty($this->waitlistPreferredDate)) {
+            try {
+                $j = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $this->waitlistPreferredDate);
+                $prefDateG = $j->toCarbon()->toDateString();
+            } catch (\Throwable $e) {
+                $prefDateG = null;
+            }
+        }
+
+        \Modules\Booking\Entities\BookingWaitlist::create([
+            'client_id'          => $this->client->id,
+            'service_id'         => $this->waitlistServiceId ? (int)$this->waitlistServiceId : null,
+            'provider_user_id'   => $this->waitlistProviderId ? (int)$this->waitlistProviderId : null,
+            'preferred_date'     => $prefDateG,
+            'notes'              => $this->waitlistNotes,
+            'status'             => \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
+            'created_by_user_id' => Auth::id(),
+        ]);
+
+        $this->reset(['addToWaitlist', 'waitlistServiceId', 'waitlistProviderId', 'waitlistPreferredDate', 'waitlistNotes']);
+        $this->dispatch('notify', type: 'success', text: 'مراجع با موفقیت به صف انتظار اضافه شد.');
+    }
+
+    /**
+     * لغو و حذف از صف انتظار نوبت
+     */
+    public function removeFromWaitlist(int $waitlistId): void
+    {
+        if (!class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            return;
+        }
+
+        $entry = \Modules\Booking\Entities\BookingWaitlist::find($waitlistId);
+        if ($entry && (int)$entry->client_id === (int)$this->client?->id) {
+            $entry->update(['status' => \Modules\Booking\Entities\BookingWaitlist::STATUS_CANCELED]);
+            $entry->delete();
+            $this->dispatch('notify', type: 'success', text: 'با موفقیت از صف انتظار خارج شد.');
+        }
     }
 }

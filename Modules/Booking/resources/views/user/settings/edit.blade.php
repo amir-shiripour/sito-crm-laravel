@@ -541,6 +541,56 @@
                         </div>
                     </div>
 
+                    {{-- کارت: مدیریت صف انتظار (Waitlist Queue) --}}
+                    <div class="{{ $cardClass }}" x-data="{ queueEnabled: {{ old('queue_enabled', $settings->queue_enabled ?? false) ? 'true' : 'false' }} }">
+                        <div class="{{ $headerClass }}">
+                            <div class="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">مدیریت صف انتظار</h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی صف انتظار نوبت‌ها</p>
+                            </div>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            <div>
+                                <label class="flex items-center justify-between cursor-pointer select-none">
+                                    <div>
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white block">فعال‌سازی صف انتظار</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-0.5">امکان قرار دادن بیماران در صف نوبت</span>
+                                    </div>
+                                    <input type="hidden" name="queue_enabled" value="0">
+                                    <div class="relative inline-flex items-center shrink-0 mr-3">
+                                        <input type="checkbox"
+                                               name="queue_enabled"
+                                               value="1"
+                                               x-model="queueEnabled"
+                                               @checked(old('queue_enabled', $settings->queue_enabled ?? false))
+                                               class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-teal-600"></div>
+                                    </div>
+                                </label>
+                                <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
+                                    با فعال بودن این گزینه، در فرم‌ساز ماژول پرونده‌ها فیلد سیستمی «صف انتظار نوبت» فعال شده و کاربران می‌توانند مراجعین را در صف عمومی یا صف اختصاصی سرویس‌ها ثبت کنند.
+                                </p>
+                            </div>
+
+                            <div x-show="queueEnabled" x-collapse>
+                                <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+                                    <label class="{{ $labelClass }}">حداکثر ظرفیت صف (اختیاری)</label>
+                                    <div class="relative">
+                                        <input type="number" name="queue_max_size" min="1" max="100000" class="{{ $inputClass }} text-center dir-ltr pl-10"
+                                               value="{{ old('queue_max_size', $settings->queue_max_size) }}" placeholder="نامحدود (خالی)">
+                                        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400 text-xs">نفر</div>
+                                    </div>
+                                    <p class="text-[11px] text-gray-400 mt-1">در صورت خالی بودن، صف بدون محدودیت ظرفیت خواهد بود.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- کارت ۵: تنظیمات Scope --}}
                     <div class="{{ $cardClass }}">
                         <div class="{{ $headerClass }}">

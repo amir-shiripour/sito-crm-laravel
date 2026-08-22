@@ -873,6 +873,456 @@
         </div>
     </div>
 
+    {{-- booking_waitlist --}}
+@elseif ($type === 'booking_waitlist')
+    @php
+        $queueEnabled = class_exists(\Modules\Booking\Entities\BookingSetting::class) && \Modules\Booking\Entities\BookingSetting::isQueueEnabled();
+        $waitlistEntries = [];
+        $otherQueuesCount = 0;
+        if ($queueEnabled && !empty($client?->id)) {
+            $waitlistEntries = \Modules\Booking\Entities\BookingWaitlist::query()
+                ->where('client_id', $client->id)
+                ->whereIn('status', [\Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING, \Modules\Booking\Entities\BookingWaitlist::STATUS_NOTIFIED, \Modules\Booking\Entities\BookingWaitlist::STATUS_IN_PROGRESS])
+                ->with(['service', 'provider'])
+                ->orderBy('id', 'desc')
+                ->get();
+            $otherQueuesCount = count($waitlistEntries);
+        }
+
+        $servicesData = [];
+        $providersData = [];
+        if ($queueEnabled) {
+            $servicesData = \Modules\Booking\Entities\BookingService::query()
+                ->where('status', \Modules\Booking\Entities\BookingService::STATUS_ACTIVE)
+                ->with(['providers' => function ($q) {
+                    $q->wherePivot('is_active', true);
+                }])
+                ->orderBy('name')
+                ->get()
+                ->map(function ($s) {
+                    return [
+                        'id' => (int)$s->id,
+                        'name' => (string)$s->name,
+                        'provider_ids' => $s->providers->pluck('id')->map(fn($v) => (int)$v)->values()->toArray(),
+                    ];
+                })->values()->toArray();
+
+            $providersData = \App\Models\User::query()
+                ->whereIn('id', function ($q) {
+                    $q->select('provider_user_id')->from('booking_service_providers')->where('is_active', true);
+                })
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(function ($p) {
+                    $serviceIds = \Illuminate\Support\Facades\DB::table('booking_service_providers')
+                        ->where('provider_user_id', $p->id)
+                        ->where('is_active', true)
+                        ->pluck('service_id')
+                        ->map(fn($v) => (int)$v)
+                        ->values()
+                        ->toArray();
+                    return [
+                        'id' => (int)$p->id,
+                        'name' => (string)$p->name,
+                        'service_ids' => $serviceIds,
+                    ];
+                })->values()->toArray();
+
+            if (empty($providersData)) {
+                $providersData = \App\Models\User::orderBy('name')->limit(50)->get(['id', 'name'])->map(function ($p) {
+                    return [
+                        'id' => (int)$p->id,
+                        'name' => (string)$p->name,
+                        'service_ids' => [],
+                    ];
+                })->values()->toArray();
+            }
+        }
+    @endphp
+
+    @if(!$queueEnabled)
+        <div class="p-3.5 rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/70 dark:bg-amber-950/30 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="font-medium">صف انتظار نوبت در حال حاضر در تنظیمات نوبت‌دهی غیرفعال است.</span>
+        </div>
+    @else
+        <div class="space-y-3.5" x-data="{
+            showAddForm: false,
+            services: @js($servicesData),
+            providers: @js($providersData),
+            serviceId: @entangle('waitlistServiceId').live,
+            providerId: @entangle('waitlistProviderId').live,
+            serviceSearch: '',
+            providerSearch: '',
+            openService: false,
+            openProvider: false,
+
+            get availableServices() {
+                let list = this.services;
+                if (this.providerId) {
+                    list = list.filter(s => s.provider_ids.includes(Number(this.providerId)));
+                }
+                if (this.serviceSearch.trim()) {
+                    const sTerm = this.serviceSearch.toLowerCase();
+                    list = list.filter(s => s.name.toLowerCase().includes(sTerm));
+                }
+                return list;
+            },
+
+            get availableProviders() {
+                let list = this.providers;
+                if (this.serviceId) {
+                    list = list.filter(p => p.service_ids.includes(Number(this.serviceId)));
+                }
+                if (this.providerSearch.trim()) {
+                    const pTerm = this.providerSearch.toLowerCase();
+                    list = list.filter(p => p.name.toLowerCase().includes(pTerm));
+                }
+                return list;
+            },
+
+            get selectedServiceName() {
+                if (!this.serviceId) return 'صف عمومی (بدون سرویس خاص)';
+                const s = this.services.find(item => item.id == this.serviceId);
+                return s ? s.name : 'انتخاب سرویس...';
+            },
+
+            get selectedProviderName() {
+                if (!this.providerId) return 'هر ارائه‌دهنده‌ای (بدون ترجیح)';
+                const p = this.providers.find(item => item.id == this.providerId);
+                return p ? p.name : 'انتخاب ارائه‌دهنده...';
+            },
+
+            selectService(id) {
+                this.serviceId = id;
+                this.openService = false;
+                this.serviceSearch = '';
+                if (id && this.providerId) {
+                    const s = this.services.find(item => item.id == id);
+                    if (s && !s.provider_ids.includes(Number(this.providerId))) {
+                        this.providerId = null;
+                    }
+                }
+            },
+
+            selectProvider(id) {
+                this.providerId = id;
+                this.openProvider = false;
+                this.providerSearch = '';
+                if (id && this.serviceId) {
+                    const p = this.providers.find(item => item.id == id);
+                    if (p && !p.service_ids.includes(Number(this.serviceId))) {
+                        this.serviceId = null;
+                    }
+                }
+            }
+        }">
+            {{-- نمایش صف‌های فعال مراجع --}}
+            @if($otherQueuesCount > 0)
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black">
+                                {{ $otherQueuesCount }}
+                            </span>
+                            <span class="text-xs font-bold text-gray-900 dark:text-gray-100">صف‌های انتظار فعال این مراجع:</span>
+                        </div>
+                    </div>
+
+                    <div class="divide-y divide-gray-100 dark:divide-gray-700/60">
+                        @foreach($waitlistEntries as $entry)
+                            <div class="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/50 dark:hover:bg-gray-750 transition">
+                                <div class="flex items-center gap-3">
+                                    {{-- Position Badge --}}
+                                    <div>
+                                        @if($entry->queue_rank === 1)
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold whitespace-nowrap shadow-2xs">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                <span>نفر ۱ (نوبت بعدی)</span>
+                                            </span>
+                                        @else
+                                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700/60 text-gray-800 dark:text-gray-200 text-xs font-bold whitespace-nowrap">
+                                                <span>نفر {{ $entry->queue_rank }}</span>
+                                                @if($entry->queue_ahead_count > 0)
+                                                    <span class="text-[11px] font-normal text-gray-500 dark:text-gray-400">({{ $entry->queue_ahead_count }} نفر جلوتر)</span>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    {{-- Details --}}
+                                    <div>
+                                        <div class="text-xs font-bold text-gray-900 dark:text-gray-100 flex items-center flex-wrap gap-2">
+                                            <span>{{ $entry->service ? $entry->service->name : '🌐 صف عمومی نوبت‌دهی' }}</span>
+                                            @if($entry->provider)
+                                                <span class="text-[11px] text-gray-500 dark:text-gray-400 font-normal">({{ $entry->provider->name }})</span>
+                                            @endif
+                                            <span class="text-[10px] px-2 py-0.5 rounded-md font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200 border border-amber-200 dark:border-amber-800/40">
+                                                {{ $entry->status_label }}
+                                            </span>
+                                        </div>
+                                        <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-3">
+                                            @if($entry->preferred_date)
+                                                <span class="text-gray-700 dark:text-gray-300 font-medium">📅 تاریخ ترجیحی: {{ \Morilog\Jalali\Jalalian::fromDateTime($entry->preferred_date)->format('Y/m/d') }}</span>
+                                            @endif
+                                            <span>ثبت: {{ \Morilog\Jalali\Jalalian::fromDateTime($entry->created_at)->format('Y/m/d H:i') }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Cancel button --}}
+                                <div class="flex sm:justify-end">
+                                    <button type="button"
+                                            wire:click="removeFromWaitlist({{ $entry->id }})"
+                                            onclick="return confirm('آیا از خروج این مراجع از صف اطمینان دارید؟')"
+                                            class="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-xl text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/30 font-medium transition whitespace-nowrap">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        <span>خروج از صف</span>
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            {{-- افزودن به صف در پرونده موجود --}}
+            @if(!empty($client?->id))
+                <div>
+                    <button type="button" @click="showAddForm = !showAddForm"
+                            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/60 text-gray-700 dark:text-gray-200 text-xs font-bold transition shadow-xs">
+                        <span x-text="showAddForm ? '✕ انصراف و بستن' : '+ افزودن این مراجع به صف انتظار جدید'"></span>
+                    </button>
+
+                    <div x-show="showAddForm" x-collapse class="mt-3 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/40 space-y-4 shadow-sm">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {{-- انتخاب سرویس --}}
+                            <div class="relative" @click.outside="openService = false">
+                                <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1 flex items-center justify-between">
+                                    <span>🛠️ سرویس نوبت (اختیاری)</span>
+                                    <template x-if="providerId">
+                                        <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">وابسته به ارائه‌دهنده</span>
+                                    </template>
+                                </label>
+
+                                <div @click="openService = !openService"
+                                     class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-xs font-medium text-gray-900 dark:text-gray-100 flex items-center justify-between cursor-pointer focus:ring-2 focus:ring-indigo-500/20">
+                                    <span class="truncate font-semibold" x-text="selectedServiceName"></span>
+                                    <div class="flex items-center gap-1 text-gray-400">
+                                        <template x-if="serviceId">
+                                            <button type="button" @click.stop="selectService(null)" class="hover:text-rose-500 font-bold text-xs p-0.5">✕</button>
+                                        </template>
+                                        <svg class="w-3.5 h-3.5 transition-transform" :class="openService ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+
+                                <div x-show="openService" x-transition.opacity class="absolute top-full right-0 left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-2 max-h-56 overflow-y-auto space-y-1">
+                                    <input type="text" x-model="serviceSearch" placeholder="🔍 جستجوی سرویس..." @click.stop
+                                           class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-1.5 text-xs text-gray-900 dark:text-gray-100 mb-1">
+
+                                    <div @click="selectService(null)"
+                                         :class="!serviceId ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                         class="p-2 rounded-xl text-xs cursor-pointer flex items-center justify-between">
+                                        <span>🌐 صف عمومی (بدون سرویس خاص)</span>
+                                        <template x-if="!serviceId"><span class="text-indigo-600 dark:text-indigo-400 font-bold">✓</span></template>
+                                    </div>
+
+                                    <template x-for="s in availableServices" :key="s.id">
+                                        <div @click="selectService(s.id)"
+                                             :class="serviceId == s.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                             class="p-2 rounded-xl text-xs cursor-pointer flex items-center justify-between">
+                                            <span class="truncate" x-text="s.name"></span>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400" x-text="s.provider_ids.length + ' ارائه‌دهنده'"></span>
+                                                <template x-if="serviceId == s.id"><span class="text-indigo-600 dark:text-indigo-400 font-bold">✓</span></template>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="availableServices.length === 0">
+                                        <div class="p-2 text-center text-[11px] text-gray-400">سرویسی متناسب یافت نشد</div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- انتخاب ارائه‌دهنده --}}
+                            <div class="relative" @click.outside="openProvider = false">
+                                <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1 flex items-center justify-between">
+                                    <span>👨‍⚕️ {{ config('booking.labels.provider', 'ارائه‌دهنده') }} (اختیاری)</span>
+                                    <template x-if="serviceId">
+                                        <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">وابسته به سرویس</span>
+                                    </template>
+                                </label>
+
+                                <div @click="openProvider = !openProvider"
+                                     class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-xs font-medium text-gray-900 dark:text-gray-100 flex items-center justify-between cursor-pointer focus:ring-2 focus:ring-indigo-500/20">
+                                    <span class="truncate font-semibold" x-text="selectedProviderName"></span>
+                                    <div class="flex items-center gap-1 text-gray-400">
+                                        <template x-if="providerId">
+                                            <button type="button" @click.stop="selectProvider(null)" class="hover:text-rose-500 font-bold text-xs p-0.5">✕</button>
+                                        </template>
+                                        <svg class="w-3.5 h-3.5 transition-transform" :class="openProvider ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+
+                                <div x-show="openProvider" x-transition.opacity class="absolute top-full right-0 left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-2 max-h-56 overflow-y-auto space-y-1">
+                                    <input type="text" x-model="providerSearch" placeholder="🔍 جستجوی ارائه‌دهنده..." @click.stop
+                                           class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-1.5 text-xs text-gray-900 dark:text-gray-100 mb-1">
+
+                                    <div @click="selectProvider(null)"
+                                         :class="!providerId ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                         class="p-2 rounded-xl text-xs cursor-pointer flex items-center justify-between">
+                                        <span>بدون ترجیح (هر ارائه‌دهنده‌ای)</span>
+                                        <template x-if="!providerId"><span class="text-indigo-600 dark:text-indigo-400 font-bold">✓</span></template>
+                                    </div>
+
+                                    <template x-for="p in availableProviders" :key="p.id">
+                                        <div @click="selectProvider(p.id)"
+                                             :class="providerId == p.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                             class="p-2 rounded-xl text-xs cursor-pointer flex items-center justify-between">
+                                            <span class="truncate" x-text="p.name"></span>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400" x-text="p.service_ids.length + ' سرویس'"></span>
+                                                <template x-if="providerId == p.id"><span class="text-indigo-600 dark:text-indigo-400 font-bold">✓</span></template>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="availableProviders.length === 0">
+                                        <div class="p-3 text-center text-xs text-amber-600 dark:text-amber-400 font-medium">هیچ ارائه‌دهنده‌ای برای این سرویس فعال نیست</div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- تاریخ ترجیحی --}}
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">📅 تاریخ ترجیحی (اختیاری)</label>
+                                <input type="text" wire:model.defer="waitlistPreferredDate" placeholder="۱۴۰۵/۰۶/۰۱"
+                                       class="{{ $baseInputClass }} text-center" data-jdp-only-date />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">📝 یادداشت / علت صف</label>
+                            <input type="text" wire:model.defer="waitlistNotes" placeholder="توضیحات و درخواست خاص مراجع..."
+                                   class="{{ $baseInputClass }}" />
+                        </div>
+
+                        <div class="flex justify-end pt-1">
+                            <button type="button" wire:click="addWaitlistEntryForClient"
+                                    class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition">
+                                ثبت در صف انتظار
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @else
+                {{-- هنگام ایجاد پرونده جدید --}}
+                <div class="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/40 space-y-3">
+                    <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                        <input type="checkbox" wire:model.live="addToWaitlist" class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800">
+                        <span class="text-xs font-bold text-gray-800 dark:text-gray-200">افزودن مستقیم این مراجع به صف انتظار پس از ذخیره پرونده</span>
+                    </label>
+
+                    <div x-show="$wire.addToWaitlist" x-collapse class="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {{-- انتخاب سرویس --}}
+                            <div class="relative" @click.outside="openService = false">
+                                <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center justify-between">
+                                    <span>سرویس (اختیاری)</span>
+                                    <template x-if="providerId">
+                                        <span class="text-[10px] text-indigo-600 dark:text-indigo-400">وابسته به ارائه‌دهنده</span>
+                                    </template>
+                                </label>
+
+                                <div @click="openService = !openService"
+                                     class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-900 dark:text-gray-100 flex items-center justify-between cursor-pointer">
+                                    <span class="truncate" x-text="selectedServiceName"></span>
+                                    <div class="flex items-center gap-1 text-gray-400">
+                                        <template x-if="serviceId">
+                                            <button type="button" @click.stop="selectService(null)" class="hover:text-rose-500 font-bold text-xs p-0.5">✕</button>
+                                        </template>
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+
+                                <div x-show="openService" x-transition.opacity class="absolute top-full right-0 left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-2 max-h-52 overflow-y-auto space-y-1">
+                                    <input type="text" x-model="serviceSearch" placeholder="🔍 جستجوی سرویس..." @click.stop
+                                           class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-1.5 text-xs text-gray-900 dark:text-gray-100 mb-1">
+
+                                    <div @click="selectService(null)"
+                                         :class="!serviceId ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                         class="p-1.5 rounded-xl text-xs cursor-pointer flex items-center justify-between">
+                                        <span>صف عمومی (بدون سرویس خاص)</span>
+                                    </div>
+
+                                    <template x-for="s in availableServices" :key="s.id">
+                                        <div @click="selectService(s.id)"
+                                             :class="serviceId == s.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                             class="p-1.5 rounded-xl text-xs cursor-pointer flex items-center justify-between">
+                                            <span class="truncate" x-text="s.name"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- انتخاب ارائه‌دهنده --}}
+                            <div class="relative" @click.outside="openProvider = false">
+                                <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center justify-between">
+                                    <span>{{ config('booking.labels.provider', 'ارائه‌دهنده') }} (اختیاری)</span>
+                                    <template x-if="serviceId">
+                                        <span class="text-[10px] text-indigo-600 dark:text-indigo-400">وابسته به سرویس</span>
+                                    </template>
+                                </label>
+
+                                <div @click="openProvider = !openProvider"
+                                     class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-900 dark:text-gray-100 flex items-center justify-between cursor-pointer">
+                                    <span class="truncate" x-text="selectedProviderName"></span>
+                                    <div class="flex items-center gap-1 text-gray-400">
+                                        <template x-if="providerId">
+                                            <button type="button" @click.stop="selectProvider(null)" class="hover:text-rose-500 font-bold text-xs p-0.5">✕</button>
+                                        </template>
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+
+                                <div x-show="openProvider" x-transition.opacity class="absolute top-full right-0 left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-2 max-h-52 overflow-y-auto space-y-1">
+                                    <input type="text" x-model="providerSearch" placeholder="🔍 جستجوی ارائه‌دهنده..." @click.stop
+                                           class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-1.5 text-xs text-gray-900 dark:text-gray-100 mb-1">
+
+                                    <div @click="selectProvider(null)"
+                                         :class="!providerId ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                         class="p-1.5 rounded-xl text-xs cursor-pointer flex items-center justify-between">
+                                        <span>بدون ترجیح (هر ارائه‌دهنده‌ای)</span>
+                                    </div>
+
+                                    <template x-for="p in availableProviders" :key="p.id">
+                                        <div @click="selectProvider(p.id)"
+                                             :class="providerId == p.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                             class="p-1.5 rounded-xl text-xs cursor-pointer flex items-center justify-between">
+                                            <span class="truncate" x-text="p.name"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">تاریخ ترجیحی (اختیاری)</label>
+                                <input type="text" wire:model.defer="waitlistPreferredDate" placeholder="۱۴۰۵/۰۶/۰۱" class="{{ $baseInputClass }} text-center" data-jdp-only-date />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">توضیحات</label>
+                            <input type="text" wire:model.defer="waitlistNotes" placeholder="توضیحات صف..." class="{{ $baseInputClass }}" />
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- fallback --}}
 @else
     <input type="text" wire:model.defer="{{ $model }}" placeholder="{{ $placeholder }}" class="{{ $baseInputClass }}" />
