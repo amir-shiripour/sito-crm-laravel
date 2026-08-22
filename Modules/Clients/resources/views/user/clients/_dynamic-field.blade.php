@@ -876,7 +876,11 @@
     {{-- booking_waitlist --}}
 @elseif ($type === 'booking_waitlist')
     @php
-        $queueEnabled = class_exists(\Modules\Booking\Entities\BookingSetting::class) && \Modules\Booking\Entities\BookingSetting::isQueueEnabled();
+        $isBookingActive = \Modules\Clients\Entities\ClientForm::isBookingModuleActive();
+        $queueEnabled = $isBookingActive
+            && class_exists(\Modules\Booking\Entities\BookingSetting::class)
+            && \Modules\Booking\Entities\BookingSetting::isQueueEnabled();
+
         $waitlistEntries = [];
         $otherQueuesCount = 0;
         if ($queueEnabled && !empty($client?->id)) {
@@ -940,7 +944,14 @@
         }
     @endphp
 
-    @if(!$queueEnabled)
+    @if(!$isBookingActive)
+        <div class="p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/60 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>ماژول نوبت‌دهی (Booking) نصب یا فعال نیست.</span>
+        </div>
+    @elseif(!$queueEnabled)
         <div class="p-3.5 rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/70 dark:bg-amber-950/30 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2.5">
             <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1033,7 +1044,7 @@
 
                     <div class="divide-y divide-gray-100 dark:divide-gray-700/60">
                         @foreach($waitlistEntries as $entry)
-                            <div class="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/50 dark:hover:bg-gray-750 transition">
+                            <div class="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors duration-150">
                                 <div class="flex items-center gap-3">
                                     {{-- Position Badge --}}
                                     <div>

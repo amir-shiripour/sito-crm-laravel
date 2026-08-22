@@ -97,7 +97,24 @@ class ClientForm extends Component
             : ClientFormSchema::active($keyFromSettings);
 
         $this->formDefinition = $form;
-        $this->schema         = ($form && isset($form->schema)) ? $form->schema : ['fields' => []];
+        $schema = ($form && isset($form->schema)) ? $form->schema : ['fields' => []];
+
+        // 🔸 بررسی فعال بودن ماژول نوبت‌دهی و فعال بودن صف انتظار
+        $isBookingActive = ClientFormSchema::isBookingModuleActive();
+        $isQueueEnabled  = $isBookingActive
+            && class_exists(\Modules\Booking\Entities\BookingSetting::class)
+            && \Modules\Booking\Entities\BookingSetting::isQueueEnabled();
+
+        if (!empty($schema['fields'])) {
+            $schema['fields'] = array_values(array_filter($schema['fields'], function ($f) use ($isBookingActive, $isQueueEnabled) {
+                if (($f['type'] ?? null) === 'booking_waitlist' || ($f['id'] ?? null) === 'booking_waitlist') {
+                    return $isBookingActive && $isQueueEnabled;
+                }
+                return true;
+            }));
+        }
+
+        $this->schema = $schema;
 
         // وضعیت‌های فعال
         $statuses = ClientStatus::active()->get();
@@ -356,8 +373,8 @@ class ClientForm extends Component
         ];
 
         foreach (ClientFormSchema::SYSTEM_FIELDS as $sid => $info) {
-            // status_id و password را جداگانه هندل می‌کنیم
-            if (in_array($sid, ['status_id', 'password'], true)) {
+            // status_id, password و booking_waitlist را جداگانه هندل می‌کنیم و نباید رول اسکالر مستقیم به rules اضافه شود
+            if (in_array($sid, ['status_id', 'password', 'booking_waitlist'], true)) {
                 continue;
             }
 

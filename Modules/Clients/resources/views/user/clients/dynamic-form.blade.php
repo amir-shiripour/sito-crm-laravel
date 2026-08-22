@@ -6,9 +6,20 @@
     dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900";
     $labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
-    $fields = $schema['fields'] ?? [];
+    $isBookingActive = \Modules\Clients\Entities\ClientForm::isBookingModuleActive();
+    $isQueueEnabled = $isBookingActive
+        && class_exists(\Modules\Booking\Entities\BookingSetting::class)
+        && \Modules\Booking\Entities\BookingSetting::isQueueEnabled();
+
+    $fields = array_values(array_filter($schema['fields'] ?? [], function ($f) use ($isBookingActive, $isQueueEnabled) {
+        if (($f['type'] ?? null) === 'booking_waitlist' || ($f['id'] ?? null) === 'booking_waitlist') {
+            return $isBookingActive && $isQueueEnabled;
+        }
+        return true;
+    }));
+
     $grouped = collect($fields)->groupBy(function ($f) {
-    return $f['group'] ?? '';
+        return $f['group'] ?? '';
     });
 @endphp
 
