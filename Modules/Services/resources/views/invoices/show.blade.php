@@ -202,8 +202,10 @@
                         </div>
                         <div class="flex items-center gap-3">
                             <h1 class="text-2xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</h1>
-                            @if(!empty($invoice->meta['created_by_workflow']))
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 border border-indigo-100 dark:border-indigo-500/20">ایجاد سیستمی</span>
+                            @if(!empty($invoice->meta['created_by_manual_renewal']))
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/20">فاکتور تمدید (دستی)</span>
+                            @elseif(!empty($invoice->meta['created_by_workflow']) || !empty($invoice->meta['is_renewal']))
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 border border-indigo-100 dark:border-indigo-500/20">ایجاد سیستمی (تمدید)</span>
                             @endif
                             @if(!empty($invoice->meta['is_merged_invoice']))
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-50 dark:bg-purple-500/10 text-purple-500 border border-purple-100 dark:border-purple-500/20">حاصل ادغام فاکتورها</span>
@@ -440,7 +442,8 @@
                         @php
                             $customFieldsCollection = $item->service ? $item->service->customFields : collect([]);
                             $savedCustomFields = $item->meta['custom_fields'] ?? [];
-                            $displayQty = fmod($item->quantity, 1.0) === 0.0 ? (int)$item->quantity : $item->quantity;
+                            $itemQty = (float) $item->quantity;
+                            $displayQty = fmod($itemQty, 1.0) === 0.0 ? (int)$itemQty : $itemQty;
                         @endphp
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all">
                         <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
@@ -509,93 +512,191 @@
                                 @php
                                     $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
                                     if (!$fieldDef) continue;
-
-                                    if (is_array($value)) { $displayValue = implode('، ', $value); }
-                                    elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
-                                    else { $displayValue = $value ?: null; }
-
-                                    if (!$displayValue) continue;
-
-                                    $fieldPrice = 0;
-                                    $fieldDiscount = 0;
                                     
-                                    if ($fieldDef->has_pricing) {
-                                        $fieldPrice = $item->meta['custom_fields_prices'][$field_id] ?? null;
-                                        $fieldDiscount = $item->meta['custom_fields_discounts'][$field_id] ?? 0;
-
-                                        if ($fieldPrice === null) {
-                                            $fieldPrice = $fieldDef->pricing_type === 'percentage'
-                                                            ? ($item->unit_price * ((float)$fieldDef->pricing_amount / 100))
-                                                            : (float)$fieldDef->pricing_amount;
-                                        }
-                                    }
+                                    $customFieldsQuantities = $item->meta['custom_fields_quantities'] ?? [];
+                                    $customFieldsPrices = $item->meta['custom_fields_prices'] ?? [];
+                                    $customFieldsDiscounts = $item->meta['custom_fields_discounts'] ?? [];
+                                    $customFieldsTaxes = $item->meta['custom_fields_taxes'] ?? [];
                                 @endphp
-                                <tr class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10">
-                                    <td class="px-4 py-2.5 relative text-start">
-                                        <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                        <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                        <div class="pe-4 ps-6 flex items-center gap-2">
-                                                <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                                </span>
-                                            <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate">{{ $fieldDef->label }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-2.5 text-start">
-                                        @if($fieldDef->type === 'file')
-                                            <a href="{{ Storage::url($displayValue) }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                                                دانلود فایل
-                                            </a>
-                                        @elseif($fieldDef->type === 'url')
-                                            <a href="{{ str_starts_with($displayValue, 'http') ? $displayValue : 'http://' . $displayValue }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dir-ltr">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                                                {{ $displayValue }}
-                                            </a>
-                                        @else
-                                            <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $displayValue }}</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-2.5 text-center text-xs text-gray-400">
-                                        {{ $faNum($displayQty) }}
-                                    </td>
-                                    <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-gray-700 dark:text-gray-300">
-                                        {{ $faNum(number_format($fieldPrice)) }}
-                                        <span class="text-[9px] text-gray-400 ms-0.5">{{ $currencyLabel }}</span>
-                                    </td>
-                                    <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-red-500 dark:text-red-400">
-                                        @if($fieldDiscount > 0)
-                                            {{ $faNum(number_format($fieldDiscount)) }}
-                                            <span class="text-[9px] text-red-400/80 ms-0.5">{{ $currencyLabel }}</span>
-                                        @else
-                                            —
-                                        @endif
-                                    </td>
+
+                                @if($fieldDef->type === 'multiselect' && is_array($value) && $fieldDef->has_pricing)
+                                    @foreach($value as $opt)
+                                        @php
+                                            $optQty = is_array($customFieldsQuantities[$field_id] ?? null)
+                                                ? ($customFieldsQuantities[$field_id][$opt] ?? ($customFieldsQuantities[$field_id] ?? $item->quantity))
+                                                : ($customFieldsQuantities[$field_id] ?? $item->quantity);
+                                            $optQty = (float) $optQty;
+                                            $optQtyDisplay = fmod($optQty, 1.0) === 0.0 ? (int)$optQty : $optQty;
+                                            
+                                            $optPrice = is_array($customFieldsPrices[$field_id] ?? null)
+                                                ? ($customFieldsPrices[$field_id][$opt] ?? null)
+                                                : ($customFieldsPrices[$field_id] ?? null);
+                                            if ($optPrice === null) {
+                                                $optPrice = $fieldDef->getOptionPrice($opt, $item->unit_price);
+                                            }
+                                            $optPrice = (float)$optPrice;
+
+                                            $optDiscount = is_array($customFieldsDiscounts[$field_id] ?? null)
+                                                ? ($customFieldsDiscounts[$field_id][$opt] ?? ($customFieldsDiscounts[$field_id] ?? 0))
+                                                : ($customFieldsDiscounts[$field_id] ?? 0);
+                                            $optDiscount = (float)$optDiscount;
+
+                                            $cfTaxAmount = 0;
+                                            $cfTaxPercent = 0;
+                                            if (($settings['services_tax_mode'] ?? 'invoice') === 'item' && !empty($settings['services_tax_apply_custom_fields'])) {
+                                                $cfTaxPercent = is_array($customFieldsTaxes[$field_id] ?? null)
+                                                    ? ($customFieldsTaxes[$field_id][$opt] ?? ($customFieldsTaxes[$field_id] ?? 0))
+                                                    : ($customFieldsTaxes[$field_id] ?? 0);
+                                                $cfTaxable = max(0, ($optPrice * $optQty) - $optDiscount);
+                                                $cfTaxAmount = $cfTaxable * ($cfTaxPercent / 100);
+                                            }
+                                            $cfRowTotal = max(0, ($optPrice * $optQty) - $optDiscount) + $cfTaxAmount;
+                                        @endphp
+                                        <tr class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10">
+                                            <td class="px-4 py-2.5 relative text-start">
+                                                <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                <div class="pe-4 ps-6 flex items-center gap-2">
+                                                    <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                    </span>
+                                                    <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate">{{ $fieldDef->label }}: {{ $opt }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-2.5 text-start">
+                                                <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $opt }}</span>
+                                            </td>
+                                            <td class="px-4 py-2.5 text-center text-xs font-bold text-gray-700 dark:text-gray-300 tabular-nums">
+                                                {{ $faNum($optQtyDisplay) }}
+                                            </td>
+                                            <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                {{ $faNum(number_format($optPrice)) }}
+                                                <span class="text-[9px] text-gray-400 ms-0.5">{{ $currencyLabel }}</span>
+                                            </td>
+                                            <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-red-500 dark:text-red-400">
+                                                @if($optDiscount > 0)
+                                                    {{ $faNum(number_format($optDiscount)) }}
+                                                    <span class="text-[9px] text-red-400/80 ms-0.5">{{ $currencyLabel }}</span>
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                            @if(($settings['services_tax_mode'] ?? 'invoice') === 'item')
+                                                <td class="px-4 py-2.5 text-center text-xs tabular-nums text-amber-600 dark:text-amber-400">
+                                                    @if($cfTaxAmount > 0)
+                                                        {{ $faNum(number_format($cfTaxAmount)) }}
+                                                        <span class="text-[9px] text-amber-400/80 ms-0.5">{{ $currencyLabel }} ({{ $faNum((float)$cfTaxPercent) }}٪)</span>
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </td>
+                                            @endif
+                                            <td class="px-4 py-2.5 tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-xs">
+                                                {{ $faNum(number_format($cfRowTotal)) }}
+                                                <span class="text-[9px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @else
                                     @php
+                                        if (is_array($value)) { $displayValue = implode('، ', $value); }
+                                        elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
+                                        else { $displayValue = $value ?: null; }
+
+                                        if (!$displayValue) continue;
+
+                                        $fieldQty = is_array($customFieldsQuantities[$field_id] ?? null)
+                                            ? ($customFieldsQuantities[$field_id] ?? $item->quantity)
+                                            : ($customFieldsQuantities[$field_id] ?? $item->quantity);
+                                        $fieldQty = (float) $fieldQty;
+                                        $fieldQtyDisplay = fmod($fieldQty, 1.0) === 0.0 ? (int)$fieldQty : $fieldQty;
+
+                                        $fieldPrice = 0;
+                                        $fieldDiscount = 0;
+                                        
+                                        if ($fieldDef->has_pricing) {
+                                            $fieldPrice = is_array($customFieldsPrices[$field_id] ?? null) ? null : ($customFieldsPrices[$field_id] ?? null);
+                                            $fieldDiscount = is_array($customFieldsDiscounts[$field_id] ?? null) ? 0 : ($customFieldsDiscounts[$field_id] ?? 0);
+
+                                            if ($fieldPrice === null) {
+                                                if (in_array($fieldDef->type, ['select', 'radio'])) {
+                                                    $fieldPrice = $fieldDef->getOptionPrice($displayValue, $item->unit_price);
+                                                } else {
+                                                    $fieldPrice = $fieldDef->pricing_type === 'percentage'
+                                                                    ? ($item->unit_price * ((float)$fieldDef->pricing_amount / 100))
+                                                                    : (float)$fieldDef->pricing_amount;
+                                                }
+                                            }
+                                        }
+                                        $fieldPrice = (float)$fieldPrice;
+                                        $fieldDiscount = (float)$fieldDiscount;
+
                                         $cfTaxAmount = 0;
                                         $cfTaxPercent = 0;
                                         if (($settings['services_tax_mode'] ?? 'invoice') === 'item' && !empty($settings['services_tax_apply_custom_fields'])) {
-                                            $cfTaxPercent = $item->meta['custom_fields_taxes'][$field_id] ?? 0;
-                                            $cfTaxable = max(0, ($fieldPrice * $item->quantity) - $fieldDiscount);
+                                            $cfTaxPercent = is_array($customFieldsTaxes[$field_id] ?? null) ? 0 : ($customFieldsTaxes[$field_id] ?? 0);
+                                            $cfTaxable = max(0, ($fieldPrice * $fieldQty) - $fieldDiscount);
                                             $cfTaxAmount = $cfTaxable * ($cfTaxPercent / 100);
                                         }
-                                        $cfRowTotal = max(0, ($fieldPrice * $item->quantity) - $fieldDiscount) + $cfTaxAmount;
+                                        $cfRowTotal = max(0, ($fieldPrice * $fieldQty) - $fieldDiscount) + $cfTaxAmount;
                                     @endphp
-                                    @if(($settings['services_tax_mode'] ?? 'invoice') === 'item')
-                                        <td class="px-4 py-2.5 text-center text-xs tabular-nums text-amber-600 dark:text-amber-400">
-                                            @if($cfTaxAmount > 0)
-                                                {{ $faNum(number_format($cfTaxAmount)) }}
-                                                <span class="text-[9px] text-amber-400/80 ms-0.5">{{ $currencyLabel }} ({{ $faNum((float)$cfTaxPercent) }}٪)</span>
+                                    <tr class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10">
+                                        <td class="px-4 py-2.5 relative text-start">
+                                            <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                            <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                            <div class="pe-4 ps-6 flex items-center gap-2">
+                                                <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                </span>
+                                                <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate">{{ $fieldDef->label }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-start">
+                                            @if($fieldDef->type === 'file')
+                                                <a href="{{ Storage::url($displayValue) }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                    دانلود فایل
+                                                </a>
+                                            @elseif($fieldDef->type === 'url')
+                                                <a href="{{ str_starts_with($displayValue, 'http') ? $displayValue : 'http://' . $displayValue }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dir-ltr">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                                                    {{ $displayValue }}
+                                                </a>
+                                            @else
+                                                <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $displayValue }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-2.5 text-center text-xs font-bold text-gray-700 dark:text-gray-300 tabular-nums">
+                                            {{ $faNum($fieldQtyDisplay) }}
+                                        </td>
+                                        <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-gray-700 dark:text-gray-300">
+                                            {{ $faNum(number_format($fieldPrice)) }}
+                                            <span class="text-[9px] text-gray-400 ms-0.5">{{ $currencyLabel }}</span>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-red-500 dark:text-red-400">
+                                            @if($fieldDiscount > 0)
+                                                {{ $faNum(number_format($fieldDiscount)) }}
+                                                <span class="text-[9px] text-red-400/80 ms-0.5">{{ $currencyLabel }}</span>
                                             @else
                                                 —
                                             @endif
                                         </td>
-                                    @endif
-                                    <td class="px-4 py-2.5 tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-xs">
-                                        {{ $faNum(number_format($cfRowTotal)) }}
-                                        <span class="text-[9px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
-                                    </td>
-                                </tr>
+                                        @if(($settings['services_tax_mode'] ?? 'invoice') === 'item')
+                                            <td class="px-4 py-2.5 text-center text-xs tabular-nums text-amber-600 dark:text-amber-400">
+                                                @if($cfTaxAmount > 0)
+                                                    {{ $faNum(number_format($cfTaxAmount)) }}
+                                                    <span class="text-[9px] text-amber-400/80 ms-0.5">{{ $currencyLabel }} ({{ $faNum((float)$cfTaxPercent) }}٪)</span>
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                        @endif
+                                        <td class="px-4 py-2.5 tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-xs">
+                                            {{ $faNum(number_format($cfRowTotal)) }}
+                                            <span class="text-[9px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                        </td>
+                                    </tr>
+                                @endif
                             @endforeach
                         @endif
                         </tbody>

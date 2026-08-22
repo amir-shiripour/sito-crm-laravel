@@ -234,6 +234,7 @@
             'service_custom_fields' => $customFieldsArray,
             'custom_field_values' => $meta['custom_fields'] ?? [],
             '_showCustomFields' => false,
+            'custom_field_quantities' => $meta['custom_fields_quantities'] ?? [],
             'custom_field_custom_prices' => $meta['custom_fields_prices'] ?? [],
             'custom_field_custom_discounts' => $meta['custom_fields_discounts'] ?? [],
             'custom_field_tax_percents' => $meta['custom_fields_taxes'] ?? [],
@@ -947,127 +948,224 @@
 
                             {{-- ردیف‌های قیمتی فیلدهای سفارشی --}}
                             <template x-if="item.service_custom_fields && item.service_custom_fields.length > 0">
-                                <template x-for="field in item.service_custom_fields" :key="field.id + '_subrow'">
-                                    <tr x-show="(field.has_pricing && isFieldSelected(field, item.custom_field_values[field.id])) && (!item._packageGroupId || !collapsedPackages[item._packageGroupId])"
-                                        class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10 transition-all group relative">
-                                        <td class="px-4 py-2.5 relative align-middle">
-                                            <div
-                                                class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                            <div
-                                                class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                            <div class="pe-4 ps-6 flex items-center gap-2">
-                                                <span
-                                                    class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                         stroke="currentColor" stroke-width="2.5"><path
-                                                            stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                                </span>
-                                                <span
-                                                    class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate"
-                                                    x-text="field.label"></span>
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-2.5 align-middle">
-                                            <span
-                                                class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40"
-                                                x-text="getFieldValueLabel(field, item.custom_field_values[field.id])"></span>
-                                        </td>
-                                        <td class="px-4 py-2.5 align-middle"><input type="text" readonly
-                                                                                    :value="toPersianNum(item.quantity)"
-                                                                                    class="{{ $inputClass }} py-1.5 text-xs text-center bg-gray-50/50 dark:bg-gray-900/20 opacity-70 cursor-not-allowed border-gray-200 dark:border-gray-800 text-gray-400 shadow-none">
-                                        </td>
-                                        <td class="px-4 py-2.5 align-middle">
-                                            <div class="flex items-center gap-1.5 w-full">
-                                                <div class="relative w-full">
+                                <template x-for="field in item.service_custom_fields" :key="field.id + '_subrows_group'">
+                                    <tbody class="contents">
+                                        {{-- فیلدهای چندانتخابی (Multi-Select) --}}
+                                        <template x-if="field.type === 'multiselect' && field.has_pricing">
+                                            <template x-for="opt in (Array.isArray(item.custom_field_values[field.id]) ? item.custom_field_values[field.id] : [])" :key="field.id + '_' + opt + '_subrow'">
+                                                <tr x-show="!item._packageGroupId || !collapsedPackages[item._packageGroupId]"
+                                                    class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10 transition-all group relative">
+                                                    <td class="px-4 py-2.5 relative align-middle">
+                                                        <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                        <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                        <div class="pe-4 ps-6 flex items-center gap-2">
+                                                            <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
+                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                            </span>
+                                                            <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate" x-text="field.label + ': ' + opt"></span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-4 py-2.5 align-middle">
+                                                        <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40"
+                                                              x-text="opt"></span>
+                                                    </td>
+                                                    {{-- تعداد فیلد سفارشی چند انتخابی --}}
+                                                    <td class="px-4 py-2.5 align-middle">
+                                                        <input type="text"
+                                                               :value="toPersianNum(getCustomFieldQuantity(item, field, opt))"
+                                                               @input="setCustomFieldQuantity(item, field, opt, $event.target.value)"
+                                                               :name="'items[' + index + '][custom_fields_quantities][' + field.id + '][' + opt + ']'"
+                                                               class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
+                                                               dir="ltr" placeholder="۱">
+                                                    </td>
+                                                    {{-- قیمت فیلد سفارشی چند انتخابی --}}
+                                                    <td class="px-4 py-2.5 align-middle">
+                                                        <div class="flex items-center gap-1.5 w-full">
+                                                            <div class="relative w-full">
+                                                                <input type="text"
+                                                                       :value="formatPriceInput(getCustomFieldPrice(item, field, opt))"
+                                                                       @input="setCustomFieldPrice(item, field, opt, $event.target.value)"
+                                                                       :name="'items[' + index + '][custom_fields_prices][' + field.id + '][' + opt + ']'"
+                                                                       :readonly="!isCustomPriceUnlocked(item, field, opt)"
+                                                                       :class="!isCustomPriceUnlocked(item, field, opt) ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800' : 'bg-white dark:bg-gray-900 border-indigo-300'"
+                                                                       class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none"
+                                                                       dir="ltr" placeholder="۰">
+                                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                            </div>
+                                                            <button type="button" x-show="!item._packageGroupId"
+                                                                    @click="toggleCustomPriceUnlock(item, field, opt)"
+                                                                    class="shrink-0 p-1.5 rounded-lg border transition-colors"
+                                                                    :class="isCustomPriceUnlocked(item, field, opt) ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
+                                                                    title="ویرایش مبلغ گزینه">
+                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    {{-- تخفیف فیلد چند انتخابی --}}
+                                                    <td class="px-4 py-2.5 align-middle">
+                                                        <div class="relative w-full">
+                                                            <input type="text"
+                                                                   :value="formatPriceInput(getCustomFieldDiscount(item, field, opt))"
+                                                                   @input="setCustomFieldDiscount(item, field, opt, $event.target.value)"
+                                                                   :name="'items[' + index + '][custom_fields_discounts][' + field.id + '][' + opt + ']'"
+                                                                   class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
+                                                                   dir="ltr" placeholder="۰">
+                                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                        </div>
+                                                    </td>
+                                                    {{-- مالیات فیلد چند انتخابی --}}
+                                                    <td class="px-4 py-2.5 align-middle" x-show="taxMode === 'item' && taxApplyCustomFields">
+                                                        <div class="flex items-center justify-center gap-1.5 w-full">
+                                                            <span class="relative inline-flex items-center">
+                                                                <input type="text"
+                                                                       :value="toPersianNum(getCustomFieldTax(item, field, opt))"
+                                                                       @input="setCustomFieldTax(item, field, opt, $event.target.value)"
+                                                                       :name="'items[' + index + '][custom_fields_taxes][' + field.id + '][' + opt + ']'"
+                                                                       class="w-14 rounded-lg border-2 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 text-xs text-center tabular-nums font-bold focus:ring-2 focus:ring-amber-500/20 outline-none transition-colors"
+                                                                       :class="isCustomTaxUnlocked(item, field, opt) ? 'border-amber-400 text-amber-800 dark:text-amber-200 bg-white dark:bg-gray-900' : 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 cursor-not-allowed opacity-80'"
+                                                                       dir="ltr" maxlength="3"
+                                                                       :readonly="!isCustomTaxUnlocked(item, field, opt)">
+                                                                <span class="ms-1 text-xs">%</span>
+                                                            </span>
+                                                            <button type="button" x-show="!item._packageGroupId"
+                                                                    @click="toggleCustomTaxUnlock(item, field, opt)"
+                                                                    class="p-1.5 rounded-lg border-2 transition-all active:scale-95 shrink-0"
+                                                                    :class="isCustomTaxUnlocked(item, field, opt) ? 'border-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:border-amber-500/50 dark:text-amber-400 shadow-sm' : 'border-amber-200 text-amber-500 hover:text-amber-700 hover:border-amber-400 hover:bg-amber-50/50 dark:border-amber-700/50 dark:text-amber-500 dark:hover:bg-amber-900/30'"
+                                                                    :title="isCustomTaxUnlocked(item, field, opt) ? 'قفل کردن مالیات' : 'ویرایش دستی مالیات'">
+                                                                <svg x-show="!isCustomTaxUnlocked(item, field, opt)" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                                <svg x-show="isCustomTaxUnlocked(item, field, opt)" class="w-3.5 h-3.5" x-cloak fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    {{-- جمع ردیف فیلد چند انتخابی --}}
+                                                    <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm">
+                                                        <span x-text="formatMoney(getCustomFieldRowTotal(item, field, opt))"></span>
+                                                        <span class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                                    </td>
+                                                    {{-- دکمه حذف گزینه از فیلد --}}
+                                                    <td class="px-4 py-2.5 align-middle text-center">
+                                                        <button type="button" x-show="!item._packageGroupId"
+                                                                @click="removeMultiselectOption(item, field.id, opt)"
+                                                                class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                                title="حذف این گزینه">
+                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </template>
+
+                                        {{-- سایر انواع فیلدهای سفارشی (تک‌مقداری) --}}
+                                        <template x-if="field.type !== 'multiselect' && field.has_pricing">
+                                            <tr x-show="isFieldSelected(field, item.custom_field_values[field.id]) && (!item._packageGroupId || !collapsedPackages[item._packageGroupId])"
+                                                class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10 transition-all group relative">
+                                                <td class="px-4 py-2.5 relative align-middle">
+                                                    <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                    <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                    <div class="pe-4 ps-6 flex items-center gap-2">
+                                                        <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
+                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                        </span>
+                                                        <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate" x-text="field.label"></span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-2.5 align-middle">
+                                                    <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40"
+                                                          x-text="getFieldValueLabel(field, item.custom_field_values[field.id])"></span>
+                                                </td>
+                                                {{-- تعداد فیلد سفارشی مستقل --}}
+                                                <td class="px-4 py-2.5 align-middle">
                                                     <input type="text"
-                                                           :value="formatPriceInput(getCustomFieldPrice(item, field))"
-                                                           @input="item.custom_field_custom_prices[field.id] = parsePriceInput($event.target.value)"
-                                                           :name="'items[' + index + '][custom_fields_prices][' + field.id + ']'"
-                                                           :readonly="!item._customPricesUnlocked?.[field.id]"
-                                                           :class="!item._customPricesUnlocked?.[field.id] ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800' : 'bg-white dark:bg-gray-900 border-indigo-300'"
-                                                           class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none"
-                                                           dir="ltr" placeholder="۰">
-                                                    <span
-                                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
-                                                </div>
-                                                <button type="button" x-show="!item._packageGroupId"
-                                                        @click="item._customPricesUnlocked = item._customPricesUnlocked || {}; item._customPricesUnlocked[field.id] = !item._customPricesUnlocked[field.id]"
-                                                        class="shrink-0 p-1.5 rounded-lg border transition-colors"
-                                                        :class="item._customPricesUnlocked?.[field.id] ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
-                                                        title="ویرایش مبلغ فیلد">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                         stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-2.5 align-middle">
-                                            <div class="relative w-full">
-                                                <input type="text"
-                                                       :value="formatPriceInput(getCustomFieldDiscount(item, field))"
-                                                       @input="item.custom_field_custom_discounts[field.id] = parsePriceInput($event.target.value)"
-                                                       :name="'items[' + index + '][custom_fields_discounts][' + field.id + ']'"
-                                                       class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
-                                                       dir="ltr" placeholder="۰">
-                                                <span
-                                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-2.5 align-middle"
-                                            x-show="taxMode === 'item' && taxApplyCustomFields">
-                                            <div class="flex items-center justify-center gap-1.5 w-full">
-                                                <span class="relative inline-flex items-center">
-                                                    <input type="text"
-                                                           :value="toPersianNum(item.custom_field_tax_percents[field.id] || defaultTaxRate)"
-                                                           @input="item.custom_field_tax_percents[field.id] = Math.min(100, Math.max(0, Number(toEnglishNum($event.target.value).replace(/[^\d.]/g, '')) || 0))"
-                                                           :name="'items[' + index + '][custom_fields_taxes][' + field.id + ']'"
-                                                           class="w-14 rounded-lg border-2 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 text-xs text-center tabular-nums font-bold focus:ring-2 focus:ring-amber-500/20 outline-none transition-colors"
-                                                           :class="item._customFieldTaxUnlocked?.[field.id] ? 'border-amber-400 text-amber-800 dark:text-amber-200 bg-white dark:bg-gray-900' : 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 cursor-not-allowed opacity-80'"
-                                                           dir="ltr" maxlength="3"
-                                                           :readonly="!item._customFieldTaxUnlocked?.[field.id]"><span
-                                                        class="ms-1 text-xs">%</span>
-                                                </span>
-                                                <button type="button" x-show="!item._packageGroupId"
-                                                        @click="item._customFieldTaxUnlocked = item._customFieldTaxUnlocked || {}; item._customFieldTaxUnlocked[field.id] = !item._customFieldTaxUnlocked[field.id]"
-                                                        class="p-1.5 rounded-lg border-2 transition-all active:scale-95 shrink-0"
-                                                        :class="item._customFieldTaxUnlocked?.[field.id] ? 'border-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:border-amber-500/50 dark:text-amber-400 shadow-sm' : 'border-amber-200 text-amber-500 hover:text-amber-700 hover:border-amber-400 hover:bg-amber-50/50 dark:border-amber-700/50 dark:text-amber-500 dark:hover:bg-amber-900/30'"
-                                                        :title="item._customFieldTaxUnlocked?.[field.id] ? 'قفل کردن مالیات' : 'ویرایش دستی مالیات'">
-                                                    <svg x-show="!item._customFieldTaxUnlocked?.[field.id]"
-                                                         class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                                         stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                                                    </svg>
-                                                    <svg x-show="item._customFieldTaxUnlocked?.[field.id]"
-                                                         class="w-3.5 h-3.5" x-cloak fill="none" viewBox="0 0 24 24"
-                                                         stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm">
-                                            <span x-text="formatMoney(getCustomFieldRowTotal(item, field))"></span>
-                                            <span
-                                                class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
-                                        </td>
-                                        <td class="px-4 py-2.5 align-middle text-center">
-                                            <button type="button" x-show="!item._packageGroupId"
-                                                    @click="if (field.type === 'checkbox') item.custom_field_values[field.id] = false; else if (field.type === 'multiselect') item.custom_field_values[field.id] = []; else item.custom_field_values[field.id] = '';"
-                                                    class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                                    title="حذف مقدار فیلد">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                                                     stroke="currentColor" stroke-width="1.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
+                                                           :value="toPersianNum(getCustomFieldQuantity(item, field))"
+                                                           @input="setCustomFieldQuantity(item, field, null, $event.target.value)"
+                                                           :name="'items[' + index + '][custom_fields_quantities][' + field.id + ']'"
+                                                           class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
+                                                           dir="ltr" placeholder="۱">
+                                                </td>
+                                                {{-- قیمت فیلد سفارشی --}}
+                                                <td class="px-4 py-2.5 align-middle">
+                                                    <div class="flex items-center gap-1.5 w-full">
+                                                        <div class="relative w-full">
+                                                            <input type="text"
+                                                                   :value="formatPriceInput(getCustomFieldPrice(item, field))"
+                                                                   @input="setCustomFieldPrice(item, field, null, $event.target.value)"
+                                                                   :name="'items[' + index + '][custom_fields_prices][' + field.id + ']'"
+                                                                   :readonly="!isCustomPriceUnlocked(item, field)"
+                                                                   :class="!isCustomPriceUnlocked(item, field) ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800' : 'bg-white dark:bg-gray-900 border-indigo-300'"
+                                                                   class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none"
+                                                                   dir="ltr" placeholder="۰">
+                                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                        </div>
+                                                        <button type="button" x-show="!item._packageGroupId"
+                                                                @click="toggleCustomPriceUnlock(item, field)"
+                                                                class="shrink-0 p-1.5 rounded-lg border transition-colors"
+                                                                :class="isCustomPriceUnlocked(item, field) ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
+                                                                title="ویرایش مبلغ فیلد">
+                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                {{-- تخفیف فیلد سفارشی --}}
+                                                <td class="px-4 py-2.5 align-middle">
+                                                    <div class="relative w-full">
+                                                        <input type="text"
+                                                               :value="formatPriceInput(getCustomFieldDiscount(item, field))"
+                                                               @input="setCustomFieldDiscount(item, field, null, $event.target.value)"
+                                                               :name="'items[' + index + '][custom_fields_discounts][' + field.id + ']'"
+                                                               class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
+                                                               dir="ltr" placeholder="۰">
+                                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                    </div>
+                                                </td>
+                                                {{-- مالیات فیلد سفارشی --}}
+                                                <td class="px-4 py-2.5 align-middle" x-show="taxMode === 'item' && taxApplyCustomFields">
+                                                    <div class="flex items-center justify-center gap-1.5 w-full">
+                                                        <span class="relative inline-flex items-center">
+                                                            <input type="text"
+                                                                   :value="toPersianNum(getCustomFieldTax(item, field))"
+                                                                   @input="setCustomFieldTax(item, field, null, $event.target.value)"
+                                                                   :name="'items[' + index + '][custom_fields_taxes][' + field.id + ']'"
+                                                                   class="w-14 rounded-lg border-2 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 text-xs text-center tabular-nums font-bold focus:ring-2 focus:ring-amber-500/20 outline-none transition-colors"
+                                                                   :class="isCustomTaxUnlocked(item, field) ? 'border-amber-400 text-amber-800 dark:text-amber-200 bg-white dark:bg-gray-900' : 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 cursor-not-allowed opacity-80'"
+                                                                   dir="ltr" maxlength="3"
+                                                                   :readonly="!isCustomTaxUnlocked(item, field)">
+                                                            <span class="ms-1 text-xs">%</span>
+                                                        </span>
+                                                        <button type="button" x-show="!item._packageGroupId"
+                                                                @click="toggleCustomTaxUnlock(item, field)"
+                                                                class="p-1.5 rounded-lg border-2 transition-all active:scale-95 shrink-0"
+                                                                :class="isCustomTaxUnlocked(item, field) ? 'border-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:border-amber-500/50 dark:text-amber-400 shadow-sm' : 'border-amber-200 text-amber-500 hover:text-amber-700 hover:border-amber-400 hover:bg-amber-50/50 dark:border-amber-700/50 dark:text-amber-500 dark:hover:bg-amber-900/30'"
+                                                                :title="isCustomTaxUnlocked(item, field) ? 'قفل کردن مالیات' : 'ویرایش دستی مالیات'">
+                                                            <svg x-show="!isCustomTaxUnlocked(item, field)" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                            <svg x-show="isCustomTaxUnlocked(item, field)" class="w-3.5 h-3.5" x-cloak fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                {{-- جمع ردیف فیلد سفارشی --}}
+                                                <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm">
+                                                    <span x-text="formatMoney(getCustomFieldRowTotal(item, field))"></span>
+                                                    <span class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                                </td>
+                                                {{-- دکمه حذف مقدار فیلد --}}
+                                                <td class="px-4 py-2.5 align-middle text-center">
+                                                    <button type="button" x-show="!item._packageGroupId"
+                                                            @click="clearFieldValue(item, field)"
+                                                            class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                            title="حذف مقدار فیلد">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                        </svg>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
                                 </template>
                             </template>
 
@@ -1126,13 +1224,42 @@
                                                                          <template x-if="['text', 'email', 'phone', 'url'].includes(field.type)">
                                                                              <input :type="field.type === 'url' ? 'url' : field.type" :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all" :required="field.is_required">
                                                                          </template>
-                                                                         <template x-if="field.type === 'date'"><input type="text" readonly data-jdp data-jdp-only-date :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all" placeholder="انتخاب تاریخ" autocomplete="off" :required="field.is_required"></template>
-                                                                         <template x-if="field.type === 'datetime'"><input type="text" readonly data-jdp data-jdp-time :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all" placeholder="انتخاب تاریخ و ساعت" autocomplete="off" :required="field.is_required"></template>
+                                                                         <template x-if="field.type === 'datetime'"><input type="text" readonly data-jdp-with-time :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }" @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }" @change="item.custom_field_values[field.id] = $el.value" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all" placeholder="انتخاب تاریخ و ساعت" autocomplete="off" :required="field.is_required"></template>
+                                                                         <template x-if="field.type === 'date'"><input type="text" readonly data-jdp-only-date :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }" @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }" @change="item.custom_field_values[field.id] = $el.value" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all" placeholder="انتخاب تاریخ" autocomplete="off" :required="field.is_required"></template>
                                                                          <template x-if="field.type === 'number'"><input type="text" :name="'items[' + index + '][custom_fields][' + field.id + ']'" :value="formatPriceInput(item.custom_field_values[field.id])" @input="item.custom_field_values[field.id] = parsePriceInput($event.target.value)" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-center tabular-nums dir-ltr transition-all" :required="field.is_required"></template>
                                                                          <template x-if="field.type === 'textarea'"><textarea :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" rows="2" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none transition-all" :required="field.is_required"></textarea></template>
-                                                                         <template x-if="field.type === 'select'"><select :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all" :required="field.is_required"><option value="">انتخاب کنید...</option><template x-for="opt in (Array.isArray(field.options) ? field.options : [])" :key="opt"><option :value="opt" :selected="item.custom_field_values[field.id] == opt" x-text="opt"></option></template></select></template>
-                                                                         <template x-if="field.type === 'multiselect'"><div class="flex flex-col gap-1.5 w-full max-h-40 overflow-y-auto sc-thin"><template x-for="opt in (Array.isArray(field.options) ? field.options : [])" :key="opt"><label class="flex items-center gap-2.5 cursor-pointer text-[11px] px-3 py-2.5 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors w-full"><input type="checkbox" :name="'items[' + index + '][custom_fields][' + field.id + '][]'" :value="opt" :checked="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].includes(opt)" @change="toggleMultiselect(item, field.id, opt, $event.target.checked)" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900"><span x-text="opt" class="text-gray-700 dark:text-gray-300 font-medium"></span></label></template></div></template>
-                                                                         <template x-if="field.type === 'radio'"><div class="flex flex-col gap-1.5 w-full"><template x-for="opt in (Array.isArray(field.options) ? field.options : [])" :key="opt"><label class="flex items-center gap-2.5 cursor-pointer text-[11px] px-3 py-2.5 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors w-full"><input type="radio" :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" :value="opt" :checked="item.custom_field_values[field.id] == opt" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900"><span x-text="opt" class="text-gray-700 dark:text-gray-300 font-medium"></span></label></template></div></template>
+                                                                         <template x-if="field.type === 'select'">
+                                                                             <div class="relative w-full" x-data="{ open: false }" @click.outside="open = false">
+                                                                                 <button type="button" @click="open = !open"
+                                                                                         class="w-full flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all text-start">
+                                                                                     <span x-text="item.custom_field_values[field.id] || 'انتخاب کنید...'"
+                                                                                           :class="item.custom_field_values[field.id] ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'"></span>
+                                                                                     <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0" :class="open ? 'rotate-180 text-indigo-600' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                                                                 </button>
+                                                                                 <input type="hidden"
+                                                                                        :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                        :value="item.custom_field_values[field.id]"
+                                                                                        :required="field.is_required && !item.custom_field_values[field.id]">
+                                                                                 
+                                                                                 <div x-show="open" x-transition.opacity.duration.150ms style="display: none;"
+                                                                                      class="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1">
+                                                                                     <button type="button" @click="item.custom_field_values[field.id] = ''; open = false"
+                                                                                             class="w-full text-start px-3 py-2 text-xs text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                                                                         انتخاب کنید...
+                                                                                     </button>
+                                                                                     <template x-for="opt in getFieldOptionsList(field)" :key="opt.label">
+                                                                                         <button type="button" @click="item.custom_field_values[field.id] = opt.label; open = false"
+                                                                                                 class="w-full flex items-center justify-between text-start px-3 py-2 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border-t border-gray-100 dark:border-gray-700/40 transition-colors"
+                                                                                                 :class="item.custom_field_values[field.id] === opt.label ? 'bg-indigo-50/70 dark:bg-indigo-500/20 font-bold text-indigo-600 dark:text-indigo-400' : 'text-gray-800 dark:text-gray-200'">
+                                                                                             <span x-text="opt.label" class="font-medium"></span>
+                                                                                             <span x-show="field.has_pricing && opt.price > 0" class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-200/50 dark:border-emerald-500/20" x-text="'+' + formatMoney(opt.price) + ' ' + currencyLabel"></span>
+                                                                                         </button>
+                                                                                     </template>
+                                                                                 </div>
+                                                                             </div>
+                                                                         </template>
+                                                                         <template x-if="field.type === 'multiselect'"><div class="flex flex-col gap-1.5 w-full max-h-40 overflow-y-auto sc-thin"><template x-for="opt in getFieldOptionsList(field)" :key="opt.label"><label class="flex items-center justify-between gap-2.5 cursor-pointer text-[11px] px-3 py-2.5 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors w-full"><div class="flex items-center gap-2.5"><input type="checkbox" :name="'items[' + index + '][custom_fields][' + field.id + '][]'" :value="opt.label" :checked="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].includes(opt.label)" @change="toggleMultiselect(item, field.id, opt.label, $event.target.checked)" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900"><span x-text="opt.label" class="text-gray-700 dark:text-gray-300 font-medium"></span></div><template x-if="field.has_pricing && opt.price > 0"><span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-500/20" x-text="'+ ' + formatMoney(opt.price) + ' ' + currencyLabel"></span></template></label></template></div></template>
+                                                                         <template x-if="field.type === 'radio'"><div class="flex flex-col gap-1.5 w-full"><template x-for="opt in getFieldOptionsList(field)" :key="opt.label"><label class="flex items-center justify-between gap-2.5 cursor-pointer text-[11px] px-3 py-2.5 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors w-full"><div class="flex items-center gap-2.5"><input type="radio" :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" :value="opt.label" :checked="item.custom_field_values[field.id] == opt.label" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900"><span x-text="opt.label" class="text-gray-700 dark:text-gray-300 font-medium"></span></div><template x-if="field.has_pricing && opt.price > 0"><span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-500/20" x-text="'+ ' + formatMoney(opt.price) + ' ' + currencyLabel"></span></template></label></template></div></template>
                                                                          <template x-if="field.type === 'checkbox'"><label class="flex items-center gap-2.5 cursor-pointer w-full px-3 py-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-indigo-50 hover:border-indigo-300 dark:bg-gray-900/50 dark:border-gray-700 dark:hover:bg-indigo-900/30 dark:hover:border-indigo-700 transition-colors"><input type="checkbox" :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" value="1" class="w-4.5 h-4.5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900"><span class="text-xs font-bold text-gray-700 dark:text-gray-300">انتخاب می‌کنم</span></label></template>
                                                                          <template x-if="field.type === 'file'">
                                                                              <div class="flex flex-col gap-2 w-full">
@@ -1745,6 +1872,7 @@
                             service_custom_fields: [],
                             custom_field_values: {},
                             _showCustomFields: false,
+                            custom_field_quantities: {},
                             custom_field_custom_prices: {},
                             custom_field_custom_discounts: {},
                             custom_field_tax_percents: {},
@@ -2017,14 +2145,28 @@
                         let rF = s.customFields || s.custom_fields || [];
                         let f = rF.filter(f => f.show_in_invoice === true || f.show_in_invoice === 1 || String(f.show_in_invoice) === '1' || f.show_in_invoice === undefined).map(f => {
                             let f2 = {...f};
-                            if (typeof f2.options === 'string') {
-                                try {
-                                    f2.options = JSON.parse(f2.options);
-                                } catch (e) {
-                                    f2.options = [];
-                                }
+                            let rawOptions = f2.options || [];
+                            if (typeof rawOptions === 'string') {
+                                try { rawOptions = JSON.parse(rawOptions); } catch (e) { rawOptions = []; }
                             }
-                            if (!Array.isArray(f2.options)) f2.options = [];
+                            let normalizedOptions = [];
+                            if (Array.isArray(rawOptions)) {
+                                normalizedOptions = rawOptions.map(opt => {
+                                    if (typeof opt === 'object' && opt !== null) {
+                                        return {
+                                            label: opt.label || opt.title || opt.name || '',
+                                            price: Number(opt.price || opt.pricing_amount || 0),
+                                            pricing_type: opt.pricing_type || 'fixed'
+                                        };
+                                    }
+                                    return {
+                                        label: String(opt || ''),
+                                        price: 0,
+                                        pricing_type: 'fixed'
+                                    };
+                                }).filter(o => o.label.trim() !== '');
+                            }
+                            f2.options = normalizedOptions;
                             return f2;
                         });
                         let cV = {};
@@ -2043,6 +2185,7 @@
                         this.items[i].service_custom_fields = f;
                         this.items[i].custom_field_values = cV;
                         this.items[i]._showCustomFields = f.length > 0;
+                        this.items[i].custom_field_quantities = {};
                         this.items[i].custom_field_custom_prices = {};
                         this.items[i].custom_field_custom_discounts = {};
                         this.items[i].custom_field_tax_percents = {};
@@ -2083,6 +2226,28 @@
                             }
                         }
                     },
+                    getFieldOptionsList(f) {
+                        if (!f || !f.options) return [];
+                        let opts = f.options;
+                        if (typeof opts === 'string') {
+                            try { opts = JSON.parse(opts); } catch (e) { opts = []; }
+                        }
+                        if (!Array.isArray(opts)) return [];
+                        return opts.map(opt => {
+                            if (typeof opt === 'object' && opt !== null) {
+                                return {
+                                    label: String(opt.label || opt.title || opt.name || ''),
+                                    price: Number(opt.price || opt.pricing_amount || 0),
+                                    pricing_type: opt.pricing_type || 'fixed'
+                                };
+                            }
+                            return {
+                                label: String(opt || ''),
+                                price: 0,
+                                pricing_type: 'fixed'
+                            };
+                        }).filter(o => o.label.trim() !== '');
+                    },
                     toggleMultiselect(it, fId, o, c) {
                         if (!Array.isArray(it.custom_field_values[fId])) it.custom_field_values[fId] = [];
                         const a = it.custom_field_values[fId];
@@ -2101,11 +2266,72 @@
                         if (f.type === 'multiselect' && Array.isArray(v)) return v.join('، ');
                         return v;
                     },
-                    getCustomFieldPrice(it, f) {
-                        if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] !== undefined && it.custom_field_custom_prices[f.id] !== null && it.custom_field_custom_prices[f.id] !== '') {
+                    getCustomFieldQuantity(it, f, opt = null) {
+                        if (!it) return 1;
+                        if (opt !== null && opt !== undefined) {
+                            if (it.custom_field_quantities && it.custom_field_quantities[f.id] && typeof it.custom_field_quantities[f.id] === 'object' && it.custom_field_quantities[f.id][opt] !== undefined) {
+                                let q = Number(it.custom_field_quantities[f.id][opt]);
+                                return isNaN(q) || q <= 0 ? 1 : q;
+                            }
+                            if (it.custom_field_quantities && it.custom_field_quantities[f.id] !== undefined && typeof it.custom_field_quantities[f.id] !== 'object') {
+                                let q = Number(it.custom_field_quantities[f.id]);
+                                return isNaN(q) || q <= 0 ? 1 : q;
+                            }
+                            let itemQ = parseFloat(it.quantity) || 1;
+                            return itemQ <= 0 ? 1 : itemQ;
+                        }
+                        if (it.custom_field_quantities && it.custom_field_quantities[f.id] !== undefined && typeof it.custom_field_quantities[f.id] !== 'object') {
+                            let q = Number(it.custom_field_quantities[f.id]);
+                            return isNaN(q) || q <= 0 ? 1 : q;
+                        }
+                        let itemQ = parseFloat(it.quantity) || 1;
+                        return itemQ <= 0 ? 1 : itemQ;
+                    },
+                    setCustomFieldQuantity(it, f, opt = null, val) {
+                        let num = Number(this.toEnglishNum(val.toString()).replace(/[^\d.]/g, '')) || 0;
+                        if (num <= 0) num = 1;
+                        if (!it.custom_field_quantities) it.custom_field_quantities = {};
+                        if (opt !== null && opt !== undefined) {
+                            if (typeof it.custom_field_quantities[f.id] !== 'object' || it.custom_field_quantities[f.id] === null) {
+                                it.custom_field_quantities[f.id] = {};
+                            }
+                            it.custom_field_quantities[f.id][opt] = num;
+                        } else {
+                            it.custom_field_quantities[f.id] = num;
+                        }
+                    },
+                    getCustomFieldPrice(it, f, opt = null) {
+                        if (opt !== null && opt !== undefined) {
+                            if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] && typeof it.custom_field_custom_prices[f.id] === 'object' && it.custom_field_custom_prices[f.id][opt] !== undefined && it.custom_field_custom_prices[f.id][opt] !== '') {
+                                let customVal = Number(it.custom_field_custom_prices[f.id][opt]);
+                                if (!isNaN(customVal) && (customVal > 0 || this.isCustomPriceUnlocked(it, f, opt))) {
+                                    return customVal;
+                                }
+                            }
+                            const optList = this.getFieldOptionsList(f);
+                            const match = optList.find(o => o.label === opt);
+                            if (match && match.price > 0) {
+                                let p = parseFloat(it.unit_price) || 0;
+                                return match.pricing_type === 'percentage' ? p * (match.price / 100) : match.price;
+                            }
+                            let p = parseFloat(it.unit_price) || 0;
+                            let a = Number(f.pricing_amount) || 0;
+                            return f.pricing_type === 'percentage' ? p * (a / 100) : a;
+                        }
+
+                        if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] !== undefined && typeof it.custom_field_custom_prices[f.id] !== 'object' && it.custom_field_custom_prices[f.id] !== null && it.custom_field_custom_prices[f.id] !== '') {
                             let customVal = Number(it.custom_field_custom_prices[f.id]);
-                            if (!isNaN(customVal) && (customVal > 0 || (it._customPricesUnlocked && it._customPricesUnlocked[f.id]))) {
+                            if (!isNaN(customVal) && (customVal > 0 || this.isCustomPriceUnlocked(it, f))) {
                                 return customVal;
+                            }
+                        }
+                        if (['select', 'radio'].includes(f.type) && it.custom_field_values?.[f.id]) {
+                            let val = it.custom_field_values[f.id];
+                            const optList = this.getFieldOptionsList(f);
+                            const match = optList.find(o => o.label === val);
+                            if (match && match.price > 0) {
+                                let p = parseFloat(it.unit_price) || 0;
+                                return match.pricing_type === 'percentage' ? p * (match.price / 100) : match.price;
                             }
                         }
                         let p = parseFloat(it.unit_price) || 0;
@@ -2114,28 +2340,129 @@
                         let price = f.pricing_type === 'percentage' ? p * (a / 100) : a;
                         return isNaN(price) ? 0 : price;
                     },
-                    getCustomFieldDiscount(it, f) {
-                        if (it.custom_field_custom_discounts && it.custom_field_custom_discounts[f.id] !== undefined && it.custom_field_custom_discounts[f.id] !== null && it.custom_field_custom_discounts[f.id] !== '') {
+                    setCustomFieldPrice(it, f, opt = null, val) {
+                        let num = this.parsePriceInput(val);
+                        if (!it.custom_field_custom_prices) it.custom_field_custom_prices = {};
+                        if (opt !== null && opt !== undefined) {
+                            if (typeof it.custom_field_custom_prices[f.id] !== 'object' || it.custom_field_custom_prices[f.id] === null) {
+                                it.custom_field_custom_prices[f.id] = {};
+                            }
+                            it.custom_field_custom_prices[f.id][opt] = num;
+                        } else {
+                            it.custom_field_custom_prices[f.id] = num;
+                        }
+                    },
+                    getCustomFieldDiscount(it, f, opt = null) {
+                        if (opt !== null && opt !== undefined) {
+                            if (it.custom_field_custom_discounts && it.custom_field_custom_discounts[f.id] && typeof it.custom_field_custom_discounts[f.id] === 'object' && it.custom_field_custom_discounts[f.id][opt] !== undefined) {
+                                let d = Number(it.custom_field_custom_discounts[f.id][opt]);
+                                return isNaN(d) ? 0 : d;
+                            }
+                            return 0;
+                        }
+                        if (it.custom_field_custom_discounts && it.custom_field_custom_discounts[f.id] !== undefined && typeof it.custom_field_custom_discounts[f.id] !== 'object') {
                             let d = Number(it.custom_field_custom_discounts[f.id]);
                             return isNaN(d) ? 0 : d;
                         }
                         return 0;
                     },
-                    getCustomFieldRowTotal(it, f) {
-                        let q = parseFloat(it.quantity) || 0;
-                        if (isNaN(q)) q = 0;
-                        let cP = (parseFloat(this.getCustomFieldPrice(it, f)) || 0) * q;
-                        let cD = parseFloat(this.getCustomFieldDiscount(it, f)) || 0;
-                        if (isNaN(cP)) cP = 0;
-                        if (isNaN(cD)) cD = 0;
-                        let cT = Math.max(0, cP - cD);
-                        if (this.taxMode === 'item' && this.taxApplyCustomFields) {
-                            let cTP = it.custom_field_tax_percents?.[f.id] ?? this.defaultTaxRate;
-                            let t = cP * ((Number(cTP) || 0) / 100);
-                            let res = cT + t;
-                            return isNaN(res) ? 0 : res;
+                    setCustomFieldDiscount(it, f, opt = null, val) {
+                        let num = this.parsePriceInput(val);
+                        if (!it.custom_field_custom_discounts) it.custom_field_custom_discounts = {};
+                        if (opt !== null && opt !== undefined) {
+                            if (typeof it.custom_field_custom_discounts[f.id] !== 'object' || it.custom_field_custom_discounts[f.id] === null) {
+                                it.custom_field_custom_discounts[f.id] = {};
+                            }
+                            it.custom_field_custom_discounts[f.id][opt] = num;
+                        } else {
+                            it.custom_field_custom_discounts[f.id] = num;
                         }
-                        return isNaN(cT) ? 0 : cT;
+                    },
+                    getCustomFieldTax(it, f, opt = null) {
+                        if (opt !== null && opt !== undefined) {
+                            if (it.custom_field_tax_percents && it.custom_field_tax_percents[f.id] && typeof it.custom_field_tax_percents[f.id] === 'object' && it.custom_field_tax_percents[f.id][opt] !== undefined) {
+                                return it.custom_field_tax_percents[f.id][opt];
+                            }
+                            return this.defaultTaxRate;
+                        }
+                        if (it.custom_field_tax_percents && it.custom_field_tax_percents[f.id] !== undefined && typeof it.custom_field_tax_percents[f.id] !== 'object') {
+                            return it.custom_field_tax_percents[f.id];
+                        }
+                        return this.defaultTaxRate;
+                    },
+                    setCustomFieldTax(it, f, opt = null, val) {
+                        let num = Math.min(100, Math.max(0, Number(this.toEnglishNum(val.toString()).replace(/[^\d.]/g, '')) || 0));
+                        if (!it.custom_field_tax_percents) it.custom_field_tax_percents = {};
+                        if (opt !== null && opt !== undefined) {
+                            if (typeof it.custom_field_tax_percents[f.id] !== 'object' || it.custom_field_tax_percents[f.id] === null) {
+                                it.custom_field_tax_percents[f.id] = {};
+                            }
+                            it.custom_field_tax_percents[f.id][opt] = num;
+                        } else {
+                            it.custom_field_tax_percents[f.id] = num;
+                        }
+                    },
+                    isCustomPriceUnlocked(it, f, opt = null) {
+                        if (!it._customPricesUnlocked) it._customPricesUnlocked = {};
+                        if (opt !== null && opt !== undefined) {
+                            return !!(typeof it._customPricesUnlocked[f.id] === 'object' ? it._customPricesUnlocked[f.id]?.[opt] : it._customPricesUnlocked[f.id]);
+                        }
+                        return !!it._customPricesUnlocked[f.id];
+                    },
+                    toggleCustomPriceUnlock(it, f, opt = null) {
+                        if (!it._customPricesUnlocked) it._customPricesUnlocked = {};
+                        if (opt !== null && opt !== undefined) {
+                            if (typeof it._customPricesUnlocked[f.id] !== 'object' || it._customPricesUnlocked[f.id] === null) {
+                                it._customPricesUnlocked[f.id] = {};
+                            }
+                            it._customPricesUnlocked[f.id][opt] = !it._customPricesUnlocked[f.id][opt];
+                        } else {
+                            it._customPricesUnlocked[f.id] = !it._customPricesUnlocked[f.id];
+                        }
+                    },
+                    isCustomTaxUnlocked(it, f, opt = null) {
+                        if (!it._customFieldTaxUnlocked) it._customFieldTaxUnlocked = {};
+                        if (opt !== null && opt !== undefined) {
+                            return !!(typeof it._customFieldTaxUnlocked[f.id] === 'object' ? it._customFieldTaxUnlocked[f.id]?.[opt] : it._customFieldTaxUnlocked[f.id]);
+                        }
+                        return !!it._customFieldTaxUnlocked[f.id];
+                    },
+                    toggleCustomTaxUnlock(it, f, opt = null) {
+                        if (!it._customFieldTaxUnlocked) it._customFieldTaxUnlocked = {};
+                        if (opt !== null && opt !== undefined) {
+                            if (typeof it._customFieldTaxUnlocked[f.id] !== 'object' || it._customFieldTaxUnlocked[f.id] === null) {
+                                it._customFieldTaxUnlocked[f.id] = {};
+                            }
+                            it._customFieldTaxUnlocked[f.id][opt] = !it._customFieldTaxUnlocked[f.id][opt];
+                        } else {
+                            it._customFieldTaxUnlocked[f.id] = !it._customFieldTaxUnlocked[f.id];
+                        }
+                    },
+                    removeMultiselectOption(it, fId, opt) {
+                        if (Array.isArray(it.custom_field_values[fId])) {
+                            const idx = it.custom_field_values[fId].indexOf(opt);
+                            if (idx !== -1) {
+                                it.custom_field_values[fId].splice(idx, 1);
+                            }
+                        }
+                    },
+                    clearFieldValue(it, f) {
+                        if (f.type === 'checkbox') it.custom_field_values[f.id] = false;
+                        else if (f.type === 'multiselect') it.custom_field_values[f.id] = [];
+                        else it.custom_field_values[f.id] = '';
+                    },
+                    getCustomFieldRowTotal(it, f, opt = null) {
+                        let q = this.getCustomFieldQuantity(it, f, opt);
+                        let p = this.getCustomFieldPrice(it, f, opt);
+                        let d = this.getCustomFieldDiscount(it, f, opt);
+                        let gross = p * q;
+                        let base = Math.max(0, gross - d);
+                        if (this.taxMode === 'item' && this.taxApplyCustomFields) {
+                            let taxPercent = this.getCustomFieldTax(it, f, opt);
+                            let tax = gross * ((Number(taxPercent) || 0) / 100);
+                            return base + tax;
+                        }
+                        return base;
                     },
                     calculateRowTotal(it) {
                         let q = parseFloat(it.quantity) || 0;
@@ -2149,24 +2476,41 @@
                         if (this.taxMode === 'item') rT += rB * ((Number(it.tax_percent) || 0) / 100);
                         let cG = 0;
                         let cD = 0;
+                        let cT = 0;
                         if (it.service_custom_fields && it.custom_field_values) {
                             it.service_custom_fields.forEach(f => {
-                                if (f.has_pricing && this.isFieldSelected(f, it.custom_field_values[f.id])) {
-                                    let cP = (parseFloat(this.getCustomFieldPrice(it, f)) || 0) * q;
-                                    let cD2 = parseFloat(this.getCustomFieldDiscount(it, f)) || 0;
-                                    if (isNaN(cP)) cP = 0;
-                                    if (isNaN(cD2)) cD2 = 0;
-                                    cG += cP;
-                                    cD += cD2;
+                                if (!f.has_pricing) return;
+
+                                if (f.type === 'multiselect') {
+                                    const selectedOpts = Array.isArray(it.custom_field_values[f.id]) ? it.custom_field_values[f.id] : [];
+                                    selectedOpts.forEach(opt => {
+                                        let optQ = this.getCustomFieldQuantity(it, f, opt);
+                                        let optP = this.getCustomFieldPrice(it, f, opt);
+                                        let optD = this.getCustomFieldDiscount(it, f, opt);
+                                        let optGross = optP * optQ;
+                                        cG += optGross;
+                                        cD += optD;
+                                        if (this.taxMode === 'item' && this.taxApplyCustomFields) {
+                                            let optTax = this.getCustomFieldTax(it, f, opt);
+                                            cT += optGross * ((Number(optTax) || 0) / 100);
+                                        }
+                                    });
+                                } else if (this.isFieldSelected(f, it.custom_field_values[f.id])) {
+                                    let fQ = this.getCustomFieldQuantity(it, f);
+                                    let fP = this.getCustomFieldPrice(it, f);
+                                    let fD = this.getCustomFieldDiscount(it, f);
+                                    let fGross = fP * fQ;
+                                    cG += fGross;
+                                    cD += fD;
                                     if (this.taxMode === 'item' && this.taxApplyCustomFields) {
-                                        let cTP = it.custom_field_tax_percents?.[f.id] ?? this.defaultTaxRate;
-                                        rT += cP * ((Number(cTP) || 0) / 100);
+                                        let fTax = this.getCustomFieldTax(it, f);
+                                        cT += fGross * ((Number(fTax) || 0) / 100);
                                     }
                                 }
                             });
                         }
                         let tT = Math.max(0, rB - d) + Math.max(0, cG - cD);
-                        let res = (this.taxMode === 'item') ? (tT + rT) : tT;
+                        let res = (this.taxMode === 'item') ? (tT + rT + cT) : tT;
                         return isNaN(res) ? 0 : res;
                     },
                     get totals() {
@@ -2175,8 +2519,6 @@
                             let q = parseFloat(it.quantity) || 0;
                             let p = parseFloat(it.unit_price) || 0;
                             let d = parseFloat(it.discount) || 0;
-                            let cP = 0;
-                            let cD = 0;
                             let rB = p * q;
                             bS += rB;
                             iD += d;
@@ -2185,20 +2527,36 @@
                             }
                             if (it.service_custom_fields && it.custom_field_values) {
                                 it.service_custom_fields.forEach(f => {
-                                    if (f.has_pricing && this.isFieldSelected(f, it.custom_field_values[f.id])) {
-                                        let cP2 = this.getCustomFieldPrice(it, f) * q;
-                                        let cD2 = this.getCustomFieldDiscount(it, f);
-                                        cP += cP2;
-                                        cD += cD2;
+                                    if (!f.has_pricing) return;
+
+                                    if (f.type === 'multiselect') {
+                                        const selectedOpts = Array.isArray(it.custom_field_values[f.id]) ? it.custom_field_values[f.id] : [];
+                                        selectedOpts.forEach(opt => {
+                                            let optQ = this.getCustomFieldQuantity(it, f, opt);
+                                            let optP = this.getCustomFieldPrice(it, f, opt);
+                                            let optD = this.getCustomFieldDiscount(it, f, opt);
+                                            let optGross = optP * optQ;
+                                            tC += optGross;
+                                            iD += optD;
+                                            if (this.taxMode === 'item' && this.taxApplyCustomFields) {
+                                                let optTax = this.getCustomFieldTax(it, f, opt);
+                                                iTT += optGross * ((Number(optTax) || 0) / 100);
+                                            }
+                                        });
+                                    } else if (this.isFieldSelected(f, it.custom_field_values[f.id])) {
+                                        let fQ = this.getCustomFieldQuantity(it, f);
+                                        let fP = this.getCustomFieldPrice(it, f);
+                                        let fD = this.getCustomFieldDiscount(it, f);
+                                        let fGross = fP * fQ;
+                                        tC += fGross;
+                                        iD += fD;
                                         if (this.taxMode === 'item' && this.taxApplyCustomFields) {
-                                            let cTP = it.custom_field_tax_percents?.[f.id] ?? this.defaultTaxRate;
-                                            iTT += cP2 * ((Number(cTP) || 0) / 100);
+                                            let fTax = this.getCustomFieldTax(it, f);
+                                            iTT += fGross * ((Number(fTax) || 0) / 100);
                                         }
                                     }
                                 });
                             }
-                            tC += cP;
-                            iD += cD;
                         });
                         let s = bS + tC;
                         let tT = this.taxMode === 'item' ? Math.max(0, iTT) : s * ((Number(this.taxPercent) || 0) / 100);
@@ -2242,18 +2600,29 @@
                     get appliedCustomFieldsSummary() {
                         let s = {};
                         this.items.forEach(it => {
-                            let q = parseFloat(it.quantity) || 0;
                             if (it.service_custom_fields && it.custom_field_values) {
                                 it.service_custom_fields.forEach(f => {
-                                    if (f.has_pricing && this.isFieldSelected(f, it.custom_field_values[f.id])) {
+                                    if (!f.has_pricing) return;
+
+                                    if (f.type === 'multiselect') {
+                                        const selectedOpts = Array.isArray(it.custom_field_values[f.id]) ? it.custom_field_values[f.id] : [];
+                                        selectedOpts.forEach(opt => {
+                                            let optQ = this.getCustomFieldQuantity(it, f, opt);
+                                            let optP = this.getCustomFieldPrice(it, f, opt);
+                                            let optD = this.getCustomFieldDiscount(it, f, opt);
+                                            let l = f.label + ' (' + opt + ')';
+                                            if (!s[l]) s[l] = 0;
+                                            s[l] += Math.max(0, (optP * optQ) - optD);
+                                        });
+                                    } else if (this.isFieldSelected(f, it.custom_field_values[f.id])) {
+                                        let fQ = this.getCustomFieldQuantity(it, f);
                                         let fP = this.getCustomFieldPrice(it, f);
                                         let fD = this.getCustomFieldDiscount(it, f);
                                         let v = it.custom_field_values[f.id];
                                         let l = f.label;
                                         if (['select', 'radio'].includes(f.type)) l += ` (${v})`;
-                                        if (f.type === 'multiselect' && Array.isArray(v)) l += ` (${v.join('، ')})`;
                                         if (!s[l]) s[l] = 0;
-                                        s[l] += Math.max(0, (fP * q) - fD);
+                                        s[l] += Math.max(0, (fP * fQ) - fD);
                                     }
                                 });
                             }
@@ -2316,7 +2685,7 @@
                                 }
                             }
                         }
-                        const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[unit_price]"], input[name*="[discount]"], input[name*="[custom_fields_prices]"], input[name*="[custom_fields_discounts]"], input[name*="[tax_percent]"], input[name*="[custom_fields_taxes]"], input[name="tax_percent"]');
+                        const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[custom_fields_quantities]"], input[name*="[unit_price]"], input[name*="[discount]"], input[name*="[custom_fields_prices]"], input[name*="[custom_fields_discounts]"], input[name*="[tax_percent]"], input[name*="[custom_fields_taxes]"], input[name="tax_percent"]');
                         nF.forEach(i => {
                             i.value = this.toEnglishNum(i.value).replace(/[^\d.]/g, '');
                         });

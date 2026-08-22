@@ -461,7 +461,8 @@
                 <tbody>
                 @foreach($invoice->items as $index => $item)
                     @php
-                        $displayQty = fmod($item->quantity, 1.0) === 0.0 ? (int) $item->quantity : $item->quantity;
+                        $itemQty = (float) $item->quantity;
+                        $displayQty = fmod($itemQty, 1.0) === 0.0 ? (int) $itemQty : $itemQty;
                         $rowBasePrice = $item->unit_price;
                         $rowGross = $rowBasePrice * $item->quantity;
                         $rowDiscount = $item->discount;
@@ -483,16 +484,64 @@
                                 <div class="text-gray-600 text-[9px] mt-1">
                                     @php
                                         $customFieldsCollection = $item->service ? $item->service->customFields : collect([]);
+                                        $customFieldsQuantities = $item->meta['custom_fields_quantities'] ?? [];
+                                        $customFieldsPrices = $item->meta['custom_fields_prices'] ?? [];
                                         $printedFields = [];
                                         foreach($savedCustomFields as $field_id => $value) {
                                             $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
                                             if (!$fieldDef) continue;
-                                            if (is_array($value)) { $displayValue = implode('، ', $value); }
-                                            elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
-                                            elseif ($fieldDef->type === 'file') { $displayValue = $value ? 'فایل پیوست شده' : null; }
-                                            else { $displayValue = $value ?: null; }
-                                            if ($displayValue) {
-                                                $printedFields[] = $fieldDef->label . ': ' . $displayValue;
+                                            if ($fieldDef->type === 'multiselect' && is_array($value)) {
+                                                $optParts = [];
+                                                foreach($value as $opt) {
+                                                    $optQty = is_array($customFieldsQuantities[$field_id] ?? null)
+                                                        ? ($customFieldsQuantities[$field_id][$opt] ?? ($customFieldsQuantities[$field_id] ?? 1))
+                                                        : ($customFieldsQuantities[$field_id] ?? 1);
+                                                    $optPrice = is_array($customFieldsPrices[$field_id] ?? null)
+                                                        ? ($customFieldsPrices[$field_id][$opt] ?? null)
+                                                        : ($customFieldsPrices[$field_id] ?? null);
+                                                    if ($optPrice === null && $fieldDef->has_pricing) {
+                                                        $optPrice = $fieldDef->getOptionPrice($opt, $item->unit_price);
+                                                    }
+                                                    $optTxt = $opt;
+                                                    if ($optQty > 1) {
+                                                        $optTxt .= ' (' . $faNum($optQty) . ' عدد)';
+                                                    }
+                                                    if ($fieldDef->has_pricing && (float)$optPrice > 0) {
+                                                        $optTxt .= ' [' . $faNum(number_format((float)$optPrice)) . ' ' . $currencyLabel . ']';
+                                                    }
+                                                    $optParts[] = $optTxt;
+                                                }
+                                                if (!empty($optParts)) {
+                                                    $printedFields[] = $fieldDef->label . ': ' . implode('، ', $optParts);
+                                                }
+                                            } else {
+                                                if (is_array($value)) { $displayValue = implode('، ', $value); }
+                                                elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
+                                                elseif ($fieldDef->type === 'file') { $displayValue = $value ? 'فایل پیوست شده' : null; }
+                                                else { $displayValue = $value ?: null; }
+                                                if ($displayValue) {
+                                                    $fieldQty = is_array($customFieldsQuantities[$field_id] ?? null)
+                                                        ? ($customFieldsQuantities[$field_id] ?? 1)
+                                                        : ($customFieldsQuantities[$field_id] ?? 1);
+                                                    $fieldPrice = is_array($customFieldsPrices[$field_id] ?? null) ? null : ($customFieldsPrices[$field_id] ?? null);
+                                                    if ($fieldPrice === null && $fieldDef->has_pricing) {
+                                                        if (in_array($fieldDef->type, ['select', 'radio'])) {
+                                                            $fieldPrice = $fieldDef->getOptionPrice($displayValue, $item->unit_price);
+                                                        } else {
+                                                            $fieldPrice = $fieldDef->pricing_type === 'percentage'
+                                                                            ? ($item->unit_price * ((float)$fieldDef->pricing_amount / 100))
+                                                                            : (float)$fieldDef->pricing_amount;
+                                                        }
+                                                    }
+                                                    $fieldTxt = $fieldDef->label . ': ' . $displayValue;
+                                                    if ($fieldQty > 1) {
+                                                        $fieldTxt .= ' (' . $faNum($fieldQty) . ' عدد)';
+                                                    }
+                                                    if ($fieldDef->has_pricing && (float)$fieldPrice > 0) {
+                                                        $fieldTxt .= ' [' . $faNum(number_format((float)$fieldPrice)) . ' ' . $currencyLabel . ']';
+                                                    }
+                                                    $printedFields[] = $fieldTxt;
+                                                }
                                             }
                                         }
                                     @endphp

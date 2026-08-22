@@ -86,12 +86,30 @@
                     $hasPricing = $field->has_pricing ?? false;
 
                     if ($hasPricing) {
-                        if (isset($customFieldsPrices[$fieldId])) {
-                            $price = (float)$customFieldsPrices[$fieldId];
+                        if ($field->type === 'multiselect' && is_array($value)) {
+                            $totalPrice = 0;
+                            foreach ($value as $opt) {
+                                $optPrice = is_array($customFieldsPrices[$fieldId] ?? null)
+                                    ? ($customFieldsPrices[$fieldId][$opt] ?? null)
+                                    : null;
+                                if ($optPrice === null) {
+                                    $optPrice = $field->getOptionPrice($opt, $basePrice);
+                                }
+                                $totalPrice += (float)$optPrice;
+                            }
+                            $price = $totalPrice;
                         } else {
-                            $price = $field->pricing_type === 'percentage'
-                                ? $basePrice * ((float)($field->pricing_amount ?? 0) / 100)
-                                : (float)($field->pricing_amount ?? 0);
+                            if (isset($customFieldsPrices[$fieldId]) && !is_array($customFieldsPrices[$fieldId])) {
+                                $price = (float)$customFieldsPrices[$fieldId];
+                            } else {
+                                if (in_array($field->type, ['select', 'radio'])) {
+                                    $price = $field->getOptionPrice($displayValue, $basePrice);
+                                } else {
+                                    $price = $field->pricing_type === 'percentage'
+                                        ? $basePrice * ((float)($field->pricing_amount ?? 0) / 100)
+                                        : (float)($field->pricing_amount ?? 0);
+                                }
+                            }
                         }
                     }
 

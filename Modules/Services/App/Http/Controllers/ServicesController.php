@@ -170,14 +170,46 @@ class ServicesController extends Controller
     protected function mapCustomFields(array $rawFields): array
     {
         return collect($rawFields)->map(function ($field) {
-            $field['options'] = isset($field['options_text'])
-                ? array_filter(array_map('trim', explode("\n", $field['options_text'])))
-                : [];
+            $options = [];
+
+            if (!empty($field['options']) && is_array($field['options'])) {
+                foreach ($field['options'] as $opt) {
+                    if (is_array($opt)) {
+                        $label = trim($opt['label'] ?? ($opt['title'] ?? ''));
+                        if ($label !== '') {
+                            $priceRaw = (string)($opt['price'] ?? 0);
+                            $priceNum = (float) preg_replace('/[^\d.]/', '', $priceRaw);
+                            $options[] = [
+                                'label' => $label,
+                                'price' => $priceNum,
+                                'pricing_type' => $opt['pricing_type'] ?? ($field['pricing_type'] ?? 'fixed'),
+                            ];
+                        }
+                    } elseif (is_string($opt) && trim($opt) !== '') {
+                        $options[] = [
+                            'label' => trim($opt),
+                            'price' => 0,
+                            'pricing_type' => $field['pricing_type'] ?? 'fixed',
+                        ];
+                    }
+                }
+            } elseif (isset($field['options_text']) && trim($field['options_text']) !== '') {
+                $lines = array_filter(array_map('trim', explode("\n", $field['options_text'])));
+                foreach ($lines as $line) {
+                    $options[] = [
+                        'label' => $line,
+                        'price' => 0,
+                        'pricing_type' => $field['pricing_type'] ?? 'fixed',
+                    ];
+                }
+            }
+
+            $field['options'] = $options;
             unset($field['options_text']);
 
-            $field['is_required'] = $field['is_required'] ?? false;
-            $field['show_in_invoice'] = $field['show_in_invoice'] ?? false;
-            $field['has_pricing'] = $field['has_pricing'] ?? false;
+            $field['is_required'] = !empty($field['is_required']);
+            $field['show_in_invoice'] = !empty($field['show_in_invoice']);
+            $field['has_pricing'] = !empty($field['has_pricing']);
 
             return $field;
         })->toArray();

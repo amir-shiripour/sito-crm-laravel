@@ -224,8 +224,20 @@
                                 <a href="{{ route('services.invoices.show', $invoice) }}" class="font-bold text-indigo-600 dark:text-indigo-400 text-base tabular-nums hover:underline block">
                                     {{ $faNum($invoice->invoice_number) }}
                                 </a>
-                                @if(!empty($invoice->meta['created_by_workflow']))
-                                    <span class="inline-block mt-2 text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-500/20">سیستمی</span>
+                                @if(!empty($invoice->meta['created_by_manual_renewal']))
+                                    <span class="inline-flex items-center gap-1 mt-2 text-[10px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-200 dark:border-cyan-500/30">
+                                        <svg class="w-3 h-3 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        تمدید دوره‌ای دستی
+                                    </span>
+                                @elseif(!empty($invoice->meta['created_by_workflow']) || !empty($invoice->meta['is_renewal']))
+                                    <span class="inline-flex items-center gap-1 mt-2 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-500/20">
+                                        <svg class="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        تمدید سیستمی
+                                    </span>
                                 @endif
                                 @if(!empty($invoice->meta['is_merged_invoice']) && !$invoice->isMerged())
                                     <span class="inline-block mt-2 text-[10px] font-bold text-purple-500 bg-purple-50 dark:bg-purple-500/10 px-2 py-0.5 rounded border border-purple-100 dark:border-purple-500/20">حاصل ادغام فاکتورها</span>

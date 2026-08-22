@@ -42,6 +42,8 @@ class StoreServiceRequest extends FormRequest
             'custom_fields.*.label' => 'required|string|max:255',
             'custom_fields.*.type' => 'required|in:text,textarea,number,date,datetime,select,multiselect,checkbox,radio,email,url,phone,file',
             'custom_fields.*.options_text' => 'nullable|string',
+            'custom_fields.*.options' => 'nullable|array',
+            'custom_fields.*.options.*' => 'nullable',
             'custom_fields.*.is_required' => 'nullable|boolean',
             'custom_fields.*.show_in_invoice' => 'nullable|boolean',
             'custom_fields.*.has_pricing' => 'nullable|boolean',

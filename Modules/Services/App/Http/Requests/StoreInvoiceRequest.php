@@ -4,12 +4,36 @@ namespace Modules\Services\App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Modules\Services\App\Http\Models\Invoice;
+use Modules\Settings\Entities\Setting;
 
 class StoreInvoiceRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return $this->user()->can('create', Invoice::class);
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $settings = Setting::pluck('value', 'key')->toArray();
+        $invoiceAuto = !empty($settings['services_invoice_auto_numbering']) || !empty($settings['services_invoice_auto']);
+        $proformaAuto = !empty($settings['services_proforma_invoice_auto']);
+
+        if ($this->input('invoice_type') === 'invoice' && $invoiceAuto) {
+            $invNum = $this->input('invoice_number');
+            $invoiceId = $this->route('invoice')?->id;
+            if (!$invNum || Invoice::where('invoice_number', $invNum)->when($invoiceId, fn($q) => $q->where('id', '!=', $invoiceId))->exists()) {
+                $this->merge(['invoice_number' => Invoice::generateNumber()]);
+            }
+        }
+
+        if ($this->input('invoice_type') === 'proforma' && $proformaAuto) {
+            $proNum = $this->input('proforma_invoice_number');
+            $invoiceId = $this->route('invoice')?->id;
+            if (!$proNum || Invoice::where('proforma_invoice_number', $proNum)->when($invoiceId, fn($q) => $q->where('id', '!=', $invoiceId))->exists()) {
+                $this->merge(['proforma_invoice_number' => Invoice::generateProformaNumber()]);
+            }
+        }
     }
 
     public function rules(): array
@@ -61,14 +85,14 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.custom_fields_old' => 'nullable|array',
             'items.*.custom_fields_old.*' => 'nullable',
             'items.*.custom_fields.*' => 'nullable',
+            'items.*.custom_fields_quantities' => 'nullable|array',
+            'items.*.custom_fields_quantities.*' => 'nullable',
             'items.*.custom_fields_prices' => 'nullable|array',
-            'items.*.custom_fields_prices.*' => 'nullable|numeric',
+            'items.*.custom_fields_prices.*' => 'nullable',
             'items.*.custom_fields_discounts' => 'nullable|array',
-            'items.*.custom_fields_discounts.*' => 'nullable|numeric',
-
-            // قانون اعتبارسنجی برای مالیات فیلدهای سفارشی
+            'items.*.custom_fields_discounts.*' => 'nullable',
             'items.*.custom_fields_taxes' => 'nullable|array',
-            'items.*.custom_fields_taxes.*' => 'nullable|numeric|min:0|max:100',
+            'items.*.custom_fields_taxes.*' => 'nullable',
 
             'payment_mode' => 'nullable|in:cash,installment',
             'payment_method' => 'nullable|in:online,transfer,pos,installment,cod',
@@ -81,6 +105,7 @@ class StoreInvoiceRequest extends FormRequest
             'installment_due_day' => 'nullable|integer|min:1|max:31',
             'installment_start_date' => 'nullable|string',
             'installment_schedule' => 'nullable|string',
+            'create_manual_renewal_invoice' => 'nullable|boolean',
         ];
 
         if ($this->input('payment_mode') === 'installment') {
