@@ -20,7 +20,7 @@ class SeedServiceWorkflows extends Command
             ['name' => 'لغو سفارش و فاکتور با لغو فاکتور', 'is_active' => true, 'created_by' => 1]
         );
         $wf1->triggers()->delete();
-        $wf1->triggers()->create(['type' => 'EVENT', 'config' => ['event_key' => ['invoice_cancelled'], 'payment_statuses' => ['در انتظار پرداخت', 'معوقه']]]);
+        $wf1->triggers()->create(['type' => 'EVENT', 'config' => ['event_key' => ['invoice_cancelled']]]);
 
         $wf1->stages()->delete();
         $wf1->nodes()->delete();

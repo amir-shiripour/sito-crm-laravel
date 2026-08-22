@@ -35,9 +35,29 @@ class ClientForm extends Model implements FormSchemaContract
         'booking_waitlist' => ['label' => 'صف انتظار نوبت',   'column' => null],
     ];
 
+    /**
+     * بررسی نصب و فعال بودن ماژول نوبت‌دهی (Booking)
+     */
+    public static function isBookingModuleActive(): bool
+    {
+        if (!class_exists(\App\Models\Module::class)) {
+            return false;
+        }
+        try {
+            $mod = \App\Models\Module::where('slug', 'booking')->first();
+            return (bool) ($mod && $mod->isInstalled() && $mod->isEnabled());
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     public static function getSystemFields(): array
     {
-        return static::SYSTEM_FIELDS;
+        $fields = static::SYSTEM_FIELDS;
+        if (!static::isBookingModuleActive()) {
+            unset($fields['booking_waitlist']);
+        }
+        return $fields;
     }
 
     public function getSchema(): array
@@ -55,7 +75,7 @@ class ClientForm extends Model implements FormSchemaContract
      */
     public static function systemFieldDefaults(): array
     {
-        return [
+        $defaults = [
             'full_name' => [
                 'id'           => 'full_name',
                 'type'         => 'text',
@@ -159,7 +179,11 @@ class ClientForm extends Model implements FormSchemaContract
                 'is_system'    => true,
                 'required_status_keys' => [],
             ],
-            'booking_waitlist' => [
+        ];
+
+        // تنها در صورت نصب و فعال بودن ماژول نوبت‌دهی
+        if (static::isBookingModuleActive()) {
+            $defaults['booking_waitlist'] = [
                 'id'           => 'booking_waitlist',
                 'type'         => 'booking_waitlist',
                 'label'        => 'صف انتظار نوبت',
@@ -171,8 +195,10 @@ class ClientForm extends Model implements FormSchemaContract
                 'client_auth'  => false,
                 'is_system'    => true,
                 'required_status_keys' => [],
-            ],
-        ];
+            ];
+        }
+
+        return $defaults;
     }
 
     /**

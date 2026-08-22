@@ -257,7 +257,7 @@ class ProcessWorkflowsCommand extends Command
 
         $targetDate = $nowLocal->copy()->subDays($offsetDays)->format('Y-m-d');
 
-        if (!class_exists(\Modules\Services\App\Http\Models\Invoice::class) || !\Illuminate\Support\Facades\Schema::hasTable('services_invoices')) {
+        if (!class_exists(\Modules\Services\App\Http\Models\Invoice::class) || !\Illuminate\Support\Facades\Schema::hasTable('service_invoices')) {
             return;
         }
 
@@ -343,7 +343,7 @@ class ProcessWorkflowsCommand extends Command
 
         $targetDate = $nowLocal->copy()->subDays($offsetDays)->format('Y-m-d');
 
-        if (!class_exists(\Modules\Services\App\Http\Models\Order::class) || !\Illuminate\Support\Facades\Schema::hasTable('services_orders')) {
+        if (!class_exists(\Modules\Services\App\Http\Models\Order::class) || !\Illuminate\Support\Facades\Schema::hasTable('service_orders')) {
             return;
         }
 
