@@ -8,19 +8,31 @@
     $menuGroups = $menuData['groups'] ?? [];
     $settingsItems = $menuData['settings'] ?? [];
 
-    // Backward compatibility for clients module
+    $customMenuService = app(App\Services\Modules\MenuCustomizationService::class);
+    $isCustomEnabled = $customMenuService->isCustomMenuEnabled();
+
+    // Backward compatibility for clients module only in core/default mode
     $clientsItems = [];
-    foreach ($menuItems as $key => $item) {
-        if ($item['group'] === 'clients') {
-            $clientsItems[] = $item;
-            unset($menuItems[$key]);
+    if (!$isCustomEnabled) {
+        foreach ($menuItems as $key => $item) {
+            if ($item['group'] === 'clients') {
+                $clientsItems[] = $item;
+                unset($menuItems[$key]);
+            }
+        }
+        foreach ($menuGroups as $key => $group) {
+            if ($group['module'] === 'clients') {
+                $clientsItems = $group['items'];
+                unset($menuGroups[$key]);
+            }
         }
     }
-    foreach ($menuGroups as $key => $group) {
-        if ($group['module'] === 'clients') {
-            $clientsItems = $group['items'];
-            unset($menuGroups[$key]);
-        }
+
+    $clientsGroupMeta = $menuData['clients_group_meta'] ?? null;
+    $settingsGroupMeta = $menuData['settings_group_meta'] ?? null;
+
+    if (!empty($clientsGroupMeta['hidden']) && !$isCustomEnabled) {
+        $clientsItems = [];
     }
     $menuItems = array_values($menuItems);
     $menuGroups = array_values($menuGroups);
@@ -64,6 +76,10 @@
         'menuGroups' => $menuGroups,
         'clientsItems' => $clientsItems,
         'settingsItems' => $settingsItems,
+        'clientsGroupMeta' => $clientsGroupMeta,
+        'settingsGroupMeta' => $settingsGroupMeta,
+        'isCustomEnabled' => $isCustomEnabled,
+        'menuBlocks' => $menuData['blocks'] ?? [],
     ])
 </nav>
 

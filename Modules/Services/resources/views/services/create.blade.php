@@ -462,26 +462,26 @@
 
                                     <div class="space-y-2">
                                         <template x-for="(opt, optIdx) in (field.options || [])" :key="optIdx">
-                                            <div class="flex items-center gap-2 p-2.5 bg-gray-50/80 dark:bg-gray-900/40 rounded-xl border border-gray-200/70 dark:border-gray-700/60">
+                                            <div class="flex items-center gap-2.5 p-2.5 bg-gray-50/80 dark:bg-gray-900/40 rounded-xl border border-gray-200/70 dark:border-gray-700/60">
                                                 <span class="w-6 h-6 flex items-center justify-center text-xs font-bold text-gray-400 dark:text-gray-500 shrink-0" x-text="optIdx + 1"></span>
-                                                <div class="flex-1">
+                                                <div class="flex-1 min-w-0">
                                                     <input type="text"
                                                            :name="'custom_fields[' + idx + '][options][' + optIdx + '][label]'"
                                                            x-model="opt.label"
                                                            class="{{ $inputClass }} py-2 text-xs"
                                                            placeholder="عنوان گزینه (مثال: هاست ۱ گیگ)" required>
                                                 </div>
-                                                <div class="w-36 sm:w-44" x-show="field.has_pricing">
+                                                <div class="w-40 sm:w-48 shrink-0" x-show="field.has_pricing">
                                                     <div class="relative">
                                                         <input type="text"
                                                                :value="formatPriceDisplay(opt.price)"
                                                                @input="handleOptionPriceInput($event, opt)"
-                                                               class="{{ $inputClass }} py-2 text-xs text-center dir-ltr pe-12"
-                                                               placeholder="قیمت: ۰">
+                                                               class="{{ $inputClass }} py-2 text-xs text-end dir-ltr pl-14 pr-3 font-semibold"
+                                                               placeholder="۰">
                                                         <input type="hidden"
                                                                :name="'custom_fields[' + idx + '][options][' + optIdx + '][price]'"
                                                                :value="opt.price || 0">
-                                                        <span class="absolute end-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                        <span class="absolute inset-y-0 left-2.5 flex items-center text-[11px] font-bold text-gray-400 dark:text-gray-500 pointer-events-none select-none">{{ $currencyLabel }}</span>
                                                     </div>
                                                 </div>
                                                 <input type="hidden" :name="'custom_fields[' + idx + '][options][' + optIdx + '][pricing_type]'" :value="opt.pricing_type || 'fixed'">
@@ -533,7 +533,7 @@
                                     </template>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" :class="(field.type === 'multiselect' || field.type === 'select' || field.type === 'radio') ? 'mt-3' : ''">
                                         <div>
-                                            <label class="block text-xs font-bold text-gray-600 mb-2">نوع
+                                            <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-2">نوع
                                                 قیمت‌گذاری</label>
                                             <select :name="'custom_fields[' + idx + '][pricing_type]'"
                                                     x-model="field.pricing_type"
@@ -543,7 +543,7 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-bold text-gray-600 mb-2"
+                                            <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-2"
                                                    x-text="field.pricing_type === 'percentage' ? 'درصد اضافه (%)' : 'مبلغ اضافه ({{ $currencyLabel }})'"></label>
                                             <input type="hidden" :name="'custom_fields[' + idx + '][pricing_amount]'"
                                                    :value="field.pricing_amount">

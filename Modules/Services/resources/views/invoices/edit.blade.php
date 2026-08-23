@@ -1274,6 +1274,45 @@
                                                                              </div>
                                                                          </template>
                                                                      </div>
+
+                                                                     {{-- بخش تنظیم تعداد داخل کارت فیلد سفارشی برای فیلدهای دارای قیمت --}}
+                                                                     <template x-if="field.has_pricing && field.type !== 'multiselect'">
+                                                                         <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between gap-2"
+                                                                              x-show="isFieldSelected(field, item.custom_field_values[field.id])">
+                                                                             <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                                                 <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                                                                                 </svg>
+                                                                                 تعداد:
+                                                                             </span>
+                                                                             <div class="w-24">
+                                                                                 <input type="text"
+                                                                                        :value="toPersianNum(getCustomFieldQuantity(item, field))"
+                                                                                        @input="setCustomFieldQuantity(item, field, null, $event.target.value)"
+                                                                                        class="w-full rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/40 dark:bg-indigo-950/20 px-2.5 py-1 text-xs text-center font-bold text-indigo-900 dark:text-indigo-200 tabular-nums focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                                        dir="ltr" placeholder="۱">
+                                                                             </div>
+                                                                         </div>
+                                                                     </template>
+
+                                                                     <template x-if="field.has_pricing && field.type === 'multiselect'">
+                                                                         <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 space-y-1.5"
+                                                                              x-show="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].length > 0">
+                                                                             <div class="text-[10px] font-bold text-gray-400">تعداد گزینه‌های انتخابی:</div>
+                                                                             <template x-for="opt in (Array.isArray(item.custom_field_values[field.id]) ? item.custom_field_values[field.id] : [])" :key="opt">
+                                                                                 <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/60 dark:border-indigo-800/40">
+                                                                                     <span class="text-[11px] font-medium text-gray-700 dark:text-gray-300 truncate" x-text="opt"></span>
+                                                                                     <div class="w-20 shrink-0">
+                                                                                         <input type="text"
+                                                                                                :value="toPersianNum(getCustomFieldQuantity(item, field, opt))"
+                                                                                                @input="setCustomFieldQuantity(item, field, opt, $event.target.value)"
+                                                                                                class="w-full rounded-md border border-indigo-200 dark:border-indigo-800/60 bg-white dark:bg-gray-900 px-2 py-0.5 text-xs text-center font-bold text-indigo-900 dark:text-indigo-200 tabular-nums outline-none"
+                                                                                                dir="ltr" placeholder="۱">
+                                                                                     </div>
+                                                                                 </div>
+                                                                             </template>
+                                                                         </div>
+                                                                     </template>
                                                                  </template>
                                                             </div>
                                                         </div>

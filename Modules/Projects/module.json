@@ -1,0 +1,13 @@
+{
+    "name": "Projects",
+    "alias": "projects",
+    "description": "سیستم مدیریت پروژه‌ها و وظایف",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Projects\\App\\Providers\\ProjectsServiceProvider",
+        "Modules\\Projects\\App\\Providers\\RouteServiceProvider",
+        "Modules\\Projects\\App\\Providers\\AuthServiceProvider"
+    ],
+    "files": []
+}

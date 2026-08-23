@@ -40,6 +40,16 @@ Route::prefix('settings')->middleware(['auth'])->group(function () {
         Route::post('/import', [GoogleCalendarController::class, 'importFile'])->name('import');
         Route::post('/clear-imported', [GoogleCalendarController::class, 'clearImported'])->name('clear-imported');
     });
+
+    // روت‌های مدیریت و شخصی‌سازی منو
+    Route::prefix('menu-manager')->name('settings.menu-manager.')->group(function () {
+        Route::get('/items', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'getItems'])->name('items');
+        Route::post('/save', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'save'])->name('save');
+        Route::post('/reset', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'reset'])->name('reset');
+        Route::post('/toggle-status', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/groups', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'saveGroup'])->name('groups.save');
+        Route::delete('/groups/{group}', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'deleteGroup'])->name('groups.delete');
+    });
 });
 
 // روت عمومی مستندات کلید API

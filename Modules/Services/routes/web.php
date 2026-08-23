@@ -76,6 +76,7 @@ Route::middleware(['auth', 'verified'])
     Route::prefix('services/orders')
         ->name('services.orders.')
         ->group(function () {
+            Route::post('/{order}/create-renewal-invoice', [OrderController::class, 'createRenewalInvoice'])->name('createRenewalInvoice');
             Route::resource('/', OrderController::class)->parameters(['' => 'order']);
         });
 

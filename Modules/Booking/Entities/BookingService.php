@@ -129,4 +129,9 @@ class BookingService extends Model
         return $this->belongsToMany(BookingCategory::class, 'booking_category_service', 'service_id', 'category_id')
             ->withTimestamps();
     }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', self::STATUS_ACTIVE);
+    }
 }

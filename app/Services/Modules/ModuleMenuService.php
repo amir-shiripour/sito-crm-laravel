@@ -8,15 +8,7 @@ use Illuminate\Support\Str;
 class ModuleMenuService
 {
     /**
-     * بازگرداندن آیتم‌های منو برای یک کاربر مشخص (فقط از ماژول‌های installed+active)
-     * هر ماژول می‌تواند فایل resources/menu.php داشته باشد که آرایه‌ای از آیتم‌ها برمی‌گرداند.
-     *
-     * ساختار بازگشتی:
-     * [
-     *   'items' => [...], // آیتم‌های تکی (ماژول‌هایی که یک آیتم غیر تنظیمات دارند)
-     *   'groups' => [...], // گروه‌های ماژول‌ها (ماژول‌هایی که بیشتر از یک آیتم غیر تنظیمات دارند)
-     *   'settings' => [...], // تمام آیتم‌های تنظیمات از همه ماژول‌ها
-     * ]
+     * Get all menu items for a given user.
      */
     public function getAllForUser($user): array
     {
@@ -24,7 +16,7 @@ class ModuleMenuService
         $moduleGroups = [];
         $settingsItems = [];
 
-        // لود کردن منوی هسته (core menu) از resources/menu.php
+        // Core menu
         $coreMenuPath = resource_path('menu.php');
         if (file_exists($coreMenuPath)) {
             try {
@@ -34,14 +26,12 @@ class ModuleMenuService
                     $coreSettings = [];
 
                     foreach ($coreMenu as $m) {
-                        // اگر permission تعریف شده باشد و کاربر دسترسی ندارد، رد کن
                         if (!empty($m['permission'])) {
-                            if (! $user->can($m['permission'])) {
+                            if (!$user->can($m['permission'])) {
                                 continue;
                             }
                         }
 
-                        // بررسی نمایش مشروط آیتم
                         if (isset($m['show'])) {
                             $show = is_callable($m['show']) ? $m['show']() : (bool) $m['show'];
                             if (!$show) {
@@ -49,11 +39,9 @@ class ModuleMenuService
                             }
                         }
 
-                        // اضافه کردن اطلاعات ماژول به آیتم
                         $m['module'] = 'core';
                         $m['module_name'] = 'سیستم';
 
-                        // تشخیص اینکه آیا آیتم تنظیمات است یا نه
                         $isSettings = $this->isSettingsItem($m);
 
                         if ($isSettings) {
@@ -63,23 +51,19 @@ class ModuleMenuService
                         }
                     }
 
-                    // اگر هسته بیشتر از یک آیتم غیر تنظیمات دارد، گروه بساز
                     if (count($coreItems) > 1) {
                         $moduleGroups[] = [
                             'module' => 'admin',
-                            'module_name' => 'مدیریت سیستم',
+                            'module_name' => __('menu.system_management'),
                             'items' => $coreItems,
                         ];
                     } elseif (count($coreItems) === 1) {
-                        // اگر فقط یک آیتم دارد، به لیست آیتم‌های تکی اضافه کن
                         $items[] = $coreItems[0];
                     }
 
-                    // تمام تنظیمات را به لیست تنظیمات اضافه کن
                     $settingsItems = array_merge($settingsItems, $coreSettings);
                 }
             } catch (\Throwable $e) {
-                // لاگ کن و ادامه بده
                 \Log::warning("Failed to load core menu: " . $e->getMessage());
             }
         }
@@ -87,8 +71,6 @@ class ModuleMenuService
         $modules = Module::where('installed', true)->where('active', true)->get();
 
         foreach ($modules as $module) {
-            // مسیر فایل menu در ماژول
-            // استفاده از name به جای slug چون name در module.json همان نام فولدر است
             $moduleName = $module->name;
             $menuPath = base_path("Modules/{$moduleName}/resources/menu.php");
 
@@ -100,14 +82,12 @@ class ModuleMenuService
                         $moduleSettings = [];
 
                         foreach ($menu as $m) {
-                            // اگر permission تعریف شده باشد و کاربر دسترسی ندارد، رد کن
                             if (!empty($m['permission'])) {
-                                if (! $user->can($m['permission'])) {
+                                if (!$user->can($m['permission'])) {
                                     continue;
                                 }
                             }
 
-                            // بررسی نمایش مشروط آیتم
                             if (isset($m['show'])) {
                                 $show = is_callable($m['show']) ? $m['show']() : (bool) $m['show'];
                                 if (!$show) {
@@ -115,11 +95,9 @@ class ModuleMenuService
                                 }
                             }
 
-                            // اضافه کردن اطلاعات ماژول به آیتم
                             $m['module'] = $module->slug;
                             $m['module_name'] = $module->name;
 
-                            // تشخیص اینکه آیا آیتم تنظیمات است یا نه
                             $isSettings = $this->isSettingsItem($m);
 
                             if ($isSettings) {
@@ -129,30 +107,141 @@ class ModuleMenuService
                             }
                         }
 
-                        // اگر ماژول بیشتر از یک آیتم غیر تنظیمات دارد، گروه بساز
                         if (count($moduleItems) > 1) {
+                            $resolvedTitle = $this->resolveModuleGroupTitle($module->slug, $module->name);
                             $moduleGroups[] = [
                                 'module' => $module->slug,
-                                'module_name' => $module->name,
+                                'module_name' => $resolvedTitle,
                                 'items' => $moduleItems,
                             ];
                         } elseif (count($moduleItems) === 1) {
-                            // اگر فقط یک آیتم دارد، به لیست آیتم‌های تکی اضافه کن
                             $items[] = $moduleItems[0];
                         }
 
-                        // تمام تنظیمات را به لیست تنظیمات اضافه کن
                         $settingsItems = array_merge($settingsItems, $moduleSettings);
                     }
                 } catch (\Throwable $e) {
-                    // لاگ کن و به ماژول بعدی برو
                     \Log::warning("Failed to load menu for module {$moduleName}: " . $e->getMessage());
                     continue;
                 }
             }
         }
 
-        // مرتب‌سازی بر اساس position
+        usort($items, function ($a, $b) {
+            return ($a['position'] ?? 999) <=> ($b['position'] ?? 999);
+        });
+
+        foreach ($moduleGroups as &$group) {
+            usort($group['items'], function ($a, $b) {
+                return ($a['position'] ?? 999) <=> ($b['position'] ?? 999);
+            });
+        }
+
+        usort($settingsItems, function ($a, $b) {
+            return ($a['position'] ?? 999) <=> ($b['position'] ?? 999);
+        });
+
+        $result = [
+            'items' => $items,
+            'groups' => $moduleGroups,
+            'settings' => $settingsItems,
+        ];
+
+        try {
+            return app(MenuCustomizationService::class)->applyOverrides($result, $user);
+        } catch (\Throwable $e) {
+            \Log::warning("MenuCustomizationService failed: " . $e->getMessage());
+            return $result;
+        }
+    }
+
+    /**
+     * Get raw menu without applying customizations.
+     */
+    public function getRawForUser($user): array
+    {
+        $items = [];
+        $moduleGroups = [];
+        $settingsItems = [];
+
+        $coreMenuPath = resource_path('menu.php');
+        if (file_exists($coreMenuPath)) {
+            try {
+                $coreMenu = include $coreMenuPath;
+                if (is_array($coreMenu)) {
+                    $coreItems = [];
+                    $coreSettings = [];
+
+                    foreach ($coreMenu as $m) {
+                        $m['module'] = 'core';
+                        $m['module_name'] = 'سیستم';
+                        $isSettings = $this->isSettingsItem($m);
+                        if ($isSettings) {
+                            $coreSettings[] = $m;
+                        } else {
+                            $coreItems[] = $m;
+                        }
+                    }
+
+                    if (count($coreItems) > 1) {
+                        $moduleGroups[] = [
+                            'module' => 'admin',
+                            'module_name' => __('menu.system_management'),
+                            'items' => $coreItems,
+                        ];
+                    } elseif (count($coreItems) === 1) {
+                        $items[] = $coreItems[0];
+                    }
+                    $settingsItems = array_merge($settingsItems, $coreSettings);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning("Failed to load core raw menu: " . $e->getMessage());
+            }
+        }
+
+        $modules = Module::where('installed', true)->where('active', true)->get();
+
+        foreach ($modules as $module) {
+            $moduleName = $module->name;
+            $menuPath = base_path("Modules/{$moduleName}/resources/menu.php");
+
+            if (file_exists($menuPath)) {
+                try {
+                    $menu = include $menuPath;
+                    if (is_array($menu)) {
+                        $moduleItems = [];
+                        $moduleSettings = [];
+
+                        foreach ($menu as $m) {
+                            $m['module'] = $module->slug;
+                            $m['module_name'] = $module->name;
+                            $isSettings = $this->isSettingsItem($m);
+                            if ($isSettings) {
+                                $moduleSettings[] = $m;
+                            } else {
+                                $moduleItems[] = $m;
+                            }
+                        }
+
+                        if (count($moduleItems) > 1) {
+                            $resolvedTitle = $this->resolveModuleGroupTitle($module->slug, $module->name);
+                            $moduleGroups[] = [
+                                'module' => $module->slug,
+                                'module_name' => $resolvedTitle,
+                                'items' => $moduleItems,
+                            ];
+                        } elseif (count($moduleItems) === 1) {
+                            $items[] = $moduleItems[0];
+                        }
+                        $settingsItems = array_merge($settingsItems, $moduleSettings);
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning("Failed to load raw menu for module {$moduleName}: " . $e->getMessage());
+                    continue;
+                }
+            }
+        }
+
         usort($items, function ($a, $b) {
             return ($a['position'] ?? 999) <=> ($b['position'] ?? 999);
         });
@@ -175,7 +264,56 @@ class ModuleMenuService
     }
 
     /**
-     * تشخیص اینکه آیا یک آیتم منو، آیتم تنظیمات است یا نه
+     * Resolve module group title from module translation files.
+     */
+    public function resolveModuleGroupTitle(string $moduleSlug, string $moduleName): string
+    {
+        if ($moduleSlug === 'admin') {
+            return __('menu.system_management');
+        }
+        if ($moduleSlug === 'clients') {
+            return 'مدیریت ' . config('clients.labels.plural', 'مشتریان');
+        }
+        if ($moduleSlug === 'settings') {
+            return 'تنظیمات';
+        }
+        if ($moduleSlug === 'dashboard') {
+            return 'پیشخوان';
+        }
+
+        $transKey = "{$moduleSlug}::menu.group_title";
+        $translated = trans($transKey);
+        if ($translated !== $transKey && !empty($translated)) {
+            return $translated;
+        }
+
+        $knownTitles = [
+            'tasks' => 'وظایف',
+            'reminders' => 'یادآوری‌ها',
+            'notifications' => 'اعلان‌ها',
+            'sms' => 'پیامک',
+            'booking' => 'نوبت‌دهی',
+            'workflows' => 'مدیریت گردش کار',
+            'smartbot' => 'دستیار هوشمند',
+            'properties' => 'املاک',
+            'accounting' => 'حسابداری',
+            'sales' => 'فروش',
+            'market' => 'مدیریت فروشگاه',
+            'contractforge' => 'قراردادها',
+            'contentforge' => 'تولید محتوا',
+            'services' => 'سرویس‌ها و خدمات',
+            'wallet' => 'کیف پول',
+            'single' => 'آیتم‌های عمومی و مستقل',
+        ];
+        if (isset($knownTitles[$moduleSlug])) {
+            return $knownTitles[$moduleSlug];
+        }
+
+        return ucfirst($moduleSlug);
+    }
+
+    /**
+     * Check if a menu item is a settings item.
      */
     protected function isSettingsItem(array $item): bool
     {

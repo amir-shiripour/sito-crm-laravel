@@ -42,7 +42,29 @@
 
 @section('content')
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <script>
+        window.settingsPage = function() {
+            return {
+                activeTab: window.location.hash ? window.location.hash.substring(1) : 'general',
+                init() {
+                    this.$watch('activeTab', (val) => {
+                        if (history.replaceState) {
+                            history.replaceState(null, null, '#' + val);
+                        } else {
+                            window.location.hash = val;
+                        }
+                    });
+                    window.addEventListener('hashchange', () => {
+                        if (window.location.hash) {
+                            this.activeTab = window.location.hash.substring(1);
+                        }
+                    });
+                }
+            };
+        };
+    </script>
+
+    <div x-data="settingsPage()" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         {{-- هدر صفحه --}}
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -95,9 +117,7 @@
               class="pb-24" id="main-settings-form">
             @csrf
 
-            <div x-data="{ activeTab: window.location.hash ? window.location.hash.substring(1) : 'general' }"
-                 x-init="$watch('activeTab', value => window.location.hash = value)"
-                 class="space-y-6">
+            <div class="space-y-6">
                 <input type="hidden" name="active_tab" x-model="activeTab">
 
                 <!-- Horizontal Tabs -->
@@ -143,6 +163,12 @@
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
                         </div>
                         ویجت‌ها
+                    </button>
+                    <button type="button" @click="activeTab = 'menu-manager'" :class="activeTab === 'menu-manager' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div :class="activeTab === 'menu-manager' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800/50 dark:text-indigo-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+                        </div>
+                        مدیریت منو کاربری
                     </button>
                 </div>
 
@@ -654,10 +680,15 @@
                     {{-- تب تنظیمات ویجت‌ها --}}
                     @include('settings::partials.widget_settings')
 
+                    {{-- تب مدیریت منو کاربری --}}
+                    <div x-show="activeTab === 'menu-manager'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+                        @include('settings::partials.menu-manager')
+                    </div>
+
                 </div> {{-- پایان پنل‌ها --}}
             </div> {{-- پایان کانتینر رپ اصلی (Sidebar + Panels) --}}
 
-            <div class="sticky bottom-4 z-40 flex justify-end mt-8">
+            <div x-show="activeTab !== 'menu-manager'" class="sticky bottom-4 z-40 flex justify-end mt-8">
                 <div
                     class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-2 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
                     <button type="submit"
