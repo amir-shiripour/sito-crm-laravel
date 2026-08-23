@@ -869,6 +869,11 @@ class WorkflowController extends Controller
 
         $instances = \Modules\Workflows\Entities\WorkflowInstance::where('related_type', $request->related_type)
             ->where('related_id', $request->related_id)
+            ->whereHas('workflow', function($wQuery) {
+                $wQuery->whereHas('nodes')
+                       ->where('key', 'not like', 'system_%')
+                       ->where('key', 'not like', 'auto_%');
+            })
             ->with([
                 'workflow.nodes',
                 'workflow.edges',
@@ -957,13 +962,14 @@ class WorkflowController extends Controller
             'related_id' => 'required|integer',
         ]);
 
-        $workflow = Workflow::findOrFail($request->workflow_id);
+        $workflow = Workflow::where('id', $request->workflow_id)
+            ->where('is_active', true)
+            ->whereHas('nodes')
+            ->where('key', 'not like', 'system_%')
+            ->where('key', 'not like', 'auto_%')
+            ->firstOrFail();
 
-        if ($workflow->nodes()->exists()) {
-            $instance = $engine->startNodeWorkflow($workflow, $request->related_type, $request->related_id);
-        } else {
-            $instance = $engine->startWorkflow($workflow, $request->related_type, $request->related_id);
-        }
+        $instance = $engine->startNodeWorkflow($workflow, $request->related_type, $request->related_id);
 
         return response()->json([
             'success' => true,

@@ -20,6 +20,7 @@ class BookingServiceProvider extends ServiceProvider
 
         \Livewire\Livewire::component('booking.user.schedule-manager', \Modules\Booking\App\Livewire\User\ScheduleManager::class);
         \Livewire\Livewire::component('booking.user.booking-waitlist-manager', \Modules\Booking\App\Livewire\User\BookingWaitlistManager::class);
+        \Livewire\Livewire::component('booking.user.booking-waitlist-modal', \Modules\Booking\App\Livewire\User\BookingWaitlistModal::class);
 
         if (class_exists(\Modules\Booking\App\Models\TreatmentPlan::class)) {
             \Modules\Booking\App\Models\TreatmentPlan::observe(\Modules\Booking\App\Observers\TreatmentPlanObserver::class);

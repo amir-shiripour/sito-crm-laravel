@@ -46,6 +46,35 @@ class SmsSendController extends Controller
 
         $canTargetUsers = true;
 
+        $sampleUser = $users->first(fn($u) => !empty($u->mobile) || !empty($u->phone)) ?? $users->first();
+        $sampleClient = $clients->first(fn($c) => !empty($c->phone)) ?? $clients->first();
+
+        $sampleUserData = [
+            'name'          => $sampleUser?->name ?? 'علی محمدی',
+            'username'      => $sampleUser?->username ?? 'alimohammadi',
+            'national_code' => $sampleUser?->national_code ?? '0012345678',
+            'phone'         => $sampleUser?->mobile ?? $sampleUser?->phone ?? '09123456789',
+            'email'         => $sampleUser?->email ?? 'ali@example.com',
+            'role'          => $sampleUser && method_exists($sampleUser, 'roles') && $sampleUser->roles->isNotEmpty()
+                ? $sampleUser->roles->pluck('name')->implode(', ')
+                : 'مدیر سیستم',
+        ];
+
+        $sampleClientStatus = '';
+        if ($sampleClient && $sampleClient->relationLoaded('status') && $sampleClient->status) {
+            $sampleClientStatus = $sampleClient->status->label ?? $sampleClient->status->key ?? '';
+        }
+
+        $sampleClientData = [
+            'full_name'     => $sampleClient?->full_name ?? 'رضا رضایی',
+            'username'      => $sampleClient?->username ?? 'reza_rezaei',
+            'national_code' => $sampleClient?->national_code ?? '0087654321',
+            'phone'         => $sampleClient?->phone ?? '09351234567',
+            'email'         => $sampleClient?->email ?? 'reza@example.com',
+            'status'        => $sampleClientStatus ?: 'مشتری فعال',
+            'case_number'   => $sampleClient?->case_number ?? 'CR-10492',
+        ];
+
         return view('sms::user.logs.send', [
             'users'            => $users,
             'roles'            => $roles,
@@ -53,6 +82,8 @@ class SmsSendController extends Controller
             'clientStatuses'   => $clientStatuses,
             'canTargetUsers'   => $canTargetUsers,
             'canTargetClients' => $canTargetClients,
+            'sampleUserData'   => $sampleUserData,
+            'sampleClientData' => $sampleClientData,
         ]);
     }
 
@@ -139,7 +170,8 @@ class SmsSendController extends Controller
 
                 $sms->sendPattern($phone, $patternKey, $tokens, $options);
             } else {
-                $sms->sendText($phone, $body, $options);
+                $personalizedBody = $this->replaceTextVariables($body, $target, $data['target_type']);
+                $sms->sendText($phone, $personalizedBody, $options);
             }
 
             $messagesCount++;
@@ -148,6 +180,108 @@ class SmsSendController extends Controller
         return redirect()
             ->route('user.sms.logs.index')
             ->with('status', "پیامک برای {$messagesCount} گیرنده در صف ارسال قرار گرفت.");
+    }
+
+    /**
+     * جایگزینی متغیرهای داینامیک در متن پیامک عادی
+     */
+    public function replaceTextVariables(string $text, $target, string $targetType): string
+    {
+        if (trim($text) === '') {
+            return '';
+        }
+
+        if ($targetType === 'users') {
+            $name     = (string) ($target->name ?? '');
+            $username = (string) ($target->username ?? $target->name ?? '');
+            $national = (string) ($target->national_code ?? '');
+            $phone    = (string) ($target->mobile ?? $target->phone ?? '');
+            $email    = (string) ($target->email ?? '');
+
+            $roles = '';
+            if (method_exists($target, 'roles')) {
+                $roles = method_exists($target, 'relationLoaded') && $target->relationLoaded('roles')
+                    ? $target->roles->pluck('name')->implode(', ')
+                    : $target->roles()->pluck('name')->implode(', ');
+            }
+
+            $map = [
+                '{0}'             => $name,
+                '{1}'             => $username,
+                '{2}'             => $national,
+                '{3}'             => $phone,
+                '{4}'             => $email,
+                '{5}'             => $roles,
+                '{name}'          => $name,
+                '{full_name}'     => $name,
+                '{نام}'           => $name,
+                '{نام_خانوادگی}'  => $name,
+                '{نام_کامل}'      => $name,
+                '{username}'      => $username,
+                '{نام_کاربری}'    => $username,
+                '{national_code}' => $national,
+                '{کد_ملی}'        => $national,
+                '{phone}'         => $phone,
+                '{mobile}'        => $phone,
+                '{موبایل}'        => $phone,
+                '{تلفن}'          => $phone,
+                '{شماره_موبایل}'  => $phone,
+                '{email}'         => $email,
+                '{ایمیل}'         => $email,
+                '{roles}'         => $roles,
+                '{role}'          => $roles,
+                '{نقش}'           => $roles,
+            ];
+        } else {
+            $name       = (string) ($target->full_name ?? '');
+            $username   = (string) ($target->username ?? '');
+            $national   = (string) ($target->national_code ?? '');
+            $phone      = (string) ($target->phone ?? $target->mobile ?? '');
+            $email      = (string) ($target->email ?? '');
+            $caseNumber = (string) ($target->case_number ?? '');
+
+            $statusLabel = '';
+            if (method_exists($target, 'relationLoaded') && $target->relationLoaded('status') && $target->status) {
+                $statusLabel = $target->status->label ?? $target->status->key ?? $target->status->name ?? '';
+            } elseif (method_exists($target, 'status') && !empty($target->status_id)) {
+                $statusLabel = $target->status?->label ?? $target->status?->key ?? $target->status?->name ?? '';
+            } elseif (isset($target->status) && is_object($target->status)) {
+                $statusLabel = $target->status->label ?? $target->status->key ?? $target->status->name ?? '';
+            } elseif (isset($target->status) && is_string($target->status)) {
+                $statusLabel = $target->status;
+            }
+
+            $map = [
+                '{0}'             => $name,
+                '{1}'             => $username,
+                '{2}'             => $national,
+                '{3}'             => $phone,
+                '{4}'             => $email,
+                '{5}'             => $statusLabel,
+                '{full_name}'     => $name,
+                '{name}'          => $name,
+                '{نام}'           => $name,
+                '{نام_خانوادگی}'  => $name,
+                '{نام_کامل}'      => $name,
+                '{username}'      => $username,
+                '{نام_کاربری}'    => $username,
+                '{national_code}' => $national,
+                '{کد_ملی}'        => $national,
+                '{phone}'         => $phone,
+                '{mobile}'        => $phone,
+                '{موبایل}'        => $phone,
+                '{تلفن}'          => $phone,
+                '{شماره_موبایل}'  => $phone,
+                '{email}'         => $email,
+                '{ایمیل}'         => $email,
+                '{status}'        => $statusLabel,
+                '{وضعیت}'         => $statusLabel,
+                '{case_number}'   => $caseNumber,
+                '{شماره_پرونده}'  => $caseNumber,
+            ];
+        }
+
+        return str_replace(array_keys($map), array_values($map), $text);
     }
 
     /**

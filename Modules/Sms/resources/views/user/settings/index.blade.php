@@ -6,8 +6,8 @@
     // استایل‌های مشترک
     $cardClass = "bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-200 hover:shadow-md";
     $headerClass = "px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3 bg-gray-50/50 dark:bg-gray-900/30 rounded-t-2xl";
-    $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2";
-    $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800";
+    $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-200 mb-2";
+    $inputClass = "w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/20 px-4 py-2.5 text-sm transition-all";
     $selectClass = $inputClass . " appearance-none cursor-pointer";
 @endphp
 
@@ -106,7 +106,7 @@
                             <label class="{{ $labelClass }}">API Key</label>
                             <input type="text" name="api_key"
                                    value="{{ old('api_key', data_get($setting, 'config.api_key')) }}"
-                                   class="{{ $inputClass }} dir-ltr text-left font-mono text-xs"
+                                   class="{{ $inputClass }} dir-ltr text-left text-xs"
                                    placeholder="کلید دسترسی به وب‌سرویس">
                         </div>
 
@@ -114,7 +114,7 @@
                             <label class="{{ $labelClass }}">Base URL (اختیاری)</label>
                             <input type="text" name="base_url"
                                    value="{{ old('base_url', data_get($setting, 'config.base_url')) }}"
-                                   class="{{ $inputClass }} dir-ltr text-left font-mono text-xs"
+                                   class="{{ $inputClass }} dir-ltr text-left text-xs"
                                    placeholder="https://api.limosms.com/v1/">
                         </div>
                     </div>
@@ -151,7 +151,7 @@
                                 <label class="{{ $labelClass }}">شناسه پترن (Pattern ID / OtpId)</label>
                                 <input type="text" name="client_otp_pattern"
                                        value="{{ old('client_otp_pattern', $clientOtpPattern) }}"
-                                       class="{{ $inputClass }} dir-ltr text-left font-mono"
+                                       class="{{ $inputClass }} dir-ltr text-left"
                                        placeholder="مثلاً: 38291">
                                 <p class="text-[11px] text-gray-400 mt-2">
                                     شناسه عددی یا کد پترن تعریف شده در پنل پیامک.

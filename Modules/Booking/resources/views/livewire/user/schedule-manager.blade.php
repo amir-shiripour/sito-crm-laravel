@@ -1352,7 +1352,6 @@
     {{-- Quick Create Appointment Modal --}}
     @if ($showModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4"
-             @click.self="$wire.closeModal()"
              @keydown.escape.window="$wire.closeModal()">
             <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-xl w-full shadow-2xl border border-gray-100 dark:border-gray-700/80 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 
@@ -1495,6 +1494,10 @@
                                         {{-- Search Results List --}}
                                         @if (!empty($clientsForModal) && count($clientsForModal) > 0)
                                             <div class="border border-gray-200 dark:border-gray-700/80 rounded-2xl max-h-44 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 shadow-lg bg-white dark:bg-gray-800 p-1 space-y-1">
+                                                <div class="px-2 py-1 text-[10px] font-bold text-gray-400 dark:text-gray-500 flex justify-between items-center">
+                                                    <span>{{ empty($modalClientSearch) ? '۳ ' . $clientLabel . ' اخیر' : 'نتایج جستجو (' . count($clientsForModal) . ' مورد)' }}</span>
+                                                    <span class="text-[9px] text-indigo-500">برای انتخاب کلیک کنید</span>
+                                                </div>
                                                 @foreach ($clientsForModal as $c)
                                                     <div wire:click="$set('modalClientId', {{ $c->id }})"
                                                          class="p-2.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer flex items-center justify-between transition-colors text-gray-800 dark:text-gray-200">
@@ -1678,7 +1681,6 @@
     {{-- Quick Details Appointment Modal (نمایش جزئیات سریع نوبت با استایل هماهنگ پنل) --}}
     @if ($showDetailsModal && $detailsAppointment)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4"
-             @click.self="$wire.closeDetailsModal()"
              @keydown.escape.window="$wire.closeDetailsModal()">
 
             <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-700/80 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">

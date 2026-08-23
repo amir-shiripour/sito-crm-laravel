@@ -171,6 +171,13 @@ class ClientFormBuilder extends Component
             $this->schema['fields'][$lastIndex]['accept'] = '';
             $this->schema['fields'][$lastIndex]['multiple'] = false;
         }
+
+        if ($type === 'profile-photo') {
+            $this->schema['fields'][$lastIndex]['label'] = 'تصویر پروفایل';
+            $this->schema['fields'][$lastIndex]['max_mb'] = 5;
+            $this->schema['fields'][$lastIndex]['accept'] = 'image/*';
+            $this->schema['fields'][$lastIndex]['multiple'] = false;
+        }
     }
 
     // حذف یک فیلد

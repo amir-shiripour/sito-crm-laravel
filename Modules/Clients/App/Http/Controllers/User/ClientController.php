@@ -86,8 +86,9 @@ class ClientController extends Controller
 
         $users = User::all();
         $statuses = ClientStatus::all();
+        $isBookingQueueEnabled = $this->isBookingQueueEnabled();
 
-        return view('clients::user.clients.index', compact('clients', 'users', 'statuses'));
+        return view('clients::user.clients.index', compact('clients', 'users', 'statuses', 'isBookingQueueEnabled'));
     }
 
     public function create()
@@ -173,7 +174,7 @@ class ClientController extends Controller
             }
         }
 
-        // ── Booking & Workflows check ───────────────────────────────────
+        // ── Workflows & Booking Module check ──────────────────────────────
         $bookingModule = Module::where('slug', 'booking')->first();
         $workflowsModule = Module::where('slug', 'workflows')->first();
 
@@ -181,9 +182,12 @@ class ClientController extends Controller
         $isWorkflowsActive = $workflowsModule && $workflowsModule->installed && $workflowsModule->active;
 
         $availableWorkflows = collect([]);
-        if ($isBookingActive && $isWorkflowsActive && class_exists(Workflow::class) && \Schema::hasTable('workflows')) {
+        if ($isWorkflowsActive && class_exists(Workflow::class) && \Schema::hasTable('workflows')) {
             try {
                 $availableWorkflows = Workflow::where('is_active', true)
+                    ->whereHas('nodes')
+                    ->where('key', 'not like', 'system_%')
+                    ->where('key', 'not like', 'auto_%')
                     ->orderBy('name')
                     ->get();
             } catch (\Exception $e) {
@@ -274,10 +278,31 @@ class ClientController extends Controller
             }
         }
 
+        // ── Booking Waitlists check ──────────────────────────────────
+        $isBookingQueueEnabled = $this->isBookingQueueEnabled();
+        $clientWaitlists = collect([]);
+        if ($isBookingQueueEnabled && class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            try {
+                $clientWaitlists = \Modules\Booking\Entities\BookingWaitlist::with(['service', 'provider'])
+                    ->where('client_id', $client->id)
+                    ->whereIn('status', [
+                        \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
+                        \Modules\Booking\Entities\BookingWaitlist::STATUS_NOTIFIED,
+                        \Modules\Booking\Entities\BookingWaitlist::STATUS_IN_PROGRESS
+                    ])
+                    ->get()
+                    ->sortBy(fn($item) => $item->queue_rank ?? $item->position ?? 0)
+                    ->values();
+            } catch (\Exception $e) {
+                $clientWaitlists = collect([]);
+            }
+        }
+
         return view('clients::user.clients.show', compact(
             'client', 'activeForm', 'clientOrders', 'clientInvoices',
             'bookingModule', 'workflowsModule', 'availableWorkflows',
-            'accountingModule', 'accountingDocuments'
+            'accountingModule', 'accountingDocuments',
+            'isBookingQueueEnabled', 'clientWaitlists'
         ));
     }
 
@@ -459,5 +484,31 @@ class ClientController extends Controller
             'results' => $clients,
             'total' => $clients->count(),
         ]);
+    }
+
+    protected function isBookingQueueEnabled(): bool
+    {
+        $bookingModule = Module::where('slug', 'booking')->first();
+        if (!$bookingModule || !$bookingModule->installed || !$bookingModule->active) {
+            return false;
+        }
+
+        if (!class_exists(\Modules\Booking\Entities\BookingWaitlist::class) || !class_exists(\Modules\Booking\Entities\BookingSetting::class) || !\Modules\Booking\Entities\BookingSetting::isQueueEnabled()) {
+            return false;
+        }
+
+        $keyFromSettings = ClientSetting::getValue('default_form_key');
+        $activeForm = ClientForm::active($keyFromSettings);
+        if (!$activeForm || !isset($activeForm->schema['fields']) || !is_array($activeForm->schema['fields'])) {
+            return false;
+        }
+
+        foreach ($activeForm->schema['fields'] as $f) {
+            if (($f['id'] ?? '') === 'booking_waitlist') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

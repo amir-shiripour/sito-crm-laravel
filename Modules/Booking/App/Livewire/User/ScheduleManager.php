@@ -2244,17 +2244,20 @@ class ScheduleManager extends Component
 
         // Search Clients for Modal
         $clientsForModal = [];
-        if ($this->showModal && !empty($this->modalClientSearch)) {
-            $q = $this->modalClientSearch;
-            $clientsForModal = Client::query()
-                ->where(function ($query) use ($q) {
+        if ($this->showModal) {
+            $clientsQuery = Client::query()->visibleForUser(auth()->user());
+            if (!empty($this->modalClientSearch)) {
+                $q = $this->modalClientSearch;
+                $clientsQuery->where(function ($query) use ($q) {
                     $query->where('full_name', 'like', "%{$q}%")
                         ->orWhere('phone', 'like', "%{$q}%")
                         ->orWhere('national_code', 'like', "%{$q}%")
                         ->orWhere('case_number', 'like', "%{$q}%");
-                })
-                ->limit(10)
-                ->get();
+                });
+                $clientsForModal = $clientsQuery->orderByDesc('id')->limit(15)->get();
+            } else {
+                $clientsForModal = $clientsQuery->orderByDesc('id')->limit(3)->get();
+            }
         }
 
         $selectedModalClient = null;

@@ -50,6 +50,18 @@ class BookingWaitlistManager extends Component
         'statusFilter' => ['except' => 'waiting'],
     ];
 
+    public function mount(): void
+    {
+        if (request()->has('create_for_client')) {
+            $clientId = (int) request('create_for_client');
+            $client = Client::find($clientId);
+            if ($client) {
+                $this->modalClientId = $client->id;
+                $this->showCreateModal = true;
+            }
+        }
+    }
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -246,15 +258,21 @@ class BookingWaitlistManager extends Component
         $todayAddedCount = BookingWaitlist::whereDate('created_at', today())->count();
 
         // Clients for modal search
-        $clientsForModal = [];
-        if (!empty($this->modalClientSearch) && strlen($this->modalClientSearch) >= 2) {
+        $clientsQuery = Client::query()->visibleForUser(auth()->user());
+        if (!empty($this->modalClientSearch) && strlen($this->modalClientSearch) >= 1) {
             $cs = trim($this->modalClientSearch);
-            $clientsForModal = Client::query()
-                ->where('full_name', 'like', "%{$cs}%")
-                ->orWhere('phone', 'like', "%{$cs}%")
-                ->orWhere('national_code', 'like', "%{$cs}%")
+            $clientsForModal = $clientsQuery
+                ->where(function ($q) use ($cs) {
+                    $q->where('full_name', 'like', "%{$cs}%")
+                        ->orWhere('phone', 'like', "%{$cs}%")
+                        ->orWhere('national_code', 'like', "%{$cs}%")
+                        ->orWhere('case_number', 'like', "%{$cs}%");
+                })
+                ->orderByDesc('id')
                 ->limit(10)
-                ->get(['id', 'full_name', 'phone', 'national_code']);
+                ->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
+        } else {
+            $clientsForModal = $clientsQuery->orderByDesc('id')->limit(3)->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
         }
 
         $selectedModalClient = $this->modalClientId ? Client::find($this->modalClientId) : null;
