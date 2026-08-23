@@ -340,6 +340,10 @@
                                 </div>
                                 @if (!empty($clientsForModal) && count($clientsForModal) > 0)
                                     <div class="mt-1 max-h-36 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800 shadow-md">
+                                        <div class="px-2 py-1 text-[10px] font-bold text-gray-400 dark:text-gray-500 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/30">
+                                            <span>{{ empty($modalClientSearch) ? '۳ مراجع اخیر' : 'نتایج جستجو (' . count($clientsForModal) . ' مورد)' }}</span>
+                                            <span class="text-[9px] text-teal-600">برای انتخاب کلیک کنید</span>
+                                        </div>
                                         @foreach($clientsForModal as $cm)
                                             <div wire:click="selectModalClient({{ $cm->id }})" class="p-2 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer flex items-center justify-between">
                                                 <div>

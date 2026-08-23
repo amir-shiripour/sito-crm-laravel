@@ -278,6 +278,76 @@ class DashboardController extends Controller
             }
         }
 
+        // بهینه‌سازی فایل‌های آپلود شده کلاینت‌ها (فرم‌ساز پویا)
+        if (class_exists(\Modules\Clients\Entities\Client::class)) {
+            $clients = \Modules\Clients\Entities\Client::whereNotNull('meta')->get();
+            foreach ($clients as $client) {
+                $meta = $client->meta;
+                if (!is_array($meta) || empty($meta)) {
+                    continue;
+                }
+
+                $metaChanged = false;
+
+                foreach ($meta as $k => $val) {
+                    if (is_string($val) && str_starts_with($val, 'clients/uploads/') && !str_ends_with(strtolower($val), '.webp')) {
+                        $extension = strtolower(pathinfo($val, PATHINFO_EXTENSION));
+                        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'avif']) && Storage::disk('public')->exists($val)) {
+                            try {
+                                $result = $optimizer->optimizeExistingImage($val, 'public');
+                                if ($result['status'] === 'success') {
+                                    $meta[$k] = $result['new_path'];
+                                    $metaChanged = true;
+                                    $processedCount++;
+                                }
+                            } catch (\Exception $e) {
+                                Log::error("Image optimization failed for Client ID {$client->id} meta key {$k} ({$val}): " . $e->getMessage());
+                                $errorCount++;
+                            }
+                        }
+                    } elseif (is_array($val)) {
+                        $updatedFiles = [];
+                        $filesChanged = false;
+                        foreach ($val as $subVal) {
+                            if (is_string($subVal) && str_starts_with($subVal, 'clients/uploads/') && !str_ends_with(strtolower($subVal), '.webp')) {
+                                $extension = strtolower(pathinfo($subVal, PATHINFO_EXTENSION));
+                                if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'avif']) && Storage::disk('public')->exists($subVal)) {
+                                    try {
+                                        $result = $optimizer->optimizeExistingImage($subVal, 'public');
+                                        if ($result['status'] === 'success') {
+                                            $updatedFiles[] = $result['new_path'];
+                                            $filesChanged = true;
+                                            $processedCount++;
+                                        } else {
+                                            $updatedFiles[] = $subVal;
+                                        }
+                                    } catch (\Exception $e) {
+                                        Log::error("Image optimization failed for Client ID {$client->id} meta key {$k} subfile ({$subVal}): " . $e->getMessage());
+                                        $errorCount++;
+                                        $updatedFiles[] = $subVal;
+                                    }
+                                } else {
+                                    $updatedFiles[] = $subVal;
+                                }
+                            } else {
+                                $updatedFiles[] = $subVal;
+                            }
+                        }
+
+                        if ($filesChanged) {
+                            $meta[$k] = $updatedFiles;
+                            $metaChanged = true;
+                        }
+                    }
+                }
+
+                if ($metaChanged) {
+                    $client->meta = $meta;
+                    $client->save();
+                }
+            }
+        }
+
         // اگر خطایی رخ داد، به کاربر هشدار می‌دهیم تا لاگ‌ها را چک کند
         $message = "عملیات با پایان رسید. {$processedCount} تصویر بهینه شد.";
         if ($errorCount > 0) {

@@ -29,9 +29,11 @@
 
     $showServicesTab     = $servicesModule && $servicesModule->installed && $servicesModule->active;
 
-    $showWorkflowTab     = $bookingModule && $bookingModule->installed && $bookingModule->active
-                        && $workflowsModule && $workflowsModule->installed && $workflowsModule->active
-                        && class_exists(\Modules\Workflows\Entities\Workflow::class);
+    $showWorkflowTab     = $workflowsModule && $workflowsModule->installed && $workflowsModule->active
+                        && class_exists(\Modules\Workflows\Entities\Workflow::class)
+                        && \Illuminate\Support\Facades\Schema::hasTable('workflows')
+                        && isset($availableWorkflows)
+                        && $availableWorkflows->isNotEmpty();
 
     $clientDomainsCount  = \Illuminate\Support\Facades\Schema::hasColumn('domain_records', 'client_id')
                         ? \Modules\DomainManager\Entities\DomainRecord::where('client_id', $client->id)->count()
@@ -99,9 +101,12 @@
 @section('content')
     <div class="mx-auto max-w-full" x-data="{
         activeTab: 'general',
+        showWorkflowTab: {{ $showWorkflowTab ? 'true' : 'false' }},
         init() {
             const hash = window.location.hash.substring(1);
-            if (['general','workflows','orders','invoices','domains','directadmin','transactions'].includes(hash)) this.activeTab = hash;
+            const validTabs = ['general','orders','invoices','domains','directadmin','transactions'];
+            if (this.showWorkflowTab) validTabs.push('workflows');
+            if (validTabs.includes(hash)) this.activeTab = hash;
         },
         setTab(tab) {
             this.activeTab = tab;
@@ -114,10 +119,26 @@
                 class="relative bg-gray-50/50 dark:bg-gray-900/30 border-b border-gray-200 dark:border-gray-700 p-6 sm:p-8">
                 <div class="flex flex-col-2 sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
-                        <div
-                            class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300 text-2xl font-bold ring-4 ring-white dark:ring-gray-800">
-                            {{ mb_substr($client->full_name, 0, 1) }}
-                        </div>
+                        @php
+                            $profilePhotoVal = null;
+                            $schemaFieldsList = isset($activeForm) && isset($activeForm->schema['fields']) ? $activeForm->schema['fields'] : [];
+                            foreach ($schemaFieldsList as $sf) {
+                                if (($sf['type'] ?? '') === 'profile-photo' && !empty($client->meta[$sf['id'] ?? ''])) {
+                                    $profilePhotoVal = $client->meta[$sf['id']];
+                                    if (is_array($profilePhotoVal)) $profilePhotoVal = $profilePhotoVal[0] ?? null;
+                                    break;
+                                }
+                            }
+                        @endphp
+                        @if($profilePhotoVal && Storage::disk('public')->exists($profilePhotoVal))
+                            <img src="{{ Storage::disk('public')->url($profilePhotoVal) }}" alt="{{ $client->full_name }}"
+                                 class="h-16 w-16 shrink-0 rounded-full object-cover ring-4 ring-white dark:ring-gray-800 shadow-md">
+                        @else
+                            <div
+                                class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300 text-2xl font-bold ring-4 ring-white dark:ring-gray-800">
+                                {{ mb_substr($client->full_name, 0, 1) }}
+                            </div>
+                        @endif
                         <div>
                             <h1 class="text-xl font-bold text-gray-900 dark:text-white">{{ $client->full_name }}</h1>
                             <div class="mt-1 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
@@ -186,6 +207,16 @@
                                     <span>پیگیری جدید</span>
                                 </a>
                             @endcan
+                        @endif
+                        @if(isset($isBookingQueueEnabled) && $isBookingQueueEnabled)
+                            <button type="button"
+                                    @click="$dispatch('open-waitlist-modal', { clientId: {{ $client->id }} })"
+                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 hover:shadow-lg hover:shadow-amber-600/30 transition-all cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>قرار دادن در صف انتظار</span>
+                            </button>
                         @endif
                     </div>
                 </div>
@@ -380,6 +411,85 @@
                             </div>
                         </section>
 
+                        {{-- Active Waitlists for this client (Only if Booking Queue and Form Builder Field is enabled) --}}
+                        @if(isset($isBookingQueueEnabled) && $isBookingQueueEnabled && isset($clientWaitlists) && $clientWaitlists->isNotEmpty())
+                            <section>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> صف‌های انتظار فعال این {{ config('clients.labels.singular', 'مراجع') }}
+                                    </h3>
+                                    <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                        {{ $faNum($clientWaitlists->count()) }} صف فعال
+                                    </span>
+                                </div>
+                                <div class="space-y-3">
+                                    @foreach($clientWaitlists as $cw)
+                                        @php
+                                            $rank = $cw->queue_rank ?? $cw->position ?? 1;
+                                            $prefDate = $cw->preferred_date ? $toJalali($cw->preferred_date) : null;
+                                            $prefDateStr = $prefDate instanceof \Morilog\Jalali\Jalalian ? $prefDate->format('Y/m/d') : ($cw->preferred_date ? substr((string)$cw->preferred_date, 0, 10) : 'اولین وقت خالی');
+                                        @endphp
+                                        <div class="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 shadow-2xs space-y-3 hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
+                                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                                <div class="flex items-center gap-2">
+                                                    @if($rank == 1)
+                                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-black text-xs border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                                                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                            ⚡ نفر اول در صف (نوبت بعدی)
+                                                        </span>
+                                                    @else
+                                                        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-black text-xs border border-amber-300 dark:border-amber-700">
+                                                            موقعیت در صف: نفر {{ $faNum($rank) }}
+                                                        </span>
+                                                    @endif
+
+                                                    <span class="text-xs font-bold px-2.5 py-1 rounded-lg {{ $cw->status === 'notified' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200' : ($cw->status === 'in_progress' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300') }}">
+                                                        {{ $cw->status_label ?? 'در انتظار' }}
+                                                    </span>
+                                                </div>
+
+                                                <div class="flex items-center gap-2">
+                                                    @if(Route::has('user.booking.appointments.create'))
+                                                        <a href="{{ route('user.booking.appointments.create', ['waitlist_id' => $cw->id, 'client_id' => $client->id]) }}"
+                                                           class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs">
+                                                            <span>ثبت نوبت ↵</span>
+                                                        </a>
+                                                    @endif
+                                                    @if(Route::has('user.booking.waitlist.index'))
+                                                        <a href="{{ route('user.booking.waitlist.index') }}"
+                                                           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                                            <span>مشاهده در لیست صف</span>
+                                                        </a>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-700 dark:text-gray-300 pt-2.5 border-t border-amber-200/50 dark:border-amber-800/40">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-gray-500 dark:text-gray-400">🛎️ سرویس:</span>
+                                                    <span class="font-bold text-gray-900 dark:text-gray-100">{{ $cw->service?->name ?? 'صف عمومی' }}</span>
+                                                </div>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-gray-500 dark:text-gray-400">👤 {{ config('booking.labels.provider', 'ارائه‌دهنده') }}:</span>
+                                                    <span class="font-bold text-gray-900 dark:text-gray-100">{{ $cw->provider?->name ?? 'عمومی / هر ارائه‌دهنده' }}</span>
+                                                </div>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-gray-500 dark:text-gray-400">📅 تاریخ درخواستی:</span>
+                                                    <span class="font-bold text-gray-900 dark:text-gray-100 dir-ltr text-right">{{ $faNum($prefDateStr) }}</span>
+                                                </div>
+                                            </div>
+
+                                            @if($cw->notes)
+                                                <div class="text-xs text-gray-600 dark:text-gray-400 bg-white/70 dark:bg-gray-900/40 p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                                                    <span class="font-bold text-gray-700 dark:text-gray-300">📝 یادداشت:</span> {{ $cw->notes }}
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </section>
+                        @endif
+
                         {{-- Notes --}}
                         @if($client->notes)
                             <section>
@@ -540,7 +650,7 @@
                                         <div
                                             class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ $fieldLabel }}</div>
                                         <div class="text-sm font-medium text-gray-900 dark:text-gray-200 break-words">
-                                            @if($fieldType === 'file')
+                                            @if($fieldType === 'file' || $fieldType === 'profile-photo')
                                                 @php
                                                     $files = [];
                                                     if (is_array($v)) { $files = $v; } else {
@@ -584,6 +694,35 @@
                                             @elseif($fieldType === 'select-province-city' && is_string($v))
                                                 @php $decoded = json_decode($v, true); @endphp
                                                 {{ is_array($decoded) ? ($decoded['province'] ?? '') . ' - ' . ($decoded['city'] ?? '') : $v }}
+                                            @elseif($fieldType === 'select-user-by-role')
+                                                @php
+                                                    $userIds = [];
+                                                    if (is_array($v)) {
+                                                        $userIds = $v;
+                                                    } elseif (is_string($v) && str_starts_with(trim($v), '[') && str_ends_with(trim($v), ']')) {
+                                                        $decoded = json_decode($v, true);
+                                                        $userIds = is_array($decoded) ? $decoded : [$v];
+                                                    } elseif (!empty($v)) {
+                                                        $userIds = [$v];
+                                                    }
+                                                    $userIds = array_filter((array)$userIds);
+                                                    $userNames = !empty($userIds)
+                                                        ? \App\Models\User::whereIn('id', $userIds)->pluck('name')->toArray()
+                                                        : [];
+                                                @endphp
+                                                @if(!empty($userNames))
+                                                    @if(count($userNames) === 1)
+                                                        {{ $userNames[0] }}
+                                                    @else
+                                                        <div class="flex flex-wrap gap-1 mt-1">
+                                                            @foreach($userNames as $uName)
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white border border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300">{{ $uName }}</span>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
+                                                @else
+                                                    {{ $getDisplayVal($v) ?: '—' }}
+                                                @endif
                                             @elseif(is_array($v))
                                                 <div class="flex flex-wrap gap-1 mt-1">
                                                     @foreach($v as $item)
@@ -1824,4 +1963,8 @@
             @endif
         </div>
     </div>
+
+    @if(isset($isBookingQueueEnabled) && $isBookingQueueEnabled)
+        @livewire('booking.user.booking-waitlist-modal')
+    @endif
 @endsection

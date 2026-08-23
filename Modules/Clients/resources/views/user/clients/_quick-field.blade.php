@@ -640,6 +640,19 @@
         </div>
     </div>
 
+@elseif($type === 'profile-photo' || $type === 'file')
+    <div class="space-y-2">
+        <label for="quick_file_{{ $fid }}"
+               class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-medium transition-colors cursor-pointer">
+            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            <span>{{ $type === 'profile-photo' ? 'انتخاب تصویر پروفایل' : 'انتخاب فایل' }}</span>
+        </label>
+        <input id="quick_file_{{ $fid }}" type="file" wire:model="upload_files.{{ $fid }}" class="hidden" @if($type === 'profile-photo') accept="image/*" @endif />
+        <div wire:loading wire:target="upload_files.{{ $fid }}" class="text-[10px] text-gray-400">در حال آپلود...</div>
+    </div>
+
 @else
     {{-- سایر انواع (fallback) --}}
     <input type="text" class="{{ $baseInputClass }}" wire:model.defer="quick.{{ $fid }}" placeholder="{{ $placeholder }}">

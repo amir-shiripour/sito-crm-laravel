@@ -380,6 +380,17 @@
                                             </a>
                                         @endcan
 
+                                        @if(isset($isBookingQueueEnabled) && $isBookingQueueEnabled)
+                                            <button type="button"
+                                                    @click="$dispatch('open-waitlist-modal', { clientId: {{ $client->id }} })"
+                                                    class="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-colors cursor-pointer"
+                                                    title="قرار دادن در صف انتظار">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </button>
+                                        @endif
+
                                         @can('clients.edit')
                                             <a href="{{ route('user.clients.edit', $client) }}"
                                                class="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
@@ -438,4 +449,8 @@
             @endif
         </div>
     </div>
+
+    @if(isset($isBookingQueueEnabled) && $isBookingQueueEnabled)
+        @livewire('booking.user.booking-waitlist-modal')
+    @endif
 @endsection

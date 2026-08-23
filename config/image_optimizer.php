@@ -10,5 +10,6 @@ return [
         'doctor-media',
         'insurances',
         'payment-receipts',
+        'clients/uploads',
     ],
 ];

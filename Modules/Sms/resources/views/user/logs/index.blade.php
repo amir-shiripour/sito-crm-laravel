@@ -112,7 +112,7 @@
                             <tr class="group hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition-colors">
                                 {{-- موبایل --}}
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="text-sm font-mono font-medium text-gray-900 dark:text-gray-100 dir-ltr inline-block">
+                                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100 dir-ltr inline-block">
                                         {{ $msg->to }}
                                     </span>
                                 </td>
@@ -162,7 +162,7 @@
 
                                 {{-- درایور --}}
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    <span class="font-mono text-xs">{{ $msg->driver ?? '—' }}</span>
+                                    <span class="text-xs">{{ $msg->driver ?? '—' }}</span>
                                 </td>
 
                                  {{-- پیام --}}
@@ -170,7 +170,7 @@
                                      <div class="flex flex-col gap-1 max-w-xs">
                                          @if($msg->template_key)
                                              <div class="flex items-center gap-1">
-                                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                                 <span class="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 dir-ltr inline-block">
                                                      Pattern: {{ $msg->template_key }}
                                                  </span>
                                              </div>

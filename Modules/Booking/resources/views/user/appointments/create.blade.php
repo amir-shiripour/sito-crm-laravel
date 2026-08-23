@@ -101,6 +101,7 @@
                 <input type="hidden" name="service_id" x-model="serviceId">
                 <input type="hidden" name="provider_user_id" x-model="providerId">
                 <input type="hidden" name="client_id" x-model="clientId">
+                <input type="hidden" name="waitlist_id" x-model="waitlistId">
                 <input type="hidden" name="start_at_utc" x-ref="startUtcInput">
                 <input type="hidden" name="end_at_utc" x-ref="endUtcInput">
                 <input type="hidden" name="date_local" x-model="dateLocal">
@@ -199,161 +200,269 @@
 
             {{-- STEP 1: Client --}}
             <div x-show="step===1" class="space-y-4">
-                <div
-                    class="bg-gradient-to-l from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800/50">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div
-                            class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
-                            <span class="text-xl">👤</span>
+                <div class="bg-gradient-to-l from-indigo-50 via-purple-50 to-blue-50 dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-blue-900/20 rounded-2xl p-4 border border-indigo-100 dark:border-indigo-800/50 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                            👤
                         </div>
                         <div>
-                            <div class="font-semibold text-base text-gray-800 dark:text-gray-100">انتخاب {{ $clientLabel }}</div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ $clientLabel }} مورد نظر را انتخاب کنید</div>
+                            <div class="font-bold text-base text-gray-900 dark:text-gray-100">انتخاب {{ $clientLabel }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $clientLabel }} مورد نظر را از طریق جستجو، صف انتظار یا ثبت جدید انتخاب کنید.</div>
+                        </div>
+                    </div>
+                    <div x-show="clientId" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-xs font-bold border border-emerald-200 dark:border-emerald-800">
+                        <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        <span>{{ $clientLabel }} انتخاب شد</span>
+                    </div>
+                </div>
+
+                {{-- Selected Client Card (Shown when client is selected) --}}
+                <div x-show="clientId" class="bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-300 dark:border-emerald-700/70 rounded-2xl p-4 shadow-sm animate-in fade-in">
+                    <div class="flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-base shadow-sm">
+                                <span x-text="selectedClientName ? selectedClientName.charAt(0) : '👤'"></span>
+                            </div>
+                            <div>
+                                <div class="font-black text-sm text-emerald-950 dark:text-emerald-100 flex items-center flex-wrap gap-2">
+                                    <span x-text="selectedClientName"></span>
+                                    <template x-if="waitlistId && selectedWaitlistObject">
+                                        <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                                            ⚡ تخصیص از صف انتظار (نفر <span x-text="selectedWaitlistObject.queue_rank || 1"></span>)
+                                        </span>
+                                    </template>
+                                </div>
+                                <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 mt-1">
+                                    <span x-show="selectedClientPhone" x-text="`📞 ${selectedClientPhone}`"></span>
+                                    <span x-show="selectedClientEmail" x-text="`✉️ ${selectedClientEmail}`"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <button type="button"
+                                    class="px-3.5 py-2 rounded-xl bg-emerald-200/80 dark:bg-emerald-900/80 text-emerald-900 dark:text-emerald-100 text-xs font-bold hover:bg-emerald-300 dark:hover:bg-emerald-800 transition shadow-2xs"
+                                    @click="clearSelectedClient()">
+                                تغییر {{ $clientLabel }}
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div class="lg:col-span-2 space-y-3">
-                        <div
-                            class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                            <span class="flex items-center gap-2">
-                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
-                                     viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                                جستجو {{ $clientLabel }}
-                            </span>
+                {{-- Client Selection Modes (Shown when no client is selected) --}}
+                <div x-show="!clientId" class="space-y-4">
+                    {{-- Segmented Mode Switcher --}}
+                    <div class="grid gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs font-bold"
+                         :class="isQueueEnabled ? 'grid-cols-3' : 'grid-cols-2'">
+                        <button type="button"
+                                @click="clientTab = 'search'"
+                                class="py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                                :class="clientTab === 'search' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm font-black' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <span>جستجوی {{ $clientLabel }}</span>
+                        </button>
+
+                        <template x-if="isQueueEnabled">
+                            <button type="button"
+                                    @click="clientTab = 'waitlist'"
+                                    class="py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                                    :class="clientTab === 'waitlist' ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm font-black' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>صف انتظار</span>
+                                <span x-show="waitlist.length > 0" class="px-1.5 py-0.5 rounded-full text-[10px] font-black"
+                                      :class="clientTab === 'waitlist' ? 'bg-amber-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'"
+                                      x-text="waitlist.length"></span>
+                            </button>
+                        </template>
+
+                        <button type="button"
+                                @click="clientTab = 'new'"
+                                class="py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                                :class="clientTab === 'new' ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm font-black' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            <span>{{ $clientLabel }} جدید</span>
+                        </button>
+                    </div>
+
+                    {{-- Tab 1: Search Existing Client --}}
+                    <div x-show="clientTab === 'search'" class="space-y-3">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm space-y-3">
+                            <label class="block text-sm font-bold text-gray-700 dark:text-gray-200">
+                                <span class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                    جستجو بر اساس نام، شماره تماس، کد ملی یا شماره پرونده
+                                </span>
                             </label>
                             <div class="relative">
                                 <input type="text"
-                                       class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                                       placeholder="نام، شماره تماس، کد ملی یا شماره پرونده..." x-model="clientSearch"
-                                       @input.debounce.300ms="fetchClients()" @focus="clientSearchFocused = true"
+                                       class="w-full border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/50 rounded-xl p-3 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition font-medium"
+                                       placeholder="نام، شماره تماس، کد ملی یا شماره پرونده {{ $clientLabel }} را وارد کنید..."
+                                       x-model="clientSearch"
+                                       @input.debounce.300ms="fetchClients()"
+                                       @focus="clientSearchFocused = true"
                                        @blur="setTimeout(() => clientSearchFocused = false, 200)">
                                 <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
                                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                             </div>
 
-                            <div class="mt-3" x-show="clientSearch && clients.length > 0">
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                                    نتایج جستجو (<span x-text="clients.length"></span> مورد)
+                            {{-- Search Results --}}
+                            <div class="mt-3" x-show="clients.length > 0">
+                                <div class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 flex items-center justify-between">
+                                    <span x-show="clientSearch">نتایج جستجو (<span x-text="clients.length"></span> مورد)</span>
+                                    <span x-show="!clientSearch">۳ {{ $clientLabel }} اخیر</span>
+                                    <span class="text-[11px] text-indigo-600 dark:text-indigo-400">برای انتخاب روی کارت کلیک کنید</span>
                                 </div>
-                                <div
-                                    class="max-h-64 overflow-y-auto space-y-2 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+                                <div class="max-h-72 overflow-y-auto space-y-2 border border-gray-100 dark:border-gray-700/80 rounded-xl p-2 bg-gray-50/50 dark:bg-gray-900/30">
                                     <template x-for="c in clients" :key="c.id">
                                         <button type="button"
-                                                class="w-full text-right border-2 rounded-xl p-3 transition-all duration-200 hover:shadow-md"
+                                                class="w-full text-right border-2 rounded-xl p-3 transition-all duration-150 hover:shadow-md cursor-pointer flex items-center justify-between gap-3"
                                                 :class="String(clientId) === String(c.id)
-                                            ? 'border-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-950/40 text-indigo-900 dark:text-indigo-100 shadow-md ring-2 ring-indigo-200 dark:ring-indigo-800'
-                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-indigo-300 dark:hover:border-indigo-600'"
-                                                @click="selectClient(c);">
-                                            <div class="flex items-start justify-between gap-2">
-                                                <div class="flex-1">
-                                                    <div class="font-semibold text-sm mb-1" x-text="c.full_name"></div>
-                                                    <div
-                                                        class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-100 shadow-sm'
+                                                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-indigo-300 dark:hover:border-indigo-600'"
+                                                @click="selectClient(c)">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center font-bold text-sm flex-none">
+                                                    <span x-text="c.full_name ? c.full_name.charAt(0) : '👤'"></span>
+                                                </div>
+                                                <div>
+                                                    <div class="font-bold text-sm text-gray-900 dark:text-white" x-text="c.full_name"></div>
+                                                    <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                                         <span x-show="c.phone" x-text="`📞 ${c.phone}`"></span>
-                                                        <span x-show="c.national_code"
-                                                              x-text="`🆔 ${c.national_code}`"></span>
-                                                        <span x-show="c.case_number" x-text="`📋 ${c.case_number}`"></span>
-                                                        <span x-show="c.email" x-text="`✉ ${c.email}`"></span>
+                                                        <span x-show="c.national_code" x-text="`🆔 کد ملی: ${c.national_code}`"></span>
+                                                        <span x-show="c.case_number" x-text="`📋 پرونده: ${c.case_number}`"></span>
                                                     </div>
                                                 </div>
-                                                <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                                                     :class="String(clientId) === String(c.id)
-                                                     ? 'bg-indigo-600 text-white'
-                                                     : 'bg-gray-100 dark:bg-gray-700 text-gray-400'">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                         viewBox="0 0 24 24" x-show="String(clientId) === String(c.id)">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                              stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                    </svg>
-                                                </div>
                                             </div>
+                                            <span class="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
+                                                انتخاب ↵
+                                            </span>
                                         </button>
                                     </template>
                                 </div>
                             </div>
 
                             <div class="mt-3" x-show="clientSearch && clients.length === 0 && !clientLoading">
-                                <div
-                                    class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4 text-center">
-                                    <div class="text-sm text-amber-800 dark:text-amber-200">{{ $clientLabel }} یافت نشد</div>
+                                <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 text-center">
+                                    <div class="text-sm font-bold text-amber-800 dark:text-amber-200">{{ $clientLabel }} با این مشخصات یافت نشد</div>
                                 </div>
                             </div>
 
                             <template x-if="clientLoading">
-                                <div class="mt-3 flex items-center justify-center py-4">
-                                    <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
-                                        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                             viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                    stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor"
-                                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                            </path>
+                                <div class="mt-3 flex items-center justify-center py-6">
+                                    <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400 text-xs font-bold">
+                                        <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        <span class="text-sm">در حال جستجو...</span>
+                                        <span>در حال جستجو...</span>
                                     </div>
                                 </div>
                             </template>
-
-                            <div class="mt-3" x-show="clientId">
-                                <div
-                                    class="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl p-4">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <div class="font-semibold text-sm text-emerald-900 dark:text-emerald-100"
-                                                 x-text="selectedClientName"></div>
-                                            <div class="text-xs text-emerald-700 dark:text-emerald-300 mt-1"
-                                                 x-show="selectedClientPhone" x-text="selectedClientPhone"></div>
-                                            <div class="text-xs text-emerald-600 dark:text-emerald-400 mt-1"
-                                                 x-show="selectedClientEmail" x-text="selectedClientEmail"></div>
-                                        </div>
-                                        <button type="button"
-                                                class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
-                                                @click="clientId = ''; selectedClientObject = null; clientSearch = ''; fetchClients();">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                      d="M6 18L18 6M6 6l12 12"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
-                    <div
-                        class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
-                                </path>
-                            </svg>
-                            {{ $clientLabel }} جدید
+                    {{-- Tab 2: Select from Waitlist Queue (Shown if Queue is enabled) --}}
+                    <template x-if="isQueueEnabled">
+                        <div x-show="clientTab === 'waitlist'" class="space-y-3">
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm space-y-3">
+                                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/60 pb-3">
+                                    <div>
+                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">مراجعین در صف انتظار</h3>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">اولویت‌بندی خودکار بر اساس موقعیت در صف انتظار</p>
+                                    </div>
+                                    <button type="button" @click="fetchWaitlist()" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition" title="به‌روزرسانی صف">
+                                        <svg class="w-4 h-4" :class="waitlistLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                    </button>
+                                </div>
+
+                                <template x-if="waitlistLoading">
+                                    <div class="flex items-center justify-center py-8">
+                                        <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400 text-xs font-bold">
+                                            <svg class="animate-spin h-5 w-5 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            <span>در حال بارگذاری صف انتظار...</span>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <template x-if="!waitlistLoading && waitlist.length > 0">
+                                    <div class="space-y-2.5 max-h-80 overflow-y-auto p-1 border border-gray-100 dark:border-gray-700/80 rounded-xl bg-gray-50/50 dark:bg-gray-900/30">
+                                        <template x-for="item in waitlist" :key="item.id">
+                                            <div @click="selectWaitlistEntry(item)"
+                                                 class="p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-md transition-all duration-150 cursor-pointer space-y-2">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <template x-if="item.queue_rank === 1">
+                                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-black text-xs shadow-2xs">
+                                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                                نفر ۱ (نوبت بعدی)
+                                                            </span>
+                                                        </template>
+                                                        <template x-if="item.queue_rank !== 1">
+                                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-xs">
+                                                                نفر <span x-text="item.queue_rank"></span>
+                                                            </span>
+                                                        </template>
+
+                                                        <span class="font-black text-sm text-gray-900 dark:text-white" x-text="item.client_name"></span>
+                                                        <span x-show="item.client_phone" class="text-xs text-gray-500 dark:text-gray-400 dir-ltr" x-text="`(${item.client_phone})`"></span>
+                                                    </div>
+
+                                                    <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100 transition">
+                                                        تخصیص نوبت ↵
+                                                    </span>
+                                                </div>
+
+                                                <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-1.5 border-t border-gray-100 dark:border-gray-700/60 flex-wrap gap-y-1">
+                                                    <div class="flex items-center gap-3">
+                                                        <span x-text="`سرویس: ${item.service_name || 'عمومی'}`"></span>
+                                                        <span x-show="item.provider_name" x-text="`• {{ config('booking.labels.provider') }}: ${item.provider_name}`"></span>
+                                                        <span x-show="item.preferred_date" x-text="`• تاریخ ترجیحی: ${item.preferred_date}`"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <template x-if="!waitlistLoading && waitlist.length === 0">
+                                    <div class="p-8 bg-gray-50/50 dark:bg-gray-900/30 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center space-y-2">
+                                        <div class="text-3xl">⏳</div>
+                                        <div class="text-sm font-bold text-gray-700 dark:text-gray-300">صف انتظار خالی است</div>
+                                        <div class="text-xs text-gray-400">در حال حاضر مراجعی در صف انتظار فعال ثبت نشده است.</div>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
-                        <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                            @includeIf('clients::widgets.client-quick-create')
+                    </template>
+
+                    {{-- Tab 3: Quick Create New Client --}}
+                    <div x-show="clientTab === 'new'" class="space-y-3">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                            <div class="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                ثبت سریع {{ $clientLabel }} جدید
+                            </div>
+                            <div class="border-t border-gray-100 dark:border-gray-700/80 pt-3">
+                                @includeIf('clients::widgets.client-quick-create')
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div
-                    class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-3 flex items-start gap-2">
-                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none"
-                         stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-3 flex items-start gap-2">
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    <div class="text-xs text-blue-800 dark:text-blue-200">
-                        بعد از انتخاب {{ $clientLabel }}، می‌توانید با دکمه "بعدی" به مرحله بعد بروید.
+                    <div class="text-xs text-blue-800 dark:text-blue-200 font-medium">
+                        بعد از انتخاب {{ $clientLabel }}، می‌توانید با دکمه «بعدی» به مرحله بعد بروید.
                     </div>
                 </div>
             </div>
@@ -1409,6 +1518,12 @@
 
                 appointmentFormSchema: null,
                 appointmentFormValues: {},
+                isQueueEnabled: @json($isQueueEnabled ?? false),
+                clientTab: 'search',
+                waitlist: [],
+                waitlistLoading: false,
+                waitlistId: '',
+                selectedWaitlistObject: null,
                 clients: [],
                 clientSearch: '',
                 clientId: '',
@@ -1528,9 +1643,31 @@
                         // Will fetch services when user reaches step 2
                     }
 
+                    // Check URL params for preselection
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const qClientId = urlParams.get('client_id');
+                    const qWaitlistId = urlParams.get('waitlist_id');
+                    if (qClientId) {
+                        this.clientId = String(qClientId);
+                    }
+                    if (qWaitlistId) {
+                        this.waitlistId = String(qWaitlistId);
+                    }
+
                     // Start with client selection (step 1)
                     this.step = 1;
                     this.fetchClients();
+
+                    if (this.isQueueEnabled) {
+                        this.fetchWaitlist().then(() => {
+                            if (this.waitlistId) {
+                                const entry = this.waitlist.find(w => String(w.id) === String(this.waitlistId));
+                                if (entry) {
+                                    this.selectWaitlistEntry(entry);
+                                }
+                            }
+                        });
+                    }
 
                     window.addEventListener('client-quick-saved', (e) => {
                         const newId = e?.detail?.clientId;
@@ -1542,6 +1679,8 @@
                         // 2. Fetch and Select
                         this.fetchClients().then(() => {
                             this.clientId = String(newId);
+                            this.waitlistId = '';
+                            this.selectedWaitlistObject = null;
                             const newClient = this.clients.find(c => String(c.id) === String(newId));
                             if (newClient) {
                                 this.selectedClientObject = newClient;
@@ -2219,11 +2358,63 @@
                 selectClient(client) {
                     this.clientId = String(client.id);
                     this.selectedClientObject = client;
+                    this.waitlistId = '';
+                    this.selectedWaitlistObject = null;
                     // Keep the selected client in the list if not already there
                     if (!this.clients.find(c => String(c.id) === String(client.id))) {
                         this.clients = [client, ...this.clients];
                     }
                     this.clientSearch = '';
+                },
+
+                selectWaitlistEntry(item) {
+                    this.waitlistId = String(item.id);
+                    this.selectedWaitlistObject = item;
+                    this.clientId = String(item.client_id);
+                    this.selectedClientObject = {
+                        id: item.client_id,
+                        full_name: item.client_name,
+                        phone: item.client_phone,
+                        national_code: item.client_national_code,
+                        case_number: item.client_case_number,
+                        email: item.client_email,
+                    };
+                    if (item.service_id) {
+                        this.serviceId = String(item.service_id);
+                    }
+                    if (item.provider_user_id) {
+                        this.providerId = String(item.provider_user_id);
+                    }
+                    if (item.notes && !this.notes) {
+                        this.notes = item.notes;
+                    }
+                },
+
+                clearSelectedClient() {
+                    this.clientId = '';
+                    this.selectedClientObject = null;
+                    this.waitlistId = '';
+                    this.selectedWaitlistObject = null;
+                    this.clientSearch = '';
+                    this.fetchClients();
+                },
+
+                async fetchWaitlist() {
+                    if (!this.isQueueEnabled) return;
+                    this.waitlistLoading = true;
+                    try {
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.waitlist') }}`, {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        const json = await res.json();
+                        this.waitlist = json.data || [];
+                    } catch(e) {
+                        console.error('Failed to fetch waitlist:', e);
+                    } finally {
+                        this.waitlistLoading = false;
+                    }
                 },
 
                 async fetchClients() {

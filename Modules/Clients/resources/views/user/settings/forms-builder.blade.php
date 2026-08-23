@@ -132,24 +132,109 @@
                 @enderror
             </div>
 
+            @php
+                $customFieldTypes = [
+                    'text' => [
+                        'label' => 'متن تک‌خطی',
+                        'desc' => 'نام، عنوان و عبارات کوتاه',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>',
+                    ],
+                    'textarea' => [
+                        'label' => 'متن چندخطی',
+                        'desc' => 'توضیحات، سابقه و یادداشت',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>',
+                    ],
+                    'number' => [
+                        'label' => 'عدد و ارقام',
+                        'desc' => 'مبلغ، تعداد، سن و کدها',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>',
+                    ],
+                    'email' => [
+                        'label' => 'پست الکترونیک',
+                        'desc' => 'ایمیل با اعتبارسنجی',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>',
+                    ],
+                    'date' => [
+                        'label' => 'تاریخ شمسی',
+                        'desc' => 'انتخابگر تقویم جلالی',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>',
+                    ],
+                    'select' => [
+                        'label' => 'منوی کشویی',
+                        'desc' => 'تک یا چندانتخابی از لیست',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>',
+                    ],
+                    'checkbox' => [
+                        'label' => 'چک‌باکس',
+                        'desc' => 'انتخاب گزینه‌های چندگانه',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+                    ],
+                    'radio' => [
+                        'label' => 'دکمه رادیویی',
+                        'desc' => 'تک‌انتخابی از گزینه‌ها',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+                    ],
+                    'file' => [
+                        'label' => 'آپلود فایل',
+                        'desc' => 'PDF، اسناد، مدارک ضمیمه',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>',
+                    ],
+                    'profile-photo' => [
+                        'label' => 'تصویر پروفایل',
+                        'desc' => 'عکس پرسنلی با بهینه‌ساز WebP',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+                    ],
+                    'select-province-city' => [
+                        'label' => 'استان و شهر',
+                        'desc' => 'انتخاب هوشمند استان/شهر ایران',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>',
+                    ],
+                    'select-user-by-role' => [
+                        'label' => 'کاربر با نقش',
+                        'desc' => 'ارجاع به پرسنل، پزشکان و...',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>',
+                    ],
+                ];
+            @endphp
+
             {{-- جعبه ابزار افزودن فیلد --}}
             <div
-                class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    افزودن فیلد جدید
-                </h3>
-                <div class="flex flex-wrap gap-2">
-                    @foreach(['text','textarea','email','number','date','checkbox','radio','file','select','select-province-city','select-user-by-role','profile-photo']
-                    as $t)
+                class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20"></span>
+                        افزودن فیلد جدید
+                    </h3>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">برای اضافه شدن روی نوع فیلد کلیک کنید</span>
+                </div>
+
+                {{-- فیلدهای سفارشی با عناوین و آیکون‌های فارسی --}}
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                    @foreach($customFieldTypes as $t => $tInfo)
                         <button type="button" wire:click="addField('{{ $t }}')"
-                                class="px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 bg-gray-50 text-gray-600 hover:bg-white hover:border-indigo-300 hover:text-indigo-600 hover:shadow-sm transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:border-gray-500">
-                            + {{ $t }}
+                                class="group flex flex-col items-start p-2.5 rounded-xl border border-gray-200/90 bg-gray-50/50 hover:bg-indigo-50/50 hover:border-indigo-300 text-right transition-all shadow-2xs hover:shadow-sm dark:bg-gray-700/50 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-indigo-500">
+                            <div class="flex items-center justify-between w-full mb-1">
+                                <div class="p-1.5 rounded-lg bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-2xs">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        {!! $tInfo['icon'] !!}
+                                    </svg>
+                                </div>
+                                <span class="text-xs text-indigo-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">+</span>
+                            </div>
+                            <span class="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
+                                {{ $tInfo['label'] }}
+                            </span>
+                            <span class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1">
+                                {{ $tInfo['desc'] }}
+                            </span>
                         </button>
                     @endforeach
                 </div>
-                <div class="mt-3 border-t border-dashed border-gray-200 pt-3 dark:border-gray-700">
-                    <p class="text-xs font-semibold text-gray-500 mb-2 dark:text-gray-400">
+
+                {{-- فیلدهای سیستمی --}}
+                <div class="border-t border-dashed border-gray-200 pt-3 dark:border-gray-700">
+                    <p class="text-xs font-semibold text-gray-500 mb-2 dark:text-gray-400 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                         فیلدهای سیستمی (با شناسه ثابت)
                     </p>
                     <div class="flex flex-wrap gap-2">
@@ -164,13 +249,13 @@
                             @endphp
 
                             <button type="button" @if(!$alreadyInForm) wire:click="addSystemField('{{ $sid }}')" @endif
-                            class="px-3 py-1.5 rounded-lg text-[11px] font-medium border
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
                            {{ $alreadyInForm
                                 ? 'border-emerald-300 bg-emerald-50 text-emerald-700 cursor-default dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-white hover:border-emerald-400 hover:text-emerald-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:border-emerald-500' }}">
-                                {{ $sf['label'] ?? $sid }}
+                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-white hover:border-emerald-400 hover:text-emerald-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:border-emerald-500 shadow-2xs' }}">
+                                + {{ $sf['label'] ?? $sid }}
                                 @if($alreadyInForm)
-                                    <span class="text-[10px] ml-1 opacity-70">(در این فرم وجود دارد)</span>
+                                    <span class="text-[10px] mr-1 opacity-70">✓</span>
                                 @endif
                             </button>
                         @endforeach
@@ -186,28 +271,81 @@
                 $customFields = [];
 
                 foreach (($schema['fields'] ?? []) as $i => $field) {
-                $fid = $field['id'] ?? "f{$i}";
-                if (in_array($fid, $systemFieldIds, true)) {
-                $systemFields[] = ['i' => $i, 'field' => $field, 'fid' => $fid];
-                } else {
-                $customFields[] = ['i' => $i, 'field' => $field, 'fid' => $fid];
-                }
+                    $fid = $field['id'] ?? "f{$i}";
+                    if (in_array($fid, $systemFieldIds, true)) {
+                        $systemFields[] = ['i' => $i, 'field' => $field, 'fid' => $fid];
+                    } else {
+                        $customFields[] = ['i' => $i, 'field' => $field, 'fid' => $fid];
+                    }
                 }
             @endphp
 
             {{-- لیست فیلدها (Schema) --}}
+            <div x-data="{
+                searchQuery: '',
+                filterType: 'all',
+                openFields: {},
+                allFieldIds: @js(collect($schema['fields'] ?? [])->map(fn($f, $idx) => $f['id'] ?? "f{$idx}")->toArray()),
+                isFieldVisible(label, id, group, type, isSystem, isRequired, isQuick, isAuth, isReg) {
+                    const q = this.searchQuery.toLowerCase().trim();
+                    const matchesQuery = !q || 
+                        (label && String(label).toLowerCase().includes(q)) || 
+                        (id && String(id).toLowerCase().includes(q)) || 
+                        (group && String(group).toLowerCase().includes(q)) ||
+                        (type && String(type).toLowerCase().includes(q));
+                    if (!matchesQuery) return false;
 
-            <div class="space-y-4">
-                <div class="flex items-center justify-between px-2">
-                    <h3 class="font-medium text-gray-900 dark:text-white">فیلدهای فعال</h3>
-                    <div class="flex items-center gap-3">
-                        <span
-                            class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-lg dark:bg-gray-700 dark:text-gray-400">
-                            {{ count($schema['fields'] ?? []) }} مورد
+                    if (this.filterType === 'all') return true;
+                    if (this.filterType === 'system') return isSystem;
+                    if (this.filterType === 'custom') return !isSystem;
+                    if (this.filterType === 'required') return isRequired;
+                    if (this.filterType === 'quick') return isQuick;
+                    if (this.filterType === 'auth') return isAuth;
+                    if (this.filterType === 'reg') return isReg;
+                    return true;
+                },
+                isOpen(fid) {
+                    if (this.searchQuery.trim() !== '') return true;
+                    return this.openFields[fid] !== false;
+                },
+                toggleField(fid) {
+                    if (this.openFields[fid] === undefined) {
+                        this.openFields[fid] = false;
+                    } else {
+                        this.openFields[fid] = !this.openFields[fid];
+                    }
+                },
+                expandAll() {
+                    this.allFieldIds.forEach(fid => this.openFields[fid] = true);
+                },
+                collapseAll() {
+                    this.allFieldIds.forEach(fid => this.openFields[fid] = false);
+                },
+                scrollToField(fid) {
+                    this.openFields[fid] = true;
+                    this.$nextTick(() => {
+                        const el = document.getElementById('field-card-' + fid);
+                        if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            el.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                            setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2'), 2500);
+                        }
+                    });
+                }
+            }" class="space-y-4">
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+                    <div class="flex items-center gap-2.5">
+                        <h3 class="font-bold text-base text-gray-900 dark:text-white">فیلدهای فعال</h3>
+                        <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/40 dark:text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800">
+                            {{ count($schema['fields'] ?? []) }} فیلد
                         </span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
                         @if(!$reorderMode)
                             <button type="button" wire:click="toggleReorderMode"
-                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 font-medium hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-800/70 transition-all text-sm">
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-100 text-indigo-700 font-bold hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-800/70 transition-all text-xs shadow-2xs">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                           d="M4 8h16M4 16h16" />
@@ -217,25 +355,117 @@
                         @else
                             <div class="flex items-center gap-2">
                                 <button type="button" wire:click="confirmReorder"
-                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-all text-sm">
+                                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all text-xs shadow-sm">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M5 13l4 4L19 7" />
                                     </svg>
-                                    تایید
+                                    تایید ترتیب
                                 </button>
                                 <button type="button" wire:click="toggleReorderMode"
-                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-all text-sm">
+                                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-all text-xs">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M6 18L18 6M6 6l12 12" />
                                     </svg>
-                                    لغو
+                                    انصراف
                                 </button>
                             </div>
                         @endif
                     </div>
                 </div>
+
+                @if(!$reorderMode && !empty($schema['fields']))
+                    {{-- نوار ابزار جستجو، فیلتر و پرش سریع --}}
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                            {{-- جعبه جستجوی زنده --}}
+                            <div class="relative flex-1">
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                </div>
+                                <input type="text" x-model="searchQuery"
+                                       placeholder="جستجوی سریع عنوان، شناسه، نوع یا گروه فیلد..."
+                                       class="w-full pr-9 pl-8 py-2 rounded-xl text-xs bg-gray-50 dark:bg-gray-900/60 border-gray-200 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 text-gray-900 dark:text-gray-100 transition-all">
+                                <button type="button" x-show="searchQuery" @click="searchQuery = ''"
+                                        class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+
+                            {{-- ابزارهای باز/بسته و پرش سریع --}}
+                            <div class="flex flex-wrap items-center gap-2">
+                                {{-- سلکتور پرش سریع --}}
+                                <div class="relative flex-1 sm:flex-initial">
+                                    <select @change="if($event.target.value) { scrollToField($event.target.value); $event.target.value = ''; }"
+                                            class="w-full sm:w-auto py-2 pr-3 pl-7 rounded-xl text-xs bg-gray-50 dark:bg-gray-900/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/20">
+                                        <option value="">🎯 پرش سریع به فیلد...</option>
+                                        @if(!empty($systemFields))
+                                            <optgroup label="فیلدهای سیستمی">
+                                                @foreach($systemFields as $sfItem)
+                                                    <option value="{{ $sfItem['fid'] }}">{{ $sfItem['field']['label'] ?? $sfItem['fid'] }} ({{ $sfItem['fid'] }})</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
+                                        @if(!empty($customFields))
+                                            <optgroup label="فیلدهای سفارشی">
+                                                @foreach($customFields as $cfItem)
+                                                    <option value="{{ $cfItem['fid'] }}">{{ $cfItem['field']['label'] ?? $cfItem['fid'] }} ({{ $cfItem['field']['type'] }})</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
+                                    </select>
+                                </div>
+
+                                <button type="button" @click="expandAll()"
+                                        class="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors"
+                                        title="باز کردن همه فیلدها">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    <span class="hidden sm:inline">باز کردن همه</span>
+                                </button>
+
+                                <button type="button" @click="collapseAll()"
+                                        class="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors"
+                                        title="جمع کردن همه فیلدها">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                    <span class="hidden sm:inline">بستن همه</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- تب‌های فیلتر سریع --}}
+                        <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100 dark:border-gray-700/60 text-xs">
+                            <span class="text-gray-400 dark:text-gray-500 text-[11px] ml-1">فیلتر:</span>
+                            <button type="button" @click="filterType = 'all'"
+                                    :class="filterType === 'all' ? 'bg-indigo-600 text-white font-bold shadow-2xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-700'"
+                                    class="px-2.5 py-1 rounded-lg text-xs transition-all">
+                                همه ({{ count($schema['fields'] ?? []) }})
+                            </button>
+                            <button type="button" @click="filterType = 'system'"
+                                    :class="filterType === 'system' ? 'bg-emerald-600 text-white font-bold shadow-2xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-700'"
+                                    class="px-2.5 py-1 rounded-lg text-xs transition-all">
+                                سیستمی ({{ count($systemFields) }})
+                            </button>
+                            <button type="button" @click="filterType = 'custom'"
+                                    :class="filterType === 'custom' ? 'bg-indigo-600 text-white font-bold shadow-2xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-700'"
+                                    class="px-2.5 py-1 rounded-lg text-xs transition-all">
+                                سفارشی ({{ count($customFields) }})
+                            </button>
+                            <button type="button" @click="filterType = 'required'"
+                                    :class="filterType === 'required' ? 'bg-rose-600 text-white font-bold shadow-2xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-700'"
+                                    class="px-2.5 py-1 rounded-lg text-xs transition-all">
+                                الزامی‌ها
+                            </button>
+                            <button type="button" @click="filterType = 'quick'"
+                                    :class="filterType === 'quick' ? 'bg-indigo-600 text-white font-bold shadow-2xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-700'"
+                                    class="px-2.5 py-1 rounded-lg text-xs transition-all">
+                                ایجاد سریع
+                            </button>
+                        </div>
+                    </div>
+                @endif
 
                 @if($reorderMode)
                     {{-- حالت مرتب‌سازی: نمایش ساده فیلدها --}}
@@ -300,7 +530,13 @@
                             $field = $item['field'];
                         @endphp
                         <div class="group relative bg-white dark:bg-gray-800 rounded-2xl border border-emerald-300/70 dark:border-emerald-700/70 shadow-sm hover:shadow-md transition-all overflow-hidden"
-                             wire:key="field-system-{{ $fid }}">
+                             id="field-card-{{ $fid }}"
+                             data-field-id="{{ $fid }}"
+                             wire:key="field-system-{{ $fid }}"
+                             x-show="isFieldVisible(@js($field['label'] ?? $fid), @js($fid), @js($field['group'] ?? ''), @js($field['type'] ?? 'system'), true, @js(!empty($field['required'])), @js(!empty($field['quick_create'])), @js(!empty($field['client_auth'])), @js(!empty($field['show_in_registration'])))"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 transform scale-95"
+                             x-transition:enter-end="opacity-100 transform scale-100">
 
                             {{-- نوار رنگی کنار کارت --}}
                             <div
@@ -309,37 +545,68 @@
 
                             {{-- هدر --}}
                             <div
-                                class="flex items-center justify-between bg-emerald-50/70 dark:bg-emerald-900/20 px-5 py-3 border-b border-emerald-100/70 dark:border-emerald-800/60">
-                                <div class="flex items-center gap-3">
-                            <span
-                                class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-600 text-white">
-                                فیلد سیستمی
-                            </span>
+                                class="flex items-center justify-between bg-emerald-50/70 dark:bg-emerald-900/20 px-4 py-3 border-b border-emerald-100/70 dark:border-emerald-800/60 cursor-pointer select-none"
+                                @click="toggleField('{{ $fid }}')">
+                                <div class="flex items-center gap-2.5 flex-1 min-w-0" @click.stop>
+                                    <button type="button" @click="toggleField('{{ $fid }}')"
+                                            class="p-1 rounded-lg hover:bg-emerald-200/50 dark:hover:bg-emerald-800/50 text-emerald-700 dark:text-emerald-300 transition-transform duration-200"
+                                            :class="isOpen('{{ $fid }}') ? 'rotate-180' : ''"
+                                            title="باز/بستن فیلد">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
                                     <span
-                                        class="inline-flex items-center px-2 py-1 rounded text-xs font-mono font-semibold bg-gray-900/80 text-emerald-300">
-                                {{ $fid }}
-                            </span>
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-600 text-white shrink-0">
+                                        سیستمی
+                                    </span>
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-gray-900/80 text-emerald-300 shrink-0">
+                                        {{ $fid }}
+                                    </span>
                                     <input type="text" wire:model="schema.fields.{{ $i }}.label"
-                                           class="bg-transparent border-0 p-0 text-sm font-bold text-gray-900 focus:ring-0 dark:text-white placeholder-gray-300"
+                                           class="bg-transparent border-0 p-0 text-sm font-bold text-gray-900 focus:ring-0 dark:text-white placeholder-gray-400 min-w-0 flex-1"
                                            placeholder="عنوان فیلد">
                                 </div>
 
-                                <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-2 shrink-0">
+                                    @if(!empty($field['group']))
+                                        <span class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                            📁 {{ $field['group'] }}
+                                        </span>
+                                    @endif
+
+                                    @if(!empty($field['required']))
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                                            الزامی
+                                        </span>
+                                    @endif
+
+                                    @if(!empty($field['quick_create']))
+                                        <span class="hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                            ایجاد سریع
+                                        </span>
+                                    @endif
+
                                     {{-- فقط حذف از این فرم (ID ثابت می‌ماند) --}}
-                                    <button type="button" wire:click="removeField({{ $i }})"
-                                            class="text-gray-400 hover:text-red-500 transition-colors text-xs flex items-center gap-1"
+                                    <button type="button" wire:click="removeField({{ $i }})" @click.stop
+                                            class="text-gray-400 hover:text-red-500 transition-colors text-xs p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30"
                                             title="حذف این فیلد سیستمی از این فرم">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
-                                        <span>حذف از فرم</span>
                                     </button>
                                 </div>
                             </div>
 
                             {{-- بدنه تنظیمات فیلد سیستمی --}}
-                            <div class="p-5 space-y-5">
+                            <div x-show="isOpen('{{ $fid }}')"
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 -translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 class="p-5 space-y-5">
 
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     {{-- placeholder --}}
@@ -556,7 +823,13 @@
                             $field = $item['field'];
                         @endphp
                         <div class="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all overflow-hidden"
-                             wire:key="field-custom-{{ $fid }}">
+                             id="field-card-{{ $fid }}"
+                             data-field-id="{{ $fid }}"
+                             wire:key="field-custom-{{ $fid }}"
+                             x-show="isFieldVisible(@js($field['label'] ?? $fid), @js($fid), @js($field['group'] ?? ''), @js($field['type'] ?? 'text'), false, @js(!empty($field['required'])), @js(!empty($field['quick_create'])), @js(!empty($field['client_auth'])), @js(!empty($field['show_in_registration'])))"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 transform scale-95"
+                             x-transition:enter-end="opacity-100 transform scale-100">
 
                             {{-- نوار رنگی کنار کارت --}}
                             <div
@@ -565,28 +838,56 @@
 
                             {{-- هدر فیلد --}}
                             <div
-                                class="flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/30 px-5 py-3 border-b border-gray-100 dark:border-gray-700/50">
-                                <div class="flex items-center gap-3">
-                            <span
-                                class="inline-flex items-center px-2 py-1 rounded text-xs font-mono font-semibold bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 uppercase">
-                                {{ $field['type'] }}
-                            </span>
+                                class="flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/30 px-4 py-3 border-b border-gray-100 dark:border-gray-700/50 cursor-pointer select-none"
+                                @click="toggleField('{{ $fid }}')">
+                                <div class="flex items-center gap-2.5 flex-1 min-w-0" @click.stop>
+                                    <button type="button" @click="toggleField('{{ $fid }}')"
+                                            class="p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+                                            :class="isOpen('{{ $fid }}') ? 'rotate-180' : ''"
+                                            title="باز/بستن فیلد">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 uppercase shrink-0">
+                                        {{ $field['type'] }}
+                                    </span>
                                     <input type="text" wire:model="schema.fields.{{ $i }}.label"
-                                           class="bg-transparent border-0 p-0 text-sm font-bold text-gray-900 focus:ring-0 dark:text-white placeholder-gray-400"
+                                           class="bg-transparent border-0 p-0 text-sm font-bold text-gray-900 focus:ring-0 dark:text-white placeholder-gray-400 min-w-0 flex-1"
                                            placeholder="عنوان فیلد (Label)">
                                 </div>
 
-                                <div class="flex items-center gap-4">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-xs text-gray-400">ID:</span>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <div class="flex items-center gap-1.5" @click.stop>
+                                        <span class="text-[11px] text-gray-400 font-mono">ID:</span>
                                         <input type="text" wire:model="schema.fields.{{ $i }}.id"
-                                               class="bg-transparent border-b border-gray-300 text-xs font-mono text-gray-600 focus:border-indigo-500 focus:ring-0 w-24 text-left dir-ltr dark:border-gray-600 dark:text-gray-400"
+                                               class="bg-transparent border-b border-gray-300 text-xs font-mono text-gray-600 focus:border-indigo-500 focus:ring-0 w-24 text-left dir-ltr dark:border-gray-600 dark:text-gray-400 py-0.5"
                                                placeholder="field_id">
                                     </div>
 
+                                    @if(!empty($field['group']))
+                                        <span class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                            📁 {{ $field['group'] }}
+                                        </span>
+                                    @endif
+
+                                    @if(!empty($field['required']))
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                                            الزامی
+                                        </span>
+                                    @endif
+
+                                    @if(!empty($field['quick_create']))
+                                        <span class="hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                            ایجاد سریع
+                                        </span>
+                                    @endif
+
                                     {{-- حذف فیلد --}}
-                                    <button type="button" wire:click="removeField({{ $i }})"
-                                            class="text-gray-400 hover:text-red-500 transition-colors" title="حذف فیلد">
+                                    <button type="button" wire:click="removeField({{ $i }})" @click.stop
+                                            class="text-gray-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30" title="حذف فیلد">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -596,7 +897,11 @@
                             </div>
 
                             {{-- بدنه فیلد --}}
-                            <div class="p-5 space-y-5">
+                            <div x-show="isOpen('{{ $fid }}')"
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 -translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 class="p-5 space-y-5">
                                 {{-- تنظیمات اصلی --}}
                                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                     <label
@@ -661,7 +966,7 @@
                                 </div>
 
                                 {{-- تنظیمات اختصاصی بر اساس نوع --}}
-                                @if($field['type'] === 'file')
+                                @if($field['type'] === 'file' || $field['type'] === 'profile-photo')
                                     <div
                                         class="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
                                         <div>

@@ -179,7 +179,9 @@ class AppointmentController extends Controller
             ]);
         }
 
-        return view('booking::user.appointments.create', compact('settings', 'flow', 'fixedProvider'));
+        $isQueueEnabled = BookingSetting::isQueueEnabled() && class_exists(\Modules\Booking\Entities\BookingWaitlist::class);
+
+        return view('booking::user.appointments.create', compact('settings', 'flow', 'fixedProvider', 'isQueueEnabled'));
     }
 
     public function store(Request $request)
@@ -193,6 +195,7 @@ class AppointmentController extends Controller
             'service_id'        => ['required', 'integer', 'exists:booking_services,id'],
             'provider_user_id'  => ['required', 'integer', 'exists:users,id'],
             'client_id'         => ['required', 'integer', 'exists:clients,id'],
+            'waitlist_id'       => ['nullable', 'integer'],
 
             // از UI اسلات
             'start_at_utc'      => ['nullable', 'date'],
@@ -417,6 +420,16 @@ class AppointmentController extends Controller
                 'end_at_utc' => $endUtc->toIso8601String(),
                 'created_by_user_id' => (int) $request->user()->id,
             ]);
+        }
+
+        if (!empty($data['waitlist_id']) && class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            $waitlist = \Modules\Booking\Entities\BookingWaitlist::find($data['waitlist_id']);
+            if ($waitlist && $waitlist->status !== \Modules\Booking\Entities\BookingWaitlist::STATUS_CONVERTED) {
+                $waitlist->update([
+                    'status' => \Modules\Booking\Entities\BookingWaitlist::STATUS_CONVERTED,
+                    'converted_at' => now(),
+                ]);
+            }
         }
 
         return redirect()
@@ -1596,11 +1609,56 @@ class AppointmentController extends Controller
                     ->orWhere('national_code', 'like', "%{$q}%")
                     ->orWhere('case_number', 'like', "%{$q}%");
             });
+            $clients = $clientsQ->orderByDesc('id')->limit(50)->get(['id', 'full_name', 'phone', 'email', 'national_code', 'case_number']);
+        } else {
+            $clients = $clientsQ->orderByDesc('id')->limit(3)->get(['id', 'full_name', 'phone', 'email', 'national_code', 'case_number']);
         }
 
-        $clients = $clientsQ->orderByDesc('id')->limit(50)->get(['id', 'full_name', 'phone', 'email', 'national_code', 'case_number']);
-
         return response()->json(['data' => $clients]);
+    }
+
+    public function wizardWaitlist(Request $request)
+    {
+        $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
+        if (!BookingSetting::isQueueEnabled() || !class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            return response()->json(['data' => []]);
+        }
+
+        $user = $request->user();
+        $entries = \Modules\Booking\Entities\BookingWaitlist::query()
+            ->whereIn('status', [
+                \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
+                \Modules\Booking\Entities\BookingWaitlist::STATUS_NOTIFIED,
+                \Modules\Booking\Entities\BookingWaitlist::STATUS_IN_PROGRESS
+            ])
+            ->whereHas('client', function ($cq) use ($user) {
+                $cq->visibleForUser($user);
+            })
+            ->with(['client', 'service', 'provider'])
+            ->get()
+            ->sortBy(fn($item) => $item->queue_rank ?? $item->position ?? 0)
+            ->values()
+            ->map(function ($item) {
+                return [
+                    'id' => (int) $item->id,
+                    'client_id' => (int) $item->client_id,
+                    'client_name' => $item->client?->full_name ?? 'بدون نام',
+                    'client_phone' => $item->client?->phone,
+                    'client_national_code' => $item->client?->national_code,
+                    'client_case_number' => $item->client?->case_number,
+                    'client_email' => $item->client?->email,
+                    'service_id' => $item->service_id ? (int) $item->service_id : null,
+                    'service_name' => $item->service?->name,
+                    'provider_user_id' => $item->provider_user_id ? (int) $item->provider_user_id : null,
+                    'provider_name' => $item->provider?->name,
+                    'preferred_date' => $item->preferred_date ? \Morilog\Jalali\Jalalian::fromDateTime($item->preferred_date)->format('Y/m/d') : null,
+                    'queue_rank' => $item->queue_rank ?? $item->position ?? 1,
+                    'notes' => $item->notes,
+                    'status' => $item->status,
+                ];
+            });
+
+        return response()->json(['data' => $entries]);
     }
 
     public function wizardForm(Request $request)

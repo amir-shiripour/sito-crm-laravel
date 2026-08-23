@@ -710,6 +710,77 @@
         @endif
     </div>
 
+    {{-- profile-photo (تصویر پروفایل) --}}
+@elseif ($type === 'profile-photo')
+    @php
+        $existing = $this->meta[$fid] ?? null;
+        $fileUrl = null;
+        $isTemporary = false;
+        
+        if ($existing) {
+            if ($existing instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
+                $isTemporary = true;
+                try {
+                    $fileUrl = $existing->temporaryUrl();
+                } catch (\Throwable $e) {
+                    $fileUrl = null;
+                }
+            } elseif (is_string($existing)) {
+                $fileUrl = Storage::disk('public')->url($existing);
+            }
+        }
+    @endphp
+
+    <div class="flex items-center gap-4 p-3.5 bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700/80 shadow-2xs">
+        <div class="relative group shrink-0">
+            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-dashed border-indigo-300 dark:border-indigo-600 bg-gray-50 dark:bg-gray-900 flex items-center justify-center relative shadow-inner">
+                @if($fileUrl)
+                    <img src="{{ $fileUrl }}" class="w-full h-full object-cover" alt="Profile Photo" />
+                @else
+                    <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                @endif
+            </div>
+
+            @if($existing)
+                <button type="button" wire:click="deleteDynamicFile('{{ $fid }}', 0)"
+                        class="absolute -top-1 -right-1 bg-rose-500 hover:bg-rose-600 text-white rounded-full p-1 shadow-md transition-transform hover:scale-110"
+                        title="حذف تصویر">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            @endif
+        </div>
+
+        <div class="flex-1 min-w-0 space-y-1.5">
+            <label for="profile_photo_{{ $fid }}"
+                   class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:hover:bg-indigo-900/60 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700/60 text-xs font-bold transition-all cursor-pointer shadow-2xs">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>{{ $existing ? 'تغییر تصویر پروفایل' : 'انتخاب تصویر پروفایل' }}</span>
+            </label>
+
+            <input id="profile_photo_{{ $fid }}"
+                   type="file"
+                   wire:model="upload_files.{{ $fid }}"
+                   class="hidden"
+                   accept="image/*" />
+
+            <p class="text-[11px] text-gray-400 dark:text-gray-500">
+                فرمت‌های مجاز: JPG, PNG, WEBP (حداکثر ۵ مگابایت)
+            </p>
+
+            <div wire:loading wire:target="upload_files.{{ $fid }}" class="w-full max-w-xs">
+                <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700 overflow-hidden">
+                    <div class="bg-indigo-600 h-1.5 rounded-full animate-pulse" style="width: 100%"></div>
+                </div>
+                <span class="text-[10px] text-gray-400 mt-0.5 block text-right">در حال بارگذاری و بهینه‌سازی تصویر...</span>
+            </div>
+        </div>
+    </div>
+
     {{-- select-user-by-role --}}
 @elseif ($type === 'select-user-by-role')
     <div class="relative">
