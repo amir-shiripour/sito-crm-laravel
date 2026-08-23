@@ -147,29 +147,56 @@ class BookingWaitlistModal extends Component
             $clients = $clientQuery->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
         }
 
-        $servicesQuery = BookingService::active()->orderBy('name');
-        if ($this->providerId) {
-            $servicesQuery->whereHas('providers', function ($q) {
-                $q->where('users.id', $this->providerId)->where('booking_service_providers.is_active', true);
-            });
-        }
-        $services = $servicesQuery->get();
+        $servicesData = BookingService::where('status', BookingService::STATUS_ACTIVE)
+            ->with(['providers' => function ($q) {
+                $q->where('booking_service_providers.is_active', true);
+            }])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($s) {
+                return [
+                    'id' => (int)$s->id,
+                    'name' => (string)$s->name,
+                    'provider_ids' => $s->providers->pluck('id')->map(fn($v) => (int)$v)->values()->toArray(),
+                ];
+            })->values()->toArray();
 
-        $providersQuery = User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['doctor', 'provider', 'specialist', 'operator', 'super-admin']);
-        })->orderBy('name');
-        if ($this->serviceId) {
-            $providersQuery->whereHas('bookingServices', function ($q) {
-                $q->where('booking_services.id', $this->serviceId)->where('booking_service_providers.is_active', true);
-            });
+        $providersData = User::query()
+            ->whereIn('id', function ($q) {
+                $q->select('provider_user_id')->from('booking_service_providers')->where('is_active', true);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(function ($p) {
+                $serviceIds = DB::table('booking_service_providers')
+                    ->where('provider_user_id', $p->id)
+                    ->where('is_active', true)
+                    ->pluck('service_id')
+                    ->map(fn($v) => (int)$v)
+                    ->values()
+                    ->toArray();
+                return [
+                    'id' => (int)$p->id,
+                    'name' => (string)$p->name,
+                    'service_ids' => $serviceIds,
+                ];
+            })->values()->toArray();
+
+        if (empty($providersData)) {
+            $providersData = User::orderBy('name')->limit(50)->get(['id', 'name'])->map(function ($p) {
+                return [
+                    'id' => (int)$p->id,
+                    'name' => (string)$p->name,
+                    'service_ids' => [],
+                ];
+            })->values()->toArray();
         }
-        $providers = $providersQuery->get(['id', 'name']);
 
         return view('booking::livewire.user.booking-waitlist-modal', [
             'selectedClient' => $selectedClient,
             'clients' => $clients,
-            'services' => $services,
-            'providers' => $providers,
+            'servicesData' => $servicesData,
+            'providersData' => $providersData,
         ]);
     }
 }

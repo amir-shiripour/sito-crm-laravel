@@ -1,6 +1,6 @@
 @php
     use Modules\Clients\Entities\ClientForm;use Modules\Clients\Entities\ClientSetting;use Modules\Services\App\Http\Models\Status;
-    use Morilog\Jalali\Jalalian;
+    use Modules\Settings\Entities\Setting;use Morilog\Jalali\Jalalian;
     use Carbon\Carbon;
 
     if(!isset($settings)) {
@@ -14,10 +14,6 @@
 
 @php
     $currencyLabel = $currency === 'rial' ? 'ریال' : 'تومان';
-
-    // پشتیبانی از چند فاکتور برای یک سفارش:
-    // اگر مدل Order رابطه‌ی چندتایی invoices() داشته باشد از آن استفاده می‌شود،
-    // در غیر این صورت از رابطه‌ی تکی invoice (سازگاری با نسخه‌های قبلی) استفاده می‌شود.
     $relatedInvoices = collect();
     if (method_exists($order, 'invoices')) {
         try {
@@ -31,7 +27,6 @@
         $relatedInvoices = collect([$order->invoice]);
     }
 
-    // فاکتور اصلی برای محاسبات مربوط به تمدید/فیلدهای سفارشی/یادداشت/تاریخچه (سازگاری با نسخه قبلی)
     $invoice = $order->invoice ?? $relatedInvoices->first();
 
     $toJalali = function ($date) {
@@ -124,7 +119,7 @@
         }
     }
 
-    $clientFieldsSetting = \Modules\Settings\Entities\Setting::where('key', 'services_invoice_client_fields')->value('value');
+    $clientFieldsSetting = Setting::where('key', 'services_invoice_client_fields')->value('value');
     $selectedClientFields = $clientFieldsSetting ? json_decode($clientFieldsSetting, true) : [];
     $customerCustomFields = [];
 
@@ -233,6 +228,21 @@
         : (($order->service && $order->billing_cycle && isset($order->service->renewal_prices[$order->billing_cycle]))
             ? $order->service->renewal_prices[$order->billing_cycle]
             : ($order->renewal_price ?? 0));
+
+    $nextRenewalDateCalculated = null;
+    if ($renewalDate && $order->billing_cycle) {
+        try {
+            $currentJalali = clone $toJalali($renewalDate);
+            switch ($order->billing_cycle) {
+                case 'monthly':     $nextRenewalDateCalculated = $currentJalali->addMonths(1)->format('Y/m/d'); break;
+                case 'quarterly':   $nextRenewalDateCalculated = $currentJalali->addMonths(3)->format('Y/m/d'); break;
+                case 'semi_annual': $nextRenewalDateCalculated = $currentJalali->addMonths(6)->format('Y/m/d'); break;
+                case 'annual':      $nextRenewalDateCalculated = $currentJalali->addYears(1)->format('Y/m/d'); break;
+            }
+        } catch (\Exception $e) {
+            $nextRenewalDateCalculated = null;
+        }
+    }
 @endphp
 
 @section('content')
@@ -260,16 +270,19 @@
                             stroke-linecap="round" stroke-linejoin="round"
                             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </span>
-                جزئیات سفارش <span
-                    class="text-indigo-600 dark:text-indigo-400 dir-ltr">{{ $order->order_number }}</span>
+                جزئیات سفارش
+                <sزpan
+                    class="text-indigo-600 dark:text-indigo-400 dir-ltr">{{ $order->order_number }}</sزpan>
             </h1>
-            <a href="{{ request('from') === 'client' ? route('user.clients.show', [$order->customer_id ?? ($order->invoice ? $order->invoice->customer_id : 1)]) . '#orders' : route('services.orders.index') }}"
-               class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                بازگشت
-            </a>
+            <div class="flex items-center flex-wrap gap-3">
+                <a href="{{ request('from') === 'client' ? route('user.clients.show', [$order->customer_id ?? ($order->invoice ? $order->invoice->customer_id : 1)]) . '#orders' : route('services.orders.index') }}"
+                   class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    بازگشت
+                </a>
+            </div>
         </div>
 
         @if(session('success'))
@@ -281,10 +294,8 @@
                 {{ session('success') }}
             </div>
         @endif
-
-        {{-- خلاصه سریع سفارش --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 {{ $order->billing_cycle ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-6">
-            {{-- مشتری --}}
+        <div
+            class="grid grid-cols-1 md:grid-cols-2 {{ $order->billing_cycle ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-6">
             <div
                 class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
                 <div class="flex items-center gap-2 mb-4">
@@ -309,7 +320,8 @@
             </div>
 
             {{-- وضعیت --}}
-            <div class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6 relative z-20">
+            <div
+                class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6 relative z-20">
                 <div class="flex items-center gap-2 mb-4">
                     <div class="p-2 bg-violet-50 dark:bg-violet-500/10 text-violet-500 rounded-lg">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -324,10 +336,12 @@
                             class="w-full inline-flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-black border transition-all hover:opacity-80 focus:ring-4 focus:outline-none"
                             style="background: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}40; --tw-ring-color: {{ $statusColor }}30">
                         <span class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full animate-pulse" style="background: {{ $statusColor }}"></span>
+                            <span class="w-2 h-2 rounded-full animate-pulse"
+                                  style="background: {{ $statusColor }}"></span>
                             {{ $order->status?->name ?? 'نامشخص' }}
                         </span>
-                        <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''"
+                             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                         </svg>
                     </button>
@@ -340,7 +354,8 @@
                                 @csrf
                                 @method('PUT')
                                 <input type="hidden" name="status_id" value="{{ $st->id }}">
-                                <input type="hidden" name="renewal_price_type" value="{{ $order->renewal_price_type ?? 'auto' }}">
+                                <input type="hidden" name="renewal_price_type"
+                                       value="{{ $order->renewal_price_type ?? 'auto' }}">
                                 <button type="submit"
                                         class="w-full text-start px-4 py-3 text-sm font-bold transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between border-b border-gray-50 dark:border-gray-700/50 last:border-0"
                                         style="color: {{ $st->color }}">
@@ -349,7 +364,8 @@
                                         {{ $st->name }}
                                     </span>
                                     @if($order->status_id == $st->id)
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                             stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                                         </svg>
                                     @endif
@@ -359,8 +375,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- مبلغ نهایی سرویس --}}
             <div
                 class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
                 <div class="flex items-center gap-2 mb-4">
@@ -377,15 +391,14 @@
                     <span class="text-sm text-gray-400 font-normal">{{ $currencyLabel }}</span></div>
                 <p class="text-[10px] text-gray-400 mt-2">ثابت و غیرقابل تغییر</p>
             </div>
-
-            {{-- مبلغ تمدید --}}
             @if($order->billing_cycle)
                 <div
                     class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
                             <div class="p-2 bg-amber-50 dark:bg-amber-500/10 text-amber-500 rounded-lg">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                     stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                           d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0-0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
@@ -405,13 +418,13 @@
                 </div>
             @endif
         </div>
-
-        {{-- ================= فاکتورهای مرتبط (Full Width) ================= --}}
         @if($relatedInvoices->isNotEmpty())
             <div class="{{ $cardClass }}">
-                <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-amber-50 to-transparent dark:from-amber-500/10 flex items-center justify-between flex-wrap gap-3">
+                <div
+                    class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-amber-50 to-transparent dark:from-amber-500/10 flex items-center justify-between flex-wrap gap-3">
                     <h3 class="text-lg font-black text-amber-700 dark:text-amber-400 flex items-center gap-3">
-                        <div class="p-2 bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 rounded-lg">
+                        <div
+                            class="p-2 bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 rounded-lg">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -419,12 +432,14 @@
                         </div>
                         فاکتورهای مرتبط
                     </h3>
-                    <span class="text-sm font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-100 dark:border-amber-500/20">{{ $faNum($relatedInvoices->count()) }} فاکتور</span>
+                    <span
+                        class="text-sm font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-100 dark:border-amber-500/20">{{ $faNum($relatedInvoices->count()) }} فاکتور</span>
                 </div>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-start border-collapse min-w-[900px]">
-                        <thead class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
+                        <thead
+                            class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
                         <tr>
                             <th class="px-4 py-3 font-bold text-start">شماره فاکتور</th>
                             <th class="px-4 py-3 font-bold text-center">وضعیت</th>
@@ -446,13 +461,16 @@
                                 <td class="px-4 py-4 font-black text-gray-900 dark:text-white tabular-nums text-start">
                                     {{ $faNum($inv->invoice_number ?: $inv->proforma_invoice_number) }}
                                     @if(!empty($inv->meta['created_by_workflow']))
-                                        <span class="block mt-1 text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-500/20 w-max">سیستمی</span>
+                                        <span
+                                            class="block mt-1 text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-500/20 w-max">سیستمی</span>
                                     @endif
                                 </td>
                                 <td class="px-4 py-4 text-center">
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
-                                          style="background: {{ $invStatusColor }}15; color: {{ $invStatusColor }}; border-color: {{ $invStatusColor }}40">
-                                        <span class="w-2 h-2 rounded-full" style="background: {{ $invStatusColor }}"></span>{{ $inv->status?->name ?? '—' }}
+                                    <span
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                                        style="background: {{ $invStatusColor }}15; color: {{ $invStatusColor }}; border-color: {{ $invStatusColor }}40">
+                                        <span class="w-2 h-2 rounded-full"
+                                              style="background: {{ $invStatusColor }}"></span>{{ $inv->status?->name ?? '—' }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 text-center tabular-nums text-gray-600 dark:text-gray-400 dir-ltr">
@@ -485,8 +503,10 @@
                                     <a href="{{ route('services.invoices.show', $inv) }}"
                                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold text-xs hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
                                         مشاهده فاکتور
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                             stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                  d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                                         </svg>
                                     </a>
                                 </td>
@@ -495,28 +515,33 @@
                         </tbody>
                     </table>
                 </div>
-
-                {{-- جمع کل ترکیبی، وقتی بیش از یک فاکتور وجود دارد --}}
                 @if($relatedInvoices->count() > 1)
-                    <div class="bg-gray-50/80 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700/50 p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 divide-y sm:divide-y-0 sm:divide-x sm:divide-x-reverse divide-gray-200 dark:divide-gray-700">
+                    <div
+                        class="bg-gray-50/80 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700/50 p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 divide-y sm:divide-y-0 sm:divide-x sm:divide-x-reverse divide-gray-200 dark:divide-gray-700">
                         <div class="flex flex-col items-center  px-4">
-                            <span class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">جمع کل فاکتورها</span>
+                            <span
+                                class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">جمع کل فاکتورها</span>
                             <div class="flex items-baseline gap-1 mt-1">
-                                <span class="text-lg font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum(number_format($totalInvoicesAmount)) }}</span>
+                                <span
+                                    class="text-lg font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum(number_format($totalInvoicesAmount)) }}</span>
                                 <span class="text-xs font-medium text-gray-900">{{ $currencyLabel }}</span>
                             </div>
                         </div>
                         <div class="flex flex-col items-center  px-4 pt-4 sm:pt-0">
-                            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block mb-1">مجموع پرداختی</span>
+                            <span
+                                class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block mb-1">مجموع پرداختی</span>
                             <div class="flex items-baseline gap-1 mt-1">
-                                <span class="text-lg font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{{ $faNum(number_format($totalInvoicesPaid)) }}</span>
+                                <span
+                                    class="text-lg font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{{ $faNum(number_format($totalInvoicesPaid)) }}</span>
                                 <span class="text-xs font-medium text-emerald-700">{{ $currencyLabel }}</span>
                             </div>
                         </div>
                         <div class="flex flex-col items-center  px-4 pt-4 sm:pt-0">
-                            <span class="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wide block mb-1">مجموع مانده بدهی</span>
+                            <span
+                                class="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wide block mb-1">مجموع مانده بدهی</span>
                             <div class="flex items-baseline gap-1 mt-1">
-                                <span class="text-lg font-black text-rose-700 dark:text-rose-400 tabular-nums">{{ $faNum(number_format($totalInvoicesRemaining)) }}</span>
+                                <span
+                                    class="text-lg font-black text-rose-700 dark:text-rose-400 tabular-nums">{{ $faNum(number_format($totalInvoicesRemaining)) }}</span>
                                 <span class="text-xs font-medium text-rose-700">{{ $currencyLabel }}</span>
                             </div>
                         </div>
@@ -526,11 +551,7 @@
         @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-            {{-- ستون سمت راست --}}
             <div class="space-y-8">
-
-                {{-- اطلاعات سرویس --}}
                 <div class="{{ $cardClass }}">
                     <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
                         <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
@@ -605,8 +626,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- ستون سمت چپ --}}
             <div class="space-y-8">
                 @if($order->billing_cycle)
                     <form action="{{ route('services.orders.update', $order) }}" method="POST" class="{{ $cardClass }}">
@@ -645,7 +664,8 @@
 
                             <div class="grid grid-cols-1 gap-6">
                                 <div>
-                                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">تاریخ تمدید
+                                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">تاریخ
+                                        تمدید
                                         (سررسید)</label>
                                     <input type="text" name="renewal_date"
                                            value="{{ $order->renewal_date ? $toJalali($order->renewal_date)->format('Y/m/d') : '' }}"
@@ -657,10 +677,10 @@
                             </div>
 
                             <div class="pt-6 border-t border-gray-100 dark:border-gray-700">
-                                {{-- مبلغ تمدید --}}
                                 <div>
                                     <div class="flex items-center justify-between mb-2">
-                                        <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">مبلغ تمدید
+                                        <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">مبلغ
+                                            تمدید
                                             دوره‌ای</label>
                                         <input type="hidden" name="renewal_price_type" :value="renewalPriceType">
                                         <button type="button" x-show="editMode"
@@ -700,6 +720,74 @@
                             </div>
                         </div>
                     </form>
+                    <div
+                        class="{{ $cardClass }} border border-indigo-100 dark:border-indigo-500/20 shadow-md relative overflow-hidden">
+                        <div
+                            class="absolute -top-12 -left-12 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                        <div
+                            class="p-6 sm:p-7 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-indigo-50/70 via-transparent to-transparent dark:from-indigo-500/10 flex items-center justify-between flex-wrap gap-3">
+                            <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                                <div class="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-500/30">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                    </svg>
+                                </div>
+                                صدور دستی فاکتور تمدید
+                            </h3>
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold dark:bg-indigo-500/10 dark:border-indigo-500/30 dark:text-indigo-400">
+                                دوره {{ $billingCycleLabels[$order->billing_cycle] ?? $order->billing_cycle }}
+                            </span>
+                        </div>
+                        <div class="p-6 sm:p-7 space-y-6">
+                            <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 leading-relaxed">
+                                با کلیک بر روی دکمه زیر، بلافاصله یک فاکتور تمدید مجزا با تاریخ سررسید فعلی صادر می‌شود
+                                و تاریخ سررسید تمدید این سفارش به صورت خودکار به دوره بعدی منتقل می‌گردد تا از صدور مجدد
+                                فاکتور توسط کرون‌جاب خودکار جلوگیری شود.
+                            </p>
+
+                            <div
+                                class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50/80 dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                <div>
+                                    <span class="text-xs font-bold text-gray-400 block mb-1">تاریخ صدور:</span>
+                                    <span
+                                        class="font-black text-gray-900 dark:text-white text-sm tabular-nums dir-ltr text-right inline-block">
+                                        {{ $order->renewal_date ? $faNum($toJalali($order->renewal_date)->format('Y/m/d')) : 'امروز' }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="text-xs font-bold text-gray-400 block mb-1">سررسید فاکتور:</span>
+                                    <span
+                                        class="font-black text-emerald-600 dark:text-emerald-400 text-sm tabular-nums dir-ltr text-right inline-block">
+                                        {{ $nextRenewalDateCalculated ? $faNum($nextRenewalDateCalculated) : '—' }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="text-xs font-bold text-gray-400 block mb-1">مبلغ تمدید:</span>
+                                    <span
+                                        class="font-black text-indigo-600 dark:text-indigo-400 text-base tabular-nums">
+                                        {{ $faNum(number_format($calculatedRenewalPrice)) }} <span
+                                            class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ $currencyLabel }}</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <form action="{{ route('services.orders.createRenewalInvoice', $order) }}" method="POST"
+                                  onsubmit="return confirm('آیا از صدور دستی فاکتور تمدید برای این سفارش با مبلغ {{ number_format($calculatedRenewalPrice) }} {{ $currencyLabel }} اطمینان دارید؟\nبا این اقدام، سررسید تمدید بعدی سفارش یک دوره به جلو منتقل می‌شود.');">
+                                @csrf
+                                <button type="submit"
+                                        class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-[0.98] flex items-center justify-center gap-2.5">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2.2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    صدور فوری فاکتور تمدید
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 @endif
 
                 @if($invoice?->notes)
@@ -761,7 +849,7 @@
                             </ol>
                         </div>
                     </div>
-                @endif
+                    @endif
             </div>
         </div>
     </div>

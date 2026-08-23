@@ -9,7 +9,7 @@
 @include('partials.jalali-date-picker')
 
 @php
-    use Modules\Services\App\Http\Models\Status;
+    use Modules\Clients\Entities\ClientForm;use Modules\Clients\Entities\ClientSetting;use Modules\Services\App\Http\Models\Status;
 
     if (!function_exists('extractClientFieldSubItems')) {
         function extractClientFieldSubItems($client, string $fieldId, ?array $activeFormSchema = null): array {
@@ -30,7 +30,7 @@
                 }
             }
 
-            $systemFields = \Modules\Clients\Entities\ClientForm::getSystemFields();
+            $systemFields = ClientForm::getSystemFields();
             if (isset($systemFields[$fieldId])) {
                 $col = $systemFields[$fieldId]['column'];
                 $val = $col === 'status_id' ? ($client->status->name ?? null) : ($client->{$col} ?? null);
@@ -113,10 +113,10 @@
         $checkedClientFields = ['full_name', 'phone', 'email', 'national_code', 'case_number'];
     }
 
-    $activeForm = \Modules\Clients\Entities\ClientForm::active(\Modules\Clients\Entities\ClientSetting::getValue('default_form_key'));
+    $activeForm = ClientForm::active(ClientSetting::getValue('default_form_key'));
     $formSchema = $activeForm ? $activeForm->schema : [];
     $allFieldsMap = [];
-    foreach (\Modules\Clients\Entities\ClientForm::systemFieldDefaults() as $fid => $f) {
+    foreach (ClientForm::systemFieldDefaults() as $fid => $f) {
         $allFieldsMap[$fid] = $f['label'] ?? $fid;
     }
     if ($activeForm && !empty($formSchema['fields'])) {
@@ -215,15 +215,15 @@
             </div>
         @endif
 
-        <form id="invoiceForm" @submit="onSubmitCheck($event)" @keydown.enter="if ($event.target.tagName !== 'TEXTAREA' && $event.target.type !== 'submit') $event.preventDefault()" action="{{ route('services.invoices.store') }}"
+        <form id="invoiceForm" @submit="onSubmitCheck($event)"
+              @keydown.enter="if ($event.target.tagName !== 'TEXTAREA' && $event.target.type !== 'submit') $event.preventDefault()"
+              action="{{ route('services.invoices.store') }}"
               method="POST" enctype="multipart/form-data" class="space-y-8">
             @csrf
             <input type="hidden" name="invoice_type" value="{{ $type }}">
             @if(!empty($mergedFromIds))
                 <input type="hidden" name="merged_from_invoice_ids" value="{{ $mergedFromIds }}">
             @endif
-
-            {{-- اطلاعات فاکتور --}}
             <div class="{{ $cardClass }} overflow-visible relative z-30">
                 <div
                     class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 rounded-t-3xl">
@@ -327,8 +327,6 @@
                             </div>
                         </div>
                     </div>
-
-                    {{-- انتخاب مشتری --}}
                     <div class="pt-8 border-t border-dashed border-gray-200 dark:border-gray-700">
                         <label class="{{ $labelClass }}">انتخاب مشتری <span
                                 class="text-rose-500 font-black">*</span></label>
@@ -395,31 +393,49 @@
                                 </button>
                             </div>
 
-                            <template x-if="selectedCustomerData?.multi_sub_fields && selectedCustomerData.multi_sub_fields.length > 0">
-                                <div class="p-5 rounded-2xl border border-indigo-200 dark:border-indigo-800/60 bg-white dark:bg-gray-800 shadow-sm space-y-4">
-                                    <div class="flex flex-wrap items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2.5 gap-2">
-                                        <div class="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
-                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                            <template
+                                x-if="selectedCustomerData?.multi_sub_fields && selectedCustomerData.multi_sub_fields.length > 0">
+                                <div
+                                    class="p-5 rounded-2xl border border-indigo-200 dark:border-indigo-800/60 bg-white dark:bg-gray-800 shadow-sm space-y-4">
+                                    <div
+                                        class="flex flex-wrap items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2.5 gap-2">
+                                        <div
+                                            class="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none"
+                                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                                             </svg>
                                             <span>انتخاب زیرمجموعه‌های مشتری در فاکتور (چند انتخابی / Multi-Select)</span>
                                         </div>
                                         <span class="text-[10px] text-gray-400 font-medium">امکان انتخاب چند زیرمجموعه به صورت همزمان</span>
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <template x-for="field in selectedCustomerData.multi_sub_fields" :key="field.id">
-                                            <div class="space-y-2 p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
+                                        <template x-for="field in selectedCustomerData.multi_sub_fields"
+                                                  :key="field.id">
+                                            <div
+                                                class="space-y-2 p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
                                                 <div class="flex items-center justify-between">
-                                                    <label class="block text-xs font-bold text-gray-800 dark:text-gray-200" x-text="field.label"></label>
+                                                    <label
+                                                        class="block text-xs font-bold text-gray-800 dark:text-gray-200"
+                                                        x-text="field.label"></label>
                                                     <div class="flex items-center gap-2">
-                                                        <button type="button" @click="selectAllSubItems(field.id, field.options)" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">انتخاب همه</button>
+                                                        <button type="button"
+                                                                @click="selectAllSubItems(field.id, field.options)"
+                                                                class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
+                                                            انتخاب همه
+                                                        </button>
                                                         <span class="text-[10px] text-gray-300">|</span>
-                                                        <button type="button" @click="deselectAllSubItems(field.id)" class="text-[10px] text-gray-400 hover:text-gray-600">پاک کردن</button>
+                                                        <button type="button" @click="deselectAllSubItems(field.id)"
+                                                                class="text-[10px] text-gray-400 hover:text-gray-600">
+                                                            پاک کردن
+                                                        </button>
                                                     </div>
                                                 </div>
                                                 <div class="max-h-40 overflow-y-auto space-y-1.5 pe-1">
                                                     <template x-for="(opt, idx) in field.options" :key="idx">
-                                                        <label class="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors text-xs text-gray-700 dark:text-gray-300">
+                                                        <label
+                                                            class="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors text-xs text-gray-700 dark:text-gray-300">
                                                             <input type="checkbox"
                                                                    :name="'client_selected_fields[' + field.id + '][]'"
                                                                    :value="opt"
@@ -439,8 +455,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- اقلام فاکتور --}}
             <div class="{{ $cardClass }} relative"
                  :class="items.some(i => i._showServiceDropdown || i._showProductDropdown) ? 'z-20 overflow-visible' : 'z-10 overflow-hidden'">
                 <div
@@ -457,10 +471,14 @@
                     </h2>
                     <div class="flex flex-wrap items-center gap-2">
                         {{-- Inline Package Search (type-to-search, like service search) --}}
-                        <div class="relative w-64" @click.outside="showPackageDropdown = false" x-show="packagesList && packagesList.length > 0">
+                        <div class="relative w-64" @click.outside="showPackageDropdown = false"
+                             x-show="packagesList && packagesList.length > 0">
                             <div class="relative">
-                                <svg class="w-4.5 h-4.5 absolute right-3 top-1/2 -translate-y-1/2 text-amber-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                <svg
+                                    class="w-4.5 h-4.5 absolute right-3 top-1/2 -translate-y-1/2 text-amber-500 pointer-events-none"
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                 </svg>
                                 <input type="text" x-model="packageSearch"
                                        @focus="showPackageDropdown = true"
@@ -470,25 +488,39 @@
                                        @keydown.escape="showPackageDropdown = false">
                             </div>
 
-                            <div x-show="showPackageDropdown && packageSearch.trim().length > 0 && filteredPackagesList().length > 0"
-                                 x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95 -translate-y-2" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                                 x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
-                                 style="display:none;"
-                                 class="absolute right-0 top-full mt-1 z-[200] w-80 max-h-80 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl">
+                            <div
+                                x-show="showPackageDropdown && packageSearch.trim().length > 0 && filteredPackagesList().length > 0"
+                                x-transition:enter="transition ease-out duration-150"
+                                x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
+                                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                                x-transition:leave="transition ease-in duration-100"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
+                                style="display:none;"
+                                class="absolute right-0 top-full mt-1 z-[200] w-80 max-h-80 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl">
                                 <template x-for="pkg in filteredPackagesList()" :key="pkg.id">
-                                    <button type="button" @click="selectPackage(pkg); showPackageDropdown = false; packageSearch = ''"
+                                    <button type="button"
+                                            @click="selectPackage(pkg); showPackageDropdown = false; packageSearch = ''"
                                             class="w-full text-start px-4 py-3 hover:bg-amber-50 dark:hover:bg-amber-500/10 border-b border-gray-100 dark:border-gray-700/50 last:border-0 transition-colors group">
                                         <div class="flex items-center justify-between gap-2">
                                             <div class="flex items-center gap-2 min-w-0">
-                        <span class="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        <span
+                            class="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                 stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                         </span>
                                                 <div class="min-w-0">
-                                                    <span class="font-bold text-sm text-gray-800 dark:text-white block truncate" x-text="pkg.name"></span>
-                                                    <span class="text-[10px] text-gray-400" x-text="pkg.items.length + ' ردیف'"></span>
+                                                    <span
+                                                        class="font-bold text-sm text-gray-800 dark:text-white block truncate"
+                                                        x-text="pkg.name"></span>
+                                                    <span class="text-[10px] text-gray-400"
+                                                          x-text="pkg.items.length + ' ردیف'"></span>
                                                 </div>
                                             </div>
-                                            <span class="shrink-0 text-xs font-black text-amber-600 dark:text-amber-400 tabular-nums" x-text="formatMoney(pkg.final_price) + ' {{ $currencyLabel }}'"></span>
+                                            <span
+                                                class="shrink-0 text-xs font-black text-amber-600 dark:text-amber-400 tabular-nums"
+                                                x-text="formatMoney(pkg.final_price) + ' {{ $currencyLabel }}'"></span>
                                         </div>
                                     </button>
                                 </template>
@@ -551,26 +583,39 @@
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all"
                                    :class="(item._showServiceDropdown || item._showProductDropdown) ? 'relative z-50' : 'relative z-10'">
                             {{-- Package Group Header Row --}}
-                            <template x-if="item._packageGroupId && (index === 0 || items[index-1]._packageGroupId !== item._packageGroupId)">
+                            <template
+                                x-if="item._packageGroupId && (index === 0 || items[index-1]._packageGroupId !== item._packageGroupId)">
                                 <tr class="bg-amber-50/80 dark:bg-amber-900/10 border-t-2 border-amber-200 dark:border-amber-700/50">
                                     <td :colspan="taxMode === 'item' ? 8 : 7" class="px-4 py-2">
                                         <div class="flex items-center gap-3">
                                             <button type="button"
                                                     @click="collapsedPackages[item._packageGroupId] = !collapsedPackages[item._packageGroupId]"
                                                     class="shrink-0 flex items-center gap-2 text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 transition-colors">
-                                                <span class="w-6 h-6 flex items-center justify-center rounded-md bg-amber-200/70 dark:bg-amber-500/20">
-                                                    <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="collapsedPackages[item._packageGroupId] ? '' : 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                                <span
+                                                    class="w-6 h-6 flex items-center justify-center rounded-md bg-amber-200/70 dark:bg-amber-500/20">
+                                                    <svg class="w-3.5 h-3.5 transition-transform duration-200"
+                                                         :class="collapsedPackages[item._packageGroupId] ? '' : 'rotate-90'"
+                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                         stroke-width="2.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M9 5l7 7-7 7"/>
                                                     </svg>
                                                 </span>
                                                 <span class="text-xs font-black" x-text="item._packageTitle"></span>
                                             </button>
-                                            <span class="text-[10px] font-bold text-amber-500 dark:text-amber-500/70 bg-amber-100 dark:bg-amber-500/10 px-2 py-0.5 rounded-md" x-text="items.filter(i => i._packageGroupId === item._packageGroupId).length + ' ردیف'"></span>
-                                            <span x-show="collapsedPackages[item._packageGroupId]" class="text-[10px] font-bold text-gray-400">(مخفی شده)</span>
+                                            <span
+                                                class="text-[10px] font-bold text-amber-500 dark:text-amber-500/70 bg-amber-100 dark:bg-amber-500/10 px-2 py-0.5 rounded-md"
+                                                x-text="items.filter(i => i._packageGroupId === item._packageGroupId).length + ' ردیف'"></span>
+                                            <span x-show="collapsedPackages[item._packageGroupId]"
+                                                  class="text-[10px] font-bold text-gray-400">(مخفی شده)</span>
                                             <div class="ms-auto">
                                                 <button type="button" @click="removePackage(item._packageGroupId)"
                                                         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/30 transition-colors active:scale-95">
-                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                    </svg>
                                                     حذف پکیج
                                                 </button>
                                             </div>
@@ -624,8 +669,9 @@
                                                         <template x-for="p in filteredProducts(index)" :key="p.id">
                                                             <button type="button" @click="selectProductInline(index, p)"
                                                                     class="w-full text-start px-4 py-3 text-xs hover:bg-emerald-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700/50 last:border-0 transition-colors">
-                                                                <span class="font-bold text-gray-900 dark:text-white block"
-                                                                      x-text="p.name"></span>
+                                                                <span
+                                                                    class="font-bold text-gray-900 dark:text-white block"
+                                                                    x-text="p.name"></span>
                                                             </button>
                                                         </template>
                                                     </div>
@@ -646,9 +692,12 @@
                                             <div x-show="item.product_id"
                                                  class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-2 py-1 rounded-lg">
                                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
-                                                                                                  stroke-linejoin="round"
-                                                                                                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg> فروشگاه
+                                                     stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round"
+                                                          stroke-linejoin="round"
+                                                          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                                </svg>
+                                                فروشگاه
                                             </div>
                                         </div>
                                     </template>
@@ -707,9 +756,15 @@
                                                        :value="item.billing_period">
                                                 {{-- Locked badge for package or merged items --}}
                                                 <template x-if="item._packageGroupId || item._isMerged">
-                                                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-400">
-                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                                        <span x-text="periodLabels[item.billing_period] || item.billing_period || 'دوره تعریف نشده'"></span>
+                                                    <div
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-400">
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                             stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                                        </svg>
+                                                        <span
+                                                            x-text="periodLabels[item.billing_period] || item.billing_period || 'دوره تعریف نشده'"></span>
                                                     </div>
                                                 </template>
                                                 {{-- Editable select for non-package non-merged items --}}
@@ -853,84 +908,99 @@
                                         </svg>
                                     </button>
                                     {{-- Package items: locked icon (delete via package header) --}}
-                                    <span x-show="item._packageGroupId" class="mt-1 flex items-center justify-center w-9 h-9 rounded-lg opacity-20" title="برای حذف پکیج، روی دکمه 'حذف پکیج' در سربرگ کلیک کنید">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                    <span x-show="item._packageGroupId"
+                                          class="mt-1 flex items-center justify-center w-9 h-9 rounded-lg opacity-20"
+                                          title="برای حذف پکیج، روی دکمه 'حذف پکیج' در سربرگ کلیک کنید">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                             stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                          stroke-linejoin="round"
+                                                                                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                     </span>
                                 </td>
                             </tr>
-
-                            {{-- ردیف‌های قیمتی فیلدهای سفارشی --}}
                             <template x-if="item.service_custom_fields && item.service_custom_fields.length > 0">
-                                <template x-for="field in item.service_custom_fields" :key="field.id + '_subrows_group'">
+                                <template x-for="field in item.service_custom_fields"
+                                          :key="field.id + '_subrows_group'">
                                     <tbody class="contents">
-                                        {{-- فیلدهای چندانتخابی (Multi-Select) --}}
-                                        <template x-if="field.type === 'multiselect' && field.has_pricing">
-                                            <template x-for="opt in (Array.isArray(item.custom_field_values[field.id]) ? item.custom_field_values[field.id] : [])" :key="field.id + '_' + opt + '_subrow'">
-                                                <tr x-show="!item._packageGroupId || !collapsedPackages[item._packageGroupId]"
-                                                    class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10 transition-all group relative">
-                                                    <td class="px-4 py-2.5 relative align-middle">
-                                                        <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                                        <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                                        <div class="pe-4 ps-6 flex items-center gap-2">
-                                                            <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
-                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                    <template x-if="field.type === 'multiselect' && field.has_pricing">
+                                        <template
+                                            x-for="opt in (Array.isArray(item.custom_field_values[field.id]) ? item.custom_field_values[field.id] : [])"
+                                            :key="field.id + '_' + opt + '_subrow'">
+                                            <tr x-show="!item._packageGroupId || !collapsedPackages[item._packageGroupId]"
+                                                class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10 transition-all group relative">
+                                                <td class="px-4 py-2.5 relative align-middle">
+                                                    <div
+                                                        class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                    <div
+                                                        class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                    <div class="pe-4 ps-6 flex items-center gap-2">
+                                                            <span
+                                                                class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
+                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                                     stroke="currentColor" stroke-width="2.5"><path
+                                                                        stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                                                             </span>
-                                                            <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate" x-text="field.label + ': ' + opt"></span>
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-4 py-2.5 align-middle">
-                                                        <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40"
-                                                              x-text="opt"></span>
-                                                    </td>
-                                                    {{-- تعداد فیلد سفارشی چند انتخابی --}}
-                                                    <td class="px-4 py-2.5 align-middle">
-                                                        <input type="text"
-                                                               :value="toPersianNum(getCustomFieldQuantity(item, field, opt))"
-                                                               @input="setCustomFieldQuantity(item, field, opt, $event.target.value)"
-                                                               :name="'items[' + index + '][custom_fields_quantities][' + field.id + '][' + opt + ']'"
-                                                               class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
-                                                               dir="ltr" placeholder="۱">
-                                                    </td>
-                                                    {{-- قیمت فیلد سفارشی چند انتخابی --}}
-                                                    <td class="px-4 py-2.5 align-middle">
-                                                        <div class="flex items-center gap-1.5 w-full">
-                                                            <div class="relative w-full">
-                                                                <input type="text"
-                                                                       :value="formatPriceInput(getCustomFieldPrice(item, field, opt))"
-                                                                       @input="setCustomFieldPrice(item, field, opt, $event.target.value)"
-                                                                       :name="'items[' + index + '][custom_fields_prices][' + field.id + '][' + opt + ']'"
-                                                                       :readonly="!isCustomPriceUnlocked(item, field, opt)"
-                                                                       :class="!isCustomPriceUnlocked(item, field, opt) ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800' : 'bg-white dark:bg-gray-900 border-indigo-300'"
-                                                                       class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none"
-                                                                       dir="ltr" placeholder="۰">
-                                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
-                                                            </div>
-                                                            <button type="button" x-show="!item._packageGroupId"
-                                                                    @click="toggleCustomPriceUnlock(item, field, opt)"
-                                                                    class="shrink-0 p-1.5 rounded-lg border transition-colors"
-                                                                    :class="isCustomPriceUnlocked(item, field, opt) ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
-                                                                    title="ویرایش مبلغ گزینه">
-                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                    {{-- تخفیف فیلد چند انتخابی --}}
-                                                    <td class="px-4 py-2.5 align-middle">
+                                                        <span
+                                                            class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate"
+                                                            x-text="field.label + ': ' + opt"></span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-2.5 align-middle">
+                                                        <span
+                                                            class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40"
+                                                            x-text="opt"></span>
+                                                </td>
+                                                <td class="px-4 py-2.5 align-middle">
+                                                    <input type="text"
+                                                           :value="toPersianNum(getCustomFieldQuantity(item, field, opt))"
+                                                           @input="setCustomFieldQuantity(item, field, opt, $event.target.value)"
+                                                           :name="'items[' + index + '][custom_fields_quantities][' + field.id + '][' + opt + ']'"
+                                                           class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
+                                                           dir="ltr" placeholder="۱">
+                                                </td>
+                                                <td class="px-4 py-2.5 align-middle">
+                                                    <div class="flex items-center gap-1.5 w-full">
                                                         <div class="relative w-full">
                                                             <input type="text"
-                                                                   :value="formatPriceInput(getCustomFieldDiscount(item, field, opt))"
-                                                                   @input="setCustomFieldDiscount(item, field, opt, $event.target.value)"
-                                                                   :name="'items[' + index + '][custom_fields_discounts][' + field.id + '][' + opt + ']'"
-                                                                   class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
+                                                                   :value="formatPriceInput(getCustomFieldPrice(item, field, opt))"
+                                                                   @input="setCustomFieldPrice(item, field, opt, $event.target.value)"
+                                                                   :name="'items[' + index + '][custom_fields_prices][' + field.id + '][' + opt + ']'"
+                                                                   :readonly="!isCustomPriceUnlocked(item, field, opt)"
+                                                                   :class="!isCustomPriceUnlocked(item, field, opt) ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800' : 'bg-white dark:bg-gray-900 border-indigo-300'"
+                                                                   class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none"
                                                                    dir="ltr" placeholder="۰">
-                                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                            <span
+                                                                class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                                         </div>
-                                                    </td>
-                                                    {{-- مالیات فیلد چند انتخابی --}}
-                                                    <td class="px-4 py-2.5 align-middle" x-show="taxMode === 'item' && taxApplyCustomFields">
-                                                        <div class="flex items-center justify-center gap-1.5 w-full">
+                                                        <button type="button" x-show="!item._packageGroupId"
+                                                                @click="toggleCustomPriceUnlock(item, field, opt)"
+                                                                class="shrink-0 p-1.5 rounded-lg border transition-colors"
+                                                                :class="isCustomPriceUnlocked(item, field, opt) ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
+                                                                title="ویرایش مبلغ گزینه">
+                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                                 stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-2.5 align-middle">
+                                                    <div class="relative w-full">
+                                                        <input type="text"
+                                                               :value="formatPriceInput(getCustomFieldDiscount(item, field, opt))"
+                                                               @input="setCustomFieldDiscount(item, field, opt, $event.target.value)"
+                                                               :name="'items[' + index + '][custom_fields_discounts][' + field.id + '][' + opt + ']'"
+                                                               class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
+                                                               dir="ltr" placeholder="۰">
+                                                        <span
+                                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-2.5 align-middle"
+                                                    x-show="taxMode === 'item' && taxApplyCustomFields">
+                                                    <div class="flex items-center justify-center gap-1.5 w-full">
                                                             <span class="relative inline-flex items-center">
                                                                 <input type="text"
                                                                        :value="toPersianNum(getCustomFieldTax(item, field, opt))"
@@ -942,103 +1012,128 @@
                                                                        :readonly="!isCustomTaxUnlocked(item, field, opt)">
                                                                 <span class="ms-1 text-xs">%</span>
                                                             </span>
-                                                            <button type="button"
-                                                                    @click="toggleCustomTaxUnlock(item, field, opt)"
-                                                                    class="p-1.5 rounded-lg border-2 transition-all active:scale-95 shrink-0"
-                                                                    :class="isCustomTaxUnlocked(item, field, opt) ? 'border-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:border-amber-500/50 dark:text-amber-400 shadow-sm' : 'border-amber-200 text-amber-500 hover:text-amber-700 hover:border-amber-400 hover:bg-amber-50/50 dark:border-amber-700/50 dark:text-amber-500 dark:hover:bg-amber-900/30'"
-                                                                    :title="isCustomTaxUnlocked(item, field, opt) ? 'قفل کردن مالیات' : 'ویرایش دستی مالیات'">
-                                                                <svg x-show="!isCustomTaxUnlocked(item, field, opt)" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                                <svg x-show="isCustomTaxUnlocked(item, field, opt)" class="w-3.5 h-3.5" x-cloak fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                    {{-- جمع ردیف فیلد چند انتخابی --}}
-                                                    <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm">
-                                                        <span x-text="formatMoney(getCustomFieldRowTotal(item, field, opt))"></span>
-                                                        <span class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
-                                                    </td>
-                                                    {{-- دکمه حذف گزینه از فیلد --}}
-                                                    <td class="px-4 py-2.5 align-middle text-center">
                                                         <button type="button"
-                                                                @click="removeMultiselectOption(item, field.id, opt)"
-                                                                class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                                                title="حذف این گزینه">
-                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                                @click="toggleCustomTaxUnlock(item, field, opt)"
+                                                                class="p-1.5 rounded-lg border-2 transition-all active:scale-95 shrink-0"
+                                                                :class="isCustomTaxUnlocked(item, field, opt) ? 'border-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:border-amber-500/50 dark:text-amber-400 shadow-sm' : 'border-amber-200 text-amber-500 hover:text-amber-700 hover:border-amber-400 hover:bg-amber-50/50 dark:border-amber-700/50 dark:text-amber-500 dark:hover:bg-amber-900/30'"
+                                                                :title="isCustomTaxUnlocked(item, field, opt) ? 'قفل کردن مالیات' : 'ویرایش دستی مالیات'">
+                                                            <svg x-show="!isCustomTaxUnlocked(item, field, opt)"
+                                                                 class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                                 stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                                            </svg>
+                                                            <svg x-show="isCustomTaxUnlocked(item, field, opt)"
+                                                                 class="w-3.5 h-3.5" x-cloak fill="none"
+                                                                 viewBox="0 0 24 24" stroke="currentColor"
+                                                                 stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                                                             </svg>
                                                         </button>
-                                                    </td>
-                                                </tr>
-                                            </template>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm">
+                                                        <span
+                                                            x-text="formatMoney(getCustomFieldRowTotal(item, field, opt))"></span>
+                                                    <span
+                                                        class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                                </td>
+                                                <td class="px-4 py-2.5 align-middle text-center">
+                                                    <button type="button"
+                                                            @click="removeMultiselectOption(item, field.id, opt)"
+                                                            class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                            title="حذف این گزینه">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                                             stroke="currentColor" stroke-width="1.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                        </svg>
+                                                    </button>
+                                                </td>
+                                            </tr>
                                         </template>
+                                    </template>
 
-                                        {{-- سایر انواع فیلدهای سفارشی (تک‌مقداری) --}}
-                                        <template x-if="field.type !== 'multiselect' && field.has_pricing">
-                                            <tr x-show="isFieldSelected(field, item.custom_field_values[field.id]) && (!item._packageGroupId || !collapsedPackages[item._packageGroupId])"
-                                                class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10 transition-all group relative">
-                                                <td class="px-4 py-2.5 relative align-middle">
-                                                    <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                                    <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                                    <div class="pe-4 ps-6 flex items-center gap-2">
-                                                        <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
-                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                    {{-- سایر انواع فیلدهای سفارشی (تک‌مقداری) --}}
+                                    <template x-if="field.type !== 'multiselect' && field.has_pricing">
+                                        <tr x-show="isFieldSelected(field, item.custom_field_values[field.id]) && (!item._packageGroupId || !collapsedPackages[item._packageGroupId])"
+                                            class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10 transition-all group relative">
+                                            <td class="px-4 py-2.5 relative align-middle">
+                                                <div
+                                                    class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                <div
+                                                    class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                <div class="pe-4 ps-6 flex items-center gap-2">
+                                                        <span
+                                                            class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
+                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                                 stroke="currentColor" stroke-width="2.5"><path
+                                                                    stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                                                         </span>
-                                                        <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate" x-text="field.label"></span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-4 py-2.5 align-middle">
-                                                    <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40"
-                                                          x-text="getFieldValueLabel(field, item.custom_field_values[field.id])"></span>
-                                                </td>
-                                                {{-- تعداد فیلد سفارشی مستقل --}}
-                                                <td class="px-4 py-2.5 align-middle">
-                                                    <input type="text"
-                                                           :value="toPersianNum(getCustomFieldQuantity(item, field))"
-                                                           @input="setCustomFieldQuantity(item, field, null, $event.target.value)"
-                                                           :name="'items[' + index + '][custom_fields_quantities][' + field.id + ']'"
-                                                           class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
-                                                           dir="ltr" placeholder="۱">
-                                                </td>
-                                                {{-- قیمت فیلد سفارشی --}}
-                                                <td class="px-4 py-2.5 align-middle">
-                                                    <div class="flex items-center gap-1.5 w-full">
-                                                        <div class="relative w-full">
-                                                            <input type="text"
-                                                                   :value="formatPriceInput(getCustomFieldPrice(item, field))"
-                                                                   @input="setCustomFieldPrice(item, field, null, $event.target.value)"
-                                                                   :name="'items[' + index + '][custom_fields_prices][' + field.id + ']'"
-                                                                   :readonly="!isCustomPriceUnlocked(item, field)"
-                                                                   :class="!isCustomPriceUnlocked(item, field) ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800' : 'bg-white dark:bg-gray-900 border-indigo-300'"
-                                                                   class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none"
-                                                                   dir="ltr" placeholder="۰">
-                                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
-                                                        </div>
-                                                        <button type="button" x-show="!item._packageGroupId"
-                                                                @click="toggleCustomPriceUnlock(item, field)"
-                                                                class="shrink-0 p-1.5 rounded-lg border transition-colors"
-                                                                :class="isCustomPriceUnlocked(item, field) ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
-                                                                title="ویرایش مبلغ فیلد">
-                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                {{-- تخفیف فیلد سفارشی --}}
-                                                <td class="px-4 py-2.5 align-middle">
+                                                    <span
+                                                        class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate"
+                                                        x-text="field.label"></span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-2.5 align-middle">
+                                                    <span
+                                                        class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40"
+                                                        x-text="getFieldValueLabel(field, item.custom_field_values[field.id])"></span>
+                                            </td>
+                                            <td class="px-4 py-2.5 align-middle">
+                                                <input type="text"
+                                                       :value="toPersianNum(getCustomFieldQuantity(item, field))"
+                                                       @input="setCustomFieldQuantity(item, field, null, $event.target.value)"
+                                                       :name="'items[' + index + '][custom_fields_quantities][' + field.id + ']'"
+                                                       class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
+                                                       dir="ltr" placeholder="۱">
+                                            </td>
+                                            <td class="px-4 py-2.5 align-middle">
+                                                <div class="flex items-center gap-1.5 w-full">
                                                     <div class="relative w-full">
                                                         <input type="text"
-                                                               :value="formatPriceInput(getCustomFieldDiscount(item, field))"
-                                                               @input="setCustomFieldDiscount(item, field, null, $event.target.value)"
-                                                               :name="'items[' + index + '][custom_fields_discounts][' + field.id + ']'"
-                                                               class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
+                                                               :value="formatPriceInput(getCustomFieldPrice(item, field))"
+                                                               @input="setCustomFieldPrice(item, field, null, $event.target.value)"
+                                                               :name="'items[' + index + '][custom_fields_prices][' + field.id + ']'"
+                                                               :readonly="!isCustomPriceUnlocked(item, field)"
+                                                               :class="!isCustomPriceUnlocked(item, field) ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800' : 'bg-white dark:bg-gray-900 border-indigo-300'"
+                                                               class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none"
                                                                dir="ltr" placeholder="۰">
-                                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                        <span
+                                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                                     </div>
-                                                </td>
-                                                {{-- مالیات فیلد سفارشی --}}
-                                                <td class="px-4 py-2.5 align-middle" x-show="taxMode === 'item' && taxApplyCustomFields">
-                                                    <div class="flex items-center justify-center gap-1.5 w-full">
+                                                    <button type="button" x-show="!item._packageGroupId"
+                                                            @click="toggleCustomPriceUnlock(item, field)"
+                                                            class="shrink-0 p-1.5 rounded-lg border transition-colors"
+                                                            :class="isCustomPriceUnlocked(item, field) ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
+                                                            title="ویرایش مبلغ فیلد">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                             stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            {{-- تخفیف فیلد سفارشی --}}
+                                            <td class="px-4 py-2.5 align-middle">
+                                                <div class="relative w-full">
+                                                    <input type="text"
+                                                           :value="formatPriceInput(getCustomFieldDiscount(item, field))"
+                                                           @input="setCustomFieldDiscount(item, field, null, $event.target.value)"
+                                                           :name="'items[' + index + '][custom_fields_discounts][' + field.id + ']'"
+                                                           class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
+                                                           dir="ltr" placeholder="۰">
+                                                    <span
+                                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                </div>
+                                            </td>
+                                            {{-- مالیات فیلد سفارشی --}}
+                                            <td class="px-4 py-2.5 align-middle"
+                                                x-show="taxMode === 'item' && taxApplyCustomFields">
+                                                <div class="flex items-center justify-center gap-1.5 w-full">
                                                         <span class="relative inline-flex items-center">
                                                             <input type="text"
                                                                    :value="toPersianNum(getCustomFieldTax(item, field))"
@@ -1050,39 +1145,52 @@
                                                                    :readonly="!isCustomTaxUnlocked(item, field)">
                                                             <span class="ms-1 text-xs">%</span>
                                                         </span>
-                                                        <button type="button"
-                                                                @click="toggleCustomTaxUnlock(item, field)"
-                                                                class="p-1.5 rounded-lg border-2 transition-all active:scale-95 shrink-0"
-                                                                :class="isCustomTaxUnlocked(item, field) ? 'border-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:border-amber-500/50 dark:text-amber-400 shadow-sm' : 'border-amber-200 text-amber-500 hover:text-amber-700 hover:border-amber-400 hover:bg-amber-50/50 dark:border-amber-700/50 dark:text-amber-500 dark:hover:bg-amber-900/30'"
-                                                                :title="isCustomTaxUnlocked(item, field) ? 'قفل کردن مالیات' : 'ویرایش دستی مالیات'">
-                                                            <svg x-show="!isCustomTaxUnlocked(item, field)" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                            <svg x-show="isCustomTaxUnlocked(item, field)" class="w-3.5 h-3.5" x-cloak fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                {{-- جمع ردیف فیلد سفارشی --}}
-                                                <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm">
-                                                    <span x-text="formatMoney(getCustomFieldRowTotal(item, field))"></span>
-                                                    <span class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
-                                                </td>
-                                                {{-- دکمه حذف مقدار فیلد --}}
-                                                <td class="px-4 py-2.5 align-middle text-center">
                                                     <button type="button"
-                                                            @click="clearFieldValue(item, field)"
-                                                            class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                                            title="حذف مقدار فیلد">
-                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                            @click="toggleCustomTaxUnlock(item, field)"
+                                                            class="p-1.5 rounded-lg border-2 transition-all active:scale-95 shrink-0"
+                                                            :class="isCustomTaxUnlocked(item, field) ? 'border-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:border-amber-500/50 dark:text-amber-400 shadow-sm' : 'border-amber-200 text-amber-500 hover:text-amber-700 hover:border-amber-400 hover:bg-amber-50/50 dark:border-amber-700/50 dark:text-amber-500 dark:hover:bg-amber-900/30'"
+                                                            :title="isCustomTaxUnlocked(item, field) ? 'قفل کردن مالیات' : 'ویرایش دستی مالیات'">
+                                                        <svg x-show="!isCustomTaxUnlocked(item, field)"
+                                                             class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                             stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                                        </svg>
+                                                        <svg x-show="isCustomTaxUnlocked(item, field)"
+                                                             class="w-3.5 h-3.5" x-cloak fill="none"
+                                                             viewBox="0 0 24 24" stroke="currentColor"
+                                                             stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                                                         </svg>
                                                     </button>
-                                                </td>
-                                            </tr>
-                                        </template>
+                                                </div>
+                                            </td>
+                                            {{-- جمع ردیف فیلد سفارشی --}}
+                                            <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm">
+                                                    <span
+                                                        x-text="formatMoney(getCustomFieldRowTotal(item, field))"></span>
+                                                <span
+                                                    class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                            </td>
+                                            {{-- دکمه حذف مقدار فیلد --}}
+                                            <td class="px-4 py-2.5 align-middle text-center">
+                                                <button type="button"
+                                                        @click="clearFieldValue(item, field)"
+                                                        class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                        title="حذف مقدار فیلد">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor" stroke-width="1.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                    </svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </template>
                                     </tbody>
                                 </template>
                             </template>
-
-                            {{-- بخش تنظیمات فیلدهای سفارشی --}}
                             <tr x-show="(item.service_custom_fields && item.service_custom_fields.length > 0) && (!item._packageGroupId || !collapsedPackages[item._packageGroupId])">
                                 <td colspan="8" class="p-0 border-0">
                                     <div x-show="item._showCustomFields"
@@ -1121,158 +1229,253 @@
                                                             </div>
                                                             <div class="w-full flex items-center">
                                                                 <template x-if="item._packageGroupId || item._isMerged">
-                                                                     <div class="w-full">
-                                                                         <div class="w-full flex items-center justify-between p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs font-bold text-amber-800 dark:text-amber-300">
-                                                                             <div class="flex items-center gap-1.5 min-w-0">
-                                                                                 <svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                                                                 <span class="truncate" x-text="getFieldValueLabel(field, item.custom_field_values[field.id]) || 'تنظیم نشده'"></span>
-                                                                             </div>
-                                                                             <span class="text-[10px] text-amber-600 dark:text-amber-400 font-normal shrink-0 me-1">(قفل شده)</span>
-                                                                         </div>
-                                                                         <input type="hidden" :name="'items[' + index + '][custom_fields][' + field.id + ']'" :value="item.custom_field_values[field.id]">
-                                                                     </div>
+                                                                    <div class="w-full">
+                                                                        <div
+                                                                            class="w-full flex items-center justify-between p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs font-bold text-amber-800 dark:text-amber-300">
+                                                                            <div
+                                                                                class="flex items-center gap-1.5 min-w-0">
+                                                                                <svg
+                                                                                    class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0"
+                                                                                    fill="none" viewBox="0 0 24 24"
+                                                                                    stroke="currentColor"
+                                                                                    stroke-width="2">
+                                                                                    <path stroke-linecap="round"
+                                                                                          stroke-linejoin="round"
+                                                                                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                                                                </svg>
+                                                                                <span class="truncate"
+                                                                                      x-text="getFieldValueLabel(field, item.custom_field_values[field.id]) || 'تنظیم نشده'"></span>
+                                                                            </div>
+                                                                            <span
+                                                                                class="text-[10px] text-amber-600 dark:text-amber-400 font-normal shrink-0 me-1">(قفل شده)</span>
+                                                                        </div>
+                                                                        <input type="hidden"
+                                                                               :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                               :value="item.custom_field_values[field.id]">
+                                                                    </div>
                                                                 </template>
                                                                 <template x-if="!item._packageGroupId">
                                                                     <div class="w-full">
-                                                                <template x-if="['text', 'email', 'phone', 'url'].includes(field.type)">
-                                                                    <input :type="field.type === 'url' ? 'url' : field.type" :name="'items[' + index + '][custom_fields][' + field.id + ']'" x-model="item.custom_field_values[field.id]" class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all" :required="field.is_required">
-                                                                </template>
-                                                                <template x-if="field.type === 'datetime'"><input
-                                                                         type="text" readonly data-jdp-with-time
-                                                                         :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                         x-model="item.custom_field_values[field.id]"
-                                                                         @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
-                                                                         @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
-                                                                         @change="item.custom_field_values[field.id] = $el.value"
-                                                                         class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
-                                                                         placeholder="انتخاب تاریخ و ساعت"
-                                                                         autocomplete="off"
-                                                                         :required="field.is_required"></template>
-                                                                <template x-if="field.type === 'date'"><input
-                                                                         type="text" readonly data-jdp-only-date
-                                                                         :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                         x-model="item.custom_field_values[field.id]"
-                                                                         @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
-                                                                         @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
-                                                                         @change="item.custom_field_values[field.id] = $el.value"
-                                                                         class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
-                                                                         placeholder="انتخاب تاریخ"
-                                                                         autocomplete="off"
-                                                                         :required="field.is_required"></template>
-                                                                <template x-if="field.type === 'number'"><input
-                                                                         type="text"
-                                                                         :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                         :value="formatPriceInput(item.custom_field_values[field.id])"
-                                                                         @input="item.custom_field_values[field.id] = parsePriceInput($event.target.value)"
-                                                                         class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-center tabular-nums dir-ltr transition-all"
-                                                                         :required="field.is_required"></template>
-                                                                <template x-if="field.type === 'textarea'"><textarea
-                                                                        :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                        x-model="item.custom_field_values[field.id]"
-                                                                        rows="2"
-                                                                        class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none transition-all"
-                                                                        :required="field.is_required"></textarea>
-                                                                </template>
-                                                                <template x-if="field.type === 'select'">
-                                                                    <div class="relative w-full" x-data="{ open: false }" @click.outside="open = false">
-                                                                        <button type="button" @click="open = !open"
-                                                                                class="w-full flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all text-start">
-                                                                            <span x-text="item.custom_field_values[field.id] || 'انتخاب کنید...'"
-                                                                                  :class="item.custom_field_values[field.id] ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'"></span>
-                                                                            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0" :class="open ? 'rotate-180 text-indigo-600' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                                                        </button>
-                                                                        <input type="hidden"
-                                                                               :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                               :value="item.custom_field_values[field.id]"
-                                                                               :required="field.is_required && !item.custom_field_values[field.id]">
-                                                                        
-                                                                        <div x-show="open" x-transition.opacity.duration.150ms style="display: none;"
-                                                                             class="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1">
-                                                                            <button type="button" @click="item.custom_field_values[field.id] = ''; open = false"
-                                                                                    class="w-full text-start px-3 py-2 text-xs text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                                                                انتخاب کنید...
-                                                                            </button>
-                                                                            <template x-for="opt in getFieldOptionsList(field)" :key="opt.label">
-                                                                                <button type="button" @click="item.custom_field_values[field.id] = opt.label; open = false"
-                                                                                        class="w-full flex items-center justify-between text-start px-3 py-2 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border-t border-gray-100 dark:border-gray-700/40 transition-colors"
-                                                                                        :class="item.custom_field_values[field.id] === opt.label ? 'bg-indigo-50/70 dark:bg-indigo-500/20 font-bold text-indigo-600 dark:text-indigo-400' : 'text-gray-800 dark:text-gray-200'">
-                                                                                    <span x-text="opt.label" class="font-medium"></span>
-                                                                                    <span x-show="field.has_pricing && opt.price > 0" class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-200/50 dark:border-emerald-500/20" x-text="'+' + formatMoney(opt.price) + ' ' + currencyLabel"></span>
+                                                                        <template
+                                                                            x-if="['text', 'email', 'phone', 'url'].includes(field.type)">
+                                                                            <input
+                                                                                :type="field.type === 'url' ? 'url' : field.type"
+                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                x-model="item.custom_field_values[field.id]"
+                                                                                class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                                :required="field.is_required">
+                                                                        </template>
+                                                                        <template x-if="field.type === 'datetime'">
+                                                                            <input
+                                                                                type="text" readonly data-jdp-with-time
+                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                x-model="item.custom_field_values[field.id]"
+                                                                                @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
+                                                                                @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
+                                                                                @change="item.custom_field_values[field.id] = $el.value"
+                                                                                class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
+                                                                                placeholder="انتخاب تاریخ و ساعت"
+                                                                                autocomplete="off"
+                                                                                :required="field.is_required">
+                                                                        </template>
+                                                                        <template x-if="field.type === 'date'"><input
+                                                                                type="text" readonly data-jdp-only-date
+                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                x-model="item.custom_field_values[field.id]"
+                                                                                @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
+                                                                                @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
+                                                                                @change="item.custom_field_values[field.id] = $el.value"
+                                                                                class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
+                                                                                placeholder="انتخاب تاریخ"
+                                                                                autocomplete="off"
+                                                                                :required="field.is_required">
+                                                                        </template>
+                                                                        <template x-if="field.type === 'number'"><input
+                                                                                type="text"
+                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                :value="formatPriceInput(item.custom_field_values[field.id])"
+                                                                                @input="item.custom_field_values[field.id] = parsePriceInput($event.target.value)"
+                                                                                class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-center tabular-nums dir-ltr transition-all"
+                                                                                :required="field.is_required">
+                                                                        </template>
+                                                                        <template
+                                                                            x-if="field.type === 'textarea'"><textarea
+                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                x-model="item.custom_field_values[field.id]"
+                                                                                rows="2"
+                                                                                class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none transition-all"
+                                                                                :required="field.is_required"></textarea>
+                                                                        </template>
+                                                                        <template x-if="field.type === 'select'">
+                                                                            <div class="relative w-full"
+                                                                                 x-data="{ open: false }"
+                                                                                 @click.outside="open = false">
+                                                                                <button type="button"
+                                                                                        @click="open = !open"
+                                                                                        class="w-full flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all text-start">
+                                                                            <span
+                                                                                x-text="item.custom_field_values[field.id] || 'انتخاب کنید...'"
+                                                                                :class="item.custom_field_values[field.id] ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'"></span>
+                                                                                    <svg
+                                                                                        class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0"
+                                                                                        :class="open ? 'rotate-180 text-indigo-600' : ''"
+                                                                                        fill="none" viewBox="0 0 24 24"
+                                                                                        stroke="currentColor">
+                                                                                        <path stroke-linecap="round"
+                                                                                              stroke-linejoin="round"
+                                                                                              stroke-width="2"
+                                                                                              d="M19 9l-7 7-7-7"/>
+                                                                                    </svg>
                                                                                 </button>
-                                                                            </template>
-                                                                        </div>
-                                                                    </div>
-                                                                </template>
-                                                                <template x-if="field.type === 'multiselect'">
-                                                                    <div
-                                                                        class="flex flex-col gap-1.5 w-full max-h-40 overflow-y-auto sc-thin">
-                                                                        <template
-                                                                            x-for="opt in getFieldOptionsList(field)"
-                                                                            :key="opt.label"><label
-                                                                                class="flex items-center justify-between gap-2.5 cursor-pointer text-[11px] px-3 py-2.5 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors w-full">
-                                                                                <div class="flex items-center gap-2.5">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        :name="'items[' + index + '][custom_fields][' + field.id + '][]'"
-                                                                                        :value="opt.label"
-                                                                                        :checked="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].includes(opt.label)"
-                                                                                        @change="toggleMultiselect(item, field.id, opt.label, $event.target.checked)"
-                                                                                        class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900">
-                                                                                    <span
-                                                                                        x-text="opt.label"
-                                                                                        class="text-gray-700 dark:text-gray-300 font-medium"></span>
+                                                                                <input type="hidden"
+                                                                                       :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                       :value="item.custom_field_values[field.id]"
+                                                                                       :required="field.is_required && !item.custom_field_values[field.id]">
+
+                                                                                <div x-show="open"
+                                                                                     x-transition.opacity.duration.150ms
+                                                                                     style="display: none;"
+                                                                                     class="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1">
+                                                                                    <button type="button"
+                                                                                            @click="item.custom_field_values[field.id] = ''; open = false"
+                                                                                            class="w-full text-start px-3 py-2 text-xs text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                                                                        انتخاب کنید...
+                                                                                    </button>
+                                                                                    <template
+                                                                                        x-for="opt in getFieldOptionsList(field)"
+                                                                                        :key="opt.label">
+                                                                                        <button type="button"
+                                                                                                @click="item.custom_field_values[field.id] = opt.label; open = false"
+                                                                                                class="w-full flex items-center justify-between text-start px-3 py-2 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border-t border-gray-100 dark:border-gray-700/40 transition-colors"
+                                                                                                :class="item.custom_field_values[field.id] === opt.label ? 'bg-indigo-50/70 dark:bg-indigo-500/20 font-bold text-indigo-600 dark:text-indigo-400' : 'text-gray-800 dark:text-gray-200'">
+                                                                                            <span x-text="opt.label"
+                                                                                                  class="font-medium"></span>
+                                                                                            <span
+                                                                                                x-show="field.has_pricing && opt.price > 0"
+                                                                                                class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-200/50 dark:border-emerald-500/20"
+                                                                                                x-text="'+' + formatMoney(opt.price) + ' ' + currencyLabel"></span>
+                                                                                        </button>
+                                                                                    </template>
                                                                                 </div>
-                                                                                <template x-if="field.has_pricing && opt.price > 0">
-                                                                                    <span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-500/20"
-                                                                                          x-text="'+ ' + formatMoney(opt.price) + ' ' + currencyLabel"></span>
+                                                                            </div>
+                                                                        </template>
+                                                                        <template x-if="field.type === 'multiselect'">
+                                                                            <div
+                                                                                class="flex flex-col gap-1.5 w-full max-h-40 overflow-y-auto sc-thin">
+                                                                                <template
+                                                                                    x-for="opt in getFieldOptionsList(field)"
+                                                                                    :key="opt.label"><label
+                                                                                        class="flex items-center justify-between gap-2.5 cursor-pointer text-[11px] px-3 py-2.5 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors w-full">
+                                                                                        <div
+                                                                                            class="flex items-center gap-2.5">
+                                                                                            <input
+                                                                                                type="checkbox"
+                                                                                                :name="'items[' + index + '][custom_fields][' + field.id + '][]'"
+                                                                                                :value="opt.label"
+                                                                                                :checked="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].includes(opt.label)"
+                                                                                                @change="toggleMultiselect(item, field.id, opt.label, $event.target.checked)"
+                                                                                                class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900">
+                                                                                            <span
+                                                                                                x-text="opt.label"
+                                                                                                class="text-gray-700 dark:text-gray-300 font-medium"></span>
+                                                                                        </div>
+                                                                                        <template
+                                                                                            x-if="field.has_pricing && opt.price > 0">
+                                                                                    <span
+                                                                                        class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-500/20"
+                                                                                        x-text="'+ ' + formatMoney(opt.price) + ' ' + currencyLabel"></span>
+                                                                                        </template>
+                                                                                    </label>
                                                                                 </template>
-                                                                            </label>
+                                                                            </div>
+                                                                        </template>
+                                                                        <template x-if="field.type === 'radio'">
+                                                                            <div class="flex flex-col gap-1.5 w-full">
+                                                                                <template
+                                                                                    x-for="opt in getFieldOptionsList(field)"
+                                                                                    :key="opt.label"><label
+                                                                                        class="flex items-center justify-between gap-2.5 cursor-pointer text-[11px] px-3 py-2.5 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors w-full">
+                                                                                        <div
+                                                                                            class="flex items-center gap-2.5">
+                                                                                            <input
+                                                                                                type="radio"
+                                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                                x-model="item.custom_field_values[field.id]"
+                                                                                                :value="opt.label"
+                                                                                                class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900">
+                                                                                            <span
+                                                                                                x-text="opt.label"
+                                                                                                class="text-gray-700 dark:text-gray-300 font-medium"></span>
+                                                                                        </div>
+                                                                                        <template
+                                                                                            x-if="field.has_pricing && opt.price > 0">
+                                                                                    <span
+                                                                                        class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-500/20"
+                                                                                        x-text="'+ ' + formatMoney(opt.price) + ' ' + currencyLabel"></span>
+                                                                                        </template>
+                                                                                    </label>
+                                                                                </template>
+                                                                            </div>
+                                                                        </template>
+                                                                        <template x-if="field.type === 'checkbox'">
+                                                                            <label
+                                                                                class="flex items-center gap-2.5 cursor-pointer w-full px-3 py-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-indigo-50 hover:border-indigo-300 dark:bg-gray-900/50 dark:border-gray-700 dark:hover:bg-indigo-900/30 dark:hover:border-indigo-700 transition-colors"><input
+                                                                                    type="checkbox"
+                                                                                    :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                    x-model="item.custom_field_values[field.id]"
+                                                                                    value="1"
+                                                                                    class="w-4.5 h-4.5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900"><span
+                                                                                    class="text-xs font-bold text-gray-700 dark:text-gray-300">انتخاب می‌کنم</span></label>
+                                                                        </template>
+                                                                        <template x-if="field.type === 'file'"><input
+                                                                                type="file"
+                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                @change="item.custom_field_values[field.id] = $event.target.files[0]?.name || ''"
+                                                                                class="w-full text-xs rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400"
+                                                                                :required="field.is_required">
                                                                         </template>
                                                                     </div>
                                                                 </template>
-                                                                <template x-if="field.type === 'radio'">
-                                                                    <div class="flex flex-col gap-1.5 w-full">
-                                                                        <template
-                                                                            x-for="opt in getFieldOptionsList(field)"
-                                                                            :key="opt.label"><label
-                                                                                class="flex items-center justify-between gap-2.5 cursor-pointer text-[11px] px-3 py-2.5 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors w-full">
-                                                                                <div class="flex items-center gap-2.5">
-                                                                                    <input
-                                                                                        type="radio"
-                                                                                        :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                                        x-model="item.custom_field_values[field.id]"
-                                                                                        :value="opt.label"
-                                                                                        class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900">
-                                                                                    <span
-                                                                                        x-text="opt.label"
-                                                                                        class="text-gray-700 dark:text-gray-300 font-medium"></span>
-                                                                                </div>
-                                                                                <template x-if="field.has_pricing && opt.price > 0">
-                                                                                    <span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-500/20"
-                                                                                          x-text="'+ ' + formatMoney(opt.price) + ' ' + currencyLabel"></span>
-                                                                                </template>
-                                                                            </label>
-                                                                        </template>
-                                                                    </div>
-                                                                </template>
-                                                                <template x-if="field.type === 'checkbox'"><label
-                                                                        class="flex items-center gap-2.5 cursor-pointer w-full px-3 py-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-indigo-50 hover:border-indigo-300 dark:bg-gray-900/50 dark:border-gray-700 dark:hover:bg-indigo-900/30 dark:hover:border-indigo-700 transition-colors"><input
-                                                                            type="checkbox"
-                                                                            :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                            x-model="item.custom_field_values[field.id]"
-                                                                            value="1"
-                                                                            class="w-4.5 h-4.5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900"><span
-                                                                            class="text-xs font-bold text-gray-700 dark:text-gray-300">انتخاب می‌کنم</span></label>
-                                                                </template>
-                                                                <template x-if="field.type === 'file'"><input
-                                                                        type="file"
-                                                                        :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                        @change="item.custom_field_values[field.id] = $event.target.files[0]?.name || ''"
-                                                                        class="w-full text-xs rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400"
-                                                                        :required="field.is_required"></template>
                                                             </div>
+
+                                                            {{-- بخش تنظیم تعداد داخل کارت فیلد سفارشی برای فیلدهای دارای قیمت --}}
+                                                            <template x-if="field.has_pricing && field.type !== 'multiselect'">
+                                                                <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between gap-2"
+                                                                     x-show="isFieldSelected(field, item.custom_field_values[field.id])">
+                                                                    <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                                        <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                                                                        </svg>
+                                                                        تعداد:
+                                                                    </span>
+                                                                    <div class="w-24">
+                                                                        <input type="text"
+                                                                               :value="toPersianNum(getCustomFieldQuantity(item, field))"
+                                                                               @input="setCustomFieldQuantity(item, field, null, $event.target.value)"
+                                                                               class="w-full rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/40 dark:bg-indigo-950/20 px-2.5 py-1 text-xs text-center font-bold text-indigo-900 dark:text-indigo-200 tabular-nums focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                               dir="ltr" placeholder="۱">
+                                                                    </div>
+                                                                </div>
                                                             </template>
-                                                            </div>
+
+                                                            <template x-if="field.has_pricing && field.type === 'multiselect'">
+                                                                <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 space-y-1.5"
+                                                                     x-show="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].length > 0">
+                                                                    <div class="text-[10px] font-bold text-gray-400">تعداد گزینه‌های انتخابی:</div>
+                                                                    <template x-for="opt in (Array.isArray(item.custom_field_values[field.id]) ? item.custom_field_values[field.id] : [])" :key="opt">
+                                                                        <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/60 dark:border-indigo-800/40">
+                                                                            <span class="text-[11px] font-medium text-gray-700 dark:text-gray-300 truncate" x-text="opt"></span>
+                                                                            <div class="w-20 shrink-0">
+                                                                                <input type="text"
+                                                                                       :value="toPersianNum(getCustomFieldQuantity(item, field, opt))"
+                                                                                       @input="setCustomFieldQuantity(item, field, opt, $event.target.value)"
+                                                                                       class="w-full rounded-md border border-indigo-200 dark:border-indigo-800/60 bg-white dark:bg-gray-900 px-2 py-0.5 text-xs text-center font-bold text-indigo-900 dark:text-indigo-200 tabular-nums outline-none"
+                                                                                       dir="ltr" placeholder="۱">
+                                                                            </div>
+                                                                        </div>
+                                                                    </template>
+                                                                </div>
+                                                            </template>
                                                         </div>
                                                     </template>
                                                 </div>
@@ -1363,11 +1566,15 @@
                             <div>
                                 <span class="text-base font-black text-gray-900 dark:text-white block">مبلغ نهایی</span>
                                 <template x-if="totals.isRounded">
-                                    <div class="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded-lg border border-indigo-200/80 dark:border-indigo-800/60 w-fit">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    <div
+                                        class="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded-lg border border-indigo-200/80 dark:border-indigo-800/60 w-fit">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                             stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        <span>حاصل رندسازی مبالغ (<span x-text="(totals.roundingDiff > 0 ? '+' : '') + formatMoney(totals.roundingDiff)"></span> {{ $currencyLabel }})</span>
+                                        <span>حاصل رندسازی مبالغ (<span
+                                                x-text="(totals.roundingDiff > 0 ? '+' : '') + formatMoney(totals.roundingDiff)"></span> {{ $currencyLabel }})</span>
                                     </div>
                                 </template>
                             </div>
@@ -1379,64 +1586,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- تنظیمات تمدید دوره‌ای و صدور همزمان فاکتور تمدید دستی --}}
-            <div class="{{ $cardClass }} relative overflow-hidden transition-all duration-300"
-                 x-show="hasRecurringItems()" x-transition>
-                <div
-                    class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 rounded-t-3xl relative flex items-center justify-between">
-                    <h2 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                        <div
-                            class="p-2.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 rounded-xl shadow-sm border border-indigo-100 dark:border-indigo-500/20">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
-                        </div>
-                        تنظیمات تمدید سرویس‌های دوره‌ای
-                    </h2>
-                    <span
-                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-xs font-bold dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-400">
-                        سرویس دوره‌ای
-                    </span>
-                </div>
-                <div class="p-6 space-y-4">
-                    <label for="create_manual_renewal_invoice"
-                           class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 select-none group"
-                           :class="createManualRenewalInvoice 
-                               ? 'border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20 dark:border-indigo-500/60 shadow-sm' 
-                               : 'border-transparent bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30'">
-                        <div class="space-y-1.5 max-w-2xl">
-                            <div class="flex items-center gap-2.5">
-                                <span class="text-base font-black text-gray-800 dark:text-gray-200">صدور فاکتور تمدید همزمان (دستی)</span>
-                                <span
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20">
-                                    جلوگیری از صدور مجدد خودکار
-                                </span>
-                            </div>
-                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 leading-6">
-                                با فعال‌سازی این گزینه، همزمان با ثبت فاکتور فعلی، یک فاکتور تمدید مجزا برای تاریخ سررسید تمدید صادر می‌شود و گردش‌کار خودکار صدور فاکتور، ایجاد فاکتور سیستمی را برای این دوره نادیده می‌گیرد.
-                            </p>
-                        </div>
-                        <div class="relative shrink-0">
-                            <input type="checkbox" id="create_manual_renewal_invoice" name="create_manual_renewal_invoice"
-                                   value="1" x-model="createManualRenewalInvoice" class="sr-only peer">
-                            <div
-                                class="w-14 h-8 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-indigo-600 transition-colors duration-300 shadow-inner"></div>
-                            <div
-                                class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full shadow transition-transform duration-300 peer-checked:-translate-x-6 flex items-center justify-center pointer-events-none">
-                                <svg
-                                    class="w-3.5 h-3.5 text-indigo-600 opacity-0 peer-checked:opacity-100 transition-opacity duration-200"
-                                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                </svg>
-                            </div>
-                        </div>
-                    </label>
-                </div>
-            </div>
-
-            {{-- یادداشت --}}
             <div class="{{ $cardClass }} relative overflow-hidden">
                 <div
                     class="absolute inset-0 bg-gradient-to-br from-emerald-50/50 via-transparent to-transparent dark:from-emerald-500/5 pointer-events-none"></div>
@@ -1479,16 +1628,12 @@
                 </div>
             </div>
         </form>
-
-        {{-- مدال انتخاب کالا از فروشگاه --}}
         <div x-show="activeProductModalIndex !== null" x-transition.opacity
              class="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
              style="display: none;" @click.self="closeProductModal()">
             <div
                 class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
                 x-transition.scale.origin.center @click.outside="closeProductModal()">
-
-                {{-- هدر مدال --}}
                 <div
                     class="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/30">
                     <h3 class="text-lg font-black text-gray-800 dark:text-white flex items-center gap-2">
@@ -1506,9 +1651,8 @@
                         </svg>
                     </button>
                 </div>
-
-                {{-- فیلترها --}}
-                <div class="p-5 border-b border-gray-200 dark:border-gray-700 space-y-4 bg-gray-50/50 dark:bg-gray-800/50">
+                <div
+                    class="p-5 border-b border-gray-200 dark:border-gray-700 space-y-4 bg-gray-50/50 dark:bg-gray-800/50">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {{-- Stock Status Filter --}}
                         <div>
@@ -1522,22 +1666,35 @@
 
                         {{-- Attributes Filters --}}
                         <template x-for="attr in modalProductAttributes" :key="attr.name">
-                            <div class="relative" x-data="{ open: false }" x-init="if(!modalSelectedAttributes[attr.name]) modalSelectedAttributes = { ...modalSelectedAttributes, [attr.name]: [] }" @click.outside="open = false">
+                            <div class="relative" x-data="{ open: false }"
+                                 x-init="if(!modalSelectedAttributes[attr.name]) modalSelectedAttributes = { ...modalSelectedAttributes, [attr.name]: [] }"
+                                 @click.outside="open = false">
                                 <button type="button" @click="open = !open"
                                         class="w-full flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all cursor-pointer">
                                     <div class="flex items-center gap-2 truncate">
                                         <span class="truncate" x-text="attr.name"></span>
-                                        <template x-if="modalSelectedAttributes[attr.name] && modalSelectedAttributes[attr.name].length > 0">
-                                            <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400 text-[10px] font-bold" x-text="toPersianNum(modalSelectedAttributes[attr.name].length)"></span>
+                                        <template
+                                            x-if="modalSelectedAttributes[attr.name] && modalSelectedAttributes[attr.name].length > 0">
+                                            <span
+                                                class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400 text-[10px] font-bold"
+                                                x-text="toPersianNum(modalSelectedAttributes[attr.name].length)"></span>
                                         </template>
                                     </div>
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                         stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                                    </svg>
                                 </button>
-                                <div x-show="open" style="display: none;" class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                                <div x-show="open" style="display: none;"
+                                     class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                                     <div class="max-h-48 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                                         <template x-for="v in attr.values" :key="v">
-                                            <label class="flex items-center gap-2 px-2 py-1.5 text-xs font-medium rounded-lg cursor-pointer hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors">
-                                                <input type="checkbox" :value="v" x-model="modalSelectedAttributes[attr.name]" @change="modalSelectedAttributes = { ...modalSelectedAttributes }" class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 bg-gray-50 dark:bg-gray-900 dark:border-gray-600 h-4 w-4">
+                                            <label
+                                                class="flex items-center gap-2 px-2 py-1.5 text-xs font-medium rounded-lg cursor-pointer hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors">
+                                                <input type="checkbox" :value="v"
+                                                       x-model="modalSelectedAttributes[attr.name]"
+                                                       @change="modalSelectedAttributes = { ...modalSelectedAttributes }"
+                                                       class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 bg-gray-50 dark:bg-gray-900 dark:border-gray-600 h-4 w-4">
                                                 <span x-text="v" class="text-gray-700 dark:text-gray-300"></span>
                                             </label>
                                         </template>
@@ -1547,8 +1704,6 @@
                         </template>
                     </div>
                 </div>
-
-                {{-- محتوای مدال (دسته‌بندی‌ها و کالاها) --}}
                 <div class="p-5 flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/20">
                     <template x-if="modalCategories.length === 0">
                         <div class="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
@@ -1628,9 +1783,6 @@
                 </div>
             </div>
         </div>
-
-        {{-- Package modal removed: package selection is now inline dropdown --}}
-
     </div>
 
     @push('scripts')
@@ -1670,7 +1822,6 @@
                     customersList: @json($customersListForJs),
                     customerQuery: '',
                     customerDropdownOpen: false,
-                    createManualRenewalInvoice: false,
                     periodLabels: {monthly: 'ماهانه', quarterly: 'فصلی', semi_annual: 'شش ماهه', annual: 'سالانه'},
 
                     activeProductModalIndex: null,
@@ -2170,7 +2321,11 @@
                             let f2 = {...f};
                             let rawOptions = f2.options || [];
                             if (typeof rawOptions === 'string') {
-                                try { rawOptions = JSON.parse(rawOptions); } catch (e) { rawOptions = []; }
+                                try {
+                                    rawOptions = JSON.parse(rawOptions);
+                                } catch (e) {
+                                    rawOptions = [];
+                                }
                             }
                             let normalizedOptions = [];
                             if (Array.isArray(rawOptions)) {
@@ -2253,7 +2408,11 @@
                         if (!f || !f.options) return [];
                         let opts = f.options;
                         if (typeof opts === 'string') {
-                            try { opts = JSON.parse(opts); } catch (e) { opts = []; }
+                            try {
+                                opts = JSON.parse(opts);
+                            } catch (e) {
+                                opts = [];
+                            }
                         }
                         if (!Array.isArray(opts)) return [];
                         return opts.map(opt => {

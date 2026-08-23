@@ -1,0 +1,1 @@
+@include('projects::projects.index')

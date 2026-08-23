@@ -105,7 +105,6 @@ class StoreInvoiceRequest extends FormRequest
             'installment_due_day' => 'nullable|integer|min:1|max:31',
             'installment_start_date' => 'nullable|string',
             'installment_schedule' => 'nullable|string',
-            'create_manual_renewal_invoice' => 'nullable|boolean',
         ];
 
         if ($this->input('payment_mode') === 'installment') {

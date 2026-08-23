@@ -336,10 +336,6 @@ class InvoiceController extends Controller
 
             if (!$isProforma) {
                 $this->syncOrdersForInvoice($invoice, $preparedItems);
-
-                if ($request->boolean('create_manual_renewal_invoice')) {
-                    $this->createManualRenewalInvoices($invoice, $preparedItems, $request->user()?->id ?? 1);
-                }
             }
         });
 
@@ -1399,8 +1395,6 @@ class InvoiceController extends Controller
                         }
 
                         foreach ($val as $selectedOpt) {
-                            $defaultOptPrice = $field->getOptionPrice($selectedOpt, $price);
-
                             $optQty = 1;
                             if (isset($customFieldsQuantities[$field->id]) && is_array($customFieldsQuantities[$field->id])) {
                                 $optQty = (float)($customFieldsQuantities[$field->id][$selectedOpt] ?? $qty);
@@ -2258,143 +2252,6 @@ class InvoiceController extends Controller
             return Carbon::parse($dateStr)->format('Y-m-d');
         } catch (\Exception $e) {
             return null;
-        }
-    }
-
-    /**
-     * Create manual renewal invoices for recurring services upon invoice creation
-     */
-    private function createManualRenewalInvoices(Invoice $invoice, array $preparedItems, int $userId): void
-    {
-        $orders = Order::where('invoice_id', $invoice->id)->get();
-
-        foreach ($orders as $order) {
-            if (!$order->billing_cycle || !$order->renewal_date) {
-                continue;
-            }
-
-            $service = $order->service_id ? Service::find($order->service_id) : null;
-            if (!$service || $service->billing_type !== 'recurring') {
-                continue;
-            }
-
-            // Find matching item from prepared items
-            $matchingItem = collect($preparedItems)->first(function ($it) use ($order) {
-                return ($it['service_id'] ?? null) == $order->service_id;
-            });
-
-            $renewalPrice = $order->renewal_price > 0 ? (float)$order->renewal_price : (float)($matchingItem['unit_price'] ?? $order->total_amount);
-            $quantity = (float)($matchingItem['quantity'] ?? 1);
-            $taxPercent = (float)($matchingItem['tax_percent'] ?? 0);
-            $unit = $matchingItem['unit'] ?? 'عدد';
-
-            $itemSubtotal = $renewalPrice * $quantity;
-            $itemTax = $taxPercent > 0 ? round(($itemSubtotal * $taxPercent) / 100) : 0;
-            $itemTotal = $itemSubtotal + $itemTax;
-
-            $renewalDateStr = $order->renewal_date ? Carbon::parse($order->renewal_date)->format('Y-m-d') : now()->format('Y-m-d');
-
-            $renewalInvoiceNumber = Invoice::generateNumber();
-
-            $pendingStatus = Status::where('type', 'payment')->where('name', 'در انتظار پرداخت')->first()
-                ?? Status::where('type', 'invoice')->where('name', 'در انتظار پرداخت')->first()
-                ?? Status::where('type', 'payment')->first()
-                ?? $invoice->status_id;
-
-            $renewalInvoice = Invoice::create([
-                'invoice_number' => $renewalInvoiceNumber,
-                'service_id' => $order->service_id,
-                'customer_id' => $invoice->customer_id,
-                'created_by' => $userId,
-                'status_id' => $pendingStatus?->id ?? $invoice->status_id,
-                'client_name' => $invoice->client_name,
-                'client_phone' => $invoice->client_phone,
-                'client_email' => $invoice->client_email,
-                'issue_date' => $renewalDateStr,
-                'due_date' => $renewalDateStr,
-                'tax_percent' => $taxPercent,
-                'subtotal' => (int)$itemSubtotal,
-                'discount_amount' => 0,
-                'tax_amount' => (int)$itemTax,
-                'total' => (int)$itemTotal,
-                'paid_amount' => 0,
-                'currency' => $invoice->currency,
-                'notes' => 'فاکتور تمدید دوره‌ای برای سفارش ' . ($order->order_number ?? '') . ' (' . ($service->name ?? '') . ') - صدور دستی',
-                'meta' => [
-                    'is_renewal' => true,
-                    'created_by_manual_renewal' => true,
-                    'source_invoice_id' => $invoice->id,
-                    'source_order_id' => $order->id,
-                    'billing_period' => $order->billing_cycle,
-                    'skip_auto_renewal_invoice' => true,
-                ],
-            ]);
-
-            $serviceName = !empty($matchingItem['custom_service_name'])
-                ? $matchingItem['custom_service_name']
-                : ($service->name ?? 'تمدید سرویس');
-
-            $itemMeta = $matchingItem['meta'] ?? [];
-            $itemMeta['billing_period'] = $order->billing_cycle;
-            $itemMeta['is_renewal_item'] = true;
-
-            $renewalInvoice->items()->create([
-                'service_id' => $order->service_id,
-                'custom_service_name' => $serviceName,
-                'description' => $matchingItem['description'] ?? 'تمدید دوره سرویس',
-                'unit' => $unit,
-                'quantity' => $quantity,
-                'unit_price' => (int)$renewalPrice,
-                'discount' => 0,
-                'tax_percent' => $taxPercent,
-                'tax_amount' => (int)$itemTax,
-                'total' => (int)$itemTotal,
-                'meta' => $itemMeta,
-            ]);
-
-            // Advance Order's renewal_date to the NEXT billing cycle
-            $currentRenewalDate = Carbon::parse($order->renewal_date);
-            $nextRenewalDate = null;
-            if (class_exists(Jalalian::class)) {
-                try {
-                    $jalali = Jalalian::fromCarbon($currentRenewalDate);
-                    switch ($order->billing_cycle) {
-                        case 'monthly':     $nextJalali = $jalali->addMonths(1); break;
-                        case 'quarterly':   $nextJalali = $jalali->addMonths(3); break;
-                        case 'semi_annual': $nextJalali = $jalali->addMonths(6); break;
-                        case 'annual':      $nextJalali = $jalali->addYears(1); break;
-                        default:            $nextJalali = null; break;
-                    }
-                    if (isset($nextJalali)) {
-                        $nextRenewalDate = $nextJalali->toCarbon()->format('Y-m-d');
-                    }
-                } catch (\Throwable $e) {
-                }
-            }
-            if (!$nextRenewalDate) {
-                switch ($order->billing_cycle) {
-                    case 'monthly':     $nextRenewalDate = $currentRenewalDate->copy()->addMonth()->format('Y-m-d'); break;
-                    case 'quarterly':   $nextRenewalDate = $currentRenewalDate->copy()->addMonths(3)->format('Y-m-d'); break;
-                    case 'semi_annual': $nextRenewalDate = $currentRenewalDate->copy()->addMonths(6)->format('Y-m-d'); break;
-                    case 'annual':      $nextRenewalDate = $currentRenewalDate->copy()->addYear()->format('Y-m-d'); break;
-                }
-            }
-
-            if ($nextRenewalDate) {
-                $order->update(['renewal_date' => $nextRenewalDate]);
-            }
-
-            // Trigger invoice_created workflow on the renewal invoice so other workflows continue to run
-            if (class_exists(WorkflowEngine::class)) {
-                try {
-                    app(WorkflowEngine::class)->start('invoice_created', 'INVOICE', $renewalInvoice->id, [
-                        'source_order_id' => $order->id,
-                        'is_renewal' => true,
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::error('[Workflows] Error starting invoice_created workflow for manual renewal: ' . $e->getMessage());
-                }
-            }
         }
     }
 
