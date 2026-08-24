@@ -25,12 +25,12 @@ class PermissionsSeeder extends Seeder
             Permission::findOrCreate($permission, 'web');
         }
 
-        // پیدا کردن نقش super-admin
-        $superUserRole = Role::where('name', 'super-admin')->first();
-
-        // اگر نقش super-admin وجود داشت، تمام دسترسی های این ماژول را به آن اختصاص بده
-        if ($superUserRole) {
-            $superUserRole->givePermissionTo($permissions);
+        foreach (['super-admin', 'admin'] as $roleName) {
+            $role = Role::firstOrCreate(
+                ['name' => $roleName, 'guard_name' => 'web'],
+                ['display_name' => $roleName === 'super-admin' ? 'مدیر کل' : 'مدیر']
+            );
+            $role->givePermissionTo($permissions);
         }
     }
 }

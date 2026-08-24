@@ -635,10 +635,13 @@ class BookingEngine
                 $cursor = $winStart->copy();
                 while ($cursor->copy()->addMinutes($slotDuration)->lte($winEnd)) {
                     $slotStartLocal = $cursor->copy();
-                    $slotEndLocal   = $cursor->copy()->addMinutes($slotDuration);
-
-                    if ($this->isInBreak($slotStartLocal, $slotEndLocal, $policy['breaks'] ?? [])) {
-                        $cursor->addMinutes($stepMinutes);
+                    $ovBreak = $this->getOverlappingBreak($slotStartLocal, $slotEndLocal, $policy['breaks'] ?? []);
+                    if ($ovBreak) {
+                        if ($ovBreak['end']->gt($cursor)) {
+                            $cursor = $ovBreak['end']->copy();
+                        } else {
+                            $cursor->addMinutes($stepMinutes);
+                        }
                         continue;
                     }
 
@@ -755,6 +758,33 @@ class BookingEngine
         }
 
         return false;
+    }
+
+    public function getOverlappingBreak(Carbon $slotStartLocal, Carbon $slotEndLocal, array $breaks): ?array
+    {
+        foreach ($breaks as $b) {
+            $s = $b['start_local'] ?? $b['start'] ?? null;
+            $e = $b['end_local'] ?? $b['end'] ?? null;
+            if (!$s || !$e) continue;
+
+            $bStart = $this->makeLocalDateTime(
+                $slotStartLocal->copy()->startOfDay(),
+                $s,
+                $slotStartLocal->getTimezone()->getName()
+            );
+            $bEnd = $this->makeLocalDateTime(
+                $slotStartLocal->copy()->startOfDay(),
+                $e,
+                $slotStartLocal->getTimezone()->getName()
+            );
+            if (!$bStart || !$bEnd) continue;
+
+            if ($slotStartLocal->lt($bEnd) && $slotEndLocal->gt($bStart)) {
+                return ['break' => $b, 'start' => $bStart, 'end' => $bEnd];
+            }
+        }
+
+        return null;
     }
 
     /**

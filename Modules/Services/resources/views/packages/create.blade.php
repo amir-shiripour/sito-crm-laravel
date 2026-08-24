@@ -2,6 +2,8 @@
 
 @section('title', 'ایجاد پکیج جدید سرویس و خدمات')
 
+@include('partials.jalali-date-picker')
+
 @php
     $currencyLabel = ($currency ?? 'toman') === 'rial' ? 'ریال' : 'تومان';
     $inputClass = "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 transition-all shadow-sm dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-indigo-500";
@@ -14,7 +16,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 class="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-4 tracking-tight">
             <span
-                class="flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
+                class="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round"
                           d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
@@ -128,11 +130,11 @@
                     <thead
                         class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
                     <tr>
-                        <th class="px-4 py-3 w-[30%] min-w-[200px] font-bold">سرویس / عنوان</th>
-                        <th class="px-4 py-3 w-[28%] min-w-[180px] font-bold">شرح</th>
-                        <th class="px-4 py-3 w-[15%] min-w-[130px] font-bold text-center">تعداد / واحد</th>
-                        <th class="px-4 py-3 w-[20%] min-w-[190px] font-bold text-center">مبلغ واحد</th>
-                        <th class="px-4 py-3 w-[12%] min-w-[130px] font-bold text-center">جمع ردیف</th>
+                        <th class="px-4 py-3 w-[28%] min-w-[200px] max-w-[280px] font-bold">سرویس / عنوان</th>
+                        <th class="px-4 py-3 w-[26%] min-w-[180px] max-w-[240px] font-bold">شرح</th>
+                        <th class="px-4 py-3 w-[14%] min-w-[130px] max-w-[150px] font-bold text-center">تعداد / واحد</th>
+                        <th class="px-4 py-3 w-[18%] min-w-[170px] max-w-[200px] font-bold text-center">مبلغ واحد</th>
+                        <th class="px-4 py-3 w-[14%] min-w-[130px] max-w-[150px] font-bold text-center">جمع ردیف</th>
                         <th class="px-4 py-3 w-12 text-center"></th>
                     </tr>
                     </thead>
@@ -207,13 +209,13 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 align-top">
+                                <td class="px-4 py-3 align-top max-w-[240px]">
                                     <input type="text" x-model="item.description"
                                            :name="'items[' + index + '][description]'"
-                                           class="{{ $inputClass }} py-2.5 text-xs w-full"
+                                           class="{{ $inputClass }} py-2.5 text-xs w-full max-w-full"
                                            placeholder="توضیحات ردیف...">
                                 </td>
-                                <td class="px-4 py-3 align-top">
+                                <td class="px-4 py-3 align-top max-w-[150px]">
                                     <div
                                         class="flex items-stretch w-32 mx-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all shadow-sm">
                                         <input type="text" :value="toPersianNum(item.quantity)"
@@ -228,7 +230,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 align-top">
+                                <td class="px-4 py-3 align-top max-w-[200px]">
                                     <div class="flex items-center gap-1.5 w-full">
                                         <div class="relative w-full">
                                             <input type="text" :value="formatPriceInput(item.unit_price)"
@@ -244,7 +246,7 @@
                                         <button type="button" x-show="item.service_id"
                                                 @click="item._priceUnlocked = !item._priceUnlocked"
                                                 class="shrink-0 p-2.5 rounded-lg border transition-colors"
-                                                :class="item._priceUnlocked ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
+                                                :class="item._priceUnlocked ? 'border-amber-400 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'border-gray-200 text-gray-400 hover:text-amber-500 hover:border-amber-300 dark:border-gray-700'"
                                                 title="ویرایش مبلغ واحد">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                                  stroke-width="2">
@@ -260,14 +262,14 @@
                                         اشتراک: <span x-text="formatMoney(getPeriodPrice(item) || 0)"></span>)
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 tabular-nums font-bold text-gray-800 dark:text-gray-100 text-center whitespace-nowrap align-top">
+                                <td class="px-4 py-3 tabular-nums font-bold text-gray-800 dark:text-gray-100 text-center whitespace-nowrap align-top max-w-[150px]">
                                     <div class="py-2">
                                         <span x-text="formatMoney(calculateRowTotal(item))"></span>
                                         <span
                                             class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-center align-top">
+                                <td class="px-4 py-3 text-center align-top w-12">
                                     <button type="button" @click="removeItem(index)"
                                             class="mt-1 text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-2 transition-colors">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -284,12 +286,12 @@
                                 <template x-for="field in item.service_custom_fields" :key="field.id + '_subrow'">
                                     <tr x-show="field.has_pricing && isFieldSelected(field, item.custom_field_values[field.id])"
                                         class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10 transition-all group relative">
-                                        <td class="px-4 py-2.5 relative align-middle">
+                                        <td class="px-4 py-2.5 relative align-middle max-w-[280px]">
                                             <div
                                                 class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
                                             <div
                                                 class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                            <div class="pe-4 ps-6 flex items-center gap-2">
+                                            <div class="pe-4 ps-6 flex items-center gap-2 min-w-0">
                                                 <span
                                                     class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
                                                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
@@ -300,19 +302,27 @@
                                                 </span>
                                                 <span
                                                     class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate"
+                                                    :title="field.label"
                                                     x-text="field.label"></span>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-2.5 align-middle">
-                                            <span
-                                                class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40"
-                                                x-text="getFieldValueLabel(field, item.custom_field_values[field.id])"></span>
+                                        <td class="px-4 py-2.5 align-middle max-w-[240px]">
+                                            <div class="max-w-full overflow-hidden">
+                                                <span
+                                                    class="block truncate text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40 max-w-full"
+                                                    :title="getFieldValueLabel(field, item.custom_field_values[field.id])"
+                                                    x-text="getFieldValueLabel(field, item.custom_field_values[field.id])"></span>
+                                            </div>
                                         </td>
-                                        <td class="px-4 py-2.5 align-middle">
-                                            <input type="text" readonly :value="toPersianNum(item.quantity)"
-                                                   class="{{ $inputClass }} py-1.5 text-xs text-center bg-gray-50/50 dark:bg-gray-900/20 opacity-70 cursor-not-allowed border-gray-200 dark:border-gray-800 text-gray-400 shadow-none w-32 mx-auto">
+                                        <td class="px-4 py-2.5 align-middle max-w-[150px]">
+                                            <input type="text"
+                                                   :value="toPersianNum(getCustomFieldQuantity(item, field))"
+                                                   @input="setCustomFieldQuantity(item, field, null, $event.target.value)"
+                                                   :name="'items[' + index + '][custom_fields_quantities][' + field.id + ']'"
+                                                   class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none w-32 mx-auto"
+                                                   dir="ltr" placeholder="۱">
                                         </td>
-                                        <td class="px-4 py-2.5 align-middle">
+                                        <td class="px-4 py-2.5 align-middle max-w-[200px]">
                                             <div class="flex items-center gap-1.5 w-full">
                                                 <div class="relative w-full">
                                                     <input type="text"
@@ -329,7 +339,7 @@
                                                 <button type="button"
                                                         @click="item._customPricesUnlocked = item._customPricesUnlocked || {}; item._customPricesUnlocked[field.id] = !item._customPricesUnlocked[field.id]"
                                                         class="shrink-0 p-1.5 rounded-lg border transition-colors"
-                                                        :class="item._customPricesUnlocked?.[field.id] ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
+                                                        :class="item._customPricesUnlocked?.[field.id] ? 'border-amber-400 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'border-gray-200 text-gray-400 hover:text-amber-500 hover:border-amber-300 dark:border-gray-700'"
                                                         title="ویرایش مبلغ فیلد">
                                                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                          stroke="currentColor" stroke-width="2">
@@ -339,12 +349,12 @@
                                                 </button>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm">
+                                        <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm max-w-[150px]">
                                             <span x-text="formatMoney(getCustomFieldRowTotal(item, field))"></span>
                                             <span
                                                 class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
                                         </td>
-                                        <td class="px-4 py-2.5 align-middle text-center">
+                                        <td class="px-4 py-2.5 align-middle text-center w-12">
                                             <button type="button"
                                                     @click="if (field.type === 'checkbox') item.custom_field_values[field.id] = false; else if (field.type === 'multiselect') item.custom_field_values[field.id] = []; else item.custom_field_values[field.id] = '';"
                                                     class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors"
@@ -401,53 +411,96 @@
                                                                 </div>
                                                             </div>
                                                             <div class="relative">
-                                                                <template x-if="field.type === 'text'">
-                                                                    <input type="text"
-                                                                           :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                           x-model="item.custom_field_values[field.id]"
-                                                                           class="{{ $inputClass }} py-2 text-xs"
-                                                                           :placeholder="field.placeholder || field.label">
-                                                                </template>
-
-                                                                <template x-if="field.type === 'number'">
-                                                                    <input type="text"
+                                                                <template x-if="['text', 'email', 'phone', 'url'].includes(field.type)">
+                                                                    <input :type="field.type === 'url' ? 'url' : field.type"
                                                                            :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                            x-model="item.custom_field_values[field.id]"
                                                                            class="{{ $inputClass }} py-2 text-xs"
                                                                            :placeholder="field.placeholder || field.label"
-                                                                           dir="ltr">
+                                                                           :required="field.is_required">
+                                                                </template>
+
+                                                                <template x-if="field.type === 'datetime'">
+                                                                    <div class="relative w-full">
+                                                                        <input type="text" readonly data-jdp-with-time
+                                                                               :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                               x-model="item.custom_field_values[field.id]"
+                                                                               @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
+                                                                               @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
+                                                                               @change="item.custom_field_values[field.id] = $el.value"
+                                                                               class="{{ $inputClass }} py-2 text-xs cursor-pointer pl-8"
+                                                                               placeholder="انتخاب تاریخ و ساعت"
+                                                                               autocomplete="off"
+                                                                               :required="field.is_required">
+                                                                        <button type="button" x-show="item.custom_field_values[field.id]"
+                                                                                @click="item.custom_field_values[field.id] = '';"
+                                                                                class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 p-0.5" title="پاک کردن تاریخ">
+                                                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                        </button>
+                                                                    </div>
+                                                                 </template>
+
+                                                                 <template x-if="field.type === 'date'">
+                                                                    <div class="relative w-full">
+                                                                        <input type="text" readonly data-jdp-only-date
+                                                                               :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                               x-model="item.custom_field_values[field.id]"
+                                                                               @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
+                                                                               @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
+                                                                               @change="item.custom_field_values[field.id] = $el.value"
+                                                                               class="{{ $inputClass }} py-2 text-xs cursor-pointer pl-8"
+                                                                               placeholder="انتخاب تاریخ"
+                                                                               autocomplete="off"
+                                                                               :required="field.is_required">
+                                                                        <button type="button" x-show="item.custom_field_values[field.id]"
+                                                                                @click="item.custom_field_values[field.id] = '';"
+                                                                                class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 p-0.5" title="پاک کردن تاریخ">
+                                                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                        </button>
+                                                                    </div>
+                                                                 </template>
+
+                                                                <template x-if="field.type === 'number'">
+                                                                    <input type="text"
+                                                                           :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                           :value="formatPriceInput(item.custom_field_values[field.id])"
+                                                                           @input="item.custom_field_values[field.id] = parsePriceInput($event.target.value)"
+                                                                           class="{{ $inputClass }} py-2 text-xs text-center tabular-nums font-bold"
+                                                                           :placeholder="field.placeholder || field.label"
+                                                                           dir="ltr"
+                                                                           :required="field.is_required">
                                                                 </template>
 
                                                                 <template x-if="field.type === 'select'">
-                                                                    <select
-                                                                        :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                        x-model="item.custom_field_values[field.id]"
-                                                                        class="{{ $inputClass }} py-2 text-xs">
+                                                                    <select :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                            x-model="item.custom_field_values[field.id]"
+                                                                            class="{{ $inputClass }} py-2 text-xs"
+                                                                            :required="field.is_required">
                                                                         <option value="">انتخاب کنید...</option>
-                                                                        <template
-                                                                            x-for="opt in parseOptions(field.options)"
-                                                                            :key="opt.value">
-                                                                            <option :value="opt.value"
-                                                                                    x-text="opt.label"></option>
+                                                                        <template x-for="opt in getFieldOptionsList(field)" :key="opt.label">
+                                                                            <option :value="opt.label"
+                                                                                    x-text="opt.label + (field.has_pricing && opt.price > 0 ? ' (+' + formatMoney(opt.price) + ' {{ $currencyLabel }})' : '')"></option>
                                                                         </template>
                                                                     </select>
                                                                 </template>
 
                                                                 <template x-if="field.type === 'multiselect'">
-                                                                    <div
-                                                                        class="flex flex-col gap-1.5 w-full max-h-40 overflow-y-auto">
-                                                                        <template
-                                                                            x-for="opt in parseOptions(field.options)"
-                                                                            :key="opt.value">
-                                                                            <label
-                                                                                class="flex items-center gap-2 cursor-pointer text-xs">
-                                                                                <input type="checkbox"
-                                                                                       :name="'items[' + index + '][custom_fields][' + field.id + '][]'"
-                                                                                       :value="opt.value"
-                                                                                       x-model="item.custom_field_values[field.id]"
-                                                                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                                                                                <span x-text="opt.label"
-                                                                                      class="text-gray-700 dark:text-gray-300"></span>
+                                                                    <div class="flex flex-col gap-1.5 w-full max-h-40 overflow-y-auto">
+                                                                        <template x-for="opt in getFieldOptionsList(field)" :key="opt.label">
+                                                                            <label class="flex items-center justify-between gap-2.5 cursor-pointer text-xs px-2 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                                                                                <div class="flex items-center gap-2">
+                                                                                    <input type="checkbox"
+                                                                                           :name="'items[' + index + '][custom_fields][' + field.id + '][]'"
+                                                                                           :value="opt.label"
+                                                                                           :checked="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].includes(opt.label)"
+                                                                                           @change="toggleMultiselect(item, field.id, opt.label, $event.target.checked)"
+                                                                                           class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                                                    <span x-text="opt.label" class="text-gray-700 dark:text-gray-300 font-medium"></span>
+                                                                                </div>
+                                                                                <template x-if="field.has_pricing && opt.price > 0">
+                                                                                    <span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/20"
+                                                                                          x-text="'+ ' + formatMoney(opt.price) + ' {{ $currencyLabel }}'"></span>
+                                                                                </template>
                                                                             </label>
                                                                         </template>
                                                                     </div>
@@ -455,18 +508,20 @@
 
                                                                 <template x-if="field.type === 'radio'">
                                                                     <div class="flex flex-col gap-1.5 w-full">
-                                                                        <template
-                                                                            x-for="opt in parseOptions(field.options)"
-                                                                            :key="opt.value">
-                                                                            <label
-                                                                                class="flex items-center gap-2 cursor-pointer text-xs">
-                                                                                <input type="radio"
-                                                                                       :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                                       x-model="item.custom_field_values[field.id]"
-                                                                                       :value="opt.value"
-                                                                                       class="text-indigo-600 focus:ring-indigo-500">
-                                                                                <span x-text="opt.label"
-                                                                                      class="text-gray-700 dark:text-gray-300"></span>
+                                                                        <template x-for="opt in getFieldOptionsList(field)" :key="opt.label">
+                                                                            <label class="flex items-center justify-between gap-2.5 cursor-pointer text-xs px-2 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                                                                                <div class="flex items-center gap-2">
+                                                                                    <input type="radio"
+                                                                                           :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                           x-model="item.custom_field_values[field.id]"
+                                                                                           :value="opt.label"
+                                                                                           class="text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600">
+                                                                                    <span x-text="opt.label" class="text-gray-700 dark:text-gray-300 font-medium"></span>
+                                                                                </div>
+                                                                                <template x-if="field.has_pricing && opt.price > 0">
+                                                                                    <span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/20"
+                                                                                          x-text="'+ ' + formatMoney(opt.price) + ' {{ $currencyLabel }}'"></span>
+                                                                                </template>
                                                                             </label>
                                                                         </template>
                                                                     </div>
@@ -477,7 +532,8 @@
                                                                         :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                         x-model="item.custom_field_values[field.id]"
                                                                         rows="2" class="{{ $inputClass }} py-2 text-xs"
-                                                                        :placeholder="field.placeholder || field.label"></textarea>
+                                                                        :placeholder="field.placeholder || field.label"
+                                                                        :required="field.is_required"></textarea>
                                                                 </template>
 
                                                                 <template x-if="field.type === 'checkbox'">
@@ -493,7 +549,54 @@
                                                                             x-text="field.label"></span>
                                                                     </label>
                                                                 </template>
+
+                                                                <template x-if="field.type === 'file'">
+                                                                    <input type="file"
+                                                                           :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                           @change="item.custom_field_values[field.id] = $event.target.files[0]?.name || ''"
+                                                                           class="w-full text-xs rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400"
+                                                                           :required="field.is_required">
+                                                                </template>
                                                             </div>
+
+                                                            {{-- بخش تنظیم تعداد داخل کارت فیلد سفارشی برای فیلدهای دارای قیمت --}}
+                                                            <template x-if="field.has_pricing && field.type !== 'multiselect'">
+                                                                <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between gap-2"
+                                                                     x-show="isFieldSelected(field, item.custom_field_values[field.id])">
+                                                                    <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                                        <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                                                                        </svg>
+                                                                        تعداد:
+                                                                    </span>
+                                                                    <div class="w-24">
+                                                                        <input type="text"
+                                                                               :value="toPersianNum(getCustomFieldQuantity(item, field))"
+                                                                               @input="setCustomFieldQuantity(item, field, null, $event.target.value)"
+                                                                               class="w-full rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/40 dark:bg-indigo-950/20 px-2.5 py-1 text-xs text-center font-bold text-indigo-900 dark:text-indigo-200 tabular-nums focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                               dir="ltr" placeholder="۱">
+                                                                    </div>
+                                                                </div>
+                                                            </template>
+
+                                                            <template x-if="field.has_pricing && field.type === 'multiselect'">
+                                                                <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 space-y-1.5"
+                                                                     x-show="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].length > 0">
+                                                                    <div class="text-[10px] font-bold text-gray-400">تعداد گزینه‌های انتخابی:</div>
+                                                                    <template x-for="opt in (Array.isArray(item.custom_field_values[field.id]) ? item.custom_field_values[field.id] : [])" :key="opt">
+                                                                        <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/60 dark:border-indigo-800/40">
+                                                                            <span class="text-[11px] font-medium text-gray-700 dark:text-gray-300 truncate" x-text="opt"></span>
+                                                                            <div class="w-20 shrink-0">
+                                                                                <input type="text"
+                                                                                       :value="toPersianNum(getCustomFieldQuantity(item, field, opt))"
+                                                                                       @input="setCustomFieldQuantity(item, field, opt, $event.target.value)"
+                                                                                       class="w-full rounded-md border border-indigo-200 dark:border-indigo-800/60 bg-white dark:bg-gray-900 px-2 py-0.5 text-xs text-center font-bold text-indigo-900 dark:text-indigo-200 tabular-nums outline-none"
+                                                                                       dir="ltr" placeholder="۱">
+                                                                            </div>
+                                                                        </div>
+                                                                    </template>
+                                                                </div>
+                                                            </template>
                                                         </div>
                                                     </template>
                                                 </div>
@@ -568,11 +671,11 @@
             <div
                 class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-4 rounded-2xl border border-gray-200 dark:border-gray-700/50 shadow-lg flex flex-row-reverse items-center justify-between gap-4">
                 <button type="submit"
-                        class="flex-1 md:flex-none px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg shadow-indigo-500/30 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2">
+                        class="flex-1 md:flex-none px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:from-indigo-500 hover:to-indigo-600 text-white font-black shadow-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                     </svg>
-                    ذخیره پکیج
+                    ثبت نهایی پکیج
                 </button>
                 <a href="{{ route('services.packages.index') }}"
                    class="px-6 py-3.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
@@ -595,6 +698,19 @@
 
                 init() {
                     this.addItem();
+                    if (window.jalaliDatepicker && typeof window.jalaliDatepicker.startWatch === 'function') {
+                        window.jalaliDatepicker.startWatch({
+                            minDate: 'attr',
+                            maxDate: 'attr',
+                            time: true,
+                            date: true,
+                            hasSecond: false,
+                            autoHide: true
+                        });
+                    }
+                    document.addEventListener('jdp:change', (e) => {
+                        e.target.dispatchEvent(new Event('input', {bubbles: true}));
+                    });
                 },
                 addItem() {
                     this.items.push({
@@ -609,6 +725,7 @@
                         service_custom_fields: [],
                         custom_field_values: {},
                         custom_field_custom_prices: {},
+                        custom_field_quantities: {},
                         _customPricesUnlocked: {},
                         _showServiceDropdown: false,
                         _showCustomFields: false,
@@ -625,6 +742,7 @@
                     item.service_custom_fields = [];
                     item.custom_field_values = {};
                     item.custom_field_custom_prices = {};
+                    item.custom_field_quantities = {};
                     item._customPricesUnlocked = {};
                     item._showServiceDropdown = (item.custom_service_name || '').trim().length > 0;
                     item._showCustomFields = false;
@@ -646,42 +764,53 @@
                     item.service_custom_fields = s.custom_fields || s.customFields || [];
                     item.custom_field_values = {};
                     item.custom_field_custom_prices = {};
+                    item.custom_field_quantities = {};
                     item._customPricesUnlocked = {};
                     item._showServiceDropdown = false;
                     item._showCustomFields = item.service_custom_fields.length > 0;
                     item._priceUnlocked = false;
                     this.updatePriceForPeriod(index);
                 },
-                parseOptions(opts) {
-                    if (!opts) return [];
-                    if (Array.isArray(opts)) {
-                        return opts.map(o => {
-                            if (typeof o === 'object' && o !== null) {
-                                return {
-                                    value: o.value || o.id || o.label || '',
-                                    label: o.label || o.name || o.value || ''
-                                };
-                            }
-                            return {value: String(o), label: String(o)};
-                        });
-                    }
+                getFieldOptionsList(f) {
+                    if (!f || !f.options) return [];
+                    let opts = f.options;
                     if (typeof opts === 'string') {
-                        let trimmed = opts.trim();
-                        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-                            try {
-                                let parsed = JSON.parse(trimmed);
-                                return this.parseOptions(parsed);
-                            } catch (e) {
-                            }
+                        try {
+                            opts = JSON.parse(opts);
+                        } catch (e) {
+                            opts = [];
                         }
-                        return trimmed.split(',').map(s => s.trim()).filter(Boolean).map(s => ({value: s, label: s}));
                     }
-                    return [];
+                    if (!Array.isArray(opts)) return [];
+                    return opts.map(opt => {
+                        if (typeof opt === 'object' && opt !== null) {
+                            return {
+                                label: String(opt.label || opt.title || opt.name || opt.value || ''),
+                                price: Number(opt.price || opt.pricing_amount || 0),
+                                pricing_type: opt.pricing_type || 'fixed'
+                            };
+                        }
+                        return {
+                            label: String(opt || ''),
+                            price: 0,
+                            pricing_type: 'fixed'
+                        };
+                    }).filter(o => o.label.trim() !== '');
+                },
+                parseOptions(opts) {
+                    return this.getFieldOptionsList({ options: opts });
+                },
+                toggleMultiselect(it, fId, o, c) {
+                    if (!Array.isArray(it.custom_field_values[fId])) it.custom_field_values[fId] = [];
+                    const a = it.custom_field_values[fId];
+                    const i = a.indexOf(o);
+                    if (c && i === -1) a.push(o);
+                    if (!c && i !== -1) a.splice(i, 1);
                 },
                 isFieldSelected(f, v) {
                     if (v === undefined || v === null || v === '') return false;
-                    if (f.type === 'checkbox') return !!v;
-                    if (f.type === 'multiselect' && Array.isArray(v)) return v.length > 0;
+                    if (f.type === 'checkbox') return (v === true || v === '1' || v === 1);
+                    if (f.type === 'multiselect') return Array.isArray(v) && v.length > 0;
                     return (v !== '' && v !== null && v !== undefined);
                 },
                 getFieldValueLabel(f, v) {
@@ -690,17 +819,86 @@
                     if (f.type === 'multiselect' && Array.isArray(v)) return v.join('، ');
                     return v;
                 },
-                getCustomFieldPrice(it, f) {
-                    if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] !== undefined && it.custom_field_custom_prices[f.id] !== null && it.custom_field_custom_prices[f.id] !== '') {
-                        let parsed = this.parsePriceInput(it.custom_field_custom_prices[f.id]);
-                        if (!isNaN(parsed) && parsed > 0) return parsed;
+                getCustomFieldQuantity(it, f, opt = null) {
+                    if (!it) return 1;
+                    if (opt !== null && opt !== undefined) {
+                        if (it.custom_field_quantities && it.custom_field_quantities[f.id] && typeof it.custom_field_quantities[f.id] === 'object' && it.custom_field_quantities[f.id][opt] !== undefined) {
+                            let q = Number(it.custom_field_quantities[f.id][opt]);
+                            return isNaN(q) || q <= 0 ? 1 : q;
+                        }
+                        if (it.custom_field_quantities && it.custom_field_quantities[f.id] !== undefined && typeof it.custom_field_quantities[f.id] !== 'object') {
+                            let q = Number(it.custom_field_quantities[f.id]);
+                            return isNaN(q) || q <= 0 ? 1 : q;
+                        }
+                        return 1;
+                    }
+                    if (it.custom_field_quantities && it.custom_field_quantities[f.id] !== undefined && typeof it.custom_field_quantities[f.id] !== 'object') {
+                        let q = Number(it.custom_field_quantities[f.id]);
+                        return isNaN(q) || q <= 0 ? 1 : q;
+                    }
+                    return 1;
+                },
+                setCustomFieldQuantity(it, f, opt = null, val) {
+                    let num = Number(this.toEnglishNum(val.toString()).replace(/[^\d.]/g, '')) || 0;
+                    if (num <= 0) num = 1;
+                    if (!it.custom_field_quantities) it.custom_field_quantities = {};
+                    if (opt !== null && opt !== undefined) {
+                        if (typeof it.custom_field_quantities[f.id] !== 'object' || it.custom_field_quantities[f.id] === null) {
+                            it.custom_field_quantities[f.id] = {};
+                        }
+                        it.custom_field_quantities[f.id][opt] = num;
+                    } else {
+                        it.custom_field_quantities[f.id] = num;
+                    }
+                },
+                getCustomFieldPrice(it, f, opt = null) {
+                    if (opt !== null && opt !== undefined) {
+                        if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] && typeof it.custom_field_custom_prices[f.id] === 'object' && it.custom_field_custom_prices[f.id][opt] !== undefined && it.custom_field_custom_prices[f.id][opt] !== '') {
+                            let customVal = Number(it.custom_field_custom_prices[f.id][opt]);
+                            if (!isNaN(customVal) && customVal > 0) return customVal;
+                        }
+                        const optList = this.getFieldOptionsList(f);
+                        const match = optList.find(o => o.label === opt);
+                        if (match && match.price > 0) {
+                            let p = parseFloat(it.unit_price) || 0;
+                            return match.pricing_type === 'percentage' ? p * (match.price / 100) : match.price;
+                        }
+                        let p = parseFloat(it.unit_price) || 0;
+                        let a = Number(f.pricing_amount) || 0;
+                        return f.pricing_type === 'percentage' ? p * (a / 100) : a;
+                    }
+
+                    if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] !== undefined && typeof it.custom_field_custom_prices[f.id] !== 'object' && it.custom_field_custom_prices[f.id] !== null && it.custom_field_custom_prices[f.id] !== '') {
+                        let customVal = Number(it.custom_field_custom_prices[f.id]);
+                        if (!isNaN(customVal) && customVal > 0) return customVal;
+                    }
+                    if (['select', 'radio'].includes(f.type) && it.custom_field_values?.[f.id]) {
+                        let val = it.custom_field_values[f.id];
+                        const optList = this.getFieldOptionsList(f);
+                        const match = optList.find(o => o.label === val);
+                        if (match && match.price > 0) {
+                            let p = parseFloat(it.unit_price) || 0;
+                            return match.pricing_type === 'percentage' ? p * (match.price / 100) : match.price;
+                        }
                     }
                     let p = parseFloat(it.unit_price) || 0;
                     let a = Number(f.pricing_amount) || 0;
-                    return f.pricing_type === 'percentage' ? p * (a / 100) : a;
+                    if (isNaN(a)) a = 0;
+                    let price = f.pricing_type === 'percentage' ? p * (a / 100) : a;
+                    return isNaN(price) ? 0 : price;
                 },
                 getCustomFieldRowTotal(it, f) {
-                    let q = parseFloat(it.quantity) || 0;
+                    if (f.type === 'multiselect') {
+                        const selectedOpts = Array.isArray(it.custom_field_values[f.id]) ? it.custom_field_values[f.id] : [];
+                        let total = 0;
+                        selectedOpts.forEach(opt => {
+                            let optQ = this.getCustomFieldQuantity(it, f, opt);
+                            let optP = this.getCustomFieldPrice(it, f, opt);
+                            total += optP * optQ;
+                        });
+                        return total;
+                    }
+                    let q = this.getCustomFieldQuantity(it, f);
                     return this.getCustomFieldPrice(it, f) * q;
                 },
                 getPeriodPrice(it) {
@@ -767,7 +965,7 @@
                     if (item.service_custom_fields && item.custom_field_values) {
                         item.service_custom_fields.forEach(f => {
                             if (f.has_pricing && this.isFieldSelected(f, item.custom_field_values[f.id])) {
-                                total += this.getCustomFieldPrice(item, f) * qty;
+                                total += this.getCustomFieldRowTotal(item, f);
                             }
                         });
                     }
@@ -792,13 +990,25 @@
                 },
                 onSubmitCheck(e) {
                     const f = e.target;
-                    const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[unit_price]"]');
+                    const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[custom_fields_quantities]"], input[name*="[unit_price]"], input[name*="[custom_fields_prices]"]');
                     nF.forEach(i => {
                         i.value = this.toEnglishNum(i.value).replace(/[^\d.]/g, '');
                     });
                 }
             }));
-});
-</script>
+        });
+
+        document.addEventListener('click', function (e) {
+            if (window.jalaliDatepicker && typeof window.jalaliDatepicker.hide === 'function') {
+                const dp = document.querySelector('jdp-container');
+                if (!dp) return;
+                const isInsideDp = dp === e.target || dp.contains(e.target);
+                const isInput = e.target && e.target.closest && e.target.closest('[data-jdp], [data-jdp-only-date], [data-jdp-with-time], [data-jdp-only-time], input[data-jdp]');
+                if (!isInsideDp && !isInput) {
+                    window.jalaliDatepicker.hide();
+                }
+            }
+        }, true);
+    </script>
 @endpush
 @endsection

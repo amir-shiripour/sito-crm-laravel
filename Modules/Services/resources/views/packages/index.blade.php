@@ -161,8 +161,8 @@
                                         </svg>
                                     </a>
                                     <a href="{{ route('services.packages.edit', $package) }}"
-                                       class="p-2 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
-                                       title="ویرایش">
+                                        class="p-2 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all hover:scale-110"
+                                        title="ویرایش">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                              stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"

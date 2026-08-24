@@ -22,14 +22,16 @@ class AccountingPermissionsSeeder extends Seeder
             'accounting.cheques.delete',
         ];
 
-        $role = Role::firstOrCreate(
-            ['name' => 'super-admin'],
-            ['display_name' => 'مدیر کل']
-        );
+        foreach (['super-admin', 'admin'] as $roleName) {
+            $role = Role::firstOrCreate(
+                ['name' => $roleName],
+                ['display_name' => $roleName === 'super-admin' ? 'مدیر کل' : 'مدیر']
+            );
 
-        foreach ($permissions as $permission) {
-            $p = Permission::firstOrCreate(['name' => $permission]);
-            $role->givePermissionTo($p);
+            foreach ($permissions as $permission) {
+                $p = Permission::firstOrCreate(['name' => $permission]);
+                $role->givePermissionTo($p);
+            }
         }
     }
 }

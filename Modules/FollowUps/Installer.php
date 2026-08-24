@@ -90,7 +90,7 @@ class Installer extends BaseModuleInstaller
             }
         }
 
-        foreach (['super-admin'] as $sysRole) {
+        foreach (['super-admin', 'admin'] as $sysRole) {
             $role = Role::firstOrCreate([
                 'name'       => $sysRole,
                 'guard_name' => $guard,

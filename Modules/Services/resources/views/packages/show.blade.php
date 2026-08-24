@@ -48,8 +48,8 @@
 
         <div class="flex flex-wrap items-center gap-3 shrink-0">
             <a href="{{ route('services.packages.edit', $package) }}"
-               class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black shadow-lg shadow-indigo-500/30 transition-all duration-300 active:scale-95">
-                <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 text-sm font-bold transition-all active:scale-95">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round"
                           d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
@@ -179,6 +179,7 @@
                                                     $valStr = is_array($cfValue) ? implode('، ', $cfValue) : $cfValue;
 
                                                     $rawCfPrice = $item->custom_fields_prices[$cfId] ?? null;
+                                                    $rawCfQty = $item->custom_fields_quantities[$cfId] ?? null;
                                                     $cfPrice = 0;
                                                     if ($cfDef && $cfDef->has_pricing) {
                                                         if ($cfDef->type === 'multiselect' && is_array($cfValue)) {
@@ -188,7 +189,8 @@
                                                                 if ($optPrice === null) {
                                                                     $optPrice = $cfDef->getOptionPrice($opt, $item->unit_price);
                                                                 }
-                                                                $totalPrice += floatval($optPrice);
+                                                                $optQty = is_array($rawCfQty) ? ($rawCfQty[$opt] ?? 1) : (floatval($rawCfQty ?? 1) ?: 1);
+                                                                $totalPrice += (floatval($optPrice) * $optQty);
                                                             }
                                                             $cfPrice = $totalPrice;
                                                         } else {
@@ -204,6 +206,9 @@
                                                                     $cfPrice = ($cfDef->pricing_type === 'percentage') ? ($item->unit_price * ($cfAmount / 100)) : $cfAmount;
                                                                 }
                                                             }
+                                                            $cfQty = floatval($rawCfQty ?? 1);
+                                                            if ($cfQty <= 0) $cfQty = 1;
+                                                            $cfPrice = $cfPrice * $cfQty;
                                                         }
                                                     }
                                                 @endphp

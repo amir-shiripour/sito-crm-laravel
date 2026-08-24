@@ -80,7 +80,7 @@ class Installer extends BaseModuleInstaller
         }
 
         // به نقش‌های سراسری فقط پرمیژن بده (حذف‌شون نمی‌کنیم)
-        foreach (['super-admin'] as $sysRole) {
+        foreach (['super-admin', 'admin'] as $sysRole) {
             $role = Role::firstOrCreate(['name' => $sysRole, 'guard_name' => $guard]);
             $role->givePermissionTo($perms);
         }
