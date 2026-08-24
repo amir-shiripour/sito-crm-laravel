@@ -298,11 +298,25 @@ class ClientController extends Controller
             }
         }
 
+        // ── Booking Appointments check ──────────────────────────────
+        $clientAppointments = collect([]);
+        if ($isBookingActive && class_exists(\Modules\Booking\Entities\Appointment::class)) {
+            try {
+                $clientAppointments = \Modules\Booking\Entities\Appointment::with(['service', 'provider', 'payments'])
+                    ->where('client_id', $client->id)
+                    ->orderByDesc('start_at_utc')
+                    ->get();
+            } catch (\Exception $e) {
+                $clientAppointments = collect([]);
+            }
+        }
+
         return view('clients::user.clients.show', compact(
             'client', 'activeForm', 'clientOrders', 'clientInvoices',
             'bookingModule', 'workflowsModule', 'availableWorkflows',
             'accountingModule', 'accountingDocuments',
-            'isBookingQueueEnabled', 'clientWaitlists'
+            'isBookingQueueEnabled', 'clientWaitlists',
+            'clientAppointments'
         ));
     }
 

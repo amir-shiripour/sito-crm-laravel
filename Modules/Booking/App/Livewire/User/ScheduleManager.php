@@ -107,7 +107,28 @@ class ScheduleManager extends Component
             $policy = $bookingEngine->resolveDayPolicy((int)$value, $this->modalProviderId, $localDate);
             $dur = max(5, (int)($policy['slot_duration_minutes'] ?? 30));
             [$h, $m] = explode(':', $this->modalStartTime);
-            $this->modalEndTime = Carbon::createFromTime((int)$h, (int)$m)->addMinutes($dur)->format('H:i');
+            $slotStart = $localDate->copy()->setTime((int)$h, (int)$m);
+            $slotEnd = $slotStart->copy()->addMinutes($dur);
+            $this->modalEndTime = $slotEnd->format('H:i');
+
+            // [SYNC FIX F] Re-validate sync conflict when service changes inside modal
+            $startUtc = $slotStart->copy()->timezone('UTC');
+            $endUtc   = $slotEnd->copy()->timezone('UTC');
+
+            $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+            $statuses = (array) config('booking.capacity_consuming_statuses', [
+                Appointment::STATUS_CONFIRMED,
+                Appointment::STATUS_PENDING_PAYMENT,
+                Appointment::STATUS_PENDING,
+                Appointment::STATUS_DRAFT,
+                Appointment::STATUS_DONE,
+            ]);
+
+            if ($syncService->isSyncBlocked((int)$value, $this->modalProviderId, $startUtc, $endUtc, $statuses)) {
+                $this->modalError = 'سرویس انتخاب‌شده در این ساعت با یک سرویس هماهنگ‌شده تداخل دارد.';
+            } else {
+                $this->modalError = '';
+            }
         }
     }
 
@@ -1294,8 +1315,19 @@ class ScheduleManager extends Component
                                 $reqStartWithBuf = $slotStartUtc->copy()->subMinutes($bufBefore);
                                 $reqEndWithBuf = $slotEndUtc->copy()->addMinutes($bufAfter);
 
-                                // Check service sync blocked
-                                $isBlocked = $serviceId ? $syncService->isSyncBlocked($serviceId, (int)$provider->id, $slotStartUtc, $slotEndUtc, $capacityConsumingStatuses) : false;
+                                // [SYNC FIX D] Check service sync blocked
+                                if ($serviceId) {
+                                    $isBlocked = $syncService->isSyncBlocked($serviceId, (int)$provider->id, $slotStartUtc, $slotEndUtc, $capacityConsumingStatuses);
+                                } else {
+                                    // When no specific service is selected, an empty slot is only valid if no appointment exists in this slot window across all services
+                                    $anyApptInSlot = $dayAppts->filter(function ($apt) use ($reqStartWithBuf, $reqEndWithBuf) {
+                                        if (in_array($apt->status, [Appointment::STATUS_CANCELED_BY_ADMIN, Appointment::STATUS_CANCELED_BY_CLIENT], true)) {
+                                            return false;
+                                        }
+                                        return $apt->start_at_utc < $reqEndWithBuf && $apt->end_at_utc > $reqStartWithBuf;
+                                    })->isNotEmpty();
+                                    $isBlocked = $anyApptInSlot;
+                                }
                                 if ($isBlocked) {
                                     $cursor->addMinutes($stepMinutes);
                                     continue;
@@ -1396,7 +1428,17 @@ class ScheduleManager extends Component
                 ]);
 
             if ($this->selectedServiceId) {
-                $monthAppointmentsQuery->where('service_id', $this->selectedServiceId);
+                // [SYNC FIX E] Include sibling service appointments in month view query
+                $syncServiceMonth = app(\Modules\Booking\Services\ServiceSyncService::class);
+                $siblingServiceIds = $syncServiceMonth->getSiblingServiceIds(
+                    (int)$this->selectedServiceId,
+                    $this->selectedProviderId ? (int)$this->selectedProviderId : null
+                );
+                if (!empty($siblingServiceIds)) {
+                    $monthAppointmentsQuery->whereIn('service_id', array_merge([(int)$this->selectedServiceId], $siblingServiceIds));
+                } else {
+                    $monthAppointmentsQuery->where('service_id', $this->selectedServiceId);
+                }
             }
             if ($this->statusFilter) {
                 $monthAppointmentsQuery->where('status', $this->statusFilter);
@@ -1577,6 +1619,19 @@ class ScheduleManager extends Component
                 ? max(0, (int)$capacityPerDay - $dailyBookedTotal)
                 : null;
 
+            // [SYNC PRE-FETCH] Sibling service IDs and their appointments for sync enforcement
+            $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+            $siblingServiceIds = ($serviceId && $provider)
+                ? $syncService->getSiblingServiceIds((int)$serviceId, (int)$provider->id)
+                : [];
+
+            $siblingAppts = (!empty($siblingServiceIds))
+                ? $allAppointments->where('provider_user_id', $provider->id)->whereIn('service_id', $siblingServiceIds)->whereNotIn('status', [
+                    Appointment::STATUS_CANCELED_BY_ADMIN,
+                    Appointment::STATUS_CANCELED_BY_CLIENT,
+                ])
+                : collect();
+
             // Dynamic Slots for Grid View
             $providerSlots = [];
             $placedApptIds = [];
@@ -1744,6 +1799,11 @@ class ScheduleManager extends Component
                                 || ($totalFreeMinsInSlot <= 0 && !empty($formattedSlotAppts));
                         }
 
+                        // [SYNC FIX B] BookingEngine already set sync_blocked; enforce it in $isFull
+                        if (!empty($eSlot['sync_blocked'])) {
+                            $isFull = true;
+                        }
+
                         if ($inWorkWindow && !$inBreak && !$isPast && $slotRemaining !== null) {
                             $totalRemainingCapacitySum += $slotRemaining;
                         }
@@ -1895,6 +1955,14 @@ class ScheduleManager extends Component
                                 ]);
                             });
 
+                            // [SYNC FIX A] Check if any sibling sync service has an appointment in this slot
+                            $isSyncBlocked = false;
+                            if (!empty($siblingServiceIds) && $siblingAppts->isNotEmpty()) {
+                                $isSyncBlocked = $siblingAppts->contains(function ($apt) use ($reqStartWithBuf, $reqEndWithBuf) {
+                                    return $apt->start_at_utc < $reqEndWithBuf && $apt->end_at_utc > $reqStartWithBuf;
+                                });
+                            }
+
                             $displaySlotAppts = $slotOverlappingAppts->filter(function ($apt) {
                                 if ($this->selectedServiceId && (int)$apt->service_id !== (int)$this->selectedServiceId) {
                                     return false;
@@ -1932,7 +2000,7 @@ class ScheduleManager extends Component
                             $nowLocal = now($scheduleTz);
                             $isPast = $slotEnd->lte($nowLocal) || ($slotStart->lt($nowLocal) && $localDate->isToday());
 
-                            if (!$inWorkWindow || $inBreak || $isPast) {
+                            if (!$inWorkWindow || $inBreak || $isPast || $isSyncBlocked) {
                                 $slotRemaining = 0;
                             } else {
                                 $slotRemaining = $capacityPerSlot > 0 ? max(0, $capacityPerSlot - $bookedCount) : null;
@@ -1950,7 +2018,7 @@ class ScheduleManager extends Component
                                 : [];
                             $totalFreeMinsInSlot = array_sum(array_column($freeSegments, 'duration_minutes'));
 
-                            if (!$inWorkWindow || $inBreak || $isPast) {
+                            if (!$inWorkWindow || $inBreak || $isPast || $isSyncBlocked) {
                                 $isFull = true;
                             } elseif ($capacityPerSlot > 1) {
                                 $isFull = ($bookedCount >= $capacityPerSlot)
@@ -1969,11 +2037,20 @@ class ScheduleManager extends Component
                             if ($capacityPerSlot <= 1) {
                                 if ($busySlotAppts->isEmpty() && $displaySlotAppts->isEmpty()) {
                                     if ($inWorkWindow && !$inBreak && !$isPast) {
-                                        $slotItems[] = [
-                                            'type' => 'empty_slot',
-                                            'start_time' => $slotStart->format('H:i'),
-                                            'end_time' => $slotEnd->format('H:i'),
-                                        ];
+                                        if ($isSyncBlocked) {
+                                            $slotItems[] = [
+                                                'type' => 'closed_slot',
+                                                'start_time' => $slotStart->format('H:i'),
+                                                'end_time' => $slotEnd->format('H:i'),
+                                                'label' => 'تکمیل ظرفیت (هماهنگ‌شده)',
+                                            ];
+                                        } else {
+                                            $slotItems[] = [
+                                                'type' => 'empty_slot',
+                                                'start_time' => $slotStart->format('H:i'),
+                                                'end_time' => $slotEnd->format('H:i'),
+                                            ];
+                                        }
                                     } else {
                                         $label = $isPast ? 'زمان گذشته' : ($inBreak ? 'زمان استراحت' : 'خارج از ساعات کاری');
                                         $slotItems[] = [
@@ -2211,16 +2288,28 @@ class ScheduleManager extends Component
                         $slotStart = $cursor->copy();
                         $slotEnd = $cursor->copy()->addMinutes($effectiveSlotDuration);
 
-                        $sMins = ($slotStart->hour * 60) + $slotStart->minute;
-                        $leftPercent = (($sMins - $gridStartMinutes) / $totalGridMinutes) * 100;
-                        $widthPercent = ($effectiveSlotDuration / $totalGridMinutes) * 100;
+                        // [SYNC FIX C] Skip drop target if slot is blocked by a sibling sync service
+                        $slotStartUtcDrop = $slotStart->copy()->timezone('UTC');
+                        $slotEndUtcDrop   = $slotEnd->copy()->timezone('UTC');
 
-                        $slotDropTargets[] = [
-                            'start_time' => $slotStart->format('H:i'),
-                            'end_time' => $slotEnd->format('H:i'),
-                            'left_percent' => $leftPercent,
-                            'width_percent' => $widthPercent,
-                        ];
+                        $isDropSyncBlocked = (!empty($siblingServiceIds) && $siblingAppts->isNotEmpty())
+                            ? $siblingAppts->contains(function ($apt) use ($slotStartUtcDrop, $slotEndUtcDrop) {
+                                return $apt->start_at_utc < $slotEndUtcDrop && $apt->end_at_utc > $slotStartUtcDrop;
+                            })
+                            : false;
+
+                        if (!$isDropSyncBlocked) {
+                            $sMins = ($slotStart->hour * 60) + $slotStart->minute;
+                            $leftPercent = (($sMins - $gridStartMinutes) / $totalGridMinutes) * 100;
+                            $widthPercent = ($effectiveSlotDuration / $totalGridMinutes) * 100;
+
+                            $slotDropTargets[] = [
+                                'start_time' => $slotStart->format('H:i'),
+                                'end_time' => $slotEnd->format('H:i'),
+                                'left_percent' => $leftPercent,
+                                'width_percent' => $widthPercent,
+                            ];
+                        }
 
                         $cursor->addMinutes($stepMinutes);
                     }
