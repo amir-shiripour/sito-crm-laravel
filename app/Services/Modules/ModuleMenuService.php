@@ -303,6 +303,9 @@ class ModuleMenuService
             'contentforge' => 'تولید محتوا',
             'services' => 'سرویس‌ها و خدمات',
             'wallet' => 'کیف پول',
+            'followups' => 'پیگیری‌ها',
+            'clientcalls' => 'تماس‌ها',
+            'projects' => 'پروژه‌ها',
             'single' => 'آیتم‌های عمومی و مستقل',
         ];
         if (isset($knownTitles[$moduleSlug])) {

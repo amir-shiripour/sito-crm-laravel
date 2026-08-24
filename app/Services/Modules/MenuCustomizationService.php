@@ -191,18 +191,29 @@ class MenuCustomizationService
                 if (!isset($finalGroupMap[$groupKey])) {
                     $defaultGroupPositions = [
                         'clients' => 10,
+                        'single' => 20,
                         'admin' => 30,
                         'sales' => 40,
                         'accounting' => 50,
                         'properties' => 60,
                         'booking' => 70,
                         'tasks' => 80,
+                        'reminders' => 82,
+                        'notifications' => 85,
                         'workflows' => 90,
                         'sms' => 100,
                         'smartbot' => 110,
+                        'contractforge' => 120,
+                        'contentforge' => 125,
+                        'market' => 130,
+                        'services' => 140,
+                        'wallet' => 150,
+                        'followups' => 160,
+                        'clientcalls' => 170,
+                        'projects' => 180,
                         'settings' => 900,
                     ];
-                    $title = $item['group_title'] ?? ucfirst($groupKey);
+                    $title = $item['group_title'] ?? app(\App\Services\Modules\ModuleMenuService::class)->resolveModuleGroupTitle($groupKey, $groupKey);
                     $finalGroupMap[$groupKey] = [
                         'module' => $groupKey,
                         'module_name' => $title,
