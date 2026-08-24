@@ -104,7 +104,7 @@
         showWorkflowTab: {{ $showWorkflowTab ? 'true' : 'false' }},
         init() {
             const hash = window.location.hash.substring(1);
-            const validTabs = ['general','orders','invoices','domains','directadmin','transactions'];
+            const validTabs = ['general','appointments','orders','invoices','domains','directadmin','transactions'];
             if (this.showWorkflowTab) validTabs.push('workflows');
             if (validTabs.includes(hash)) this.activeTab = hash;
         },
@@ -233,6 +233,24 @@
                     </svg>
                     اطلاعات عمومی
                 </button>
+
+                @if($bookingModule && $bookingModule->installed && $bookingModule->active)
+                    {{-- Tab: Appointments (نوبت‌ها) --}}
+                    <button @click="setTab('appointments')"
+                            :class="activeTab === 'appointments' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        نوبت‌ها
+                        <span
+                            :class="activeTab === 'appointments' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                            class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
+                            {{ isset($clientAppointments) ? $faNum($clientAppointments->count()) : '۰' }}
+                        </span>
+                    </button>
+                @endif
 
                 @if($showWorkflowTab)
                     {{-- Tab 2: Workflows (سفر کلاینت/بیمار) --}}
@@ -763,6 +781,18 @@
                     </div>
                 </div>
             </div>
+
+            @if($bookingModule && $bookingModule->installed && $bookingModule->active)
+                {{-- ================= Appointments Tab (نوبت‌ها) ================= --}}
+                <div x-show="activeTab === 'appointments'" x-cloak x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
+                    @include('booking::partials.client-appointments-tab', [
+                        'client' => $client,
+                        'clientAppointments' => $clientAppointments ?? collect([]),
+                        'faNum' => $faNum
+                    ])
+                </div>
+            @endif
 
             @if($showWorkflowTab)
             {{-- ================= Workflows Tab (سفر بیمار/کلاینت) ================= --}}
