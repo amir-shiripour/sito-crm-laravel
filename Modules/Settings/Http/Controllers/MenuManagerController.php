@@ -274,6 +274,22 @@ class MenuManagerController extends Controller
                 'is_collapsible' => true,
             ],
             [
+                'key' => 'reminders',
+                'title' => $this->moduleMenuService->resolveModuleGroupTitle('reminders', 'Reminders'),
+                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13a7 7 0 1 0 14 0a7 7 0 0 0 -14 0" /><path d="M7 4l-2.75 2" /><path d="M17 4l2.75 2" /><path d="M8 13h1l2 3l2 -6l2 3h1" /></svg>',
+                'position' => 82,
+                'is_custom' => false,
+                'is_collapsible' => true,
+            ],
+            [
+                'key' => 'notifications',
+                'title' => $this->moduleMenuService->resolveModuleGroupTitle('notifications', 'Notifications'),
+                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>',
+                'position' => 85,
+                'is_custom' => false,
+                'is_collapsible' => true,
+            ],
+            [
                 'key' => 'workflows',
                 'title' => $this->moduleMenuService->resolveModuleGroupTitle('workflows', 'Workflows'),
                 'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="6" height="6" rx="1" /><rect x="15" y="15" width="6" height="6" rx="1" /><path d="M6 9v3a3 3 0 0 0 3 3h6" /></svg>',
@@ -306,6 +322,14 @@ class MenuManagerController extends Controller
                 'is_collapsible' => true,
             ],
             [
+                'key' => 'contentforge',
+                'title' => $this->moduleMenuService->resolveModuleGroupTitle('contentforge', 'ContentForge'),
+                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" /><path d="M13.5 6.5l4 4" /></svg>',
+                'position' => 125,
+                'is_custom' => false,
+                'is_collapsible' => true,
+            ],
+            [
                 'key' => 'market',
                 'title' => $this->moduleMenuService->resolveModuleGroupTitle('market', 'Market'),
                 'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="2" /><circle cx="17" cy="19" r="2" /><path d="M17 17h-11v-14h-2" /><path d="M6 5l14 1l-1 7h-13" /></svg>',
@@ -322,9 +346,41 @@ class MenuManagerController extends Controller
                 'is_collapsible' => true,
             ],
             [
+                'key' => 'wallet',
+                'title' => $this->moduleMenuService->resolveModuleGroupTitle('wallet', 'Wallet'),
+                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12" /><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4" /></svg>',
+                'position' => 150,
+                'is_custom' => false,
+                'is_collapsible' => true,
+            ],
+            [
+                'key' => 'followups',
+                'title' => $this->moduleMenuService->resolveModuleGroupTitle('followups', 'FollowUps'),
+                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" /></svg>',
+                'position' => 160,
+                'is_custom' => false,
+                'is_collapsible' => true,
+            ],
+            [
+                'key' => 'clientcalls',
+                'title' => $this->moduleMenuService->resolveModuleGroupTitle('clientcalls', 'ClientCalls'),
+                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2" /></svg>',
+                'position' => 170,
+                'is_custom' => false,
+                'is_collapsible' => true,
+            ],
+            [
+                'key' => 'projects',
+                'title' => $this->moduleMenuService->resolveModuleGroupTitle('projects', 'Projects'),
+                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8l-4 4l4 4" /><path d="M17 8l4 4l-4 4" /><path d="M14 4l-4 16" /></svg>',
+                'position' => 180,
+                'is_custom' => false,
+                'is_collapsible' => true,
+            ],
+            [
                 'key' => 'settings',
                 'title' => $this->moduleMenuService->resolveModuleGroupTitle('settings', 'Settings'),
-                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>',
+                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z\" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>',
                 'position' => 900,
                 'is_custom' => false,
                 'is_collapsible' => true,
@@ -396,6 +452,43 @@ class MenuManagerController extends Controller
                 'hidden' => $gHidden,
                 'is_customized' => $isCustomized,
             ];
+        }
+
+        // Dynamic scanner: add any group present in extracted items that might be missing
+        $existingGroupKeys = collect($allGroups)->pluck('key')->toArray();
+        foreach ($extractedItems as $item) {
+            $gKey = $item['group'] ?? '';
+            if (!empty($gKey) && !in_array($gKey, $existingGroupKeys, true)) {
+                $customKey = "group:{$gKey}";
+                $gTitle = $item['group_title'] ?? $this->moduleMenuService->resolveModuleGroupTitle($gKey, $item['module'] ?? $gKey);
+                $gIcon = $item['icon'] ?? $item['default_icon'] ?? '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2h4l2 2h10a2 2 0 0 1 2 2v11a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" /></svg>';
+                $gPosition = 85;
+                $gHidden = false;
+                $isCustomized = false;
+
+                if (isset($customizations[$customKey])) {
+                    $gov = $customizations[$customKey]->overrides ?? [];
+                    $isCustomized = true;
+                    if (!empty($gov['title'])) $gTitle = $gov['title'];
+                    if (!empty($gov['icon'])) $gIcon = $gov['icon'];
+                    if (isset($gov['position']) && is_numeric($gov['position'])) $gPosition = (int) $gov['position'];
+                    if (!empty($gov['hidden'])) $gHidden = true;
+                }
+
+                $allGroups[] = [
+                    'key' => $gKey,
+                    'title' => $gTitle,
+                    'default_title' => $gTitle,
+                    'icon' => $gIcon,
+                    'default_icon' => $gIcon,
+                    'position' => $gPosition,
+                    'is_custom' => false,
+                    'is_collapsible' => true,
+                    'hidden' => $gHidden,
+                    'is_customized' => $isCustomized,
+                ];
+                $existingGroupKeys[] = $gKey;
+            }
         }
 
         // Sort groups by position
