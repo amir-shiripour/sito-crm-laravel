@@ -67,12 +67,48 @@ class ServicePackageController extends Controller
                 $discType = $item['discount_type'] ?? 'amount';
                 $discVal = floatval($this->parsePrice($item['discount_value'] ?? 0));
 
-                $customFields = $item['custom_fields'] ?? [];
+                $rawCustomFields = $item['custom_fields'] ?? [];
+                $customFields = [];
+                if (is_array($rawCustomFields)) {
+                    foreach ($rawCustomFields as $k => $v) {
+                        if (is_array($v)) {
+                            $cleanArr = array_values(array_filter($v, fn($x) => $x !== null && trim((string)$x) !== ''));
+                            if (!empty($cleanArr)) {
+                                $customFields[$k] = $cleanArr;
+                            }
+                        } elseif ($v !== null && trim((string)$v) !== '') {
+                            $customFields[$k] = $v;
+                        }
+                    }
+                }
+
                 $rawCustomFieldsPrices = $item['custom_fields_prices'] ?? [];
+                $rawCustomFieldsQuantities = $item['custom_fields_quantities'] ?? [];
                 $customFieldsPrices = [];
+                $customFieldsQuantities = [];
 
                 foreach ($rawCustomFieldsPrices as $k => $v) {
-                    $customFieldsPrices[$k] = $this->parsePrice($v);
+                    if (is_array($v)) {
+                        $customFieldsPrices[$k] = [];
+                        foreach ($v as $subK => $subV) {
+                            $customFieldsPrices[$k][$subK] = $this->parsePrice($subV);
+                        }
+                    } else {
+                        $customFieldsPrices[$k] = $this->parsePrice($v);
+                    }
+                }
+
+                foreach ($rawCustomFieldsQuantities as $k => $v) {
+                    if (is_array($v)) {
+                        $customFieldsQuantities[$k] = [];
+                        foreach ($v as $subK => $subV) {
+                            $parsedQ = floatval($this->parsePrice($subV));
+                            $customFieldsQuantities[$k][$subK] = $parsedQ > 0 ? $parsedQ : 1;
+                        }
+                    } else {
+                        $parsedQ = floatval($this->parsePrice($v));
+                        $customFieldsQuantities[$k] = $parsedQ > 0 ? $parsedQ : 1;
+                    }
                 }
 
                 $cfSubtotal = 0;
@@ -98,12 +134,15 @@ class ServicePackageController extends Controller
                                         $optPrice = is_array($customFieldsPrices[$cf->id] ?? null)
                                             ? ($customFieldsPrices[$cf->id][$opt] ?? null)
                                             : null;
-                                        if ($optPrice === null) {
+                                        if ($optPrice === null || $optPrice <= 0) {
                                             $optPrice = $cf->getOptionPrice($opt, $unitPrice);
                                         }
-                                        $cfPriceTotal += floatval($optPrice);
+                                        $optQty = is_array($customFieldsQuantities[$cf->id] ?? null)
+                                            ? ($customFieldsQuantities[$cf->id][$opt] ?? 1)
+                                            : (floatval($customFieldsQuantities[$cf->id] ?? 1) ?: 1);
+                                        $cfPriceTotal += (floatval($optPrice) * $optQty);
                                     }
-                                    $cfSubtotal += ($cfPriceTotal * $qty);
+                                    $cfSubtotal += $cfPriceTotal;
                                 } else {
                                     $cfPrice = 0;
                                     if (isset($customFieldsPrices[$cf->id]) && !is_array($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] > 0) {
@@ -117,7 +156,9 @@ class ServicePackageController extends Controller
                                         }
                                         $customFieldsPrices[$cf->id] = $cfPrice;
                                     }
-                                    $cfSubtotal += ($cfPrice * $qty);
+                                    $cfQty = floatval($customFieldsQuantities[$cf->id] ?? 1);
+                                    if ($cfQty <= 0) $cfQty = 1;
+                                    $cfSubtotal += ($cfPrice * $cfQty);
                                 }
                             }
                         }
@@ -147,6 +188,7 @@ class ServicePackageController extends Controller
                     'billing_period' => $item['billing_period'] ?? null,
                     'custom_fields' => $customFields,
                     'custom_fields_prices' => $customFieldsPrices,
+                    'custom_fields_quantities' => $customFieldsQuantities,
                     'total_price' => $rowTotal,
                 ];
             }
@@ -214,12 +256,48 @@ class ServicePackageController extends Controller
                 $discType = $item['discount_type'] ?? 'amount';
                 $discVal = floatval($this->parsePrice($item['discount_value'] ?? 0));
 
-                $customFields = $item['custom_fields'] ?? [];
+                $rawCustomFields = $item['custom_fields'] ?? [];
+                $customFields = [];
+                if (is_array($rawCustomFields)) {
+                    foreach ($rawCustomFields as $k => $v) {
+                        if (is_array($v)) {
+                            $cleanArr = array_values(array_filter($v, fn($x) => $x !== null && trim((string)$x) !== ''));
+                            if (!empty($cleanArr)) {
+                                $customFields[$k] = $cleanArr;
+                            }
+                        } elseif ($v !== null && trim((string)$v) !== '') {
+                            $customFields[$k] = $v;
+                        }
+                    }
+                }
+
                 $rawCustomFieldsPrices = $item['custom_fields_prices'] ?? [];
+                $rawCustomFieldsQuantities = $item['custom_fields_quantities'] ?? [];
                 $customFieldsPrices = [];
+                $customFieldsQuantities = [];
 
                 foreach ($rawCustomFieldsPrices as $k => $v) {
-                    $customFieldsPrices[$k] = $this->parsePrice($v);
+                    if (is_array($v)) {
+                        $customFieldsPrices[$k] = [];
+                        foreach ($v as $subK => $subV) {
+                            $customFieldsPrices[$k][$subK] = $this->parsePrice($subV);
+                        }
+                    } else {
+                        $customFieldsPrices[$k] = $this->parsePrice($v);
+                    }
+                }
+
+                foreach ($rawCustomFieldsQuantities as $k => $v) {
+                    if (is_array($v)) {
+                        $customFieldsQuantities[$k] = [];
+                        foreach ($v as $subK => $subV) {
+                            $parsedQ = floatval($this->parsePrice($subV));
+                            $customFieldsQuantities[$k][$subK] = $parsedQ > 0 ? $parsedQ : 1;
+                        }
+                    } else {
+                        $parsedQ = floatval($this->parsePrice($v));
+                        $customFieldsQuantities[$k] = $parsedQ > 0 ? $parsedQ : 1;
+                    }
                 }
 
                 $cfSubtotal = 0;
@@ -245,12 +323,15 @@ class ServicePackageController extends Controller
                                         $optPrice = is_array($customFieldsPrices[$cf->id] ?? null)
                                             ? ($customFieldsPrices[$cf->id][$opt] ?? null)
                                             : null;
-                                        if ($optPrice === null) {
+                                        if ($optPrice === null || $optPrice <= 0) {
                                             $optPrice = $cf->getOptionPrice($opt, $unitPrice);
                                         }
-                                        $cfPriceTotal += floatval($optPrice);
+                                        $optQty = is_array($customFieldsQuantities[$cf->id] ?? null)
+                                            ? ($customFieldsQuantities[$cf->id][$opt] ?? 1)
+                                            : (floatval($customFieldsQuantities[$cf->id] ?? 1) ?: 1);
+                                        $cfPriceTotal += (floatval($optPrice) * $optQty);
                                     }
-                                    $cfSubtotal += ($cfPriceTotal * $qty);
+                                    $cfSubtotal += $cfPriceTotal;
                                 } else {
                                     $cfPrice = 0;
                                     if (isset($customFieldsPrices[$cf->id]) && !is_array($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] > 0) {
@@ -264,7 +345,9 @@ class ServicePackageController extends Controller
                                         }
                                         $customFieldsPrices[$cf->id] = $cfPrice;
                                     }
-                                    $cfSubtotal += ($cfPrice * $qty);
+                                    $cfQty = floatval($customFieldsQuantities[$cf->id] ?? 1);
+                                    if ($cfQty <= 0) $cfQty = 1;
+                                    $cfSubtotal += ($cfPrice * $cfQty);
                                 }
                             }
                         }
@@ -294,6 +377,7 @@ class ServicePackageController extends Controller
                     'billing_period' => $item['billing_period'] ?? null,
                     'custom_fields' => $customFields,
                     'custom_fields_prices' => $customFieldsPrices,
+                    'custom_fields_quantities' => $customFieldsQuantities,
                     'total_price' => $rowTotal,
                 ];
             }

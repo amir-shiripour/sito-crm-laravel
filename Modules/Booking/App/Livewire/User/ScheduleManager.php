@@ -1304,9 +1304,13 @@ class ScheduleManager extends Component
                                 }
 
                                 // Check break
-                                $inBreak = $bookingEngine->isInBreak($slotStart, $slotEnd, $breaks);
-                                if ($inBreak) {
-                                    $cursor->addMinutes($stepMinutes);
+                                $ovBreak = $bookingEngine->getOverlappingBreak($slotStart, $slotEnd, $breaks);
+                                if ($ovBreak) {
+                                    if ($ovBreak['end']->gt($cursor)) {
+                                        $cursor = $ovBreak['end']->copy();
+                                    } else {
+                                        $cursor->addMinutes($stepMinutes);
+                                    }
                                     continue;
                                 }
 
@@ -1893,6 +1897,7 @@ class ScheduleManager extends Component
                         ];
                     }
                 } else {
+                    $addedBreakKeys = [];
                     foreach ($effectiveWorkWindows as $win) {
                         $winStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $win['start'], $scheduleTz);
                         $winEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $win['end'], $scheduleTz);
@@ -1903,6 +1908,45 @@ class ScheduleManager extends Component
                         while ($cursor->copy()->addMinutes($effectiveSlotDuration)->lte($winEnd)) {
                             $slotStart = $cursor->copy();
                             $slotEnd = $cursor->copy()->addMinutes($effectiveSlotDuration);
+
+                            // Smart Break Check: if candidate slot collides with a break
+                            $ovBreak = $bookingEngine->getOverlappingBreak($slotStart, $slotEnd, $breaks);
+                            if ($ovBreak) {
+                                $bStartLocal = $ovBreak['start']->format('H:i');
+                                $bEndLocal = $ovBreak['end']->format('H:i');
+                                $breakKey = "{$bStartLocal}_{$bEndLocal}";
+
+                                if (!in_array($breakKey, $addedBreakKeys)) {
+                                    $addedBreakKeys[] = $breakKey;
+                                    $providerSlots[] = [
+                                        'start_time' => $bStartLocal,
+                                        'end_time' => $bEndLocal,
+                                        'in_break' => true,
+                                        'capacity' => $capacityPerSlot,
+                                        'booked_count' => 0,
+                                        'remaining_capacity' => 0,
+                                        'total_free_minutes' => 0,
+                                        'free_segments' => [],
+                                        'is_full' => true,
+                                        'appointments' => [],
+                                        'items' => [
+                                            [
+                                                'type' => 'closed_slot',
+                                                'start_time' => $bStartLocal,
+                                                'end_time' => $bEndLocal,
+                                                'label' => 'زمان استراحت',
+                                            ]
+                                        ],
+                                    ];
+                                }
+
+                                if ($ovBreak['end']->gt($cursor)) {
+                                    $cursor = $ovBreak['end']->copy();
+                                } else {
+                                    $cursor->addMinutes($stepMinutes);
+                                }
+                                continue;
+                            }
 
                             $inWorkWindow = false;
                             if (!$isClosed && !empty($workWindows)) {
@@ -1917,18 +1961,6 @@ class ScheduleManager extends Component
                             }
 
                             $inBreak = false;
-                            foreach ($breaks as $b) {
-                                $bStartStr = $b['start_local'] ?? null;
-                                $bEndStr = $b['end_local'] ?? null;
-                                if ($bStartStr && $bEndStr) {
-                                    $bStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $bStartStr, $scheduleTz);
-                                    $bEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $bEndStr, $scheduleTz);
-                                    if ($slotStart->lt($bEnd) && $slotEnd->gt($bStart)) {
-                                        $inBreak = true;
-                                        break;
-                                    }
-                                }
-                            }
 
                             $slotStartUtc = $slotStart->copy()->timezone('UTC');
                             $slotEndUtc = $slotEnd->copy()->timezone('UTC');

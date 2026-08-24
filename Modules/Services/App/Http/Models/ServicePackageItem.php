@@ -23,6 +23,7 @@ class ServicePackageItem extends Model
         'billing_period',
         'custom_fields',
         'custom_fields_prices',
+        'custom_fields_quantities',
         'total_price',
     ];
 
@@ -34,6 +35,7 @@ class ServicePackageItem extends Model
         'total_price' => 'integer',
         'custom_fields' => 'array',
         'custom_fields_prices' => 'array',
+        'custom_fields_quantities' => 'array',
     ];
 
     public function package(): BelongsTo

@@ -58,8 +58,8 @@ class Installer extends BaseModuleInstaller
             }
         }
 
-        // Add permission to super-admin
-        foreach (['super-admin'] as $sysRole) {
+        // Add permission to super-admin & admin
+        foreach (['super-admin', 'admin'] as $sysRole) {
             $role = Role::firstOrCreate(['name' => $sysRole, 'guard_name' => $guard]);
             $role->givePermissionTo($perms);
         }

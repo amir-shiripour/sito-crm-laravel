@@ -83,8 +83,8 @@ class RolePermissionSeeder extends Seeder
             'display_name' => 'پشتیبانی'  // نام فارسی نقش
         ]);
 
-        // سوپرادمین: همه‌چیز
-        $super->syncPermissions(Permission::pluck('name')->toArray());
+        // سوپرادمین: همه‌چیز (غیرمخرب)
+        $super->givePermissionTo(Permission::pluck('name')->toArray());
 
         // ادمین: همه permission ها به جز موارد استثنا
         // استثناها:
@@ -100,11 +100,13 @@ class RolePermissionSeeder extends Seeder
             return !in_array($perm, $excludedPermissions);
         });
 
-        $admin->syncPermissions($adminPermissions);
+        // تخصیص غیرمخرب دسترسی‌ها تا شخصی‌سازی‌های انجام‌شده در مدیریت نقش پاک نشوند
+        $admin->givePermissionTo($adminPermissions);
 
-        // سایر نقش‌ها
-        $sales->syncPermissions(['menu.see.users']);
-        $support->syncPermissions([]);
+        // سایر نقش‌ها (فقط در صورت ایجاد جدید)
+        if ($sales->wasRecentlyCreated) {
+            $sales->givePermissionTo(['menu.see.users']);
+        }
 
         // انتساب نقش سوپرادمین به کاربر env
         if ($email = env('SUPER_ADMIN_EMAIL')) {

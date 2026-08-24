@@ -80,7 +80,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ $action }}" class="space-y-8">
+        <form method="POST" action="{{ $action }}" class="space-y-8" @submit="onSubmitCheck($event)">
             @csrf
             @if($isEdit)
                 @method('PUT')
@@ -422,7 +422,7 @@
                                         <label class="block text-xs font-bold text-gray-600 mb-2">عنوان فیلد *</label>
                                         <input type="text" :name="'custom_fields[' + idx + '][label]'"
                                                x-model="field.label" class="{{ $inputClass }}"
-                                               placeholder="مثال: رنگ محصول" required>
+                                               placeholder="مثال: رنگ محصول">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-bold text-gray-600 mb-2">نوع فیلد</label>
@@ -445,59 +445,59 @@
                                     </div>
                                 </div>
 
-                                <div
-                                    x-show="field.type === 'select' || field.type === 'radio' || field.type === 'multiselect'"
-                                    class="mb-5 space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
-                                            گزینه‌ها
-                                            <span x-show="field.has_pricing" class="text-indigo-600 dark:text-indigo-400 font-semibold">(تعیین عنوان و قیمت اختصاصی هر گزینه)</span>
-                                        </label>
-                                        <button type="button" @click="addOption(field)"
-                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg hover:bg-indigo-100 transition-colors">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                                            افزودن گزینه
-                                        </button>
-                                    </div>
+                                <template x-if="['select', 'radio', 'multiselect'].includes(field.type)">
+                                    <div class="mb-5 space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                گزینه‌ها
+                                                <span x-show="field.has_pricing" class="text-indigo-600 dark:text-indigo-400 font-semibold">(تعیین عنوان و قیمت اختصاصی هر گزینه)</span>
+                                            </label>
+                                            <button type="button" @click="addOption(field)"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg hover:bg-indigo-100 transition-colors">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                                افزودن گزینه
+                                            </button>
+                                        </div>
 
-                                    <div class="space-y-2">
-                                        <template x-for="(opt, optIdx) in (field.options || [])" :key="optIdx">
-                                            <div class="flex items-center gap-2.5 p-2.5 bg-gray-50/80 dark:bg-gray-900/40 rounded-xl border border-gray-200/70 dark:border-gray-700/60">
-                                                <span class="w-6 h-6 flex items-center justify-center text-xs font-bold text-gray-400 dark:text-gray-500 shrink-0" x-text="optIdx + 1"></span>
-                                                <div class="flex-1 min-w-0">
-                                                    <input type="text"
-                                                           :name="'custom_fields[' + idx + '][options][' + optIdx + '][label]'"
-                                                           x-model="opt.label"
-                                                           class="{{ $inputClass }} py-2 text-xs"
-                                                           placeholder="عنوان گزینه (مثال: هاست ۱ گیگ)" required>
-                                                </div>
-                                                <div class="w-40 sm:w-48 shrink-0" x-show="field.has_pricing">
-                                                    <div class="relative">
+                                        <div class="space-y-2">
+                                            <template x-for="(opt, optIdx) in (field.options || [])" :key="optIdx">
+                                                <div class="flex items-center gap-2.5 p-2.5 bg-gray-50/80 dark:bg-gray-900/40 rounded-xl border border-gray-200/70 dark:border-gray-700/60">
+                                                    <span class="w-6 h-6 flex items-center justify-center text-xs font-bold text-gray-400 dark:text-gray-500 shrink-0" x-text="optIdx + 1"></span>
+                                                    <div class="flex-1 min-w-0">
                                                         <input type="text"
-                                                               :value="formatPriceDisplay(opt.price)"
-                                                               @input="handleOptionPriceInput($event, opt)"
-                                                               class="{{ $inputClass }} py-2 text-xs text-end dir-ltr pl-14 pr-3 font-semibold"
-                                                               placeholder="۰">
-                                                        <input type="hidden"
-                                                               :name="'custom_fields[' + idx + '][options][' + optIdx + '][price]'"
-                                                               :value="opt.price || 0">
-                                                        <span class="absolute inset-y-0 left-2.5 flex items-center text-[11px] font-bold text-gray-400 dark:text-gray-500 pointer-events-none select-none">{{ $currencyLabel }}</span>
+                                                               :name="'custom_fields[' + idx + '][options][' + optIdx + '][label]'"
+                                                               x-model="opt.label"
+                                                               class="{{ $inputClass }} py-2 text-xs"
+                                                               placeholder="عنوان گزینه (مثال: هاست ۱ گیگ)">
                                                     </div>
+                                                    <div class="w-40 sm:w-48 shrink-0" x-show="field.has_pricing">
+                                                        <div class="relative">
+                                                            <input type="text"
+                                                                   :value="formatPriceDisplay(opt.price)"
+                                                                   @input="handleOptionPriceInput($event, opt)"
+                                                                   class="{{ $inputClass }} py-2 text-xs text-end dir-ltr pl-14 pr-3 font-semibold"
+                                                                   placeholder="۰">
+                                                            <input type="hidden"
+                                                                   :name="'custom_fields[' + idx + '][options][' + optIdx + '][price]'"
+                                                                   :value="opt.price || 0">
+                                                            <span class="absolute inset-y-0 left-2.5 flex items-center text-[11px] font-bold text-gray-400 dark:text-gray-500 pointer-events-none select-none">{{ $currencyLabel }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <input type="hidden" :name="'custom_fields[' + idx + '][options][' + optIdx + '][pricing_type]'" :value="opt.pricing_type || 'fixed'">
+                                                    <button type="button" @click="removeOption(field, optIdx)"
+                                                            class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0"
+                                                            title="حذف گزینه">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
                                                 </div>
-                                                <input type="hidden" :name="'custom_fields[' + idx + '][options][' + optIdx + '][pricing_type]'" :value="opt.pricing_type || 'fixed'">
-                                                <button type="button" @click="removeOption(field, optIdx)"
-                                                        class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0"
-                                                        title="حذف گزینه">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                </button>
-                                            </div>
-                                        </template>
+                                            </template>
 
-                                        <div x-show="!field.options || field.options.length === 0" class="p-4 text-center text-xs text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
-                                            هنوز گزینه‌ای اضافه نشده است. روی دکمه «افزودن گزینه» کلیک کنید.
+                                            <div x-show="!field.options || field.options.length === 0" class="p-4 text-center text-xs text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
+                                                هنوز گزینه‌ای اضافه نشده است. روی دکمه «افزودن گزینه» کلیک کنید.
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                </template>
 
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                                     <label
@@ -715,7 +715,7 @@
                 addField() {
                     this.fields.push({
                         id: null, label: '', type: 'text',
-                        options: [{ label: '', price: 0, pricing_type: 'fixed' }],
+                        options: [],
                         is_required: false, has_pricing: false, show_in_invoice: true,
                         pricing_type: 'fixed', pricing_amount: 0, sort_order: this.fields.length,
                         _key: Date.now(), _open: true, _dragging: false,
@@ -736,6 +736,36 @@
                 },
                 removeOption(field, optIdx) {
                     field.options.splice(optIdx, 1);
+                },
+                onSubmitCheck(e) {
+                    for (let i = 0; i < this.fields.length; i++) {
+                        const f = this.fields[i];
+                        if (!f.label || !f.label.trim()) {
+                            e.preventDefault();
+                            this.activeTab = 'custom_fields';
+                            f._open = true;
+                            alert(`لطفاً عنوان فیلد سفارشی شماره ${i + 1} را وارد کنید.`);
+                            return;
+                        }
+                        if (['select', 'radio', 'multiselect'].includes(f.type)) {
+                            if (!f.options || f.options.length === 0) {
+                                e.preventDefault();
+                                this.activeTab = 'custom_fields';
+                                f._open = true;
+                                alert(`برای فیلد سفارشی "${f.label}" حداقل یک گزینه باید اضافه شود.`);
+                                return;
+                            }
+                            for (let j = 0; j < f.options.length; j++) {
+                                if (!f.options[j].label || !f.options[j].label.trim()) {
+                                    e.preventDefault();
+                                    this.activeTab = 'custom_fields';
+                                    f._open = true;
+                                    alert(`عنوان گزینه ${j + 1} در فیلد سفارشی "${f.label}" نمی‌تواند خالی باشد.`);
+                                    return;
+                                }
+                            }
+                        }
+                    }
                 },
                 typeLabel(type) {
                     const map = {
