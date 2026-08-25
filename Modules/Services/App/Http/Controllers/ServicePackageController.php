@@ -111,6 +111,8 @@ class ServicePackageController extends Controller
                     }
                 }
 
+                $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
+
                 $cfSubtotal = 0;
                 if (!empty($item['service_id'])) {
                     $service = Service::with('customFields')->find($item['service_id']);
@@ -143,7 +145,6 @@ class ServicePackageController extends Controller
                                     $customFieldsQuantities[$cf->id] = $qVal;
                                 }
                             }
-                            $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
                             if ($cf->has_pricing && $isSelected) {
                                 $useDef = !empty($customFieldsUseDefaultPrice[$cf->id]);
                                 if ($cf->type === 'multiselect' && is_array($val)) {
@@ -328,6 +329,8 @@ class ServicePackageController extends Controller
                     }
                 }
 
+                $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
+
                 $cfSubtotal = 0;
                 if (!empty($item['service_id'])) {
                     $service = Service::with('customFields')->find($item['service_id']);
@@ -360,7 +363,6 @@ class ServicePackageController extends Controller
                                     $customFieldsQuantities[$cf->id] = $qVal;
                                 }
                             }
-                            $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
                             if ($cf->has_pricing && $isSelected) {
                                 $useDef = !empty($customFieldsUseDefaultPrice[$cf->id]);
                                 if ($cf->type === 'multiselect' && is_array($val)) {

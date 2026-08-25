@@ -262,7 +262,8 @@
                           return meta;
                       },
                       openEdit(payment) {
-                          const displayAmt = (this.currencyUnit === 'IRT') ? Math.round(payment.amount / 10) : payment.amount;
+                          const rawAmt = Math.round(parseFloat(payment.amount) || 0);
+                          const displayAmt = (this.currencyUnit === 'IRT') ? Math.round(rawAmt / 10) : rawAmt;
                           const meta = this.getPaymentMeta(payment);
                           
                           let pType = payment.type || 'transfer';
@@ -344,13 +345,19 @@
                           this.showEditModal = true;
                      },
                      formatNumber(val) {
-                         if (!val) return '';
-                         const num = String(val).replace(/[^\d]/g, '');
-                         return num.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                         if (val === null || val === undefined || val === '') return '';
+                         const clean = String(val).replace(/,/g, '').trim();
+                         if (clean === '') return '';
+                         const num = Math.round(parseFloat(clean));
+                         if (isNaN(num)) return '';
+                         return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
                      },
                      unformatNumber(val) {
-                         if (!val) return '';
-                         return String(val).replace(/[^\d]/g, '');
+                         if (val === null || val === undefined || val === '') return '';
+                         const clean = String(val).replace(/,/g, '').trim();
+                         if (clean === '') return '';
+                         const num = Math.round(parseFloat(clean));
+                         return isNaN(num) ? '' : String(num);
                      }
                  }">
 
