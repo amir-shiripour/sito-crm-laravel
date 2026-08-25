@@ -7,6 +7,7 @@ use Livewire\Attributes\On;
 use Modules\Booking\Entities\BookingWaitlist;
 use Modules\Booking\Entities\BookingService;
 use Modules\Booking\Entities\BookingSetting;
+use Modules\Booking\Entities\BookingForm;
 use Modules\Clients\Entities\Client;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -20,16 +21,28 @@ class BookingWaitlistModal extends Component
     public string $clientSearch = '';
     public ?int $serviceId = null;
     public ?int $providerId = null;
+    public ?int $durationMinutes = null;
     public string $preferredDateJalali = '';
     public string $notes = '';
     public string $errorMessage = '';
     public bool $lockClient = false;
 
+    // Service custom form state
+    public ?array $formSchema = null;
+    public ?string $formType = null;
+    public ?string $formName = null;
+    public array $formResponses = [];
+
     #[On('open-waitlist-modal')]
     #[On('open-add-to-waitlist')]
     public function openModal($clientId = null): void
     {
-        $this->reset(['clientId', 'clientSearch', 'serviceId', 'providerId', 'preferredDateJalali', 'notes', 'errorMessage']);
+        $this->reset([
+            'clientId', 'clientSearch', 'serviceId', 'providerId', 'durationMinutes',
+            'preferredDateJalali', 'notes', 'errorMessage', 'formSchema', 'formType',
+            'formName', 'formResponses'
+        ]);
+
         if ($clientId) {
             $this->clientId = (int) $clientId;
             $this->lockClient = true;
@@ -63,6 +76,8 @@ class BookingWaitlistModal extends Component
                 $this->providerId = null;
             }
         }
+
+        $this->loadServiceForm($serviceId);
     }
 
     public function updatedProviderId($providerId): void
@@ -75,8 +90,91 @@ class BookingWaitlistModal extends Component
                 ->exists();
             if (!$isValid) {
                 $this->serviceId = null;
+                $this->loadServiceForm(null);
             }
         }
+    }
+
+    protected function loadServiceForm($serviceId): void
+    {
+        if (!$serviceId) {
+            $this->formSchema = null;
+            $this->formType = null;
+            $this->formName = null;
+            $this->formResponses = [];
+            return;
+        }
+
+        $service = BookingService::with('appointmentForm')->find($serviceId);
+        if ($service && $service->appointment_form_id && $service->appointmentForm && $service->appointmentForm->status === BookingForm::STATUS_ACTIVE) {
+            $this->formName = $service->appointmentForm->name;
+            $this->formType = $service->appointmentForm->form_type;
+            $schema = $service->appointmentForm->schema_json ?? [];
+
+            if (isset($schema['fields']) && is_array($schema['fields'])) {
+                foreach ($schema['fields'] as &$field) {
+                    if (($field['type'] ?? '') === 'select-user-by-role') {
+                        $roleName = $field['role'] ?? null;
+                        $usersQ = User::query();
+                        if ($roleName) {
+                            $usersQ->whereHas('roles', fn($r) => $r->where('name', $roleName));
+                        }
+                        $field['user_options'] = $usersQ->orderBy('name')->get(['id', 'name'])->toArray();
+                    }
+                }
+            }
+
+            $this->formSchema = $schema;
+
+            // Initialize responses
+            $this->formResponses = [];
+            foreach ($schema['fields'] ?? [] as $field) {
+                $fName = $field['name'] ?? '';
+                if ($fName) {
+                    if (in_array($field['type'] ?? '', ['checkbox', 'tooth_number']) || !empty($field['multiple'])) {
+                        $this->formResponses[$fName] = [];
+                    } else {
+                        $this->formResponses[$fName] = '';
+                    }
+                }
+            }
+        } else {
+            $this->formSchema = null;
+            $this->formType = null;
+            $this->formName = null;
+            $this->formResponses = [];
+        }
+    }
+
+    public function toggleTooth(string $fieldName, int $toothId): void
+    {
+        if (!isset($this->formResponses[$fieldName]) || !is_array($this->formResponses[$fieldName])) {
+            $this->formResponses[$fieldName] = [];
+        }
+        $key = array_search($toothId, $this->formResponses[$fieldName]);
+        if ($key !== false) {
+            unset($this->formResponses[$fieldName][$key]);
+            $this->formResponses[$fieldName] = array_values($this->formResponses[$fieldName]);
+        } else {
+            $this->formResponses[$fieldName][] = $toothId;
+        }
+    }
+
+    public function selectJaw(string $fieldName, string $jaw): void
+    {
+        $upperJaw = [1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+        $lowerJaw = [15,16,17,18,19,20,21,22,23,24,25,26,27,28];
+        $this->formResponses[$fieldName] = $jaw === 'upper' ? $upperJaw : $lowerJaw;
+    }
+
+    public function selectAllTeeth(string $fieldName): void
+    {
+        $this->formResponses[$fieldName] = range(1, 28);
+    }
+
+    public function resetTeeth(string $fieldName): void
+    {
+        $this->formResponses[$fieldName] = [];
     }
 
     public function save(): void
@@ -86,6 +184,23 @@ class BookingWaitlistModal extends Component
         if (!$this->clientId) {
             $this->errorMessage = 'لطفاً یک ' . config('clients.labels.singular', 'مراجع') . ' را انتخاب کنید.';
             return;
+        }
+
+        // Validate service required fields
+        if ($this->formSchema && !empty($this->formSchema['fields'])) {
+            foreach ($this->formSchema['fields'] as $field) {
+                $fName = $field['name'] ?? '';
+                $fLabel = $field['label'] ?? $fName;
+                $isRequired = !empty($field['required']);
+                if ($isRequired && $fName) {
+                    $val = $this->formResponses[$fName] ?? null;
+                    $isEmpty = is_null($val) || $val === '' || (is_array($val) && empty($val));
+                    if ($isEmpty) {
+                        $this->errorMessage = sprintf('تکمیل فیلد «%s» در فرم اختصاصی الزامی است.', $fLabel);
+                        return;
+                    }
+                }
+            }
         }
 
         $settings = BookingSetting::current();
@@ -108,13 +223,15 @@ class BookingWaitlistModal extends Component
         }
 
         BookingWaitlist::create([
-            'client_id'          => $this->clientId,
-            'service_id'         => $this->serviceId ? (int)$this->serviceId : null,
-            'provider_user_id'   => $this->providerId ? (int)$this->providerId : null,
-            'preferred_date'     => $prefDateGregorian,
-            'notes'              => $this->notes,
-            'status'             => BookingWaitlist::STATUS_WAITING,
-            'created_by_user_id' => Auth::id(),
+            'client_id'                      => $this->clientId,
+            'service_id'                     => $this->serviceId ? (int)$this->serviceId : null,
+            'provider_user_id'               => $this->providerId ? (int)$this->providerId : null,
+            'preferred_date'                 => $prefDateGregorian,
+            'duration_minutes'               => $this->durationMinutes ? (int)$this->durationMinutes : null,
+            'notes'                          => $this->notes,
+            'appointment_form_response_json' => !empty($this->formResponses) ? $this->formResponses : null,
+            'status'                         => BookingWaitlist::STATUS_WAITING,
+            'created_by_user_id'             => Auth::id(),
         ]);
 
         $this->closeModal();
@@ -155,9 +272,10 @@ class BookingWaitlistModal extends Component
             ->get()
             ->map(function ($s) {
                 return [
-                    'id' => (int)$s->id,
-                    'name' => (string)$s->name,
-                    'provider_ids' => $s->providers->pluck('id')->map(fn($v) => (int)$v)->values()->toArray(),
+                    'id'                  => (int)$s->id,
+                    'name'                => (string)$s->name,
+                    'appointment_form_id' => $s->appointment_form_id ? (int)$s->appointment_form_id : null,
+                    'provider_ids'        => $s->providers->pluck('id')->map(fn($v) => (int)$v)->values()->toArray(),
                 ];
             })->values()->toArray();
 
@@ -176,8 +294,8 @@ class BookingWaitlistModal extends Component
                     ->values()
                     ->toArray();
                 return [
-                    'id' => (int)$p->id,
-                    'name' => (string)$p->name,
+                    'id'          => (int)$p->id,
+                    'name'        => (string)$p->name,
                     'service_ids' => $serviceIds,
                 ];
             })->values()->toArray();
@@ -185,8 +303,8 @@ class BookingWaitlistModal extends Component
         if (empty($providersData)) {
             $providersData = User::orderBy('name')->limit(50)->get(['id', 'name'])->map(function ($p) {
                 return [
-                    'id' => (int)$p->id,
-                    'name' => (string)$p->name,
+                    'id'          => (int)$p->id,
+                    'name'        => (string)$p->name,
                     'service_ids' => [],
                 ];
             })->values()->toArray();
@@ -194,9 +312,9 @@ class BookingWaitlistModal extends Component
 
         return view('booking::livewire.user.booking-waitlist-modal', [
             'selectedClient' => $selectedClient,
-            'clients' => $clients,
-            'servicesData' => $servicesData,
-            'providersData' => $providersData,
+            'clients'        => $clients,
+            'servicesData'   => $servicesData,
+            'providersData'  => $providersData,
         ]);
     }
 }

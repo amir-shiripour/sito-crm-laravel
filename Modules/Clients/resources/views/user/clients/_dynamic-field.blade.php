@@ -1278,6 +1278,17 @@
                                 </div>
                             </div>
 
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{-- زمان مورد نیاز --}}
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1 flex items-center justify-between">
+                                    <span>⏱️ زمان مورد نیاز (دقیقه)</span>
+                                    <span class="text-[10px] text-gray-400 font-normal">اختیاری</span>
+                                </label>
+                                <input type="number" min="5" step="5" wire:model.defer="waitlistDurationMinutes" placeholder="مثال: ۳۰"
+                                       class="{{ $baseInputClass }} text-center" />
+                            </div>
+
                             {{-- تاریخ ترجیحی --}}
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">📅 تاریخ ترجیحی (اختیاری)</label>
@@ -1285,6 +1296,16 @@
                                        class="{{ $baseInputClass }} text-center" data-jdp-only-date />
                             </div>
                         </div>
+
+                        {{-- Service Custom Form (if active and attached to service) --}}
+                        @if ($waitlistFormSchema && !empty($waitlistFormSchema['fields']))
+                            <x-booking::service-dynamic-form
+                                :formSchema="$waitlistFormSchema"
+                                :formType="$waitlistFormType"
+                                :formName="$waitlistFormName"
+                                :formResponses="$waitlistFormResponses"
+                                modelPrefix="waitlistFormResponses" />
+                        @endif
 
                         <div>
                             <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">📝 یادداشت / علت صف</label>
@@ -1294,7 +1315,7 @@
 
                         <div class="flex justify-end pt-1">
                             <button type="button" wire:click="addWaitlistEntryForClient"
-                                    class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition">
+                                    class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition cursor-pointer">
                                 ثبت در صف انتظار
                             </button>
                         </div>
@@ -1309,7 +1330,7 @@
                     </label>
 
                     <div x-show="$wire.addToWaitlist" x-collapse class="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {{-- انتخاب سرویس --}}
                             <div class="relative" @click.outside="openService = false">
                                 <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center justify-between">
@@ -1389,12 +1410,33 @@
                                     </template>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1 flex items-center justify-between">
+                                    <span>⏱️ زمان مورد نیاز (دقیقه)</span>
+                                    <span class="text-[10px] text-gray-400 font-normal">اختیاری</span>
+                                </label>
+                                <input type="number" min="5" step="5" wire:model.defer="waitlistDurationMinutes" placeholder="مثال: ۳۰" class="{{ $baseInputClass }} text-center" />
+                            </div>
 
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">تاریخ ترجیحی (اختیاری)</label>
+                                <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">📅 تاریخ ترجیحی (اختیاری)</label>
                                 <input type="text" wire:model.defer="waitlistPreferredDate" placeholder="۱۴۰۵/۰۶/۰۱" class="{{ $baseInputClass }} text-center" data-jdp-only-date />
                             </div>
                         </div>
+
+                        {{-- Service Custom Form --}}
+                        @if ($waitlistFormSchema && !empty($waitlistFormSchema['fields']))
+                            <x-booking::service-dynamic-form
+                                :formSchema="$waitlistFormSchema"
+                                :formType="$waitlistFormType"
+                                :formName="$waitlistFormName"
+                                :formResponses="$waitlistFormResponses"
+                                modelPrefix="waitlistFormResponses" />
+                        @endif
+
                         <div>
                             <label class="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">توضیحات</label>
                             <input type="text" wire:model.defer="waitlistNotes" placeholder="توضیحات صف..." class="{{ $baseInputClass }}" />

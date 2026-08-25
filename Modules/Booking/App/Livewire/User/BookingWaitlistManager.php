@@ -29,9 +29,16 @@ class BookingWaitlistManager extends Component
     public string $modalClientSearch = '';
     public ?int $modalServiceId = null;
     public ?int $modalProviderId = null;
+    public ?int $modalDurationMinutes = null;
     public string $modalPreferredDateJalali = '';
     public string $modalNotes = '';
     public string $modalError = '';
+
+    // Service Custom Form in Modal
+    public ?array $modalFormSchema = null;
+    public ?string $modalFormType = null;
+    public ?string $modalFormName = null;
+    public array $modalFormResponses = [];
 
     // Quick Status Update Modal State
     public bool $showStatusModal = false;
@@ -94,6 +101,8 @@ class BookingWaitlistManager extends Component
                 $this->modalProviderId = null;
             }
         }
+
+        $this->loadModalServiceForm($serviceId);
     }
 
     public function updatedModalProviderId($providerId): void
@@ -106,13 +115,68 @@ class BookingWaitlistManager extends Component
                 ->exists();
             if (!$isValid) {
                 $this->modalServiceId = null;
+                $this->loadModalServiceForm(null);
             }
+        }
+    }
+
+    protected function loadModalServiceForm($serviceId): void
+    {
+        if (!$serviceId) {
+            $this->modalFormSchema = null;
+            $this->modalFormType = null;
+            $this->modalFormName = null;
+            $this->modalFormResponses = [];
+            return;
+        }
+
+        $service = BookingService::with('appointmentForm')->find($serviceId);
+        if ($service && $service->appointment_form_id && $service->appointmentForm && $service->appointmentForm->status === \Modules\Booking\Entities\BookingForm::STATUS_ACTIVE) {
+            $this->modalFormName = $service->appointmentForm->name;
+            $this->modalFormType = $service->appointmentForm->form_type;
+            $schema = $service->appointmentForm->schema_json ?? [];
+
+            if (isset($schema['fields']) && is_array($schema['fields'])) {
+                foreach ($schema['fields'] as &$field) {
+                    if (($field['type'] ?? '') === 'select-user-by-role') {
+                        $roleName = $field['role'] ?? null;
+                        $usersQ = User::query();
+                        if ($roleName) {
+                            $usersQ->whereHas('roles', fn($r) => $r->where('name', $roleName));
+                        }
+                        $field['user_options'] = $usersQ->orderBy('name')->get(['id', 'name'])->toArray();
+                    }
+                }
+            }
+
+            $this->modalFormSchema = $schema;
+
+            $this->modalFormResponses = [];
+            foreach ($schema['fields'] ?? [] as $field) {
+                $fName = $field['name'] ?? '';
+                if ($fName) {
+                    if (in_array($field['type'] ?? '', ['checkbox', 'tooth_number']) || !empty($field['multiple'])) {
+                        $this->modalFormResponses[$fName] = [];
+                    } else {
+                        $this->modalFormResponses[$fName] = '';
+                    }
+                }
+            }
+        } else {
+            $this->modalFormSchema = null;
+            $this->modalFormType = null;
+            $this->modalFormName = null;
+            $this->modalFormResponses = [];
         }
     }
 
     public function openCreateModal(): void
     {
-        $this->reset(['modalClientId', 'modalClientSearch', 'modalServiceId', 'modalProviderId', 'modalPreferredDateJalali', 'modalNotes', 'modalError']);
+        $this->reset([
+            'modalClientId', 'modalClientSearch', 'modalServiceId', 'modalProviderId',
+            'modalDurationMinutes', 'modalPreferredDateJalali', 'modalNotes', 'modalError',
+            'modalFormSchema', 'modalFormType', 'modalFormName', 'modalFormResponses'
+        ]);
         $this->showCreateModal = true;
     }
 
@@ -137,6 +201,23 @@ class BookingWaitlistManager extends Component
             return;
         }
 
+        // Validate required fields in service form
+        if ($this->modalFormSchema && !empty($this->modalFormSchema['fields'])) {
+            foreach ($this->modalFormSchema['fields'] as $field) {
+                $fName = $field['name'] ?? '';
+                $fLabel = $field['label'] ?? $fName;
+                $isRequired = !empty($field['required']);
+                if ($isRequired && $fName) {
+                    $val = $this->modalFormResponses[$fName] ?? null;
+                    $isEmpty = is_null($val) || $val === '' || (is_array($val) && empty($val));
+                    if ($isEmpty) {
+                        $this->modalError = sprintf('تکمیل فیلد «%s» در فرم اختصاصی الزامی است.', $fLabel);
+                        return;
+                    }
+                }
+            }
+        }
+
         $settings = BookingSetting::current();
         if ($settings->queue_max_size && $settings->queue_max_size > 0) {
             $currentWaitingCount = BookingWaitlist::where('status', BookingWaitlist::STATUS_WAITING)->count();
@@ -157,13 +238,15 @@ class BookingWaitlistManager extends Component
         }
 
         BookingWaitlist::create([
-            'client_id'          => $this->modalClientId,
-            'service_id'         => $this->modalServiceId ? (int)$this->modalServiceId : null,
-            'provider_user_id'   => $this->modalProviderId ? (int)$this->modalProviderId : null,
-            'preferred_date'     => $prefDateGregorian,
-            'notes'              => $this->modalNotes,
-            'status'             => BookingWaitlist::STATUS_WAITING,
-            'created_by_user_id' => Auth::id(),
+            'client_id'                      => $this->modalClientId,
+            'service_id'                     => $this->modalServiceId ? (int)$this->modalServiceId : null,
+            'provider_user_id'               => $this->modalProviderId ? (int)$this->modalProviderId : null,
+            'preferred_date'                 => $prefDateGregorian,
+            'duration_minutes'               => $this->modalDurationMinutes ? (int)$this->modalDurationMinutes : null,
+            'notes'                          => $this->modalNotes,
+            'appointment_form_response_json' => !empty($this->modalFormResponses) ? $this->modalFormResponses : null,
+            'status'                         => BookingWaitlist::STATUS_WAITING,
+            'created_by_user_id'             => Auth::id(),
         ]);
 
         $this->closeCreateModal();
@@ -249,7 +332,7 @@ class BookingWaitlistManager extends Component
             $query->where('status', $this->statusFilter);
         }
 
-        $entries = $query->orderBy('position', 'asc')->orderBy('id', 'asc')->paginate(15);
+        $entries = $query->orderBy('created_at', 'asc')->orderBy('id', 'asc')->paginate(15);
 
         // KPI stats
         $totalWaitingCount = BookingWaitlist::where('status', BookingWaitlist::STATUS_WAITING)->count();

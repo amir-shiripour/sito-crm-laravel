@@ -64,8 +64,13 @@ class ClientForm extends Component
     public bool $addToWaitlist = false;
     public ?int $waitlistServiceId = null;
     public ?int $waitlistProviderId = null;
+    public ?int $waitlistDurationMinutes = null;
     public ?string $waitlistPreferredDate = null;
     public ?string $waitlistNotes = null;
+    public ?array $waitlistFormSchema = null;
+    public ?string $waitlistFormType = null;
+    public ?string $waitlistFormName = null;
+    public array $waitlistFormResponses = [];
 
     // 🔸 ریفرنس به فرم فعال (برای استفاده از quickFields و ... در ویو)
     public ?ClientFormSchema $formDefinition = null;
@@ -763,15 +768,17 @@ class ClientForm extends Component
                 } catch (\Throwable $e) {}
             }
             \Modules\Booking\Entities\BookingWaitlist::create([
-                'client_id'          => $client->id,
-                'service_id'         => $this->waitlistServiceId ? (int)$this->waitlistServiceId : null,
-                'provider_user_id'   => $this->waitlistProviderId ? (int)$this->waitlistProviderId : null,
-                'preferred_date'     => $prefDateG,
-                'notes'              => $this->waitlistNotes,
-                'status'             => \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
-                'created_by_user_id' => Auth::id(),
+                'client_id'                      => $client->id,
+                'service_id'                     => $this->waitlistServiceId ? (int)$this->waitlistServiceId : null,
+                'provider_user_id'               => $this->waitlistProviderId ? (int)$this->waitlistProviderId : null,
+                'preferred_date'                 => $prefDateG,
+                'duration_minutes'               => $this->waitlistDurationMinutes ? (int)$this->waitlistDurationMinutes : null,
+                'notes'                          => $this->waitlistNotes,
+                'appointment_form_response_json' => !empty($this->waitlistFormResponses) ? $this->waitlistFormResponses : null,
+                'status'                         => \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
+                'created_by_user_id'             => Auth::id(),
             ]);
-            $this->reset(['addToWaitlist', 'waitlistServiceId', 'waitlistProviderId', 'waitlistPreferredDate', 'waitlistNotes']);
+            $this->reset(['addToWaitlist', 'waitlistServiceId', 'waitlistProviderId', 'waitlistDurationMinutes', 'waitlistPreferredDate', 'waitlistNotes', 'waitlistFormSchema', 'waitlistFormType', 'waitlistFormName', 'waitlistFormResponses']);
         }
 
         $this->dispatch('notify', type: 'success', text: $isNew ? 'ایجاد شد.' : 'به‌روزرسانی شد.');
@@ -1127,6 +1134,58 @@ class ClientForm extends Component
     }
 
     /**
+     * هنگام تغییر سرویس صف در فرم پرونده
+     */
+    public function updatedWaitlistServiceId($serviceId): void
+    {
+        if (!$serviceId || !class_exists(\Modules\Booking\Entities\BookingService::class)) {
+            $this->waitlistFormSchema = null;
+            $this->waitlistFormType = null;
+            $this->waitlistFormName = null;
+            $this->waitlistFormResponses = [];
+            return;
+        }
+
+        $service = \Modules\Booking\Entities\BookingService::with('appointmentForm')->find($serviceId);
+        if ($service && $service->appointment_form_id && $service->appointmentForm && $service->appointmentForm->status === \Modules\Booking\Entities\BookingForm::STATUS_ACTIVE) {
+            $this->waitlistFormName = $service->appointmentForm->name;
+            $this->waitlistFormType = $service->appointmentForm->form_type;
+            $schema = $service->appointmentForm->schema_json ?? [];
+
+            if (isset($schema['fields']) && is_array($schema['fields'])) {
+                foreach ($schema['fields'] as &$field) {
+                    if (($field['type'] ?? '') === 'select-user-by-role') {
+                        $roleName = $field['role'] ?? null;
+                        $usersQ = User::query();
+                        if ($roleName) {
+                            $usersQ->whereHas('roles', fn($r) => $r->where('name', $roleName));
+                        }
+                        $field['user_options'] = $usersQ->orderBy('name')->get(['id', 'name'])->toArray();
+                    }
+                }
+            }
+
+            $this->waitlistFormSchema = $schema;
+            $this->waitlistFormResponses = [];
+            foreach ($schema['fields'] ?? [] as $field) {
+                $fName = $field['name'] ?? '';
+                if ($fName) {
+                    if (in_array($field['type'] ?? '', ['checkbox', 'tooth_number']) || !empty($field['multiple'])) {
+                        $this->waitlistFormResponses[$fName] = [];
+                    } else {
+                        $this->waitlistFormResponses[$fName] = '';
+                    }
+                }
+            }
+        } else {
+            $this->waitlistFormSchema = null;
+            $this->waitlistFormType = null;
+            $this->waitlistFormName = null;
+            $this->waitlistFormResponses = [];
+        }
+    }
+
+    /**
      * ثبت مستقیم مراجع در صف انتظار نوبت از داخل فرم پرونده
      */
     public function addWaitlistEntryForClient(): void
@@ -1140,6 +1199,23 @@ class ClientForm extends Component
             return;
         }
 
+        // Validate service required fields
+        if ($this->waitlistFormSchema && !empty($this->waitlistFormSchema['fields'])) {
+            foreach ($this->waitlistFormSchema['fields'] as $field) {
+                $fName = $field['name'] ?? '';
+                $fLabel = $field['label'] ?? $fName;
+                $isRequired = !empty($field['required']);
+                if ($isRequired && $fName) {
+                    $val = $this->waitlistFormResponses[$fName] ?? null;
+                    $isEmpty = is_null($val) || $val === '' || (is_array($val) && empty($val));
+                    if ($isEmpty) {
+                        $this->dispatch('notify', type: 'error', text: sprintf('تکمیل فیلد «%s» در فرم اختصاصی سرویس الزامی است.', $fLabel));
+                        return;
+                    }
+                }
+            }
+        }
+
         $prefDateG = null;
         if (!empty($this->waitlistPreferredDate)) {
             try {
@@ -1151,16 +1227,18 @@ class ClientForm extends Component
         }
 
         \Modules\Booking\Entities\BookingWaitlist::create([
-            'client_id'          => $this->client->id,
-            'service_id'         => $this->waitlistServiceId ? (int)$this->waitlistServiceId : null,
-            'provider_user_id'   => $this->waitlistProviderId ? (int)$this->waitlistProviderId : null,
-            'preferred_date'     => $prefDateG,
-            'notes'              => $this->waitlistNotes,
-            'status'             => \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
-            'created_by_user_id' => Auth::id(),
+            'client_id'                      => $this->client->id,
+            'service_id'                     => $this->waitlistServiceId ? (int)$this->waitlistServiceId : null,
+            'provider_user_id'               => $this->waitlistProviderId ? (int)$this->waitlistProviderId : null,
+            'preferred_date'                 => $prefDateG,
+            'duration_minutes'               => $this->waitlistDurationMinutes ? (int)$this->waitlistDurationMinutes : null,
+            'notes'                          => $this->waitlistNotes,
+            'appointment_form_response_json' => !empty($this->waitlistFormResponses) ? $this->waitlistFormResponses : null,
+            'status'                         => \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
+            'created_by_user_id'             => Auth::id(),
         ]);
 
-        $this->reset(['addToWaitlist', 'waitlistServiceId', 'waitlistProviderId', 'waitlistPreferredDate', 'waitlistNotes']);
+        $this->reset(['addToWaitlist', 'waitlistServiceId', 'waitlistProviderId', 'waitlistDurationMinutes', 'waitlistPreferredDate', 'waitlistNotes', 'waitlistFormSchema', 'waitlistFormType', 'waitlistFormName', 'waitlistFormResponses']);
         $this->dispatch('notify', type: 'success', text: 'مراجع با موفقیت به صف انتظار اضافه شد.');
     }
 

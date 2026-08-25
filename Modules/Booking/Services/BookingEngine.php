@@ -635,6 +635,7 @@ class BookingEngine
                 $cursor = $winStart->copy();
                 while ($cursor->copy()->addMinutes($slotDuration)->lte($winEnd)) {
                     $slotStartLocal = $cursor->copy();
+                    $slotEndLocal   = $cursor->copy()->addMinutes($slotDuration);
                     $ovBreak = $this->getOverlappingBreak($slotStartLocal, $slotEndLocal, $policy['breaks'] ?? []);
                     if ($ovBreak) {
                         if ($ovBreak['end']->gt($cursor)) {
