@@ -310,13 +310,45 @@ class ClientController extends Controller
                 $clientAppointments = collect([]);
             }
         }
+        // ── Wallet Module check ─────────────────────────────────────
+        $walletModule = Module::where('slug', 'wallet')->first();
+        $isWalletActive = ($walletModule && $walletModule->installed && $walletModule->active)
+            || (\Nwidart\Modules\Facades\Module::has('Wallet') && \Nwidart\Modules\Facades\Module::isEnabled('Wallet'));
+
+        $clientWallet = null;
+        $clientWalletTransactions = collect([]);
+        $clientWalletTransactionsCount = 0;
+
+        if ($isWalletActive && class_exists(\Modules\Wallet\App\Models\Wallet::class)) {
+            try {
+                if (class_exists(\Modules\Wallet\App\Services\WalletService::class)) {
+                    $clientWallet = app(\Modules\Wallet\App\Services\WalletService::class)->getOrCreateWallet($client);
+                } else {
+                    $clientWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', $client->getMorphClass())
+                        ->where('holder_id', $client->id)
+                        ->first();
+                }
+
+                if ($clientWallet) {
+                    $clientWalletTransactions = $clientWallet->transactions()
+                        ->latest()
+                        ->limit(50)
+                        ->get();
+                    $clientWalletTransactionsCount = $clientWallet->transactions()->count();
+                }
+            } catch (\Exception $e) {
+                $clientWallet = null;
+                $clientWalletTransactions = collect([]);
+            }
+        }
 
         return view('clients::user.clients.show', compact(
             'client', 'activeForm', 'clientOrders', 'clientInvoices',
             'bookingModule', 'workflowsModule', 'availableWorkflows',
             'accountingModule', 'accountingDocuments',
             'isBookingQueueEnabled', 'clientWaitlists',
-            'clientAppointments'
+            'clientAppointments',
+            'walletModule', 'clientWallet', 'clientWalletTransactions', 'clientWalletTransactionsCount'
         ));
     }
 
