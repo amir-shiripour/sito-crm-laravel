@@ -884,6 +884,9 @@
                             } else if (!isNaN(numFromQ) && numFromQ > 0) {
                                 customFieldValues[f.id] = numFromQ;
                                 if (f.has_pricing) customFieldQuantities[f.id] = numFromQ;
+                            } else {
+                                customFieldValues[f.id] = '';
+                                if (f.has_pricing) delete customFieldQuantities[f.id];
                             }
                         } else if (f.has_pricing) {
                             if (f.type === 'multiselect') {
@@ -898,10 +901,12 @@
                                     });
                                 }
                             } else {
-                                let curQ = customFieldQuantities[f.id];
-                                let n = Number(String(curQ || '').replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d.]/g, ''));
-                                if (isNaN(n) || n <= 0) {
-                                    customFieldQuantities[f.id] = 1;
+                                if (customFieldValues[f.id] !== undefined && customFieldValues[f.id] !== '' && customFieldValues[f.id] !== null) {
+                                    let curQ = customFieldQuantities[f.id];
+                                    let n = Number(String(curQ || '').replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d.]/g, ''));
+                                    customFieldQuantities[f.id] = (isNaN(n) || n <= 0) ? 1 : n;
+                                } else {
+                                    delete customFieldQuantities[f.id];
                                 }
                             }
                         }

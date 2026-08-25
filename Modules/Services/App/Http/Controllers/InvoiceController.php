@@ -1561,7 +1561,7 @@ class InvoiceController extends Controller
             $prepared[] = [
                 'service_id' => !empty($item['service_id']) ? (int)$item['service_id'] : null,
                 'custom_service_name' => $item['custom_service_name'] ?? null,
-                'description' => $item['description'] ?? null,
+                'description' => $item['description'] ?? '',
                 'unit' => $item['unit'] ?? 'عدد',
                 'quantity' => $qty,
                 'unit_price' => $price,
