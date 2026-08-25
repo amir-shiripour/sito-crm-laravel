@@ -30,6 +30,7 @@ class ScheduleManager extends Component
 
     // Quick Creation Modal State
     public bool $showModal = false;
+    public int $modalStep = 1; // Step 1: Basic & Client, Step 2: Custom Service Form
     public ?int $modalProviderId = null;
     public ?int $modalServiceId = null;
     public ?int $modalClientId = null;
@@ -41,6 +42,12 @@ class ScheduleManager extends Component
     public string $modalStatus = Appointment::STATUS_CONFIRMED;
     public string $modalNotes = '';
     public string $modalError = '';
+
+    // Dynamic Service Form State for Quick Booking Modal
+    public ?array $modalFormSchema = null;
+    public ?string $modalFormType = null;
+    public ?string $modalFormName = null;
+    public array $modalFormResponses = [];
 
     // Quick Details Modal State
     public bool $showDetailsModal = false;
@@ -100,6 +107,7 @@ class ScheduleManager extends Component
     public function updatedModalServiceId($value): void
     {
         $this->modalStatus = $this->resolveDefaultModalStatus($value ? (int)$value : null);
+        $this->loadModalServiceForm($value ? (int)$value : null);
 
         if (!empty($this->modalStartTime) && $this->modalProviderId && $value) {
             $bookingEngine = new BookingEngine();
@@ -129,6 +137,60 @@ class ScheduleManager extends Component
             } else {
                 $this->modalError = '';
             }
+        }
+    }
+
+    protected function loadModalServiceForm(?int $serviceId, ?array $initialResponses = null): void
+    {
+        if (!$serviceId) {
+            $this->modalFormSchema = null;
+            $this->modalFormType = null;
+            $this->modalFormName = null;
+            $this->modalFormResponses = [];
+            return;
+        }
+
+        $service = BookingService::with('appointmentForm')->find($serviceId);
+        if ($service && $service->appointment_form_id && $service->appointmentForm && $service->appointmentForm->status === \Modules\Booking\Entities\BookingForm::STATUS_ACTIVE) {
+            $this->modalFormName = $service->appointmentForm->name;
+            $this->modalFormType = $service->appointmentForm->form_type;
+            $schema = $service->appointmentForm->schema_json ?? [];
+
+            if (isset($schema['fields']) && is_array($schema['fields'])) {
+                foreach ($schema['fields'] as &$field) {
+                    if (($field['type'] ?? '') === 'select-user-by-role') {
+                        $roleName = $field['role'] ?? null;
+                        $usersQ = User::query();
+                        if ($roleName) {
+                            $usersQ->whereHas('roles', fn($r) => $r->where('name', $roleName));
+                        }
+                        $field['user_options'] = $usersQ->orderBy('name')->get(['id', 'name'])->toArray();
+                    }
+                }
+            }
+
+            $this->modalFormSchema = $schema;
+
+            if ($initialResponses !== null) {
+                $this->modalFormResponses = $initialResponses;
+            } else {
+                $this->modalFormResponses = [];
+                foreach ($schema['fields'] ?? [] as $field) {
+                    $fName = $field['name'] ?? '';
+                    if ($fName) {
+                        if (in_array($field['type'] ?? '', ['checkbox', 'tooth_number']) || !empty($field['multiple'])) {
+                            $this->modalFormResponses[$fName] = [];
+                        } else {
+                            $this->modalFormResponses[$fName] = '';
+                        }
+                    }
+                }
+            }
+        } else {
+            $this->modalFormSchema = null;
+            $this->modalFormType = null;
+            $this->modalFormName = null;
+            $this->modalFormResponses = [];
         }
     }
 
@@ -531,12 +593,14 @@ class ScheduleManager extends Component
             }
         }
 
+        $this->modalStep = 1;
         $this->modalClientId = null;
         $this->modalWaitlistId = null;
         $this->modalClientTab = 'search';
         $this->modalClientSearch = '';
         $this->modalStartTime = $startTimeStr;
         $this->modalStatus = $this->resolveDefaultModalStatus($this->modalServiceId);
+        $this->loadModalServiceForm($this->modalServiceId);
 
         if (!empty($startTimeStr)) {
             [$h, $m] = explode(':', $startTimeStr);
@@ -558,6 +622,45 @@ class ScheduleManager extends Component
         $this->modalNotes = '';
         $this->modalError = '';
         $this->showModal = true;
+    }
+
+    public function goToModalStep(int $step): void
+    {
+        $this->modalError = '';
+        if ($step === 2) {
+            if (!$this->modalServiceId) {
+                $this->modalError = 'لطفاً ابتدا نوع سرویس را انتخاب کنید.';
+                return;
+            }
+            if (!$this->modalProviderId) {
+                $this->modalError = 'لطفاً ' . config('booking.labels.provider') . ' را انتخاب کنید.';
+                return;
+            }
+            if (!$this->modalClientId) {
+                $this->modalError = 'لطفاً بیمار/مشتری را انتخاب کنید.';
+                return;
+            }
+            if (empty($this->modalStartTime)) {
+                $this->modalError = 'ساعت شروع الزامی است.';
+                return;
+            }
+        }
+        $this->modalStep = $step;
+    }
+
+    public function selectModalClient(int $clientId): void
+    {
+        $this->modalClientId = $clientId;
+        $this->modalWaitlistId = null;
+        $this->loadModalServiceForm($this->modalServiceId);
+    }
+
+    public function clearModalClient(): void
+    {
+        $this->modalClientId = null;
+        $this->modalWaitlistId = null;
+        $this->modalClientTab = 'search';
+        $this->loadModalServiceForm($this->modalServiceId);
     }
 
     public function setModalClientTab(string $tab): void
@@ -594,8 +697,18 @@ class ScheduleManager extends Component
             $this->modalProviderId = $entry->provider_user_id;
         }
 
+        // Load custom form responses from waitlist entry if present
+        $targetServiceId = $entry->service_id ? (int)$entry->service_id : ($this->modalServiceId ? (int)$this->modalServiceId : null);
+        $this->loadModalServiceForm($targetServiceId, $entry->appointment_form_response_json ?: null);
+
         if (!empty($entry->notes) && empty($this->modalNotes)) {
             $this->modalNotes = $entry->notes;
+        }
+
+        if (!empty($entry->duration_minutes) && !empty($this->modalStartTime)) {
+            [$h, $m] = explode(':', $this->modalStartTime);
+            $startCb = Carbon::createFromTime((int)$h, (int)$m)->addMinutes((int)$entry->duration_minutes);
+            $this->modalEndTime = $startCb->format('H:i');
         }
     }
 
@@ -605,6 +718,7 @@ class ScheduleManager extends Component
             $this->modalClientId = (int) $clientId;
             $this->modalWaitlistId = null;
             $this->modalClientTab = 'search';
+            $this->loadModalServiceForm($this->modalServiceId);
             $clientLabel = config('clients.labels.singular', 'مشتری');
             $this->toastSuccess = ($clientName ? "{$clientLabel} «{$clientName}»" : "{$clientLabel} جدید") . ' با موفقیت ایجاد و انتخاب شد.';
         }
@@ -664,9 +778,15 @@ class ScheduleManager extends Component
     public function closeModal(): void
     {
         $this->showModal = false;
+        $this->modalStep = 1;
         $this->modalError = '';
         $this->modalWaitlistId = null;
+        $this->modalClientId = null;
         $this->modalClientTab = 'search';
+        $this->modalFormSchema = null;
+        $this->modalFormType = null;
+        $this->modalFormName = null;
+        $this->modalFormResponses = [];
     }
 
     public function saveNewAppointment(AppointmentService $appointmentService): void
@@ -691,6 +811,23 @@ class ScheduleManager extends Component
         if (empty($this->modalStartTime)) {
             $this->modalError = 'ساعت شروع الزامی است.';
             return;
+        }
+
+        // Validate custom service dynamic form required fields
+        if ($this->modalFormSchema && !empty($this->modalFormSchema['fields'])) {
+            foreach ($this->modalFormSchema['fields'] as $field) {
+                $fName = $field['name'] ?? '';
+                $fLabel = $field['label'] ?? $fName;
+                $isRequired = !empty($field['required']);
+                if ($isRequired && $fName) {
+                    $val = $this->modalFormResponses[$fName] ?? null;
+                    $isEmpty = is_null($val) || $val === '' || (is_array($val) && empty($val));
+                    if ($isEmpty) {
+                        $this->modalError = sprintf('تکمیل فیلد «%s» در فرم اختصاصی الزامی است.', $fLabel);
+                        return;
+                    }
+                }
+            }
         }
 
         try {
@@ -766,6 +903,14 @@ class ScheduleManager extends Component
 
             $status = !empty($this->modalStatus) ? $this->modalStatus : null;
 
+            $formResponse = !empty($this->modalFormResponses) ? $this->modalFormResponses : null;
+            if (!$formResponse && $this->modalWaitlistId && class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+                $wl = \Modules\Booking\Entities\BookingWaitlist::find($this->modalWaitlistId);
+                if ($wl && !empty($wl->appointment_form_response_json)) {
+                    $formResponse = $wl->appointment_form_response_json;
+                }
+            }
+
             $appointmentService->createAppointmentByOperator(
                 serviceId: $this->modalServiceId,
                 providerUserId: $this->modalProviderId,
@@ -774,6 +919,7 @@ class ScheduleManager extends Component
                 endAtUtcIso: $endUtc->toIso8601String(),
                 createdByUserId: Auth::id(),
                 notes: $this->modalNotes,
+                appointmentFormResponse: $formResponse,
                 status: $status
             );
 

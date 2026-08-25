@@ -109,6 +109,22 @@ class InvoiceController extends Controller
     }
 
 
+    private function parseNumber($val): float
+    {
+        if (empty($val) && $val !== '0' && $val !== 0) return 0.0;
+        if (is_numeric($val)) return floatval($val);
+
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $arabic  = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        $val = str_replace($persian, $english, (string)$val);
+        $val = str_replace($arabic, $english, $val);
+        $clean = preg_replace('/[^\d.]/', '', $val);
+
+        return floatval($clean);
+    }
+
     private function getMarketAttributesForInvoice()
     {
         return $this->isMarketModuleEnabled() && class_exists(\Modules\Market\Entities\MarketAttribute::class)
@@ -204,6 +220,36 @@ class InvoiceController extends Controller
                             ->toArray();
                     }
 
+                    $mergedCustomFieldValues = (function() use ($customFieldsArray, $meta) {
+                        $vals = $meta['custom_fields'] ?? [];
+                        $qtys = $meta['custom_fields_quantities'] ?? [];
+                        foreach ($customFieldsArray as $cf) {
+                            if (($cf['type'] ?? '') === 'number') {
+                                $id = $cf['id'];
+                                $v = isset($vals[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$vals[$id]) : 0;
+                                $q = isset($qtys[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$qtys[$id]) : 0;
+                                if ($v > 0) $vals[$id] = $v;
+                                elseif ($q > 0) $vals[$id] = $q;
+                            }
+                        }
+                        return $vals;
+                    })();
+
+                    $mergedCustomFieldQuantities = (function() use ($customFieldsArray, $meta) {
+                        $vals = $meta['custom_fields'] ?? [];
+                        $qtys = $meta['custom_fields_quantities'] ?? [];
+                        foreach ($customFieldsArray as $cf) {
+                            if (($cf['type'] ?? '') === 'number') {
+                                $id = $cf['id'];
+                                $v = isset($vals[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$vals[$id]) : 0;
+                                $q = isset($qtys[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$qtys[$id]) : 0;
+                                if ($q > 0) $qtys[$id] = $q;
+                                elseif ($v > 0) $qtys[$id] = $v;
+                            }
+                        }
+                        return $qtys;
+                    })();
+
                     $mergedItems[] = [
                         'id' => uniqid() . rand(1000, 9999),
                         'mode' => $mode,
@@ -224,9 +270,9 @@ class InvoiceController extends Controller
                         'billing_period' => $meta['billing_period'] ?? null,
                         '_priceUnlocked' => false,
                         'service_custom_fields' => $customFieldsArray,
-                        'custom_field_values' => $meta['custom_fields'] ?? [],
+                        'custom_field_values' => $mergedCustomFieldValues,
                         '_showCustomFields' => false,
-                        'custom_field_quantities' => $meta['custom_fields_quantities'] ?? [],
+                        'custom_field_quantities' => $mergedCustomFieldQuantities,
                         'custom_field_custom_prices' => $meta['custom_fields_prices'] ?? [],
                         'custom_field_custom_discounts' => $meta['custom_fields_discounts'] ?? [],
                         'custom_field_tax_percents' => $meta['custom_fields_taxes'] ?? [],
@@ -235,6 +281,9 @@ class InvoiceController extends Controller
                         '_isMerged' => true,
                         '_packageGroupId' => $packageGroupId,
                         '_packageTitle' => $packageTitle,
+                        '_baseQuantity' => (float)($meta['_baseQuantity'] ?? $item->quantity ?? 1),
+                        '_baseCustomFieldQuantities' => $meta['_baseCustomFieldQuantities'] ?? ($meta['custom_fields_quantities'] ?? []),
+                        '_baseCustomFieldValues' => $meta['_baseCustomFieldValues'] ?? ($meta['custom_fields'] ?? []),
                     ];
                 }
             }
@@ -1437,6 +1486,7 @@ class InvoiceController extends Controller
                     } else {
                         $isSelected = match ($field->type) {
                             'checkbox' => in_array($val, [true, '1', 1], true),
+                            'number' => $this->parseNumber($val) > 0 || (isset($customFieldsQuantities[$field->id]) && $this->parseNumber($customFieldsQuantities[$field->id]) > 0),
                             default => ($val !== null && $val !== ''),
                         };
 
@@ -1447,9 +1497,19 @@ class InvoiceController extends Controller
                         $defaultFieldPrice = $field->getOptionPrice($val, $price);
 
                         $fieldQty = isset($customFieldsQuantities[$field->id])
-                            ? (float)$customFieldsQuantities[$field->id]
-                            : $qty;
+                            ? $this->parseNumber($customFieldsQuantities[$field->id])
+                            : ($field->type === 'number' ? $this->parseNumber($val) : $qty);
+
+                        if ($field->type === 'number' && $fieldQty <= 0 && $this->parseNumber($val) > 0) {
+                            $fieldQty = $this->parseNumber($val);
+                        }
+
                         if ($fieldQty <= 0) $fieldQty = 1;
+
+                        $customFieldsQuantities[$field->id] = $fieldQty;
+                        if ($field->type === 'number') {
+                            $customFieldsValues[$field->id] = $fieldQty;
+                        }
 
                         if (isset($customFieldsPrices[$field->id]) && !is_array($customFieldsPrices[$field->id])) {
                             $amount = (float)$customFieldsPrices[$field->id];
@@ -1512,6 +1572,9 @@ class InvoiceController extends Controller
                     'product_variant_id' => $item['product_variant_id'] ?? null,
                     '_packageGroupId' => $item['_packageGroupId'] ?? null,
                     '_packageTitle' => $item['_packageTitle'] ?? null,
+                    '_baseQuantity' => isset($item['_baseQuantity']) && $item['_baseQuantity'] !== '' ? (float)$item['_baseQuantity'] : null,
+                    '_baseCustomFieldQuantities' => $item['_baseCustomFieldQuantities'] ?? null,
+                    '_baseCustomFieldValues' => $item['_baseCustomFieldValues'] ?? null,
                     '_isMerged' => $item['_isMerged'] ?? false,
                     'type' => (!empty($item['product_id']) || !empty($item['product_variant_id'])) ? 'product' : (!empty($item['service_id']) ? 'service' : 'manual'),
                 ],

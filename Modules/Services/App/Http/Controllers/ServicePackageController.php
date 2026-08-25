@@ -123,8 +123,24 @@ class ServicePackageController extends Controller
                                     $isSelected = !empty($val);
                                 } elseif ($cf->type === 'multiselect') {
                                     $isSelected = is_array($val) && count($val) > 0;
+                                } elseif ($cf->type === 'number') {
+                                    $numVal = floatval($this->parsePrice($val));
+                                    $isSelected = ($numVal > 0);
+                                    if ($isSelected) {
+                                        $customFields[$cf->id] = $numVal;
+                                        if (!isset($customFieldsQuantities[$cf->id]) || floatval($customFieldsQuantities[$cf->id]) <= 0) {
+                                            $customFieldsQuantities[$cf->id] = $numVal;
+                                        }
+                                    }
                                 } else {
                                     $isSelected = true;
+                                }
+                            } elseif ($cf->type === 'number' && isset($customFieldsQuantities[$cf->id])) {
+                                $qVal = floatval($this->parsePrice($customFieldsQuantities[$cf->id]));
+                                if ($qVal > 0) {
+                                    $isSelected = true;
+                                    $customFields[$cf->id] = $qVal;
+                                    $customFieldsQuantities[$cf->id] = $qVal;
                                 }
                             }
                             if ($cf->has_pricing && $isSelected) {
@@ -138,8 +154,8 @@ class ServicePackageController extends Controller
                                             $optPrice = $cf->getOptionPrice($opt, $unitPrice);
                                         }
                                         $optQty = is_array($customFieldsQuantities[$cf->id] ?? null)
-                                            ? ($customFieldsQuantities[$cf->id][$opt] ?? 1)
-                                            : (floatval($customFieldsQuantities[$cf->id] ?? 1) ?: 1);
+                                            ? (floatval($this->parsePrice($customFieldsQuantities[$cf->id][$opt] ?? 1)) ?: 1)
+                                            : (floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1)) ?: 1);
                                         $cfPriceTotal += (floatval($optPrice) * $optQty);
                                     }
                                     $cfSubtotal += $cfPriceTotal;
@@ -156,8 +172,12 @@ class ServicePackageController extends Controller
                                         }
                                         $customFieldsPrices[$cf->id] = $cfPrice;
                                     }
-                                    $cfQty = floatval($customFieldsQuantities[$cf->id] ?? 1);
+                                    $cfQty = floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1));
+                                    if ($cf->type === 'number' && isset($customFields[$cf->id])) {
+                                        $cfQty = floatval($this->parsePrice($customFields[$cf->id]));
+                                    }
                                     if ($cfQty <= 0) $cfQty = 1;
+                                    $customFieldsQuantities[$cf->id] = $cfQty;
                                     $cfSubtotal += ($cfPrice * $cfQty);
                                 }
                             }
@@ -312,8 +332,24 @@ class ServicePackageController extends Controller
                                     $isSelected = !empty($val);
                                 } elseif ($cf->type === 'multiselect') {
                                     $isSelected = is_array($val) && count($val) > 0;
+                                } elseif ($cf->type === 'number') {
+                                    $numVal = floatval($this->parsePrice($val));
+                                    $isSelected = ($numVal > 0);
+                                    if ($isSelected) {
+                                        $customFields[$cf->id] = $numVal;
+                                        if (!isset($customFieldsQuantities[$cf->id]) || floatval($customFieldsQuantities[$cf->id]) <= 0) {
+                                            $customFieldsQuantities[$cf->id] = $numVal;
+                                        }
+                                    }
                                 } else {
                                     $isSelected = true;
+                                }
+                            } elseif ($cf->type === 'number' && isset($customFieldsQuantities[$cf->id])) {
+                                $qVal = floatval($this->parsePrice($customFieldsQuantities[$cf->id]));
+                                if ($qVal > 0) {
+                                    $isSelected = true;
+                                    $customFields[$cf->id] = $qVal;
+                                    $customFieldsQuantities[$cf->id] = $qVal;
                                 }
                             }
                             if ($cf->has_pricing && $isSelected) {
@@ -327,8 +363,8 @@ class ServicePackageController extends Controller
                                             $optPrice = $cf->getOptionPrice($opt, $unitPrice);
                                         }
                                         $optQty = is_array($customFieldsQuantities[$cf->id] ?? null)
-                                            ? ($customFieldsQuantities[$cf->id][$opt] ?? 1)
-                                            : (floatval($customFieldsQuantities[$cf->id] ?? 1) ?: 1);
+                                            ? (floatval($this->parsePrice($customFieldsQuantities[$cf->id][$opt] ?? 1)) ?: 1)
+                                            : (floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1)) ?: 1);
                                         $cfPriceTotal += (floatval($optPrice) * $optQty);
                                     }
                                     $cfSubtotal += $cfPriceTotal;
@@ -345,8 +381,12 @@ class ServicePackageController extends Controller
                                         }
                                         $customFieldsPrices[$cf->id] = $cfPrice;
                                     }
-                                    $cfQty = floatval($customFieldsQuantities[$cf->id] ?? 1);
+                                    $cfQty = floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1));
+                                    if ($cf->type === 'number' && isset($customFields[$cf->id])) {
+                                        $cfQty = floatval($this->parsePrice($customFields[$cf->id]));
+                                    }
                                     if ($cfQty <= 0) $cfQty = 1;
+                                    $customFieldsQuantities[$cf->id] = $cfQty;
                                     $cfSubtotal += ($cfPrice * $cfQty);
                                 }
                             }

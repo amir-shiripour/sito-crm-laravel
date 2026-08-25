@@ -26,7 +26,9 @@ class BookingWaitlist extends Model
         'service_id',
         'provider_user_id',
         'preferred_date',
+        'duration_minutes',
         'notes',
+        'appointment_form_response_json',
         'position',
         'status',
         'appointment_id',
@@ -36,10 +38,20 @@ class BookingWaitlist extends Model
     ];
 
     protected $casts = [
-        'preferred_date' => 'date',
-        'notified_at'    => 'datetime',
-        'converted_at'   => 'datetime',
-        'position'       => 'integer',
+        'preferred_date'                 => 'date',
+        'duration_minutes'               => 'integer',
+        'appointment_form_response_json' => 'array',
+        'notified_at'                    => 'datetime',
+        'converted_at'                   => 'datetime',
+        'position'                       => 'integer',
+    ];
+
+    protected $appends = [
+        'status_label',
+        'queue_rank',
+        'global_queue_rank',
+        'service_queue_rank',
+        'queue_ahead_count',
     ];
 
     protected static function booted(): void
@@ -47,8 +59,7 @@ class BookingWaitlist extends Model
         static::creating(function (BookingWaitlist $model) {
             if (!$model->position || $model->position <= 1) {
                 $maxPos = static::query()
-                    ->where('status', self::STATUS_WAITING)
-                    ->when($model->service_id, fn($q) => $q->where('service_id', $model->service_id), fn($q) => $q->whereNull('service_id'))
+                    ->whereIn('status', [self::STATUS_WAITING, self::STATUS_NOTIFIED, self::STATUS_IN_PROGRESS])
                     ->max('position');
 
                 $model->position = ($maxPos ? (int)$maxPos : 0) + 1;
@@ -84,20 +95,62 @@ class BookingWaitlist extends Model
     }
 
     /**
-     * رتبه و موقعیت واقعی و لحظه‌ای مراجع در این صف
+     * رتبه سراسری (Global Clinic Rank) بر اساس تقدم زمانی ثبت (FIFO)
      */
-    public function getQueueRankAttribute(): int
+    public function getGlobalQueueRankAttribute(): int
     {
         if (!in_array($this->status, [self::STATUS_WAITING, self::STATUS_NOTIFIED, self::STATUS_IN_PROGRESS])) {
-            return (int)$this->position;
+            return (int)($this->position ?? 1);
+        }
+
+        return static::query()
+            ->whereIn('status', [self::STATUS_WAITING, self::STATUS_NOTIFIED, self::STATUS_IN_PROGRESS])
+            ->where(function ($q) {
+                if ($this->created_at) {
+                    $q->where('created_at', '<', $this->created_at)
+                      ->orWhere(function ($sub) {
+                          $sub->where('created_at', '=', $this->created_at)
+                              ->where('id', '<', $this->id);
+                      });
+                } else {
+                    $q->where('id', '<', $this->id);
+                }
+            })
+            ->count() + 1;
+    }
+
+    /**
+     * رتبه اختصاصی در صف سرویس مربوطه
+     */
+    public function getServiceQueueRankAttribute(): int
+    {
+        if (!in_array($this->status, [self::STATUS_WAITING, self::STATUS_NOTIFIED, self::STATUS_IN_PROGRESS])) {
+            return (int)($this->position ?? 1);
         }
 
         return static::query()
             ->whereIn('status', [self::STATUS_WAITING, self::STATUS_NOTIFIED, self::STATUS_IN_PROGRESS])
             ->when($this->service_id, fn($q) => $q->where('service_id', $this->service_id), fn($q) => $q->whereNull('service_id'))
-            ->when($this->provider_user_id, fn($q) => $q->where('provider_user_id', $this->provider_user_id))
-            ->where('id', '<', $this->id)
+            ->where(function ($q) {
+                if ($this->created_at) {
+                    $q->where('created_at', '<', $this->created_at)
+                      ->orWhere(function ($sub) {
+                          $sub->where('created_at', '=', $this->created_at)
+                              ->where('id', '<', $this->id);
+                      });
+                } else {
+                    $q->where('id', '<', $this->id);
+                }
+            })
             ->count() + 1;
+    }
+
+    /**
+     * رتبه و موقعیت واقعی و لحظه‌ای مراجع در این صف (سراسری)
+     */
+    public function getQueueRankAttribute(): int
+    {
+        return $this->global_queue_rank;
     }
 
     /**
@@ -107,17 +160,15 @@ class BookingWaitlist extends Model
     {
         return static::query()
             ->whereIn('status', [self::STATUS_WAITING, self::STATUS_NOTIFIED, self::STATUS_IN_PROGRESS])
-            ->when($this->service_id, fn($q) => $q->where('service_id', $this->service_id), fn($q) => $q->whereNull('service_id'))
-            ->when($this->provider_user_id, fn($q) => $q->where('provider_user_id', $this->provider_user_id))
             ->count();
     }
 
     /**
-     * تعداد افراد جلوتر در صف
+     * تعداد افراد جلوتر در صف سراسری
      */
     public function getQueueAheadCountAttribute(): int
     {
-        return max(0, $this->queue_rank - 1);
+        return max(0, $this->global_queue_rank - 1);
     }
 
     /**
@@ -127,8 +178,6 @@ class BookingWaitlist extends Model
     {
         return static::query()
             ->whereIn('status', [self::STATUS_WAITING, self::STATUS_NOTIFIED, self::STATUS_IN_PROGRESS])
-            ->when($serviceId, fn($q) => $q->where('service_id', $serviceId), fn($q) => $q->whereNull('service_id'))
-            ->when($providerId, fn($q) => $q->where('provider_user_id', $providerId))
             ->count() + 1;
     }
 

@@ -191,19 +191,26 @@
                         <tr class="group hover:bg-gray-50/70 dark:hover:bg-gray-700/30 transition-colors duration-150">
                             {{-- Position / Priority --}}
                             <td class="px-4 py-3 text-center">
-                                @if($entry->queue_rank === 1 && in_array($entry->status, ['waiting', 'notified', 'in_progress']))
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 text-xs font-bold whitespace-nowrap shadow-2xs">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        <span>نفر ۱ (نوبت بعدی)</span>
-                                    </span>
-                                @else
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700/60 text-gray-800 dark:text-gray-200 text-xs font-bold whitespace-nowrap">
-                                        <span>نفر {{ $entry->queue_rank }}</span>
-                                        @if($entry->queue_ahead_count > 0 && in_array($entry->status, ['waiting', 'notified', 'in_progress']))
-                                            <span class="text-[11px] font-normal text-gray-500 dark:text-gray-400">({{ $entry->queue_ahead_count }} نفر جلوتر)</span>
-                                        @endif
-                                    </div>
-                                @endif
+                                <div class="inline-flex flex-col items-center gap-1">
+                                    @if($entry->global_queue_rank === 1 && in_array($entry->status, ['waiting', 'notified', 'in_progress']))
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 text-xs font-black whitespace-nowrap shadow-2xs">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span>نفر ۱ کلینیک (نوبت بعدی)</span>
+                                        </span>
+                                    @else
+                                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700/60 text-gray-800 dark:text-gray-200 text-xs font-bold whitespace-nowrap">
+                                            <span>نفر {{ $entry->global_queue_rank }} کلینیک</span>
+                                            @if($entry->queue_ahead_count > 0 && in_array($entry->status, ['waiting', 'notified', 'in_progress']))
+                                                <span class="text-[11px] font-normal text-gray-500 dark:text-gray-400">({{ $entry->queue_ahead_count }} نفر جلوتر)</span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                    @if($entry->service_id && in_array($entry->status, ['waiting', 'notified', 'in_progress']))
+                                        <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                                            (نفر {{ $entry->service_queue_rank }} در این خدمت)
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
 
                             {{-- Client Info --}}
@@ -216,14 +223,26 @@
 
                             {{-- Service & Provider --}}
                             <td class="px-4 py-3">
-                                <div class="flex flex-col">
-                                    <span class="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                                        @if($entry->service)
-                                            {{ $entry->service->name }}
-                                        @else
-                                            <span class="text-gray-500 dark:text-gray-400">🌐 صف عمومی</span>
+                                <div class="flex flex-col gap-0.5">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                                            @if($entry->service)
+                                                {{ $entry->service->name }}
+                                            @else
+                                                <span class="text-gray-500 dark:text-gray-400">🌐 صف عمومی</span>
+                                            @endif
+                                        </span>
+                                        @if($entry->duration_minutes)
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold">
+                                                ⏱️ {{ $entry->duration_minutes }} دقیقه
+                                            </span>
                                         @endif
-                                    </span>
+                                        @if(!empty($entry->appointment_form_response_json))
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800/60" title="دارای فرم اختصاصی">
+                                                📝 فرم اختصاصی
+                                            </span>
+                                        @endif
+                                    </div>
                                     <span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                         {{ $entry->provider ? $entry->provider->name : 'هر ارائه‌دهنده‌ای' }}
                                     </span>
@@ -248,34 +267,40 @@
 
                             {{-- Status Badge --}}
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium {{ $statusStyle }}">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
-                                    {{ $entry->status_label }}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold {{ $statusStyle }}">
+                                    {{ $statusLabels[$entry->status] ?? $entry->status }}
                                 </span>
                             </td>
 
                             {{-- Actions --}}
                             <td class="px-4 py-3 text-center">
-                                <div class="flex items-center justify-center gap-1">
-                                    <button wire:click="openStatusModal({{ $entry->id }})" title="ویرایش وضعیت و یادداشت"
-                                            class="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-700 transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                <div class="inline-flex items-center gap-1">
+                                    {{-- Quick Status Modal Button --}}
+                                    <button wire:click="openStatusModal({{ $entry->id }})" title="تغییر وضعیت"
+                                            class="p-1.5 rounded-lg text-gray-500 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
                                     </button>
 
-                                    @if($entry->status !== 'converted')
-                                        <a href="{{ route('user.booking.schedule.index') }}?client_id={{ $entry->client_id }}&service_id={{ $entry->service_id }}&waitlist_id={{ $entry->id }}"
-                                           title="تخصیص نوبت در تقویم"
-                                           class="p-1.5 rounded-lg text-teal-600 hover:text-teal-900 hover:bg-teal-50 dark:text-teal-400 dark:hover:text-teal-200 dark:hover:bg-teal-900/40 transition">
-                                            📅
+                                    {{-- Create Appointment Direct Link --}}
+                                    @if(in_array($entry->status, ['waiting', 'notified', 'in_progress']))
+                                        <a href="{{ route('user.booking.appointments.create', array_filter(['client_id' => $entry->client_id, 'service_id' => $entry->service_id, 'provider_user_id' => $entry->provider_user_id, 'waitlist_id' => $entry->id])) }}"
+                                           title="ثبت نوبت برای این مراجع"
+                                           class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors font-bold text-xs flex items-center gap-0.5">
+                                            <span>📅</span>
                                         </a>
                                     @endif
 
-                                    <button wire:click="cancelEntry({{ $entry->id }})"
-                                            onclick="return confirm('آیا از خروج این مراجع از صف انتظار مطمئن هستید؟')"
-                                            title="خروج از صف"
-                                            class="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/40 transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                    </button>
+                                    {{-- Cancel Entry Button --}}
+                                    @if($entry->status !== 'converted')
+                                        <button wire:click="cancelEntry({{ $entry->id }})" wire:confirm="آیا از حذف این مراجع از صف انتظار مطمئن هستید؟" title="حذف از صف"
+                                                class="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -303,113 +328,220 @@
 
     {{-- Create Modal --}}
     @if ($showCreateModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-700 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                <div class="h-1.5 w-full bg-gradient-to-r from-teal-500 to-emerald-500"></div>
+        @php
+            $hasModalCustomForm = !empty($modalFormSchema) && !empty($modalFormSchema['fields']);
+        @endphp
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+             @click.outside="$wire.closeCreateModal()">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl {{ $hasModalCustomForm ? 'max-w-5xl lg:max-w-6xl' : 'max-w-2xl' }} w-full shadow-2xl border border-gray-200/80 dark:border-gray-700/80 relative flex flex-col max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div class="h-1.5 w-full bg-gradient-to-r from-teal-500 via-amber-500 to-emerald-500 shrink-0"></div>
 
-                <div class="p-6 space-y-5">
-                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
-                        <h3 class="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
-                            <span>➕</span> افزودن مراجع به صف انتظار
-                        </h3>
-                        <button wire:click="closeCreateModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 font-bold">✕</button>
+                {{-- Header (Fixed) --}}
+                <div class="px-6 sm:px-7 py-4.5 border-b border-gray-100 dark:border-gray-700/80 flex items-center justify-between shrink-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/50 flex items-center justify-center text-teal-600 dark:text-teal-400 shrink-0 shadow-2xs">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                                افزودن مراجع به صف انتظار
+                            </h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                ثبت مشخصات و اولویت‌بندی در صف نوبت‌دهی
+                            </p>
+                        </div>
                     </div>
+                    <button wire:click="closeCreateModal" class="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
 
+                {{-- Body (Scrollable) --}}
+                <div class="p-6 sm:p-7 overflow-y-auto space-y-6 flex-1">
                     @if ($modalError)
-                        <div class="p-3 bg-rose-50 dark:bg-rose-900/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 text-xs font-bold">
-                            {{ $modalError }}
+                        <div class="p-4 bg-rose-50 dark:bg-rose-900/40 border border-rose-200 dark:border-rose-800 rounded-2xl text-rose-800 dark:text-rose-200 text-xs sm:text-sm font-bold flex items-center gap-3 shadow-2xs">
+                            <svg class="w-5 h-5 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>{{ $modalError }}</span>
                         </div>
                     @endif
 
-                    <div class="space-y-4 text-xs font-bold">
-                        {{-- Client Selector --}}
-                        <div>
-                            <label class="block text-gray-700 dark:text-gray-300 mb-1">انتخاب مراجع / بیمار <span class="text-rose-500">*</span></label>
-                            @if ($selectedModalClient)
-                                <div class="p-3 rounded-xl border border-teal-200 bg-teal-50 dark:bg-teal-900/30 flex items-center justify-between">
-                                    <div>
-                                        <span class="font-black text-teal-950 dark:text-teal-100 block">{{ $selectedModalClient->full_name }}</span>
-                                        <span class="text-[10px] text-teal-700 dark:text-teal-300 block mt-0.5 dir-ltr text-right">{{ $selectedModalClient->phone }}</span>
-                                    </div>
-                                    <button type="button" wire:click="$set('modalClientId', null)" class="px-2.5 py-1 bg-teal-200 dark:bg-teal-800 text-teal-900 dark:text-teal-100 rounded-lg text-[10px] font-bold">تغییر مراجع</button>
-                                </div>
-                            @else
-                                <div class="relative">
-                                    <input type="text" wire:model.live.debounce.300ms="modalClientSearch" placeholder="جستجوی نام یا شماره تماس..."
-                                           class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-gray-100">
-                                </div>
-                                @if (!empty($clientsForModal) && count($clientsForModal) > 0)
-                                    <div class="mt-1 max-h-36 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800 shadow-md">
-                                        <div class="px-2 py-1 text-[10px] font-bold text-gray-400 dark:text-gray-500 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/30">
-                                            <span>{{ empty($modalClientSearch) ? '۳ مراجع اخیر' : 'نتایج جستجو (' . count($clientsForModal) . ' مورد)' }}</span>
-                                            <span class="text-[9px] text-teal-600">برای انتخاب کلیک کنید</span>
-                                        </div>
-                                        @foreach($clientsForModal as $cm)
-                                            <div wire:click="selectModalClient({{ $cm->id }})" class="p-2 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer flex items-center justify-between">
-                                                <div>
-                                                    <span class="font-black text-gray-900 dark:text-white">{{ $cm->full_name }}</span>
-                                                    <span class="text-[10px] text-gray-400 block dir-ltr text-right">{{ $cm->phone }}</span>
-                                                </div>
-                                                <span class="text-[10px] text-teal-600 font-bold">انتخاب</span>
+                    <div class="{{ $hasModalCustomForm ? 'grid grid-cols-1 lg:grid-cols-12 gap-6' : 'space-y-5' }}">
+                        {{-- Left Column: Core Fields --}}
+                        <div class="{{ $hasModalCustomForm ? 'lg:col-span-5 space-y-4.5' : 'space-y-4.5' }}">
+                            {{-- Client Selector --}}
+                            <div class="bg-gray-50/70 dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-200/80 dark:border-gray-700/70 space-y-2.5">
+                                <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                        </svg>
+                                        <span>انتخاب مراجع / بیمار</span>
+                                    </span>
+                                    <span class="text-rose-500 font-black">*</span>
+                                </label>
+                                @if ($selectedModalClient)
+                                    <div class="p-3.5 rounded-xl border border-teal-200/90 bg-teal-50/80 dark:bg-teal-950/40 dark:border-teal-800/70 flex items-center justify-between shadow-2xs">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-xl bg-teal-500/15 dark:bg-teal-500/25 text-teal-700 dark:text-teal-300 flex items-center justify-center text-sm font-black shrink-0">
+                                                {{ mb_substr($selectedModalClient->full_name, 0, 1) }}
                                             </div>
-                                        @endforeach
+                                            <div>
+                                                <span class="font-black text-gray-900 dark:text-gray-100 text-sm block">{{ $selectedModalClient->full_name }}</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400 block mt-0.5 dir-ltr text-right font-medium">{{ $selectedModalClient->phone }}</span>
+                                            </div>
+                                        </div>
+                                        <button type="button" wire:click="$set('modalClientId', null)" class="px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-bold hover:bg-gray-50 transition shadow-2xs cursor-pointer">
+                                            تغییر
+                                        </button>
                                     </div>
+                                @else
+                                    <div class="relative">
+                                        <input type="text" wire:model.live.debounce.300ms="modalClientSearch" placeholder="جستجوی نام یا شماره تماس..."
+                                               class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 shadow-2xs">
+                                    </div>
+                                    @if (!empty($clientsForModal) && count($clientsForModal) > 0)
+                                        <div class="max-h-44 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/60 bg-white dark:bg-gray-800 shadow-md">
+                                            <div class="px-3.5 py-1.5 text-xs font-bold text-gray-400 dark:text-gray-500 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/30">
+                                                <span>{{ empty($modalClientSearch) ? '۳ مراجع اخیر' : 'نتایج (' . count($clientsForModal) . ' مورد)' }}</span>
+                                                <span class="text-[10px] text-teal-600 dark:text-teal-400">کلیک برای انتخاب</span>
+                                            </div>
+                                            @foreach($clientsForModal as $cm)
+                                                <div wire:click="selectModalClient({{ $cm->id }})" class="p-2.5 hover:bg-teal-50/80 dark:hover:bg-teal-950/40 cursor-pointer flex items-center justify-between transition-colors">
+                                                    <div>
+                                                        <span class="font-bold text-gray-900 dark:text-white text-xs sm:text-sm">{{ $cm->full_name }}</span>
+                                                        <span class="text-xs text-gray-400 block dir-ltr text-right">{{ $cm->phone }}</span>
+                                                    </div>
+                                                    <span class="text-xs text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-900/30 px-2.5 py-1 rounded-md">انتخاب</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 @endif
-                            @endif
-                        </div>
-
-                        {{-- Service & Provider Row --}}
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-300 mb-1 flex items-center justify-between">
-                                    <span>سرویس نوبت</span>
-                                    @if($modalProviderId)
-                                        <span class="text-[10px] text-teal-600 dark:text-teal-400">وابسته به ارائه‌دهنده</span>
-                                    @endif
-                                </label>
-                                <select wire:model.live="modalServiceId" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-gray-100">
-                                    <option value="">صف عمومی (بدون وابستگی)</option>
-                                    @foreach($modalServices as $s)
-                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
-                                    @endforeach
-                                </select>
                             </div>
 
+                            {{-- Service & Provider Row --}}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                            </svg>
+                                            <span>سرویس نوبت</span>
+                                        </span>
+                                        @if($modalProviderId)
+                                            <span class="text-[11px] text-teal-600 dark:text-teal-400">وابسته به ارائه‌دهنده</span>
+                                        @endif
+                                    </label>
+                                    <select wire:model.live="modalServiceId" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 shadow-2xs">
+                                        <option value="">صف عمومی (بدون سرویس خاص)</option>
+                                        @foreach($modalServices as $s)
+                                            <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <span>{{ config('booking.labels.provider', 'ارائه‌دهنده') }}</span>
+                                        </span>
+                                        @if($modalServiceId)
+                                            <span class="text-[11px] text-teal-600 dark:text-teal-400">وابسته به سرویس</span>
+                                        @endif
+                                    </label>
+                                    <select wire:model.live="modalProviderId" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 shadow-2xs">
+                                        <option value="">بدون ترجیح (هر ارائه‌دهنده)</option>
+                                        @foreach($modalProviders as $p)
+                                            <option value="{{ $p->id }}">{{ $p->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- Duration & Preferred Date Row --}}
+                            <div class="grid grid-cols-2 gap-3.5">
+                                <div>
+                                    <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <span>مدت زمان (دقیقه)</span>
+                                        </span>
+                                        <span class="text-[10px] text-gray-400 font-normal">اختیاری</span>
+                                    </label>
+                                    <input type="number" min="5" step="5" wire:model="modalDurationMinutes" placeholder="مثلاً ۳۰"
+                                           class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 text-center focus:ring-2 focus:ring-teal-500 shadow-2xs">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            <span>تاریخ ترجیحی</span>
+                                        </span>
+                                        <span class="text-[10px] text-gray-400 font-normal">اختیاری</span>
+                                    </label>
+                                    <input type="text" wire:model="modalPreferredDateJalali" placeholder="۱۴۰۵/۰۶/۰۱" data-jdp-only-date
+                                           class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 text-center focus:ring-2 focus:ring-teal-500 shadow-2xs">
+                                </div>
+                            </div>
+
+                            {{-- Notes --}}
                             <div>
-                                <label class="block text-gray-700 dark:text-gray-300 mb-1 flex items-center justify-between">
-                                    <span>{{ config('booking.labels.provider', 'ارائه‌دهنده') }}</span>
-                                    @if($modalServiceId)
-                                        <span class="text-[10px] text-teal-600 dark:text-teal-400">وابسته به سرویس</span>
-                                    @endif
+                                <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                    <span>یادداشت / توضیحات صف</span>
                                 </label>
-                                <select wire:model.live="modalProviderId" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-gray-100">
-                                    <option value="">بدون ترجیح (هر ارائه‌دهنده)</option>
-                                    @foreach($modalProviders as $p)
-                                        <option value="{{ $p->id }}">{{ $p->name }}</option>
-                                    @endforeach
-                                </select>
+                                <textarea wire:model="modalNotes" rows="{{ $hasModalCustomForm ? '2' : '3' }}" placeholder="علت قرارگیری در صف یا درخواست خاص مراجع..."
+                                          class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 shadow-2xs"></textarea>
                             </div>
                         </div>
 
-                        {{-- Preferred Date --}}
-                        <div>
-                            <label class="block text-gray-700 dark:text-gray-300 mb-1">تاریخ ترجیحی مراجع (اختیاری)</label>
-                            <input type="text" wire:model="modalPreferredDateJalali" placeholder="۱۴۰۵/۰۶/۰۱" data-jdp-only-date
-                                   class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-gray-100 text-center">
-                        </div>
-
-                        {{-- Notes --}}
-                        <div>
-                            <label class="block text-gray-700 dark:text-gray-300 mb-1">توضیحات و یادداشت</label>
-                            <textarea wire:model="modalNotes" rows="2" placeholder="علت قرارگیری در صف یا درخواست خاص مراجع..."
-                                      class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-gray-100"></textarea>
-                        </div>
+                        {{-- Right Column: Service Custom Dynamic Form & Dental Chart (when present) --}}
+                        @if ($hasModalCustomForm)
+                            <div class="lg:col-span-7">
+                                <x-booking::service-dynamic-form
+                                    :formSchema="$modalFormSchema"
+                                    :formType="$modalFormType"
+                                    :formName="$modalFormName"
+                                    :formResponses="$modalFormResponses"
+                                    modelPrefix="modalFormResponses" />
+                            </div>
+                        @endif
                     </div>
+                </div>
 
-                    <div class="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                        <button wire:click="closeCreateModal" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200">انصراف</button>
-                        <button wire:click="saveNewWaitlistEntry" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md">ثبت در صف</button>
-                    </div>
+                {{-- Footer (Fixed & Sticky) --}}
+                <div class="px-6 sm:px-7 py-4.5 bg-gray-50/90 dark:bg-gray-900/60 border-t border-gray-100 dark:border-gray-700/80 flex items-center justify-between shrink-0">
+                    <button wire:click="closeCreateModal" class="px-5 py-2.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm font-bold transition shadow-2xs cursor-pointer">
+                        انصراف
+                    </button>
+                    <button wire:click="saveNewWaitlistEntry" wire:loading.attr="disabled"
+                            class="inline-flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-teal-600/25 transition active:scale-98 disabled:opacity-50 cursor-pointer">
+                        <span wire:loading.remove wire:target="saveNewWaitlistEntry">ثبت در صف انتظار</span>
+                        <span wire:loading wire:target="saveNewWaitlistEntry" class="inline-flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            در حال ثبت...
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>

@@ -223,6 +223,7 @@
             'custom_service_name' => $service ? $service->name : ($item->custom_service_name ?: $item->description ?? ''),
             '_showServiceDropdown' => false,
             '_showProductDropdown' => false,
+            '_hasOpenSelectDropdown' => false,
             '_selectedGroup' => '',
             'description' => $item->description,
             'unit'        => $item->unit ?? 'عدد',
@@ -232,9 +233,35 @@
             'billing_period' => $meta['billing_period'] ?? null,
             '_priceUnlocked' => false,
             'service_custom_fields' => $customFieldsArray,
-            'custom_field_values' => $meta['custom_fields'] ?? [],
+            'custom_field_values' => (function() use ($customFieldsArray, $meta) {
+                $vals = $meta['custom_fields'] ?? [];
+                $qtys = $meta['custom_fields_quantities'] ?? [];
+                foreach ($customFieldsArray as $cf) {
+                    if (($cf['type'] ?? '') === 'number') {
+                        $id = $cf['id'];
+                        $v = isset($vals[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$vals[$id]) : 0;
+                        $q = isset($qtys[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$qtys[$id]) : 0;
+                        if ($v > 0) $vals[$id] = $v;
+                        elseif ($q > 0) $vals[$id] = $q;
+                    }
+                }
+                return $vals;
+            })(),
             '_showCustomFields' => false,
-            'custom_field_quantities' => $meta['custom_fields_quantities'] ?? [],
+            'custom_field_quantities' => (function() use ($customFieldsArray, $meta) {
+                $vals = $meta['custom_fields'] ?? [];
+                $qtys = $meta['custom_fields_quantities'] ?? [];
+                foreach ($customFieldsArray as $cf) {
+                    if (($cf['type'] ?? '') === 'number') {
+                        $id = $cf['id'];
+                        $v = isset($vals[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$vals[$id]) : 0;
+                        $q = isset($qtys[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$qtys[$id]) : 0;
+                        if ($q > 0) $qtys[$id] = $q;
+                        elseif ($v > 0) $qtys[$id] = $v;
+                    }
+                }
+                return $qtys;
+            })(),
             'custom_field_custom_prices' => $meta['custom_fields_prices'] ?? [],
             'custom_field_custom_discounts' => $meta['custom_fields_discounts'] ?? [],
             'custom_field_tax_percents' => $meta['custom_fields_taxes'] ?? [],
@@ -243,6 +270,9 @@
             '_isMerged' => !empty($meta['_isMerged']),
             '_packageGroupId' => $meta['_packageGroupId'] ?? $meta['package_group_id'] ?? (!empty($meta['package_id']) ? ('pkg_' . $invoice->id . '_' . $meta['package_id']) : null),
             '_packageTitle' => $meta['_packageTitle'] ?? $meta['package_title'] ?? (!empty($meta['package_id']) ? 'پکیج خدمات' : null),
+            '_baseQuantity' => (float)($meta['_baseQuantity'] ?? $item->quantity ?? 1),
+            '_baseCustomFieldQuantities' => $meta['_baseCustomFieldQuantities'] ?? ($meta['custom_fields_quantities'] ?? []),
+            '_baseCustomFieldValues' => $meta['_baseCustomFieldValues'] ?? ($meta['custom_fields'] ?? []),
         ];
     })->values();
 
@@ -558,7 +588,7 @@
 
             {{-- اقلام فاکتور --}}
             <div class="{{ $cardClass }} relative"
-                 :class="items.some(i => i._showServiceDropdown || i._showProductDropdown) ? 'z-20 overflow-visible' : 'z-10 overflow-hidden'">
+                 :class="items.some(i => i._showServiceDropdown || i._showProductDropdown || i._hasOpenSelectDropdown) ? 'z-20 overflow-visible' : 'z-10 overflow-hidden'">
                 <div
                     class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 flex flex-wrap gap-4 justify-between items-center">
                     <h2 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
@@ -614,7 +644,7 @@
                                                 </span>
                                                 <div class="min-w-0">
                                                     <span
-                                                        class="font-bold text-sm text-gray-800 dark:text-white block truncate"
+                                                        class="font-bold text-sm text-gray-800 dark:text-gray-100 block truncate"
                                                         x-text="pkg.name"></span>
                                                     <span class="text-[10px] text-gray-400"
                                                           x-text="pkg.items.length + ' ردیف'"></span>
@@ -663,7 +693,7 @@
                 </div>
 
                 <div class="w-full transition-all duration-300"
-                     :class="items.some(i => i._showServiceDropdown || i._showProductDropdown) ? 'overflow-visible' : 'overflow-x-auto'">
+                     :class="items.some(i => i._showServiceDropdown || i._showProductDropdown || i._hasOpenSelectDropdown) ? 'overflow-visible' : 'overflow-x-auto'">
                     <table class="w-full text-sm text-start border-collapse min-w-[1100px]">
                         <thead
                             class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
@@ -682,7 +712,7 @@
                         </thead>
                         <template x-for="(item, index) in items" :key="index">
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all"
-                                   :class="(item._showServiceDropdown || item._showProductDropdown) ? 'relative z-50' : 'relative z-10'">
+                                   :class="(item._showServiceDropdown || item._showProductDropdown || item._hasOpenSelectDropdown) ? 'relative z-50' : 'relative z-10'">
                             {{-- Package Group Header Row --}}
                             <template
                                 x-if="item._packageGroupId && (index === 0 || items[index-1]._packageGroupId !== item._packageGroupId)">
@@ -725,10 +755,10 @@
                                 </tr>
                             </template>
                             <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group"
-                                :class="(item._showServiceDropdown || item._showProductDropdown) ? 'relative z-50' : 'relative z-10'"
+                                :class="(item._showServiceDropdown || item._showProductDropdown || item._hasOpenSelectDropdown) ? 'relative z-50' : 'relative z-10'"
                                 x-show="!item._packageGroupId || !collapsedPackages[item._packageGroupId]">
                                 <td class="px-4 py-3 align-top"
-                                    :class="(item._showServiceDropdown || item._showProductDropdown) ? 'overflow-visible' : ''">
+                                    :class="(item._showServiceDropdown || item._showProductDropdown || item._hasOpenSelectDropdown) ? 'overflow-visible' : ''">
                                     <input type="hidden" :name="'items[' + index + '][service_id]'"
                                            :value="item.service_id">
                                     <input type="hidden" :name="'items[' + index + '][product_id]'"
@@ -739,6 +769,8 @@
                                            :value="item._packageGroupId || ''">
                                     <input type="hidden" :name="'items[' + index + '][_packageTitle]'"
                                            :value="item._packageTitle || ''">
+                                    <input type="hidden" :name="'items[' + index + '][_baseQuantity]'"
+                                           :value="item._baseQuantity || ''">
 
                                     <template x-if="item.mode === 'manual'">
                                         <input type="text" :name="'items[' + index + '][custom_service_name]'"
@@ -893,7 +925,8 @@
                                     <div
                                         class="flex items-stretch w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all shadow-sm">
                                         <input type="text" :value="toPersianNum(item.quantity)"
-                                               @input="let v = toEnglishNum($event.target.value).replace(/[^\d.]/g, ''); if(item.single_sell && v > 1) { v = 1; $el.value = '۱'; alert('این کالا دارای محدودیت فروش تکی (۱ عدد) است.'); } item.quantity = v;"
+                                               @input="let v = toEnglishNum($event.target.value).replace(/[^\d.]/g, ''); if(item.single_sell && v > 1) { v = 1; $el.value = '۱'; alert('این کالا دارای محدودیت فروش تکی (۱ عدد) است.'); } item.quantity = v; calculateTotals();"
+                                               @blur="let baseQ = getPackageBaseItemQuantity(item); let curQ = parseFloat(toEnglishNum(item.quantity || '')) || 0; if (item._packageGroupId && baseQ > 0 && curQ < baseQ) { item.quantity = baseQ; $el.value = toPersianNum(baseQ); if(typeof calculateTotals === 'function') calculateTotals(); }"
                                                :name="'items[' + index + '][quantity]'" required
                                                class="flex-1 min-w-0 w-full border-none bg-transparent py-2.5 px-2 font-black text-gray-900 dark:text-white text-center tabular-nums focus:ring-0 transition-all duration-300"
                                                :class="item.mode === 'manual' ? 'text-sm' : 'text-base'" dir="ltr"
@@ -1049,6 +1082,14 @@
                                                     <input type="text"
                                                            :value="toPersianNum(getCustomFieldQuantity(item, field, opt))"
                                                            @input="setCustomFieldQuantity(item, field, opt, $event.target.value)"
+                                                           @blur="
+                                                               let baseQ = getPackageBaseFieldQuantity(item, field, opt);
+                                                               let curQ = getCustomFieldQuantity(item, field, opt);
+                                                               if (item._packageGroupId && baseQ > 0 && (curQ < baseQ || isNaN(curQ) || curQ <= 0)) {
+                                                                   setCustomFieldQuantity(item, field, opt, baseQ);
+                                                                   $el.value = toPersianNum(baseQ);
+                                                               }
+                                                           "
                                                            :name="'items[' + index + '][custom_fields_quantities][' + field.id + '][' + opt + ']'"
                                                            class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
                                                            dir="ltr" placeholder="۱">
@@ -1149,6 +1190,11 @@
                                                                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                                         </svg>
                                                     </button>
+                                                    <span x-show="item._packageGroupId" class="text-gray-300 dark:text-gray-600 inline-block" title="قفل در پکیج">
+                                                        <svg class="w-3.5 h-3.5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                                        </svg>
+                                                    </span>
                                                 </td>
                                             </tr>
                                         </template>
@@ -1188,7 +1234,23 @@
                                             <td class="px-4 py-2.5 align-middle">
                                                 <input type="text"
                                                        :value="toPersianNum(getCustomFieldQuantity(item, field))"
-                                                       @input="setCustomFieldQuantity(item, field, null, $event.target.value)"
+                                                       @input="
+                                                           setCustomFieldQuantity(item, field, null, $event.target.value);
+                                                           if (field.type === 'number') {
+                                                               item.custom_field_values[field.id] = parsePriceInput($event.target.value);
+                                                           }
+                                                       "
+                                                       @blur="
+                                                           let baseQ = getPackageBaseFieldQuantity(item, field);
+                                                           let curQ = getCustomFieldQuantity(item, field);
+                                                           if (item._packageGroupId && baseQ > 0 && (curQ < baseQ || isNaN(curQ) || curQ <= 0)) {
+                                                               setCustomFieldQuantity(item, field, null, baseQ);
+                                                               if (field.type === 'number') {
+                                                                   item.custom_field_values[field.id] = baseQ;
+                                                               }
+                                                               $el.value = toPersianNum(baseQ);
+                                                           }
+                                                       "
                                                        :name="'items[' + index + '][custom_fields_quantities][' + field.id + ']'"
                                                        class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
                                                        dir="ltr" placeholder="۱">
@@ -1287,6 +1349,11 @@
                                                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                                     </svg>
                                                 </button>
+                                                <span x-show="item._packageGroupId" class="text-gray-300 dark:text-gray-600 inline-block" title="قفل در پکیج">
+                                                    <svg class="w-3.5 h-3.5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                                    </svg>
+                                                </span>
                                             </td>
                                         </tr>
                                     </template>
@@ -1295,7 +1362,8 @@
                             </template>
 
                             {{-- بخش تنظیمات فیلدهای سفارشی --}}
-                            <tr x-show="(item.service_custom_fields && item.service_custom_fields.length > 0) && (!item._packageGroupId || !collapsedPackages[item._packageGroupId])">
+                            <tr x-show="(item.service_custom_fields && item.service_custom_fields.length > 0) && (!item._packageGroupId || !collapsedPackages[item._packageGroupId])"
+                                :class="item._hasOpenSelectDropdown ? 'relative z-50' : 'relative z-10'">
                                 <td colspan="8" class="p-0 border-0">
                                     <div x-show="item._showCustomFields"
                                          x-transition:enter="transition ease-out duration-200"
@@ -1304,7 +1372,8 @@
                                          x-transition:leave="transition ease-in duration-150"
                                          x-transition:leave-start="opacity-100 translate-y-0"
                                          x-transition:leave-end="opacity-0 -translate-y-2"
-                                         class="bg-slate-50/70 dark:bg-slate-800/40 border-y border-slate-200/80 dark:border-slate-700/80 shadow-[inset_0_4px_6px_-4px_rgba(0,0,0,0.05)] relative z-0">
+                                         class="bg-slate-50/70 dark:bg-slate-800/40 border-y border-slate-200/80 dark:border-slate-700/80 shadow-[inset_0_4px_6px_-4px_rgba(0,0,0,0.05)] relative"
+                                         :class="item._hasOpenSelectDropdown ? 'z-50 overflow-visible' : 'z-0'">
                                         <div class="flex">
                                             <div
                                                 class="w-1.5 bg-indigo-400/80 dark:bg-indigo-600/80 shadow-[2px_0_8px_rgba(99,102,241,0.2)]"></div>
@@ -1313,8 +1382,9 @@
                                                     class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                                     <template x-for="field in item.service_custom_fields"
                                                               :key="field.id">
-                                                        <div
-                                                            class="relative p-3 rounded-xl bg-white dark:bg-gray-900/50 border border-gray-200/80 dark:border-gray-700/60 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-colors group">
+                                                        <div x-data="{ open: false }"
+                                                             :class="open ? 'relative z-[100]' : 'relative z-10'"
+                                                             class="p-3 rounded-xl bg-white dark:bg-gray-900/50 border border-gray-200/80 dark:border-gray-700/60 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-colors group">
                                                             <div class="flex justify-between items-center mb-2">
                                                                 <label
                                                                     class="text-xs font-black text-gray-700 dark:text-gray-200 truncate"
@@ -1361,26 +1431,26 @@
                                                                 <template x-if="!item._packageGroupId">
                                                                     <div class="w-full">
                                                                         <template
-                                                                            x-if="['text', 'email', 'phone', 'url'].includes(field.type)">
-                                                                            <input
-                                                                                :type="field.type === 'url' ? 'url' : field.type"
+                                                                            x-if="field.type === 'text' || field.type === 'email' || field.type === 'url'"><input
+                                                                                type="text"
                                                                                 :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                 x-model="item.custom_field_values[field.id]"
                                                                                 class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                                :placeholder="field.placeholder || field.label"
                                                                                 :required="field.is_required">
                                                                         </template>
                                                                         <template x-if="field.type === 'datetime'">
-                                                                            <input type="text" readonly
-                                                                                   data-jdp-with-time
-                                                                                   :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                                   x-model="item.custom_field_values[field.id]"
-                                                                                   @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
-                                                                                   @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
-                                                                                   @change="item.custom_field_values[field.id] = $el.value"
-                                                                                   class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
-                                                                                   placeholder="انتخاب تاریخ و ساعت"
-                                                                                   autocomplete="off"
-                                                                                   :required="field.is_required">
+                                                                            <input
+                                                                                type="text" readonly data-jdp-with-time
+                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                x-model="item.custom_field_values[field.id]"
+                                                                                @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
+                                                                                @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
+                                                                                @change="item.custom_field_values[field.id] = $el.value"
+                                                                                class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
+                                                                                placeholder="انتخاب تاریخ و ساعت"
+                                                                                autocomplete="off"
+                                                                                :required="field.is_required">
                                                                         </template>
                                                                         <template x-if="field.type === 'date'"><input
                                                                                 type="text" readonly data-jdp-only-date
@@ -1398,12 +1468,18 @@
                                                                                 type="text"
                                                                                 :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                 :value="formatPriceInput(item.custom_field_values[field.id])"
-                                                                                @input="item.custom_field_values[field.id] = parsePriceInput($event.target.value)"
+                                                                                @input="
+                                                                                    let val = parsePriceInput($event.target.value);
+                                                                                    item.custom_field_values[field.id] = val;
+                                                                                    if (field.has_pricing) {
+                                                                                        setCustomFieldQuantity(item, field, null, val);
+                                                                                    }
+                                                                                "
                                                                                 class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm font-bold text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-center tabular-nums dir-ltr transition-all"
                                                                                 :required="field.is_required">
                                                                         </template>
-                                                                        <template x-if="field.type === 'textarea'">
-                                                                            <textarea
+                                                                        <template
+                                                                            x-if="field.type === 'textarea'"><textarea
                                                                                 :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                 x-model="item.custom_field_values[field.id]"
                                                                                 rows="2"
@@ -1412,10 +1488,9 @@
                                                                         </template>
                                                                         <template x-if="field.type === 'select'">
                                                                             <div class="relative w-full"
-                                                                                 x-data="{ open: false }"
-                                                                                 @click.outside="open = false">
+                                                                                 @click.outside="open = false; item._hasOpenSelectDropdown = false">
                                                                                 <button type="button"
-                                                                                        @click="open = !open"
+                                                                                        @click="open = !open; item._hasOpenSelectDropdown = open"
                                                                                         class="w-full flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all text-start">
                                                                                      <span
                                                                                          x-text="item.custom_field_values[field.id] || 'انتخاب کنید...'"
@@ -1439,9 +1514,9 @@
                                                                                 <div x-show="open"
                                                                                      x-transition.opacity.duration.150ms
                                                                                      style="display: none;"
-                                                                                     class="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1">
+                                                                                     class="absolute z-[100] mt-1 w-full max-h-48 overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1">
                                                                                     <button type="button"
-                                                                                            @click="item.custom_field_values[field.id] = ''; open = false"
+                                                                                            @click="item.custom_field_values[field.id] = ''; open = false; item._hasOpenSelectDropdown = false"
                                                                                             class="w-full text-start px-3 py-2 text-xs text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                                                                         انتخاب کنید...
                                                                                     </button>
@@ -1449,7 +1524,7 @@
                                                                                         x-for="opt in getFieldOptionsList(field)"
                                                                                         :key="opt.label">
                                                                                         <button type="button"
-                                                                                                @click="item.custom_field_values[field.id] = opt.label; open = false"
+                                                                                                @click="item.custom_field_values[field.id] = opt.label; open = false; item._hasOpenSelectDropdown = false"
                                                                                                 class="w-full flex items-center justify-between text-start px-3 py-2 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border-t border-gray-100 dark:border-gray-700/40 transition-colors"
                                                                                                 :class="item.custom_field_values[field.id] === opt.label ? 'bg-indigo-50/70 dark:bg-indigo-500/20 font-bold text-indigo-600 dark:text-indigo-400' : 'text-gray-800 dark:text-gray-200'">
                                                                                             <span x-text="opt.label"
@@ -1555,65 +1630,6 @@
                                                                             </div>
                                                                         </template>
                                                                     </div>
-
-                                                                    {{-- بخش تنظیم تعداد داخل کارت فیلد سفارشی برای فیلدهای دارای قیمت --}}
-                                                                    <template
-                                                                        x-if="field.has_pricing && field.type !== 'multiselect'">
-                                                                        <div
-                                                                            class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between gap-2"
-                                                                            x-show="isFieldSelected(field, item.custom_field_values[field.id])">
-                                                                             <span
-                                                                                 class="text-[11px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                                                                 <svg
-                                                                                     class="w-3.5 h-3.5 text-indigo-500"
-                                                                                     fill="none" viewBox="0 0 24 24"
-                                                                                     stroke="currentColor"
-                                                                                     stroke-width="2">
-                                                                                     <path stroke-linecap="round"
-                                                                                           stroke-linejoin="round"
-                                                                                           d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
-                                                                                 </svg>
-                                                                                 تعداد:
-                                                                             </span>
-                                                                            <div class="w-24">
-                                                                                <input type="text"
-                                                                                       :value="toPersianNum(getCustomFieldQuantity(item, field))"
-                                                                                       @input="setCustomFieldQuantity(item, field, null, $event.target.value)"
-                                                                                       class="w-full rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/40 dark:bg-indigo-950/20 px-2.5 py-1 text-xs text-center font-bold text-indigo-900 dark:text-indigo-200 tabular-nums focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                                                                                       dir="ltr" placeholder="۱">
-                                                                            </div>
-                                                                        </div>
-                                                                    </template>
-
-                                                                    <template
-                                                                        x-if="field.has_pricing && field.type === 'multiselect'">
-                                                                        <div
-                                                                            class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 space-y-1.5"
-                                                                            x-show="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].length > 0">
-                                                                            <div
-                                                                                class="text-[10px] font-bold text-gray-400">
-                                                                                تعداد گزینه‌های انتخابی:
-                                                                            </div>
-                                                                            <template
-                                                                                x-for="opt in (Array.isArray(item.custom_field_values[field.id]) ? item.custom_field_values[field.id] : [])"
-                                                                                :key="opt">
-                                                                                <div
-                                                                                    class="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/60 dark:border-indigo-800/40">
-                                                                                    <span
-                                                                                        class="text-[11px] font-medium text-gray-700 dark:text-gray-300 truncate"
-                                                                                        x-text="opt"></span>
-                                                                                    <div class="w-20 shrink-0">
-                                                                                        <input type="text"
-                                                                                               :value="toPersianNum(getCustomFieldQuantity(item, field, opt))"
-                                                                                               @input="setCustomFieldQuantity(item, field, opt, $event.target.value)"
-                                                                                               class="w-full rounded-md border border-indigo-200 dark:border-indigo-800/60 bg-white dark:bg-gray-900 px-2 py-0.5 text-xs text-center font-bold text-indigo-900 dark:text-indigo-200 tabular-nums outline-none"
-                                                                                               dir="ltr"
-                                                                                               placeholder="۱">
-                                                                                    </div>
-                                                                                </div>
-                                                                            </template>
-                                                                        </div>
-                                                                    </template>
                                                                 </template>
                                                             </div>
                                                         </div>
@@ -2219,6 +2235,7 @@
                             custom_service_name: '',
                             _showServiceDropdown: false,
                             _showProductDropdown: false,
+                            _hasOpenSelectDropdown: false,
                             _selectedGroup: '',
                             description: '',
                             unit: 'عدد',
@@ -2309,11 +2326,11 @@
                                     if (typeof v === 'object' && v !== null) {
                                         customFieldQuantities[k] = {};
                                         Object.keys(v).forEach(subK => {
-                                            let n = parseFloat(v[subK]);
+                                            let n = Number(this.toEnglishNum((v[subK] || '').toString()).replace(/[^\d.]/g, ''));
                                             customFieldQuantities[k][subK] = isNaN(n) || n <= 0 ? 1 : n;
                                         });
                                     } else {
-                                        let n = parseFloat(v);
+                                        let n = Number(this.toEnglishNum((v || '').toString()).replace(/[^\d.]/g, ''));
                                         customFieldQuantities[k] = isNaN(n) || n <= 0 ? 1 : n;
                                     }
                                 });
@@ -2329,6 +2346,40 @@
                                 customFieldCustomPrices = JSON.parse(JSON.stringify(item.custom_fields_prices));
                             }
 
+                            customFieldsArray.forEach(f => {
+                                if (f.type === 'number') {
+                                    let rawV = customFieldValues[f.id] !== undefined ? customFieldValues[f.id] : null;
+                                    let rawQ = customFieldQuantities[f.id] !== undefined ? customFieldQuantities[f.id] : null;
+                                    let numFromV = rawV !== null ? Number(this.toEnglishNum(rawV.toString()).replace(/[^\d.]/g, '')) : NaN;
+                                    let numFromQ = rawQ !== null ? Number(this.toEnglishNum(rawQ.toString()).replace(/[^\d.]/g, '')) : NaN;
+
+                                    if (!isNaN(numFromV) && numFromV > 0) {
+                                        customFieldValues[f.id] = numFromV;
+                                        if (f.has_pricing) customFieldQuantities[f.id] = numFromV;
+                                    } else if (!isNaN(numFromQ) && numFromQ > 0) {
+                                        customFieldValues[f.id] = numFromQ;
+                                        if (f.has_pricing) customFieldQuantities[f.id] = numFromQ;
+                                    }
+                                } else if (f.has_pricing) {
+                                    if (f.type === 'multiselect') {
+                                        if (Array.isArray(customFieldValues[f.id])) {
+                                            if (!customFieldQuantities[f.id] || typeof customFieldQuantities[f.id] !== 'object') {
+                                                customFieldQuantities[f.id] = {};
+                                            }
+                                            customFieldValues[f.id].forEach(opt => {
+                                                let optQ = customFieldQuantities[f.id][opt];
+                                                let n = Number(this.toEnglishNum((optQ || '').toString()).replace(/[^\d.]/g, ''));
+                                                customFieldQuantities[f.id][opt] = (!isNaN(n) && n > 0) ? n : 1;
+                                            });
+                                        }
+                                    } else if (this.isFieldSelected(f, customFieldValues[f.id])) {
+                                        let curQ = customFieldQuantities[f.id];
+                                        let n = Number(this.toEnglishNum((curQ || '').toString()).replace(/[^\d.]/g, ''));
+                                        customFieldQuantities[f.id] = (!isNaN(n) && n > 0) ? n : 1;
+                                    }
+                                }
+                            });
+
                             this.items.push({
                                 mode: item.service_id ? 'service' : 'manual',
                                 service_id: item.service_id ? String(item.service_id) : '',
@@ -2339,6 +2390,7 @@
                                 custom_service_name: item.custom_service_name || (serviceRaw ? serviceRaw.name : ''),
                                 _showServiceDropdown: false,
                                 _showProductDropdown: false,
+                                _hasOpenSelectDropdown: false,
                                 _selectedGroup: '',
                                 description: item.description || '',
                                 unit: item.unit || 'عدد',
@@ -2360,7 +2412,10 @@
                                 _customFieldTaxUnlocked: {},
                                 _showCustomFields: customFieldsArray.length > 0,
                                 _packageGroupId: groupId,
-                                _packageTitle: pkg.name
+                                _packageTitle: pkg.name,
+                                _baseQuantity: parseFloat(item.quantity) || 1,
+                                _baseCustomFieldQuantities: JSON.parse(JSON.stringify(customFieldQuantities)),
+                                _baseCustomFieldValues: JSON.parse(JSON.stringify(customFieldValues))
                             });
                         });
 
@@ -2679,44 +2734,120 @@
                         if (!c && i !== -1) a.splice(i, 1);
                     },
                     isFieldSelected(f, v) {
-                        if (f.type === 'checkbox') return (v === true || v === '1' || v === 1);
+                        if (v === undefined || v === null || v === '') return false;
+                        if (f.type === 'checkbox') return (v === true || v === '1' || v === 1 || String(v) === 'true');
                         if (f.type === 'multiselect') return Array.isArray(v) && v.length > 0;
+                        if (f.type === 'number') {
+                            if (f.has_pricing) {
+                                let num = Number(this.toEnglishNum(v.toString()).replace(/[^\d.]/g, ''));
+                                return !isNaN(num) && num > 0;
+                            }
+                            return (v !== '' && v !== null && v !== undefined);
+                        }
                         return (v !== '' && v !== null && v !== undefined);
                     },
                     getFieldValueLabel(f, v) {
                         if (!this.isFieldSelected(f, v)) return '';
                         if (f.type === 'checkbox') return 'انتخاب شده';
                         if (f.type === 'multiselect' && Array.isArray(v)) return v.join('، ');
+                        if (f.type === 'number' && f.has_pricing) return '-';
                         return v;
+                    },
+                    getPackageBaseFieldQuantity(it, f, opt = null) {
+                        if (!it || !it._packageGroupId) return 0;
+                        const fId = (f && f.id !== undefined) ? f.id : f;
+                        let fieldObj = (typeof f === 'object' && f !== null) ? f : (it.service_custom_fields || []).find(cf => String(cf.id) === String(fId));
+
+                        if (it._baseCustomFieldQuantities) {
+                            const raw = it._baseCustomFieldQuantities[fId] !== undefined
+                                ? it._baseCustomFieldQuantities[fId]
+                                : it._baseCustomFieldQuantities[String(fId)];
+                            if (raw !== undefined && raw !== null) {
+                                if (opt !== null && opt !== undefined) {
+                                    if (typeof raw === 'object' && raw[opt] !== undefined) {
+                                        let n = Number(this.toEnglishNum((raw[opt] || '').toString()).replace(/[^\d.]/g, ''));
+                                        if (!isNaN(n) && n > 0) return n;
+                                    } else if (typeof raw !== 'object' && raw !== '') {
+                                        let n = Number(this.toEnglishNum((raw || '').toString()).replace(/[^\d.]/g, ''));
+                                        if (!isNaN(n) && n > 0) return n;
+                                    }
+                                } else if (typeof raw !== 'object' && raw !== '') {
+                                    let n = Number(this.toEnglishNum((raw || '').toString()).replace(/[^\d.]/g, ''));
+                                    if (!isNaN(n) && n > 0) return n;
+                                }
+                            }
+                        }
+
+                        if (it._baseCustomFieldValues) {
+                            const baseVal = it._baseCustomFieldValues[fId] !== undefined
+                                ? it._baseCustomFieldValues[fId]
+                                : it._baseCustomFieldValues[String(fId)];
+                            if (opt !== null && opt !== undefined) {
+                                if (Array.isArray(baseVal) && baseVal.includes(opt)) return 1;
+                            } else if (fieldObj && this.isFieldSelected(fieldObj, baseVal)) {
+                                return 1;
+                            }
+                        }
+                        return 0;
+                    },
+                    getPackageBaseItemQuantity(it) {
+                        if (!it || !it._packageGroupId) return 0;
+                        let n = parseFloat(it._baseQuantity);
+                        return isNaN(n) || n <= 0 ? 1 : n;
                     },
                     getCustomFieldQuantity(it, f, opt = null) {
                         if (!it) return 1;
                         const fId = (f && f.id !== undefined) ? f.id : f;
+                        let fieldObj = (typeof f === 'object' && f !== null) ? f : (it.service_custom_fields || []).find(cf => String(cf.id) === String(fId));
                         let rawFieldQ = it.custom_field_quantities ? (it.custom_field_quantities[fId] !== undefined ? it.custom_field_quantities[fId] : it.custom_field_quantities[String(fId)]) : undefined;
+
                         if (opt !== null && opt !== undefined) {
-                            if (rawFieldQ && typeof rawFieldQ === 'object' && rawFieldQ[opt] !== undefined) {
-                                let q = Number(rawFieldQ[opt]);
-                                return isNaN(q) || q <= 0 ? 1 : q;
+                            if (rawFieldQ && typeof rawFieldQ === 'object' && rawFieldQ[opt] !== undefined && rawFieldQ[opt] !== '') {
+                                let q = Number(this.toEnglishNum((rawFieldQ[opt] || '').toString()).replace(/[^\d.]/g, ''));
+                                if (!isNaN(q) && q > 0) return q;
                             }
-                            if (rawFieldQ !== undefined && typeof rawFieldQ !== 'object') {
-                                let q = Number(rawFieldQ);
-                                return isNaN(q) || q <= 0 ? 1 : q;
+                            if (rawFieldQ !== undefined && typeof rawFieldQ !== 'object' && rawFieldQ !== '') {
+                                let q = Number(this.toEnglishNum((rawFieldQ || '').toString()).replace(/[^\d.]/g, ''));
+                                if (!isNaN(q) && q > 0) return q;
                             }
+                            let baseQ = this.getPackageBaseFieldQuantity(it, f, opt);
+                            if (baseQ > 0) return baseQ;
                             let itemQ = parseFloat(it.quantity) || 1;
                             return itemQ <= 0 ? 1 : itemQ;
                         }
-                        if (rawFieldQ !== undefined && typeof rawFieldQ !== 'object') {
-                            let q = Number(rawFieldQ);
-                            return isNaN(q) || q <= 0 ? 1 : q;
+
+                        if (fieldObj && fieldObj.type === 'number' && fieldObj.has_pricing) {
+                            if (rawFieldQ !== undefined && typeof rawFieldQ !== 'object' && rawFieldQ !== '') {
+                                let q = Number(this.toEnglishNum((rawFieldQ || '').toString()).replace(/[^\d.]/g, ''));
+                                if (!isNaN(q) && q > 0) return q;
+                            }
+                            if (it.custom_field_values && it.custom_field_values[fId] !== undefined && it.custom_field_values[fId] !== '') {
+                                let q = Number(this.toEnglishNum((it.custom_field_values[fId] || '').toString()).replace(/[^\d.]/g, ''));
+                                if (!isNaN(q) && q > 0) return q;
+                            }
+                            let baseQ = this.getPackageBaseFieldQuantity(it, f);
+                            if (baseQ > 0) return baseQ;
+                            return 0;
                         }
+
+                        if (rawFieldQ !== undefined && typeof rawFieldQ !== 'object' && rawFieldQ !== '') {
+                            let q = Number(this.toEnglishNum((rawFieldQ || '').toString()).replace(/[^\d.]/g, ''));
+                            if (!isNaN(q) && q > 0) return q;
+                        }
+
+                        let baseQ = this.getPackageBaseFieldQuantity(it, f);
+                        if (baseQ > 0) return baseQ;
+
                         let itemQ = parseFloat(it.quantity) || 1;
                         return itemQ <= 0 ? 1 : itemQ;
                     },
                     setCustomFieldQuantity(it, f, opt = null, val) {
-                        let num = Number(this.toEnglishNum(val.toString()).replace(/[^\d.]/g, '')) || 0;
-                        if (num <= 0) num = 1;
-                        if (!it.custom_field_quantities) it.custom_field_quantities = {};
+                        let num = Number(this.toEnglishNum((val !== null && val !== undefined ? val : '').toString()).replace(/[^\d.]/g, ''));
+                        if (isNaN(num)) num = 0;
                         const fId = (f && f.id !== undefined) ? f.id : f;
+                        let fieldObj = (typeof f === 'object' && f !== null) ? f : (it.service_custom_fields || []).find(cf => String(cf.id) === String(fId));
+
+                        if (!it.custom_field_quantities) it.custom_field_quantities = {};
                         if (opt !== null && opt !== undefined) {
                             if (typeof it.custom_field_quantities[fId] !== 'object' || it.custom_field_quantities[fId] === null) {
                                 it.custom_field_quantities[fId] = {};
@@ -2728,6 +2859,10 @@
                         } else {
                             it.custom_field_quantities[fId] = num;
                             it.custom_field_quantities[String(fId)] = num;
+                            if (fieldObj && fieldObj.type === 'number' && fieldObj.has_pricing) {
+                                if (!it.custom_field_values) it.custom_field_values = {};
+                                it.custom_field_values[fId] = num > 0 ? num : (val === '' ? '' : num);
+                            }
                         }
                         if (typeof this.calculateTotals === 'function') {
                             this.calculateTotals();
@@ -2872,6 +3007,7 @@
                         }
                     },
                     removeMultiselectOption(it, fId, opt) {
+                        if (it._packageGroupId) return;
                         if (Array.isArray(it.custom_field_values[fId])) {
                             const idx = it.custom_field_values[fId].indexOf(opt);
                             if (idx !== -1) {
@@ -2880,6 +3016,7 @@
                         }
                     },
                     clearFieldValue(it, f) {
+                        if (it._packageGroupId) return;
                         if (f.type === 'checkbox') it.custom_field_values[f.id] = false;
                         else if (f.type === 'multiselect') it.custom_field_values[f.id] = [];
                         else it.custom_field_values[f.id] = '';
@@ -3109,6 +3246,36 @@
                         }
                         for (let i = 0; i < this.items.length; i++) {
                             const it = this.items[i];
+                            if (it._packageGroupId) {
+                                let baseItemQ = this.getPackageBaseItemQuantity(it);
+                                let curItemQ = parseFloat(it.quantity) || 0;
+                                if (baseItemQ > 0 && curItemQ < baseItemQ) {
+                                    it.quantity = baseItemQ;
+                                }
+                                if (it.service_custom_fields) {
+                                    it.service_custom_fields.forEach(field => {
+                                        if (field.type === 'multiselect') {
+                                            const selOpts = Array.isArray(it.custom_field_values[field.id]) ? it.custom_field_values[field.id] : [];
+                                            selOpts.forEach(opt => {
+                                                let baseQ = this.getPackageBaseFieldQuantity(it, field, opt);
+                                                let curQ = this.getCustomFieldQuantity(it, field, opt);
+                                                if (baseQ > 0 && (curQ < baseQ || isNaN(curQ) || curQ <= 0)) {
+                                                    this.setCustomFieldQuantity(it, field, opt, baseQ);
+                                                }
+                                            });
+                                        } else if (field.has_pricing && this.isFieldSelected(field, it.custom_field_values[field.id])) {
+                                            let baseQ = this.getPackageBaseFieldQuantity(it, field);
+                                            let curQ = this.getCustomFieldQuantity(it, field);
+                                            if (baseQ > 0 && (curQ < baseQ || isNaN(curQ) || curQ <= 0)) {
+                                                this.setCustomFieldQuantity(it, field, null, baseQ);
+                                                if (field.type === 'number') {
+                                                    it.custom_field_values[field.id] = baseQ;
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
                             if ((it.product_id || it.product_variant_id) && it.stock !== null && it.stock !== undefined) {
                                 const q = parseFloat(it.quantity) || 0;
                                 if (q > Number(it.stock)) {

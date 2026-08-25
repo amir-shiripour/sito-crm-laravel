@@ -1635,8 +1635,9 @@ class AppointmentController extends Controller
                 $cq->visibleForUser($user);
             })
             ->with(['client', 'service', 'provider'])
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
             ->get()
-            ->sortBy(fn($item) => $item->queue_rank ?? $item->position ?? 0)
             ->values()
             ->map(function ($item) {
                 return [
@@ -1652,7 +1653,12 @@ class AppointmentController extends Controller
                     'provider_user_id' => $item->provider_user_id ? (int) $item->provider_user_id : null,
                     'provider_name' => $item->provider?->name,
                     'preferred_date' => $item->preferred_date ? \Morilog\Jalali\Jalalian::fromDateTime($item->preferred_date)->format('Y/m/d') : null,
-                    'queue_rank' => $item->queue_rank ?? $item->position ?? 1,
+                    'queue_rank' => (int) ($item->global_queue_rank ?? $item->position ?? 1),
+                    'global_queue_rank' => (int) ($item->global_queue_rank ?? $item->position ?? 1),
+                    'service_queue_rank' => (int) ($item->service_queue_rank ?? 1),
+                    'queue_ahead_count' => (int) ($item->queue_ahead_count ?? 0),
+                    'duration_minutes' => $item->duration_minutes ? (int) $item->duration_minutes : null,
+                    'appointment_form_response_json' => $item->appointment_form_response_json,
                     'notes' => $item->notes,
                     'status' => $item->status,
                 ];

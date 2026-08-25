@@ -228,7 +228,10 @@
                                     <span x-text="selectedClientName"></span>
                                     <template x-if="waitlistId && selectedWaitlistObject">
                                         <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
-                                            ⚡ تخصیص از صف انتظار (نفر <span x-text="selectedWaitlistObject.queue_rank || 1"></span>)
+                                            ⚡ تخصیص از صف انتظار (نفر <span x-text="selectedWaitlistObject.global_queue_rank || selectedWaitlistObject.queue_rank || 1"></span> کلینیک)
+                                            <template x-if="selectedWaitlistObject.duration_minutes">
+                                                <span x-text="`• ${selectedWaitlistObject.duration_minutes} دقیقه`"></span>
+                                            </template>
                                         </span>
                                     </template>
                                 </div>
@@ -396,16 +399,21 @@
                                             <div @click="selectWaitlistEntry(item)"
                                                  class="p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-md transition-all duration-150 cursor-pointer space-y-2">
                                                 <div class="flex items-center justify-between gap-2">
-                                                    <div class="flex items-center gap-2">
-                                                        <template x-if="item.queue_rank === 1">
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <template x-if="(item.global_queue_rank || item.queue_rank) === 1">
                                                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-black text-xs shadow-2xs">
                                                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                                نفر ۱ (نوبت بعدی)
+                                                                نفر ۱ کلینیک
                                                             </span>
                                                         </template>
-                                                        <template x-if="item.queue_rank !== 1">
+                                                        <template x-if="(item.global_queue_rank || item.queue_rank) !== 1">
                                                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-xs">
-                                                                نفر <span x-text="item.queue_rank"></span>
+                                                                نفر <span x-text="item.global_queue_rank || item.queue_rank"></span> کلینیک
+                                                            </span>
+                                                        </template>
+                                                        <template x-if="item.service_id">
+                                                            <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">
+                                                                (نفر <span x-text="item.service_queue_rank || 1"></span> در سرویس)
                                                             </span>
                                                         </template>
 
@@ -419,10 +427,11 @@
                                                 </div>
 
                                                 <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-1.5 border-t border-gray-100 dark:border-gray-700/60 flex-wrap gap-y-1">
-                                                    <div class="flex items-center gap-3">
+                                                    <div class="flex items-center gap-3 flex-wrap">
                                                         <span x-text="`سرویس: ${item.service_name || 'عمومی'}`"></span>
                                                         <span x-show="item.provider_name" x-text="`• {{ config('booking.labels.provider') }}: ${item.provider_name}`"></span>
                                                         <span x-show="item.preferred_date" x-text="`• تاریخ ترجیحی: ${item.preferred_date}`"></span>
+                                                        <span x-show="item.duration_minutes" x-text="`• مدت زمان: ${item.duration_minutes} دقیقه`"></span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -815,6 +824,42 @@
                     </div>
                 </div>
 
+                {{-- Waitlist Preferences Notice (Step 4) --}}
+                <template x-if="selectedWaitlistObject && (selectedWaitlistObject.preferred_date || selectedWaitlistObject.duration_minutes)">
+                    <div class="p-4 bg-gradient-to-r from-amber-50 via-amber-50/80 to-indigo-50/40 dark:from-amber-950/30 dark:via-amber-950/20 dark:to-indigo-950/20 border border-amber-200/90 dark:border-amber-800/70 rounded-2xl flex items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
+                        <div class="flex items-start sm:items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg font-bold shrink-0 mt-0.5 sm:mt-0">
+                                📌
+                            </div>
+                            <div class="space-y-1 sm:space-y-0.5">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-black text-amber-950 dark:text-amber-200 text-xs sm:text-sm">ترجیحات ثبت‌شده مراجع در صف انتظار:</span>
+                                    <span class="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold" x-text="selectedWaitlistObject.client_name"></span>
+                                </div>
+                                <div class="flex items-center gap-4 text-xs text-gray-700 dark:text-gray-300 flex-wrap">
+                                    <template x-if="selectedWaitlistObject.preferred_date">
+                                        <span class="inline-flex items-center gap-1.5 bg-white/80 dark:bg-gray-800/80 px-2.5 py-1 rounded-lg border border-amber-200/60 dark:border-amber-800/50">
+                                            <span class="text-gray-500 dark:text-gray-400 font-medium">تاریخ ترجیحی:</span>
+                                            <strong class="text-amber-700 dark:text-amber-300 font-black text-xs" x-text="selectedWaitlistObject.preferred_date"></strong>
+                                        </span>
+                                    </template>
+                                    <template x-if="selectedWaitlistObject.duration_minutes">
+                                        <span class="inline-flex items-center gap-1.5 bg-white/80 dark:bg-gray-800/80 px-2.5 py-1 rounded-lg border border-indigo-200/60 dark:border-indigo-800/50">
+                                            <span class="text-gray-500 dark:text-gray-400 font-medium">مدت زمان مورد نیاز:</span>
+                                            <strong class="text-indigo-600 dark:text-indigo-400 font-black text-xs" x-text="selectedWaitlistObject.duration_minutes + ' دقیقه'"></strong>
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <template x-if="selectedWaitlistObject.preferred_date">
+                            <div class="text-[11px] text-amber-800 dark:text-amber-400 font-medium hidden md:block text-left shrink-0">
+                                (روز ترجیحی با نشان طلایی در تقویم مشخص شده است)
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-3">
@@ -878,6 +923,12 @@
                                         <div class="text-[10px] mt-1" x-show="cell.day.is_closed">تعطیل</div>
                                         <div class="text-[10px] mt-1"
                                              x-show="!cell.day.is_closed && !cell.day.has_available_slots">پر</div>
+                                        <template x-if="isPreferredDay(cell.day.local_date)">
+                                            <span class="absolute top-1 left-1 flex h-2 w-2">
+                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500" title="روز ترجیحی مراجع در صف"></span>
+                                            </span>
+                                        </template>
                                     </button>
                                 </template>
                             </div>
@@ -950,6 +1001,42 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Waitlist Time Preferences Notice (Step 5) --}}
+                <template x-if="selectedWaitlistObject && (selectedWaitlistObject.duration_minutes || selectedWaitlistObject.preferred_date)">
+                    <div class="p-4 bg-gradient-to-r from-indigo-50 via-indigo-50/80 to-amber-50/40 dark:from-indigo-950/30 dark:via-indigo-950/20 dark:to-amber-950/20 border border-indigo-200/90 dark:border-indigo-800/70 rounded-2xl flex items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
+                        <div class="flex items-start sm:items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-500/15 dark:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-lg font-bold shrink-0 mt-0.5 sm:mt-0">
+                                ⏱️
+                            </div>
+                            <div class="space-y-1 sm:space-y-0.5">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-black text-indigo-950 dark:text-indigo-200 text-xs sm:text-sm">ترجیحات زمانی مراجع در صف انتظار:</span>
+                                    <span class="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 text-[10px] font-bold" x-text="selectedWaitlistObject.client_name"></span>
+                                </div>
+                                <div class="flex items-center gap-4 text-xs text-gray-700 dark:text-gray-300 flex-wrap">
+                                    <template x-if="selectedWaitlistObject.duration_minutes">
+                                        <span class="inline-flex items-center gap-1.5 bg-white/80 dark:bg-gray-800/80 px-2.5 py-1 rounded-lg border border-indigo-200/60 dark:border-indigo-800/50">
+                                            <span class="text-gray-500 dark:text-gray-400 font-medium">مدت زمان مورد نیاز:</span>
+                                            <strong class="text-indigo-700 dark:text-indigo-300 font-black text-xs" x-text="selectedWaitlistObject.duration_minutes + ' دقیقه'"></strong>
+                                        </span>
+                                    </template>
+                                    <template x-if="selectedWaitlistObject.preferred_date">
+                                        <span class="inline-flex items-center gap-1.5 bg-white/80 dark:bg-gray-800/80 px-2.5 py-1 rounded-lg border border-amber-200/60 dark:border-amber-800/50">
+                                            <span class="text-gray-500 dark:text-gray-400 font-medium">تاریخ ترجیحی در صف:</span>
+                                            <strong class="text-amber-700 dark:text-amber-300 font-black text-xs" x-text="selectedWaitlistObject.preferred_date"></strong>
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <template x-if="selectedWaitlistObject.duration_minutes">
+                            <div class="text-[11px] text-indigo-800 dark:text-indigo-400 font-medium hidden md:block text-left shrink-0">
+                                (مدت زمان به صورت خودکار برای محاسبه اعمال شده است)
+                            </div>
+                        </template>
+                    </div>
+                </template>
 
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
                     <template x-if="slotsLoading && !isCustomScheduleEnabled()">
@@ -1845,6 +1932,12 @@
                     this.providerId = String(p?.id ?? '');
                     await this.onProviderSelected();
                     if (autoGo && this.step === 2 && this.flow === 'PROVIDER_FIRST') {
+                        if (this.serviceId) {
+                            await this.onServiceSelected();
+                            await this.loadCalendar();
+                            this.step = 4;
+                            return;
+                        }
                         await this.next();
                     }
                     if (autoGo && this.step === 3 && this.flow === 'SERVICE_FIRST') {
@@ -1854,14 +1947,19 @@
 
                 async onProviderSelected() {
                     if (this.flow === 'PROVIDER_FIRST') {
+                        const waitlistServiceId = this.selectedWaitlistObject?.service_id ? String(this.selectedWaitlistObject.service_id) : (this.serviceId ? String(this.serviceId) : '');
                         this.categoryId = '';
-                        this.serviceId = '';
+                        this.serviceId = waitlistServiceId;
                         this.services = [];
                         this.categories = [];
                         this.resetCalendarAndSlots();
 
                         await this.fetchCategories();
                         await this.fetchServicesForProvider();
+
+                        if (this.serviceId) {
+                            await this.onServiceSelected();
+                        }
                         return;
                     }
                     this.resetCalendarAndSlots();
@@ -2069,6 +2167,12 @@
                             }
                         }
                     }
+
+                    if (this.selectedWaitlistObject?.appointment_form_response_json && typeof this.selectedWaitlistObject.appointment_form_response_json === 'object') {
+                        for (const [k, v] of Object.entries(this.selectedWaitlistObject.appointment_form_response_json)) {
+                            this.appointmentFormValues[k] = v;
+                        }
+                    }
                 },
 
                 // ---------------- calendar ----------------
@@ -2161,7 +2265,13 @@
                     this.selectedSlotKey = '';
                     this.manualStartTime = '';
                     this.manualEndTime = '';
-                    this.manualDuration = '';
+                    if (this.selectedWaitlistObject?.duration_minutes) {
+                        this.manualDuration = this.selectedWaitlistObject.duration_minutes;
+                    } else if (this.selectedService?.duration_min) {
+                        this.manualDuration = this.selectedService.duration_min;
+                    } else {
+                        this.manualDuration = '';
+                    }
                     if (this.$refs.startUtcInput) this.$refs.startUtcInput.value = '';
                     if (this.$refs.endUtcInput) this.$refs.endUtcInput.value = '';
                     if (this.step === 4) {
@@ -2169,16 +2279,42 @@
                     }
                 },
 
+                isPreferredDay(localDate) {
+                    if (!this.selectedWaitlistObject || !this.selectedWaitlistObject.preferred_date || !localDate) return false;
+                    try {
+                        const dd = new Date(localDate + 'T00:00:00');
+                        const formatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        });
+                        const parts = formatter.formatToParts(dd);
+                        const y = parts.find(p => p.type === 'year').value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+                        const m = parts.find(p => p.type === 'month').value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+                        const d = parts.find(p => p.type === 'day').value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+                        const formattedJalali = `${y}/${m.padStart(2, '0')}/${d.padStart(2, '0')}`;
+                        
+                        const prefClean = String(this.selectedWaitlistObject.preferred_date).replace(/[-\\]/g, '/');
+                        return formattedJalali === prefClean || `${y}/${parseInt(m)}/${parseInt(d)}` === prefClean;
+                    } catch(e) {
+                        return false;
+                    }
+                },
+
                 dayBtnClass(d) {
                     const isSelected = this.dateLocal && this.dateLocal === d.local_date;
+                    const isPref = this.isPreferredDay(d.local_date);
+
                     if (!d.is_closed && !d.has_available_slots)
                         return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-800';
                     if (d.is_closed)
                         return 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700';
                     if (isSelected)
-                        return 'bg-indigo-50 text-indigo-700 border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-500';
+                        return 'bg-indigo-50 text-indigo-700 border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-500 shadow-sm';
                     if (d.capacity_per_day !== null && d.remaining_day_capacity === 0)
                         return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-800';
+                    if (isPref)
+                        return 'bg-amber-50/60 dark:bg-amber-950/20 text-gray-800 dark:text-gray-100 border-amber-400 dark:border-amber-500 ring-2 ring-amber-300/40 hover:bg-amber-50 dark:hover:bg-amber-900/30';
                     return 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/70';
                 },
 
@@ -2367,7 +2503,7 @@
                     this.clientSearch = '';
                 },
 
-                selectWaitlistEntry(item) {
+                async selectWaitlistEntry(item) {
                     this.waitlistId = String(item.id);
                     this.selectedWaitlistObject = item;
                     this.clientId = String(item.client_id);
@@ -2385,8 +2521,30 @@
                     if (item.provider_user_id) {
                         this.providerId = String(item.provider_user_id);
                     }
+                    if (item.duration_minutes) {
+                        this.manualDuration = item.duration_minutes;
+                    }
+                    if (item.appointment_form_response_json && typeof item.appointment_form_response_json === 'object') {
+                        this.appointmentFormValues = { ...item.appointment_form_response_json };
+                    }
                     if (item.notes && !this.notes) {
                         this.notes = item.notes;
+                    }
+
+                    if (this.flow === 'PROVIDER_FIRST') {
+                        if (this.providerId) {
+                            await this.fetchCategories();
+                            await this.fetchServicesForProvider();
+                        }
+                    } else if (this.flow === 'SERVICE_FIRST') {
+                        await this.fetchAllActiveServices();
+                        if (this.serviceId) {
+                            await this.fetchProviders(false);
+                        }
+                    }
+
+                    if (this.serviceId) {
+                        await this.onServiceSelected();
                     }
                 },
 
@@ -2445,24 +2603,64 @@
                 async next() {
                     if (this.step === 1) {
                         if (!this.clientId) return alert('لطفاً {{ $clientLabel }} را انتخاب کنید.');
-                        // Load providers/services when moving to step 2
-                        if (this.flow === 'PROVIDER_FIRST' && !this.fixedProvider) {
-                            await this.fetchProviders(true);
-                            if (this.providers.length === 1 && this.providerId) {
+                        // Load providers/services when moving from step 1
+                        if (this.flow === 'PROVIDER_FIRST') {
+                            if (!this.fixedProvider) {
+                                await this.fetchProviders(true);
+                            }
+                            if (this.providerId) {
+                                if (!this.services || this.services.length === 0) {
+                                    await this.fetchCategories();
+                                    await this.fetchServicesForProvider();
+                                }
+                                if (this.serviceId) {
+                                    await this.onServiceSelected();
+                                    await this.loadCalendar();
+                                    this.step = 4;
+                                    return;
+                                }
                                 this.step = 3;
                                 return;
                             }
                         } else if (this.flow === 'SERVICE_FIRST') {
                             await this.fetchAllActiveServices();
+                            if (this.serviceId) {
+                                await this.onServiceSelected();
+                                if (this.providerId) {
+                                    await this.loadCalendar();
+                                    this.step = 4;
+                                    return;
+                                }
+                                this.step = 3;
+                                return;
+                            }
                         }
                     }
 
                     if (this.step === 2) {
-                        if (this.flow === 'PROVIDER_FIRST' && !this.providerId) {
-                            return alert('لطفاً {{ config('booking.labels.provider') }} را انتخاب کنید.');
+                        if (this.flow === 'PROVIDER_FIRST') {
+                            if (!this.providerId) return alert('لطفاً {{ config('booking.labels.provider') }} را انتخاب کنید.');
+                            if (!this.services || this.services.length === 0) {
+                                await this.fetchCategories();
+                                await this.fetchServicesForProvider();
+                            }
+                            if (this.serviceId) {
+                                await this.onServiceSelected();
+                                await this.loadCalendar();
+                                this.step = 4;
+                                return;
+                            }
                         }
-                        if (this.flow === 'SERVICE_FIRST' && !this.serviceId) {
-                            return alert('لطفاً سرویس را انتخاب کنید.');
+                        if (this.flow === 'SERVICE_FIRST') {
+                            if (!this.serviceId) return alert('لطفاً سرویس را انتخاب کنید.');
+                            if (!this.providers || this.providers.length === 0) {
+                                await this.fetchProviders(false);
+                            }
+                            if (this.providerId) {
+                                await this.loadCalendar();
+                                this.step = 4;
+                                return;
+                            }
                         }
                     }
 
