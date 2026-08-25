@@ -88,10 +88,6 @@ class ServiceManagementService
     {
         $existingIds = $service->customFields()->pluck('id')->toArray();
 
-        if (empty($customFields) && !empty($existingIds)) {
-            return;
-        }
-
         DB::transaction(function () use ($service, $customFields, $existingIds) {
             $submittedIds = [];
 
