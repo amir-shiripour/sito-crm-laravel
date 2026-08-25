@@ -1,5 +1,3 @@
-@includeIf('partials.jalali-date-picker')
-
 <div class="space-y-6">
 
     {{-- Toast Notifications --}}
@@ -331,8 +329,7 @@
         @php
             $hasModalCustomForm = !empty($modalFormSchema) && !empty($modalFormSchema['fields']);
         @endphp
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
-             @click.outside="$wire.closeCreateModal()">
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
             <div class="bg-white dark:bg-gray-800 rounded-3xl {{ $hasModalCustomForm ? 'max-w-5xl lg:max-w-6xl' : 'max-w-2xl' }} w-full shadow-2xl border border-gray-200/80 dark:border-gray-700/80 relative flex flex-col max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 <div class="h-1.5 w-full bg-gradient-to-r from-teal-500 via-amber-500 to-emerald-500 shrink-0"></div>
 
@@ -494,7 +491,15 @@
                                         </span>
                                         <span class="text-[10px] text-gray-400 font-normal">اختیاری</span>
                                     </label>
-                                    <input type="text" wire:model="modalPreferredDateJalali" placeholder="۱۴۰۵/۰۶/۰۱" data-jdp-only-date
+                                    <input type="text"
+                                           wire:model="modalPreferredDateJalali"
+                                           placeholder="۱۴۰۵/۰۶/۰۱"
+                                           data-jdp
+                                           data-jdp-only-date
+                                           @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
+                                           @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
+                                           @change="$wire.set('modalPreferredDateJalali', $el.value)"
+                                           autocomplete="off"
                                            class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 text-center focus:ring-2 focus:ring-teal-500 shadow-2xs">
                                 </div>
                             </div>

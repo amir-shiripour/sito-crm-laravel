@@ -646,8 +646,6 @@
                                     <template x-if="item.mode === 'manual'">
                                         <input type="text" :name="'items[' + index + '][custom_service_name]'"
                                                x-model="item.custom_service_name"
-                                               :readonly="!!item._packageGroupId"
-                                               :class="item._packageGroupId ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                class="{{ $inputClass }} py-2.5 text-xs w-full"
                                                placeholder="نام سرویس / کالا را تایپ کنید...">
                                     </template>
@@ -660,10 +658,8 @@
                                                     <input type="text"
                                                            :name="'items[' + index + '][custom_service_name]'"
                                                            :value="item.custom_service_name"
-                                                           @focus="if(!item._packageGroupId) item._showProductDropdown = true"
-                                                           @input.debounce.300ms="if(!item._packageGroupId){ item.custom_service_name = $event.target.value; onProductInput(index); }"
-                                                           :readonly="!!item._packageGroupId"
-                                                           :class="item._packageGroupId ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
+                                                           @focus="item._showProductDropdown = true"
+                                                           @input.debounce.300ms="item.custom_service_name = $event.target.value; onProductInput(index);"
                                                            class="{{ $inputClass }} py-2.5 text-xs w-full"
                                                            placeholder="جستجوی محصول فروشگاه...">
                                                     <div
@@ -714,10 +710,8 @@
                                                     <input type="text"
                                                            :name="'items[' + index + '][custom_service_name]'"
                                                            :value="item.custom_service_name"
-                                                           @focus="if(!item._packageGroupId) item._showServiceDropdown = true"
-                                                           @input.debounce.300ms="if(!item._packageGroupId){ item.custom_service_name = $event.target.value; onServiceInput(index); }"
-                                                           :readonly="!!item._packageGroupId"
-                                                           :class="item._packageGroupId ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
+                                                           @focus="item._showServiceDropdown = true"
+                                                           @input.debounce.300ms="item.custom_service_name = $event.target.value; onServiceInput(index);"
                                                            class="{{ $inputClass }} py-2.5 text-xs w-full"
                                                            placeholder="جستجوی سرویس...">
                                                     <div
@@ -758,8 +752,8 @@
                                                 class="mt-2">
                                                 <input type="hidden" :name="'items[' + index + '][billing_period]'"
                                                        :value="item.billing_period">
-                                                {{-- Locked badge for package or merged items --}}
-                                                <template x-if="item._packageGroupId || item._isMerged">
+                                                {{-- Locked badge only for merged items --}}
+                                                <template x-if="item._isMerged">
                                                     <div
                                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-400">
                                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
@@ -771,8 +765,8 @@
                                                             x-text="periodLabels[item.billing_period] || item.billing_period || 'دوره تعریف نشده'"></span>
                                                     </div>
                                                 </template>
-                                                {{-- Editable select for non-package non-merged items --}}
-                                                <template x-if="!item._packageGroupId && !item._isMerged">
+                                                {{-- Editable select for non-merged items --}}
+                                                <template x-if="!item._isMerged">
                                                     <select x-model="item.billing_period"
                                                             @change="updatePriceForPeriod(index)"
                                                             class="{{ $inputClass }} py-2 text-xs">
@@ -788,8 +782,6 @@
                                 </td>
                                 <td class="px-4 py-3 align-top"><input type="text" x-model="item.description"
                                                                        :name="'items[' + index + '][description]'"
-                                                                       :readonly="!!item._packageGroupId"
-                                                                       :class="item._packageGroupId ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                                        class="{{ $inputClass }} py-2.5 text-xs w-full"
                                                                        placeholder="توضیحات ردیف"></td>
                                 <td class="px-4 py-3 align-top">
@@ -797,7 +789,7 @@
                                         class="flex items-stretch w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all shadow-sm">
                                         <input type="text" :value="toPersianNum(item.quantity)"
                                                @input="let v = toEnglishNum($event.target.value).replace(/[^\d.]/g, ''); if(item.single_sell && v > 1) { v = 1; $el.value = '۱'; alert('این کالا دارای محدودیت فروش تکی (۱ عدد) است.'); } item.quantity = v;"
-                                               @blur="let baseQ = getPackageBaseItemQuantity(item); let curQ = parseFloat(toEnglishNum(item.quantity || '')) || 0; if (item._packageGroupId && baseQ > 0 && curQ < baseQ) { item.quantity = baseQ; $el.value = toPersianNum(baseQ); if(typeof calculateTotals === 'function') calculateTotals(); }"
+                                               @blur="if(typeof calculateTotals === 'function') calculateTotals();"
                                                :name="'items[' + index + '][quantity]'" required
                                                class="flex-1 min-w-0 w-full border-none bg-transparent py-2.5 px-2 font-black text-gray-900 dark:text-white text-center tabular-nums focus:ring-0 transition-all duration-300"
                                                :class="item.mode === 'manual' ? 'text-sm' : 'text-base'" dir="ltr"
@@ -903,24 +895,15 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-center align-top">
-                                    {{-- Non-package items: normal delete button --}}
-                                    <button type="button" x-show="!item._packageGroupId" @click="removeItem(index)"
-                                            class="mt-1 text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-2 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                                    <button type="button" @click="removeItem(index)"
+                                            class="mt-1 text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-2 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                            title="حذف ردیف">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                              stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                         </svg>
                                     </button>
-                                    {{-- Package items: locked icon (delete via package header) --}}
-                                    <span x-show="item._packageGroupId"
-                                          class="mt-1 flex items-center justify-center w-9 h-9 rounded-lg opacity-20"
-                                          title="برای حذف پکیج، روی دکمه 'حذف پکیج' در سربرگ کلیک کنید">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
-                                             stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
-                                                                                          stroke-linejoin="round"
-                                                                                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                    </span>
                                 </td>
                             </tr>
                             <template x-if="item.service_custom_fields && item.service_custom_fields.length > 0">
@@ -960,14 +943,6 @@
                                                     <input type="text"
                                                            :value="toPersianNum(getCustomFieldQuantity(item, field, opt))"
                                                            @input="setCustomFieldQuantity(item, field, opt, $event.target.value)"
-                                                           @blur="
-                                                               let baseQ = getPackageBaseFieldQuantity(item, field, opt);
-                                                               let curQ = getCustomFieldQuantity(item, field, opt);
-                                                               if (item._packageGroupId && baseQ > 0 && (curQ < baseQ || isNaN(curQ) || curQ <= 0)) {
-                                                                   setCustomFieldQuantity(item, field, opt, baseQ);
-                                                                   $el.value = toPersianNum(baseQ);
-                                                               }
-                                                           "
                                                            :name="'items[' + index + '][custom_fields_quantities][' + field.id + '][' + opt + ']'"
                                                            class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
                                                            dir="ltr" placeholder="۱">
@@ -986,7 +961,7 @@
                                                             <span
                                                                 class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                                         </div>
-                                                        <button type="button" x-show="!item._packageGroupId"
+                                                        <button type="button"
                                                                 @click="toggleCustomPriceUnlock(item, field, opt)"
                                                                 class="shrink-0 p-1.5 rounded-lg border transition-colors"
                                                                 :class="isCustomPriceUnlocked(item, field, opt) ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
@@ -1053,7 +1028,7 @@
                                                         class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
                                                 </td>
                                                 <td class="px-4 py-2.5 align-middle text-center">
-                                                    <button type="button" x-show="!item._packageGroupId"
+                                                    <button type="button"
                                                             @click="removeMultiselectOption(item, field.id, opt)"
                                                             class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                                                             title="حذف این گزینه">
@@ -1105,17 +1080,6 @@
                                                                item.custom_field_values[field.id] = parsePriceInput($event.target.value);
                                                            }
                                                        "
-                                                       @blur="
-                                                           let baseQ = getPackageBaseFieldQuantity(item, field);
-                                                           let curQ = getCustomFieldQuantity(item, field);
-                                                           if (item._packageGroupId && baseQ > 0 && (curQ < baseQ || isNaN(curQ) || curQ <= 0)) {
-                                                               setCustomFieldQuantity(item, field, null, baseQ);
-                                                               if (field.type === 'number') {
-                                                                   item.custom_field_values[field.id] = baseQ;
-                                                               }
-                                                               $el.value = toPersianNum(baseQ);
-                                                           }
-                                                       "
                                                        :name="'items[' + index + '][custom_fields_quantities][' + field.id + ']'"
                                                        class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
                                                        dir="ltr" placeholder="۱">
@@ -1134,7 +1098,7 @@
                                                         <span
                                                             class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                                     </div>
-                                                    <button type="button" x-show="!item._packageGroupId"
+                                                    <button type="button"
                                                             @click="toggleCustomPriceUnlock(item, field)"
                                                             class="shrink-0 p-1.5 rounded-lg border transition-colors"
                                                             :class="isCustomPriceUnlocked(item, field) ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
@@ -1201,7 +1165,7 @@
                                                     class="text-[10px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
                                             </td>
                                             <td class="px-4 py-2.5 align-middle text-center">
-                                                <button type="button" x-show="!item._packageGroupId"
+                                                <button type="button"
                                                         @click="clearFieldValue(item, field)"
                                                         class="text-gray-300 hover:text-red-500 dark:hover:bg-red-500/10 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                                                         title="حذف مقدار فیلد">
@@ -1211,11 +1175,6 @@
                                                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                                     </svg>
                                                 </button>
-                                                <span x-show="item._packageGroupId" class="text-gray-300 dark:text-gray-600 inline-block" title="قفل در پکیج">
-                                                    <svg class="w-3.5 h-3.5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                                                    </svg>
-                                                </span>
                                             </td>
                                         </tr>
                                     </template>
@@ -1262,7 +1221,7 @@
                                                                 </div>
                                                             </div>
                                                             <div class="w-full flex items-center">
-                                                                <template x-if="item._packageGroupId || item._isMerged">
+                                                                <template x-if="item._isMerged">
                                                                     <div class="w-full">
                                                                         <div
                                                                             class="w-full flex items-center justify-between p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs font-bold text-amber-800 dark:text-amber-300">
@@ -1288,7 +1247,7 @@
                                                                                :value="item.custom_field_values[field.id]">
                                                                     </div>
                                                                 </template>
-                                                                <template x-if="!item._packageGroupId">
+                                                                <template x-if="!item._isMerged">
                                                                     <div class="w-full">
                                                                         <template
                                                                             x-if="field.type === 'text' || field.type === 'email' || field.type === 'url'"><input
@@ -1300,29 +1259,60 @@
                                                                                 :required="field.is_required">
                                                                         </template>
                                                                         <template x-if="field.type === 'datetime'">
-                                                                            <input
-                                                                                type="text" readonly data-jdp-with-time
-                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                                x-model="item.custom_field_values[field.id]"
-                                                                                @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
-                                                                                @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
-                                                                                @change="item.custom_field_values[field.id] = $el.value"
-                                                                                class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
-                                                                                placeholder="انتخاب تاریخ و ساعت"
-                                                                                autocomplete="off"
-                                                                                :required="field.is_required">
+                                                                            <div class="relative w-full">
+                                                                                <input
+                                                                                    type="text" readonly data-jdp-with-time
+                                                                                    :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                    x-model="item.custom_field_values[field.id]"
+                                                                                    @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
+                                                                                    @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
+                                                                                    @change="item.custom_field_values[field.id] = $el.value; calculateTotals();"
+                                                                                    class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 pl-8 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
+                                                                                    placeholder="انتخاب تاریخ و ساعت"
+                                                                                    autocomplete="off"
+                                                                                    :required="field.is_required">
+                                                                                <button type="button"
+                                                                                        x-show="item.custom_field_values[field.id]"
+                                                                                        @click="item.custom_field_values[field.id] = ''; calculateTotals();"
+                                                                                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 p-0.5 transition-colors"
+                                                                                        title="پاک کردن تاریخ">
+                                                                                    <svg class="w-3.5 h-3.5" fill="none"
+                                                                                         viewBox="0 0 24 24" stroke="currentColor">
+                                                                                        <path stroke-linecap="round"
+                                                                                              stroke-linejoin="round"
+                                                                                              stroke-width="2"
+                                                                                              d="M6 18L18 6M6 6l12 12"/>
+                                                                                    </svg>
+                                                                                </button>
+                                                                            </div>
                                                                         </template>
-                                                                        <template x-if="field.type === 'date'"><input
-                                                                                type="text" readonly data-jdp-only-date
-                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
-                                                                                x-model="item.custom_field_values[field.id]"
-                                                                                @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
-                                                                                @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
-                                                                                @change="item.custom_field_values[field.id] = $el.value"
-                                                                                class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
-                                                                                placeholder="انتخاب تاریخ"
-                                                                                autocomplete="off"
-                                                                                :required="field.is_required">
+                                                                        <template x-if="field.type === 'date'">
+                                                                            <div class="relative w-full">
+                                                                                <input
+                                                                                    type="text" readonly data-jdp-only-date
+                                                                                    :name="'items[' + index + '][custom_fields][' + field.id + ']'"
+                                                                                    x-model="item.custom_field_values[field.id]"
+                                                                                    @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
+                                                                                    @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
+                                                                                    @change="item.custom_field_values[field.id] = $el.value; calculateTotals();"
+                                                                                    class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 pl-8 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-900/50 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
+                                                                                    placeholder="انتخاب تاریخ"
+                                                                                    autocomplete="off"
+                                                                                    :required="field.is_required">
+                                                                                <button type="button"
+                                                                                        x-show="item.custom_field_values[field.id]"
+                                                                                        @click="item.custom_field_values[field.id] = ''; calculateTotals();"
+                                                                                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 p-0.5 transition-colors"
+                                                                                        title="پاک کردن تاریخ">
+                                                                                    <svg class="w-3.5 h-3.5" fill="none"
+                                                                                         viewBox="0 0 24 24" stroke="currentColor">
+                                                                                        <path stroke-linecap="round"
+                                                                                              stroke-linejoin="round"
+                                                                                              stroke-width="2"
+                                                                                              d="M6 18L18 6M6 6l12 12"/>
+                                                                                    </svg>
+                                                                                </button>
+                                                                            </div>
                                                                         </template>
                                                                         <template x-if="field.type === 'number'"><input
                                                                                 type="text"
@@ -1376,7 +1366,7 @@
                                                                                      style="display: none;"
                                                                                      class="absolute z-[100] mt-1 w-full max-h-48 overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1">
                                                                                     <button type="button"
-                                                                                            @click="item.custom_field_values[field.id] = ''; open = false; item._hasOpenSelectDropdown = false"
+                                                                                            @click="item.custom_field_values[field.id] = ''; open = false; item._hasOpenSelectDropdown = false; calculateTotals();"
                                                                                             class="w-full text-start px-3 py-2 text-xs text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                                                                         انتخاب کنید...
                                                                                     </button>
@@ -1384,7 +1374,7 @@
                                                                                         x-for="opt in getFieldOptionsList(field)"
                                                                                         :key="opt.label">
                                                                                         <button type="button"
-                                                                                                @click="item.custom_field_values[field.id] = opt.label; open = false; item._hasOpenSelectDropdown = false"
+                                                                                                @click="item.custom_field_values[field.id] = opt.label; open = false; item._hasOpenSelectDropdown = false; calculateTotals();"
                                                                                                 class="w-full flex items-center justify-between text-start px-3 py-2 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border-t border-gray-100 dark:border-gray-700/40 transition-colors"
                                                                                                 :class="item.custom_field_values[field.id] === opt.label ? 'bg-indigo-50/70 dark:bg-indigo-500/20 font-bold text-indigo-600 dark:text-indigo-400' : 'text-gray-800 dark:text-gray-200'">
                                                                                             <span x-text="opt.label"
@@ -1412,7 +1402,7 @@
                                                                                                 :name="'items[' + index + '][custom_fields][' + field.id + '][]'"
                                                                                                 :value="opt.label"
                                                                                                 :checked="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].includes(opt.label)"
-                                                                                                @change="toggleMultiselect(item, field.id, opt.label, $event.target.checked)"
+                                                                                                @change="toggleMultiselect(item, field.id, opt.label, $event.target.checked); calculateTotals();"
                                                                                                 class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900">
                                                                                             <span
                                                                                                 x-text="opt.label"
@@ -1441,6 +1431,7 @@
                                                                                                 :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                                 x-model="item.custom_field_values[field.id]"
                                                                                                 :value="opt.label"
+                                                                                                @change="calculateTotals()"
                                                                                                 class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900">
                                                                                             <span
                                                                                                 x-text="opt.label"
@@ -1456,6 +1447,23 @@
                                                                                 </template>
                                                                             </div>
                                                                         </template>
+
+                                                                        <template x-if="field.has_pricing && ['select', 'multiselect', 'radio'].includes(field.type)">
+                                                                            <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between">
+                                                                                <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-gray-600 dark:text-gray-400 select-none">
+                                                                                    <input type="checkbox"
+                                                                                           :name="'items[' + index + '][custom_fields_use_default_price][' + field.id + ']'"
+                                                                                           value="1"
+                                                                                           x-model="item.custom_field_use_default_price[field.id]"
+                                                                                           @change="calculateTotals()"
+                                                                                           class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                                                    <span>استفاده از قیمت پیش‌فرض</span>
+                                                                                </label>
+                                                                                <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500"
+                                                                                      x-text="'(پیش‌فرض: ' + formatMoney(field.pricing_amount || 0) + ' ' + (field.pricing_type === 'percentage' ? '%' : '{{ $currencyLabel }}') + ')'"></span>
+                                                                            </div>
+                                                                        </template>
+
                                                                         <template x-if="field.type === 'checkbox'">
                                                                             <label
                                                                                 class="flex items-center gap-2.5 cursor-pointer w-full px-3 py-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-indigo-50 hover:border-indigo-300 dark:bg-gray-900/50 dark:border-gray-700 dark:hover:bg-indigo-900/30 dark:hover:border-indigo-700 transition-colors"><input
@@ -1463,6 +1471,7 @@
                                                                                     :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                     x-model="item.custom_field_values[field.id]"
                                                                                     value="1"
+                                                                                    @change="calculateTotals()"
                                                                                     class="w-4.5 h-4.5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900"><span
                                                                                     class="text-xs font-bold text-gray-700 dark:text-gray-300">انتخاب می‌کنم</span></label>
                                                                         </template>
@@ -2043,6 +2052,7 @@
                             custom_field_custom_prices: {},
                             custom_field_custom_discounts: {},
                             custom_field_tax_percents: {},
+                            custom_field_use_default_price: {},
                             tax_percent: this.defaultTaxRate,
                             _taxUnlocked: false
                         });
@@ -2196,6 +2206,7 @@
                                 custom_field_quantities: customFieldQuantities,
                                 custom_field_custom_discounts: {},
                                 custom_field_tax_percents: {},
+                                custom_field_use_default_price: item.custom_fields_use_default_price || item.custom_field_use_default_price || {},
                                 tax_percent: this.defaultTaxRate,
                                 _priceUnlocked: false,
                                 _unitUnlocked: false,
@@ -2463,6 +2474,7 @@
                         this.items[i].custom_field_custom_prices = {};
                         this.items[i].custom_field_custom_discounts = {};
                         this.items[i].custom_field_tax_percents = {};
+                        this.items[i].custom_field_use_default_price = {};
                         this.updatePriceForPeriod(i);
                     },
                     getPeriodPrice(i) {
@@ -2610,8 +2622,6 @@
                                 let q = Number(this.toEnglishNum((rawFieldQ || '').toString()).replace(/[^\d.]/g, ''));
                                 if (!isNaN(q) && q > 0) return q;
                             }
-                            let baseQ = this.getPackageBaseFieldQuantity(it, f, opt);
-                            if (baseQ > 0) return baseQ;
                             let itemQ = parseFloat(it.quantity) || 1;
                             return itemQ <= 0 ? 1 : itemQ;
                         }
@@ -2625,8 +2635,6 @@
                                 let q = Number(this.toEnglishNum((it.custom_field_values[fId] || '').toString()).replace(/[^\d.]/g, ''));
                                 if (!isNaN(q) && q > 0) return q;
                             }
-                            let baseQ = this.getPackageBaseFieldQuantity(it, f);
-                            if (baseQ > 0) return baseQ;
                             return 0;
                         }
 
@@ -2634,9 +2642,6 @@
                             let q = Number(this.toEnglishNum((rawFieldQ || '').toString()).replace(/[^\d.]/g, ''));
                             if (!isNaN(q) && q > 0) return q;
                         }
-
-                        let baseQ = this.getPackageBaseFieldQuantity(it, f);
-                        if (baseQ > 0) return baseQ;
 
                         let itemQ = parseFloat(it.quantity) || 1;
                         return itemQ <= 0 ? 1 : itemQ;
@@ -2669,55 +2674,77 @@
                         }
                     },
                     getCustomFieldPrice(it, f, opt = null) {
+                        if (!it || !f) return 0;
+                        const fId = (f && f.id !== undefined) ? f.id : f;
+                        let fieldObj = (typeof f === 'object' && f !== null) ? f : (it.service_custom_fields || []).find(cf => String(cf.id) === String(fId));
+                        if (!fieldObj) return 0;
+
+                        let p = parseFloat(it.unit_price) || 0;
+                        let a = Number(fieldObj.pricing_amount) || 0;
+                        if (isNaN(a)) a = 0;
+                        let defaultFieldPrice = fieldObj.pricing_type === 'percentage' ? p * (a / 100) : a;
+
+                        let useDefault = !!(it.custom_field_use_default_price && (it.custom_field_use_default_price[fId] === true || it.custom_field_use_default_price[fId] === '1' || it.custom_field_use_default_price[fId] === 1));
+
                         if (opt !== null && opt !== undefined) {
-                            if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] && typeof it.custom_field_custom_prices[f.id] === 'object' && it.custom_field_custom_prices[f.id][opt] !== undefined && it.custom_field_custom_prices[f.id][opt] !== '') {
-                                let customVal = Number(it.custom_field_custom_prices[f.id][opt]);
-                                if (!isNaN(customVal) && (customVal > 0 || this.isCustomPriceUnlocked(it, f, opt))) {
-                                    return customVal;
+                            if (this.isCustomPriceUnlocked(it, fieldObj, opt)) {
+                                if (it.custom_field_custom_prices && it.custom_field_custom_prices[fId] && typeof it.custom_field_custom_prices[fId] === 'object' && it.custom_field_custom_prices[fId][opt] !== undefined && it.custom_field_custom_prices[fId][opt] !== '') {
+                                    let customVal = Number(it.custom_field_custom_prices[fId][opt]);
+                                    if (!isNaN(customVal)) return customVal;
                                 }
                             }
-                            const optList = this.getFieldOptionsList(f);
-                            const match = optList.find(o => o.label === opt);
-                            if (match && match.price > 0) {
-                                let p = parseFloat(it.unit_price) || 0;
-                                return match.pricing_type === 'percentage' ? p * (match.price / 100) : match.price;
+
+                            if (useDefault) {
+                                return defaultFieldPrice;
                             }
-                            let p = parseFloat(it.unit_price) || 0;
-                            let a = Number(f.pricing_amount) || 0;
-                            return f.pricing_type === 'percentage' ? p * (a / 100) : a;
+
+                            const optList = this.getFieldOptionsList(fieldObj);
+                            const match = optList.find(o => String(o.label) === String(opt));
+                            if (match && match.price !== undefined && match.price !== null && match.price !== '') {
+                                let optP = Number(match.price) || 0;
+                                return match.pricing_type === 'percentage' ? p * (optP / 100) : optP;
+                            }
+
+                            return defaultFieldPrice;
                         }
 
-                        if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] !== undefined && typeof it.custom_field_custom_prices[f.id] !== 'object' && it.custom_field_custom_prices[f.id] !== null && it.custom_field_custom_prices[f.id] !== '') {
-                            let customVal = Number(it.custom_field_custom_prices[f.id]);
-                            if (!isNaN(customVal) && (customVal > 0 || this.isCustomPriceUnlocked(it, f))) {
-                                return customVal;
+                        if (this.isCustomPriceUnlocked(it, fieldObj)) {
+                            if (it.custom_field_custom_prices && it.custom_field_custom_prices[fId] !== undefined && typeof it.custom_field_custom_prices[fId] !== 'object' && it.custom_field_custom_prices[fId] !== null && it.custom_field_custom_prices[fId] !== '') {
+                                let customVal = Number(it.custom_field_custom_prices[fId]);
+                                if (!isNaN(customVal)) return customVal;
                             }
                         }
-                        if (['select', 'radio'].includes(f.type) && it.custom_field_values?.[f.id]) {
-                            let val = it.custom_field_values[f.id];
-                            const optList = this.getFieldOptionsList(f);
-                            const match = optList.find(o => o.label === val);
-                            if (match && match.price > 0) {
-                                let p = parseFloat(it.unit_price) || 0;
-                                return match.pricing_type === 'percentage' ? p * (match.price / 100) : match.price;
+
+                        if (useDefault) {
+                            return defaultFieldPrice;
+                        }
+
+                        if (['select', 'radio'].includes(fieldObj.type) && it.custom_field_values?.[fId]) {
+                            let val = it.custom_field_values[fId];
+                            const optList = this.getFieldOptionsList(fieldObj);
+                            const match = optList.find(o => String(o.label) === String(val));
+                            if (match && match.price !== undefined && match.price !== null && match.price !== '') {
+                                let optP = Number(match.price) || 0;
+                                return match.pricing_type === 'percentage' ? p * (optP / 100) : optP;
                             }
                         }
-                        let p = parseFloat(it.unit_price) || 0;
-                        let a = Number(f.pricing_amount) || 0;
-                        if (isNaN(a)) a = 0;
-                        let price = f.pricing_type === 'percentage' ? p * (a / 100) : a;
-                        return isNaN(price) ? 0 : price;
+
+                        return defaultFieldPrice;
                     },
                     setCustomFieldPrice(it, f, opt = null, val) {
                         let num = this.parsePriceInput(val);
+                        const fId = (f && f.id !== undefined) ? f.id : f;
                         if (!it.custom_field_custom_prices) it.custom_field_custom_prices = {};
                         if (opt !== null && opt !== undefined) {
-                            if (typeof it.custom_field_custom_prices[f.id] !== 'object' || it.custom_field_custom_prices[f.id] === null) {
-                                it.custom_field_custom_prices[f.id] = {};
+                            if (typeof it.custom_field_custom_prices[fId] !== 'object' || it.custom_field_custom_prices[fId] === null) {
+                                it.custom_field_custom_prices[fId] = {};
                             }
-                            it.custom_field_custom_prices[f.id][opt] = num;
+                            it.custom_field_custom_prices[fId][opt] = num;
                         } else {
-                            it.custom_field_custom_prices[f.id] = num;
+                            it.custom_field_custom_prices[fId] = num;
+                        }
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
                         }
                     },
                     getCustomFieldDiscount(it, f, opt = null) {
@@ -2745,6 +2772,9 @@
                         } else {
                             it.custom_field_custom_discounts[f.id] = num;
                         }
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
+                        }
                     },
                     getCustomFieldTax(it, f, opt = null) {
                         if (opt !== null && opt !== undefined) {
@@ -2769,54 +2799,87 @@
                         } else {
                             it.custom_field_tax_percents[f.id] = num;
                         }
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
+                        }
                     },
                     isCustomPriceUnlocked(it, f, opt = null) {
                         if (!it._customPricesUnlocked) it._customPricesUnlocked = {};
+                        const fId = (f && f.id !== undefined) ? f.id : f;
                         if (opt !== null && opt !== undefined) {
-                            return !!(typeof it._customPricesUnlocked[f.id] === 'object' ? it._customPricesUnlocked[f.id]?.[opt] : it._customPricesUnlocked[f.id]);
+                            return !!(typeof it._customPricesUnlocked[fId] === 'object' ? it._customPricesUnlocked[fId]?.[opt] : it._customPricesUnlocked[fId]);
                         }
-                        return !!it._customPricesUnlocked[f.id];
+                        return !!it._customPricesUnlocked[fId];
                     },
                     toggleCustomPriceUnlock(it, f, opt = null) {
+                        const fId = (f && f.id !== undefined) ? f.id : f;
                         if (!it._customPricesUnlocked) it._customPricesUnlocked = {};
                         if (opt !== null && opt !== undefined) {
-                            if (typeof it._customPricesUnlocked[f.id] !== 'object' || it._customPricesUnlocked[f.id] === null) {
-                                it._customPricesUnlocked[f.id] = {};
+                            if (typeof it._customPricesUnlocked[fId] !== 'object' || it._customPricesUnlocked[fId] === null) {
+                                it._customPricesUnlocked[fId] = {};
                             }
-                            it._customPricesUnlocked[f.id][opt] = !it._customPricesUnlocked[f.id][opt];
+                            it._customPricesUnlocked[fId][opt] = !it._customPricesUnlocked[fId][opt];
+                            if (it._customPricesUnlocked[fId][opt]) {
+                                if (!it.custom_field_custom_prices) it.custom_field_custom_prices = {};
+                                if (typeof it.custom_field_custom_prices[fId] !== 'object' || it.custom_field_custom_prices[fId] === null) {
+                                    it.custom_field_custom_prices[fId] = {};
+                                }
+                                it.custom_field_custom_prices[fId][opt] = this.getCustomFieldPrice(it, f, opt);
+                            } else {
+                                if (it.custom_field_custom_prices && it.custom_field_custom_prices[fId]) {
+                                    delete it.custom_field_custom_prices[fId][opt];
+                                }
+                            }
                         } else {
-                            it._customPricesUnlocked[f.id] = !it._customPricesUnlocked[f.id];
+                            it._customPricesUnlocked[fId] = !it._customPricesUnlocked[fId];
+                            if (it._customPricesUnlocked[fId]) {
+                                if (!it.custom_field_custom_prices) it.custom_field_custom_prices = {};
+                                it.custom_field_custom_prices[fId] = this.getCustomFieldPrice(it, f);
+                            } else {
+                                if (it.custom_field_custom_prices) {
+                                    delete it.custom_field_custom_prices[fId];
+                                }
+                            }
+                        }
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
                         }
                     },
                     isCustomTaxUnlocked(it, f, opt = null) {
                         if (!it._customFieldTaxUnlocked) it._customFieldTaxUnlocked = {};
+                        const fId = (f && f.id !== undefined) ? f.id : f;
                         if (opt !== null && opt !== undefined) {
-                            return !!(typeof it._customFieldTaxUnlocked[f.id] === 'object' ? it._customFieldTaxUnlocked[f.id]?.[opt] : it._customFieldTaxUnlocked[f.id]);
+                            return !!(typeof it._customFieldTaxUnlocked[fId] === 'object' ? it._customFieldTaxUnlocked[fId]?.[opt] : it._customFieldTaxUnlocked[fId]);
                         }
-                        return !!it._customFieldTaxUnlocked[f.id];
+                        return !!it._customFieldTaxUnlocked[fId];
                     },
                     toggleCustomTaxUnlock(it, f, opt = null) {
+                        const fId = (f && f.id !== undefined) ? f.id : f;
                         if (!it._customFieldTaxUnlocked) it._customFieldTaxUnlocked = {};
                         if (opt !== null && opt !== undefined) {
-                            if (typeof it._customFieldTaxUnlocked[f.id] !== 'object' || it._customFieldTaxUnlocked[f.id] === null) {
-                                it._customFieldTaxUnlocked[f.id] = {};
+                            if (typeof it._customFieldTaxUnlocked[fId] !== 'object' || it._customFieldTaxUnlocked[fId] === null) {
+                                it._customFieldTaxUnlocked[fId] = {};
                             }
-                            it._customFieldTaxUnlocked[f.id][opt] = !it._customFieldTaxUnlocked[f.id][opt];
+                            it._customFieldTaxUnlocked[fId][opt] = !it._customFieldTaxUnlocked[fId][opt];
                         } else {
-                            it._customFieldTaxUnlocked[f.id] = !it._customFieldTaxUnlocked[f.id];
+                            it._customFieldTaxUnlocked[fId] = !it._customFieldTaxUnlocked[fId];
+                        }
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
                         }
                     },
                     removeMultiselectOption(it, fId, opt) {
-                        if (it._packageGroupId) return;
                         if (Array.isArray(it.custom_field_values[fId])) {
                             const idx = it.custom_field_values[fId].indexOf(opt);
                             if (idx !== -1) {
                                 it.custom_field_values[fId].splice(idx, 1);
                             }
                         }
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
+                        }
                     },
                     clearFieldValue(it, f) {
-                        if (it._packageGroupId) return;
                         if (f.type === 'checkbox') it.custom_field_values[f.id] = false;
                         else if (f.type === 'multiselect') it.custom_field_values[f.id] = [];
                         else it.custom_field_values[f.id] = '';
@@ -3047,36 +3110,6 @@
                         }
                         for (let i = 0; i < this.items.length; i++) {
                             const it = this.items[i];
-                            if (it._packageGroupId) {
-                                let baseItemQ = this.getPackageBaseItemQuantity(it);
-                                let curItemQ = parseFloat(it.quantity) || 0;
-                                if (baseItemQ > 0 && curItemQ < baseItemQ) {
-                                    it.quantity = baseItemQ;
-                                }
-                                if (it.service_custom_fields) {
-                                    it.service_custom_fields.forEach(field => {
-                                        if (field.type === 'multiselect') {
-                                            const selOpts = Array.isArray(it.custom_field_values[field.id]) ? it.custom_field_values[field.id] : [];
-                                            selOpts.forEach(opt => {
-                                                let baseQ = this.getPackageBaseFieldQuantity(it, field, opt);
-                                                let curQ = this.getCustomFieldQuantity(it, field, opt);
-                                                if (baseQ > 0 && (curQ < baseQ || isNaN(curQ) || curQ <= 0)) {
-                                                    this.setCustomFieldQuantity(it, field, opt, baseQ);
-                                                }
-                                            });
-                                        } else if (field.has_pricing && this.isFieldSelected(field, it.custom_field_values[field.id])) {
-                                            let baseQ = this.getPackageBaseFieldQuantity(it, field);
-                                            let curQ = this.getCustomFieldQuantity(it, field);
-                                            if (baseQ > 0 && (curQ < baseQ || isNaN(curQ) || curQ <= 0)) {
-                                                this.setCustomFieldQuantity(it, field, null, baseQ);
-                                                if (field.type === 'number') {
-                                                    it.custom_field_values[field.id] = baseQ;
-                                                }
-                                            }
-                                        }
-                                    });
-                                }
-                            }
                             if ((it.product_id || it.product_variant_id) && it.stock !== null && it.stock !== undefined) {
                                 const q = parseFloat(it.quantity) || 0;
                                 if (q > Number(it.stock)) {

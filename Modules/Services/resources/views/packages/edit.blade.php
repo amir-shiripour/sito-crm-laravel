@@ -623,7 +623,7 @@
                                                                          style="display: none;"
                                                                          class="absolute z-[100] mt-1 w-full max-h-48 overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1">
                                                                         <button type="button"
-                                                                                @click="item.custom_field_values[field.id] = ''; open = false; item._hasOpenSelectDropdown = false"
+                                                                                @click="item.custom_field_values[field.id] = ''; open = false; item._hasOpenSelectDropdown = false; calculateTotals();"
                                                                                 class="w-full text-start px-3 py-2 text-xs text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                                                             انتخاب کنید...
                                                                         </button>
@@ -631,7 +631,7 @@
                                                                             x-for="opt in getFieldOptionsList(field)"
                                                                             :key="opt.label">
                                                                             <button type="button"
-                                                                                    @click="item.custom_field_values[field.id] = opt.label; open = false; item._hasOpenSelectDropdown = false"
+                                                                                    @click="item.custom_field_values[field.id] = opt.label; open = false; item._hasOpenSelectDropdown = false; calculateTotals();"
                                                                                     class="w-full flex items-center justify-between text-start px-3 py-2 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border-t border-gray-100 dark:border-gray-700/40 transition-colors"
                                                                                     :class="item.custom_field_values[field.id] === opt.label ? 'bg-indigo-50/70 dark:bg-indigo-500/20 font-bold text-indigo-600 dark:text-indigo-400' : 'text-gray-800 dark:text-gray-200'">
                                                                                 <span x-text="opt.label"
@@ -659,7 +659,7 @@
                                                                                            :name="'items[' + index + '][custom_fields][' + field.id + '][]'"
                                                                                            :value="opt.label"
                                                                                            :checked="Array.isArray(item.custom_field_values[field.id]) && item.custom_field_values[field.id].includes(opt.label)"
-                                                                                           @change="toggleMultiselect(item, field.id, opt.label, $event.target.checked)"
+                                                                                           @change="toggleMultiselect(item, field.id, opt.label, $event.target.checked); calculateTotals();"
                                                                                            class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                                                                     <span x-text="opt.label"
                                                                                           class="text-gray-700 dark:text-gray-300 font-medium"></span>
@@ -687,6 +687,7 @@
                                                                                            :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                            x-model="item.custom_field_values[field.id]"
                                                                                            :value="opt.label"
+                                                                                           @change="calculateTotals()"
                                                                                            class="text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600">
                                                                                     <span x-text="opt.label"
                                                                                           class="text-gray-700 dark:text-gray-300 font-medium"></span>
@@ -699,6 +700,22 @@
                                                                                 </template>
                                                                             </label>
                                                                         </template>
+                                                                    </div>
+                                                                </template>
+
+                                                                <template x-if="field.has_pricing && ['select', 'multiselect', 'radio'].includes(field.type)">
+                                                                    <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between">
+                                                                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-gray-600 dark:text-gray-400 select-none">
+                                                                            <input type="checkbox"
+                                                                                   :name="'items[' + index + '][custom_fields_use_default_price][' + field.id + ']'"
+                                                                                   value="1"
+                                                                                   x-model="item.custom_field_use_default_price[field.id]"
+                                                                                   @change="calculateTotals()"
+                                                                                   class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                                            <span>استفاده از قیمت پیش‌فرض</span>
+                                                                        </label>
+                                                                        <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500"
+                                                                              x-text="'(پیش‌فرض: ' + formatMoney(field.pricing_amount || 0) + ' ' + (field.pricing_type === 'percentage' ? '%' : '{{ $currencyLabel }}') + ')'"></span>
                                                                     </div>
                                                                 </template>
 
@@ -718,6 +735,7 @@
                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                x-model="item.custom_field_values[field.id]"
                                                                                value="1"
+                                                                               @change="calculateTotals()"
                                                                                class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                                                         <span
                                                                             class="text-xs font-bold text-gray-700 dark:text-gray-300"
@@ -901,6 +919,7 @@
                         custom_field_values: customFieldValues,
                         custom_field_custom_prices: item.custom_fields_prices || {},
                         custom_field_quantities: customFieldQuantities,
+                        custom_field_use_default_price: item.custom_fields_use_default_price || {},
                         _customPricesUnlocked: {},
                         _showServiceDropdown: false,
                         _hasOpenSelectDropdown: false,
@@ -953,6 +972,7 @@
                         custom_field_values: {},
                         custom_field_custom_prices: {},
                         custom_field_quantities: {},
+                        custom_field_use_default_price: {},
                         _customPricesUnlocked: {},
                         _showServiceDropdown: false,
                         _hasOpenSelectDropdown: false,
@@ -971,6 +991,7 @@
                     item.custom_field_values = {};
                     item.custom_field_custom_prices = {};
                     item.custom_field_quantities = {};
+                    item.custom_field_use_default_price = {};
                     item._customPricesUnlocked = {};
                     item._showServiceDropdown = (item.custom_service_name || '').trim().length > 0;
                     item._showCustomFields = false;
@@ -993,6 +1014,7 @@
                     item.custom_field_values = {};
                     item.custom_field_custom_prices = {};
                     item.custom_field_quantities = {};
+                    item.custom_field_use_default_price = {};
                     item._customPricesUnlocked = {};
                     item._showServiceDropdown = false;
                     item._showCustomFields = item.service_custom_fields.length > 0;
@@ -1116,32 +1138,60 @@
                 },
                 isCustomPriceUnlocked(it, f, opt = null) {
                     if (!it._customPricesUnlocked) it._customPricesUnlocked = {};
+                    const fId = (f && f.id !== undefined) ? f.id : f;
                     if (opt !== null && opt !== undefined) {
-                        return !!(typeof it._customPricesUnlocked[f.id] === 'object' ? it._customPricesUnlocked[f.id]?.[opt] : it._customPricesUnlocked[f.id]);
+                        return !!(typeof it._customPricesUnlocked[fId] === 'object' ? it._customPricesUnlocked[fId]?.[opt] : it._customPricesUnlocked[fId]);
                     }
-                    return !!it._customPricesUnlocked[f.id];
+                    return !!it._customPricesUnlocked[fId];
                 },
                 toggleCustomPriceUnlock(it, f, opt = null) {
+                    const fId = (f && f.id !== undefined) ? f.id : f;
                     if (!it._customPricesUnlocked) it._customPricesUnlocked = {};
                     if (opt !== null && opt !== undefined) {
-                        if (typeof it._customPricesUnlocked[f.id] !== 'object' || it._customPricesUnlocked[f.id] === null) {
-                            it._customPricesUnlocked[f.id] = {};
+                        if (typeof it._customPricesUnlocked[fId] !== 'object' || it._customPricesUnlocked[fId] === null) {
+                            it._customPricesUnlocked[fId] = {};
                         }
-                        it._customPricesUnlocked[f.id][opt] = !it._customPricesUnlocked[f.id][opt];
+                        it._customPricesUnlocked[fId][opt] = !it._customPricesUnlocked[fId][opt];
+                        if (it._customPricesUnlocked[fId][opt]) {
+                            if (!it.custom_field_custom_prices) it.custom_field_custom_prices = {};
+                            if (typeof it.custom_field_custom_prices[fId] !== 'object' || it.custom_field_custom_prices[fId] === null) {
+                                it.custom_field_custom_prices[fId] = {};
+                            }
+                            it.custom_field_custom_prices[fId][opt] = this.getCustomFieldPrice(it, f, opt);
+                        } else {
+                            if (it.custom_field_custom_prices && it.custom_field_custom_prices[fId]) {
+                                delete it.custom_field_custom_prices[fId][opt];
+                            }
+                        }
                     } else {
-                        it._customPricesUnlocked[f.id] = !it._customPricesUnlocked[f.id];
+                        it._customPricesUnlocked[fId] = !it._customPricesUnlocked[fId];
+                        if (it._customPricesUnlocked[fId]) {
+                            if (!it.custom_field_custom_prices) it.custom_field_custom_prices = {};
+                            it.custom_field_custom_prices[fId] = this.getCustomFieldPrice(it, f);
+                        } else {
+                            if (it.custom_field_custom_prices) {
+                                delete it.custom_field_custom_prices[fId];
+                            }
+                        }
+                    }
+                    if (typeof this.calculateTotals === 'function') {
+                        this.calculateTotals();
                     }
                 },
                 setCustomFieldPrice(it, f, opt = null, val) {
                     let num = this.parsePriceInput(val);
+                    const fId = (f && f.id !== undefined) ? f.id : f;
                     if (!it.custom_field_custom_prices) it.custom_field_custom_prices = {};
                     if (opt !== null && opt !== undefined) {
-                        if (typeof it.custom_field_custom_prices[f.id] !== 'object' || it.custom_field_custom_prices[f.id] === null) {
-                            it.custom_field_custom_prices[f.id] = {};
+                        if (typeof it.custom_field_custom_prices[fId] !== 'object' || it.custom_field_custom_prices[fId] === null) {
+                            it.custom_field_custom_prices[fId] = {};
                         }
-                        it.custom_field_custom_prices[f.id][opt] = num;
+                        it.custom_field_custom_prices[fId][opt] = num;
                     } else {
-                        it.custom_field_custom_prices[f.id] = num;
+                        it.custom_field_custom_prices[fId] = num;
+                    }
+                    if (typeof this.calculateTotals === 'function') {
+                        this.calculateTotals();
                     }
                 },
                 removeMultiselectOption(it, fId, opt) {
@@ -1151,47 +1201,76 @@
                             it.custom_field_values[fId].splice(idx, 1);
                         }
                     }
+                    if (typeof this.calculateTotals === 'function') {
+                        this.calculateTotals();
+                    }
                 },
                 clearFieldValue(it, f) {
-                    if (f.type === 'checkbox') it.custom_field_values[f.id] = false;
-                    else if (f.type === 'multiselect') it.custom_field_values[f.id] = [];
-                    else it.custom_field_values[f.id] = '';
+                    const fId = (f && f.id !== undefined) ? f.id : f;
+                    if (f && f.type === 'checkbox') it.custom_field_values[fId] = false;
+                    else if (f && f.type === 'multiselect') it.custom_field_values[fId] = [];
+                    else it.custom_field_values[fId] = '';
+                    if (typeof this.calculateTotals === 'function') {
+                        this.calculateTotals();
+                    }
                 },
                 getCustomFieldPrice(it, f, opt = null) {
+                    if (!it || !f) return 0;
+                    const fId = (f && f.id !== undefined) ? f.id : f;
+                    let fieldObj = (typeof f === 'object' && f !== null) ? f : (it.service_custom_fields || []).find(cf => String(cf.id) === String(fId));
+                    if (!fieldObj) return 0;
+
+                    let p = parseFloat(it.unit_price) || 0;
+                    let a = Number(fieldObj.pricing_amount) || 0;
+                    if (isNaN(a)) a = 0;
+                    let defaultFieldPrice = fieldObj.pricing_type === 'percentage' ? p * (a / 100) : a;
+
+                    let useDefault = !!(it.custom_field_use_default_price && (it.custom_field_use_default_price[fId] === true || it.custom_field_use_default_price[fId] === '1' || it.custom_field_use_default_price[fId] === 1));
+
                     if (opt !== null && opt !== undefined) {
-                        if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] && typeof it.custom_field_custom_prices[f.id] === 'object' && it.custom_field_custom_prices[f.id][opt] !== undefined && it.custom_field_custom_prices[f.id][opt] !== '') {
-                            let customVal = Number(it.custom_field_custom_prices[f.id][opt]);
-                            if (!isNaN(customVal) && customVal > 0) return customVal;
+                        if (this.isCustomPriceUnlocked(it, fieldObj, opt)) {
+                            if (it.custom_field_custom_prices && it.custom_field_custom_prices[fId] && typeof it.custom_field_custom_prices[fId] === 'object' && it.custom_field_custom_prices[fId][opt] !== undefined && it.custom_field_custom_prices[fId][opt] !== '') {
+                                let customVal = Number(it.custom_field_custom_prices[fId][opt]);
+                                if (!isNaN(customVal)) return customVal;
+                            }
                         }
-                        const optList = this.getFieldOptionsList(f);
-                        const match = optList.find(o => o.label === opt);
-                        if (match && match.price > 0) {
-                            let p = parseFloat(it.unit_price) || 0;
-                            return match.pricing_type === 'percentage' ? p * (match.price / 100) : match.price;
+
+                        if (useDefault) {
+                            return defaultFieldPrice;
                         }
-                        let p = parseFloat(it.unit_price) || 0;
-                        let a = Number(f.pricing_amount) || 0;
-                        return f.pricing_type === 'percentage' ? p * (a / 100) : a;
+
+                        const optList = this.getFieldOptionsList(fieldObj);
+                        const match = optList.find(o => String(o.label) === String(opt));
+                        if (match && match.price !== undefined && match.price !== null && match.price !== '') {
+                            let optP = Number(match.price) || 0;
+                            return match.pricing_type === 'percentage' ? p * (optP / 100) : optP;
+                        }
+
+                        return defaultFieldPrice;
                     }
 
-                    if (it.custom_field_custom_prices && it.custom_field_custom_prices[f.id] !== undefined && typeof it.custom_field_custom_prices[f.id] !== 'object' && it.custom_field_custom_prices[f.id] !== null && it.custom_field_custom_prices[f.id] !== '') {
-                        let customVal = Number(it.custom_field_custom_prices[f.id]);
-                        if (!isNaN(customVal) && customVal > 0) return customVal;
-                    }
-                    if (['select', 'radio'].includes(f.type) && it.custom_field_values?.[f.id]) {
-                        let val = it.custom_field_values[f.id];
-                        const optList = this.getFieldOptionsList(f);
-                        const match = optList.find(o => o.label === val);
-                        if (match && match.price > 0) {
-                            let p = parseFloat(it.unit_price) || 0;
-                            return match.pricing_type === 'percentage' ? p * (match.price / 100) : match.price;
+                    if (this.isCustomPriceUnlocked(it, fieldObj)) {
+                        if (it.custom_field_custom_prices && it.custom_field_custom_prices[fId] !== undefined && typeof it.custom_field_custom_prices[fId] !== 'object' && it.custom_field_custom_prices[fId] !== null && it.custom_field_custom_prices[fId] !== '') {
+                            let customVal = Number(it.custom_field_custom_prices[fId]);
+                            if (!isNaN(customVal)) return customVal;
                         }
                     }
-                    let p = parseFloat(it.unit_price) || 0;
-                    let a = Number(f.pricing_amount) || 0;
-                    if (isNaN(a)) a = 0;
-                    let price = f.pricing_type === 'percentage' ? p * (a / 100) : a;
-                    return isNaN(price) ? 0 : price;
+
+                    if (useDefault) {
+                        return defaultFieldPrice;
+                    }
+
+                    if (['select', 'radio'].includes(fieldObj.type) && it.custom_field_values?.[fId]) {
+                        let val = it.custom_field_values[fId];
+                        const optList = this.getFieldOptionsList(fieldObj);
+                        const match = optList.find(o => String(o.label) === String(val));
+                        if (match && match.price !== undefined && match.price !== null && match.price !== '') {
+                            let optP = Number(match.price) || 0;
+                            return match.pricing_type === 'percentage' ? p * (optP / 100) : optP;
+                        }
+                    }
+
+                    return defaultFieldPrice;
                 },
                 getCustomFieldRowTotal(it, f, opt = null) {
                     if (opt !== null && opt !== undefined) {

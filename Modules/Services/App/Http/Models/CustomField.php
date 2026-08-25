@@ -75,24 +75,26 @@ class CustomField extends Model
         }, $options);
     }
 
-    public function getOptionPrice(mixed $optionLabel, int|float $basePrice = 0): float
+    public function getOptionPrice(mixed $optionLabel, int|float $basePrice = 0, bool $useDefaultPrice = false): float
     {
         if (!$this->has_pricing) {
             return 0;
         }
 
-        $options = $this->options;
-        if (is_array($options)) {
-            foreach ($options as $opt) {
-                if (is_array($opt)) {
-                    $lbl = $opt['label'] ?? ($opt['title'] ?? ($opt['name'] ?? ''));
-                    if ((string)$lbl === (string)$optionLabel) {
-                        $priceType = $opt['pricing_type'] ?? ($this->pricing_type ?? 'fixed');
-                        $optAmount = (float)($opt['price'] ?? ($opt['pricing_amount'] ?? 0));
-                        if ($optAmount > 0) {
-                            return $priceType === 'percentage'
-                                ? round($basePrice * ($optAmount / 100))
-                                : $optAmount;
+        if (!$useDefaultPrice) {
+            $options = $this->options;
+            if (is_array($options)) {
+                foreach ($options as $opt) {
+                    if (is_array($opt)) {
+                        $lbl = $opt['label'] ?? ($opt['title'] ?? ($opt['name'] ?? ''));
+                        if ((string)$lbl === (string)$optionLabel) {
+                            $priceType = $opt['pricing_type'] ?? ($this->pricing_type ?? 'fixed');
+                            if (isset($opt['price']) || isset($opt['pricing_amount'])) {
+                                $optAmount = (float)($opt['price'] ?? ($opt['pricing_amount'] ?? 0));
+                                return $priceType === 'percentage'
+                                    ? round($basePrice * ($optAmount / 100))
+                                    : $optAmount;
+                            }
                         }
                     }
                 }

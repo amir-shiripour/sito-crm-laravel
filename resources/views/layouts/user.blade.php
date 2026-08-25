@@ -218,6 +218,7 @@
 </script>
 @livewireScripts
 @livewireScriptConfig
+@includeIf('partials.jalali-date-picker')
 @stack('scripts')
 </body>
 </html>
