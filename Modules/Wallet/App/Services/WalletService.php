@@ -17,10 +17,24 @@ use InvalidArgumentException;
 class WalletService
 {
     /**
+     * Get system currency code.
+     */
+    public function getSystemCurrency(): string
+    {
+        if (function_exists('get_setting')) {
+            $curr = get_setting('payment_currency', 'toman');
+            return ($curr === 'rial' || $curr === 'IRR') ? 'IRR' : 'IRT';
+        }
+        return 'IRT';
+    }
+
+    /**
      * Get or create a wallet for a holder model.
      */
-    public function getOrCreateWallet(Model $holder, string $slug = 'default', string $currency = 'IRR'): Wallet
+    public function getOrCreateWallet(Model $holder, string $slug = 'default', ?string $currency = null): Wallet
     {
+        $currency = $currency ?: $this->getSystemCurrency();
+
         return Wallet::firstOrCreate(
             [
                 'holder_type' => $holder->getMorphClass(),

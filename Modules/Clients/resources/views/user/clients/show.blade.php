@@ -26,8 +26,15 @@
     $domainManagerModule = \App\Models\Module::where('slug', 'domainmanager')->first();
     $directAdminModule   = \App\Models\Module::where('slug', 'directadmin')->first();
     $servicesModule      = \App\Models\Module::where('slug', 'services')->first();
+    $walletModule        = $walletModule ?? \App\Models\Module::where('slug', 'wallet')->first();
 
     $showServicesTab     = $servicesModule && $servicesModule->installed && $servicesModule->active;
+    $showWalletTab       = ($walletModule && $walletModule->installed && $walletModule->active)
+                        || (\Nwidart\Modules\Facades\Module::has('Wallet') && \Nwidart\Modules\Facades\Module::isEnabled('Wallet'));
+
+    $clientWallet        = $clientWallet ?? null;
+    $clientWalletBalance = $clientWallet ? (float)$clientWallet->balance : 0;
+    $walletCurrencyLabel = ($clientWallet && ($clientWallet->currency === 'rial' || $clientWallet->currency === 'IRR')) ? 'ریال' : ($currencyLabel ?? 'تومان');
 
     $showWorkflowTab     = $workflowsModule && $workflowsModule->installed && $workflowsModule->active
                         && class_exists(\Modules\Workflows\Entities\Workflow::class)
@@ -104,7 +111,7 @@
         showWorkflowTab: {{ $showWorkflowTab ? 'true' : 'false' }},
         init() {
             const hash = window.location.hash.substring(1);
-            const validTabs = ['general','appointments','orders','invoices','domains','directadmin','transactions'];
+            const validTabs = ['general','appointments','orders','invoices','domains','directadmin','transactions','wallet'];
             if (this.showWorkflowTab) validTabs.push('workflows');
             if (validTabs.includes(hash)) this.activeTab = hash;
         },
@@ -151,8 +158,22 @@
                                 </div>
                                 <span
                                     class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium {{ $statusBadgeClasses }}">
-                                <span class="w-1.5 h-1.5 rounded-full bg-current/40"></span>{{ $statusLabel }}
-                            </span>
+                                    <span class="w-1.5 h-1.5 rounded-full bg-current/40"></span>{{ $statusLabel }}
+                                </span>
+
+                                @if($showWalletTab)
+                                    <button type="button"
+                                            @click="setTab('wallet')"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/80 dark:hover:bg-emerald-900/50 transition-all cursor-pointer shadow-xs active:scale-95"
+                                            title="مشاهده پرونده و تراکنش‌های کیف پول">
+                                        <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        <span>موجودی کیف پول:</span>
+                                        <span class="font-black tabular-nums">{{ $faNum(number_format($clientWalletBalance)) }}</span>
+                                        <span class="text-[10px]">{{ $walletCurrencyLabel }}</span>
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -343,6 +364,23 @@
                         <span :class="activeTab === 'directadmin' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
                               class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
                             {{ $faNum($clientAccountsCount) }}
+                        </span>
+                    </button>
+                @endif
+
+                @if($showWalletTab)
+                    {{-- Tab: Wallet (کیف پول) --}}
+                    <button @click="setTab('wallet')"
+                            :class="activeTab === 'wallet' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        کیف پول
+                        <span :class="activeTab === 'wallet' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                              class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
+                            {{ isset($clientWalletTransactionsCount) ? $faNum($clientWalletTransactionsCount) : '۰' }}
                         </span>
                     </button>
                 @endif
@@ -1989,6 +2027,20 @@
                             <p class="text-sm text-gray-500 dark:text-gray-400">برای این مشتری هنوز هیچ تراکنشی در سیستم حسابداری ثبت نشده است.</p>
                         </div>
                     @endif
+                </div>
+            @endif
+
+            @if($showWalletTab)
+                {{-- ================= Wallet Tab (Wallet Module) ================= --}}
+                <div x-show="activeTab === 'wallet'" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                    @include('wallet::partials.client-wallet-tab', [
+                        'client' => $client,
+                        'wallet' => $clientWallet ?? null,
+                        'transactions' => $clientWalletTransactions ?? collect([]),
+                        'currencyLabel' => $walletCurrencyLabel ?? 'تومان'
+                    ])
                 </div>
             @endif
         </div>

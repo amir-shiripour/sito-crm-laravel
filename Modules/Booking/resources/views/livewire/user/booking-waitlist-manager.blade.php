@@ -56,10 +56,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <a href="{{ route('user.booking.schedule.index') }}" class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                📅 تقویم نوبت‌ها
-            </a>
-            <button wire:click="openCreateModal" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-lg shadow-teal-500/20 transition-all">
+            <button wire:click="openCreateModal" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-lg shadow-teal-500/20 transition-all cursor-pointer">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 + افزودن به صف انتظار
             </button>
@@ -272,10 +269,10 @@
 
                             {{-- Actions --}}
                             <td class="px-4 py-3 text-center">
-                                <div class="inline-flex items-center gap-1">
-                                    {{-- Quick Status Modal Button --}}
-                                    <button wire:click="openStatusModal({{ $entry->id }})" title="تغییر وضعیت"
-                                            class="p-1.5 rounded-lg text-gray-500 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors">
+                                <div class="inline-flex items-center gap-1.5">
+                                    {{-- Edit Entry Button --}}
+                                    <button wire:click="openEditModal({{ $entry->id }})" title="ویرایش اطلاعات نوبت در صف"
+                                            class="p-1.5 rounded-lg text-gray-500 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors cursor-pointer">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
@@ -284,21 +281,19 @@
                                     {{-- Create Appointment Direct Link --}}
                                     @if(in_array($entry->status, ['waiting', 'notified', 'in_progress']))
                                         <a href="{{ route('user.booking.appointments.create', array_filter(['client_id' => $entry->client_id, 'service_id' => $entry->service_id, 'provider_user_id' => $entry->provider_user_id, 'waitlist_id' => $entry->id])) }}"
-                                           title="ثبت نوبت برای این مراجع"
+                                           title="ثبت نوبت در تقویم برای این مراجع"
                                            class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors font-bold text-xs flex items-center gap-0.5">
                                             <span>📅</span>
                                         </a>
                                     @endif
 
-                                    {{-- Cancel Entry Button --}}
-                                    @if($entry->status !== 'converted')
-                                        <button wire:click="cancelEntry({{ $entry->id }})" wire:confirm="آیا از حذف این مراجع از صف انتظار مطمئن هستید؟" title="حذف از صف"
-                                                class="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                            </svg>
-                                        </button>
-                                    @endif
+                                    {{-- Delete Entry Button --}}
+                                    <button wire:click="deleteEntry({{ $entry->id }})" wire:confirm="آیا از حذف این مراجع از صف انتظار مطمئن هستید؟" title="حذف از صف انتظار"
+                                            class="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors cursor-pointer">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -324,12 +319,25 @@
         @endif
     </div>
 
-    {{-- Create Modal --}}
+    {{-- Create / Edit Modal --}}
     @if ($showCreateModal)
         @php
             $hasModalCustomForm = !empty($modalFormSchema) && !empty($modalFormSchema['fields']);
         @endphp
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+        <div x-data
+             x-init="
+                document.body.classList.add('overflow-hidden');
+                $nextTick(() => {
+                    if (window.jalaliDatepicker && typeof window.jalaliDatepicker.startWatch === 'function') {
+                        window.jalaliDatepicker.startWatch({
+                            selector: '[data-jdp-only-date]',
+                            minDate: 'attr',
+                        });
+                    }
+                });
+             "
+             x-on:keydown.escape.window="$wire.closeCreateModal()"
+             class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
             <div class="bg-white dark:bg-gray-800 rounded-3xl {{ $hasModalCustomForm ? 'max-w-5xl lg:max-w-6xl' : 'max-w-2xl' }} w-full shadow-2xl border border-gray-200/80 dark:border-gray-700/80 relative flex flex-col max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 <div class="h-1.5 w-full bg-gradient-to-r from-teal-500 via-amber-500 to-emerald-500 shrink-0"></div>
 
@@ -343,10 +351,10 @@
                         </div>
                         <div>
                             <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
-                                افزودن مراجع به صف انتظار
+                                {{ $isEditing ? 'ویرایش اطلاعات صف انتظار' : 'افزودن مراجع به صف انتظار' }}
                             </h3>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                ثبت مشخصات و اولویت‌بندی در صف نوبت‌دهی
+                                {{ $isEditing ? 'ویرایش مشخصات، سرویس، ارائه‌دهنده و وضعیت مراجع در صف' : 'ثبت مشخصات و اولویت‌بندی در صف نوبت‌دهی' }}
                             </p>
                         </div>
                     </div>
@@ -504,6 +512,23 @@
                                 </div>
                             </div>
 
+                            {{-- Status Selector (Visible when Editing) --}}
+                            @if ($isEditing)
+                                <div>
+                                    <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5 flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>وضعیت در صف نوبت‌دهی</span>
+                                    </label>
+                                    <select wire:model="modalStatus" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 shadow-2xs">
+                                        @foreach($statusLabels as $sKey => $sLabel)
+                                            <option value="{{ $sKey }}">{{ $sLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+
                             {{-- Notes --}}
                             <div>
                                 <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5 flex items-center gap-1.5">
@@ -536,15 +561,15 @@
                     <button wire:click="closeCreateModal" class="px-5 py-2.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm font-bold transition shadow-2xs cursor-pointer">
                         انصراف
                     </button>
-                    <button wire:click="saveNewWaitlistEntry" wire:loading.attr="disabled"
+                    <button wire:click="saveWaitlistEntry" wire:loading.attr="disabled"
                             class="inline-flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-teal-600/25 transition active:scale-98 disabled:opacity-50 cursor-pointer">
-                        <span wire:loading.remove wire:target="saveNewWaitlistEntry">ثبت در صف انتظار</span>
-                        <span wire:loading wire:target="saveNewWaitlistEntry" class="inline-flex items-center gap-2">
+                        <span wire:loading.remove wire:target="saveWaitlistEntry,saveNewWaitlistEntry">{{ $isEditing ? 'ذخیره تغییرات' : 'ثبت در صف انتظار' }}</span>
+                        <span wire:loading wire:target="saveWaitlistEntry,saveNewWaitlistEntry" class="inline-flex items-center gap-2">
                             <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            در حال ثبت...
+                            در حال ذخیره...
                         </span>
                     </button>
                 </div>

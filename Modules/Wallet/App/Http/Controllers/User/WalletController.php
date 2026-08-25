@@ -41,8 +41,10 @@ class WalletController extends Controller
         }
 
         $wallets = $query->paginate(20)->withQueryString();
+        $systemCurrency = $this->walletService->getSystemCurrency();
+        $currencyLabel = ($systemCurrency === 'rial' || $systemCurrency === 'IRR') ? 'ریال' : 'تومان';
 
-        return view('wallet::user.index', compact('wallets'));
+        return view('wallet::user.index', compact('wallets', 'systemCurrency', 'currencyLabel'));
     }
 
     public function transactions(Request $request)
@@ -70,18 +72,118 @@ class WalletController extends Controller
         $transactions = $query->paginate(25)->withQueryString();
         $types = TransactionType::cases();
         $statuses = TransactionStatus::cases();
+        $systemCurrency = $this->walletService->getSystemCurrency();
+        $currencyLabel = ($systemCurrency === 'rial' || $systemCurrency === 'IRR') ? 'ریال' : 'تومان';
 
-        return view('wallet::user.transactions', compact('transactions', 'types', 'statuses'));
+        return view('wallet::user.transactions', compact('transactions', 'types', 'statuses', 'systemCurrency', 'currencyLabel'));
+    }
+
+    public function searchHolders(Request $request)
+    {
+        if (auth()->check()) {
+            $canView = auth()->user()->can('wallet.view') 
+                    || auth()->user()->can('wallet.deposit') 
+                    || auth()->user()->can('wallet.withdraw');
+            if (! $canView) {
+                abort(403, 'شما مجاز به انجام این عملیات نمی‌باشید.');
+            }
+        }
+
+        $query = trim((string) $request->input('q', ''));
+        $type = $request->input('type', 'all'); // all, client, user
+        $limit = min(50, max(5, (int) $request->input('limit', 20)));
+
+        $sysCurrency = $this->walletService->getSystemCurrency();
+        $sysLabel = ($sysCurrency === 'rial' || $sysCurrency === 'IRR') ? 'ریال' : 'تومان';
+
+        $results = [];
+
+        if ($type === 'all' || $type === 'client') {
+            $clientsQuery = Client::query();
+            if ($query !== '') {
+                $clientsQuery->where(function ($q) use ($query) {
+                    $q->where('full_name', 'like', "%{$query}%")
+                      ->orWhere('username', 'like', "%{$query}%")
+                      ->orWhere('phone', 'like', "%{$query}%")
+                      ->orWhere('email', 'like', "%{$query}%")
+                      ->orWhere('national_code', 'like', "%{$query}%")
+                      ->orWhere('id', $query);
+                });
+            }
+            $clients = $clientsQuery->limit($limit)->get();
+
+            foreach ($clients as $client) {
+                $wallet = $client->defaultWallet;
+                $balance = $wallet ? (float) $wallet->balance : (float) $client->getBalance();
+                $currencyCode = $wallet ? $wallet->currency : $sysCurrency;
+                $currLabel = ($currencyCode === 'rial' || $currencyCode === 'IRR') ? 'ریال' : 'تومان';
+
+                $results[] = [
+                    'id'             => $client->id,
+                    'holder_type'    => 'client',
+                    'holder_name'    => $client->full_name ?: ($client->username ?: 'کلاینت #' . $client->id),
+                    'phone'          => $client->phone ?: '—',
+                    'email'          => $client->email ?: '',
+                    'badge'          => 'کلاینت',
+                    'balance'        => $balance,
+                    'currency'       => $currencyCode,
+                    'currency_label' => $currLabel,
+                    'is_active'      => $wallet ? (bool) $wallet->is_active : true,
+                    'wallet_id'      => $wallet?->id,
+                ];
+            }
+        }
+
+        if ($type === 'all' || $type === 'user') {
+            $usersQuery = User::query();
+            if ($query !== '') {
+                $usersQuery->where(function ($q) use ($query) {
+                    $q->where('name', 'like', "%{$query}%")
+                      ->orWhere('mobile', 'like', "%{$query}%")
+                      ->orWhere('email', 'like', "%{$query}%")
+                      ->orWhere('id', $query);
+                });
+            }
+            $users = $usersQuery->limit($limit)->get();
+
+            foreach ($users as $user) {
+                $wallet = $user->defaultWallet;
+                $balance = $wallet ? (float) $wallet->balance : (float) $user->getBalance();
+                $currencyCode = $wallet ? $wallet->currency : $sysCurrency;
+                $currLabel = ($currencyCode === 'rial' || $currencyCode === 'IRR') ? 'ریال' : 'تومان';
+
+                $results[] = [
+                    'id'             => $user->id,
+                    'holder_type'    => 'user',
+                    'holder_name'    => $user->name ?: ('کاربر #' . $user->id),
+                    'phone'          => $user->mobile ?: '—',
+                    'email'          => $user->email ?: '',
+                    'badge'          => 'کاربر سیستم',
+                    'balance'        => $balance,
+                    'currency'       => $currencyCode,
+                    'currency_label' => $currLabel,
+                    'is_active'      => $wallet ? (bool) $wallet->is_active : true,
+                    'wallet_id'      => $wallet?->id,
+                ];
+            }
+        }
+
+        return response()->json($results);
     }
 
     public function deposit(Request $request)
     {
         $this->authorizePermission('wallet.deposit');
 
+        if ($request->has('amount')) {
+            $cleaned = preg_replace('/[^\d.]/', '', (string) $request->input('amount'));
+            $request->merge(['amount' => $cleaned]);
+        }
+
         $request->validate([
             'holder_type' => 'required|string|in:user,client',
             'holder_id'   => 'required|integer',
-            'amount'      => 'required|numeric|min:1000',
+            'amount'      => 'required|numeric|min:1',
             'description' => 'nullable|string|max:255',
         ]);
 
@@ -108,10 +210,15 @@ class WalletController extends Controller
     {
         $this->authorizePermission('wallet.withdraw');
 
+        if ($request->has('amount')) {
+            $cleaned = preg_replace('/[^\d.]/', '', (string) $request->input('amount'));
+            $request->merge(['amount' => $cleaned]);
+        }
+
         $request->validate([
             'holder_type' => 'required|string|in:user,client',
             'holder_id'   => 'required|integer',
-            'amount'      => 'required|numeric|min:1000',
+            'amount'      => 'required|numeric|min:1',
             'description' => 'nullable|string|max:255',
         ]);
 

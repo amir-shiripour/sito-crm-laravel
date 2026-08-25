@@ -23,8 +23,9 @@ class BookingWaitlistManager extends Component
     public ?int $selectedProviderFilter = null;
     public string $statusFilter = 'waiting'; // 'waiting', 'notified', 'in_progress', 'converted', 'canceled', 'all'
 
-    // Create Modal State
+    // Create / Edit Modal State
     public bool $showCreateModal = false;
+    public bool $isEditing = false;
     public ?int $modalClientId = null;
     public string $modalClientSearch = '';
     public ?int $modalServiceId = null;
@@ -32,6 +33,7 @@ class BookingWaitlistManager extends Component
     public ?int $modalDurationMinutes = null;
     public string $modalPreferredDateJalali = '';
     public string $modalNotes = '';
+    public string $modalStatus = BookingWaitlist::STATUS_WAITING;
     public string $modalError = '';
 
     // Service Custom Form in Modal
@@ -172,6 +174,9 @@ class BookingWaitlistManager extends Component
 
     public function openCreateModal(): void
     {
+        $this->isEditing = false;
+        $this->editingEntryId = null;
+        $this->modalStatus = BookingWaitlist::STATUS_WAITING;
         $this->reset([
             'modalClientId', 'modalClientSearch', 'modalServiceId', 'modalProviderId',
             'modalDurationMinutes', 'modalPreferredDateJalali', 'modalNotes', 'modalError',
@@ -180,9 +185,51 @@ class BookingWaitlistManager extends Component
         $this->showCreateModal = true;
     }
 
+    public function openEditModal(int $id): void
+    {
+        $entry = BookingWaitlist::find($id);
+        if (!$entry) {
+            $this->toastError = 'آیتم مورد نظر در صف انتظار یافت نشد.';
+            return;
+        }
+
+        $this->isEditing = true;
+        $this->editingEntryId = $entry->id;
+        $this->modalClientId = $entry->client_id;
+        $this->modalClientSearch = '';
+        $this->modalServiceId = $entry->service_id;
+        $this->modalProviderId = $entry->provider_user_id;
+        $this->modalDurationMinutes = $entry->duration_minutes;
+        $this->modalNotes = $entry->notes ?? '';
+        $this->modalStatus = $entry->status ?? BookingWaitlist::STATUS_WAITING;
+        $this->modalError = '';
+
+        if ($entry->preferred_date) {
+            try {
+                $this->modalPreferredDateJalali = Jalalian::fromDateTime($entry->preferred_date)->format('Y/m/d');
+            } catch (\Throwable $e) {
+                $this->modalPreferredDateJalali = '';
+            }
+        } else {
+            $this->modalPreferredDateJalali = '';
+        }
+
+        $this->loadModalServiceForm($entry->service_id);
+
+        if (!empty($entry->appointment_form_response_json) && is_array($entry->appointment_form_response_json)) {
+            foreach ($entry->appointment_form_response_json as $key => $val) {
+                $this->modalFormResponses[$key] = $val;
+            }
+        }
+
+        $this->showCreateModal = true;
+    }
+
     public function closeCreateModal(): void
     {
         $this->showCreateModal = false;
+        $this->isEditing = false;
+        $this->editingEntryId = null;
         $this->modalError = '';
     }
 
@@ -193,6 +240,11 @@ class BookingWaitlistManager extends Component
     }
 
     public function saveNewWaitlistEntry(): void
+    {
+        $this->saveWaitlistEntry();
+    }
+
+    public function saveWaitlistEntry(): void
     {
         $this->modalError = '';
 
@@ -218,15 +270,6 @@ class BookingWaitlistManager extends Component
             }
         }
 
-        $settings = BookingSetting::current();
-        if ($settings->queue_max_size && $settings->queue_max_size > 0) {
-            $currentWaitingCount = BookingWaitlist::where('status', BookingWaitlist::STATUS_WAITING)->count();
-            if ($currentWaitingCount >= $settings->queue_max_size) {
-                $this->modalError = sprintf('ظرفیت صف انتظار تکمیل است (حداکثر %d نفر).', $settings->queue_max_size);
-                return;
-            }
-        }
-
         $prefDateGregorian = null;
         if (!empty($this->modalPreferredDateJalali)) {
             try {
@@ -237,20 +280,86 @@ class BookingWaitlistManager extends Component
             }
         }
 
-        BookingWaitlist::create([
-            'client_id'                      => $this->modalClientId,
-            'service_id'                     => $this->modalServiceId ? (int)$this->modalServiceId : null,
-            'provider_user_id'               => $this->modalProviderId ? (int)$this->modalProviderId : null,
-            'preferred_date'                 => $prefDateGregorian,
-            'duration_minutes'               => $this->modalDurationMinutes ? (int)$this->modalDurationMinutes : null,
-            'notes'                          => $this->modalNotes,
-            'appointment_form_response_json' => !empty($this->modalFormResponses) ? $this->modalFormResponses : null,
-            'status'                         => BookingWaitlist::STATUS_WAITING,
-            'created_by_user_id'             => Auth::id(),
-        ]);
+        if ($this->isEditing && $this->editingEntryId) {
+            $entry = BookingWaitlist::find($this->editingEntryId);
+            if (!$entry) {
+                $this->modalError = 'نوبت مورد نظر یافت نشد.';
+                return;
+            }
 
-        $this->closeCreateModal();
-        $this->toastSuccess = 'مراجع با موفقیت در صف انتظار قرار گرفت.';
+            $entry->update([
+                'client_id'                      => $this->modalClientId,
+                'service_id'                     => $this->modalServiceId ? (int)$this->modalServiceId : null,
+                'provider_user_id'               => $this->modalProviderId ? (int)$this->modalProviderId : null,
+                'preferred_date'                 => $prefDateGregorian,
+                'duration_minutes'               => $this->modalDurationMinutes ? (int)$this->modalDurationMinutes : null,
+                'notes'                          => $this->modalNotes,
+                'appointment_form_response_json' => !empty($this->modalFormResponses) ? $this->modalFormResponses : null,
+                'status'                         => $this->modalStatus,
+            ]);
+
+            if ($this->modalStatus === BookingWaitlist::STATUS_NOTIFIED && !$entry->notified_at) {
+                $entry->update(['notified_at' => now()]);
+            }
+
+            $this->closeCreateModal();
+            $this->toastSuccess = 'اطلاعات صف انتظار با موفقیت ویرایش شد.';
+        } else {
+            $settings = BookingSetting::current();
+            if ($settings->queue_max_size && $settings->queue_max_size > 0) {
+                $currentWaitingCount = BookingWaitlist::where('status', BookingWaitlist::STATUS_WAITING)->count();
+                if ($currentWaitingCount >= $settings->queue_max_size) {
+                    $this->modalError = sprintf('ظرفیت صف انتظار تکمیل است (حداکثر %d نفر).', $settings->queue_max_size);
+                    return;
+                }
+            }
+
+            BookingWaitlist::create([
+                'client_id'                      => $this->modalClientId,
+                'service_id'                     => $this->modalServiceId ? (int)$this->modalServiceId : null,
+                'provider_user_id'               => $this->modalProviderId ? (int)$this->modalProviderId : null,
+                'preferred_date'                 => $prefDateGregorian,
+                'duration_minutes'               => $this->modalDurationMinutes ? (int)$this->modalDurationMinutes : null,
+                'notes'                          => $this->modalNotes,
+                'appointment_form_response_json' => !empty($this->modalFormResponses) ? $this->modalFormResponses : null,
+                'status'                         => BookingWaitlist::STATUS_WAITING,
+                'created_by_user_id'             => Auth::id(),
+            ]);
+
+            $this->closeCreateModal();
+            $this->toastSuccess = 'مراجع با موفقیت در صف انتظار قرار گرفت.';
+        }
+    }
+
+    public function toggleTooth(string $fieldName, int $toothId): void
+    {
+        if (!isset($this->modalFormResponses[$fieldName]) || !is_array($this->modalFormResponses[$fieldName])) {
+            $this->modalFormResponses[$fieldName] = [];
+        }
+        $key = array_search($toothId, $this->modalFormResponses[$fieldName]);
+        if ($key !== false) {
+            unset($this->modalFormResponses[$fieldName][$key]);
+            $this->modalFormResponses[$fieldName] = array_values($this->modalFormResponses[$fieldName]);
+        } else {
+            $this->modalFormResponses[$fieldName][] = $toothId;
+        }
+    }
+
+    public function selectJaw(string $fieldName, string $jaw): void
+    {
+        $upperJaw = [1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+        $lowerJaw = [15,16,17,18,19,20,21,22,23,24,25,26,27,28];
+        $this->modalFormResponses[$fieldName] = $jaw === 'upper' ? $upperJaw : $lowerJaw;
+    }
+
+    public function selectAllTeeth(string $fieldName): void
+    {
+        $this->modalFormResponses[$fieldName] = range(1, 28);
+    }
+
+    public function resetTeeth(string $fieldName): void
+    {
+        $this->modalFormResponses[$fieldName] = [];
     }
 
     public function openStatusModal(int $entryId): void
@@ -291,14 +400,21 @@ class BookingWaitlistManager extends Component
         }
     }
 
-    public function cancelEntry(int $entryId): void
+    public function deleteEntry(int $entryId): void
     {
         $entry = BookingWaitlist::find($entryId);
         if ($entry) {
             $entry->update(['status' => BookingWaitlist::STATUS_CANCELED]);
             $entry->delete();
-            $this->toastSuccess = 'نوبت با موفقیت از صف انتظار خارج شد.';
+            $this->toastSuccess = 'مراجع با موفقیت از صف انتظار حذف شد.';
+        } else {
+            $this->toastError = 'آیتم مورد نظر یافت نشد.';
         }
+    }
+
+    public function cancelEntry(int $entryId): void
+    {
+        $this->deleteEntry($entryId);
     }
 
     public function render()
