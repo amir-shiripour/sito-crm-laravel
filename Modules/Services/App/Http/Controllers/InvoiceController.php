@@ -1402,6 +1402,7 @@ class InvoiceController extends Controller
             $price = (int)$item['unit_price'];
             $discount = (int)($item['discount'] ?? 0);
             $billingPeriod = $item['billing_period'] ?? null;
+            $itemTaxPercent = $item['tax_percent'] ?? 0;
 
             $customFieldsValues = $item['custom_fields'] ?? [];
             $customFieldsOld = $item['custom_fields_old'] ?? [];
@@ -1423,6 +1424,7 @@ class InvoiceController extends Controller
             $customFieldsPrices = $item['custom_fields_prices'] ?? [];
             $customFieldsDiscounts = $item['custom_fields_discounts'] ?? [];
             $customFieldsTaxes = $item['custom_fields_taxes'] ?? [];
+            $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
 
             $customFieldsGrossTotal = 0;
             $customFieldsDiscountTotal = 0;
@@ -1437,6 +1439,7 @@ class InvoiceController extends Controller
                     }
 
                     $val = $customFieldsValues[$field->id] ?? null;
+                    $useDef = !empty($customFieldsUseDefaultPrice[$field->id]);
 
                     if ($field->type === 'multiselect') {
                         if (!is_array($val) || empty($val)) {
@@ -1454,9 +1457,11 @@ class InvoiceController extends Controller
                             }
                             if ($optQty <= 0) $optQty = 1;
 
-                            if (isset($customFieldsPrices[$field->id]) && is_array($customFieldsPrices[$field->id]) && isset($customFieldsPrices[$field->id][$selectedOpt])) {
+                            $defaultOptPrice = $field->getOptionPrice($selectedOpt, $price, $useDef);
+
+                            if (isset($customFieldsPrices[$field->id]) && is_array($customFieldsPrices[$field->id]) && isset($customFieldsPrices[$field->id][$selectedOpt]) && $customFieldsPrices[$field->id][$selectedOpt] !== '') {
                                 $optAmount = (float)$customFieldsPrices[$field->id][$selectedOpt];
-                            } elseif (isset($customFieldsPrices[$field->id]) && !is_array($customFieldsPrices[$field->id])) {
+                            } elseif (isset($customFieldsPrices[$field->id]) && !is_array($customFieldsPrices[$field->id]) && $customFieldsPrices[$field->id] !== '') {
                                 $optAmount = (float)$customFieldsPrices[$field->id];
                             } else {
                                 $optAmount = (float)$defaultOptPrice;
@@ -1494,7 +1499,7 @@ class InvoiceController extends Controller
                             continue;
                         }
 
-                        $defaultFieldPrice = $field->getOptionPrice($val, $price);
+                        $defaultFieldPrice = $field->getOptionPrice($val, $price, $useDef);
 
                         $fieldQty = isset($customFieldsQuantities[$field->id])
                             ? $this->parseNumber($customFieldsQuantities[$field->id])
@@ -1511,7 +1516,7 @@ class InvoiceController extends Controller
                             $customFieldsValues[$field->id] = $fieldQty;
                         }
 
-                        if (isset($customFieldsPrices[$field->id]) && !is_array($customFieldsPrices[$field->id])) {
+                        if (isset($customFieldsPrices[$field->id]) && !is_array($customFieldsPrices[$field->id]) && $customFieldsPrices[$field->id] !== '') {
                             $amount = (float)$customFieldsPrices[$field->id];
                         } else {
                             $amount = (float)$defaultFieldPrice;
@@ -1538,22 +1543,25 @@ class InvoiceController extends Controller
 
             $subtotal += $rowGross;
             $totalDiscount += $rowDiscount;
-            $itemsTotal += $rowBase;
 
-            $rowTaxPercent = 0;
-            $rowTaxAmount = 0;
+            $rowTaxPercent = (float)$itemTaxPercent;
+            $rowTaxAmount = $rowBase * ($rowTaxPercent / 100);
 
+            $rowFinalTotal = $rowBase;
             if ($taxMode === 'item') {
-                $rowTaxPercent = (float)($item['tax_percent'] ?? 0);
-                $rowTaxableBase = $price * $qty;
-                $rowTaxAmount = $rowTaxableBase * ($rowTaxPercent / 100);
-                $itemsTaxTotal += $rowTaxAmount + $customFieldsTaxTotal;
+                $rowFinalTotal += $rowTaxAmount;
+                if ($taxApplyCustomFields) {
+                    $rowFinalTotal += $customFieldsTaxTotal;
+                }
             }
 
+            $itemsTotal += $rowFinalTotal;
+            $itemsTaxTotal += $rowTaxAmount + ($taxApplyCustomFields ? $customFieldsTaxTotal : 0);
+
             $prepared[] = [
-                'service_id' => $item['service_id'] ?? null,
+                'service_id' => !empty($item['service_id']) ? (int)$item['service_id'] : null,
                 'custom_service_name' => $item['custom_service_name'] ?? null,
-                'description' => $item['description'] ?? '',
+                'description' => $item['description'] ?? null,
                 'unit' => $item['unit'] ?? 'عدد',
                 'quantity' => $qty,
                 'unit_price' => $price,
@@ -1568,6 +1576,7 @@ class InvoiceController extends Controller
                     'custom_fields_prices' => $customFieldsPrices,
                     'custom_fields_discounts' => $customFieldsDiscounts,
                     'custom_fields_taxes' => $customFieldsTaxes,
+                    'custom_fields_use_default_price' => $customFieldsUseDefaultPrice,
                     'product_id' => $item['product_id'] ?? null,
                     'product_variant_id' => $item['product_variant_id'] ?? null,
                     '_packageGroupId' => $item['_packageGroupId'] ?? null,

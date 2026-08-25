@@ -24,6 +24,7 @@ class ServicePackageItem extends Model
         'custom_fields',
         'custom_fields_prices',
         'custom_fields_quantities',
+        'custom_fields_use_default_price',
         'total_price',
     ];
 
@@ -36,6 +37,7 @@ class ServicePackageItem extends Model
         'custom_fields' => 'array',
         'custom_fields_prices' => 'array',
         'custom_fields_quantities' => 'array',
+        'custom_fields_use_default_price' => 'array',
     ];
 
     public function package(): BelongsTo

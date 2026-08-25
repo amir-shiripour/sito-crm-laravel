@@ -4,7 +4,7 @@
 @php
     $inputClass = "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 transition-all shadow-sm dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20";
     $labelClass = "block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2 ms-1";
-    $cardClass  = "bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl";
+    $cardClass  = "bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl";
     $isEdit     = isset($service) && $service;
     $action     = $isEdit ? route('services.services.update', $service) : route('services.services.store');
 
@@ -114,8 +114,8 @@
                  x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-8">
 
                 {{-- Basic Info Section --}}
-                <div class="{{ $cardClass }}">
-                    <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
+                <div class="{{ $cardClass }}" x-data="{ openAccCat: false }" :class="openAccCat ? 'relative z-20' : 'relative z-0'">
+                    <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 rounded-t-3xl">
                         <h2 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
                             <div
                                 class="p-2 bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-lg">
@@ -153,80 +153,94 @@
                         @if(isset($accountingCategories) && count($accountingCategories) > 0)
                             @php
                                 $selectedAccCatId = old('accounting_category_id', $service->accounting_category_id ?? '');
-                                $selectedAccCatTitle = '';
-                                $accCatOptions = [];
-                                foreach($accountingCategories as $accCat) {
-                                    $typeTitle = match($accCat->type){
-                                        'income' => 'درآمد',
-                                        'expense' => 'هزینه',
-                                        'asset' => 'دارایی',
-                                        'liability' => 'بدهی',
-                                        'equity' => 'سرمایه',
-                                        default => $accCat->type
-                                    };
-                                    $codePrefix = $accCat->account_code ? "کد {$accCat->account_code} - " : "";
-                                    $connectedAccounts = ($accCat->fundAccounts && $accCat->fundAccounts->count() > 0)
-                                        ? " | متصل به: " . $accCat->fundAccounts->pluck('name')->implode('، ')
-                                        : "";
-                                    $fullTitle = "{$codePrefix}{$accCat->title} ({$typeTitle}){$connectedAccounts}";
-                                    if ((string)$selectedAccCatId === (string)$accCat->id) {
-                                        $selectedAccCatTitle = $fullTitle;
-                                    }
-                                    $accCatOptions[] = [
-                                        'id' => (string)$accCat->id,
-                                        'title' => $fullTitle
+                                $typeLabels = [
+                                    'asset' => 'دارایی',
+                                    'liability' => 'بدهی',
+                                    'equity' => 'سرمایه',
+                                    'income' => 'درآمد',
+                                    'expense' => 'هزینه',
+                                ];
+                                $typeBadges = [
+                                    'asset' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
+                                    'liability' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800/50',
+                                    'equity' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800/50',
+                                    'income' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
+                                    'expense' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 border-rose-200 dark:border-rose-800/50',
+                                ];
+                                $accountingCategoriesList = collect($accountingCategories)->map(function($accCat) use ($typeLabels, $typeBadges) {
+                                    return [
+                                        'id' => (string) $accCat->id,
+                                        'title' => $accCat->title,
+                                        'account_code' => $accCat->account_code ?? '',
+                                        'type' => $accCat->type,
+                                        'type_label' => $typeLabels[$accCat->type] ?? $accCat->type,
+                                        'type_badge' => $typeBadges[$accCat->type] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
                                     ];
-                                }
+                                })->values()->all();
                             @endphp
-                            <div>
+                            <div class="relative" :class="{ 'z-50': openAccCat }" x-data="{
+                                search: '',
+                                selectedId: '{{ $selectedAccCatId }}',
+                                options: @js($accountingCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        o.title.toLowerCase().includes(q) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.openAccCat = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    if (!this.selectedId) return 'بدون سرفصل مالی (اختیاری)';
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'بدون سرفصل مالی (اختیاری)';
+                                    return found.title + (found.type_label ? ' (' + found.type_label + ')' : '');
+                                },
+                                formatFa(str) {
+                                    if (!str) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }">
                                 <label class="{{ $labelClass }}">سرفصل مالی (حسابداری)</label>
-                                <div x-data="{
-                                    open: false,
-                                    search: '',
-                                    selectedId: '{{ $selectedAccCatId }}',
-                                    selectedTitle: '{{ addslashes($selectedAccCatTitle) }}',
-                                    options: @js($accCatOptions),
-                                    get filteredOptions() {
-                                        if (!this.search.trim()) return this.options;
-                                        return this.options.filter(o => o.title.toLowerCase().includes(this.search.toLowerCase()));
-                                    },
-                                    select(opt) {
-                                        if (opt) {
-                                            this.selectedId = opt.id;
-                                            this.selectedTitle = opt.title;
-                                        } else {
-                                            this.selectedId = '';
-                                            this.selectedTitle = '';
-                                        }
-                                        this.open = false;
-                                        this.search = '';
-                                    }
-                                }" class="relative">
+                                <div class="relative">
                                     <input type="hidden" name="accounting_category_id" :value="selectedId">
 
-                                    <button type="button" @click="open = !open"
-                                            class="{{ $inputClass }} flex items-center justify-between cursor-pointer w-full text-start">
-                                        <span x-text="selectedTitle || 'بدون سرفصل مالی'" class="truncate text-sm"></span>
+                                    <button type="button" @click="openAccCat = !openAccCat"
+                                            class="{{ $inputClass }} flex items-center justify-between cursor-pointer w-full text-start py-2.5 px-3.5 text-xs sm:text-sm">
+                                        <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
                                         <svg class="w-4 h-4 text-gray-400 shrink-0 ms-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                                     </button>
 
-                                    <div x-show="open" @click.outside="open = false" x-cloak
-                                         class="absolute z-50 mt-1.5 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-2 max-h-64 overflow-y-auto">
+                                    <div x-show="openAccCat" @click.outside="openAccCat = false" x-cloak
+                                         class="absolute z-50 top-full mt-1.5 start-0 w-full min-w-[280px] sm:min-w-[340px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
                                         <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
-                                            <input type="text" x-model="search" placeholder="جستجو در سرفصل‌ها..."
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل، کد یا ماهیت..."
                                                    class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
                                         </div>
 
                                         <div @click="select(null)"
-                                             class="px-3 py-2 text-xs rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-gray-500 font-bold mb-1">
+                                             class="px-3 py-2 text-xs rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/60 cursor-pointer text-gray-500 font-bold mb-1 border-b border-gray-100 dark:border-gray-700">
                                             بدون سرفصل مالی
                                         </div>
 
                                         <template x-for="opt in filteredOptions" :key="opt.id">
                                             <div @click="select(opt)"
-                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors"
-                                                 :class="{ 'bg-indigo-50/70 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-bold': selectedId === opt.id }"
-                                                 x-text="opt.title">
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-indigo-50/70 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code" class="text-[10px] text-gray-400" x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate"></span>
+                                                </div>
+                                                <span class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                      :class="opt.type_badge"
+                                                      x-text="opt.type_label"></span>
                                             </div>
                                         </template>
 
@@ -255,9 +269,9 @@
                     </div>
                 </div>
 
-                <div class="{{ $cardClass }}">
+                <div class="{{ $cardClass }} relative z-0">
                     <div
-                        class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-r from-emerald-50/50 to-violet-50/50 dark:from-emerald-900/20 dark:to-violet-900/20">
+                        class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-r from-emerald-50/50 to-violet-50/50 dark:from-emerald-900/20 dark:to-violet-900/20 rounded-t-3xl">
                         <h2 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
                             <div
                                 class="p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg">

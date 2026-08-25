@@ -143,15 +143,17 @@ class ServicePackageController extends Controller
                                     $customFieldsQuantities[$cf->id] = $qVal;
                                 }
                             }
+                            $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
                             if ($cf->has_pricing && $isSelected) {
+                                $useDef = !empty($customFieldsUseDefaultPrice[$cf->id]);
                                 if ($cf->type === 'multiselect' && is_array($val)) {
                                     $cfPriceTotal = 0;
                                     foreach ($val as $opt) {
                                         $optPrice = is_array($customFieldsPrices[$cf->id] ?? null)
                                             ? ($customFieldsPrices[$cf->id][$opt] ?? null)
                                             : null;
-                                        if ($optPrice === null || $optPrice <= 0) {
-                                            $optPrice = $cf->getOptionPrice($opt, $unitPrice);
+                                        if ($optPrice === null || $optPrice === '') {
+                                            $optPrice = $cf->getOptionPrice($opt, $unitPrice, $useDef);
                                         }
                                         $optQty = is_array($customFieldsQuantities[$cf->id] ?? null)
                                             ? (floatval($this->parsePrice($customFieldsQuantities[$cf->id][$opt] ?? 1)) ?: 1)
@@ -161,14 +163,19 @@ class ServicePackageController extends Controller
                                     $cfSubtotal += $cfPriceTotal;
                                 } else {
                                     $cfPrice = 0;
-                                    if (isset($customFieldsPrices[$cf->id]) && !is_array($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] > 0) {
+                                    if (isset($customFieldsPrices[$cf->id]) && !is_array($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] !== '') {
                                         $cfPrice = floatval($customFieldsPrices[$cf->id]);
                                     } else {
-                                        if (in_array($cf->type, ['select', 'radio'])) {
-                                            $cfPrice = $cf->getOptionPrice($val, $unitPrice);
-                                        } else {
+                                        if ($useDef) {
                                             $cfAmount = floatval($cf->pricing_amount ?? 0);
                                             $cfPrice = ($cf->pricing_type === 'percentage') ? ($unitPrice * ($cfAmount / 100)) : $cfAmount;
+                                        } else {
+                                            if (in_array($cf->type, ['select', 'radio'])) {
+                                                $cfPrice = $cf->getOptionPrice($val, $unitPrice, false);
+                                            } else {
+                                                $cfAmount = floatval($cf->pricing_amount ?? 0);
+                                                $cfPrice = ($cf->pricing_type === 'percentage') ? ($unitPrice * ($cfAmount / 100)) : $cfAmount;
+                                            }
                                         }
                                         $customFieldsPrices[$cf->id] = $cfPrice;
                                     }
@@ -209,6 +216,7 @@ class ServicePackageController extends Controller
                     'custom_fields' => $customFields,
                     'custom_fields_prices' => $customFieldsPrices,
                     'custom_fields_quantities' => $customFieldsQuantities,
+                    'custom_fields_use_default_price' => $customFieldsUseDefaultPrice,
                     'total_price' => $rowTotal,
                 ];
             }
@@ -352,15 +360,17 @@ class ServicePackageController extends Controller
                                     $customFieldsQuantities[$cf->id] = $qVal;
                                 }
                             }
+                            $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
                             if ($cf->has_pricing && $isSelected) {
+                                $useDef = !empty($customFieldsUseDefaultPrice[$cf->id]);
                                 if ($cf->type === 'multiselect' && is_array($val)) {
                                     $cfPriceTotal = 0;
                                     foreach ($val as $opt) {
                                         $optPrice = is_array($customFieldsPrices[$cf->id] ?? null)
                                             ? ($customFieldsPrices[$cf->id][$opt] ?? null)
                                             : null;
-                                        if ($optPrice === null || $optPrice <= 0) {
-                                            $optPrice = $cf->getOptionPrice($opt, $unitPrice);
+                                        if ($optPrice === null || $optPrice === '') {
+                                            $optPrice = $cf->getOptionPrice($opt, $unitPrice, $useDef);
                                         }
                                         $optQty = is_array($customFieldsQuantities[$cf->id] ?? null)
                                             ? (floatval($this->parsePrice($customFieldsQuantities[$cf->id][$opt] ?? 1)) ?: 1)
@@ -370,14 +380,19 @@ class ServicePackageController extends Controller
                                     $cfSubtotal += $cfPriceTotal;
                                 } else {
                                     $cfPrice = 0;
-                                    if (isset($customFieldsPrices[$cf->id]) && !is_array($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] > 0) {
+                                    if (isset($customFieldsPrices[$cf->id]) && !is_array($customFieldsPrices[$cf->id]) && $customFieldsPrices[$cf->id] !== '') {
                                         $cfPrice = floatval($customFieldsPrices[$cf->id]);
                                     } else {
-                                        if (in_array($cf->type, ['select', 'radio'])) {
-                                            $cfPrice = $cf->getOptionPrice($val, $unitPrice);
-                                        } else {
+                                        if ($useDef) {
                                             $cfAmount = floatval($cf->pricing_amount ?? 0);
                                             $cfPrice = ($cf->pricing_type === 'percentage') ? ($unitPrice * ($cfAmount / 100)) : $cfAmount;
+                                        } else {
+                                            if (in_array($cf->type, ['select', 'radio'])) {
+                                                $cfPrice = $cf->getOptionPrice($val, $unitPrice, false);
+                                            } else {
+                                                $cfAmount = floatval($cf->pricing_amount ?? 0);
+                                                $cfPrice = ($cf->pricing_type === 'percentage') ? ($unitPrice * ($cfAmount / 100)) : $cfAmount;
+                                            }
                                         }
                                         $customFieldsPrices[$cf->id] = $cfPrice;
                                     }
@@ -418,6 +433,7 @@ class ServicePackageController extends Controller
                     'custom_fields' => $customFields,
                     'custom_fields_prices' => $customFieldsPrices,
                     'custom_fields_quantities' => $customFieldsQuantities,
+                    'custom_fields_use_default_price' => $customFieldsUseDefaultPrice,
                     'total_price' => $rowTotal,
                 ];
             }
