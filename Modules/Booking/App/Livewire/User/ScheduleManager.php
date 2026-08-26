@@ -49,6 +49,12 @@ class ScheduleManager extends Component
     public ?string $modalFormName = null;
     public array $modalFormResponses = [];
 
+    // Smart Waitlist Drawer State (سایدبار هوشمند صف انتظار در تقویم)
+    public bool $showWaitlistDrawer = false;
+    public ?int $drawerFilterServiceId = null;
+    public ?int $drawerFilterProviderId = null;
+    public string $drawerSearch = '';
+
     // Quick Details Modal State
     public bool $showDetailsModal = false;
     public ?array $detailsAppointment = null;
@@ -712,6 +718,318 @@ class ScheduleManager extends Component
         }
     }
 
+    public function toggleWaitlistDrawer(): void
+    {
+        $this->showWaitlistDrawer = !$this->showWaitlistDrawer;
+    }
+
+    public function closeWaitlistDrawer(): void
+    {
+        $this->showWaitlistDrawer = false;
+    }
+
+    public function resetDrawerFilters(): void
+    {
+        $this->drawerFilterServiceId = null;
+        $this->drawerFilterProviderId = null;
+        $this->drawerSearch = '';
+    }
+
+    public function applyWaitlistFilter(int $waitlistId): void
+    {
+        if (!class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            return;
+        }
+
+        $entry = \Modules\Booking\Entities\BookingWaitlist::with(['client', 'service', 'provider'])->find($waitlistId);
+        if (!$entry) {
+            return;
+        }
+
+        // Apply service and provider to main schedule filters
+        if ($entry->service_id) {
+            $this->selectedServiceId = (int)$entry->service_id;
+        }
+        if ($entry->provider_user_id) {
+            $this->selectedProviderId = (int)$entry->provider_user_id;
+        }
+
+        // ⏱️ Synchronize calendar time step with client's requested duration (if specified)
+        if (!empty($entry->duration_minutes) && $entry->duration_minutes >= 5) {
+            $this->timeStepMinutes = (int)$entry->duration_minutes;
+        } else {
+            $this->evaluateStepLock();
+        }
+
+        // Close drawer so operator clearly sees the calendar slots
+        $this->showWaitlistDrawer = false;
+
+        $clientName = $entry->client?->full_name ?? $entry->client?->username ?? 'مراجع';
+        $durText = !empty($entry->duration_minutes) ? " (با گام زمانی: {$entry->duration_minutes} دقیقه)" : "";
+        $this->toastSuccess = "فیلترهای تقویم بر اساس درخواست صف «{$clientName}» تنظیم شد{$durText}. اکنون اسلات مناسب را از تقویم انتخاب کنید.";
+    }
+
+    public function findFirstAvailableSlot(?int $serviceId, ?int $providerId, ?Carbon $date = null, int $durationMinutes = 30): ?string
+    {
+        if (!$providerId) {
+            return null;
+        }
+
+        $localDate = $date ?? ($this->getGregorianCarbon() ?? now());
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        $nowLocal = now($scheduleTz);
+
+        $bookingEngine = new BookingEngine();
+        $policy = $bookingEngine->resolveDayPolicy($serviceId, $providerId, $localDate);
+
+        if (!empty($policy['is_closed']) || empty($policy['work_windows'])) {
+            return null;
+        }
+
+        $startUtc = $localDate->copy()->startOfDay()->timezone('UTC');
+        $endUtc = $localDate->copy()->endOfDay()->timezone('UTC');
+
+        $existingAppts = Appointment::query()
+            ->where('provider_user_id', $providerId)
+            ->where('start_at_utc', '<=', $endUtc)
+            ->where('end_at_utc', '>=', $startUtc)
+            ->whereNotIn('status', [
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+            ])
+            ->get();
+
+        $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+        $statuses = (array) config('booking.capacity_consuming_statuses', [
+            Appointment::STATUS_CONFIRMED,
+            Appointment::STATUS_PENDING_PAYMENT,
+            Appointment::STATUS_PENDING,
+            Appointment::STATUS_DRAFT,
+            Appointment::STATUS_DONE,
+        ]);
+
+        $step = max(5, $durationMinutes > 0 ? $durationMinutes : (int)($policy['slot_duration_minutes'] ?? 30));
+
+        foreach ($policy['work_windows'] as $window) {
+            if (empty($window['start']) || empty($window['end'])) continue;
+
+            $wStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $window['start'], $scheduleTz);
+            $wEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $window['end'], $scheduleTz);
+
+            $curr = $wStart->copy();
+            while ($curr->copy()->addMinutes($step)->lte($wEnd)) {
+                $currEnd = $curr->copy()->addMinutes($step);
+
+                if ($localDate->isToday() && $curr->lt($nowLocal)) {
+                    $curr->addMinutes($step);
+                    continue;
+                }
+
+                $inBreak = false;
+                if (!empty($policy['breaks'])) {
+                    foreach ($policy['breaks'] as $brk) {
+                        $bS = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $brk['start'], $scheduleTz);
+                        $bE = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $brk['end'], $scheduleTz);
+                        if ($curr->lt($bE) && $currEnd->gt($bS)) {
+                            $inBreak = true;
+                            break;
+                        }
+                    }
+                }
+                if ($inBreak) {
+                    $curr->addMinutes($step);
+                    continue;
+                }
+
+                $currUtc = $curr->copy()->timezone('UTC');
+                $currEndUtc = $currEnd->copy()->timezone('UTC');
+
+                $overlap = $existingAppts->first(function ($apt) use ($currUtc, $currEndUtc) {
+                    return $apt->start_at_utc < $currEndUtc && $apt->end_at_utc > $currUtc;
+                });
+
+                if ($overlap) {
+                    $curr->addMinutes($step);
+                    continue;
+                }
+
+                if ($serviceId && $syncService->isSyncBlocked($serviceId, $providerId, $currUtc, $currEndUtc, $statuses)) {
+                    $curr->addMinutes($step);
+                    continue;
+                }
+
+                return $curr->format('H:i');
+            }
+        }
+
+        return null;
+    }
+
+    public function getAvailableModalSlotsProperty(): array
+    {
+        if (!$this->modalProviderId) {
+            return [];
+        }
+
+        $localDate = $this->getGregorianCarbon() ?? now();
+        $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+        $nowLocal = now($scheduleTz);
+
+        $bookingEngine = new BookingEngine();
+        $policy = $bookingEngine->resolveDayPolicy($this->modalServiceId, $this->modalProviderId, $localDate);
+
+        if (!empty($policy['is_closed']) || empty($policy['work_windows'])) {
+            return [];
+        }
+
+        $startUtc = $localDate->copy()->startOfDay()->timezone('UTC');
+        $endUtc = $localDate->copy()->endOfDay()->timezone('UTC');
+
+        $existingAppts = Appointment::query()
+            ->where('provider_user_id', $this->modalProviderId)
+            ->where('start_at_utc', '<=', $endUtc)
+            ->where('end_at_utc', '>=', $startUtc)
+            ->whereNotIn('status', [
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+            ])
+            ->get();
+
+        $syncService = app(\Modules\Booking\Services\ServiceSyncService::class);
+        $statuses = (array) config('booking.capacity_consuming_statuses', [
+            Appointment::STATUS_CONFIRMED,
+            Appointment::STATUS_PENDING_PAYMENT,
+            Appointment::STATUS_PENDING,
+            Appointment::STATUS_DRAFT,
+            Appointment::STATUS_DONE,
+        ]);
+
+        $step = max(5, (int)($policy['slot_duration_minutes'] ?? ($this->timeStepMinutes ?: 30)));
+        if ($this->modalWaitlistId && class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            $wl = \Modules\Booking\Entities\BookingWaitlist::find($this->modalWaitlistId);
+            if ($wl && !empty($wl->duration_minutes) && $wl->duration_minutes >= 5) {
+                $step = (int)$wl->duration_minutes;
+            }
+        }
+
+        $freeSlots = [];
+
+        foreach ($policy['work_windows'] as $window) {
+            if (empty($window['start']) || empty($window['end'])) continue;
+
+            $wStart = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $window['start'], $scheduleTz);
+            $wEnd = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $window['end'], $scheduleTz);
+
+            $curr = $wStart->copy();
+            while ($curr->copy()->addMinutes($step)->lte($wEnd)) {
+                $currEnd = $curr->copy()->addMinutes($step);
+
+                if ($localDate->isToday() && $curr->lt($nowLocal)) {
+                    $curr->addMinutes($step);
+                    continue;
+                }
+
+                $inBreak = false;
+                if (!empty($policy['breaks'])) {
+                    foreach ($policy['breaks'] as $brk) {
+                        $bS = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $brk['start'], $scheduleTz);
+                        $bE = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $brk['end'], $scheduleTz);
+                        if ($curr->lt($bE) && $currEnd->gt($bS)) {
+                            $inBreak = true;
+                            break;
+                        }
+                    }
+                }
+                if ($inBreak) {
+                    $curr->addMinutes($step);
+                    continue;
+                }
+
+                $currUtc = $curr->copy()->timezone('UTC');
+                $currEndUtc = $currEnd->copy()->timezone('UTC');
+
+                $overlap = $existingAppts->first(function ($apt) use ($currUtc, $currEndUtc) {
+                    return $apt->start_at_utc < $currEndUtc && $apt->end_at_utc > $currUtc;
+                });
+
+                if ($overlap) {
+                    $curr->addMinutes($step);
+                    continue;
+                }
+
+                if ($this->modalServiceId && $syncService->isSyncBlocked($this->modalServiceId, $this->modalProviderId, $currUtc, $currEndUtc, $statuses)) {
+                    $curr->addMinutes($step);
+                    continue;
+                }
+
+                $freeSlots[] = $curr->format('H:i');
+                $curr->addMinutes($step);
+            }
+        }
+
+        return $freeSlots;
+    }
+
+    public function setModalTimeSlot(string $startTime): void
+    {
+        $this->modalStartTime = $startTime;
+        
+        $dur = 30;
+        if ($this->modalWaitlistId && class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            $wl = \Modules\Booking\Entities\BookingWaitlist::find($this->modalWaitlistId);
+            if ($wl && !empty($wl->duration_minutes) && $wl->duration_minutes >= 5) {
+                $dur = (int)$wl->duration_minutes;
+            }
+        } elseif ($this->modalServiceId && $this->modalProviderId) {
+            $bookingEngine = new BookingEngine();
+            $localDate = $this->getGregorianCarbon() ?? now();
+            $pol = $bookingEngine->resolveDayPolicy($this->modalServiceId, $this->modalProviderId, $localDate);
+            $dur = max(5, (int)($pol['slot_duration_minutes'] ?? 30));
+        } elseif ($this->timeStepMinutes > 0) {
+            $dur = $this->timeStepMinutes;
+        }
+
+        [$h, $m] = explode(':', $startTime);
+        $startCb = Carbon::createFromTime((int)$h, (int)$m)->addMinutes($dur);
+        $this->modalEndTime = $startCb->format('H:i');
+    }
+
+    public function bookFromWaitlist(int $waitlistId): void
+    {
+        // Close drawer so operator clearly sees the booking modal
+        $this->showWaitlistDrawer = false;
+
+        $entry = null;
+        if (class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+            $entry = \Modules\Booking\Entities\BookingWaitlist::find($waitlistId);
+        }
+
+        $targetProviderId = $entry?->provider_user_id ?: $this->selectedProviderId;
+        $targetServiceId = $entry?->service_id ?: $this->selectedServiceId;
+        $duration = (int)($entry?->duration_minutes ?: 30);
+
+        // Auto-find first free slot
+        $firstFreeSlot = $this->findFirstAvailableSlot(
+            $targetServiceId,
+            $targetProviderId,
+            null,
+            $duration
+        );
+
+        $this->selectWaitlistEntry($waitlistId);
+        $this->openCreateModal(
+            $targetProviderId,
+            $firstFreeSlot ?: '',
+            null
+        );
+        // Re-select waitlist entry to ensure duration and form responses are loaded into modal
+        $this->selectWaitlistEntry($waitlistId);
+
+        if ($firstFreeSlot) {
+            $this->setModalTimeSlot($firstFreeSlot);
+        }
+    }
+
     public function onClientQuickSaved($clientId = null, $clientName = null): void
     {
         if ($clientId) {
@@ -911,7 +1229,7 @@ class ScheduleManager extends Component
                 }
             }
 
-            $appointmentService->createAppointmentByOperator(
+            $createdAppointment = $appointmentService->createAppointmentByOperator(
                 serviceId: $this->modalServiceId,
                 providerUserId: $this->modalProviderId,
                 clientId: $this->modalClientId,
@@ -923,15 +1241,20 @@ class ScheduleManager extends Component
                 status: $status
             );
 
-            // 🔸 به‌روزرسانی وضعیت در صف انتظار به تبدیل‌شده (Converted)
+            // 🔸 به‌روزرسانی وضعیت در صف انتظار به تبدیل‌شده (Converted) بدون توجه به وضعیت اولیه نوبت (پیش‌نویس، قطعی و...)
             if ($this->modalWaitlistId && class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
                 try {
                     $waitlistEntry = \Modules\Booking\Entities\BookingWaitlist::find($this->modalWaitlistId);
                     if ($waitlistEntry) {
-                        $waitlistEntry->update([
-                            'status' => \Modules\Booking\Entities\BookingWaitlist::STATUS_CONVERTED,
-                            'converted_at' => now(),
-                        ]);
+                        $apptId = $createdAppointment instanceof Appointment ? $createdAppointment->id : (is_array($createdAppointment) ? ($createdAppointment['id'] ?? null) : null);
+                        if ($apptId) {
+                            $waitlistEntry->convertToAppointment((int)$apptId);
+                        } else {
+                            $waitlistEntry->update([
+                                'status' => \Modules\Booking\Entities\BookingWaitlist::STATUS_CONVERTED,
+                                'converted_at' => now(),
+                            ]);
+                        }
                     }
                 } catch (\Throwable $we) {
                     Log::error('[ScheduleManager] Failed to mark waitlist as converted: ' . $we->getMessage());
@@ -2532,14 +2855,15 @@ class ScheduleManager extends Component
             $selectedModalClient = Client::find($this->modalClientId);
         }
 
-        // 🔸 بررسی وضعیت فعال بودن صف انتظار و بارگذاری برای مودال ثبت سریع
+        // 🔸 بررسی وضعیت فعال بودن صف انتظار و بارگذاری برای کشوی هوشمند و مودال ثبت سریع
         $isQueueEnabled = class_exists(\Modules\Booking\Entities\BookingWaitlist::class) && BookingSetting::isQueueEnabled();
         $waitlistForModal = collect();
+        $waitlistForDrawer = collect();
         $waitlistCount = 0;
         $selectedWaitlistEntry = null;
 
-        if ($this->showModal && $isQueueEnabled) {
-            $waitlistQuery = \Modules\Booking\Entities\BookingWaitlist::query()
+        if ($isQueueEnabled) {
+            $baseWaitlistQuery = \Modules\Booking\Entities\BookingWaitlist::query()
                 ->whereIn('status', [
                     \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
                     \Modules\Booking\Entities\BookingWaitlist::STATUS_NOTIFIED,
@@ -2547,49 +2871,104 @@ class ScheduleManager extends Component
                 ])
                 ->with(['client', 'service', 'provider']);
 
-            $srvId = $this->modalServiceId ? (int)$this->modalServiceId : 0;
-            $prvId = $this->modalProviderId ? (int)$this->modalProviderId : 0;
+            $waitlistCount = (clone $baseWaitlistQuery)->count();
 
-            $waitlistForModal = $waitlistQuery->get()->sort(function ($a, $b) use ($srvId, $prvId) {
-                // امتیاز اولویت:
-                // ۴۰: تطابق کامل سرویس و ارائه‌دهنده
-                // ۳۰: تطابق با سرویس انتخاب‌شده
-                // ۲۰: تطابق با ارائه‌دهنده انتخاب‌شده
-                // ۱۰: صف عمومی (بدون سرویس و بدون ارائه‌دهنده)
-                $scoreA = 0;
-                if ($srvId && $a->service_id == $srvId && $prvId && $a->provider_user_id == $prvId) {
-                    $scoreA = 40;
-                } elseif ($srvId && $a->service_id == $srvId) {
-                    $scoreA = 30;
-                } elseif ($prvId && $a->provider_user_id == $prvId) {
-                    $scoreA = 20;
-                } elseif (!$a->service_id && !$a->provider_user_id) {
-                    $scoreA = 10;
+            // 1. بارگذاری صف انتظار برای کشوی هوشمند (Smart Waitlist Drawer)
+            if ($this->showWaitlistDrawer) {
+                $drawerQuery = clone $baseWaitlistQuery;
+
+                if ($this->drawerFilterServiceId) {
+                    $drawerQuery->where('service_id', $this->drawerFilterServiceId);
                 }
 
-                $scoreB = 0;
-                if ($srvId && $b->service_id == $srvId && $prvId && $b->provider_user_id == $prvId) {
-                    $scoreB = 40;
-                } elseif ($srvId && $b->service_id == $srvId) {
-                    $scoreB = 30;
-                } elseif ($prvId && $b->provider_user_id == $prvId) {
-                    $scoreB = 20;
-                } elseif (!$b->service_id && !$b->provider_user_id) {
-                    $scoreB = 10;
+                if ($this->drawerFilterProviderId) {
+                    $drawerQuery->where('provider_user_id', $this->drawerFilterProviderId);
                 }
 
-                if ($scoreA !== $scoreB) {
-                    return $scoreB <=> $scoreA; // امتیاز بالاتر اول
+                if (!empty($this->drawerSearch)) {
+                    $term = trim($this->drawerSearch);
+                    $drawerQuery->where(function ($q) use ($term) {
+                        $q->whereHas('client', function ($cq) use ($term) {
+                            $cq->where('full_name', 'like', "%{$term}%")
+                               ->orWhere('username', 'like', "%{$term}%")
+                               ->orWhere('phone', 'like', "%{$term}%")
+                               ->orWhere('national_code', 'like', "%{$term}%");
+                        })->orWhere('notes', 'like', "%{$term}%");
+                    });
                 }
 
-                // در صورت یکسان بودن اولویت تطابق، بر اساس رتبه / شماره صف
-                return ($a->queue_rank ?? $a->position ?? 0) <=> ($b->queue_rank ?? $b->position ?? 0);
-            })->values();
+                $activeSrvId = $this->selectedServiceId ? (int)$this->selectedServiceId : 0;
+                $activePrvId = $this->selectedProviderId ? (int)$this->selectedProviderId : 0;
 
-            $waitlistCount = $waitlistForModal->count();
+                $waitlistForDrawer = $drawerQuery->get()->sort(function ($a, $b) use ($activeSrvId, $activePrvId) {
+                    $scoreA = 0;
+                    if ($activeSrvId && $a->service_id == $activeSrvId && $activePrvId && $a->provider_user_id == $activePrvId) {
+                        $scoreA = 40;
+                    } elseif ($activeSrvId && $a->service_id == $activeSrvId) {
+                        $scoreA = 30;
+                    } elseif ($activePrvId && $a->provider_user_id == $activePrvId) {
+                        $scoreA = 20;
+                    } elseif (!$a->service_id && !$a->provider_user_id) {
+                        $scoreA = 10;
+                    }
 
-            if ($this->modalWaitlistId) {
-                $selectedWaitlistEntry = \Modules\Booking\Entities\BookingWaitlist::with(['service', 'provider'])->find($this->modalWaitlistId);
+                    $scoreB = 0;
+                    if ($activeSrvId && $b->service_id == $activeSrvId && $activePrvId && $b->provider_user_id == $activePrvId) {
+                        $scoreB = 40;
+                    } elseif ($activeSrvId && $b->service_id == $activeSrvId) {
+                        $scoreB = 30;
+                    } elseif ($activePrvId && $b->provider_user_id == $activePrvId) {
+                        $scoreB = 20;
+                    } elseif (!$b->service_id && !$b->provider_user_id) {
+                        $scoreB = 10;
+                    }
+
+                    if ($scoreA !== $scoreB) {
+                        return $scoreB <=> $scoreA;
+                    }
+
+                    return ($a->queue_rank ?? $a->position ?? 0) <=> ($b->queue_rank ?? $b->position ?? 0);
+                })->values();
+            }
+
+            // 2. بارگذاری صف انتظار برای مودال ثبت سریع نوبت
+            if ($this->showModal) {
+                $srvId = $this->modalServiceId ? (int)$this->modalServiceId : 0;
+                $prvId = $this->modalProviderId ? (int)$this->modalProviderId : 0;
+
+                $waitlistForModal = (clone $baseWaitlistQuery)->get()->sort(function ($a, $b) use ($srvId, $prvId) {
+                    $scoreA = 0;
+                    if ($srvId && $a->service_id == $srvId && $prvId && $a->provider_user_id == $prvId) {
+                        $scoreA = 40;
+                    } elseif ($srvId && $a->service_id == $srvId) {
+                        $scoreA = 30;
+                    } elseif ($prvId && $a->provider_user_id == $prvId) {
+                        $scoreA = 20;
+                    } elseif (!$a->service_id && !$a->provider_user_id) {
+                        $scoreA = 10;
+                    }
+
+                    $scoreB = 0;
+                    if ($srvId && $b->service_id == $srvId && $prvId && $b->provider_user_id == $prvId) {
+                        $scoreB = 40;
+                    } elseif ($srvId && $b->service_id == $srvId) {
+                        $scoreB = 30;
+                    } elseif ($prvId && $b->provider_user_id == $prvId) {
+                        $scoreB = 20;
+                    } elseif (!$b->service_id && !$b->provider_user_id) {
+                        $scoreB = 10;
+                    }
+
+                    if ($scoreA !== $scoreB) {
+                        return $scoreB <=> $scoreA;
+                    }
+
+                    return ($a->queue_rank ?? $a->position ?? 0) <=> ($b->queue_rank ?? $b->position ?? 0);
+                })->values();
+
+                if ($this->modalWaitlistId) {
+                    $selectedWaitlistEntry = \Modules\Booking\Entities\BookingWaitlist::with(['service', 'provider'])->find($this->modalWaitlistId);
+                }
             }
         }
 
@@ -2637,6 +3016,7 @@ class ScheduleManager extends Component
             'selectedModalClient' => $selectedModalClient,
             'isQueueEnabled' => $isQueueEnabled,
             'waitlistForModal' => $waitlistForModal,
+            'waitlistForDrawer' => $waitlistForDrawer,
             'waitlistCount' => $waitlistCount,
             'selectedWaitlistEntry' => $selectedWaitlistEntry,
             'clientLabel' => config('clients.labels.singular', 'مشتری'),

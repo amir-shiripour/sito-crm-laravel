@@ -57,7 +57,7 @@
     @endif
 
     {{-- Executive Dashboard KPI Cards --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 {{ ($isQueueEnabled && $waitlistCount > 0) ? 'lg:grid-cols-5' : '' }} gap-4">
         {{-- Card 1: Total --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between transition-shadow hover:shadow-md">
             <div>
@@ -106,6 +106,23 @@
                 ⏳
             </div>
         </div>
+
+        {{-- Card 5: Smart Waitlist (When Queue is Enabled and has waiting clients) --}}
+        @if ($isQueueEnabled && $waitlistCount > 0)
+            <div wire:click="toggleWaitlistDrawer"
+                 class="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 dark:from-amber-950/40 dark:to-orange-950/30 rounded-2xl p-5 border border-amber-300/80 dark:border-amber-700/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:border-amber-400 cursor-pointer group">
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-black text-amber-800 dark:text-amber-300 block">در صف انتظار</span>
+                        <span class="text-[9px] font-extrabold bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded-full animate-pulse">مشاهده صف</span>
+                    </div>
+                    <span class="text-2xl font-black text-amber-900 dark:text-amber-100 mt-1.5 block">{{ $waitlistCount }} نفر</span>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center font-black text-lg shadow-md shadow-amber-500/25 group-hover:scale-108 transition-transform">
+                    📋
+                </div>
+            </div>
+        @endif
     </div>
 
     {{-- Main Toolbar & Advanced Searchable Filters --}}
@@ -148,8 +165,26 @@
                 </div>
             </div>
 
-            {{-- View Switchers (Day/Week/Month & Grid/Timeline & Show Empty Slots) --}}
+            {{-- View Switchers & Waitlist Drawer Trigger --}}
             <div class="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+                {{-- Smart Waitlist Drawer Trigger Button --}}
+                @if ($isQueueEnabled)
+                    <button type="button"
+                            wire:click="toggleWaitlistDrawer"
+                            class="px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 border shadow-2xs {{ $showWaitlistDrawer ? 'bg-amber-500 text-white border-amber-600 ring-2 ring-amber-300 dark:ring-amber-800' : ($waitlistCount > 0 ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/60' : 'bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800') }}"
+                            title="نمایش یا پنهان‌سازی دستیار هوشمند صف انتظار">
+                        <svg class="w-4 h-4 {{ $showWaitlistDrawer ? 'text-white' : 'text-amber-600 dark:text-amber-400' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>صف انتظار</span>
+                        @if ($waitlistCount > 0)
+                            <span class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-black rounded-full {{ $showWaitlistDrawer ? 'bg-white text-amber-700' : 'bg-amber-500 text-white' }}">
+                                {{ $waitlistCount }}
+                            </span>
+                        @endif
+                    </button>
+                @endif
+
                 {{-- Show Empty Slots Toggle (Visible in Weekly view) --}}
                 @if ($calendarView === 'week')
                     <button type="button"
@@ -1706,15 +1741,46 @@
                                 </div>
 
                                 {{-- Time Input --}}
-                                <div class="flex gap-2.5">
-                                    <div class="w-1/2">
-                                        <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5">ساعت شروع</label>
-                                        <input type="text" wire:model="modalStartTime" class="w-full text-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-2.5 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 shadow-2xs transition-all dir-ltr" placeholder="09:00">
+                                <div>
+                                    <div class="flex gap-2.5">
+                                        <div class="w-1/2">
+                                            <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5">ساعت شروع</label>
+                                            <input type="text" wire:model="modalStartTime" class="w-full text-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-2.5 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 shadow-2xs transition-all dir-ltr" placeholder="09:00">
+                                        </div>
+                                        <div class="w-1/2">
+                                            <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5">ساعت پایان</label>
+                                            <input type="text" wire:model="modalEndTime" class="w-full text-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-2.5 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 shadow-2xs transition-all dir-ltr" placeholder="09:30">
+                                        </div>
                                     </div>
-                                    <div class="w-1/2">
-                                        <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5">ساعت پایان</label>
-                                        <input type="text" wire:model="modalEndTime" class="w-full text-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-2.5 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 shadow-2xs transition-all dir-ltr" placeholder="09:30">
-                                    </div>
+
+                                    {{-- Quick Available Free Slot Chips (Minimal, clean, and horizontal-scrollable) --}}
+                                    @php
+                                        $freeSlots = $this->availableModalSlots;
+                                    @endphp
+                                    @if (!empty($freeSlots) && count($freeSlots) > 0)
+                                        <div class="mt-2.5 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                                            <div class="flex items-center justify-between gap-2 mb-1.5">
+                                                <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                    <span>اسلات‌های خالی پیشنهادی امروز:</span>
+                                                </span>
+                                                @if (!empty($modalStartTime) && in_array($modalStartTime, $freeSlots))
+                                                    <span class="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/60">
+                                                        زمان مجاز و آزاد انتخاب شده ✓
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-xs">
+                                                @foreach (array_slice($freeSlots, 0, 12) as $fSlot)
+                                                    <button type="button"
+                                                            wire:click="setModalTimeSlot('{{ $fSlot }}')"
+                                                            class="px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer shrink-0 border {{ $modalStartTime === $fSlot ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/70 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600' }}">
+                                                        {{ $fSlot }}
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
 
@@ -1927,6 +1993,240 @@
                                 مشاهده کامل و ویرایش
                             </a>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ============================================================ --}}
+    {{-- SMART WAITLIST DRAWER (کشوی هوشمند مدیریت و فیلتر صف انتظار) --}}
+    {{-- ============================================================ --}}
+    @if ($isQueueEnabled && $showWaitlistDrawer)
+        <div class="fixed inset-0 z-50 overflow-hidden" aria-labelledby="waitlist-drawer-title" role="dialog" aria-modal="true">
+            {{-- Backdrop with blur --}}
+            <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+                 wire:click="closeWaitlistDrawer"></div>
+
+            <div class="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-12">
+                <div class="w-screen max-w-md sm:max-w-lg bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col transform transition ease-in-out duration-300 animate-in slide-in-from-right relative z-10 overflow-hidden">
+                    
+                    {{-- Top Accent Gradient Bar --}}
+                    <div class="h-1.5 w-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 shrink-0"></div>
+
+                    {{-- Drawer Header --}}
+                    <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800 shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800/80 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold text-lg shrink-0 shadow-2xs">
+                                📋
+                            </div>
+                            <div>
+                                <h3 id="waitlist-drawer-title" class="text-sm sm:text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <span>دستیار هوشمند صف انتظار</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 text-[11px] font-black border border-amber-300 dark:border-amber-700">
+                                        {{ $waitlistForDrawer->count() }} نفر
+                                    </span>
+                                </h3>
+                                <p class="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">
+                                    مشاهده، فیلتر و تخصیص مستقیم اسلات به مراجعین صف
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ route('user.booking.waitlist.index') }}" target="_blank"
+                               class="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 text-xs font-bold transition shadow-2xs flex items-center gap-1"
+                               title="ورود به صفحه مدیریت کامل صف">
+                                <span>مدیریت صف</span>
+                                <span class="text-xs">↗</span>
+                            </a>
+                            <button type="button" wire:click="closeWaitlistDrawer"
+                                    class="p-2 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/60 dark:hover:text-rose-300 text-gray-500 dark:text-gray-300 border border-gray-200 dark:border-gray-600 transition shadow-2xs cursor-pointer"
+                                    title="بستن کشو">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Search & Filters Inside Drawer --}}
+                    <div class="p-4 bg-gray-50/70 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 space-y-3 shrink-0 shadow-2xs">
+                        {{-- Search Input --}}
+                        <div class="relative">
+                            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                            <input type="text"
+                                   wire:model.live.debounce.300ms="drawerSearch"
+                                   placeholder="جستجوی نام، تلفن، کدملی یا توضیحات مراجع..."
+                                   class="w-full pr-9 pl-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                        </div>
+
+                        {{-- Service & Provider Filters --}}
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">فیلتر سرویس صف</label>
+                                <select wire:model.live="drawerFilterServiceId"
+                                        class="w-full py-2 px-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-amber-500">
+                                    <option value="">همه سرویس‌ها</option>
+                                    @foreach($services as $svc)
+                                        <option value="{{ $svc->id }}">{{ $svc->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">فیلتر {{ config('booking.labels.provider') }} صف</label>
+                                <select wire:model.live="drawerFilterProviderId"
+                                        class="w-full py-2 px-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-amber-500">
+                                    <option value="">همه {{ config('booking.labels.providers') }}</option>
+                                    @foreach($filterProviders as $prv)
+                                        <option value="{{ $prv->id }}">{{ $prv->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        @if ($drawerFilterServiceId || $drawerFilterProviderId || !empty($drawerSearch))
+                            <div class="flex items-center justify-between pt-1">
+                                <span class="text-[10px] text-amber-700 dark:text-amber-300 font-bold flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    <span>فیلترهای صف فعال است</span>
+                                </span>
+                                <button type="button" wire:click="resetDrawerFilters" class="text-[10px] font-black text-rose-600 dark:text-rose-400 hover:underline cursor-pointer">
+                                    ✕ پاکسازی فیلترها
+                                </button>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- Drawer Body: List of Waiting Clients --}}
+                    <div class="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar bg-gray-50/80 dark:bg-gray-900/80">
+                        @forelse($waitlistForDrawer as $wItem)
+                            @php
+                                $statusColors = \Modules\Booking\Entities\BookingWaitlist::statusColors()[$wItem->status] ?? 'amber';
+                                $isMatchingCalendarService = $selectedServiceId && $wItem->service_id == $selectedServiceId;
+                                $isMatchingCalendarProvider = $selectedProviderId && $wItem->provider_user_id == $selectedProviderId;
+                                $clientDisplayName = $wItem->client?->full_name ?? $wItem->client?->username ?? 'مشتری نامشخص';
+                                $clientDisplayPhone = $wItem->client?->phone ?? ($wItem->client?->national_code ?? '—');
+                            @endphp
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl border {{ ($isMatchingCalendarService && $isMatchingCalendarProvider) ? 'border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/40 dark:ring-amber-500/30' : 'border-gray-200 dark:border-gray-700' }} p-4 shadow-sm hover:shadow-md transition-all space-y-3">
+                                
+                                {{-- Card Top Header: Rank, Client Info, Status --}}
+                                <div class="flex items-start justify-between gap-2 border-b border-gray-100 dark:border-gray-700/80 pb-3">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        {{-- Position Badge --}}
+                                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
+                                            #{{ $wItem->global_queue_rank }}
+                                        </div>
+                                        <div class="min-w-0">
+                                            <h4 class="text-xs sm:text-sm font-black text-gray-900 dark:text-gray-100 truncate">
+                                                {{ $clientDisplayName }}
+                                            </h4>
+                                            <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 dir-ltr inline-block">
+                                                {{ $clientDisplayPhone }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {{-- Status Badge --}}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800/80 shrink-0">
+                                        {{ $wItem->status_label }}
+                                    </span>
+                                </div>
+
+                                {{-- Details Grid --}}
+                                <div class="grid grid-cols-2 gap-2.5 text-[11px] font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/60 p-3 rounded-xl border border-gray-100 dark:border-gray-700/60">
+                                    <div>
+                                        <span class="text-gray-400 dark:text-gray-500 block text-[10px]">🛠️ سرویس مورد نیاز:</span>
+                                        <span class="text-gray-900 dark:text-gray-100 font-extrabold truncate block">
+                                            {{ $wItem->service?->name ?? 'صف عمومی' }}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400 dark:text-gray-500 block text-[10px]">👨‍⚕️ {{ config('booking.labels.provider') }} انتخابی:</span>
+                                        <span class="text-gray-900 dark:text-gray-100 font-extrabold truncate block">
+                                            {{ $wItem->provider?->name ?? 'هر ' . config('booking.labels.provider') . 'ی' }}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400 dark:text-gray-500 block text-[10px]">⏱️ مدت زمان خدمت:</span>
+                                        <span class="text-indigo-600 dark:text-indigo-400 font-black">
+                                            {{ $wItem->duration_minutes ?: 30 }} دقیقه
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400 dark:text-gray-500 block text-[10px]">📅 تاریخ ترجیحی:</span>
+                                        <span class="text-gray-800 dark:text-gray-200 font-extrabold">
+                                            @if ($wItem->preferred_date)
+                                                {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($wItem->preferred_date))->format('Y/m/d') }}
+                                            @else
+                                                اولین فرصت
+                                            @endif
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {{-- Notes / Custom Form responses preview --}}
+                                @if (!empty($wItem->notes))
+                                    <div class="text-[11px] text-gray-700 dark:text-gray-300 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-900/60 p-2.5 rounded-xl">
+                                        <span class="font-bold text-amber-800 dark:text-amber-300">یادداشت:</span>
+                                        <span>{{ \Illuminate\Support\Str::limit($wItem->notes, 90) }}</span>
+                                    </div>
+                                @endif
+
+                                @if (!empty($wItem->appointment_form_response_json))
+                                    <div class="flex items-center gap-1.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-lg">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        <span>دارای فرم اختصاصی و جزئیات بالینی تکمیل‌شده</span>
+                                    </div>
+                                @endif
+
+                                {{-- Action Buttons --}}
+                                <div class="grid grid-cols-2 gap-2.5 pt-1.5 border-t border-gray-100 dark:border-gray-700/80">
+                                    {{-- Action 1: Filter Calendar & Sync Step --}}
+                                    <button type="button"
+                                            wire:click="applyWaitlistFilter({{ $wItem->id }})"
+                                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900/90 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 text-[11px] font-black transition-all active:scale-98 shadow-2xs cursor-pointer"
+                                            title="تنظیم فیلتر تقویم، گام زمانی {{ $wItem->duration_minutes ?: 30 }} دقیقه‌ای و بستن کشو">
+                                        <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                                        <span>تنظیم فیلتر تقویم</span>
+                                    </button>
+
+                                    {{-- Action 2: Direct Book / Quick Modal --}}
+                                    <button type="button"
+                                            wire:click="bookFromWaitlist({{ $wItem->id }})"
+                                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-[11px] font-black transition-all shadow-xs active:scale-98 cursor-pointer"
+                                            title="باز کردن مودال ثبت نوبت با تمام اطلاعات از پیش تکمیل‌شده">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                        <span>ثبت نوبت فوری</span>
+                                    </button>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-12 px-4 bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-300 dark:border-gray-700">
+                                <div class="w-14 h-14 mx-auto rounded-3xl bg-amber-50 dark:bg-amber-950/50 text-amber-500 flex items-center justify-center text-2xl mb-3 shadow-inner">
+                                    ⏳
+                                </div>
+                                <h4 class="text-xs sm:text-sm font-black text-gray-800 dark:text-gray-200">
+                                    هیچ مراجعی در این بخش از صف یافت نشد
+                                </h4>
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
+                                    @if ($drawerFilterServiceId || $drawerFilterProviderId || !empty($drawerSearch))
+                                        برای مشاهده مراجعین بیشتر، فیلترهای بالا را پاکسازی کنید.
+                                    @else
+                                        در حال حاضر مراجع فعالی در صف انتظار نوبت‌دهی وجود ندارد.
+                                    @endif
+                                </p>
+                            </div>
+                        @endforelse
+                    </div>
+
+                    {{-- Drawer Footer Note --}}
+                    <div class="p-3.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-[11px] font-bold text-gray-600 dark:text-gray-300 shrink-0">
+                        <span class="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                            💡 کلیک روی دکمه‌ها کشوی صف را می‌بندد تا تقویم یا فرم ثبت را ببینید.
+                        </span>
+                        <a href="{{ route('user.booking.waitlist.index') }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline font-black shrink-0">
+                            مدیریت صف ↵
+                        </a>
                     </div>
                 </div>
             </div>
