@@ -66,6 +66,10 @@ class FundAccount extends Model
     public function getCurrentBalanceAttribute(): float
     {
         if ($this->isWalletAccount() && AccountingWalletHelper::isWalletEnabled() && class_exists(\Modules\Wallet\App\Models\Wallet::class)) {
+            if (preg_match('/wallet_id:(\d+)/', $this->notes ?? '', $matches)) {
+                return (float) (\Modules\Wallet\App\Models\Wallet::find($matches[1])?->balance ?? 0);
+            }
+
             return \Modules\Wallet\App\Models\Wallet::getTotalBalance();
         }
 

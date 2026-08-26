@@ -36,4 +36,14 @@ class Wallet extends Model
     {
         return $this->hasMany(WalletTransaction::class, 'wallet_id');
     }
+
+    /**
+     * Get total balance across all active wallets.
+     */
+    public static function getTotalBalance(): float
+    {
+        return (float) static::query()
+            ->where('is_active', true)
+            ->sum('balance');
+    }
 }
