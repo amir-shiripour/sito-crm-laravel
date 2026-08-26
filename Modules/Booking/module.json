@@ -8,6 +8,7 @@
     "crm"
   ],
   "priority": 130,
+  "version": "2.0.0",
   "providers": [
     "Modules\\Booking\\Providers\\BookingServiceProvider"
   ],
