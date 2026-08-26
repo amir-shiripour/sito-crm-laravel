@@ -113,17 +113,25 @@ class Installer extends BaseModuleInstaller
         Schema::enableForeignKeyConstraints();
 
         try {
-            $migrationsPath = __DIR__ . '/database/migrations';
-            if (File::isDirectory($migrationsPath)) {
-                $files = File::files($migrationsPath);
-                $migrationNames = [];
-                foreach ($files as $file) {
-                    $migrationNames[] = $file->getBasename('.php');
+            $candidates = [
+                __DIR__ . '/Database/Migrations',
+                __DIR__ . '/database/migrations',
+            ];
+
+            $migrationNames = [];
+            foreach ($candidates as $migrationsPath) {
+                if (File::isDirectory($migrationsPath)) {
+                    $files = File::files($migrationsPath);
+                    foreach ($files as $file) {
+                        $migrationNames[] = $file->getBasename('.php');
+                    }
                 }
-                if (!empty($migrationNames)) {
-                    DB::table('migrations')->whereIn('migration', $migrationNames)->delete();
-                    Log::info('Accounting Installer: Cleared migration records for Accounting module.');
-                }
+            }
+
+            if (!empty($migrationNames)) {
+                $migrationNames = array_unique($migrationNames);
+                DB::table('migrations')->whereIn('migration', $migrationNames)->delete();
+                Log::info('Accounting Installer: Cleared migration records for Accounting module.');
             }
         } catch (\Throwable $e) {
             Log::warning('Accounting Installer: Failed to clear migration records: ' . $e->getMessage());
