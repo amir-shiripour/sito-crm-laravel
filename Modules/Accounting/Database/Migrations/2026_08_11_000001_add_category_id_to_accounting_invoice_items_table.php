@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('accounting_invoice_items', function (Blueprint $table) {
-            $table->foreignId('category_id')
-                ->nullable()
-                ->after('invoice_id')
-                ->constrained('accounting_categories')
-                ->nullOnDelete();
-        });
+        if (Schema::hasTable('accounting_invoice_items') && !Schema::hasColumn('accounting_invoice_items', 'category_id')) {
+            Schema::table('accounting_invoice_items', function (Blueprint $table) {
+                $table->foreignId('category_id')
+                    ->nullable()
+                    ->after('invoice_id')
+                    ->constrained('accounting_categories')
+                    ->nullOnDelete();
+            });
+        }
     }
 
     /**
@@ -25,9 +27,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('accounting_invoice_items', function (Blueprint $table) {
-            $table->dropForeign(['category_id']);
-            $table->dropColumn('category_id');
-        });
+        if (Schema::hasTable('accounting_invoice_items') && Schema::hasColumn('accounting_invoice_items', 'category_id')) {
+            Schema::table('accounting_invoice_items', function (Blueprint $table) {
+                $table->dropForeign(['category_id']);
+                $table->dropColumn('category_id');
+            });
+        }
     }
 };
