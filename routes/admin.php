@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\CustomFieldController;
 use App\Http\Controllers\Admin\VersionControlController;
 use App\Http\Controllers\Admin\RegistrationRequestController;
+use App\Http\Controllers\Admin\CronManagementController;
 
 /*
 |--------------------------------------------------------------------------
@@ -137,3 +138,16 @@ Route::prefix('version-control')->name('version-control.')->middleware(['role:su
     Route::post('/check-updates', [VersionControlController::class, 'checkUpdates'])->name('check-updates');
     Route::post('/run-system-update', [VersionControlController::class, 'update'])->name('system-update');
 });
+
+// --- مرکز کنترل کرون و زمان‌بندی (Cron & Task Scheduler) ---
+Route::prefix('cron')->name('cron.')->middleware(['role:super-admin'])->group(function () {
+    Route::get('/', [CronManagementController::class, 'index'])->name('index');
+    Route::post('/', [CronManagementController::class, 'store'])->name('store');
+    Route::put('/{task}', [CronManagementController::class, 'update'])->name('update');
+    Route::delete('/{task}', [CronManagementController::class, 'destroy'])->name('destroy');
+    Route::post('/{task}/toggle', [CronManagementController::class, 'toggle'])->name('toggle');
+    Route::post('/{task}/run', [CronManagementController::class, 'runManual'])->name('run');
+    Route::get('/{task}/logs', [CronManagementController::class, 'logs'])->name('logs');
+    Route::post('/clear-logs/{task?}', [CronManagementController::class, 'clearLogs'])->name('clear-logs');
+});
+

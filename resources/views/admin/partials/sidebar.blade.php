@@ -83,6 +83,14 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{{ route('admin.cron.index') }}"
+                           class="group flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all
+{{ request()->routeIs('admin.cron.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white' }}">
+                            <svg class="w-5 h-5 {{ request()->routeIs('admin.cron.*') ? 'opacity-100' : 'opacity-60' }}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <span>مرکز کنترل کرون</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('admin.optimizer-report') }}"
                            class="group flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all
 {{ request()->routeIs('admin.optimizer-report') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white' }}">
