@@ -33,6 +33,7 @@ class BookingService extends Model
         'description',
         'slug',
         'status',
+        'color',
         'base_price',
         'discount_price',
         'discount_from',
