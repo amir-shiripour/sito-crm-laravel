@@ -30,6 +30,20 @@ class MenuCustomizationService
     }
 
     /**
+     * Check if two-step (drilldown) menu navigation is activated.
+     */
+    public function isTwoStepMenuEnabled(): bool
+    {
+        return Cache::remember('user_menu_two_step_enabled', 3600, function () {
+            if (!Schema::hasTable('settings')) {
+                return false;
+            }
+            $setting = \Modules\Settings\Entities\Setting::where('key', 'user_menu_two_step')->first();
+            return $setting ? (bool) $setting->value : false;
+        });
+    }
+
+    /**
      * Apply overrides on raw menu data for a specific user.
      *
      * @param array $menuData Array with keys: 'items', 'groups', 'settings'

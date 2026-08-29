@@ -2,59 +2,104 @@
 
 <div x-data="menuManagerApp()" x-init="init()" class="space-y-6">
 
-    {{-- بنر Master Switch: سوئیچ بین منوی پیش‌فرض هسته و منوی سفارشی --}}
-    <div class="rounded-2xl p-5 border transition-all duration-300 shadow-sm"
-         :class="isCustomMenuEnabled 
-            ? 'bg-gradient-to-r from-emerald-500/10 via-indigo-500/5 to-transparent border-emerald-500/30 dark:border-emerald-500/20' 
-            : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700'">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-3.5">
-                <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-all"
-                     :class="isCustomMenuEnabled 
-                        ? 'bg-emerald-600 text-white shadow-emerald-500/20' 
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <h3 class="text-base font-bold text-gray-900 dark:text-white">منبع فعال منوی کاربری:</h3>
-                        <template x-if="isCustomMenuEnabled">
-                            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                منوی شخصی‌سازی شده (فعال)
-                            </span>
-                        </template>
-                        <template x-if="!isCustomMenuEnabled">
-                            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
-                                منوی پیش‌فرض هسته سیستم
-                            </span>
-                        </template>
+    {{-- بنرهای تنظیمات و سوئیچ‌های اصلی منو --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {{-- بنر Master Switch: سوئیچ بین منوی پیش‌فرض هسته و منوی سفارشی --}}
+        <div class="rounded-2xl p-5 border transition-all duration-300 shadow-sm flex flex-col justify-between"
+             :class="isCustomMenuEnabled 
+                ? 'bg-gradient-to-r from-emerald-500/10 via-indigo-500/5 to-transparent border-emerald-500/30 dark:border-emerald-500/20' 
+                : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700'">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-all"
+                         :class="isCustomMenuEnabled 
+                            ? 'bg-emerald-600 text-white shadow-emerald-500/20' 
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                     </div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                        <template x-if="isCustomMenuEnabled">
-                            <span>منوهای سایت بر اساس چیدمان، عناوین و دسترسی‌های سفارشی شما نمایش داده می‌شوند. در صورت غیرفعال کردن، منوی پیش‌فرض لود شده و هیچ دیتایی پاک نمی‌شود.</span>
-                        </template>
-                        <template x-if="!isCustomMenuEnabled">
-                            <span>در حال حاضر منوی استاندارد سیستم فعال است. برای اعمال شخصی‌سازی‌ها، کلید مقابل را فعال کنید (تنظیمات شما در پایگاه‌داده محفوظ است).</span>
-                        </template>
-                    </p>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">منبع فعال منوی کاربری:</h3>
+                        <div class="mt-1">
+                            <template x-if="isCustomMenuEnabled">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    منوی شخصی‌سازی شده (فعال)
+                                </span>
+                            </template>
+                            <template x-if="!isCustomMenuEnabled">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                    منوی پیش‌فرض هسته سیستم
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- دکمه سوئیچ --}}
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" @click="toggleMasterStatus()" :disabled="isTogglingStatus"
+                            class="relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+                            :class="isCustomMenuEnabled ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600'">
+                        <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out"
+                              :class="isCustomMenuEnabled ? '-translate-x-6' : 'translate-x-0'"></span>
+                    </button>
                 </div>
             </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
+                اعمال چیدمان، عناوین و دسترسی‌های سفارشی طراحی‌شده در این صفحه روی منوی کاربران.
+            </p>
+        </div>
 
-            {{-- دکمه سوئیچ جذاب --}}
-            <div class="flex items-center gap-3 shrink-0">
-                <button type="button" @click="toggleMasterStatus()" :disabled="isTogglingStatus"
-                        class="relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
-                        :class="isCustomMenuEnabled ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600'">
-                    <span class="pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out"
-                          :class="isCustomMenuEnabled ? '-translate-x-7' : 'translate-x-0'"></span>
-                </button>
-                <span class="text-xs font-bold" :class="isCustomMenuEnabled ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-500'"
-                      x-text="isCustomMenuEnabled ? 'فعال' : 'پیش‌فرض'"></span>
+        {{-- بنر سوئیچ حالت منوی دو مرحله‌ای (Drilldown) --}}
+        <div class="rounded-2xl p-5 border transition-all duration-300 shadow-sm flex flex-col justify-between"
+             :class="isTwoStepEnabled 
+                ? 'bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent border-indigo-500/30 dark:border-indigo-500/20' 
+                : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700'">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-all"
+                         :class="isTwoStepEnabled 
+                            ? 'bg-indigo-600 text-white shadow-indigo-500/20' 
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">منوی دو مرحله‌ای (Drilldown):</h3>
+                        <div class="mt-1">
+                            <template x-if="isTwoStepEnabled">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                                    حالت مرحله‌ای (فعال)
+                                </span>
+                            </template>
+                            <template x-if="!isTwoStepEnabled">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                    حالت یکپارچه / آکاردئونی
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- دکمه سوئیچ منوی دو مرحله‌ای --}}
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" @click="toggleTwoStepStatus()" :disabled="isTogglingTwoStep"
+                            class="relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+                            :class="isTwoStepEnabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'">
+                        <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out"
+                              :class="isTwoStepEnabled ? '-translate-x-6' : 'translate-x-0'"></span>
+                    </button>
+                </div>
             </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
+                با انتخاب هر گروه، منو وارد مرحله بعد شده و فقط زیرگروه‌های آن با دکمه بازگشت نمایش داده می‌شوند تا سایر آیتم‌ها خلوت شوند.
+            </p>
         </div>
     </div>
 
@@ -648,7 +693,9 @@ function menuManagerApp() {
         selectedRoleId: '',
         selectedUserId: '',
         isCustomMenuEnabled: false,
+        isTwoStepEnabled: false,
         isTogglingStatus: false,
+        isTogglingTwoStep: false,
         isLoading: false,
         isSaving: false,
         editMode: 'item', // 'item' or 'group'
@@ -702,6 +749,35 @@ function menuManagerApp() {
             }
         },
 
+        async toggleTwoStepStatus() {
+            this.isTogglingTwoStep = true;
+            const targetStatus = !this.isTwoStepEnabled;
+
+            try {
+                const res = await fetch('{{ route("settings.menu-manager.toggle-two-step") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        enabled: targetStatus
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    this.isTwoStepEnabled = data.is_two_step_enabled;
+                } else {
+                    alert(data.message || 'خطا در تغییر وضعیت منوی دو مرحله‌ای.');
+                }
+            } catch (err) {
+                alert('خطا در برقراری ارتباط با سرور.');
+            } finally {
+                this.isTogglingTwoStep = false;
+            }
+        },
+
         setScope(newScope) {
             this.scope = newScope;
             if (newScope === 'global') {
@@ -733,6 +809,7 @@ function menuManagerApp() {
 
                 if (data.success) {
                     this.isCustomMenuEnabled = !!data.is_custom_menu_enabled;
+                    this.isTwoStepEnabled = !!data.is_two_step_enabled;
                     this.items = data.items || [];
                     this.groups = data.groups || [];
                     this.customGroups = data.custom_groups || [];

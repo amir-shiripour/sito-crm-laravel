@@ -460,7 +460,7 @@
                                                 stroke: #475569 !important;
                                             }
                                         </style>
-                                        <x-booking::dental-chart/>
+                                        @includeIf('booking::components.dental-chart')
                                         <div class="mt-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400">
                                             {{ $toothContext == 0 ? 'موقعیت هدف: کل دندان‌ها (همه دندان‌ها)' : 'موقعیت هدف: دندان شماره ' . $mappedToothContext }}
                                         </div>
