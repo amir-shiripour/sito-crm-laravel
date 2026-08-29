@@ -68,6 +68,7 @@ class ServiceController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'status' => ['nullable', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
+            'color' => ['nullable', 'string', 'max:20', 'regex:/^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/'],
             'base_price' => ['required', 'numeric', 'min:0'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],
             'discount_from' => ['nullable', 'date'],
@@ -169,6 +170,7 @@ class ServiceController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
+            'color' => ['sometimes', 'nullable', 'string', 'max:20', 'regex:/^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/'],
             'base_price' => ['sometimes', 'numeric', 'min:0'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],
             'discount_from' => ['nullable', 'date'],

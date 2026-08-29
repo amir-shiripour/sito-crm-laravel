@@ -132,6 +132,7 @@ class ServiceController extends Controller
             'name'        => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'status'      => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
+            'color'       => ['nullable', 'string', 'max:20', 'regex:/^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/'],
 
             'base_price'     => ['required', 'numeric', 'min:0'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],
@@ -187,6 +188,7 @@ class ServiceController extends Controller
 
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
+        $data['color']         = $data['color']         ?: '#4f46e5';
 
         $data['owner_user_id'] = $authUser?->id;
 
@@ -382,6 +384,7 @@ class ServiceController extends Controller
             'name'        => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'status'      => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
+            'color'       => ['nullable', 'string', 'max:20', 'regex:/^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/'],
 
             'base_price'     => ['required', 'numeric', 'min:0'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],

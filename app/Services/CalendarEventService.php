@@ -209,25 +209,48 @@ class CalendarEventService
 
                     $apiEvents = $rawEvents->map(function ($ev) {
                         $startDt    = $ev['start'] ?? null;
+                        $endDt      = $ev['end'] ?? null;
                         $jalaliDate = $startDt ? Jalalian::fromCarbon($startDt) : null;
 
+                        $isAllDay = !empty($ev['is_all_day']);
+                        if ($startDt && $endDt && $startDt->format('H:i:s') === '00:00:00' && ($endDt->format('H:i:s') === '00:00:00' || $endDt->diffInHours($startDt) >= 24)) {
+                            $isAllDay = true;
+                        }
+
+                        $startMinute = ($startDt && !$isAllDay) ? ($startDt->hour * 60 + $startDt->minute) : 0;
+                        $endMinute   = ($endDt && !$isAllDay) ? ($endDt->hour * 60 + $endDt->minute) : ($startMinute + 60);
+                        if ($endMinute <= $startMinute) {
+                            $endMinute = $startMinute + 60;
+                        }
+                        $duration = $isAllDay ? 1440 : max(15, $endMinute - $startMinute);
+
+                        $startTimeStr = ($startDt && !$isAllDay) ? $startDt->format('H:i') : '';
+                        $endTimeStr   = ($endDt && !$isAllDay) ? $endDt->format('H:i') : '';
+                        $timeStr      = $isAllDay ? 'تمام روز' : ($startTimeStr . ($endTimeStr ? ' - ' . $endTimeStr : ''));
+
                         return [
-                            'id'           => 'gcal_api_' . ($ev['id'] ?? uniqid()),
-                            'raw_id'       => $ev['id'] ?? '',
-                            'title'        => '📅 ' . ($ev['summary'] ?? 'رویداد گوگل'),
-                            'description'  => trim(($ev['description'] ?? '') . "\n" . ($ev['location'] ?? '')),
-                            'datetime'     => $startDt ? $startDt->toIso8601String() : null,
-                            'time'         => $jalaliDate ? $jalaliDate->format('H:i') : 'تمام روز',
-                            'date_fa'      => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
-                            'date_en'      => $startDt ? $startDt->format('Y-m-d') : '',
-                            'day'          => $jalaliDate ? $jalaliDate->getDay() : null,
-                            'month'        => $jalaliDate ? $jalaliDate->getMonth() : null,
-                            'year'         => $jalaliDate ? $jalaliDate->getYear() : null,
-                            'source'       => 'google_calendar',
-                            'source_label' => 'گوگل کلندر (API)',
-                            'color'        => 'teal',
-                            'is_holiday'   => false,
-                            'url'          => $ev['html_link'] ?? '#',
+                            'id'               => 'gcal_api_' . ($ev['id'] ?? uniqid()),
+                            'raw_id'           => $ev['id'] ?? '',
+                            'title'            => '📅 ' . ($ev['summary'] ?? 'رویداد گوگل'),
+                            'description'      => trim(($ev['description'] ?? '') . "\n" . ($ev['location'] ?? '')),
+                            'datetime'         => $startDt ? $startDt->toIso8601String() : null,
+                            'time'             => $timeStr,
+                            'start_time'       => $startTimeStr,
+                            'end_time'         => $endTimeStr,
+                            'start_minute'     => $startMinute,
+                            'end_minute'       => $endMinute,
+                            'duration_minutes' => $duration,
+                            'is_all_day'       => $isAllDay,
+                            'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
+                            'date_en'          => $startDt ? $startDt->format('Y-m-d') : '',
+                            'day'              => $jalaliDate ? $jalaliDate->getDay() : null,
+                            'month'            => $jalaliDate ? $jalaliDate->getMonth() : null,
+                            'year'             => $jalaliDate ? $jalaliDate->getYear() : null,
+                            'source'           => 'google_calendar',
+                            'source_label'     => 'گوگل کلندر (API)',
+                            'color'            => 'teal',
+                            'is_holiday'       => false,
+                            'url'              => $ev['html_link'] ?? '#',
                         ];
                     });
                     $events = $events->concat($apiEvents);
@@ -244,26 +267,44 @@ class CalendarEventService
 
                 $importedEvents = $importedRecords->map(function ($rec) {
                     $startDt    = $rec->start_at;
+                    $endDt      = $rec->end_at;
                     $jalaliDate = $startDt ? Jalalian::fromCarbon($startDt) : null;
-                    $timeStr    = $rec->is_all_day ? 'تمام روز' : ($jalaliDate ? $jalaliDate->format('H:i') : '');
+                    $isAllDay   = (bool)$rec->is_all_day;
+
+                    $startMinute = ($startDt && !$isAllDay) ? ($startDt->hour * 60 + $startDt->minute) : 0;
+                    $endMinute   = ($endDt && !$isAllDay) ? ($endDt->hour * 60 + $endDt->minute) : ($startMinute + 60);
+                    if ($endMinute <= $startMinute) {
+                        $endMinute = $startMinute + 60;
+                    }
+                    $duration = $isAllDay ? 1440 : max(15, $endMinute - $startMinute);
+
+                    $startTimeStr = ($startDt && !$isAllDay) ? $startDt->format('H:i') : '';
+                    $endTimeStr   = ($endDt && !$isAllDay) ? $endDt->format('H:i') : '';
+                    $timeStr      = $isAllDay ? 'تمام روز' : ($startTimeStr . ($endTimeStr ? ' - ' . $endTimeStr : ''));
 
                     return [
-                        'id'           => 'gcal_imp_' . $rec->id,
-                        'raw_id'       => $rec->id,
-                        'title'        => '📅 ' . ($rec->summary ?? 'رویداد گوگل'),
-                        'description'  => trim(($rec->description ?? '') . ($rec->location ? "\nمکان: " . $rec->location : '')),
-                        'datetime'     => $startDt ? $startDt->toIso8601String() : null,
-                        'time'         => $timeStr,
-                        'date_fa'      => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
-                        'date_en'      => $startDt ? $startDt->format('Y-m-d') : '',
-                        'day'          => $jalaliDate ? $jalaliDate->getDay() : null,
-                        'month'        => $jalaliDate ? $jalaliDate->getMonth() : null,
-                        'year'         => $jalaliDate ? $jalaliDate->getYear() : null,
-                        'source'       => 'google_calendar',
-                        'source_label' => 'گوگل کلندر (ایمپورت)',
-                        'color'        => 'teal',
-                        'is_holiday'   => false,
-                        'url'          => '#',
+                        'id'               => 'gcal_imp_' . $rec->id,
+                        'raw_id'           => $rec->id,
+                        'title'            => '📅 ' . ($rec->summary ?? 'رویداد گوگل'),
+                        'description'      => trim(($rec->description ?? '') . ($rec->location ? "\nمکان: " . $rec->location : '')),
+                        'datetime'         => $startDt ? $startDt->toIso8601String() : null,
+                        'time'             => $timeStr,
+                        'start_time'       => $startTimeStr,
+                        'end_time'         => $endTimeStr,
+                        'start_minute'     => $startMinute,
+                        'end_minute'       => $endMinute,
+                        'duration_minutes' => $duration,
+                        'is_all_day'       => $isAllDay,
+                        'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
+                        'date_en'          => $startDt ? $startDt->format('Y-m-d') : '',
+                        'day'              => $jalaliDate ? $jalaliDate->getDay() : null,
+                        'month'            => $jalaliDate ? $jalaliDate->getMonth() : null,
+                        'year'             => $jalaliDate ? $jalaliDate->getYear() : null,
+                        'source'           => 'google_calendar',
+                        'source_label'     => 'گوگل کلندر (ایمپورت)',
+                        'color'            => 'teal',
+                        'is_holiday'       => false,
+                        'url'              => '#',
                     ];
                 });
 
@@ -299,22 +340,28 @@ class CalendarEventService
                 $timeStr = $h->is_holiday ? 'تعطیل رسمی' : 'مناسبت';
 
                 return [
-                    'id'           => 'holiday_' . $h->id,
-                    'raw_id'       => $h->id,
-                    'title'        => ($h->is_holiday ? '🔴 ' : '📌 ') . $h->title,
-                    'description'  => $h->is_holiday ? "تعطیل رسمی: {$h->title}" : "مناسبت: {$h->title}",
-                    'datetime'     => $h->gregorian_date ? $h->gregorian_date->startOfDay()->toIso8601String() : null,
-                    'time'         => $timeStr,
-                    'date_fa'      => str_replace('-', '/', $h->jalali_date),
-                    'date_en'      => $h->gregorian_date ? $h->gregorian_date->format('Y-m-d') : '',
-                    'day'          => $h->jalali_day,
-                    'month'        => $h->jalali_month,
-                    'year'         => $h->jalali_year,
-                    'source'       => 'jalali_holidays',
-                    'source_label' => $h->is_holiday ? 'تعطیل رسمی' : 'مناسبت',
-                    'color'        => $h->is_holiday ? 'rose' : 'emerald',
-                    'is_holiday'   => (bool)$h->is_holiday,
-                    'url'          => '#',
+                    'id'               => 'holiday_' . $h->id,
+                    'raw_id'           => $h->id,
+                    'title'            => ($h->is_holiday ? '🔴 ' : '📌 ') . $h->title,
+                    'description'      => $h->is_holiday ? "تعطیل رسمی: {$h->title}" : "مناسبت: {$h->title}",
+                    'datetime'         => $h->gregorian_date ? $h->gregorian_date->startOfDay()->toIso8601String() : null,
+                    'time'             => $timeStr,
+                    'start_time'       => '',
+                    'end_time'         => '',
+                    'start_minute'     => 0,
+                    'end_minute'       => 1440,
+                    'duration_minutes' => 1440,
+                    'is_all_day'       => true,
+                    'date_fa'          => str_replace('-', '/', $h->jalali_date),
+                    'date_en'          => $h->gregorian_date ? $h->gregorian_date->format('Y-m-d') : '',
+                    'day'              => $h->jalali_day,
+                    'month'            => $h->jalali_month,
+                    'year'             => $h->jalali_year,
+                    'source'           => 'jalali_holidays',
+                    'source_label'     => $h->is_holiday ? 'تعطیل رسمی' : 'مناسبت',
+                    'color'            => $h->is_holiday ? 'rose' : 'emerald',
+                    'is_holiday'       => (bool)$h->is_holiday,
+                    'url'              => '#',
                 ];
             });
         } catch (\Throwable $e) {
@@ -364,6 +411,11 @@ class CalendarEventService
             return $appointments->map(function ($app) {
                 $appTimezone = config('app.timezone', 'Asia/Tehran');
                 $startLocal  = $app->start_at_utc ? $app->start_at_utc->copy()->setTimezone($appTimezone) : null;
+                $endLocal    = $app->end_at_utc ? $app->end_at_utc->copy()->setTimezone($appTimezone) : null;
+                if ($startLocal && !$endLocal) {
+                    $endLocal = $startLocal->copy()->addHour();
+                }
+
                 $jalaliDate  = $startLocal ? Jalalian::fromCarbon($startLocal) : null;
 
                 $clientLabel = config('clients.labels.singular', 'مشتری');
@@ -391,25 +443,47 @@ class CalendarEventService
                 }
 
                 $serviceName  = $app->service->name ?? 'نوبت';
+                $serviceColor = $app->service->color ?? null;
                 $providerName = $app->provider->name ?? '-';
 
+                $startMinute = $startLocal ? ($startLocal->hour * 60 + $startLocal->minute) : 0;
+                $endMinute   = $endLocal ? ($endLocal->hour * 60 + $endLocal->minute) : ($startMinute + 60);
+                if ($endMinute <= $startMinute) {
+                    $endMinute = $startMinute + 60;
+                }
+                $duration = max(15, $endMinute - $startMinute);
+
+                $startTimeStr = $startLocal ? $startLocal->format('H:i') : '';
+                $endTimeStr   = $endLocal ? $endLocal->format('H:i') : '';
+                $timeStr      = $startTimeStr . ($endTimeStr ? ' - ' . $endTimeStr : '');
+
                 return [
-                    'id'          => 'booking_' . $app->id,
-                    'raw_id'      => $app->id,
-                    'title'       => "نوبت: {$serviceName} - {$clientName}",
-                    'description' => "{$clientLabel}: {$clientName} | ارائه دهنده: {$providerName}",
-                    'datetime'    => $startLocal ? $startLocal->toIso8601String() : null,
-                    'time'        => $jalaliDate ? $jalaliDate->format('H:i') : '',
-                    'date_fa'     => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
-                    'date_en'     => $startLocal ? $startLocal->format('Y-m-d') : '',
-                    'day'         => $jalaliDate ? $jalaliDate->getDay() : null,
-                    'month'       => $jalaliDate ? $jalaliDate->getMonth() : null,
-                    'year'        => $jalaliDate ? $jalaliDate->getYear() : null,
-                    'source'      => 'booking',
-                    'source_label'=> 'نوبت‌دهی',
-                    'color'       => 'blue',
-                    'status'      => $app->status,
-                    'url'         => route('home'),
+                    'id'               => 'booking_' . $app->id,
+                    'raw_id'           => $app->id,
+                    'title'            => "نوبت: {$serviceName} - {$clientName}",
+                    'service_name'     => $serviceName,
+                    'service_color'    => $serviceColor,
+                    'client_name'      => $clientName,
+                    'provider_name'    => $providerName,
+                    'description'      => "{$clientLabel}: {$clientName} | ارائه دهنده: {$providerName}",
+                    'datetime'         => $startLocal ? $startLocal->toIso8601String() : null,
+                    'time'             => $timeStr,
+                    'start_time'       => $startTimeStr,
+                    'end_time'         => $endTimeStr,
+                    'start_minute'     => $startMinute,
+                    'end_minute'       => $endMinute,
+                    'duration_minutes' => $duration,
+                    'is_all_day'       => false,
+                    'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
+                    'date_en'          => $startLocal ? $startLocal->format('Y-m-d') : '',
+                    'day'              => $jalaliDate ? $jalaliDate->getDay() : null,
+                    'month'            => $jalaliDate ? $jalaliDate->getMonth() : null,
+                    'year'             => $jalaliDate ? $jalaliDate->getYear() : null,
+                    'source'           => 'booking',
+                    'source_label'     => 'نوبت‌دهی',
+                    'color'            => $serviceColor ?: 'blue',
+                    'status'           => $app->status,
+                    'url'              => route('home'),
                 ];
             });
         } catch (\Throwable $e) {
@@ -455,23 +529,46 @@ class CalendarEventService
                 $due        = $task->due_at;
                 $jalaliDate = $due ? Jalalian::fromCarbon($due) : null;
 
+                $isAllDay = false;
+                $startMinute = $due ? ($due->hour * 60 + $due->minute) : 0;
+                if ($due && $due->format('H:i:s') === '00:00:00') {
+                    $isAllDay = true;
+                    $duration = 1440;
+                    $timeStr = 'تمام روز';
+                    $startTimeStr = '';
+                    $endTimeStr = '';
+                    $endMinute = 1440;
+                } else {
+                    $duration = 60;
+                    $endMinute = min(1440, $startMinute + 60);
+                    $startTimeStr = $due ? $due->format('H:i') : '';
+                    $endTimeStr = $due ? $due->copy()->addHour()->format('H:i') : '';
+                    $timeStr = $startTimeStr;
+                }
+
                 return [
-                    'id'          => 'task_' . $task->id,
-                    'raw_id'      => $task->id,
-                    'title'       => "وظیفه: {$task->title}",
-                    'description' => $task->description ?? '',
-                    'datetime'    => $due ? $due->toIso8601String() : null,
-                    'time'        => $jalaliDate ? $jalaliDate->format('H:i') : '',
-                    'date_fa'     => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
-                    'date_en'     => $due ? $due->format('Y-m-d') : '',
-                    'day'         => $jalaliDate ? $jalaliDate->getDay() : null,
-                    'month'       => $jalaliDate ? $jalaliDate->getMonth() : null,
-                    'year'        => $jalaliDate ? $jalaliDate->getYear() : null,
-                    'source'      => 'tasks',
-                    'source_label'=> 'وظایف',
-                    'color'       => 'amber',
-                    'status'      => $task->status,
-                    'url'         => route('home'),
+                    'id'               => 'task_' . $task->id,
+                    'raw_id'           => $task->id,
+                    'title'            => "وظیفه: {$task->title}",
+                    'description'      => $task->description ?? '',
+                    'datetime'         => $due ? $due->toIso8601String() : null,
+                    'time'             => $timeStr,
+                    'start_time'       => $startTimeStr,
+                    'end_time'         => $endTimeStr,
+                    'start_minute'     => $startMinute,
+                    'end_minute'       => $endMinute,
+                    'duration_minutes' => $duration,
+                    'is_all_day'       => $isAllDay,
+                    'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
+                    'date_en'          => $due ? $due->format('Y-m-d') : '',
+                    'day'              => $jalaliDate ? $jalaliDate->getDay() : null,
+                    'month'            => $jalaliDate ? $jalaliDate->getMonth() : null,
+                    'year'             => $jalaliDate ? $jalaliDate->getYear() : null,
+                    'source'           => 'tasks',
+                    'source_label'     => 'وظایف',
+                    'color'            => 'amber',
+                    'status'           => $task->status,
+                    'url'              => route('home'),
                 ];
             });
         } catch (\Throwable $e) {
@@ -518,23 +615,35 @@ class CalendarEventService
                 $jalaliDate = $remindAt ? Jalalian::fromCarbon($remindAt) : null;
                 $title      = $rem->relatedTitle();
 
+                $startMinute = $remindAt ? ($remindAt->hour * 60 + $remindAt->minute) : 0;
+                $duration = 45;
+                $endMinute = min(1440, $startMinute + 45);
+                $startTimeStr = $remindAt ? $remindAt->format('H:i') : '';
+                $endTimeStr = $remindAt ? $remindAt->copy()->addMinutes(45)->format('H:i') : '';
+
                 return [
-                    'id'          => 'reminder_' . $rem->id,
-                    'raw_id'      => $rem->id,
-                    'title'       => "یادآوری: " . \Illuminate\Support\Str::limit($title, 40),
-                    'description' => $rem->message ?: $title,
-                    'datetime'    => $remindAt ? $remindAt->toIso8601String() : null,
-                    'time'        => $jalaliDate ? $jalaliDate->format('H:i') : '',
-                    'date_fa'     => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
-                    'date_en'     => $remindAt ? $remindAt->format('Y-m-d') : '',
-                    'day'         => $jalaliDate ? $jalaliDate->getDay() : null,
-                    'month'       => $jalaliDate ? $jalaliDate->getMonth() : null,
-                    'year'        => $jalaliDate ? $jalaliDate->getYear() : null,
-                    'source'      => 'reminders',
-                    'source_label'=> 'یادآوری‌ها',
-                    'color'       => 'purple',
-                    'status'      => $rem->status,
-                    'url'         => $rem->relatedUrl() ?: (\Illuminate\Support\Facades\Route::has('user.reminders.index') ? route('user.reminders.index') : route('home')),
+                    'id'               => 'reminder_' . $rem->id,
+                    'raw_id'           => $rem->id,
+                    'title'            => "یادآوری: " . \Illuminate\Support\Str::limit($title, 40),
+                    'description'      => $rem->message ?: $title,
+                    'datetime'         => $remindAt ? $remindAt->toIso8601String() : null,
+                    'time'             => $startTimeStr,
+                    'start_time'       => $startTimeStr,
+                    'end_time'         => $endTimeStr,
+                    'start_minute'     => $startMinute,
+                    'end_minute'       => $endMinute,
+                    'duration_minutes' => $duration,
+                    'is_all_day'       => false,
+                    'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
+                    'date_en'          => $remindAt ? $remindAt->format('Y-m-d') : '',
+                    'day'              => $jalaliDate ? $jalaliDate->getDay() : null,
+                    'month'            => $jalaliDate ? $jalaliDate->getMonth() : null,
+                    'year'             => $jalaliDate ? $jalaliDate->getYear() : null,
+                    'source'           => 'reminders',
+                    'source_label'     => 'یادآوری‌ها',
+                    'color'            => 'purple',
+                    'status'           => $rem->status,
+                    'url'              => $rem->relatedUrl() ?: (\Illuminate\Support\Facades\Route::has('user.reminders.index') ? route('user.reminders.index') : route('home')),
                 ];
             });
         } catch (\Throwable $e) {

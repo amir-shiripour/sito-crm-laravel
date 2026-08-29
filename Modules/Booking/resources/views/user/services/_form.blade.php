@@ -160,6 +160,8 @@
     $helpClass = 'text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex items-start gap-1.5';
     $errorClass = 'text-xs text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1';
 
+    $effectiveColor = old('color', $service->color ?? '#4f46e5') ?: '#4f46e5';
+
     $currencyMap = ['IRR' => 'ریال', 'IRT' => 'تومان'];
     $currencyLabel = $currencyMap[$settings->currency_unit] ?? $settings->currency_unit;
 @endphp
@@ -244,7 +246,7 @@
             </div>
 
             @if($isAdminUser)
-                <div class="col-span-1 md:col-span-2">
+                <div class="col-span-1">
                     <label class="{{ $labelClass }}">ارائه‌دهندگان سرویس</label>
                     
                     <div class="relative mt-1" id="providers-multi-select-container">
@@ -272,6 +274,87 @@
                     @error('provider_ids')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
                 </div>
             @endif
+
+            {{-- رنگ اختصاصی سرویس --}}
+            <div class="col-span-1">
+                <label class="{{ $labelClass }}">
+                    <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4 5 5 0 015-5h4a5 5 0 015 5 4 4 0 01-4 4H7z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 9V5a2 2 0 00-2-2H7a2 2 0 00-2 2v4" />
+                    </svg>
+                    <span>رنگ اختصاصی سرویس</span>
+                    <span class="text-xs text-slate-400 font-normal mr-auto">(اختیاری)</span>
+                </label>
+
+                <div x-data="{
+                    color: '{{ $effectiveColor }}',
+                    presets: [
+                        '#4f46e5',
+                        '#3b82f6',
+                        '#0284c7',
+                        '#06b6d4',
+                        '#10b981',
+                        '#84cc16',
+                        '#eab308',
+                        '#f97316',
+                        '#ef4444',
+                        '#ec4899',
+                        '#8b5cf6',
+                        '#64748b'
+                    ],
+                    selectColor(c) {
+                        this.color = c;
+                        if (this.$refs.nativeColor) {
+                            this.$refs.nativeColor.value = c;
+                        }
+                    }
+                }" class="space-y-2 mt-1">
+                    <div class="flex items-center gap-3">
+                        <!-- Swatch + Native HTML5 Color Picker -->
+                        <div class="relative flex items-center justify-center shrink-0">
+                            <label :style="{ backgroundColor: color }"
+                                   class="w-11 h-11 rounded-xl shadow-xs border-2 border-white dark:border-slate-700 ring-2 ring-slate-200 dark:ring-slate-700 cursor-pointer flex items-center justify-center transition-all hover:scale-105 active:scale-95 group"
+                                   title="کلیک برای انتخاب رنگ دلخواه بصورت بصری">
+                                <input type="color" x-ref="nativeColor" x-model="color" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer">
+                                <svg class="w-4 h-4 text-white drop-shadow opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                            </label>
+                        </div>
+
+                        <!-- Hex Input with visual preview -->
+                        <div class="relative flex-1">
+                            <input type="text"
+                                   name="color"
+                                   x-model="color"
+                                   maxlength="7"
+                                   class="{{ $inputClass }} text-left font-mono tracking-wider uppercase pl-3 pr-8"
+                                   placeholder="#4F46E5">
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 font-mono text-xs">
+                                HEX
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Preset Color Dots -->
+                    <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        <template x-for="p in presets" :key="p">
+                            <button type="button"
+                                    @click="selectColor(p)"
+                                    :style="{ backgroundColor: p }"
+                                    :class="{ 'ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-800 scale-110': color.toLowerCase() === p.toLowerCase() }"
+                                    class="w-6 h-6 rounded-lg transition-all hover:scale-115 cursor-pointer shadow-xs border border-black/10 dark:border-white/10 flex items-center justify-center focus:outline-none"
+                                    :title="p">
+                                <svg x-show="color.toLowerCase() === p.toLowerCase()" class="w-3.5 h-3.5 text-white drop-shadow pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </button>
+                        </template>
+                    </div>
+
+                    @error('color')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
+                </div>
+            </div>
 
             {{-- توضیحات سرویس --}}
             <div class="col-span-1 md:col-span-2">

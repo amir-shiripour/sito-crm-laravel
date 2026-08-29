@@ -142,7 +142,8 @@
                                         </td>
                                         <td class="px-5 py-4">
                                             <div class="flex items-center gap-3">
-                                                <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                                <div class="w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs transition-transform group-hover/row:scale-105"
+                                                     style="background-color: {{ $srv->color ?? '#4f46e5' }}18; border-color: {{ $srv->color ?? '#4f46e5' }}40; color: {{ $srv->color ?? '#4f46e5' }};">
                                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                                 </div>
                                                 <div class="flex flex-col">
