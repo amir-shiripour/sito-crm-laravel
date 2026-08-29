@@ -1299,12 +1299,13 @@
 
                         {{-- Service Custom Form (if active and attached to service) --}}
                         @if ($waitlistFormSchema && !empty($waitlistFormSchema['fields']))
-                            <x-booking::service-dynamic-form
-                                :formSchema="$waitlistFormSchema"
-                                :formType="$waitlistFormType"
-                                :formName="$waitlistFormName"
-                                :formResponses="$waitlistFormResponses"
-                                modelPrefix="waitlistFormResponses" />
+                            @includeIf('booking::components.service-dynamic-form', [
+                                'formSchema' => $waitlistFormSchema,
+                                'formType' => $waitlistFormType,
+                                'formName' => $waitlistFormName,
+                                'formResponses' => $waitlistFormResponses,
+                                'modelPrefix' => 'waitlistFormResponses'
+                            ])
                         @endif
 
                         <div>
@@ -1429,12 +1430,13 @@
 
                         {{-- Service Custom Form --}}
                         @if ($waitlistFormSchema && !empty($waitlistFormSchema['fields']))
-                            <x-booking::service-dynamic-form
-                                :formSchema="$waitlistFormSchema"
-                                :formType="$waitlistFormType"
-                                :formName="$waitlistFormName"
-                                :formResponses="$waitlistFormResponses"
-                                modelPrefix="waitlistFormResponses" />
+                            @includeIf('booking::components.service-dynamic-form', [
+                                'formSchema' => $waitlistFormSchema,
+                                'formType' => $waitlistFormType,
+                                'formName' => $waitlistFormName,
+                                'formResponses' => $waitlistFormResponses,
+                                'modelPrefix' => 'waitlistFormResponses'
+                            ])
                         @endif
 
                         <div>

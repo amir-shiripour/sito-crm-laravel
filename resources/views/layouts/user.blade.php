@@ -102,7 +102,7 @@
 <div x-data="dashboardLayout()" x-init="init()" class="min-h-dvh flex">
 
     {{-- Desktop Sidebar --}}
-    <aside :class="sidebarCollapsed ? 'w-20' : 'w-72'" class="transition-all duration-200 ease-in-out bg-white/90 dark:bg-gray-800/90 border-l lg:border-l-0 lg:border-r border-gray-200/70 dark:border-gray-700/60 min-h-dvh sticky top-0 z-30 hidden lg:flex flex-col">
+    <aside :class="sidebarCollapsed ? 'w-20' : 'w-72'" class="transition-all duration-200 ease-in-out bg-white/95 dark:bg-gray-800/95 border-l lg:border-l-0 lg:border-r border-gray-200/70 dark:border-gray-700/60 h-screen max-h-screen sticky top-0 z-30 hidden lg:flex flex-col overflow-hidden">
         @include('user.partials.sidebar')
     </aside>
 
@@ -165,7 +165,9 @@
         return {
             mobileOpen: false,
             sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
-            openMenus: JSON.parse(localStorage.getItem('openMenus') || '{}'),
+            sidebarFilter: '',
+            openedMenuKey: localStorage.getItem('openedMenuKey') || null,
+            activeClosedKeys: JSON.parse(localStorage.getItem('activeClosedKeys') || '{}'),
             theme: localStorage.getItem('theme') || 'system',
             themeIcon: 'system',
 
@@ -175,6 +177,7 @@
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
                     if (this.theme === 'system') this.applyTheme();
                 });
+                localStorage.removeItem('openMenus');
             },
 
             toggleSidebar() {
@@ -182,14 +185,27 @@
                 localStorage.setItem('sidebarCollapsed', this.sidebarCollapsed);
             },
 
-            isMenuOpen(key) {
+            isMenuOpen(key, isGroupActive = false) {
                 if (this.sidebarCollapsed) return false;
-                return this.openMenus[key] || false;
+                if (this.sidebarFilter && this.sidebarFilter.trim().length > 0) return true;
+                if (isGroupActive) {
+                    return !this.activeClosedKeys[key];
+                }
+                return this.openedMenuKey === key;
             },
-            toggleMenu(key) {
+            toggleMenu(key, isGroupActive = false) {
                 if (this.sidebarCollapsed) return;
-                this.openMenus[key] = !this.openMenus[key];
-                localStorage.setItem('openMenus', JSON.stringify(this.openMenus));
+                if (isGroupActive) {
+                    this.activeClosedKeys[key] = !this.activeClosedKeys[key];
+                    localStorage.setItem('activeClosedKeys', JSON.stringify(this.activeClosedKeys));
+                } else {
+                    if (this.openedMenuKey === key) {
+                        this.openedMenuKey = null;
+                    } else {
+                        this.openedMenuKey = key;
+                    }
+                    localStorage.setItem('openedMenuKey', this.openedMenuKey || '');
+                }
             },
 
             themeTitle() {

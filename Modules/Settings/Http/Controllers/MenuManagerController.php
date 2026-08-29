@@ -499,10 +499,12 @@ class MenuManagerController extends Controller
         $users = User::select('id', 'name', 'email')->limit(100)->get();
 
         $isCustomMenuEnabled = $this->customizationService->isCustomMenuEnabled();
+        $isTwoStepEnabled = $this->customizationService->isTwoStepMenuEnabled();
 
         return response()->json([
             'success' => true,
             'is_custom_menu_enabled' => $isCustomMenuEnabled,
+            'is_two_step_enabled' => $isTwoStepEnabled,
             'items' => $extractedItems,
             'groups' => $allGroups,
             'custom_groups' => $customGroups,
@@ -766,6 +768,44 @@ class MenuManagerController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'خطا در تغییر وضعیت سیستم منو: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle two-step (drilldown) menu navigation.
+     */
+    public function toggleTwoStep(Request $request): JsonResponse
+    {
+        $request->validate([
+            'enabled' => 'required|boolean',
+        ]);
+
+        $enabled = (bool) $request->input('enabled');
+
+        try {
+            Setting::updateOrCreate(
+                ['key' => 'user_menu_two_step'],
+                ['value' => $enabled ? '1' : '0']
+            );
+
+            // Clear cache
+            \Illuminate\Support\Facades\Cache::forget('user_menu_two_step_enabled');
+            $this->customizationService->clearCache();
+
+            $statusText = $enabled
+                ? 'حالت منوی دو مرحله‌ای فعال شد.'
+                : 'منوی سیستم به حالت نمایش یکپارچه و آکاردئونی بازگشت.';
+
+            return response()->json([
+                'success' => true,
+                'is_two_step_enabled' => $enabled,
+                'message' => $statusText,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خطا در تغییر وضعیت منوی دو مرحله‌ای: ' . $e->getMessage(),
             ], 500);
         }
     }
