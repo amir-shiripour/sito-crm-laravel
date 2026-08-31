@@ -97,6 +97,10 @@ class PermissionCatalog
                 'title' => 'نوبت‌دهی: صورت وضعیت',
                 'matchers' => ['booking.statement.'],
             ],
+            'booking_payments' => [
+                'title' => 'نوبت‌دهی: پرداخت‌ها',
+                'matchers' => ['booking.payments.'],
+            ],
 
             // Properties module
             'properties' => [
@@ -412,6 +416,7 @@ class PermissionCatalog
             'booking.appointments.edit' => 'ویرایش نوبت',
             'booking.appointments.cancel' => 'لغو نوبت',
             'booking.appointments.manage' => 'مدیریت نوبت‌ها',
+            'booking.payments.manage' => 'مدیریت پرداخت‌های نوبت‌دهی',
 
             'booking.reports.view' => 'مشاهده گزارش‌های نوبت‌دهی',
 

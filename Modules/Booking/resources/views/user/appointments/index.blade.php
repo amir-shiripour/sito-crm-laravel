@@ -93,7 +93,7 @@
                 <div>
                     <label class="{{ $labelClass }}">{{ config('booking.labels.service', 'سرویس') }}</label>
                     <select name="service_id" class="{{ $inputClass }}">
-                        <option value="">همه {{ config('booking.labels.services', '{{ config('booking.labels.service', 'سرویس') }}‌ها') }}</option>
+                        <option value="">همه {{ config('booking.labels.services', 'سرویس‌ها') }}</option>
                         @foreach($services as $srv)
                             <option value="{{ $srv->id }}" {{ (int)request('service_id') === $srv->id ? 'selected' : '' }}>{{ $srv->name }}</option>
                         @endforeach
@@ -131,9 +131,9 @@
                 <div>
                     <label class="{{ $labelClass }}">مرتب‌سازی</label>
                     <select name="sort" class="{{ $inputClass }}">
+                        <option value="created_desc" {{ request('sort', 'created_desc') === 'created_desc' ? 'selected' : '' }}>جدیدترین زمان ثبت</option>
                         <option value="newest" {{ request('sort') === 'newest' ? 'selected' : '' }}>جدیدترین زمان نوبت</option>
                         <option value="oldest" {{ request('sort') === 'oldest' ? 'selected' : '' }}>قدیمی‌ترین زمان نوبت</option>
-                        <option value="created_desc" {{ request('sort') === 'created_desc' ? 'selected' : '' }}>جدیدترین زمان ثبت</option>
                     </select>
                 </div>
 

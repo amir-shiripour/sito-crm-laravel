@@ -32,6 +32,10 @@
             $groupedServices = collect($groupedArray)->map(function ($items) {
                 return collect($items);
             });
+
+            $currencyMap = ['IRR' => 'ریال', 'IRT' => 'تومان', 'rial' => 'ریال', 'toman' => 'تومان'];
+            $currencyUnit = $settings->currency_unit ?? 'IRT';
+            $currencyLabel = $currencyMap[$currencyUnit] ?? ($currencyUnit === 'IRR' ? 'ریال' : 'تومان');
         @endphp
 
         <!-- Header -->
@@ -125,7 +129,7 @@
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300 w-16">#</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">نام {{ $serviceLabel }}</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">وضعیت</th>
-                                    <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">قیمت پایه (تومان)</th>
+                                    <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">قیمت پایه ({{ $currencyLabel }})</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">فرم اختصاصی</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300 text-left">عملیات</th>
                                 </tr>

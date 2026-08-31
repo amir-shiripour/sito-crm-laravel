@@ -21,11 +21,7 @@ class WalletService
      */
     public function getSystemCurrency(): string
     {
-        if (function_exists('get_setting')) {
-            $curr = get_setting('payment_currency', 'toman');
-            return ($curr === 'rial' || $curr === 'IRR') ? 'IRR' : 'IRT';
-        }
-        return 'IRT';
+        return 'IRR';
     }
 
     /**
@@ -33,7 +29,7 @@ class WalletService
      */
     public function getOrCreateWallet(Model $holder, string $slug = 'default', ?string $currency = null): Wallet
     {
-        $currency = $currency ?: $this->getSystemCurrency();
+        $currency = $currency ?: 'IRR';
 
         return Wallet::firstOrCreate(
             [

@@ -284,9 +284,9 @@
                 search: '',
                 selectedId: @entangle('selectedServiceId').live,
                 get selectedName() {
-                    if (!this.selectedId) return 'همه {{ config('booking.labels.services', '{{ config('booking.labels.service', 'سرویس') }}‌ها') }}';
+                    if (!this.selectedId) return 'همه {{ config('booking.labels.services', 'سرویس‌ها') }}';
                     const el = document.getElementById('svc-opt-' + this.selectedId);
-                    return el ? el.dataset.name : 'همه {{ config('booking.labels.services', '{{ config('booking.labels.service', 'سرویس') }}‌ها') }}';
+                    return el ? el.dataset.name : 'همه {{ config('booking.labels.services', 'سرویس‌ها') }}';
                 }
             }" @click.outside="open = false" class="relative">
                 <label class="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">🛠️ {{ config('booking.labels.service', 'سرویس') }} نوبت‌دهی</label>
@@ -305,7 +305,7 @@
                     </div>
                     <div class="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar">
                         <button type="button" @click="selectedId = null; $wire.set('selectedServiceId', null); open = false;" class="w-full text-right px-3 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 flex items-center justify-between font-bold" :class="!selectedId ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/40' : 'text-gray-700 dark:text-gray-300'">
-                            <span>همه {{ config('booking.labels.services', '{{ config('booking.labels.service', 'سرویس') }}‌ها') }}</span>
+                            <span>همه {{ config('booking.labels.services', 'سرویس‌ها') }}</span>
                             <template x-if="!selectedId">
                                 <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                             </template>
@@ -487,7 +487,7 @@
                                             @php
                                                 $sourceBadge = match($pData['policy']['rule_source']) {
                                                     'SERVICE_PROVIDER' => ['label' => 'برنامه اختصاصی ' . config('booking.labels.provider'), 'class' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'],
-                                                    'SERVICE' => ['label' => 'برنامه {{ config('booking.labels.service', 'سرویس') }}', 'class' => 'bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200 dark:border-purple-800'],
+                                                    'SERVICE' => ['label' => 'برنامه ' . config('booking.labels.service', 'سرویس'), 'class' => 'bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200 dark:border-purple-800'],
                                                     'EXCEPTION' => ['label' => 'استثنای تاریخی', 'class' => 'bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200 dark:border-amber-800'],
                                                     default => ['label' => 'برنامه عمومی سیستم', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'],
                                                 };
@@ -1473,7 +1473,7 @@
                                 <div>
                                     <label class="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-1.5">نوع {{ config('booking.labels.service', 'سرویس') }}</label>
                                     <select wire:model.live="modalServiceId" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-gray-900 dark:text-gray-100 text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-indigo-500 shadow-2xs transition-all">
-                                        <option value="">انتخاب {{ config('booking.labels.service', '{{ config('booking.labels.service', 'سرویس') }}') }}...</option>
+                                        <option value="">انتخاب {{ config('booking.labels.service', 'سرویس') }}...</option>
                                         @foreach ($services as $svc) <option value="{{ $svc->id }}">{{ $svc->name }}</option> @endforeach
                                     </select>
                                 </div>
@@ -2066,7 +2066,7 @@
                                 <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">فیلتر {{ config('booking.labels.service', 'سرویس') }} صف</label>
                                 <select wire:model.live="drawerFilterServiceId"
                                         class="w-full py-2 px-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-amber-500">
-                                    <option value="">همه {{ config('booking.labels.services', '{{ config('booking.labels.service', 'سرویس') }}‌ها') }}</option>
+                                    <option value="">همه {{ config('booking.labels.services', 'سرویس‌ها') }}</option>
                                     @foreach($services as $svc)
                                         <option value="{{ $svc->id }}">{{ $svc->name }}</option>
                                     @endforeach

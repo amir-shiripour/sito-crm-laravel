@@ -63,6 +63,9 @@ class UserPaymentSettingsController extends Controller
                     $owner = $acc['owner_name'] ?? (!empty($acc['name']) && $acc['name'] !== ($acc['bank_name'] ?? '') ? $acc['name'] : '');
                     $acc['owner_name'] = $owner;
                     $acc['name'] = $owner;
+                    if (!isset($acc['is_active'])) {
+                        $acc['is_active'] = true;
+                    }
                 }
             }
             unset($acc);
@@ -184,6 +187,11 @@ class UserPaymentSettingsController extends Controller
                             $owner = $accItem['owner_name'] ?? ($accItem['name'] ?? '');
                             $accItem['owner_name'] = $owner;
                             $accItem['name'] = $owner;
+                            if (isset($accItem['is_active'])) {
+                                $accItem['is_active'] = (bool) $accItem['is_active'];
+                            } else {
+                                $accItem['is_active'] = true;
+                            }
                         }
                     }
                     unset($accItem);

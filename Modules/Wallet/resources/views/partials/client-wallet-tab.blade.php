@@ -14,8 +14,8 @@
 
     $transactions = $transactions ?? ($wallet ? $wallet->transactions()->latest()->limit(50)->get() : collect([]));
     $balance = $wallet ? (float)$wallet->balance : 0;
-    $walletCurrency = $wallet ? $wallet->currency : ($currency ?? 'toman');
-    $currencyLabel = ($walletCurrency === 'rial' || $walletCurrency === 'IRR') ? 'ریال' : 'تومان';
+    $walletCurrency = $wallet ? $wallet->currency : 'IRR';
+    $currencyLabel = 'ریال';
 
     $totalDeposits = $wallet ? $wallet->transactions()->whereIn('type', ['deposit', 'refund', 'bonus', 'commission'])->sum('amount') : 0;
     $totalWithdrawals = $wallet ? $wallet->transactions()->whereIn('type', ['withdraw', 'payment', 'fee', 'penalty'])->sum('amount') : 0;
@@ -45,19 +45,12 @@
     walletAmount: '',
     walletDescription: '',
     isSubmitting: false,
-    clientQuickChips: '{{ $currencyLabel }}' === 'ریال' ? [
+    clientQuickChips: [
         { label: '۱۰۰ هزار', value: 100000 },
         { label: '۵۰۰ هزار', value: 500000 },
         { label: '۱ میلیون', value: 1000000 },
         { label: '۵ میلیون', value: 5000000 },
         { label: '۱۰ میلیون', value: 10000000 }
-    ] : [
-        { label: '۱۰ هزار', value: 10000 },
-        { label: '۵۰ هزار', value: 50000 },
-        { label: '۱۰۰ هزار', value: 100000 },
-        { label: '۵۰۰ هزار', value: 500000 },
-        { label: '۱ میلیون', value: 1000000 },
-        { label: '۵ میلیون', value: 5000000 }
     ],
 
     openWalletAction(mode) {

@@ -266,33 +266,58 @@
                           const displayAmt = (this.currencyUnit === 'IRT') ? Math.round(rawAmt / 10) : rawAmt;
                           const meta = this.getPaymentMeta(payment);
                           
-                          let pType = payment.type || 'transfer';
-                          const rawSubItem = meta.sub_item || meta.sub_item_label || '';
+                          let rawType = (payment.type || '').toLowerCase().trim();
+                          let pType = rawType;
+                          if (['booking', 'gateway', 'online_gateway'].includes(rawType)) {
+                              pType = 'online';
+                          } else if (['bank_transfer', 'card', 'sheba', 'bank'].includes(rawType)) {
+                              pType = 'transfer';
+                          } else if (['cash', 'in_person'].includes(rawType)) {
+                              pType = 'cod';
+                          } else if (['cheque', 'installments'].includes(rawType)) {
+                              pType = 'installment';
+                          }
+                          if (!pType) {
+                              pType = 'manual';
+                          }
+
+                          let rawSubItem = meta.sub_item || meta.sub_item_label || '';
+                          if (!rawSubItem && payment.notes) {
+                              const pipeParts = payment.notes.split('|');
+                              if (pipeParts.length > 0 && pipeParts[0].trim()) {
+                                  rawSubItem = pipeParts[0].trim();
+                              }
+                          }
 
                           let foundCategory = pType;
                           let foundItem = null;
 
-                          // Search in payment's own type category first
+                          // 1. Search in payment's own type category first
                           if (this.subItems[pType] && Array.isArray(this.subItems[pType])) {
-                              foundItem = this.subItems[pType].find(i => 
-                                  i.id === rawSubItem || 
-                                  i.label === rawSubItem || 
-                                  i.label.includes(rawSubItem) || 
-                                  rawSubItem.includes(i.label) ||
-                                  (i.id && rawSubItem.includes(i.id))
-                              );
+                              if (rawSubItem) {
+                                  foundItem = this.subItems[pType].find(i => 
+                                      String(i.id).toLowerCase() === String(rawSubItem).toLowerCase() || 
+                                      String(i.label).toLowerCase() === String(rawSubItem).toLowerCase() || 
+                                      String(i.label).includes(String(rawSubItem)) || 
+                                      String(rawSubItem).includes(String(i.label)) ||
+                                      (i.id && String(rawSubItem).includes(String(i.id)))
+                                  );
+                              }
+                              if (!foundItem && this.subItems[pType].length === 1) {
+                                  foundItem = this.subItems[pType][0];
+                              }
                           }
 
-                          // If not found in payment's type, search across all categories (transfer, pos, etc.)
+                          // 2. If not found in payment's type, search across all categories (transfer, pos, online, installment)
                           if (!foundItem && rawSubItem) {
                               for (const [cat, list] of Object.entries(this.subItems)) {
                                   if (Array.isArray(list)) {
                                       const match = list.find(i => 
-                                          i.id === rawSubItem || 
-                                          i.label === rawSubItem || 
-                                          i.label.includes(rawSubItem) || 
-                                          rawSubItem.includes(i.label) ||
-                                          (i.id && rawSubItem.includes(i.id))
+                                          String(i.id).toLowerCase() === String(rawSubItem).toLowerCase() || 
+                                          String(i.label).toLowerCase() === String(rawSubItem).toLowerCase() || 
+                                          String(i.label).includes(String(rawSubItem)) || 
+                                          String(rawSubItem).includes(String(i.label)) ||
+                                          (i.id && String(rawSubItem).includes(String(i.id)))
                                       );
                                       if (match) {
                                           foundItem = match;
@@ -303,18 +328,30 @@
                               }
                           }
 
-                          // If still no item matched but rawSubItem exists and is a bank ID (bank_...), default category to 'transfer'
+                          // 3. If still no item matched but rawSubItem exists and is a bank/pos ID
                           if (!foundItem && rawSubItem && String(rawSubItem).startsWith('bank_')) {
                               foundCategory = 'transfer';
+                              if (this.subItems['transfer'] && this.subItems['transfer'].length > 0) {
+                                  foundItem = this.subItems['transfer'].find(i => String(i.id) === String(rawSubItem)) || this.subItems['transfer'][0];
+                              }
+                          } else if (!foundItem && rawSubItem && String(rawSubItem).startsWith('pos_')) {
+                              foundCategory = 'pos';
+                              if (this.subItems['pos'] && this.subItems['pos'].length > 0) {
+                                  foundItem = this.subItems['pos'].find(i => String(i.id) === String(rawSubItem)) || this.subItems['pos'][0];
+                              }
                           }
 
-                          this.editType = foundCategory;
-                          let matchedLabel = foundItem ? foundItem.label : (meta.sub_item_label || rawSubItem);
-                          this.editSubItemLabel = matchedLabel;
+                          // 4. If category is transfer/pos and we have items but none matched, pick first
+                          if (!foundItem && this.subItems[foundCategory] && Array.isArray(this.subItems[foundCategory]) && this.subItems[foundCategory].length > 0) {
+                              if (!rawSubItem) {
+                                  foundItem = this.subItems[foundCategory][0];
+                              }
+                          }
 
-                          this.$nextTick(() => {
-                              this.editSubItemLabel = matchedLabel;
-                          });
+                          let matchedLabel = foundItem ? foundItem.label : (meta.sub_item_label || rawSubItem);
+
+                          this.editType = foundCategory;
+                          this.editSubItemLabel = matchedLabel || '';
 
                           if (matchedLabel) {
                               meta.display_label = matchedLabel;
@@ -329,12 +366,16 @@
                                                      .replace(/تاریخ فیش:\s*[^\|]+(\s*\|\s*)?/g, '')
                                                      .replace(/رسید:\s*https?:\/\/[^\s\|]+(\s*\|\s*)?/g, '')
                                                      .replace(/^[\s\|]+|[\s\|]+$/g, '').trim();
+                          } else if (matchedLabel && cleanNotes.startsWith(matchedLabel)) {
+                              cleanNotes = cleanNotes.substring(matchedLabel.length).replace(/^[\s\|]+/, '').trim();
+                          } else if (rawSubItem && cleanNotes.startsWith(rawSubItem)) {
+                              cleanNotes = cleanNotes.substring(rawSubItem.length).replace(/^[\s\|]+/, '').trim();
                           }
 
                           this.editData = {
                               id: payment.id,
                               amount: displayAmt,
-                              type: payment.type || 'manual',
+                              type: foundCategory,
                               status: payment.status === 'PENDING' ? 'PAID' : payment.status,
                               gateway_ref: payment.gateway_ref || meta.tracking_code || '',
                               notes: cleanNotes,
@@ -343,6 +384,11 @@
                           };
                           this.editAmountDisplay = this.formatNumber(displayAmt);
                           this.showEditModal = true;
+
+                          this.$nextTick(() => {
+                              this.editType = foundCategory;
+                              this.editSubItemLabel = matchedLabel || '';
+                          });
                      },
                      formatNumber(val) {
                          if (val === null || val === undefined || val === '') return '';
@@ -694,12 +740,12 @@
                             {{-- سلکت باکس انتخاب زیر-آیتم در حالت ویرایش --}}
                             <template x-if="subItems[editType] && subItems[editType].length > 0">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">گزینه / حساب پرداخت</label>
-                                    <select x-model="editSubItemLabel"
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">گزینه / حساب پرداخت *</label>
+                                    <select x-model="editSubItemLabel" required
                                             class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
-                                        <option value="" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">-- تغییر ندهید / انتخاب کنید --</option>
+                                        <option value="" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">-- انتخاب کنید --</option>
                                         <template x-for="item in subItems[editType]" :key="item.id">
-                                            <option :value="item.label" x-text="item.label" :selected="item.label === editSubItemLabel || item.id === editSubItemLabel" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"></option>
+                                            <option :value="item.label" :selected="editSubItemLabel === item.label" x-text="item.label" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"></option>
                                         </template>
                                     </select>
                                     <input type="hidden" name="sub_item_label" :value="editSubItemLabel">

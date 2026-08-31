@@ -29,27 +29,34 @@ class BookingPaymentWalletService
         }
 
         $meta = $payment->meta ?? [];
-        $amount = (float) $payment->amount;
+        $amountInRials = (float) $payment->amount;
 
-        if ($amount <= 0) {
+        if ($amountInRials <= 0) {
             return;
         }
 
+        $payment->loadMissing('appointment.service');
+        $service = $payment->appointment?->service;
+
         // Scenario 1: Payment becomes PAID (from non-PAID)
         if ($newStatus === BookingPayment::STATUS_PAID && $oldStatus !== BookingPayment::STATUS_PAID) {
+            // Only credit wallet if the service has credit_client_wallet enabled
+            if (!$service || empty($service->credit_client_wallet)) {
+                return;
+            }
+
             $isAlreadyCredited = (!empty($meta['wallet_credited_amount']) && (float) $meta['wallet_credited_amount'] > 0) || (!empty($meta['wallet_credited']) && $meta['wallet_credited'] === true);
             if ($isAlreadyCredited) {
                 return; // Already credited
             }
 
             try {
-                $payment->loadMissing('appointment.service');
-                $serviceName = $payment->appointment?->service?->name ?? '';
+                $serviceName = $service->name ?? '';
                 $desc = "شارژ/پرداخت نوبت #" . ($payment->appointment_id ?? '') . ($serviceName ? " (سرویس: {$serviceName})" : '');
 
                 $tx = $this->walletService->deposit(
                     holder: $client,
-                    amount: $amount,
+                    amount: $amountInRials,
                     type: TransactionType::DEPOSIT,
                     payable: $payment,
                     description: $desc,
@@ -61,7 +68,7 @@ class BookingPaymentWalletService
                     ]
                 );
 
-                $meta['wallet_credited_amount'] = $amount;
+                $meta['wallet_credited_amount'] = $amountInRials;
                 $meta['wallet_credited'] = true;
                 $meta['wallet_deposit_tx_id'] = $tx->id;
                 unset($meta['wallet_deducted_amount']);
@@ -75,8 +82,12 @@ class BookingPaymentWalletService
 
         // Scenario 2: Payment changes FROM PAID to any non-PAID status (PENDING, FAILED, CANCELLED, REFUNDED)
         if ($oldStatus === BookingPayment::STATUS_PAID && $newStatus !== BookingPayment::STATUS_PAID) {
-            $creditedAmount = (float) ($meta['wallet_credited_amount'] ?? $amount);
-            $wasCredited = $creditedAmount > 0 || !empty($meta['wallet_credited']);
+            $creditedAmount = (float) ($meta['wallet_credited_amount'] ?? 0);
+            if ($creditedAmount <= 0 && !empty($meta['wallet_credited'])) {
+                $creditedAmount = $amountInRials;
+            }
+
+            $wasCredited = $creditedAmount > 0;
 
             if ($wasCredited) {
                 try {
@@ -88,11 +99,9 @@ class BookingPaymentWalletService
                         default => "تغییر وضعیت پرداخت"
                     };
 
-                    $withdrawAmt = $creditedAmount > 0 ? $creditedAmount : $amount;
-
                     $tx = $this->walletService->withdraw(
                         holder: $client,
-                        amount: $withdrawAmt,
+                        amount: $creditedAmount,
                         type: TransactionType::WITHDRAW,
                         payable: $payment,
                         description: "کسر از کیف پول به دلیل " . $reasonDesc . " #" . $payment->id,
@@ -106,7 +115,7 @@ class BookingPaymentWalletService
 
                     $meta['wallet_credited_amount'] = 0; // Clear credit flag so it can be re-credited if marked PAID again
                     unset($meta['wallet_credited']);     // Completely unset legacy boolean flag too
-                    $meta['wallet_deducted_amount'] = $withdrawAmt;
+                    $meta['wallet_deducted_amount'] = $creditedAmount;
                     $meta['wallet_withdraw_tx_id'] = $tx->id;
 
                     $payment->meta = $meta;
@@ -132,8 +141,9 @@ class BookingPaymentWalletService
             return;
         }
 
-        $appointment->loadMissing(['payments', 'client']);
+        $appointment->loadMissing(['payments', 'client', 'service']);
         $client = $appointment->client;
+        $service = $appointment->service;
 
         if (!$client) {
             return;
@@ -153,25 +163,25 @@ class BookingPaymentWalletService
             }
 
             $meta = $payment->meta ?? [];
-            $amount = (float) $payment->amount;
+            $amountInRials = (float) $payment->amount;
 
-            $isOnline = in_array($payment->type, ['online', 'zarinpal', 'zibal', 'gateway']);
+            $isOnline = in_array($payment->type, ['online', 'zarinpal', 'zibal', 'behpardakht', 'gateway']);
             $isManualOrTransfer = in_array($payment->type, ['transfer', 'manual', 'pos', 'card']);
 
-            if ($isOnline && $payment->status === BookingPayment::STATUS_PAID) {
+            if ($isOnline && $payment->status === BookingPayment::STATUS_PAID && !empty($service?->credit_client_wallet)) {
                 // Online payment: Client paid real money!
                 // Money remains in client wallet.
                 if (empty($meta['wallet_credited_amount'])) {
                     try {
                         $tx = $this->walletService->deposit(
                             holder: $client,
-                            amount: $amount,
+                            amount: $amountInRials,
                             type: TransactionType::REFUND,
                             payable: $appointment,
                             description: "موجودی کیف پول بابت لغو نوبت #" . $appointment->id,
                             meta: ['appointment_id' => $appointment->id, 'payment_id' => $payment->id]
                         );
-                        $meta['wallet_credited_amount'] = $amount;
+                        $meta['wallet_credited_amount'] = $amountInRials;
                         $meta['wallet_deposit_tx_id'] = $tx->id;
                         $payment->update(['meta' => $meta]);
                     } catch (\Exception $e) {
