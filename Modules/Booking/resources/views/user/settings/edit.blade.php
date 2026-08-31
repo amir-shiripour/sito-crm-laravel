@@ -1480,10 +1480,10 @@
                             <div class="flex items-center justify-between p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
                                 <div class="space-y-1">
                                     <label class="text-sm font-bold text-gray-900 dark:text-white block">
-                                        نمایش توضیحات سرویس در داشبورد مشتریان/بیماران
+                                        نمایش توضیحات {{ config('booking.labels.service', 'سرویس') }} در داشبورد مشتریان
                                     </label>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                                        در صورت فعال بودن، توضیحات ثبتی سرویس در صفحه جزئیات نوبت مشتریان به آن‌ها نمایش داده می‌شود.
+                                        در صورت فعال بودن، توضیحات ثبتی {{ config('booking.labels.service', 'سرویس') }} در صفحه جزئیات نوبت مشتریان به آن‌ها نمایش داده می‌شود.
                                     </p>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer shrink-0">
@@ -1578,11 +1578,11 @@
                         </svg>
                     </div>
                     <div class="space-y-1">
-                        <h3 class="text-base font-bold text-gray-900 dark:text-white">راهنمای هماهنگ‌سازی سرویس‌ها</h3>
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white">راهنمای هماهنگ‌سازی {{ config('booking.labels.services', 'سرویس‌ها') }}</h3>
                         <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                            در این بخش می‌توانید سرویس‌هایی که از نظر زمان و ظرفیت هم‌پوشانی دارند را در یک ردیف هماهنگی قرار دهید.
-                            هنگامی که برای یکی از سرویس‌های موجود در یک ردیف نوبت ثبت شود، همان اسلات زمانی برای سایر سرویس‌های هم‌ردیف مسدود می‌گردد.
-                            سرویس‌هایی که در هیچ ردیفی قرار نگرفته‌اند روند عادی خود را خواهند داشت.
+                            در این بخش می‌توانید {{ config('booking.labels.services', 'سرویس‌ها') }}یی که از نظر زمان و ظرفیت هم‌پوشانی دارند را در یک ردیف هماهنگی قرار دهید.
+                            هنگامی که برای یکی از {{ config('booking.labels.services', 'سرویس‌ها') }}ی موجود در یک ردیف نوبت ثبت شود، همان اسلات زمانی برای سایر {{ config('booking.labels.services', 'سرویس‌ها') }}ی هم‌ردیف مسدود می‌گردد.
+                            {{ config('booking.labels.services', 'سرویس‌ها') }}یی که در هیچ ردیفی قرار نگرفته‌اند روند عادی خود را خواهند داشت.
                         </p>
                     </div>
                 </div>
@@ -1596,8 +1596,8 @@
                             </svg>
                         </div>
                         <div>
-                            <h2 class="text-base font-bold text-gray-900 dark:text-white">۱. سرویس‌ها</h2>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">مشاهده وضعیت هماهنگی سرویس‌های فعال سیستم</p>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-white">۱. {{ config('booking.labels.services', 'سرویس‌ها') }}</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">مشاهده وضعیت هماهنگی {{ config('booking.labels.services', 'سرویس‌ها') }}ی فعال سیستم</p>
                         </div>
                     </div>
 
@@ -1642,7 +1642,7 @@
                             </div>
                             <div>
                                 <h2 class="text-base font-bold text-gray-900 dark:text-white">۲. ردیف‌های هماهنگی</h2>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">تعریف ردیف و قرار دادن سرویس‌های هم‌نیازمند در هر ردیف</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">تعریف ردیف و قرار دادن {{ config('booking.labels.services', 'سرویس‌ها') }}ی هم‌نیازمند در هر ردیف</p>
                             </div>
                         </div>
 
@@ -1660,7 +1660,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                                 <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">هیچ ردیف هماهنگی تعریف نشده است</p>
-                                <p class="text-xs text-gray-400 mt-1">با کلیک روی دکمه «افزودن ردیف جدید»، سرویس‌ها را با یکدیگر هماهنگ کنید.</p>
+                                <p class="text-xs text-gray-400 mt-1">با کلیک روی دکمه «افزودن ردیف جدید»، {{ config('booking.labels.services', 'سرویس‌ها') }} را با یکدیگر هماهنگ کنید.</p>
                                 <button type="button" @click="addGroup()" class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100 transition-colors">
                                     + ایجاد اولین ردیف
                                 </button>
@@ -1701,8 +1701,8 @@
                                 {{-- انتخاب سرویس‌های این ردیف --}}
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
-                                        سرویس‌های موجود در این ردیف:
-                                        <span class="text-[11px] font-normal text-gray-400 mr-1">(هر سرویس می‌تواند تنها در یک ردیف فعال باشد)</span>
+                                        {{ config('booking.labels.services', 'سرویس‌ها') }}ی موجود در این ردیف:
+                                        <span class="text-[11px] font-normal text-gray-400 mr-1">(هر {{ config('booking.labels.service', 'سرویس') }} می‌تواند تنها در یک ردیف فعال باشد)</span>
                                     </label>
 
                                     <div class="flex flex-wrap gap-2 min-h-[44px] p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/80">
@@ -1727,7 +1727,7 @@
                                     <template x-if="group.service_ids.length === 1">
                                         <p class="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
                                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                            برای هماهنگ‌سازی حداقل ۲ سرویس باید انتخاب شوند.
+                                            برای هماهنگ‌سازی حداقل ۲ {{ config('booking.labels.service', 'سرویس') }} باید انتخاب شوند.
                                         </p>
                                     </template>
                                 </div>
@@ -1741,7 +1741,7 @@
                     <button type="submit"
                             class="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/50 transition-all transform active:scale-95">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                        ذخیره هماهنگ‌سازی سرویس‌ها
+                        ذخیره هماهنگ‌سازی {{ config('booking.labels.services', 'سرویس‌ها') }}
                     </button>
                 </div>
             </div>

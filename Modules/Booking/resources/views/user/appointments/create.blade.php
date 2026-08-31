@@ -59,7 +59,7 @@
             class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <div>
                 <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">ثبت نوبت (مرحله‌ای)</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">جریان اپراتوری با انتخاب سرویس/{{ config('booking.labels.provider') }} و اسلات
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">جریان اپراتوری با انتخاب {{ config('booking.labels.service', 'سرویس') }}/{{ config('booking.labels.provider') }} و اسلات
                 </p>
             </div>
             <a class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition"
@@ -428,7 +428,7 @@
 
                                                 <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-1.5 border-t border-gray-100 dark:border-gray-700/60 flex-wrap gap-y-1">
                                                     <div class="flex items-center gap-3 flex-wrap">
-                                                        <span x-text="`سرویس: ${item.service_name || 'عمومی'}`"></span>
+                                                        <span x-text="`{{ config('booking.labels.service', 'سرویس') }}: ${item.service_name || 'عمومی'}`"></span>
                                                         <span x-show="item.provider_name" x-text="`• {{ config('booking.labels.provider') }}: ${item.provider_name}`"></span>
                                                         <span x-show="item.preferred_date" x-text="`• تاریخ ترجیحی: ${item.preferred_date}`"></span>
                                                         <span x-show="item.duration_minutes" x-text="`• مدت زمان: ${item.duration_minutes} دقیقه`"></span>
@@ -639,7 +639,7 @@
                             </select>
                         </div>
 
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">انتخاب سرویس</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">انتخاب {{ config('booking.labels.service', 'سرویس') }}</label>
                         <div class="relative">
                             <input type="text"
                                    class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
@@ -649,7 +649,7 @@
                         </div>
 
                         <template x-if="serviceLoading">
-                            <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت سرویس‌ها...</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت {{ config('booking.labels.services', 'سرویس‌ها') }}...</div>
                         </template>
 
                         <div class="space-y-4" x-show="!serviceLoading">
@@ -681,7 +681,7 @@
                         </template>
 
                         <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                            بعد از انتخاب سرویس، به صورت خودکار به مرحله بعد می‌روید.
+                            بعد از انتخاب {{ config('booking.labels.service', 'سرویس') }}، به صورت خودکار به مرحله بعد می‌روید.
                         </div>
                     </div>
                 </template>
@@ -704,7 +704,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm mb-1 dark:text-gray-200">انتخاب سرویس</label>
+                            <label class="block text-sm mb-1 dark:text-gray-200">انتخاب {{ config('booking.labels.service', 'سرویس') }}</label>
                             <div class="relative">
                                 <input type="text"
                                        class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
@@ -714,7 +714,7 @@
                             </div>
 
                             <template x-if="serviceLoading">
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">در حال دریافت سرویس‌ها...</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">در حال دریافت {{ config('booking.labels.services', 'سرویس‌ها') }}...</div>
                             </template>
 
                             <div class="space-y-4 mt-2" x-show="!serviceLoading">
@@ -745,7 +745,7 @@
                                 <div class="text-xs text-amber-600 mt-2">موردی یافت نشد.</div>
                             </template>
 
-                            <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">فقط سرویس‌هایی که برای این
+                            <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">فقط {{ config('booking.labels.services', 'سرویس‌ها') }}یی که برای این
                                 {{ config('booking.labels.provider') }} فعال هستند نمایش داده می‌شود. بعد از انتخاب، به صورت خودکار به مرحله بعد
                                 می‌روید.</div>
                         </div>
@@ -755,7 +755,7 @@
                 <template x-if="flow==='SERVICE_FIRST' && !fixedProvider">
                     <div class="space-y-2">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">انتخاب {{ config('booking.labels.provider') }} (برای
-                            سرویس انتخابی)</label>
+                            {{ config('booking.labels.service', 'سرویس') }} انتخابی)</label>
                         <div class="relative">
                             <input type="text"
                                    class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
@@ -1655,12 +1655,12 @@
                     },
                         {
                             num: 2,
-                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب {{ config('booking.labels.provider') }}' : 'انتخاب سرویس',
+                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب {{ config('booking.labels.provider') }}' : 'انتخاب {{ config('booking.labels.service', 'سرویس') }}',
                             icon: this.flow === 'PROVIDER_FIRST' ? '👨‍⚕️' : '🛎️'
                         },
                         {
                             num: 3,
-                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب سرویس' : 'انتخاب {{ config('booking.labels.provider') }}',
+                            title: this.flow === 'PROVIDER_FIRST' ? 'انتخاب {{ config('booking.labels.service', 'سرویس') }}' : 'انتخاب {{ config('booking.labels.provider') }}',
                             icon: this.flow === 'PROVIDER_FIRST' ? '🛎️' : '👨‍⚕️'
                         },
                         {

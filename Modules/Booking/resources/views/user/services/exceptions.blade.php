@@ -6,7 +6,7 @@
         <div
             class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <div>
-                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">روزهای خاص / استثناهای سرویس</h1>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">روزهای خاص / استثناهای {{ config('booking.labels.service', 'سرویس') }}</h1>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     سرویس: <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $service->name }}</span>
                 </p>

@@ -41,7 +41,7 @@
                 get selectedServiceName() {
                     if (!this.serviceId) return 'صف عمومی (بدون سرویس خاص)';
                     const s = this.services.find(item => item.id == this.serviceId);
-                    return s ? s.name : 'انتخاب سرویس...';
+                    return s ? s.name : 'انتخاب {{ config('booking.labels.service', 'سرویس') }}...';
                 },
 
                 get selectedProviderName() {

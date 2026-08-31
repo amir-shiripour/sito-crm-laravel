@@ -21,7 +21,7 @@ return [
 
     // لیست سرویس‌ها
     [
-        'title'      => __('booking::menu.services'),
+        'title'      => config('booking.labels.services', __('booking::menu.services')),
         'route'      => 'user.booking.services.index',
         'permission' => 'booking.services.view',
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -66,7 +66,7 @@ return [
     ],
 
     [
-        'title' => __('booking::menu.providers_schedule'),
+        'title' => 'برنامه زمانی ' . config('booking.labels.providers', 'ارائه‌دهندگان'),
         'route' => 'user.booking.providers.index',
         'permission' => 'booking.availability.manage',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">

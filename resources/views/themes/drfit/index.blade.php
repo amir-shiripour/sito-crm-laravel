@@ -39,7 +39,7 @@
                         {{-- عنوان اصلی - مستقیم، تمیز و برجسته --}}
                         <h1 class="text-3xl sm:text-5xl lg:text-[2.75rem] xl:text-[2.25rem] font-extrabold text-gray-900 leading-tight mb-6">
                             تغییر فرم بدن با
-{{--                            <br class="hidden sm:block" />--}}
+                            {{--                            <br class="hidden sm:block" />--}}
                             <span class="text-[#3F7D20]">دکتر فیت</span>
                         </h1>
 
