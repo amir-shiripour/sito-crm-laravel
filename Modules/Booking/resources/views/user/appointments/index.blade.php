@@ -91,9 +91,9 @@
 
                 {{-- Service --}}
                 <div>
-                    <label class="{{ $labelClass }}">سرویس</label>
+                    <label class="{{ $labelClass }}">{{ config('booking.labels.service', 'سرویس') }}</label>
                     <select name="service_id" class="{{ $inputClass }}">
-                        <option value="">همه سرویس‌ها</option>
+                        <option value="">همه {{ config('booking.labels.services', '{{ config('booking.labels.service', 'سرویس') }}‌ها') }}</option>
                         @foreach($services as $srv)
                             <option value="{{ $srv->id }}" {{ (int)request('service_id') === $srv->id ? 'selected' : '' }}>{{ $srv->name }}</option>
                         @endforeach
@@ -153,7 +153,7 @@
                     <tr>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">#</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">{{ $clientLabel }}</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">سرویس / {{ config('booking.labels.provider') }}</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">{{ config('booking.labels.service', 'سرویس') }} / {{ config('booking.labels.provider') }}</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تاریخ نوبت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ساعت نوبت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">مدت</th>

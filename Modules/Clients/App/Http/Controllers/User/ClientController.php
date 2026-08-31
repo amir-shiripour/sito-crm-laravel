@@ -5,9 +5,12 @@ namespace Modules\Clients\App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Models\User;
+use Exception;
 use Illuminate\Http\Request;
 use Modules\Accounting\App\Models\Document;
+use Modules\Accounting\App\Models\SourceDocument;
 use Modules\Accounting\Entities\Cheque;
+use Modules\Booking\Entities\Appointment;
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientForm;
 use Modules\Clients\Entities\ClientSetting;
@@ -17,6 +20,9 @@ use Modules\Clients\App\Http\Requests\UpdateClientRequest;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Order;
 use Modules\Services\App\Http\Models\Payment;
+use Modules\Services\App\Http\Models\Status;
+use Modules\Wallet\App\Models\Wallet;
+use Modules\Wallet\App\Services\WalletService;
 use Modules\Workflows\Entities\Workflow;
 
 class ClientController extends Controller
@@ -147,6 +153,7 @@ class ClientController extends Controller
 
         $clientOrders = collect([]);
         $clientInvoices = collect([]);
+        $clientInvoiceStats = ['count' => 0, 'total' => 0, 'paid' => 0, 'due' => 0];
 
         if (class_exists(Order::class)) {
             try {
@@ -154,23 +161,40 @@ class ClientController extends Controller
                     ->where('customer_id', $client->id)
                     ->orderByDesc('invoice_id')
                     ->orderBy('id', 'asc')
-                    ->limit(50)
-                    ->get();
-            } catch (\Exception $e) {
+                    ->paginate(15, ['*'], 'orders_page')
+                    ->withQueryString();
+            } catch (Exception $e) {
                 $clientOrders = collect([]);
             }
         }
 
         if (class_exists(Invoice::class)) {
             try {
-                $clientInvoices = Invoice::with(['customer', 'status', 'service', 'payments'])
-                    ->where('customer_id', $client->id)
-                    ->whereNotNull('invoice_number')
+                $invoiceBaseQuery = Invoice::where('customer_id', $client->id)
+                    ->whereNotNull('invoice_number');
+
+                $mergedStatusIds = Status::where('name', 'LIKE', '%ادغام%')->pluck('id');
+                $statsQuery = (clone $invoiceBaseQuery);
+                if ($mergedStatusIds->isNotEmpty()) {
+                    $statsQuery->whereNotIn('status_id', $mergedStatusIds);
+                }
+                $statsInvoices = $statsQuery->with('status')->get(['id', 'total', 'paid_amount', 'status_id']);
+
+                $clientInvoiceStats = [
+                    'count' => (clone $invoiceBaseQuery)->count(),
+                    'total' => (int)$statsInvoices->sum('total'),
+                    'paid' => (int)$statsInvoices->reject(fn($inv) => $inv->isCanceled())->sum('paid_amount'),
+                    'due' => (int)$statsInvoices->sum(fn($inv) => $inv->remainingAmount()),
+                ];
+
+                $clientInvoices = (clone $invoiceBaseQuery)
+                    ->with(['customer', 'status', 'service', 'payments'])
                     ->latest()
-                    ->limit(50)
-                    ->get();
-            } catch (\Exception $e) {
+                    ->paginate(15, ['*'], 'invoices_page')
+                    ->withQueryString();
+            } catch (Exception $e) {
                 $clientInvoices = collect([]);
+                $clientInvoiceStats = ['count' => 0, 'total' => 0, 'paid' => 0, 'due' => 0];
             }
         }
 
@@ -190,7 +214,7 @@ class ClientController extends Controller
                     ->where('key', 'not like', 'auto_%')
                     ->orderBy('name')
                     ->get();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $availableWorkflows = collect([]);
             }
         }
@@ -228,12 +252,12 @@ class ClientController extends Controller
 
                 // 3. Documents through SourceDocument -> Payment -> Services\Invoice
                 if (class_exists(Payment::class) && class_exists(Invoice::class)) {
-                    $paymentIds = Payment::whereHas('invoice', function($q) use ($client) {
+                    $paymentIds = Payment::whereHas('invoice', function ($q) use ($client) {
                         $q->where('customer_id', $client->id);
                     })->pluck('id')->toArray();
 
                     if (!empty($paymentIds)) {
-                        $ids = \Modules\Accounting\App\Models\SourceDocument::where('sourceable_type', Payment::class)
+                        $ids = SourceDocument::where('sourceable_type', Payment::class)
                             ->whereIn('sourceable_id', $paymentIds)
                             ->pluck('document_id')->toArray();
                         $docIds = $docIds->merge($ids);
@@ -245,7 +269,7 @@ class ClientController extends Controller
                     $srvInvoicesIds = Invoice::where('customer_id', $client->id)->pluck('id')->toArray();
 
                     if (!empty($srvInvoicesIds)) {
-                        $ids = \Modules\Accounting\App\Models\SourceDocument::where('sourceable_type', Invoice::class)
+                        $ids = SourceDocument::where('sourceable_type', Invoice::class)
                             ->whereIn('sourceable_id', $srvInvoicesIds)
                             ->pluck('document_id')->toArray();
                         $docIds = $docIds->merge($ids);
@@ -257,7 +281,7 @@ class ClientController extends Controller
                     $srvOrderIds = Order::where('customer_id', $client->id)->pluck('id')->toArray();
 
                     if (!empty($srvOrderIds)) {
-                        $ids = \Modules\Accounting\App\Models\SourceDocument::where('sourceable_type', Order::class)
+                        $ids = SourceDocument::where('sourceable_type', Order::class)
                             ->whereIn('sourceable_id', $srvOrderIds)
                             ->pluck('document_id')->toArray();
                         $docIds = $docIds->merge($ids);
@@ -271,9 +295,10 @@ class ClientController extends Controller
                         ->whereIn('id', $uniqueDocIds)
                         ->latest('document_date')
                         ->latest('id')
-                        ->get();
+                        ->paginate(15, ['*'], 'transactions_page')
+                        ->withQueryString();
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Keep it empty on error
             }
         }
@@ -293,20 +318,20 @@ class ClientController extends Controller
                     ->get()
                     ->sortBy(fn($item) => $item->queue_rank ?? $item->position ?? 0)
                     ->values();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $clientWaitlists = collect([]);
             }
         }
 
         // ── Booking Appointments check ──────────────────────────────
         $clientAppointments = collect([]);
-        if ($isBookingActive && class_exists(\Modules\Booking\Entities\Appointment::class)) {
+        if ($isBookingActive && class_exists(Appointment::class)) {
             try {
-                $clientAppointments = \Modules\Booking\Entities\Appointment::with(['service', 'provider', 'payments'])
+                $clientAppointments = Appointment::with(['service', 'provider', 'payments'])
                     ->where('client_id', $client->id)
                     ->orderByDesc('start_at_utc')
                     ->get();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $clientAppointments = collect([]);
             }
         }
@@ -319,12 +344,12 @@ class ClientController extends Controller
         $clientWalletTransactions = collect([]);
         $clientWalletTransactionsCount = 0;
 
-        if ($isWalletActive && class_exists(\Modules\Wallet\App\Models\Wallet::class)) {
+        if ($isWalletActive && class_exists(Wallet::class)) {
             try {
-                if (class_exists(\Modules\Wallet\App\Services\WalletService::class)) {
-                    $clientWallet = app(\Modules\Wallet\App\Services\WalletService::class)->getOrCreateWallet($client);
+                if (class_exists(WalletService::class)) {
+                    $clientWallet = app(WalletService::class)->getOrCreateWallet($client);
                 } else {
-                    $clientWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', $client->getMorphClass())
+                    $clientWallet = Wallet::where('holder_type', $client->getMorphClass())
                         ->where('holder_id', $client->id)
                         ->first();
                 }
@@ -336,7 +361,7 @@ class ClientController extends Controller
                         ->get();
                     $clientWalletTransactionsCount = $clientWallet->transactions()->count();
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $clientWallet = null;
                 $clientWalletTransactions = collect([]);
             }

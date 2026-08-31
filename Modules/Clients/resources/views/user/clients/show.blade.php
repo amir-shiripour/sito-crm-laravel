@@ -1,5 +1,10 @@
 @php
-    use Modules\Clients\Entities\Client;use Modules\Tasks\Entities\Task;use Morilog\Jalali\Jalalian;
+    use Modules\Clients\Entities\Client;
+    use Modules\DirectAdmin\Entities\DaAccount;
+    use Modules\DomainManager\Entities\DomainRecord;
+    use Modules\Tasks\Entities\Task;
+    use Modules\Workflows\Entities\Workflow;
+    use Morilog\Jalali\Jalalian;
     use Carbon\Carbon;
     use Modules\Services\App\Http\Models\Status;
 
@@ -37,28 +42,28 @@
     $walletCurrencyLabel = ($clientWallet && ($clientWallet->currency === 'rial' || $clientWallet->currency === 'IRR')) ? 'ریال' : ($currencyLabel ?? 'تومان');
 
     $showWorkflowTab     = $workflowsModule && $workflowsModule->installed && $workflowsModule->active
-                        && class_exists(\Modules\Workflows\Entities\Workflow::class)
+                        && class_exists(Workflow::class)
                         && \Illuminate\Support\Facades\Schema::hasTable('workflows')
                         && isset($availableWorkflows)
                         && $availableWorkflows->isNotEmpty();
 
     $clientDomainsCount  = \Illuminate\Support\Facades\Schema::hasColumn('domain_records', 'client_id')
-                        ? \Modules\DomainManager\Entities\DomainRecord::where('client_id', $client->id)->count()
+                        ? DomainRecord::where('client_id', $client->id)->count()
                         : 0;
 
     $clientAccountsCount = \Illuminate\Support\Facades\Schema::hasColumn('da_accounts', 'client_id')
-                        ? \Modules\DirectAdmin\Entities\DaAccount::where('client_id', $client->id)->count()
+                        ? DaAccount::where('client_id', $client->id)->count()
                         : 0;
 
     $hasDomains          = $clientDomainsCount > 0;
     $hasAccounts         = $clientAccountsCount > 0;
 
     $showDomainTab       = $domainManagerModule && $domainManagerModule->installed && $domainManagerModule->active
-                        && class_exists(\Modules\DomainManager\Entities\DomainRecord::class)
+                        && class_exists(DomainRecord::class)
                         && $hasDomains;
 
     $showDirectAdminTab  = $directAdminModule && $directAdminModule->installed && $directAdminModule->active
-                        && class_exists(\Modules\DirectAdmin\Entities\DaAccount::class)
+                        && class_exists(DaAccount::class)
                         && $hasAccounts;
 
     $statusMap = [
@@ -82,7 +87,7 @@
             }
             if ($date instanceof \Carbon\Carbon) return Jalalian::fromCarbon($date);
             return Jalalian::fromDateTime($date);
-        } catch (\Exception $e) { return null; }
+        } catch (Exception $e) { return null; }
     };
 
     $currency      = $currency ?? 'toman';
@@ -846,11 +851,11 @@
                             actionLoading: false,
                             selectedWorkflowId: '',
                             showHistory: {},
-                            
+
                             async init() {
                                 await this.fetchInstances();
                             },
-                            
+
                             async fetchInstances() {
                                 this.loading = true;
                                 try {
@@ -867,7 +872,7 @@
                                     this.loading = false;
                                 }
                             },
-                            
+
                             async startWorkflow() {
                                 if (!this.selectedWorkflowId) return;
                                 this.actionLoading = true;
@@ -1122,7 +1127,7 @@
                             getStepperPath(inst) {
                                 const path = [];
                                 const visitedIds = new Set();
-                                
+
                                 const chronologicalLogs = [...(inst.logs || [])].reverse();
                                 chronologicalLogs.forEach(log => {
                                     if (log.to_node_id && log.to_node_id !== inst.current_node_id && !visitedIds.has(log.to_node_id)) {
@@ -1169,7 +1174,7 @@
                                         }
                                     });
                                 }
-                                
+
                                 return path;
                             },
 
@@ -1266,7 +1271,7 @@
                                                 <div class="flex items-center min-w-[600px] justify-between relative py-2">
                                                     <!-- خط زمینه هادی -->
                                                     <div class="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-700 -translate-y-1/2 z-0"></div>
-                                                    
+
                                                     <template x-for="(step, sIdx) in getStepperPath(inst)" :key="step.id">
                                                         <div class="flex flex-col items-center relative z-10 px-3 bg-white dark:bg-gray-800">
                                                             <!-- دایره نماد وضعیت -->
@@ -1288,7 +1293,7 @@
                                                                     <span x-text="sIdx + 1"></span>
                                                                 </template>
                                                             </div>
-                                                            
+
                                                             <!-- عنوان گام -->
                                                             <span class="text-[10px] font-extrabold mt-2 text-center max-w-[120px]"
                                                                   :class="{
@@ -1296,7 +1301,7 @@
                                                                       'text-indigo-600 dark:text-indigo-400 font-black': step.status === 'active',
                                                                       'text-gray-500 dark:text-gray-400': step.status === 'next'
                                                                   }" x-text="step.name"></span>
-                                                                  
+
                                                             <!-- اطلاعات تاریخ تکمیل -->
                                                             <template x-if="step.status === 'completed'">
                                                                 <span class="text-[8px] text-gray-400 dark:text-gray-500 mt-0.5" x-text="step.date"></span>
@@ -1326,24 +1331,24 @@
                                                                 <div class="text-xs font-black text-gray-800 dark:text-gray-100" x-text="'شرط جاری: ' + inst.current_node_name"></div>
                                                             </div>
                                                         </div>
-                                                        
+
                                                         <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
                                                             مسیر فرآیند در انتظار پاسخ شما به این شرط است. لطفاً یکی از گزینه‌های معتبر زیر را انتخاب کنید تا فرآیند طبق مسیر متناظر هدایت شود:
                                                         </p>
 
                                                         <div class="flex flex-wrap gap-2 pt-1">
                                                             <template x-for="opt in getConditionOptions(inst)" :key="opt.label">
-                                                                <button @click="advanceWithChoice(inst.id, getConditionVar(inst), opt.value)" 
+                                                                <button @click="advanceWithChoice(inst.id, getConditionVar(inst), opt.value)"
                                                                         :disabled="actionLoading"
                                                                         class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm"
-                                                                        :class="opt.value === 1 
-                                                                            ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white shadow-emerald-100 dark:shadow-none' 
+                                                                        :class="opt.value === 1
+                                                                            ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white shadow-emerald-100 dark:shadow-none'
                                                                             : 'bg-rose-600 hover:bg-rose-700 border-rose-600 text-white shadow-rose-100 dark:shadow-none'">
                                                                     <span x-text="opt.label"></span>
                                                                 </button>
                                                             </template>
                                                         </div>
-                                                        
+
                                                         <!-- نمایش شرط فنی به صورت جمع‌شونده -->
                                                         <div x-data="{ open: false }" class="border-t border-gray-100 dark:border-gray-800/80 pt-2.5">
                                                             <button @click="open = !open" class="text-[10px] text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 flex items-center gap-1">
@@ -1385,7 +1390,7 @@
                                                                 </svg>
                                                                 وظایف و کارهای مورد نیاز این مرحله:
                                                             </div>
-                                                            
+
                                                             <!-- اگر فاقد تسک باشد -->
                                                             <template x-if="inst.tasks.filter(t => String(t.workflow_node_id) === String(inst.current_node_id)).length === 0">
                                                                 <div class="text-xs text-gray-400 dark:text-gray-500 italic p-3 bg-gray-50 dark:bg-gray-900/20 rounded-xl border dark:border-gray-800">
@@ -1399,8 +1404,8 @@
                                                                     <template x-for="task in inst.tasks.filter(t => String(t.workflow_node_id) === String(inst.current_node_id))" :key="task.id">
                                                                         <div class="flex items-center justify-between p-3 bg-white dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700/60 rounded-xl hover:shadow-sm transition-all duration-200">
                                                                             <div class="flex items-center gap-3">
-                                                                                <input type="checkbox" 
-                                                                                       :checked="task.status === 'DONE'" 
+                                                                                <input type="checkbox"
+                                                                                       :checked="task.status === 'DONE'"
                                                                                        @change="toggleTaskStatus(task.id)"
                                                                                        :disabled="actionLoading"
                                                                                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer disabled:opacity-50">
@@ -1408,8 +1413,8 @@
                                                                             </div>
                                                                             <div class="flex items-center gap-2">
                                                                                 <span class="text-[10px] px-2 py-0.5 rounded bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-300 font-medium" x-text="task.assignee_name"></span>
-                                                                                <span class="text-[9px] font-extrabold" 
-                                                                                      :class="task.status === 'DONE' ? 'text-emerald-500' : 'text-amber-500'" 
+                                                                                <span class="text-[9px] font-extrabold"
+                                                                                      :class="task.status === 'DONE' ? 'text-emerald-500' : 'text-amber-500'"
                                                                                       x-text="task.status === 'DONE' ? 'انجام شد' : 'در صف انجام'"></span>
                                                                             </div>
                                                                         </div>
@@ -1425,7 +1430,7 @@
                                             <div class="flex flex-wrap gap-2 pt-3 border-t border-gray-100 dark:border-gray-800/80">
                                                 <!-- دکمه هدایت دستی به گام بعد -->
                                                 <template x-if="inst.status === 'ACTIVE' && inst.current_node_type !== 'CONDITION' && !isCurrentNodeAutoAdvance(inst)">
-                                                    <button @click="advance(inst.id)" :disabled="actionLoading" 
+                                                    <button @click="advance(inst.id)" :disabled="actionLoading"
                                                             class="px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm"
                                                             :class="hasPendingTasks(inst)
                                                                 ? 'bg-white border border-amber-300 text-amber-700 hover:bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-900/30'
@@ -1438,7 +1443,7 @@
                                                         <span x-text="hasPendingTasks(inst) ? 'تایید و عبور (با وجود کارهای ناقص)' : 'تایید و رفتن به گام بعد'"></span>
                                                     </button>
                                                 </template>
-                                                
+
                                                 <template x-if="inst.status === 'ACTIVE'">
                                                     <button @click="goBack(inst.id)" :disabled="actionLoading" class="px-3 py-2 bg-white border border-gray-250 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-bold transition-all dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700">
                                                         بازگشت به گام قبلی
@@ -1758,8 +1763,8 @@
                             <option value="لغو شده">لغو شده</option>
                         </select>
                         <div>
-                            <button type="button" 
-                                    @click="submitMerge()" 
+                            <button type="button"
+                                    @click="submitMerge()"
                                     :disabled="selectedInvoices.length < 2"
                                     :class="selectedInvoices.length < 2 ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20'"
                                     class="w-full justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 h-full">
@@ -1928,7 +1933,7 @@
                 <div x-show="activeTab === 'transactions'" x-cloak
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
-                     
+
                     @if(isset($accountingDocuments) && $accountingDocuments->count() > 0)
                         {{-- Table --}}
                         <div class="bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl">
@@ -1966,7 +1971,7 @@
                                                     @php
                                                         $moduleName = 'نامشخص';
                                                         $moduleColor = '#6b7280'; // gray
-                                                        
+
                                                         if ($document->sourceDocument->module === 'services') {
                                                             $moduleName = 'فاکتور سرویس و خدمات';
                                                             $moduleColor = '#10b981'; // emerald

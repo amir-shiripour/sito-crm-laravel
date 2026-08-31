@@ -114,7 +114,7 @@
                         </select>
                         <div @click="showServiceResults = !showServiceResults; if(showServiceResults) { $nextTick(() => $refs.serviceSearchInput.focus()); }"
                              class="{{ $inputClass }} flex items-center justify-between cursor-pointer select-none">
-                            <span x-text="selectedServiceName || 'انتخاب سرویس...'" :class="!serviceId ? 'text-gray-400 font-normal' : 'text-gray-900 dark:text-gray-100 font-medium'"></span>
+                            <span x-text="selectedServiceName || 'انتخاب {{ config('booking.labels.service', 'سرویس') }}...'" :class="!serviceId ? 'text-gray-400 font-normal' : 'text-gray-900 dark:text-gray-100 font-medium'"></span>
                             <svg class="w-5 h-5 text-gray-400 transition-transform duration-200 shrink-0" :class="showServiceResults ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>

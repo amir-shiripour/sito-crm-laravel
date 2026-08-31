@@ -79,7 +79,7 @@
         {{-- Card 2: General Queue --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
             <div>
-                <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 block">صف عمومی (بدون سرویس)</span>
+                <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 block">صف عمومی (بدون {{ config('booking.labels.service', 'سرویس') }})</span>
                 <span class="text-2xl font-black text-gray-900 dark:text-gray-100 mt-1.5 block">{{ $generalWaitingCount }}</span>
             </div>
             <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xl">
@@ -122,7 +122,7 @@
 
             {{-- Service Filter --}}
             <div>
-                <label class="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">🛠️ فیلتر بر اساس سرویس</label>
+                <label class="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">🛠️ فیلتر بر اساس {{ config('booking.labels.service', 'سرویس') }}</label>
                 <select wire:model.live="selectedServiceFilter" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500">
                     <option value="">همه صف‌ها</option>
                     <option value="general">🌐 فقط صف عمومی</option>
@@ -164,7 +164,7 @@
                     <tr>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center w-36">موقعیت در صف</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">مراجع / پرونده</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">سرویس / {{ config('booking.labels.provider', 'ارائه‌دهنده') }}</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">{{ config('booking.labels.service', 'سرویس') }} / {{ config('booking.labels.provider', 'ارائه‌دهنده') }}</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تاریخ ترجیحی</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">توضیحات</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">وضعیت</th>
@@ -354,7 +354,7 @@
                                 {{ $isEditing ? 'ویرایش اطلاعات صف انتظار' : 'افزودن مراجع به صف انتظار' }}
                             </h3>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {{ $isEditing ? 'ویرایش مشخصات، سرویس، ارائه‌دهنده و وضعیت مراجع در صف' : 'ثبت مشخصات و اولویت‌بندی در صف نوبت‌دهی' }}
+                                {{ $isEditing ? 'ویرایش مشخصات، {{ config('booking.labels.service', 'سرویس') }}، ارائه‌دهنده و وضعیت مراجع در صف' : 'ثبت مشخصات و اولویت‌بندی در صف نوبت‌دهی' }}
                             </p>
                         </div>
                     </div>
@@ -438,14 +438,14 @@
                                             <svg class="w-4 h-4 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                                             </svg>
-                                            <span>سرویس نوبت</span>
+                                            <span>{{ config('booking.labels.service', 'سرویس') }} نوبت</span>
                                         </span>
                                         @if($modalProviderId)
                                             <span class="text-[11px] text-teal-600 dark:text-teal-400">وابسته به ارائه‌دهنده</span>
                                         @endif
                                     </label>
                                     <select wire:model.live="modalServiceId" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 shadow-2xs">
-                                        <option value="">صف عمومی (بدون سرویس خاص)</option>
+                                        <option value="">صف عمومی (بدون {{ config('booking.labels.service', 'سرویس') }} خاص)</option>
                                         @foreach($modalServices as $s)
                                             <option value="{{ $s->id }}">{{ $s->name }}</option>
                                         @endforeach
@@ -461,7 +461,7 @@
                                             <span>{{ config('booking.labels.provider', 'ارائه‌دهنده') }}</span>
                                         </span>
                                         @if($modalServiceId)
-                                            <span class="text-[11px] text-teal-600 dark:text-teal-400">وابسته به سرویس</span>
+                                            <span class="text-[11px] text-teal-600 dark:text-teal-400">وابسته به {{ config('booking.labels.service', 'سرویس') }}</span>
                                         @endif
                                     </label>
                                     <select wire:model.live="modalProviderId" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 shadow-2xs">

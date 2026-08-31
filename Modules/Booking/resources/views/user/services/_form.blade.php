@@ -33,6 +33,10 @@
 @endpush
 
 @php
+    $serviceLabel = config('booking.labels.service', 'سرویس');
+    $servicesLabel = config('booking.labels.services', 'سرویس‌ها');
+    $providerLabel = config('booking.labels.provider', 'ارائه‌دهنده');
+    $providersLabel = config('booking.labels.providers', 'ارائه‌دهندگان');
     /** @var \Modules\Booking\Entities\BookingService $service */
     $isAdminUser = (bool)($isAdminUser ?? false);
     $isProvider = (bool)($isProvider ?? false);
@@ -176,17 +180,21 @@
             اطلاعات اصلی
         </h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {{-- نام سرویس (برای Provider روی سرویس عمومی مخفی) --}}
+            {{-- نام {{ $serviceLabel }} (برای Provider روی {{ $serviceLabel }} عمومی مخفی) --}}
             @if(! $editingPublicAsProvider)
                 <div>
-                    <label class="{{ $labelClass }}">نام سرویس</label>
+                    <label class="{{ $labelClass }}">نام {{ $serviceLabel }}</label>
                     <input type="text" name="name" class="{{ $inputClass }}" value="{{ old('name', $service->name ?? '') }}" required placeholder="مثال: مشاوره تخصصی">
                     @error('name')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
                 </div>
 
                 <div>
                     <label class="{{ $labelClass }}">وضعیت سرویس</label>
-                    @php $v = old('status', $service->status ?? \Modules\Booking\Entities\BookingService::STATUS_ACTIVE); @endphp
+                    @php
+    $serviceLabel = config('booking.labels.service', 'سرویس');
+    $servicesLabel = config('booking.labels.services', 'سرویس‌ها');
+    $providerLabel = config('booking.labels.provider', 'ارائه‌دهنده');
+    $providersLabel = config('booking.labels.providers', 'ارائه‌دهندگان'); $v = old('status', $service->status ?? \Modules\Booking\Entities\BookingService::STATUS_ACTIVE); @endphp
                     <div class="relative">
                         <select name="status" class="{{ $selectClass }}" required>
                             <option value="ACTIVE" @selected($v==='ACTIVE')>فعال</option>
@@ -247,7 +255,7 @@
 
             @if($isAdminUser)
                 <div class="col-span-1">
-                    <label class="{{ $labelClass }}">ارائه‌دهندگان سرویس</label>
+                    <label class="{{ $labelClass }}">{{ $providersLabel }} {{ $serviceLabel }}</label>
                     
                     <div class="relative mt-1" id="providers-multi-select-container">
                         <!-- Trigger -->
@@ -356,9 +364,9 @@
                 </div>
             </div>
 
-            {{-- توضیحات سرویس --}}
+            {{-- توضیحات {{ $serviceLabel }} --}}
             <div class="col-span-1 md:col-span-2">
-                <label class="{{ $labelClass }}">توضیحات سرویس (اختیاری)</label>
+                <label class="{{ $labelClass }}">توضیحات {{ $serviceLabel }} (اختیاری)</label>
                 <div
                     wire:ignore
                     x-data="{

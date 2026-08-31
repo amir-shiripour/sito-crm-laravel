@@ -180,22 +180,76 @@ class ChatWidget extends Component
         $this->suggestions = $engine->getSuggestedQuestions((int) BotSetting::getValue('max_suggestions', 5));
     }
 
+    // --- Number Normalization & Conversion Helpers ---
+
+    public static function toEnglishNumbers(?string $string): string
+    {
+        if ($string === null || $string === '') {
+            return '';
+        }
+
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $arabic  = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        $converted = str_replace($persian, $english, $string);
+        return str_replace($arabic, $english, $converted);
+    }
+
+    public static function normalizePhoneNumber(?string $phone): string
+    {
+        if ($phone === null || $phone === '') {
+            return '';
+        }
+
+        $phone = self::toEnglishNumbers($phone);
+        $digits = preg_replace('/[^0-9]/', '', $phone);
+
+        if (empty($digits)) {
+            return '';
+        }
+
+        if (str_starts_with($digits, '0098') && strlen($digits) === 14) {
+            $digits = '0' . substr($digits, 4);
+        } elseif (str_starts_with($digits, '98') && strlen($digits) === 12) {
+            $digits = '0' . substr($digits, 2);
+        } elseif (str_starts_with($digits, '9') && strlen($digits) === 10) {
+            $digits = '0' . $digits;
+        }
+
+        return $digits;
+    }
+
+    public function updatedAuthUsername($val): void
+    {
+        $this->authUsername = self::toEnglishNumbers((string) $val);
+    }
+
+    public function updatedAuthOtp($val): void
+    {
+        $this->authOtp = self::toEnglishNumbers((string) $val);
+    }
+
+    public function updatedRegInputs($val, $key): void
+    {
+        if (in_array($key, ['phone', 'national_code'], true)) {
+            $this->regInputs[$key] = self::toEnglishNumbers((string) $val);
+        }
+    }
+
     // --- Authentication Flow Methods ---
 
     public function checkIdentifier(): void
     {
         $this->authError = '';
-        $this->authUsername = trim($this->authUsername);
+        $this->authUsername = trim(self::toEnglishNumbers($this->authUsername));
 
         if (empty($this->authUsername)) {
             $this->authError = "لطفاً {$this->usernameLabel} خود را وارد کنید.";
             return;
         }
 
-        $normalizedPhone = preg_replace('/[^0-9]/', '', $this->authUsername);
-        if (strlen($normalizedPhone) === 10 && str_starts_with($normalizedPhone, '9')) {
-            $normalizedPhone = '0' . $normalizedPhone;
-        }
+        $normalizedPhone = self::normalizePhoneNumber($this->authUsername);
 
         if (!class_exists(Client::class)) {
             $this->authError = 'ماژول کلاینت‌ها فعال نیست.';
@@ -236,18 +290,27 @@ class ChatWidget extends Component
     public function attemptLogin(): void
     {
         $this->authError = '';
+        $this->authUsername = trim(self::toEnglishNumbers($this->authUsername));
 
         if (empty($this->authPassword)) {
             $this->authError = 'لطفاً رمز عبور را وارد کنید.';
             return;
         }
 
-        $client = Client::query()
+        $normalizedPhone = self::normalizePhoneNumber($this->authUsername);
+
+        $clientQuery = Client::query()
             ->where('username', $this->authUsername)
             ->orWhere('email', $this->authUsername)
             ->orWhere('phone', $this->authUsername)
-            ->orWhere('national_code', $this->authUsername)
-            ->first();
+            ->orWhere('national_code', $this->authUsername);
+
+        if (strlen($normalizedPhone) === 11 && str_starts_with($normalizedPhone, '09')) {
+            $clientQuery->orWhere('phone', $normalizedPhone)
+                        ->orWhere('username', $normalizedPhone);
+        }
+
+        $client = $clientQuery->first();
 
         if ($client && Auth::guard('client')->attempt([
             'username' => $client->username,
@@ -263,6 +326,7 @@ class ChatWidget extends Component
     {
         $this->authStep = 'register';
         $this->regInputs = [];
+        $this->authUsername = trim(self::toEnglishNumbers($this->authUsername));
 
         $fields = [];
         if (class_exists(ClientForm::class)) {
@@ -276,15 +340,13 @@ class ChatWidget extends Component
             ->values()
             ->toArray();
 
+        $normalizedPhone = self::normalizePhoneNumber($this->authUsername);
+
         foreach ($this->regFormFields as $field) {
             $fid = $field['id'];
             $this->regInputs[$fid] = '';
 
             if ($fid === 'phone') {
-                $normalizedPhone = preg_replace('/[^0-9]/', '', $this->authUsername);
-                if (strlen($normalizedPhone) === 10 && str_starts_with($normalizedPhone, '9')) {
-                    $normalizedPhone = '0' . $normalizedPhone;
-                }
                 $this->regInputs['phone'] = (strlen($normalizedPhone) === 11 && str_starts_with($normalizedPhone, '09')) ? $normalizedPhone : ($this->usernameStrategy === 'mobile' ? $this->authUsername : '');
             } elseif ($fid === 'email' && ($this->usernameStrategy === 'email_local' || $this->usernameStrategy === 'email')) {
                 $this->regInputs['email'] = str_contains($this->authUsername, '@') ? $this->authUsername : '';
@@ -300,20 +362,29 @@ class ChatWidget extends Component
 
         $fullName = trim((string)($this->regInputs['full_name'] ?? ''));
         $password = (string)($this->regInputs['password'] ?? '');
-        $phone = trim((string)($this->regInputs['phone'] ?? ''));
+        $phone = trim(self::toEnglishNumbers((string)($this->regInputs['phone'] ?? '')));
         $email = trim((string)($this->regInputs['email'] ?? ''));
-        $nationalCode = trim((string)($this->regInputs['national_code'] ?? ''));
+        $nationalCode = trim(self::toEnglishNumbers((string)($this->regInputs['national_code'] ?? '')));
 
         // اگر استراتژی موبایل است و فیلد شماره خالی است، از authUsername استفاده شود
         if ($this->usernameStrategy === 'mobile' && empty($phone)) {
-            $normalized = preg_replace('/[^0-9]/', '', $this->authUsername);
-            if (strlen($normalized) === 10 && str_starts_with($normalized, '9')) {
-                $normalized = '0' . $normalized;
-            }
+            $normalized = self::normalizePhoneNumber($this->authUsername);
             if (strlen($normalized) === 11 && str_starts_with($normalized, '09')) {
                 $phone = $normalized;
                 $this->regInputs['phone'] = $phone;
             }
+        }
+
+        if (!empty($phone)) {
+            $normalized = self::normalizePhoneNumber($phone);
+            if (strlen($normalized) === 11 && str_starts_with($normalized, '09')) {
+                $phone = $normalized;
+                $this->regInputs['phone'] = $phone;
+            }
+        }
+
+        if (!empty($nationalCode)) {
+            $this->regInputs['national_code'] = $nationalCode;
         }
 
         // Validate only fields present in regFormFields
@@ -406,10 +477,7 @@ class ChatWidget extends Component
         if ($needsOtp) {
             $regPhone = $phone;
             if (empty($regPhone)) {
-                $regPhone = preg_replace('/[^0-9]/', '', $this->authUsername);
-                if (strlen($regPhone) === 10 && str_starts_with($regPhone, '9')) {
-                    $regPhone = '0' . $regPhone;
-                }
+                $regPhone = self::normalizePhoneNumber($this->authUsername);
             }
 
             if (empty($regPhone) || strlen($regPhone) !== 11 || !str_starts_with($regPhone, '09')) {
@@ -437,35 +505,34 @@ class ChatWidget extends Component
             return;
         }
 
-        $phone = $targetPhone;
+        $phone = $targetPhone ? self::normalizePhoneNumber($targetPhone) : null;
 
         if (empty($phone) && !empty($this->pendingRegistrationData['phone'])) {
-            $phone = $this->pendingRegistrationData['phone'];
+            $phone = self::normalizePhoneNumber($this->pendingRegistrationData['phone']);
         }
 
         $client = null;
 
         if (empty($phone)) {
-            $phone = preg_replace('/[^0-9]/', '', $this->authUsername);
-            if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
-                $phone = '0' . $phone;
+            $phoneCandidate = self::normalizePhoneNumber($this->authUsername);
+            $cleanUsername = trim(self::toEnglishNumbers($this->authUsername));
+
+            $clientQuery = Client::query()
+                ->where('username', $cleanUsername)
+                ->orWhere('email', $cleanUsername)
+                ->orWhere('phone', $cleanUsername)
+                ->orWhere('national_code', $cleanUsername);
+
+            if (strlen($phoneCandidate) === 11 && str_starts_with($phoneCandidate, '09')) {
+                $clientQuery->orWhere('phone', $phoneCandidate)
+                            ->orWhere('username', $phoneCandidate);
+                $phone = $phoneCandidate;
             }
 
-            $client = Client::query()
-                ->where('username', $this->authUsername)
-                ->orWhere('email', $this->authUsername)
-                ->orWhere('phone', $this->authUsername)
-                ->orWhere('national_code', $this->authUsername);
-
-            if (strlen($phone) === 11 && str_starts_with($phone, '09')) {
-                $client->orWhere('phone', $phone)
-                       ->orWhere('username', $phone);
-            }
-
-            $client = $client->first();
+            $client = $clientQuery->first();
 
             if ($client && !empty($client->phone)) {
-                $phone = $client->phone;
+                $phone = self::normalizePhoneNumber($client->phone);
             }
         }
 
@@ -573,45 +640,45 @@ class ChatWidget extends Component
     public function verifyOtpCode(): void
     {
         $this->authError = '';
-        if (empty($this->authOtp)) {
+        $cleanOtp = trim(self::toEnglishNumbers($this->authOtp));
+
+        if (empty($cleanOtp)) {
             $this->authError = 'لطفاً کد تأیید را وارد کنید.';
             return;
         }
 
         $phone = '';
         if (!empty($this->pendingRegistrationData['phone'])) {
-            $phone = $this->pendingRegistrationData['phone'];
+            $phone = self::normalizePhoneNumber($this->pendingRegistrationData['phone']);
         } else {
-            $phone = preg_replace('/[^0-9]/', '', $this->authUsername);
-            if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
-                $phone = '0' . $phone;
-            }
+            $phone = self::normalizePhoneNumber($this->authUsername);
         }
 
         $client = null;
         if (empty($this->pendingRegistrationData)) {
-            $client = Client::query()
-                ->where('username', $this->authUsername)
-                ->orWhere('email', $this->authUsername)
-                ->orWhere('phone', $this->authUsername)
-                ->orWhere('national_code', $this->authUsername);
+            $cleanUsername = trim(self::toEnglishNumbers($this->authUsername));
+            $clientQuery = Client::query()
+                ->where('username', $cleanUsername)
+                ->orWhere('email', $cleanUsername)
+                ->orWhere('phone', $cleanUsername)
+                ->orWhere('national_code', $cleanUsername);
 
             if (strlen($phone) === 11 && str_starts_with($phone, '09')) {
-                $client->orWhere('phone', $phone)
-                       ->orWhere('username', $phone);
+                $clientQuery->orWhere('phone', $phone)
+                            ->orWhere('username', $phone);
             }
 
-            $client = $client->first();
+            $client = $clientQuery->first();
 
             if ($client && !empty($client->phone)) {
-                $phone = $client->phone;
+                $phone = self::normalizePhoneNumber($client->phone);
             }
         }
 
         if (class_exists(\Modules\Sms\Entities\SmsOtp::class)) {
             $otp = \Modules\Sms\Entities\SmsOtp::query()
                 ->where('phone', $phone)
-                ->where('code', trim($this->authOtp))
+                ->where('code', $cleanOtp)
                 ->where('context', 'login_client')
                 ->latest()
                 ->first();

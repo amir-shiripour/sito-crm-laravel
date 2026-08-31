@@ -6,7 +6,7 @@
             class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <div>
                 <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">دسته‌بندی‌های نوبت‌دهی</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">مدیریت گروه‌بندی سرویس‌ها</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">مدیریت گروه‌بندی {{ config('booking.labels.services', 'سرویس‌ها') }}</p>
             </div>
 
             @if(auth()->user()?->can('booking.categories.create'))

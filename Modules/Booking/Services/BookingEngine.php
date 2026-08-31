@@ -308,7 +308,7 @@ class BookingEngine
             'is_closed' => $isClosed,
             'work_windows' => $finalWindows,
             'inherited_work_windows' => $finalWindows,
-            'breaks' => array_values(array_filter($allBreaks, fn($b) => !empty($b['start_local']) && !empty($b['end_local']))),
+            'breaks' => array_values(array_filter($allBreaks, fn($b) => (!empty($b['start_local']) && !empty($b['end_local'])) || (!empty($b['start']) && !empty($b['end'])))),
             'slot_duration_minutes' => max(5, (int)$slotDuration),
             'capacity_per_slot' => max(0, (int)$capacityPerSlot),
             'capacity_per_day' => $capacityPerDay !== null ? ((int)$capacityPerDay <= 0 ? null : (int)$capacityPerDay) : null,

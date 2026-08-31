@@ -213,7 +213,7 @@
                                     </div>
                                     <div>
                                         <h3 class="text-xl font-bold text-gray-900 dark:text-white">انتخاب ارائه‌دهنده</h3>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">متخصص یا شخص مورد نظر خود را برای این سرویس انتخاب کنید</p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ config('booking.labels.provider', 'متخصص') }} یا شخص مورد نظر خود را برای این {{ config('booking.labels.service', 'سرویس') }} انتخاب کنید</p>
                                     </div>
                                 </div>
                                 <div class="pt-2">
@@ -295,7 +295,7 @@
                                         </div>
                                         <div>
                                             <h3 class="text-xl font-bold text-gray-900 dark:text-white">تکمیل فرم اطلاعات</h3>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">موارد درخواستی سرویس را با دقت پر کنید</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">موارد درخواستی {{ config('booking.labels.service', 'سرویس') }} را با دقت پر کنید</p>
                                         </div>
                                     </div>
                                     <div class="space-y-6">

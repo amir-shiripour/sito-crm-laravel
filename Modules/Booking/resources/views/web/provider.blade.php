@@ -390,7 +390,7 @@
                         @if($availableServices->count() > 0)
                             <span class="stat-badge text-emerald-700 dark:text-emerald-400">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                            {{ $availableServices->count() }} سرویس فعال
+                            {{ $availableServices->count() }} {{ config('booking.labels.service', 'سرویس') }} فعال
                         </span>
                         @endif
                     </div>
@@ -498,7 +498,7 @@
                                         <div class="step-circle w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-300 shadow-sm text-green-800 bg-white dark:bg-gray-800">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                                         </div>
-                                        <span class="step-label mt-3 text-sm font-bold transition-all duration-300">سرویس</span>
+                                        <span class="step-label mt-3 text-sm font-bold transition-all duration-300">{{ config('booking.labels.service', 'سرویس') }}</span>
                                     </div>
 
                                     <div class="flex-1 h-1.5 mx-2 md:mx-4 rounded-full bg-gray-100 dark:bg-gray-800 relative overflow-hidden step-connector" data-from="1" data-to="2">
@@ -561,7 +561,7 @@
                                             <h2 class="text-xl font-black">۱</h2>
                                         </div>
                                         <div>
-                                            <h3 class="text-xl font-bold text-gray-900 dark:text-white">انتخاب سرویس</h3>
+                                            <h3 class="text-xl font-bold text-gray-900 dark:text-white">انتخاب {{ config('booking.labels.service', 'سرویس') }}</h3>
                                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">خدمت مورد نیاز خود را از لیست زیر انتخاب کنید</p>
                                         </div>
                                     </div>
@@ -650,7 +650,7 @@
                                         </div>
                                         <div>
                                             <h3 class="text-xl font-bold text-gray-900 dark:text-white">تکمیل فرم اطلاعات</h3>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">موارد درخواستی سرویس را با دقت پر کنید</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">موارد درخواستی {{ config('booking.labels.service', 'سرویس') }} را با دقت پر کنید</p>
                                         </div>
                                     </div>
                                     <div class="space-y-6" id="dynamic-form-container">
@@ -1154,7 +1154,7 @@
 
             window.validateStep = function(step, showErrors = true) {
                 let errors = []; let isValid = true;
-                if (step === 1 && !serviceInput?.value) { errors.push('لطفاً یک سرویس را انتخاب کنید.'); isValid = false; }
+                if (step === 1 && !serviceInput?.value) { errors.push('لطفاً یک {{ config('booking.labels.service', 'سرویس') }} را انتخاب کنید.'); isValid = false; }
                 if (step === 2 && !dateInput?.value) { errors.push('لطفاً تاریخ را انتخاب کنید.'); isValid = false; }
                 if (step === 3 && (!startInput?.value || !endInput?.value)) { errors.push('لطفاً زمان موجود را انتخاب کنید.'); isValid = false; }
                 if (window.hasForm && step === 4 && selectedService && selectedService.form) {

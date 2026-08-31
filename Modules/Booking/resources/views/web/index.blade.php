@@ -83,14 +83,14 @@
                 @if($isProviderFlow)
                     انتخاب <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">{{ config('booking.labels.providers') }}</span>
                 @else
-                    رزرو آنلاین <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">سرویس‌ها</span>
+                    رزرو آنلاین <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">{{ config('booking.labels.services', 'سرویس‌ها') }}</span>
                 @endif
             </h1>
             <p class="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
                 @if($isProviderFlow)
-                    {{ config('booking.labels.provider') }} مورد نظر خود را از لیست زیر انتخاب کرده و پس از انتخاب سرویس، در کوتاه‌ترین زمان نوبت بگیرید.
+                    {{ config('booking.labels.provider') }} مورد نظر خود را از لیست زیر انتخاب کرده و پس از انتخاب {{ config('booking.labels.service', 'سرویس') }}، در کوتاه‌ترین زمان نوبت بگیرید.
                 @else
-                    سرویس مورد نظر خود را از لیست زیر انتخاب کنید و در کوتاه‌ترین زمان نوبت خود را قطعی نمایید.
+                    {{ config('booking.labels.service', 'سرویس') }} مورد نظر خود را از لیست زیر انتخاب کنید و در کوتاه‌ترین زمان نوبت خود را قطعی نمایید.
                 @endif
             </p>
         </div>
@@ -319,7 +319,7 @@
                     </button>
                 </div>
             @else
-                {{-- SERVICE FLOW GRID (جریان پیش‌فرض انتخاب سرویس‌ها) --}}
+                {{-- SERVICE FLOW GRID (جریان پیش‌فرض انتخاب {{ config('booking.labels.service', 'سرویس') }}‌ها) --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-100">
                     @foreach($items as $item)
                         @php
@@ -376,7 +376,7 @@
                     </svg>
                 </div>
                 <h3 class="text-2xl font-black text-gray-900 dark:text-white mb-3">
-                    @if($isProviderFlow) هیچ {{ config('booking.labels.provider') }} یافت نشد @else هیچ سرویسی یافت نشد @endif
+                    @if($isProviderFlow) هیچ {{ config('booking.labels.provider') }} یافت نشد @else هیچ {{ config('booking.labels.service', 'سرویس') }}ی یافت نشد @endif
                 </h3>
                 <p class="text-gray-500 dark:text-gray-400 text-lg">
                     در حال حاضر هیچ @if($isProviderFlow) {{ config('booking.labels.provider') }} @else خدماتی @endif برای رزرو آنلاین در سیستم فعال نیست. لطفاً بعداً مراجعه کنید.

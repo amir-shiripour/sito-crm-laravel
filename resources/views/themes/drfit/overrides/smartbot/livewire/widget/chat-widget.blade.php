@@ -283,10 +283,10 @@
                                 @if($authStep === 'identifier')
                                     <form wire:submit.prevent="checkIdentifier" class="space-y-4">
                                         <div>
-{{--                                            <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-3 text-right">{{ $usernameLabel }}</label>--}}
                                             <input
                                                 type="text"
                                                 wire:model="authUsername"
+                                                oninput="this.value = this.value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))"
                                                 placeholder="{{ $usernameLabel }} خود را وارد نمایید"
                                                 class="w-full px-4 py-3 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-right"
                                             />
@@ -299,7 +299,7 @@
                                         </button>
                                     </form>
 
-                                <!-- Step 2: Password -->
+                                    <!-- Step 2: Password -->
                                 @elseif($authStep === 'password')
                                     <form wire:submit.prevent="attemptLogin" class="space-y-4">
                                         <div class="flex items-center justify-between text-xs bg-zinc-100 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-700/50">
@@ -307,7 +307,6 @@
                                             <button type="button" wire:click="resetAuthStep" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">تغییر</button>
                                         </div>
                                         <div>
-{{--                                            <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 text-right">رمز عبور</label>--}}
                                             <input
                                                 type="password"
                                                 wire:model="authPassword"
@@ -331,7 +330,7 @@
                                         @endif
                                     </form>
 
-                                <!-- Step 3: OTP -->
+                                    <!-- Step 3: OTP -->
                                 @elseif($authStep === 'otp')
                                     <form wire:submit.prevent="verifyOtpCode" class="space-y-4">
                                         <div class="flex items-center justify-between text-xs bg-zinc-100 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-700/50">
@@ -339,10 +338,10 @@
                                             <button type="button" wire:click="resetAuthStep" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">تغییر</button>
                                         </div>
                                         <div>
-{{--                                            <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 text-right">کد تأیید پیامک‌شده</label>--}}
                                             <input
                                                 type="text"
                                                 wire:model="authOtp"
+                                                oninput="this.value = this.value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))"
                                                 placeholder="کد ۵ رقمی..."
                                                 class="w-full px-4 py-3 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-center tracking-widest"
                                             />
@@ -355,12 +354,12 @@
                                         </button>
                                     </form>
 
-                                <!-- Step 4: Register -->
+                                    <!-- Step 4: Register -->
                                 @elseif($authStep === 'register')
                                     <form wire:submit.prevent="attemptRegister" class="space-y-3 text-right">
-{{--                                        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] font-semibold text-amber-700 dark:text-amber-300 leading-relaxed mb-3">--}}
-{{--                                            حساب کاربری یافت نشد. جهت استفاده از دستیار، ثبت‌نام خود را تکمیل کنید.--}}
-{{--                                        </div>--}}
+                                        {{--                                        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] font-semibold text-amber-700 dark:text-amber-300 leading-relaxed mb-3">--}}
+                                        {{--                                            حساب کاربری یافت نشد. جهت استفاده از دستیار، ثبت‌نام خود را تکمیل کنید.--}}
+                                        {{--                                        </div>--}}
 
                                         @foreach($regFormFields as $field)
                                             @php
@@ -476,7 +475,7 @@
                                 <h2 class="text-xl md:text-2xl font-medium text-zinc-500 dark:text-zinc-300 tracking-tight">
                                     سلام {{ auth('client')->check() ? auth('client')->user()->full_name : 'کاربر گرامی' }}
                                 </h2>
-{{--                                <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white"></h1>--}}
+                                {{--                                <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white"></h1>--}}
                             </div>
 
                             <!-- Suggestions Cards (Horizontal scroll or Grid) -->
@@ -509,62 +508,62 @@
                             @endif
                         </div>
 
-                    <!-- CASE B: SCROLLABLE CHAT MESSAGE HISTORY -->
-                @else
-                    @foreach($messages as $msg)
-                        @if($msg['role'] === 'user')
-                            <!-- سوال کاربر: ترازبندی در راست (RTL) با استایل شیشه‌ای ملایم ایندیگو -->
-                            <div wire:key="msg-sa-u-{{ $msg['id'] ?? $loop->index }}" id="msg-sa-row-{{ $msg['id'] ?? $loop->index }}" class="flex justify-start w-full smartbot-fade-in group">
-                                <div class="bg-indigo-500/5 dark:bg-indigo-500/10 backdrop-blur-md border border-indigo-200/50 dark:border-indigo-500/35 text-indigo-900 dark:text-indigo-200 px-6 py-3.5 rounded-3xl text-[15px] leading-relaxed max-w-[85%] md:max-w-[75%] font-semibold shadow-[0_8px_30px_rgba(99,102,241,0.03)] dark:shadow-[0_8px_30px_rgba(99,102,241,0.1)]">
-                                    {!! nl2br(e($msg['content'])) !!}
+                        <!-- CASE B: SCROLLABLE CHAT MESSAGE HISTORY -->
+                    @else
+                        @foreach($messages as $msg)
+                            @if($msg['role'] === 'user')
+                                <!-- سوال کاربر: ترازبندی در راست (RTL) با استایل شیشه‌ای ملایم ایندیگو -->
+                                <div wire:key="msg-sa-u-{{ $msg['id'] ?? $loop->index }}" id="msg-sa-row-{{ $msg['id'] ?? $loop->index }}" class="flex justify-start w-full smartbot-fade-in group">
+                                    <div class="bg-indigo-500/5 dark:bg-indigo-500/10 backdrop-blur-md border border-indigo-200/50 dark:border-indigo-500/35 text-indigo-900 dark:text-indigo-200 px-6 py-3.5 rounded-3xl text-[15px] leading-relaxed max-w-[85%] md:max-w-[75%] font-semibold shadow-[0_8px_30px_rgba(99,102,241,0.03)] dark:shadow-[0_8px_30px_rgba(99,102,241,0.1)]">
+                                        {!! nl2br(e($msg['content'])) !!}
+                                    </div>
                                 </div>
-                            </div>
-                        @else
-                            <!-- پاسخ دستیار: ترازبندی در راست (RTL)، بدون حباب، ظاهر مستند‌گونه شبیه ChatGPT -->
-                            <div wire:key="msg-sa-b-{{ $msg['id'] ?? $loop->index }}" id="msg-sa-row-{{ $msg['id'] ?? $loop->index }}" class="smartbot-ai-msg flex justify-start w-full gap-4 md:gap-6 smartbot-fade-in scroll-mt-24 md:scroll-mt-28">
-                                <!-- آواتار هوش مصنوعی -->
-                                <div class="flex-shrink-0 mt-1 w-8 h-8 md:w-9 md:h-9 rounded-full border border-indigo-100 dark:border-indigo-500/30 bg-gradient-to-tr from-indigo-50 dark:from-indigo-950/50 to-purple-50 dark:to-purple-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm overflow-hidden p-0.5">
-                                    @if($botIconSvg)
-                                        {!! $botIconSvg !!}
-                                    @elseif($botIcon)
-                                        <img src="{{ $botIcon }}" class="w-full h-full object-cover rounded-full" alt="{{ $botName }}" />
-                                    @else
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1 1.275-1.275Z"/></svg>
-                                    @endif
-                                </div>
-
-                                <!-- متن پیام و محصولات -->
-                                <div class="flex-1 min-w-0 pt-1.5 pb-2">
-                                    <div class="text-[15px] leading-[1.8] text-zinc-800 dark:text-zinc-200 prose-ai">
-                                        {!! \Modules\SmartBot\App\Services\SmartTagParserService::parse($msg['content']) !!}
+                            @else
+                                <!-- پاسخ دستیار: ترازبندی در راست (RTL)، بدون حباب، ظاهر مستند‌گونه شبیه ChatGPT -->
+                                <div wire:key="msg-sa-b-{{ $msg['id'] ?? $loop->index }}" id="msg-sa-row-{{ $msg['id'] ?? $loop->index }}" class="smartbot-ai-msg flex justify-start w-full gap-4 md:gap-6 smartbot-fade-in scroll-mt-24 md:scroll-mt-28">
+                                    <!-- آواتار هوش مصنوعی -->
+                                    <div class="flex-shrink-0 mt-1 w-8 h-8 md:w-9 md:h-9 rounded-full border border-indigo-100 dark:border-indigo-500/30 bg-gradient-to-tr from-indigo-50 dark:from-indigo-950/50 to-purple-50 dark:to-purple-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm overflow-hidden p-0.5">
+                                        @if($botIconSvg)
+                                            {!! $botIconSvg !!}
+                                        @elseif($botIcon)
+                                            <img src="{{ $botIcon }}" class="w-full h-full object-cover rounded-full" alt="{{ $botName }}" />
+                                        @else
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1 1.275-1.275Z"/></svg>
+                                        @endif
                                     </div>
 
-                                    <!-- پیوست‌های تعاملی و هوشمند (کارت بانکی، شبا، کریپتو، دکمه) -->
-                                    @if(!empty($msg['smart_attachments']))
-                                        <div class="mt-4 flex flex-col gap-3 max-w-xl">
-                                            @foreach($msg['smart_attachments'] as $attIndex => $att)
-                                                @if(($att['type'] ?? '') === 'bank_card' && !empty($att['card_number']))
-                                                    <!-- کارت بانکی -->
-                                                    <div x-data="{ copied: false }" class="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-emerald-950 text-white border border-slate-700/60 shadow-lg shadow-emerald-950/20 space-y-3 font-iranYekan">
-                                                        <div class="flex items-center justify-between">
-                                                            <div class="flex items-center gap-2">
-                                                                <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 text-xs">
-                                                                    💳
-                                                                </div>
-                                                                <span class="text-xs font-bold text-slate-200">{{ $att['bank_name'] ?: 'کارت بانکی' }}</span>
-                                                            </div>
-                                                            @if(!empty($att['card_holder']))
-                                                                <span class="text-[11px] font-semibold text-slate-400">به نام: {{ $att['card_holder'] }}</span>
-                                                            @endif
-                                                        </div>
+                                    <!-- متن پیام و محصولات -->
+                                    <div class="flex-1 min-w-0 pt-1.5 pb-2">
+                                        <div class="text-[15px] leading-[1.8] text-zinc-800 dark:text-zinc-200 prose-ai">
+                                            {!! \Modules\SmartBot\App\Services\SmartTagParserService::parse($msg['content']) !!}
+                                        </div>
 
-                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
+                                        <!-- پیوست‌های تعاملی و هوشمند (کارت بانکی، شبا، کریپتو، دکمه) -->
+                                        @if(!empty($msg['smart_attachments']))
+                                            <div class="mt-4 flex flex-col gap-3 max-w-xl">
+                                                @foreach($msg['smart_attachments'] as $attIndex => $att)
+                                                    @if(($att['type'] ?? '') === 'bank_card' && !empty($att['card_number']))
+                                                        <!-- کارت بانکی -->
+                                                        <div x-data="{ copied: false }" class="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-emerald-950 text-white border border-slate-700/60 shadow-lg shadow-emerald-950/20 space-y-3 font-iranYekan">
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="flex items-center gap-2">
+                                                                    <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 text-xs">
+                                                                        💳
+                                                                    </div>
+                                                                    <span class="text-xs font-bold text-slate-200">{{ $att['bank_name'] ?: 'کارت بانکی' }}</span>
+                                                                </div>
+                                                                @if(!empty($att['card_holder']))
+                                                                    <span class="text-[11px] font-semibold text-slate-400">به نام: {{ $att['card_holder'] }}</span>
+                                                                @endif
+                                                            </div>
+
+                                                            <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
                                                             <span class="text-sm sm:text-base font-bold tracking-widest text-emerald-300">
                                                                 {{ implode(' ', str_split(preg_replace('/[^0-9]/', '', $att['card_number']), 4)) }}
                                                             </span>
-                                                            <button
-                                                                type="button"
-                                                                @click="
+                                                                <button
+                                                                    type="button"
+                                                                    @click="
                                                                     (function(val){
                                                                         if (navigator.clipboard && window.isSecureContext) {
                                                                             return navigator.clipboard.writeText(val);
@@ -582,41 +581,41 @@
                                                                         }
                                                                     })('{{ preg_replace('/[^0-9]/', '', $att['card_number']) }}').then(() => { copied = true; setTimeout(() => copied = false, 2000); });
                                                                 "
-                                                                class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl shrink-0 mr-2"
-                                                                :class="copied ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
-                                                            >
-                                                                <template x-if="!copied">
-                                                                    <span>کپی کارت</span>
-                                                                </template>
-                                                                <template x-if="copied">
-                                                                    <span>کپی شد ✓</span>
-                                                                </template>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                @elseif(($att['type'] ?? '') === 'iban' && !empty($att['iban_code']))
-                                                    <!-- شماره شبا -->
-                                                    <div x-data="{ copied: false }" class="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-sky-950 text-white border border-slate-700/60 shadow-lg shadow-sky-950/20 space-y-3 font-iranYekan">
-                                                        <div class="flex items-center justify-between">
-                                                            <div class="flex items-center gap-2">
-                                                                <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-500/30 text-xs">
-                                                                    🏦
-                                                                </div>
-                                                                <span class="text-xs font-bold text-slate-200">شماره شبا (IBAN)</span>
+                                                                    class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl shrink-0 mr-2"
+                                                                    :class="copied ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
+                                                                >
+                                                                    <template x-if="!copied">
+                                                                        <span>کپی کارت</span>
+                                                                    </template>
+                                                                    <template x-if="copied">
+                                                                        <span>کپی شد ✓</span>
+                                                                    </template>
+                                                                </button>
                                                             </div>
-                                                            @if(!empty($att['account_holder']))
-                                                                <span class="text-[11px] font-semibold text-slate-400">به نام: {{ $att['account_holder'] }}</span>
-                                                            @endif
                                                         </div>
 
-                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
+                                                    @elseif(($att['type'] ?? '') === 'iban' && !empty($att['iban_code']))
+                                                        <!-- شماره شبا -->
+                                                        <div x-data="{ copied: false }" class="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-sky-950 text-white border border-slate-700/60 shadow-lg shadow-sky-950/20 space-y-3 font-iranYekan">
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="flex items-center gap-2">
+                                                                    <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-500/30 text-xs">
+                                                                        🏦
+                                                                    </div>
+                                                                    <span class="text-xs font-bold text-slate-200">شماره شبا (IBAN)</span>
+                                                                </div>
+                                                                @if(!empty($att['account_holder']))
+                                                                    <span class="text-[11px] font-semibold text-slate-400">به نام: {{ $att['account_holder'] }}</span>
+                                                                @endif
+                                                            </div>
+
+                                                            <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
                                                             <span class="text-xs sm:text-sm font-bold tracking-wider text-sky-300 truncate mr-2">
                                                                 {{ $att['iban_code'] }}
                                                             </span>
-                                                            <button
-                                                                type="button"
-                                                                @click="
+                                                                <button
+                                                                    type="button"
+                                                                    @click="
                                                                     (function(val){
                                                                         if (navigator.clipboard && window.isSecureContext) {
                                                                             return navigator.clipboard.writeText(val);
@@ -634,43 +633,43 @@
                                                                         }
                                                                     })('{{ str_replace(' ', '', $att['iban_code']) }}').then(() => { copied = true; setTimeout(() => copied = false, 2000); });
                                                                 "
-                                                                class="shrink-0 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl"
-                                                                :class="copied ? 'bg-sky-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
-                                                            >
-                                                                <template x-if="!copied">
-                                                                    <span>کپی شبا</span>
-                                                                </template>
-                                                                <template x-if="copied">
-                                                                    <span>کپی شد ✓</span>
-                                                                </template>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                @elseif(($att['type'] ?? '') === 'crypto_wallet' && !empty($att['address']))
-                                                    <!-- کیف پول کریپتو -->
-                                                    <div x-data="{ copied: false }" class="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white border border-purple-900/50 shadow-lg shadow-purple-950/20 space-y-3 font-iranYekan">
-                                                        <div class="flex items-center justify-between">
-                                                            <div class="flex items-center gap-2">
-                                                                <div class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center border border-purple-500/30 text-xs">
-                                                                    🪙
-                                                                </div>
-                                                                <span class="text-xs font-bold text-slate-200">کیف پول {{ strtoupper($att['currency'] ?? 'Crypto') }}</span>
+                                                                    class="shrink-0 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl"
+                                                                    :class="copied ? 'bg-sky-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
+                                                                >
+                                                                    <template x-if="!copied">
+                                                                        <span>کپی شبا</span>
+                                                                    </template>
+                                                                    <template x-if="copied">
+                                                                        <span>کپی شد ✓</span>
+                                                                    </template>
+                                                                </button>
                                                             </div>
-                                                            @if(!empty($att['network']))
-                                                                <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
+                                                        </div>
+
+                                                    @elseif(($att['type'] ?? '') === 'crypto_wallet' && !empty($att['address']))
+                                                        <!-- کیف پول کریپتو -->
+                                                        <div x-data="{ copied: false }" class="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white border border-purple-900/50 shadow-lg shadow-purple-950/20 space-y-3 font-iranYekan">
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="flex items-center gap-2">
+                                                                    <div class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center border border-purple-500/30 text-xs">
+                                                                        🪙
+                                                                    </div>
+                                                                    <span class="text-xs font-bold text-slate-200">کیف پول {{ strtoupper($att['currency'] ?? 'Crypto') }}</span>
+                                                                </div>
+                                                                @if(!empty($att['network']))
+                                                                    <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
                                                                     {{ $att['network'] }}
                                                                 </span>
-                                                            @endif
-                                                        </div>
+                                                                @endif
+                                                            </div>
 
-                                                        <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
+                                                            <div class="flex items-center justify-between bg-black/40 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 dir-ltr">
                                                             <span class="text-xs font-semibold tracking-wider text-purple-200 truncate mr-2">
                                                                 {{ $att['address'] }}
                                                             </span>
-                                                            <button
-                                                                type="button"
-                                                                @click="
+                                                                <button
+                                                                    type="button"
+                                                                    @click="
                                                                     (function(val){
                                                                         if (navigator.clipboard && window.isSecureContext) {
                                                                             return navigator.clipboard.writeText(val);
@@ -688,289 +687,289 @@
                                                                         }
                                                                     })('{{ trim($att['address']) }}').then(() => { copied = true; setTimeout(() => copied = false, 2000); });
                                                                 "
-                                                                class="shrink-0 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl"
-                                                                :class="copied ? 'bg-purple-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
-                                                            >
-                                                                <template x-if="!copied">
-                                                                    <span>کپی آدرس</span>
-                                                                </template>
-                                                                <template x-if="copied">
-                                                                    <span>کپی شد ✓</span>
-                                                                </template>
-                                                            </button>
+                                                                    class="shrink-0 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer dir-rtl"
+                                                                    :class="copied ? 'bg-purple-500 text-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-slate-200'"
+                                                                >
+                                                                    <template x-if="!copied">
+                                                                        <span>کپی آدرس</span>
+                                                                    </template>
+                                                                    <template x-if="copied">
+                                                                        <span>کپی شد ✓</span>
+                                                                    </template>
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                    </div>
 
-                                                @elseif(($att['type'] ?? '') === 'url_button' && !empty($att['button_url']))
-                                                    <!-- دکمه اکشن / لینک -->
-                                                    <div class="mt-1">
-                                                        <a href="{{ $att['button_url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 transition-all active:scale-95">
-                                                            <span>{{ $att['button_label'] ?: 'مشاهده و اقدام' }}</span>
-                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
-                                                        </a>
-                                                    </div>
-                                                @endif
-                                            @endforeach
-                                        </div>
-                                    @endif
+                                                    @elseif(($att['type'] ?? '') === 'url_button' && !empty($att['button_url']))
+                                                        <!-- دکمه اکشن / لینک -->
+                                                        <div class="mt-1">
+                                                            <a href="{{ $att['button_url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 transition-all active:scale-95">
+                                                                <span>{{ $att['button_label'] ?: 'مشاهده و اقدام' }}</span>
+                                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                                                            </a>
+                                                        </div>
+                                                    @endif
+                                                @endforeach
+                                            </div>
+                                        @endif
 
-                                    <!-- آیتم‌های منوی شرطی -->
-                                    @if(!empty($msg['menu_items']))
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4 max-w-2xl">
-                                            @foreach($msg['menu_items'] as $mItem)
-                                                <button
-                                                    wire:click="clickMenuItem({{ $mItem['id'] }}, '{{ addslashes($mItem['label']) }}')"
-                                                    wire:key="mitem-sa-{{ $msg['id'] ?? $loop->parent->index }}-{{ $mItem['id'] }}"
-                                                    type="button"
-                                                    class="flex items-center justify-between p-3.5 text-xs font-bold text-zinc-800 dark:text-zinc-100 bg-white/95 dark:bg-[#18181c] border border-zinc-200/80 dark:border-zinc-800/85 rounded-2xl hover:bg-purple-50/80 dark:hover:bg-purple-950/40 hover:border-purple-300 dark:hover:border-purple-500/50 hover:text-purple-600 dark:hover:text-purple-300 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer text-right group"
-                                                >
+                                        <!-- آیتم‌های منوی شرطی -->
+                                        @if(!empty($msg['menu_items']))
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4 max-w-2xl">
+                                                @foreach($msg['menu_items'] as $mItem)
+                                                    <button
+                                                        wire:click="clickMenuItem({{ $mItem['id'] }}, '{{ addslashes($mItem['label']) }}')"
+                                                        wire:key="mitem-sa-{{ $msg['id'] ?? $loop->parent->index }}-{{ $mItem['id'] }}"
+                                                        type="button"
+                                                        class="flex items-center justify-between p-3.5 text-xs font-bold text-zinc-800 dark:text-zinc-100 bg-white/95 dark:bg-[#18181c] border border-zinc-200/80 dark:border-zinc-800/85 rounded-2xl hover:bg-purple-50/80 dark:hover:bg-purple-950/40 hover:border-purple-300 dark:hover:border-purple-500/50 hover:text-purple-600 dark:hover:text-purple-300 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer text-right group"
+                                                    >
                                                     <span class="flex items-center gap-2">
                                                         <span class="w-2 h-2 rounded-full bg-purple-500 group-hover:scale-125 transition-transform"></span>
                                                         {{ $mItem['label'] }}
                                                     </span>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-400 group-hover:text-purple-500 transform group-hover:-translate-x-1 transition-all flex-shrink-0 mr-2 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    @endif
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-400 group-hover:text-purple-500 transform group-hover:-translate-x-1 transition-all flex-shrink-0 mr-2 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        @endif
 
-                                    <!-- لینک خروجی -->
-                                    @if(!empty($msg['url']))
-                                        <div class="mt-3">
-                                            <a href="{{ $msg['url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-all">
-                                                <span>مشاهده لینک</span>
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                            </a>
-                                        </div>
-                                    @endif
+                                        <!-- لینک خروجی -->
+                                        @if(!empty($msg['url']))
+                                            <div class="mt-3">
+                                                <a href="{{ $msg['url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-all">
+                                                    <span>مشاهده لینک</span>
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                                </a>
+                                            </div>
+                                        @endif
 
-                                    <!-- لیست محصولات پیشنهادی -->
-                                    @if(!empty($msg['products']))
-                                        @php
-                                            $isVariantCardMsg = (($msg['answer_type'] ?? '') === 'variant_card');
-                                        @endphp
-                                        <div class="grid {{ ($assistantLevel === 2 && $isVariantCardMsg) ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2' }} gap-3.5 mt-4 max-w-3xl">
-                                            @foreach($msg['products'] as $product)
-                                                @php
-                                                    $activeVariant = null;
-                                                    $hasVariations = !empty($product['has_variations']);
-                                                    $isVariantCard = (($msg['answer_type'] ?? '') === 'variant_card');
-                                                    if ($assistantLevel === 2 && $isVariantCard && $hasVariations && !empty($expandedVariants[$product['id']])) {
-                                                        $selId = $expandedVariants[$product['id']]['selected_variant_id'] ?? null;
-                                                        if ($selId) {
-                                                            $activeVariant = collect($expandedVariants[$product['id']]['variants'])->firstWhere('variant_id', $selId);
+                                        <!-- لیست محصولات پیشنهادی -->
+                                        @if(!empty($msg['products']))
+                                            @php
+                                                $isVariantCardMsg = (($msg['answer_type'] ?? '') === 'variant_card');
+                                            @endphp
+                                            <div class="grid {{ ($assistantLevel === 2 && $isVariantCardMsg) ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2' }} gap-3.5 mt-4 max-w-3xl">
+                                                @foreach($msg['products'] as $product)
+                                                    @php
+                                                        $activeVariant = null;
+                                                        $hasVariations = !empty($product['has_variations']);
+                                                        $isVariantCard = (($msg['answer_type'] ?? '') === 'variant_card');
+                                                        if ($assistantLevel === 2 && $isVariantCard && $hasVariations && !empty($expandedVariants[$product['id']])) {
+                                                            $selId = $expandedVariants[$product['id']]['selected_variant_id'] ?? null;
+                                                            if ($selId) {
+                                                                $activeVariant = collect($expandedVariants[$product['id']]['variants'])->firstWhere('variant_id', $selId);
+                                                            }
                                                         }
-                                                    }
-                                                @endphp
-                                                <div wire:key="p-wrap-sa-{{ $msg['id'] ?? $loop->parent->index }}-{{ $product['id'] ?? $loop->index }}" class="col-span-1 flex flex-col">
-                                                    <!-- کارت اصلی محصول -->
-                                                    <div class="flex flex-col bg-white/95 dark:bg-[#18181c] backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800/85 rounded-2xl overflow-hidden hover:bg-zinc-50/80 dark:hover:bg-[#202025] shadow-sm hover:shadow-indigo-500/5 hover:-translate-y-0.5 hover:border-indigo-300/60 dark:hover:border-indigo-500/30 transition-all duration-300 p-3.5 gap-3.5 items-stretch flex-1">
-                                                        <!-- بخش بالا (عکس + عنوان + بج‌ها) -->
-                                                        <div class="flex gap-3.5 items-start w-full">
-                                                            <!-- عکس محصول -->
-                                                            <a href="{{ $this->getProductUrl($product, $activeVariant ?? null) }}"
-                                                               class="block flex-shrink-0 group relative overflow-hidden rounded-xl border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-800/40 p-2 w-16 h-16 md:w-20 md:h-20 flex items-center justify-center">
-                                                                @if(!empty($product['image']))
-                                                                    <img src="{{ $product['image'] }}" class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" alt="{{ $product['title'] }}" />
-                                                                @else
-                                                                    <div class="w-full h-full flex items-center justify-center transition-transform duration-500 group-hover:scale-105 text-zinc-400">
-                                                                        <svg class="w-8 h-8 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                                                        </svg>
-                                                                    </div>
-                                                                @endif
-                                                            </a>
-
-                                                            <!-- عنوان و بج‌ها -->
-                                                            <div class="flex-1 min-w-0 flex flex-col gap-1.5 py-0.5">
-                                                                <a href="{{ $this->getProductUrl($product, $activeVariant ?? null) }}" class="block group">
-                                                                    <h4 class="text-xs md:text-sm font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-relaxed">{{ $product['title'] }}</h4>
+                                                    @endphp
+                                                    <div wire:key="p-wrap-sa-{{ $msg['id'] ?? $loop->parent->index }}-{{ $product['id'] ?? $loop->index }}" class="col-span-1 flex flex-col">
+                                                        <!-- کارت اصلی محصول -->
+                                                        <div class="flex flex-col bg-white/95 dark:bg-[#18181c] backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800/85 rounded-2xl overflow-hidden hover:bg-zinc-50/80 dark:hover:bg-[#202025] shadow-sm hover:shadow-indigo-500/5 hover:-translate-y-0.5 hover:border-indigo-300/60 dark:hover:border-indigo-500/30 transition-all duration-300 p-3.5 gap-3.5 items-stretch flex-1">
+                                                            <!-- بخش بالا (عکس + عنوان + بج‌ها) -->
+                                                            <div class="flex gap-3.5 items-start w-full">
+                                                                <!-- عکس محصول -->
+                                                                <a href="{{ $this->getProductUrl($product, $activeVariant ?? null) }}"
+                                                                   class="block flex-shrink-0 group relative overflow-hidden rounded-xl border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-800/40 p-2 w-16 h-16 md:w-20 md:h-20 flex items-center justify-center">
+                                                                    @if(!empty($product['image']))
+                                                                        <img src="{{ $product['image'] }}" class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" alt="{{ $product['title'] }}" />
+                                                                    @else
+                                                                        <div class="w-full h-full flex items-center justify-center transition-transform duration-500 group-hover:scale-105 text-zinc-400">
+                                                                            <svg class="w-8 h-8 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                                            </svg>
+                                                                        </div>
+                                                                    @endif
                                                                 </a>
 
-                                                                @if(!empty($product['variant_name']) || (!empty($product['has_variations']) && (!$isVariantCard)))
-                                                                    <div class="flex flex-wrap gap-1.5">
-                                                                        @if(!empty($product['variant_name']))
-                                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-[10px] font-medium border border-zinc-200/60 dark:border-zinc-700/50">
+                                                                <!-- عنوان و بج‌ها -->
+                                                                <div class="flex-1 min-w-0 flex flex-col gap-1.5 py-0.5">
+                                                                    <a href="{{ $this->getProductUrl($product, $activeVariant ?? null) }}" class="block group">
+                                                                        <h4 class="text-xs md:text-sm font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-relaxed">{{ $product['title'] }}</h4>
+                                                                    </a>
+
+                                                                    @if(!empty($product['variant_name']) || (!empty($product['has_variations']) && (!$isVariantCard)))
+                                                                        <div class="flex flex-wrap gap-1.5">
+                                                                            @if(!empty($product['variant_name']))
+                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-[10px] font-medium border border-zinc-200/60 dark:border-zinc-700/50">
                                                                                 {{ $product['variant_name'] }}
                                                                             </span>
-                                                                        @endif
-                                                                        @if(!empty($product['has_variations']) && (!$isVariantCard))
-                                                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 text-[10px] font-bold border border-indigo-100 dark:border-indigo-900/40">
+                                                                            @endif
+                                                                            @if(!empty($product['has_variations']) && (!$isVariantCard))
+                                                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 text-[10px] font-bold border border-indigo-100 dark:border-indigo-900/40">
                                                                                 <svg class="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h12M6 12h12M6 18h12" />
                                                                                 </svg>
                                                                                 دارای تنوع
                                                                             </span>
-                                                                        @endif
-                                                                    </div>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- انتخاب ویژگی‌ها (فقط موقعی که پیام از نوع variant_card باشد) -->
-                                                        @if($assistantLevel === 2 && $isVariantCard && $hasVariations && !empty($expandedVariants[$product['id']]['available_attributes']))
-                                                            <div class="flex flex-col gap-3 border-t border-zinc-100 dark:border-zinc-800/60 pt-3 mt-1.5 w-full">
-                                                                @foreach($expandedVariants[$product['id']]['available_attributes'] as $attrKey => $attrValues)
-                                                                    @php
-                                                                        $dictAttr = $attributeDictionary->firstWhere('name', $attrKey);
-                                                                        $type = $dictAttr ? $dictAttr->type : 'select';
-                                                                        $unit = $dictAttr ? $dictAttr->unit : '';
-                                                                        $currentVal = $selectedProductAttributes[$product['id']][$attrKey] ?? '';
-                                                                    @endphp
-                                                                    <div class="flex flex-col gap-1.5">
-                                                                        <div class="flex items-center gap-1.5">
-                                                                            <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">{{ $attrKey }}:</span>
-                                                                            <span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400">{{ $currentVal }}@if($unit)<span class="text-[9px] font-medium opacity-80"> {{ $unit }}</span>@endif</span>
+                                                                            @endif
                                                                         </div>
-                                                                        <div class="flex flex-wrap gap-2">
-                                                                            @foreach($attrValues as $val)
-                                                                                @php
-                                                                                    $isSelected = $currentVal === $val;
-                                                                                    $metaValue = null;
-                                                                                    if ($dictAttr) {
-                                                                                        $dictVal = $dictAttr->values->firstWhere('value', $val);
-                                                                                        if ($dictVal) {
-                                                                                            $metaValue = $dictVal->meta_value;
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- انتخاب ویژگی‌ها (فقط موقعی که پیام از نوع variant_card باشد) -->
+                                                            @if($assistantLevel === 2 && $isVariantCard && $hasVariations && !empty($expandedVariants[$product['id']]['available_attributes']))
+                                                                <div class="flex flex-col gap-3 border-t border-zinc-100 dark:border-zinc-800/60 pt-3 mt-1.5 w-full">
+                                                                    @foreach($expandedVariants[$product['id']]['available_attributes'] as $attrKey => $attrValues)
+                                                                        @php
+                                                                            $dictAttr = $attributeDictionary->firstWhere('name', $attrKey);
+                                                                            $type = $dictAttr ? $dictAttr->type : 'select';
+                                                                            $unit = $dictAttr ? $dictAttr->unit : '';
+                                                                            $currentVal = $selectedProductAttributes[$product['id']][$attrKey] ?? '';
+                                                                        @endphp
+                                                                        <div class="flex flex-col gap-1.5">
+                                                                            <div class="flex items-center gap-1.5">
+                                                                                <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">{{ $attrKey }}:</span>
+                                                                                <span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400">{{ $currentVal }}@if($unit)<span class="text-[9px] font-medium opacity-80"> {{ $unit }}</span>@endif</span>
+                                                                            </div>
+                                                                            <div class="flex flex-wrap gap-2">
+                                                                                @foreach($attrValues as $val)
+                                                                                    @php
+                                                                                        $isSelected = $currentVal === $val;
+                                                                                        $metaValue = null;
+                                                                                        if ($dictAttr) {
+                                                                                            $dictVal = $dictAttr->values->firstWhere('value', $val);
+                                                                                            if ($dictVal) {
+                                                                                                $metaValue = $dictVal->meta_value;
+                                                                                            }
                                                                                         }
-                                                                                    }
-                                                                                    $borderActive = 'border-indigo-600 dark:border-indigo-500';
-                                                                                    $borderInactive = 'border-zinc-200 dark:border-zinc-800/80';
-                                                                                    $bgActive = ($type === 'color' || $type === 'image') ? '' : 'bg-indigo-50 dark:bg-indigo-950/40';
-                                                                                    $bgInactive = ($type === 'color' || $type === 'image') ? '' : 'bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800/80';
-                                                                                    $textActive = ($type === 'color' || $type === 'image') ? '' : 'text-indigo-600 dark:text-indigo-400';
-                                                                                    $textInactive = ($type === 'color' || $type === 'image') ? '' : 'text-zinc-700 dark:text-zinc-300';
-                                                                                @endphp
-                                                                                <div class="relative group flex-shrink-0">
-                                                                                    <button wire:click="selectAttribute({{ $product['id'] }}, '{{ $attrKey }}', '{{ $val }}')"
-                                                                                            wire:key="attr-sa-{{ $product['id'] }}-{{ $attrKey }}-{{ $val }}"
-                                                                                            type="button"
-                                                                                            class="relative transition-all flex items-center justify-center overflow-hidden outline-none border-2 cursor-pointer
+                                                                                        $borderActive = 'border-indigo-600 dark:border-indigo-500';
+                                                                                        $borderInactive = 'border-zinc-200 dark:border-zinc-800/80';
+                                                                                        $bgActive = ($type === 'color' || $type === 'image') ? '' : 'bg-indigo-50 dark:bg-indigo-950/40';
+                                                                                        $bgInactive = ($type === 'color' || $type === 'image') ? '' : 'bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800/80';
+                                                                                        $textActive = ($type === 'color' || $type === 'image') ? '' : 'text-indigo-600 dark:text-indigo-400';
+                                                                                        $textInactive = ($type === 'color' || $type === 'image') ? '' : 'text-zinc-700 dark:text-zinc-300';
+                                                                                    @endphp
+                                                                                    <div class="relative group flex-shrink-0">
+                                                                                        <button wire:click="selectAttribute({{ $product['id'] }}, '{{ $attrKey }}', '{{ $val }}')"
+                                                                                                wire:key="attr-sa-{{ $product['id'] }}-{{ $attrKey }}-{{ $val }}"
+                                                                                                type="button"
+                                                                                                class="relative transition-all flex items-center justify-center overflow-hidden outline-none border-2 cursor-pointer
                                                                                             {{ $isSelected ? "$borderActive $bgActive $textActive" : "$borderInactive $bgInactive $textInactive" }}
                                                                                             {{ $type === 'color' ? 'w-8 h-8 p-0.5 rounded-full' : ($type === 'image' ? 'w-11 h-11 p-0.5 rounded-lg' : 'px-3 py-1.5 text-xs font-bold rounded-xl') }}">
-                                                                                        @if($type === 'color' || $type === 'image')
-                                                                                            @if($metaValue && str_starts_with($metaValue, 'attributes/'))
-                                                                                                <img src="{{ Storage::url($metaValue) }}" class="w-full h-full object-cover {{ $type === 'color' ? 'rounded-full' : 'rounded-md' }}">
-                                                                                            @else
-                                                                                                @if($type === 'color')
-                                                                                                    <span class="w-full h-full rounded-full shadow-inner" style="background-color: {{ $metaValue ?? '#ccc' }}"></span>
+                                                                                            @if($type === 'color' || $type === 'image')
+                                                                                                @if($metaValue && str_starts_with($metaValue, 'attributes/'))
+                                                                                                    <img src="{{ Storage::url($metaValue) }}" class="w-full h-full object-cover {{ $type === 'color' ? 'rounded-full' : 'rounded-md' }}">
                                                                                                 @else
-                                                                                                    <span class="text-[9px] leading-tight text-center">{{ $val }}</span>
+                                                                                                    @if($type === 'color')
+                                                                                                        <span class="w-full h-full rounded-full shadow-inner" style="background-color: {{ $metaValue ?? '#ccc' }}"></span>
+                                                                                                    @else
+                                                                                                        <span class="text-[9px] leading-tight text-center">{{ $val }}</span>
+                                                                                                    @endif
                                                                                                 @endif
+                                                                                            @else
+                                                                                                {{ $val }}
                                                                                             @endif
-                                                                                        @else
-                                                                                            {{ $val }}
-                                                                                        @endif
 
-                                                                                        @if($type === 'color')
-                                                                                            <div class="absolute inset-0 flex items-center justify-center transition-opacity pointer-events-none" style="opacity: {{ $isSelected ? '1' : '0' }}">
-                                                                                                <div class="bg-white/80 dark:bg-black/50 rounded-full w-full h-full flex items-center justify-center">
-                                                                                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                                                            @if($type === 'color')
+                                                                                                <div class="absolute inset-0 flex items-center justify-center transition-opacity pointer-events-none" style="opacity: {{ $isSelected ? '1' : '0' }}">
+                                                                                                    <div class="bg-white/80 dark:bg-black/50 rounded-full w-full h-full flex items-center justify-center">
+                                                                                                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                                                                    </div>
                                                                                                 </div>
-                                                                                            </div>
-                                                                                        @endif
-                                                                                    </button>
-                                                                                </div>
-                                                                            @endforeach
+                                                                                            @endif
+                                                                                        </button>
+                                                                                    </div>
+                                                                                @endforeach
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                 @endforeach
-                                                            </div>
-                                                        @endif
+                                                                    @endforeach
+                                                                </div>
+                                                            @endif
 
-                                                        <!-- بخش پایین (تمام عرض: دکمه سمت راست، قیمت سمت چپ) -->
-                                                        <div class="flex justify-between items-center w-full border-t border-zinc-100 dark:border-zinc-800/60 pt-2.5 mt-auto">
-                                                            <!-- دکمه اقدام (سمت راست در RTL) -->
-                                                            <div class="flex-shrink-0">
-                                                                @if($hasVariations && $assistantLevel === 2 && !$isVariantCard)
-                                                                    <!-- دکمه سطح ۲ در پیام اولیه: باز کردن کارت تنوع با ایجاد پیام جدید -->
-                                                                    <button wire:click="showVariantCard({{ $product['id'] }}, '{{ addslashes($product['title']) }}', '{{ $msg['id'] ?? $loop->parent->index }}')"
-                                                                            wire:key="btn-var-sa-open-{{ $product['id'] }}-{{ $msg['id'] ?? $loop->parent->index }}"
-                                                                            type="button"
-                                                                            class="inline-flex items-center justify-center gap-1.5 px-3.5 h-8 text-[11px] font-bold text-white rounded-xl whitespace-nowrap transition-all duration-300 hover:brightness-110 active:scale-95 shadow-sm cursor-pointer"
-                                                                            style="background-color: {{ $primaryColor }}; box-shadow: 0 4px 12px -2px {{ $primaryColor }}50;">
-                                                                        <span>انتخاب تنوع</span>
-                                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                                                                        </svg>
-                                                                    </button>
-                                                                @elseif($hasVariations && $assistantLevel !== 2)
-                                                                    <!-- دکمه سطح ۱: لینک به صفحه محصول -->
-                                                                    <a href="{{ $this->getProductUrl($product) }}"
-                                                                       wire:key="btn-var-sa-lvl1-{{ $product['id'] }}"
-                                                                       class="inline-flex items-center justify-center gap-1 px-3 h-8 text-[11px] font-bold text-white rounded-xl whitespace-nowrap transition-all duration-300 hover:brightness-110 active:scale-95 shadow-sm"
-                                                                       style="background-color: {{ $primaryColor }}; box-shadow: 0 4px 12px -2px {{ $primaryColor }}50;">
-                                                                        <span>مشاهده و خرید</span>
-                                                                        <svg class="w-3 h-3 transform -scale-x-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                                                                        </svg>
-                                                                    </a>
-                                                                @elseif($assistantLevel === 2 && $isVariantCard && $hasVariations)
-                                                                    @if($activeVariant && $activeVariant['has_stock'])
-                                                                        <div class="w-full min-w-[90px] max-w-[110px]" wire:key="cart-btn-sa-var-{{ $product['id'] }}-{{ $activeVariant['variant_id'] }}">
-                                                                            @livewire('market::web.add-to-cart-button', [
+                                                            <!-- بخش پایین (تمام عرض: دکمه سمت راست، قیمت سمت چپ) -->
+                                                            <div class="flex justify-between items-center w-full border-t border-zinc-100 dark:border-zinc-800/60 pt-2.5 mt-auto">
+                                                                <!-- دکمه اقدام (سمت راست در RTL) -->
+                                                                <div class="flex-shrink-0">
+                                                                    @if($hasVariations && $assistantLevel === 2 && !$isVariantCard)
+                                                                        <!-- دکمه سطح ۲ در پیام اولیه: باز کردن کارت تنوع با ایجاد پیام جدید -->
+                                                                        <button wire:click="showVariantCard({{ $product['id'] }}, '{{ addslashes($product['title']) }}', '{{ $msg['id'] ?? $loop->parent->index }}')"
+                                                                                wire:key="btn-var-sa-open-{{ $product['id'] }}-{{ $msg['id'] ?? $loop->parent->index }}"
+                                                                                type="button"
+                                                                                class="inline-flex items-center justify-center gap-1.5 px-3.5 h-8 text-[11px] font-bold text-white rounded-xl whitespace-nowrap transition-all duration-300 hover:brightness-110 active:scale-95 shadow-sm cursor-pointer"
+                                                                                style="background-color: {{ $primaryColor }}; box-shadow: 0 4px 12px -2px {{ $primaryColor }}50;">
+                                                                            <span>انتخاب تنوع</span>
+                                                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                                                            </svg>
+                                                                        </button>
+                                                                    @elseif($hasVariations && $assistantLevel !== 2)
+                                                                        <!-- دکمه سطح ۱: لینک به صفحه محصول -->
+                                                                        <a href="{{ $this->getProductUrl($product) }}"
+                                                                           wire:key="btn-var-sa-lvl1-{{ $product['id'] }}"
+                                                                           class="inline-flex items-center justify-center gap-1 px-3 h-8 text-[11px] font-bold text-white rounded-xl whitespace-nowrap transition-all duration-300 hover:brightness-110 active:scale-95 shadow-sm"
+                                                                           style="background-color: {{ $primaryColor }}; box-shadow: 0 4px 12px -2px {{ $primaryColor }}50;">
+                                                                            <span>مشاهده و خرید</span>
+                                                                            <svg class="w-3 h-3 transform -scale-x-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                                                                            </svg>
+                                                                        </a>
+                                                                    @elseif($assistantLevel === 2 && $isVariantCard && $hasVariations)
+                                                                        @if($activeVariant && $activeVariant['has_stock'])
+                                                                            <div class="w-full min-w-[90px] max-w-[110px]" wire:key="cart-btn-sa-var-{{ $product['id'] }}-{{ $activeVariant['variant_id'] }}">
+                                                                                @livewire('market::web.add-to-cart-button', [
                                                                                 'variantId' => $activeVariant['variant_id'],
                                                                                 'vendorProductId' => $activeVariant['vendor_product_id'],
                                                                                 't' => [
-                                                                                    'style' => 'background-color: ' . $primaryColor . ';',
-                                                                                    'shadow_color' => $primaryColor,
-                                                                                    'justify' => 'justify-start',
+                                                                                'style' => 'background-color: ' . $primaryColor . ';',
+                                                                                'shadow_color' => $primaryColor,
+                                                                                'justify' => 'justify-start',
                                                                                 ]
-                                                                            ], key('cart-btn-sa-var-' . $product['id'] . '-' . $activeVariant['variant_id']))
+                                                                                ], key('cart-btn-sa-var-' . $product['id'] . '-' . $activeVariant['variant_id']))
+                                                                            </div>
+                                                                        @else
+                                                                            <span class="inline-flex items-center justify-center px-3 h-8 text-[11px] font-bold text-red-500 bg-red-50 dark:bg-red-500/10 rounded-xl whitespace-nowrap">ناموجود</span>
+                                                                        @endif
+                                                                    @elseif($product['has_stock'] && $product['variant_id'] && $product['vendor_product_id'])
+                                                                        <div class="w-full min-w-[90px] max-w-[110px]">
+                                                                            @livewire('market::web.add-to-cart-button', [
+                                                                            'variantId' => $product['variant_id'],
+                                                                            'vendorProductId' => $product['vendor_product_id'],
+                                                                            't' => [
+                                                                            'style' => 'background-color: ' . $primaryColor . ';',
+                                                                            'shadow_color' => $primaryColor,
+                                                                            'justify' => 'justify-start',
+                                                                            ]
+                                                                            ], key('cart-btn-' . $product['id'] . '-' . $loop->index . '-' . ($msg['id'] ?? 0)))
                                                                         </div>
                                                                     @else
                                                                         <span class="inline-flex items-center justify-center px-3 h-8 text-[11px] font-bold text-red-500 bg-red-50 dark:bg-red-500/10 rounded-xl whitespace-nowrap">ناموجود</span>
                                                                     @endif
-                                                                @elseif($product['has_stock'] && $product['variant_id'] && $product['vendor_product_id'])
-                                                                    <div class="w-full min-w-[90px] max-w-[110px]">
-                                                                        @livewire('market::web.add-to-cart-button', [
-                                                                            'variantId' => $product['variant_id'],
-                                                                            'vendorProductId' => $product['vendor_product_id'],
-                                                                            't' => [
-                                                                                'style' => 'background-color: ' . $primaryColor . ';',
-                                                                                'shadow_color' => $primaryColor,
-                                                                                'justify' => 'justify-start',
-                                                                            ]
-                                                                        ], key('cart-btn-' . $product['id'] . '-' . $loop->index . '-' . ($msg['id'] ?? 0)))
-                                                                    </div>
-                                                                @else
-                                                                    <span class="inline-flex items-center justify-center px-3 h-8 text-[11px] font-bold text-red-500 bg-red-50 dark:bg-red-500/10 rounded-xl whitespace-nowrap">ناموجود</span>
-                                                                @endif
-                                                            </div>
+                                                                </div>
 
-                                                            <!-- قیمت (سمت چپ در RTL) -->
-                                                            <div class="flex flex-col items-end text-left">
-                                                                @php
-                                                                    $priceVal = $activeVariant ? $activeVariant['formatted_price'] : $product['formatted_price'];
-                                                                    $origPriceVal = $activeVariant ? $activeVariant['formatted_original_price'] : $product['formatted_original_price'];
-                                                                    $discPercent = $activeVariant ? $activeVariant['discount_percent'] : $product['discount_percent'];
-                                                                @endphp
-                                                                @if($discPercent > 0)
-                                                                    <div class="flex items-center gap-1 mb-0.5">
+                                                                <!-- قیمت (سمت چپ در RTL) -->
+                                                                <div class="flex flex-col items-end text-left">
+                                                                    @php
+                                                                        $priceVal = $activeVariant ? $activeVariant['formatted_price'] : $product['formatted_price'];
+                                                                        $origPriceVal = $activeVariant ? $activeVariant['formatted_original_price'] : $product['formatted_original_price'];
+                                                                        $discPercent = $activeVariant ? $activeVariant['discount_percent'] : $product['discount_percent'];
+                                                                    @endphp
+                                                                    @if($discPercent > 0)
+                                                                        <div class="flex items-center gap-1 mb-0.5">
                                                                         <span class="text-[10px] text-zinc-400 line-through">
                                                                             {{ $origPriceVal }}
                                                                         </span>
-                                                                        <span class="px-1 py-0.2 rounded text-[9px] font-black bg-rose-500 text-white">
+                                                                            <span class="px-1 py-0.2 rounded text-[9px] font-black bg-rose-500 text-white">
                                                                             {{ $discPercent }}%
                                                                         </span>
-                                                                    </div>
-                                                                    <span class="text-xs md:text-sm font-black text-rose-600 dark:text-rose-400">
+                                                                        </div>
+                                                                        <span class="text-xs md:text-sm font-black text-rose-600 dark:text-rose-400">
                                                                         {{ $priceVal }}
                                                                     </span>
-                                                                @else
-                                                                    <span class="text-xs md:text-sm font-black text-zinc-900 dark:text-zinc-100">
+                                                                    @else
+                                                                        <span class="text-xs md:text-sm font-black text-zinc-900 dark:text-zinc-100">
                                                                         {{ $priceVal }}
                                                                     </span>
-                                                                @endif
+                                                                    @endif
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                        @if($isVariantCard && !empty($msg['parent_message_key']))
-                                            <div class="mt-4 flex justify-end">
-                                                <button
-                                                    @click="
+                                                @endforeach
+                                            </div>
+                                            @if($isVariantCard && !empty($msg['parent_message_key']))
+                                                <div class="mt-4 flex justify-end">
+                                                    <button
+                                                        @click="
                                                         const el = document.getElementById('msg-sa-row-{{ $msg['parent_message_key'] }}');
                                                         if (el) {
                                                             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -996,23 +995,23 @@
                                                             $wire.removeMessage('{{ $msg['id'] }}');
                                                         }, 350);
                                                     "
-                                                    type="button"
-                                                    class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-[11px] font-bold text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900/60 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm cursor-pointer w-full sm:w-auto"
-                                                >
-                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-                                                    </svg>
-                                                    <span>به محصول دیگری نیاز دارید؟</span>
-                                                </button>
-                                            </div>
+                                                        type="button"
+                                                        class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-[11px] font-bold text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900/60 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm cursor-pointer w-full sm:w-auto"
+                                                    >
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                                        </svg>
+                                                        <span>به محصول دیگری نیاز دارید؟</span>
+                                                    </button>
+                                                </div>
+                                            @endif
                                         @endif
-                                    @endif
 
-                                    <!-- دکمه بازگشت تمام‌عرض فقط برای آخرین پیام -->
-                                    @if($loop->last && $msg['role'] === 'bot' && !$loop->first && (($msg['answer_type'] ?? '') !== 'variant_card'))
-                                        <div class="mt-4 w-full">
-                                            <button
-                                                x-on:click="
+                                        <!-- دکمه بازگشت تمام‌عرض فقط برای آخرین پیام -->
+                                        @if($loop->last && $msg['role'] === 'bot' && !$loop->first && (($msg['answer_type'] ?? '') !== 'variant_card'))
+                                            <div class="mt-4 w-full">
+                                                <button
+                                                    x-on:click="
                                                     const row = document.getElementById('msg-sa-row-' + '{{ $msg['id'] ?? $loop->index }}');
                                                     if (row) {
                                                         row.style.maxHeight = row.offsetHeight + 'px';
@@ -1030,128 +1029,128 @@
                                                         $wire.goBackStep('{{ $msg['id'] ?? $loop->index }}');
                                                     }, 350);
                                                 "
-                                                type="button"
-                                                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-50/90 dark:bg-zinc-900/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-500/50 transition-all duration-200 shadow-sm cursor-pointer"
-                                            >
-                                                <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-                                                </svg>
-                                                <span>بازگشت</span>
-                                            </button>
-                                        </div>
-                                    @endif
+                                                    type="button"
+                                                    class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-50/90 dark:bg-zinc-900/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-500/50 transition-all duration-200 shadow-sm cursor-pointer"
+                                                >
+                                                    <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                                    </svg>
+                                                    <span>بازگشت</span>
+                                                </button>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                        @endforeach
+
+                        <!-- انیمیشن در حال تایپ -->
+                        @if($isThinking)
+                            <div class="flex justify-start w-full gap-4 md:gap-6 smartbot-fade-in" wire:key="thinking" x-init="$wire.processMessage()">
+                                <div class="flex-shrink-0 mt-1 w-8 h-8 md:w-9 md:h-9 rounded-full border border-zinc-200 dark:border-zinc-805 bg-white dark:bg-[#151515] flex items-center justify-center text-zinc-400 shadow-sm">
+                                    <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                </div>
+                                <div class="flex-1 min-w-0 pt-3">
+                                    <span class="text-sm text-zinc-500 dark:text-zinc-450 font-medium">هوش مصنوعی در حال پردازش است...</span>
                                 </div>
                             </div>
                         @endif
-                    @endforeach
-
-                    <!-- انیمیشن در حال تایپ -->
-                    @if($isThinking)
-                        <div class="flex justify-start w-full gap-4 md:gap-6 smartbot-fade-in" wire:key="thinking" x-init="$wire.processMessage()">
-                            <div class="flex-shrink-0 mt-1 w-8 h-8 md:w-9 md:h-9 rounded-full border border-zinc-200 dark:border-zinc-805 bg-white dark:bg-[#151515] flex items-center justify-center text-zinc-400 shadow-sm">
-                                <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-                            </div>
-                            <div class="flex-1 min-w-0 pt-3">
-                                <span class="text-sm text-zinc-500 dark:text-zinc-450 font-medium">هوش مصنوعی در حال پردازش است...</span>
-                            </div>
-                        </div>
                     @endif
-                @endif
-            </div>
+                </div>
 
-            <!-- نوار شناور و ثابت پایین صفحه برای دریافت متن -->
-            <div x-ref="bottomBar" class="fixed bottom-0 left-0 w-full z-20 bg-gradient-to-t from-white via-white/95 to-transparent dark:from-[#0a0a0d] dark:via-[#0a0a0d]/97 dark:to-transparent pt-12 pb-6" wire:key="sa-input-bar">
-                <div class="max-w-3xl mx-auto w-full px-4 flex flex-col gap-3">
+                <!-- نوار شناور و ثابت پایین صفحه برای دریافت متن -->
+                <div x-ref="bottomBar" class="fixed bottom-0 left-0 w-full z-20 bg-gradient-to-t from-white via-white/95 to-transparent dark:from-[#0a0a0d] dark:via-[#0a0a0d]/97 dark:to-transparent pt-12 pb-6" wire:key="sa-input-bar">
+                    <div class="max-w-3xl mx-auto w-full px-4 flex flex-col gap-3">
 
-                    <!-- پیشنهادات حین چت / منو اصلی در صورت غیرفعال بودن تایپ متنی -->
-                    @if(count($messages) > 1)
-                        @if($allowCustomTyping)
-                            @if(!empty($suggestions))
-                                <div class="flex overflow-x-auto smartbot-scrollbar pb-1 gap-2 justify-start px-2">
-                                    @foreach($suggestions as $sug)
+                        <!-- پیشنهادات حین چت / منو اصلی در صورت غیرفعال بودن تایپ متنی -->
+                        @if(count($messages) > 1)
+                            @if($allowCustomTyping)
+                                @if(!empty($suggestions))
+                                    <div class="flex overflow-x-auto smartbot-scrollbar pb-1 gap-2 justify-start px-2">
+                                        @foreach($suggestions as $sug)
+                                            <button
+                                                wire:click="sendMessage('{{ addslashes($sug) }}')"
+                                                class="whitespace-nowrap flex-shrink-0 px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-700/60 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all duration-200 shadow-sm"
+                                            >
+                                                {{ $sug }}
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            @else
+                                <!-- پنل با استایل قبلی و فقط گزینه منو اصلی در صورت غیرفعال بودن تایپ متنی -->
+                                <div class="w-full bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-800/70 rounded-[28px] p-5 shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] flex flex-col gap-4 smartbot-fade-in">
+                                    <div class="flex items-center gap-2 text-xs font-bold text-zinc-800 dark:text-zinc-200 border-b border-zinc-100 dark:border-zinc-800/60 pb-3">
+                                        <div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                                        <span>دسترسی سریع</span>
+                                    </div>
+                                    <div class="grid grid-cols-1 gap-2.5">
                                         <button
-                                            wire:click="sendMessage('{{ addslashes($sug) }}')"
-                                            class="whitespace-nowrap flex-shrink-0 px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-700/60 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all duration-200 shadow-sm"
+                                            wire:click="resetSession"
+                                            type="button"
+                                            class="flex items-center justify-between p-3.5 text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-50/80 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/50 rounded-2xl hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all duration-200 text-right group shadow-sm hover:shadow-md cursor-pointer"
                                         >
-                                            {{ $sug }}
-                                        </button>
-                                    @endforeach
-                                </div>
-                            @endif
-                        @else
-                            <!-- پنل با استایل قبلی و فقط گزینه منو اصلی در صورت غیرفعال بودن تایپ متنی -->
-                            <div class="w-full bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-800/70 rounded-[28px] p-5 shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] flex flex-col gap-4 smartbot-fade-in">
-                                <div class="flex items-center gap-2 text-xs font-bold text-zinc-800 dark:text-zinc-200 border-b border-zinc-100 dark:border-zinc-800/60 pb-3">
-                                    <div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                                    <span>دسترسی سریع</span>
-                                </div>
-                                <div class="grid grid-cols-1 gap-2.5">
-                                    <button
-                                        wire:click="resetSession"
-                                        type="button"
-                                        class="flex items-center justify-between p-3.5 text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-50/80 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/50 rounded-2xl hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all duration-200 text-right group shadow-sm hover:shadow-md cursor-pointer"
-                                    >
                                         <span class="flex items-center gap-2">
                                             <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 00-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                                             </svg>
                                             <span>منو اصلی</span>
                                         </span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-400 group-hover:text-indigo-500 transform group-hover:-translate-x-1 transition-all flex-shrink-0 mr-2 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
-                                    </button>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-400 group-hover:text-indigo-500 transform group-hover:-translate-x-1 transition-all flex-shrink-0 mr-2 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         @endif
-                    @endif
 
-                    <!-- باکس ورودی چت اصلی یا دکمه منو اصلی -->
-                    @if($allowCustomTyping)
-                        <div class="relative bg-white/95 dark:bg-[#151518]/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-700/60 rounded-[28px] p-2 sm:p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-end transition-all focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-500">
-                            <!-- دکمه ضمیمه یا اختیاری -->
-                            <button type="button" class="p-2.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                            </button>
+                        <!-- باکس ورودی چت اصلی یا دکمه منو اصلی -->
+                        @if($allowCustomTyping)
+                            <div class="relative bg-white/95 dark:bg-[#151518]/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-700/60 rounded-[28px] p-2 sm:p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-end transition-all focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-500">
+                                <!-- دکمه ضمیمه یا اختیاری -->
+                                <button type="button" class="p-2.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                </button>
 
-                            <textarea
-                                x-model="inputValue"
-                                x-ref="inputField"
-                                placeholder="از دستیار هوشمند بپرسید..."
-                                class="flex-1 bg-transparent border-none focus:ring-0 text-zinc-900 dark:text-zinc-50 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 resize-none py-3 px-2 text-[15px] leading-relaxed outline-none"
-                                style="height: 56px;"
-                                x-on:keydown.enter.prevent="if (!e.shiftKey) { submitForm(); }"
-                                @input="
+                                <textarea
+                                    x-model="inputValue"
+                                    x-ref="inputField"
+                                    placeholder="از دستیار هوشمند بپرسید..."
+                                    class="flex-1 bg-transparent border-none focus:ring-0 text-zinc-900 dark:text-zinc-50 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 resize-none py-3 px-2 text-[15px] leading-relaxed outline-none"
+                                    style="height: 56px;"
+                                    x-on:keydown.enter.prevent="if (!e.shiftKey) { submitForm(); }"
+                                    @input="
                                     $refs.inputField.style.height = '56px';
                                     let newH = Math.min($refs.inputField.scrollHeight, 200);
                                     $refs.inputField.style.height = newH + 'px';
                                     inputHeight = newH;
                                 "
-                                :disabled="$wire.isThinking"
-                            ></textarea>
+                                    :disabled="$wire.isThinking"
+                                ></textarea>
 
-                            <!-- دکمه ارسال -->
-                            <button
-                                @click="submitForm()"
-                                class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 ml-1"
-                                :class="inputValue ? 'bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white shadow-md shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95' : 'bg-zinc-100/80 dark:bg-zinc-800/60 text-zinc-400 dark:text-zinc-600'"
-                                :disabled="$wire.isThinking || !inputValue"
-                            >
-                                <template x-if="$wire.isThinking">
-                                    <svg class="animate-spin w-4 h-4 text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                                    </svg>
-                                </template>
-                                <template x-if="!$wire.isThinking">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="rtl:rotate-180"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                                </template>
-                            </button>
-                        </div>
-                    @endif
+                                <!-- دکمه ارسال -->
+                                <button
+                                    @click="submitForm()"
+                                    class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 ml-1"
+                                    :class="inputValue ? 'bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white shadow-md shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95' : 'bg-zinc-100/80 dark:bg-zinc-800/60 text-zinc-400 dark:text-zinc-600'"
+                                    :disabled="$wire.isThinking || !inputValue"
+                                >
+                                    <template x-if="$wire.isThinking">
+                                        <svg class="animate-spin w-4 h-4 text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                        </svg>
+                                    </template>
+                                    <template x-if="!$wire.isThinking">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="rtl:rotate-180"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                    </template>
+                                </button>
+                            </div>
+                        @endif
+                    </div>
                 </div>
-            </div>
-        @endif
-    </div>
-@endif
+            @endif
+        </div>
+    @endif
 
     <!-- 2. STANDARD COMPACT FLOATING CHAT PANEL -->
     @if(!$isStandalone && $isWidgetOpen)
@@ -1259,6 +1258,7 @@
                                     <input
                                         type="text"
                                         wire:model="authUsername"
+                                        oninput="this.value = this.value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))"
                                         placeholder="ورود {{ $usernameLabel }}..."
                                         class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-right"
                                     />
@@ -1271,7 +1271,7 @@
                                 </button>
                             </form>
 
-                        <!-- Step 2: Password -->
+                            <!-- Step 2: Password -->
                         @elseif($authStep === 'password')
                             <form wire:submit.prevent="attemptLogin" class="space-y-4">
                                 <div class="flex items-center justify-between text-xs bg-zinc-100 dark:bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-700/50">
@@ -1303,7 +1303,7 @@
                                 @endif
                             </form>
 
-                        <!-- Step 3: OTP -->
+                            <!-- Step 3: OTP -->
                         @elseif($authStep === 'otp')
                             <form wire:submit.prevent="verifyOtpCode" class="space-y-4">
                                 <div class="flex items-center justify-between text-xs bg-zinc-100 dark:bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-700/50">
@@ -1315,6 +1315,7 @@
                                     <input
                                         type="text"
                                         wire:model="authOtp"
+                                        oninput="this.value = this.value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))"
                                         placeholder="کد ۵ رقمی..."
                                         class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-center tracking-widest"
                                     />
@@ -1327,7 +1328,7 @@
                                 </button>
                             </form>
 
-                        <!-- Step 4: Register -->
+                            <!-- Step 4: Register -->
                         @elseif($authStep === 'register')
                             <form wire:submit.prevent="attemptRegister" class="space-y-3 text-right">
                                 <div class="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] font-semibold text-amber-700 dark:text-amber-300 leading-relaxed mb-3">
@@ -1632,13 +1633,13 @@
                                                                         @if($activeVariant && $activeVariant['has_stock'])
                                                                             <div class="w-full min-w-[75px] max-w-[95px]" wire:key="cart-btn-cmp-var-{{ $product['id'] }}-{{ $activeVariant['variant_id'] }}">
                                                                                 @livewire('market::web.add-to-cart-button', [
-                                                                                    'variantId' => $activeVariant['variant_id'],
-                                                                                    'vendorProductId' => $activeVariant['vendor_product_id'],
-                                                                                    't' => [
-                                                                                        'style' => 'background-color: ' . $primaryColor . ';',
-                                                                                        'shadow_color' => $primaryColor,
-                                                                                        'justify' => 'justify-start',
-                                                                                    ]
+                                                                                'variantId' => $activeVariant['variant_id'],
+                                                                                'vendorProductId' => $activeVariant['vendor_product_id'],
+                                                                                't' => [
+                                                                                'style' => 'background-color: ' . $primaryColor . ';',
+                                                                                'shadow_color' => $primaryColor,
+                                                                                'justify' => 'justify-start',
+                                                                                ]
                                                                                 ], key('cart-btn-cmp-var-' . $product['id'] . '-' . $activeVariant['variant_id']))
                                                                             </div>
                                                                         @else
@@ -1647,13 +1648,13 @@
                                                                     @elseif($product['has_stock'] && $product['variant_id'] && $product['vendor_product_id'])
                                                                         <div class="w-full min-w-[75px] max-w-[95px]">
                                                                             @livewire('market::web.add-to-cart-button', [
-                                                                                'variantId' => $product['variant_id'],
-                                                                                'vendorProductId' => $product['vendor_product_id'],
-                                                                                't' => [
-                                                                                    'style' => 'background-color: ' . $primaryColor . ';',
-                                                                                    'shadow_color' => $primaryColor,
-                                                                                    'justify' => 'justify-start',
-                                                                                ]
+                                                                            'variantId' => $product['variant_id'],
+                                                                            'vendorProductId' => $product['vendor_product_id'],
+                                                                            't' => [
+                                                                            'style' => 'background-color: ' . $primaryColor . ';',
+                                                                            'shadow_color' => $primaryColor,
+                                                                            'justify' => 'justify-start',
+                                                                            ]
                                                                             ], key('cart-btn-widget-' . $product['id'] . '-' . $loop->index . '-' . ($msg['id'] ?? 0)))
                                                                         </div>
                                                                     @else

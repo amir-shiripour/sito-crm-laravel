@@ -3,6 +3,9 @@
 @section('content')
     <div class="space-y-6 max-w-6xl mx-auto">
         @php
+            $serviceLabel = config('booking.labels.service', 'سرویس');
+            $servicesLabel = config('booking.labels.services', 'سرویس‌ها');
+
             $user = auth()->user();
             $canCreateService =
                 $user &&
@@ -36,15 +39,15 @@
             <div>
                 <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <svg class="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                    سرویس‌های نوبت‌دهی
+                    {{ $servicesLabel }}ی نوبت‌دهی
                 </h1>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">لیست سرویس‌ها، فیلتر و گروه‌بندی بر اساس دسته‌ها.</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">لیست {{ $servicesLabel }}، فیلتر و گروه‌بندی بر اساس دسته‌ها.</p>
             </div>
             @if($canCreateService)
                 <a class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all active:scale-[0.98]"
                    href="{{ route('user.booking.services.create') }}">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                    ایجاد سرویس جدید
+                    ایجاد {{ $serviceLabel }} جدید
                 </a>
             @endif
         </div>
@@ -65,7 +68,7 @@
                     <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                         <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
-                    <input type="text" name="search" value="{{ request('search') }}" placeholder="جستجوی نام سرویس..."
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="جستجوی نام یا کد {{ $serviceLabel }}..."
                         class="w-full pl-3 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-colors">
                 </div>
 
@@ -111,7 +114,7 @@
                 <div class="flex items-center gap-3 pl-2">
                     <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">{{ $categoryName }}</h3>
                     <div class="h-px bg-slate-200 dark:bg-slate-700/60 flex-1"></div>
-                    <span class="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">{{ $group->count() }} سرویس</span>
+                    <span class="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">{{ $group->count() }} {{ $serviceLabel }}</span>
                 </div>
 
                 <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm overflow-hidden">
@@ -120,7 +123,7 @@
                             <thead class="bg-slate-50/70 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700/60">
                                 <tr>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300 w-16">#</th>
-                                    <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">نام سرویس</th>
+                                    <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">نام {{ $serviceLabel }}</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">وضعیت</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">قیمت پایه (تومان)</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">فرم اختصاصی</th>
@@ -138,7 +141,7 @@
                                     @endphp
                                     <tr class="group/row hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-200">
                                         <td class="px-5 py-4 text-slate-500 dark:text-slate-400 font-mono text-xs">
-                                            {{ $srv->id }}
+                                             {{ $srv->id }}
                                         </td>
                                         <td class="px-5 py-4">
                                             <div class="flex items-center gap-3">
@@ -183,7 +186,7 @@
                                         <td class="px-5 py-4 text-left">
                                             <div class="flex items-center justify-end gap-2">
                                                 @if($canEditService)
-                                                    <a href="{{ route('user.booking.services.edit', $srv) }}" class="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors" title="ویرایش سرویس">
+                                                    <a href="{{ route('user.booking.services.edit', $srv) }}" class="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors" title="ویرایش {{ $serviceLabel }}">
                                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                                     </a>
                                                     <a href="{{ route('user.booking.services.availability.edit', $srv) }}" class="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 transition-colors" title="برنامه زمانی هفتگی">
@@ -227,8 +230,8 @@
                 <div class="w-20 h-20 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
                     <svg class="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                 </div>
-                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200 mb-1">هیچ سرویسی یافت نشد</h3>
-                <p class="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">با فیلترهای فعلی نتیجه‌ای پیدا نکردیم. لطفاً جستجوی خود را تغییر دهید یا یک سرویس جدید بسازید.</p>
+                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200 mb-1">هیچ {{ $serviceLabel }}ی یافت نشد</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">با فیلترهای فعلی نتیجه‌ای پیدا نکردیم. لطفاً جستجوی خود را تغییر دهید یا یک {{ $serviceLabel }} جدید بسازید.</p>
                 @if(request()->hasAny(['search', 'category_id', 'status']))
                     <a href="{{ route('user.booking.services.index') }}" class="mt-6 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 underline underline-offset-4">پاک کردن فیلترها</a>
                 @endif

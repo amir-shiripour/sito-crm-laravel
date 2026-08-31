@@ -16,6 +16,8 @@ return [
     'labels' => [
         'provider' => 'ارائه‌دهنده',
         'providers' => 'ارائه‌دهندگان',
+        'service' => 'سرویس',
+        'services' => 'سرویس‌ها',
     ],
 
     'defaults' => [

@@ -15,6 +15,44 @@ use Modules\Sms\Entities\SmsMessage;
 
 class ClientAuthController extends Controller
 {
+    public static function toEnglishNumbers(?string $string): string
+    {
+        if ($string === null || $string === '') {
+            return '';
+        }
+
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $arabic  = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        $converted = str_replace($persian, $english, $string);
+        return str_replace($arabic, $english, $converted);
+    }
+
+    public static function normalizePhoneNumber(?string $phone): string
+    {
+        if ($phone === null || $phone === '') {
+            return '';
+        }
+
+        $phone = self::toEnglishNumbers($phone);
+        $digits = preg_replace('/[^0-9]/', '', $phone);
+
+        if (empty($digits)) {
+            return '';
+        }
+
+        if (str_starts_with($digits, '0098') && strlen($digits) === 14) {
+            $digits = '0' . substr($digits, 4);
+        } elseif (str_starts_with($digits, '98') && strlen($digits) === 12) {
+            $digits = '0' . substr($digits, 2);
+        } elseif (str_starts_with($digits, '9') && strlen($digits) === 10) {
+            $digits = '0' . $digits;
+        }
+
+        return $digits;
+    }
+
     public function showLoginForm()
     {
         $mode        = ClientSetting::getValue('auth.mode', 'password');        // password|otp|both
@@ -60,6 +98,12 @@ class ClientAuthController extends Controller
             default => 'نام کاربری',
         };
 
+        if ($request->has('username')) {
+            $request->merge([
+                'username' => trim(self::toEnglishNumbers($request->input('username'))),
+            ]);
+        }
+
         $credentials = $request->validate([
             'username' => ['required', 'string'],
             'password' => ['required', 'string'],
@@ -69,14 +113,22 @@ class ClientAuthController extends Controller
         ]);
 
         $remember = $request->boolean('remember');
+        $cleanUsername = $credentials['username'];
+        $normalizedPhone = self::normalizePhoneNumber($cleanUsername);
 
         // بررسی اینکه آیا کاربر وجود دارد (با یوزرنیم، ایمیل، موبایل یا کدملی)
-        $client = Client::query()
-            ->where('username', $credentials['username'])
-            ->orWhere('email', $credentials['username'])
-            ->orWhere('phone', $credentials['username'])
-            ->orWhere('national_code', $credentials['username'])
-            ->first();
+        $clientQuery = Client::query()
+            ->where('username', $cleanUsername)
+            ->orWhere('email', $cleanUsername)
+            ->orWhere('phone', $cleanUsername)
+            ->orWhere('national_code', $cleanUsername);
+
+        if (strlen($normalizedPhone) === 11 && str_starts_with($normalizedPhone, '09')) {
+            $clientQuery->orWhere('phone', $normalizedPhone)
+                        ->orWhere('username', $normalizedPhone);
+        }
+
+        $client = $clientQuery->first();
 
         if ($client) {
             if (Auth::guard('client')->attempt([
@@ -131,17 +183,32 @@ class ClientAuthController extends Controller
 
     public function sendOtp(Request $request, SmsManager $sms)
     {
+        if ($request->has('username')) {
+            $request->merge([
+                'username' => trim(self::toEnglishNumbers($request->input('username'))),
+            ]);
+        }
+
         $data = $request->validate([
             'username' => ['required', 'string'],
         ]);
 
+        $cleanUsername = $data['username'];
+        $normalizedPhone = self::normalizePhoneNumber($cleanUsername);
+
         // بررسی اینکه آیا کاربر وجود دارد (با یوزرنیم، ایمیل، موبایل یا کدملی)
-        $client = Client::query()
-            ->where('username', $data['username'])
-            ->orWhere('email', $data['username'])
-            ->orWhere('phone', $data['username'])
-            ->orWhere('national_code', $data['username'])
-            ->first();
+        $clientQuery = Client::query()
+            ->where('username', $cleanUsername)
+            ->orWhere('email', $cleanUsername)
+            ->orWhere('phone', $cleanUsername)
+            ->orWhere('national_code', $cleanUsername);
+
+        if (strlen($normalizedPhone) === 11 && str_starts_with($normalizedPhone, '09')) {
+            $clientQuery->orWhere('phone', $normalizedPhone)
+                        ->orWhere('username', $normalizedPhone);
+        }
+
+        $client = $clientQuery->first();
 
         $strategy = ClientSetting::getValue('username_strategy', 'email_local');
         $usernameLabel = match ($strategy) {
@@ -163,10 +230,7 @@ class ClientAuthController extends Controller
             }
 
             // بررسی شماره تلفن معتبر در ایران
-            $phone = preg_replace('/[^0-9]/', '', $data['username']);
-            if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
-                $phone = '0' . $phone;
-            }
+            $phone = $normalizedPhone;
 
             if (strlen($phone) !== 11 || !str_starts_with($phone, '09')) {
                 return response()->json([
@@ -184,7 +248,7 @@ class ClientAuthController extends Controller
 
             $isRegister = true;
         } else {
-            $phone = $client->phone;
+            $phone = self::normalizePhoneNumber($client->phone);
             if (empty($phone)) {
                 return response()->json([
                     'success' => false,
@@ -285,17 +349,38 @@ class ClientAuthController extends Controller
 
     public function verifyOtp(Request $request)
     {
+        if ($request->has('username')) {
+            $request->merge([
+                'username' => trim(self::toEnglishNumbers($request->input('username'))),
+            ]);
+        }
+        if ($request->has('code')) {
+            $request->merge([
+                'code' => trim(self::toEnglishNumbers($request->input('code'))),
+            ]);
+        }
+
         $data = $request->validate([
             'username' => ['required', 'string'],
             'code'     => ['required', 'string', 'max:20'],
         ]);
 
-        $client = Client::query()
-            ->where('username', $data['username'])
-            ->orWhere('email', $data['username'])
-            ->orWhere('phone', $data['username'])
-            ->orWhere('national_code', $data['username'])
-            ->first();
+        $cleanUsername = $data['username'];
+        $cleanCode = $data['code'];
+        $normalizedPhone = self::normalizePhoneNumber($cleanUsername);
+
+        $clientQuery = Client::query()
+            ->where('username', $cleanUsername)
+            ->orWhere('email', $cleanUsername)
+            ->orWhere('phone', $cleanUsername)
+            ->orWhere('national_code', $cleanUsername);
+
+        if (strlen($normalizedPhone) === 11 && str_starts_with($normalizedPhone, '09')) {
+            $clientQuery->orWhere('phone', $normalizedPhone)
+                        ->orWhere('username', $normalizedPhone);
+        }
+
+        $client = $clientQuery->first();
 
         $strategy = ClientSetting::getValue('username_strategy', 'email_local');
         $usernameLabel = match ($strategy) {
@@ -315,10 +400,7 @@ class ClientAuthController extends Controller
                 ], 422);
             }
 
-            $phone = preg_replace('/[^0-9]/', '', $data['username']);
-            if (strlen($phone) === 10 && str_starts_with($phone, '9')) {
-                $phone = '0' . $phone;
-            }
+            $phone = $normalizedPhone;
 
             $context = 'login_client';
 
@@ -326,7 +408,7 @@ class ClientAuthController extends Controller
                 ->where('phone', $phone)
                 ->whereNull('client_id')
                 ->where('context', $context)
-                ->where('code', $data['code'])
+                ->where('code', $cleanCode)
                 ->latest()
                 ->first();
 
@@ -348,12 +430,13 @@ class ClientAuthController extends Controller
         }
 
         $context = 'login_client';
+        $clientPhone = self::normalizePhoneNumber($client->phone);
 
         $otp = SmsOtp::query()
-            ->where('phone', $client->phone)
+            ->where('phone', $clientPhone)
             ->where('client_id', $client->id)
             ->where('context', $context)
-            ->where('code', $data['code'])
+            ->where('code', $cleanCode)
             ->latest()
             ->first();
 
@@ -380,6 +463,18 @@ class ClientAuthController extends Controller
         $registerEnabled = (bool) ClientSetting::getValue('auth.register_enabled', false);
         if (!$registerEnabled) {
             abort(403, 'ثبت‌نام غیرفعال است.');
+        }
+
+        // Convert Persian/Arabic digits in request inputs before validation
+        $inputsToConvert = ['username', 'phone', 'national_code', 'case_number'];
+        $merged = [];
+        foreach ($inputsToConvert as $key) {
+            if ($request->has($key)) {
+                $merged[$key] = trim(self::toEnglishNumbers($request->input($key)));
+            }
+        }
+        if (!empty($merged)) {
+            $request->merge($merged);
         }
 
         $activeForm = \Modules\Clients\Entities\ClientForm::active();
@@ -445,15 +540,22 @@ class ClientAuthController extends Controller
         $emailVal = $validated['email'] ?? $request->input('email');
         $nationalCodeVal = $validated['national_code'] ?? $request->input('national_code');
 
+        if (!empty($phoneVal)) {
+            $phoneVal = self::normalizePhoneNumber($phoneVal);
+        }
+        if (!empty($nationalCodeVal)) {
+            $nationalCodeVal = trim(self::toEnglishNumbers($nationalCodeVal));
+        }
+
         // مپ خودکار نام کاربری به فیلد اصلی استراتژی در صورت خالی بودن
         if ($strategy === 'mobile' && empty($phoneVal)) {
-            $phoneVal = $request->input('username');
+            $phoneVal = self::normalizePhoneNumber($request->input('username'));
         }
         if (($strategy === 'email_local' || $strategy === 'email') && empty($emailVal)) {
             $emailVal = $request->input('username');
         }
         if ($strategy === 'national_code' && empty($nationalCodeVal)) {
-            $nationalCodeVal = $request->input('username');
+            $nationalCodeVal = trim(self::toEnglishNumbers($request->input('username')));
         }
 
         if ($strategy === 'mobile' && empty($phoneVal)) {
@@ -516,15 +618,18 @@ class ClientAuthController extends Controller
 
     public function checkUsername(Request $request)
     {
+        if ($request->has('username')) {
+            $request->merge([
+                'username' => trim(self::toEnglishNumbers($request->input('username'))),
+            ]);
+        }
+
         $data = $request->validate([
             'username' => ['required', 'string'],
         ]);
 
         $username = $data['username'];
-        $normalizedPhone = preg_replace('/[^0-9]/', '', $username);
-        if (strlen($normalizedPhone) === 10 && str_starts_with($normalizedPhone, '9')) {
-            $normalizedPhone = '0' . $normalizedPhone;
-        }
+        $normalizedPhone = self::normalizePhoneNumber($username);
 
         $clientQuery = Client::query()
             ->where('username', $username)
