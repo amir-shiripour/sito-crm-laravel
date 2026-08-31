@@ -162,8 +162,14 @@
                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                         <td class="px-6 py-4 align-top font-bold text-gray-900 dark:text-white">
                             <div>
-                                <span
-                                    class="block text-sm font-black">{{ $item->custom_service_name ?: ($item->service ? $item->service->name : 'سرویس سفارشی') }}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="block text-sm font-black">{{ $item->custom_service_name ?: ($item->service ? $item->service->name : 'سرویس سفارشی') }}</span>
+                                    @if($item->mode === 'product' || $item->product_id)
+                                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">کالا</span>
+                                    @elseif($item->mode === 'manual' || (!$item->service_id && !$item->product_id))
+                                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">ردیف دستی</span>
+                                    @endif
+                                </div>
                                 @if($item->service && $item->service->code)
                                     <span
                                         class="block text-xs font-mono text-gray-400 mt-0.5">کد: {{ $item->service->code }}</span>

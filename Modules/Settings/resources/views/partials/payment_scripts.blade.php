@@ -156,6 +156,9 @@
 
             bankAccounts.forEach(a => {
                 if (!a.id) a.id = generateUniqueId('bank');
+                if (a.is_active === undefined || a.is_active === null) {
+                    a.is_active = 1;
+                }
             });
 
             function createBankAccountItem(account = {}, index) {
@@ -163,6 +166,8 @@
                 const item = document.createElement('div');
                 item.className = 'p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 relative';
                 item.setAttribute('data-index', index);
+
+                const isActive = (account.is_active === undefined || account.is_active === null || account.is_active === true || account.is_active === 1 || account.is_active === '1' || account.is_active === '');
 
                 let bankFieldHtml = '';
                 if (isAccountingActive) {
@@ -201,9 +206,16 @@
                         <label for="${accountId}_account_number" class="${labelClass}">شماره حساب</label>
                         <input type="text" data-field="account_number" id="${accountId}_account_number" name="bank_transfer_accounts[${index}][account_number]" value="${account.account_number || ''}" class="${inputClass} dir-ltr text-left" placeholder="123-456-789">
                     </div>
-                    <div class="md:col-span-2">
+                    <div>
                         <label for="${accountId}_iban" class="${labelClass}">شماره شبا</label>
                         <input type="text" data-field="iban" id="${accountId}_iban" name="bank_transfer_accounts[${index}][iban]" value="${account.iban || ''}" class="${inputClass} dir-ltr text-left" placeholder="IR...">
+                    </div>
+                    <div>
+                        <label for="${accountId}_is_active" class="${labelClass}">وضعیت برای مشتریان</label>
+                        <select data-field="is_active" id="${accountId}_is_active" name="bank_transfer_accounts[${index}][is_active]" class="${inputClass}">
+                            <option value="1" ${isActive ? 'selected' : ''}>فعال (نمایش به مشتری)</option>
+                            <option value="0" ${!isActive ? 'selected' : ''}>غیرفعال (مخفی برای مشتری)</option>
+                        </select>
                     </div>
                 </div>
                 <button type="button" class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40 flex items-center justify-center remove-bank-account-btn">
@@ -248,7 +260,7 @@
             });
 
             addBankAccountBtn.addEventListener('click', () => {
-                bankAccounts.push({id: generateUniqueId('bank')});
+                bankAccounts.push({id: generateUniqueId('bank'), is_active: 1});
                 renderBankAccounts();
             });
 

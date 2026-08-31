@@ -50,7 +50,7 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::get('services/create', [UserServiceController::class, 'create'])->name('services.create')->middleware('can:booking.services.create');
         Route::post('services', [UserServiceController::class, 'store'])->name('services.store')->middleware('can:booking.services.create');
         Route::get('services/{service}/edit', [UserServiceController::class, 'edit'])->name('services.edit')->middleware('can:booking.services.edit');
-        Route::post('services/{service}', [UserServiceController::class, 'update'])->name('services.update')->middleware('can:booking.services.edit');
+        Route::match(['put', 'post'], 'services/{service}', [UserServiceController::class, 'update'])->name('services.update')->middleware('can:booking.services.edit');
         Route::post('services/{service}/toggle-for-me', [UserServiceController::class, 'toggleForMe'])
             ->name('services.toggleForMe')
             ->middleware('can:booking.services.view');

@@ -9,7 +9,7 @@
 @endphp
 
 @section('content')
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
+<div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
 
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -92,7 +92,7 @@
         </div>
 
         {{-- Sticky Footer --}}
-        <div class="sticky bottom-4 z-40 max-w-4xl mx-auto mt-8">
+        <div class="sticky bottom-4 z-40 max-w-screen-2xl mx-auto mt-8">
             <div class="flex justify-between items-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-xl">
                 <a href="{{ route('admin.accounting.categories.index') }}" class="px-6 py-3 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors">
                     انصراف

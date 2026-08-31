@@ -13,7 +13,6 @@ class PermissionsSeeder extends Seeder
      */
     public function run(): void
     {
-        // تعریف دسترسی ها
         $permissions = [
             'accounting.invoices.view',
             'accounting.transactions.view',

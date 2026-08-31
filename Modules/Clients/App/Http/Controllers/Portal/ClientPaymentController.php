@@ -134,7 +134,15 @@ class ClientPaymentController extends Controller
                 ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) 
                 : (is_array($settingsMap['bank_transfer_accounts'] ?? null) ? $settingsMap['bank_transfer_accounts'] : []);
 
-            $bankAccounts = array_map(function($acc, $index) {
+            // Filter active bank accounts for clients
+            $activeBankAccounts = array_filter($rawAccounts, function($acc) {
+                if (!isset($acc['is_active'])) {
+                    return true;
+                }
+                return filter_var($acc['is_active'], FILTER_VALIDATE_BOOLEAN);
+            });
+
+            $bankAccounts = array_values(array_map(function($acc, $index) {
                 return [
                     'id' => $acc['id'] ?? ($acc['bank_name'] ?? ('acc_' . $index)),
                     'bank_name' => $acc['bank_name'] ?? 'بانک',
@@ -143,7 +151,7 @@ class ClientPaymentController extends Controller
                     'account_number' => $acc['account_number'] ?? '',
                     'iban' => $acc['iban'] ?? '',
                 ];
-            }, $rawAccounts, array_keys($rawAccounts));
+            }, $activeBankAccounts, array_keys($activeBankAccounts)));
 
             $rawPos = is_string($settingsMap['pos_devices'] ?? null) ? (json_decode($settingsMap['pos_devices'], true) ?: []) : (array)($settingsMap['pos_devices'] ?? []);
             $posDevices = array_values(array_map(fn($d) => [
@@ -169,7 +177,7 @@ class ClientPaymentController extends Controller
             }
 
             // ۲. انتقال بانکی (کارت به کارت / شبا)
-            if (in_array('transfer', $activeMethods) && ($settingsMap['bank_transfer_status'] ?? '') === 'active') {
+            if (in_array('transfer', $activeMethods) && ($settingsMap['bank_transfer_status'] ?? '') === 'active' && !empty($bankAccounts)) {
                 $availablePaymentMethods['transfer'] = $allMethodLabels['transfer'];
             }
 
@@ -294,7 +302,19 @@ class ClientPaymentController extends Controller
         } elseif ($method === 'pos') {
             $isMethodValid = in_array('pos', $activeMethods) && ($settingsMap['pos_status'] ?? '') === 'active';
         } elseif ($method === 'transfer') {
-            $isMethodValid = in_array('transfer', $activeMethods) && ($settingsMap['bank_transfer_status'] ?? '') === 'active';
+            $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) 
+                ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) 
+                : (is_array($settingsMap['bank_transfer_accounts'] ?? null) ? $settingsMap['bank_transfer_accounts'] : []);
+            $hasActiveAccounts = false;
+            foreach ($rawAccounts as $acc) {
+                if (!isset($acc['is_active']) || filter_var($acc['is_active'], FILTER_VALIDATE_BOOLEAN)) {
+                    $hasActiveAccounts = true;
+                    break;
+                }
+            }
+            $isMethodValid = in_array('transfer', $activeMethods) 
+                && ($settingsMap['bank_transfer_status'] ?? '') === 'active' 
+                && $hasActiveAccounts;
         } elseif ($method === 'cod') {
             $isMethodValid = in_array('cod', $activeMethods) && ($settingsMap['cod_status'] ?? '') === 'active';
         } elseif ($method === 'installment') {
@@ -328,21 +348,39 @@ class ClientPaymentController extends Controller
             $payerName = $request->input('payer_name');
             $payerMobile = $request->input('payer_mobile');
 
-            if ($subItemId && \Illuminate\Support\Facades\Schema::hasTable('settings')) {
+            if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
                 $settingsMap = \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray();
                 $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) 
                     ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) 
                     : (array) ($settingsMap['bank_transfer_accounts'] ?? []);
                 
-                foreach ($rawAccounts as $acc) {
-                    $accId = $acc['id'] ?? ($acc['bank_name'] ?? '');
-                    if ($accId == $subItemId) {
-                        $bankName = $acc['bank_name'] ?? 'بانک';
-                        $ownerName = $acc['owner_name'] ?? ($acc['owner'] ?? '');
-                        $cardNumber = !empty($acc['card_number']) ? preg_replace('/[^0-9]/', '', $acc['card_number']) : '';
-                        $subItemLabel = $bankName . ($ownerName ? ' - ' . $ownerName : '') . ($cardNumber ? ' (' . $cardNumber . ')' : '');
-                        break;
+                $matchedAcc = null;
+                if ($subItemId) {
+                    foreach ($rawAccounts as $acc) {
+                        $accId = $acc['id'] ?? ($acc['bank_name'] ?? '');
+                        if ($accId == $subItemId || (!empty($acc['bank_name']) && $acc['bank_name'] == $subItemId)) {
+                            $matchedAcc = $acc;
+                            break;
+                        }
                     }
+                }
+
+                if (!$matchedAcc && $method === 'transfer' && !empty($rawAccounts)) {
+                    foreach ($rawAccounts as $acc) {
+                        if (!isset($acc['is_active']) || filter_var($acc['is_active'], FILTER_VALIDATE_BOOLEAN)) {
+                            $matchedAcc = $acc;
+                            $subItemId = $acc['id'] ?? ($acc['bank_name'] ?? '');
+                            break;
+                        }
+                    }
+                }
+
+                if ($matchedAcc) {
+                    $bankName = $matchedAcc['bank_name'] ?? 'بانک';
+                    $ownerName = $matchedAcc['owner_name'] ?? ($matchedAcc['owner'] ?? '');
+                    $cardNumber = !empty($matchedAcc['card_number']) ? $matchedAcc['card_number'] : '';
+                    $iban = !empty($matchedAcc['iban']) ? $matchedAcc['iban'] : '';
+                    $subItemLabel = $bankName . (!empty($ownerName) ? ' - ' . $ownerName : '') . (!empty($cardNumber) ? ' (' . $cardNumber . ')' : (!empty($iban) ? ' (' . $iban . ')' : ''));
                 }
             }
 

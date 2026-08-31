@@ -3,6 +3,7 @@
 namespace Modules\Accounting\App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +13,8 @@ use Modules\Accounting\App\Models\FundAccount;
 use Modules\Accounting\App\Services\CurrencyService;
 use Modules\Accounting\App\Services\AccountingEngine;
 use Exception;
+use Morilog\Jalali\Jalalian;
+use Throwable;
 
 class DocumentController extends Controller
 {
@@ -32,7 +35,7 @@ class DocumentController extends Controller
     {
         try {
             $this->accountingEngine->syncWalletTransactions();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('Wallet documents sync error: ' . $e->getMessage());
         }
 
@@ -72,8 +75,12 @@ class DocumentController extends Controller
      */
     public function create()
     {
-        $categories = Category::where('status', true)->get();
-        $fundAccounts = FundAccount::where('status', true)->get();
+        $categories = Category::where('status', true)
+            ->withSum('transactions as total_debit', 'debit')
+            ->withSum('transactions as total_credit', 'credit')
+            ->orderBy('title')
+            ->get();
+        $fundAccounts = FundAccount::where('status', true)->with(['transactions'])->get();
         $currencySuffix = CurrencyService::getBaseCurrency();
 
         return view('accounting::documents.create', compact('categories', 'fundAccounts', 'currencySuffix'));
@@ -88,10 +95,10 @@ class DocumentController extends Controller
             try {
                 $datePart = explode(' ', $request->document_date)[0];
                 if (str_contains($datePart, '/')) {
-                    $gregorianDate = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $datePart)->toCarbon()->format('Y-m-d');
+                    $gregorianDate = Jalalian::fromFormat('Y/m/d', $datePart)->toCarbon()->format('Y-m-d');
                     $request->merge(['document_date' => $gregorianDate]);
                 }
-            } catch (\Exception $e) {}
+            } catch (Exception $e) {}
         }
 
         if ($request->has('rows') && is_array($request->rows)) {
@@ -109,8 +116,8 @@ class DocumentController extends Controller
 
         $request->validate([
             'document_date' => 'required|date_format:Y-m-d',
-            'document_description' => 'nullable|string|max:1000',
-            'rows' => 'required|array|min:2', // At least two rows for double-entry
+            'document_description' => 'required|string|max:1000',
+            'rows' => 'required|array|min:2',
             'rows.*.category_id' => 'required|exists:accounting_categories,id',
             'rows.*.fund_account_id' => 'nullable|exists:accounting_fund_accounts,id',
             'rows.*.description' => 'nullable|string|max:1000',
@@ -119,7 +126,6 @@ class DocumentController extends Controller
         ]);
 
         $rows = collect($request->rows)->map(function ($row) {
-            // Convert amounts from display currency to base Rial for internal processing
             $row['debit'] = CurrencyService::convertToBaseRial($row['debit'] ?? 0);
             $row['credit'] = CurrencyService::convertToBaseRial($row['credit'] ?? 0);
             return $row;
@@ -128,8 +134,8 @@ class DocumentController extends Controller
         try {
             $document = $this->accountingEngine->recordMultiLineDocument(
                 $rows,
-                $request->document_description ?? '', // Ensure it's a string, not null
-                null, // documentable is null for manual journal entries
+                $request->document_description ?? '',
+                null,
                 $request->document_date
             );
 
@@ -159,7 +165,7 @@ class DocumentController extends Controller
      */
     public function edit(Document $document)
     {
-        $document->load('transactions');
+        $document->load(['transactions.category', 'transactions.fundAccount']);
         $categories = Category::where('status', true)->get();
         $fundAccounts = FundAccount::where('status', true)->get();
         $currencySuffix = CurrencyService::getBaseCurrency();
@@ -172,12 +178,36 @@ class DocumentController extends Controller
      */
     public function update(Request $request, Document $document)
     {
+        if ($request->has('document_date')) {
+            try {
+                $datePart = explode(' ', $request->document_date)[0];
+                if (str_contains($datePart, '/')) {
+                    $gregorianDate = Jalalian::fromFormat('Y/m/d', $datePart)->toCarbon()->format('Y-m-d');
+                    $request->merge(['document_date' => $gregorianDate]);
+                }
+            } catch (Exception $e) {}
+        }
+
+        if ($request->has('rows') && is_array($request->rows)) {
+            $sanitizedRows = $request->rows;
+            foreach ($sanitizedRows as &$row) {
+                if (isset($row['debit'])) {
+                    $row['debit'] = is_numeric($row['debit']) ? $row['debit'] : (float)str_replace(',', '', (string)$row['debit']);
+                }
+                if (isset($row['credit'])) {
+                    $row['credit'] = is_numeric($row['credit']) ? $row['credit'] : (float)str_replace(',', '', (string)$row['credit']);
+                }
+            }
+            $request->merge(['rows' => $sanitizedRows]);
+        }
+
         $request->validate([
             'document_date' => 'required|date_format:Y-m-d',
-            'document_description' => 'nullable|string|max:1000',
+            'document_description' => 'required|string|max:1000',
             'rows' => 'required|array|min:2',
             'rows.*.category_id' => 'required|exists:accounting_categories,id',
             'rows.*.fund_account_id' => 'nullable|exists:accounting_fund_accounts,id',
+            'rows.*.description' => 'nullable|string|max:1000',
             'rows.*.debit' => 'nullable|numeric|min:0',
             'rows.*.credit' => 'nullable|numeric|min:0',
         ]);
@@ -224,7 +254,8 @@ class DocumentController extends Controller
         }
 
         if ($document->sourceDocument) {
-            return back()->with('error', 'امکان لغو مستقیم اسناد سیستمی اتوماتیک از این بخش وجود ندارد. این سند باید از ماژول مربوطه لغو گردد.');
+            return back()
+                ->with('error', 'امکان لغو مستقیم اسناد سیستمی اتوماتیک از این بخش وجود ندارد. این سند باید از ماژول مربوطه لغو گردد.');
         }
 
         try {
@@ -274,8 +305,8 @@ class DocumentController extends Controller
 
                 $document->update(['status' => 'cancelled']);
 
-                if (class_exists(\App\Services\ActivityLogger::class)) {
-                    \App\Services\ActivityLogger::log(
+                if (class_exists(ActivityLogger::class)) {
+                    ActivityLogger::log(
                         'document_cancelled',
                         "سند دستی به شماره '{$document->document_number}' لغو گردید و مبالغ مربوطه در خزانه‌داری/حساب‌ها اصلاح گردید.",
                         $document,

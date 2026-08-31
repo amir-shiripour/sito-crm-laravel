@@ -45,7 +45,12 @@ class Installer extends BaseModuleInstaller
         Log::info('Booking Installer: Install process finished.');
     }
 
-    private function syncPermissions(): void
+    public static function syncModulePermissions(): void
+    {
+        (new self())->syncPermissions();
+    }
+
+    public function syncPermissions(): void
     {
         Log::info('Booking Installer: Starting permission sync...');
         $guard = config('auth.defaults.guard', 'web');
@@ -137,6 +142,7 @@ class Installer extends BaseModuleInstaller
             $role->givePermissionTo($definedPermissions);
         }
 
+        File::ensureDirectoryExists(dirname($trackerPath));
         File::put($trackerPath, json_encode($definedPermissions, JSON_PRETTY_PRINT));
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Log::info('Booking Installer: Permission sync finished.');

@@ -5,11 +5,19 @@ namespace Modules\Services\App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Modules\Services\App\Http\Models\Service;
 use Modules\Services\App\Http\Models\ServicePackage;
 use Modules\Services\App\Http\Models\ServicePackageItem;
 use Modules\Services\App\Http\Requests\StoreServicePackageRequest;
 use Modules\Settings\Entities\Setting;
+use Nwidart\Modules\Facades\Module;
+use Modules\Market\Entities\MarketAttribute;
+use Modules\Market\Entities\MarketSetting;
+use Modules\Market\Entities\MasterProduct;
+use Modules\Market\Entities\WarehouseStock;
+use Modules\Market\App\Services\WarehouseStockService;
+use Throwable;
 
 class ServicePackageController extends Controller
 {
@@ -48,8 +56,11 @@ class ServicePackageController extends Controller
     {
         $services = Service::active()->with('customFields')->orderBy('name')->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
+        $marketModuleEnabled = $this->isMarketModuleEnabled();
+        $products = $this->getProductsForPackage();
+        $marketAttributes = $this->getMarketAttributesForPackage();
 
-        return view('services::packages.create', compact('services', 'currency'));
+        return view('services::packages.create', compact('services', 'currency', 'marketModuleEnabled', 'products', 'marketAttributes'));
     }
 
     public function store(StoreServicePackageRequest $request)
@@ -103,19 +114,13 @@ class ServicePackageController extends Controller
                         $customFieldsQuantities[$k] = [];
                         foreach ($v as $subK => $subV) {
                             $parsedQ = floatval($this->parsePrice($subV));
-                            if ($parsedQ > 0) {
-                                $customFieldsQuantities[$k][$subK] = $parsedQ;
-                            }
+                            $customFieldsQuantities[$k][$subK] = $parsedQ > 0 ? $parsedQ : 1;
                         }
                     } else {
                         $parsedQ = floatval($this->parsePrice($v));
-                        if ($parsedQ > 0) {
-                            $customFieldsQuantities[$k] = $parsedQ;
-                        }
+                        $customFieldsQuantities[$k] = $parsedQ > 0 ? $parsedQ : 1;
                     }
                 }
-
-                $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
 
                 $cfSubtotal = 0;
                 if (!empty($item['service_id'])) {
@@ -134,30 +139,22 @@ class ServicePackageController extends Controller
                                     $isSelected = ($numVal > 0);
                                     if ($isSelected) {
                                         $customFields[$cf->id] = $numVal;
-                                        $customFieldsQuantities[$cf->id] = $numVal;
-                                    } else {
-                                        unset($customFields[$cf->id]);
-                                        unset($customFieldsQuantities[$cf->id]);
+                                        if (!isset($customFieldsQuantities[$cf->id]) || floatval($customFieldsQuantities[$cf->id]) <= 0) {
+                                            $customFieldsQuantities[$cf->id] = $numVal;
+                                        }
                                     }
                                 } else {
                                     $isSelected = true;
                                 }
-                            } elseif ($cf->type === 'number') {
-                                if (isset($customFieldsQuantities[$cf->id])) {
-                                    $qVal = floatval($this->parsePrice($customFieldsQuantities[$cf->id]));
-                                    if ($qVal > 0) {
-                                        $isSelected = true;
-                                        $customFields[$cf->id] = $qVal;
-                                        $customFieldsQuantities[$cf->id] = $qVal;
-                                    } else {
-                                        unset($customFields[$cf->id]);
-                                        unset($customFieldsQuantities[$cf->id]);
-                                    }
-                                } else {
-                                    unset($customFields[$cf->id]);
-                                    unset($customFieldsQuantities[$cf->id]);
+                            } elseif ($cf->type === 'number' && isset($customFieldsQuantities[$cf->id])) {
+                                $qVal = floatval($this->parsePrice($customFieldsQuantities[$cf->id]));
+                                if ($qVal > 0) {
+                                    $isSelected = true;
+                                    $customFields[$cf->id] = $qVal;
+                                    $customFieldsQuantities[$cf->id] = $qVal;
                                 }
                             }
+                            $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
                             if ($cf->has_pricing && $isSelected) {
                                 $useDef = !empty($customFieldsUseDefaultPrice[$cf->id]);
                                 if ($cf->type === 'multiselect' && is_array($val)) {
@@ -193,18 +190,14 @@ class ServicePackageController extends Controller
                                         }
                                         $customFieldsPrices[$cf->id] = $cfPrice;
                                     }
-                                    if ($cf->type === 'number') {
-                                        $cfQty = floatval($this->parsePrice($customFields[$cf->id] ?? $customFieldsQuantities[$cf->id] ?? 1));
-                                    } else {
-                                        $cfQty = floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1));
+                                    $cfQty = floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1));
+                                    if ($cf->type === 'number' && isset($customFields[$cf->id])) {
+                                        $cfQty = floatval($this->parsePrice($customFields[$cf->id]));
                                     }
                                     if ($cfQty <= 0) $cfQty = 1;
                                     $customFieldsQuantities[$cf->id] = $cfQty;
                                     $cfSubtotal += ($cfPrice * $cfQty);
                                 }
-                            } elseif (!$isSelected) {
-                                unset($customFieldsPrices[$cf->id]);
-                                unset($customFieldsQuantities[$cf->id]);
                             }
                         }
                     }
@@ -222,6 +215,9 @@ class ServicePackageController extends Controller
 
                 $processedItems[] = [
                     'service_id' => !empty($item['service_id']) ? $item['service_id'] : null,
+                    'product_id' => !empty($item['product_id']) ? $item['product_id'] : null,
+                    'product_variant_id' => !empty($item['product_variant_id']) ? $item['product_variant_id'] : null,
+                    'mode' => !empty($item['product_id']) || !empty($item['product_variant_id']) || (($item['mode'] ?? '') === 'product') ? 'product' : (!empty($item['service_id']) ? 'service' : 'manual'),
                     'custom_service_name' => $item['custom_service_name'] ?? '',
                     'description' => $item['description'] ?? '',
                     'quantity' => $qty,
@@ -234,7 +230,7 @@ class ServicePackageController extends Controller
                     'custom_fields' => $customFields,
                     'custom_fields_prices' => $customFieldsPrices,
                     'custom_fields_quantities' => $customFieldsQuantities,
-                    'custom_fields_use_default_price' => $customFieldsUseDefaultPrice,
+                    'custom_fields_use_default_price' => $customFieldsUseDefaultPrice ?? [],
                     'total_price' => $rowTotal,
                 ];
             }
@@ -284,8 +280,11 @@ class ServicePackageController extends Controller
         $package->load(['items.service.customFields']);
         $services = Service::active()->with('customFields')->orderBy('name')->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
+        $marketModuleEnabled = $this->isMarketModuleEnabled();
+        $products = $this->getProductsForPackage();
+        $marketAttributes = $this->getMarketAttributesForPackage();
 
-        return view('services::packages.edit', compact('package', 'services', 'currency'));
+        return view('services::packages.edit', compact('package', 'services', 'currency', 'marketModuleEnabled', 'products', 'marketAttributes'));
     }
 
     public function update(StoreServicePackageRequest $request, ServicePackage $package)
@@ -338,19 +337,13 @@ class ServicePackageController extends Controller
                         $customFieldsQuantities[$k] = [];
                         foreach ($v as $subK => $subV) {
                             $parsedQ = floatval($this->parsePrice($subV));
-                            if ($parsedQ > 0) {
-                                $customFieldsQuantities[$k][$subK] = $parsedQ;
-                            }
+                            $customFieldsQuantities[$k][$subK] = $parsedQ > 0 ? $parsedQ : 1;
                         }
                     } else {
                         $parsedQ = floatval($this->parsePrice($v));
-                        if ($parsedQ > 0) {
-                            $customFieldsQuantities[$k] = $parsedQ;
-                        }
+                        $customFieldsQuantities[$k] = $parsedQ > 0 ? $parsedQ : 1;
                     }
                 }
-
-                $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
 
                 $cfSubtotal = 0;
                 if (!empty($item['service_id'])) {
@@ -369,30 +362,22 @@ class ServicePackageController extends Controller
                                     $isSelected = ($numVal > 0);
                                     if ($isSelected) {
                                         $customFields[$cf->id] = $numVal;
-                                        $customFieldsQuantities[$cf->id] = $numVal;
-                                    } else {
-                                        unset($customFields[$cf->id]);
-                                        unset($customFieldsQuantities[$cf->id]);
+                                        if (!isset($customFieldsQuantities[$cf->id]) || floatval($customFieldsQuantities[$cf->id]) <= 0) {
+                                            $customFieldsQuantities[$cf->id] = $numVal;
+                                        }
                                     }
                                 } else {
                                     $isSelected = true;
                                 }
-                            } elseif ($cf->type === 'number') {
-                                if (isset($customFieldsQuantities[$cf->id])) {
-                                    $qVal = floatval($this->parsePrice($customFieldsQuantities[$cf->id]));
-                                    if ($qVal > 0) {
-                                        $isSelected = true;
-                                        $customFields[$cf->id] = $qVal;
-                                        $customFieldsQuantities[$cf->id] = $qVal;
-                                    } else {
-                                        unset($customFields[$cf->id]);
-                                        unset($customFieldsQuantities[$cf->id]);
-                                    }
-                                } else {
-                                    unset($customFields[$cf->id]);
-                                    unset($customFieldsQuantities[$cf->id]);
+                            } elseif ($cf->type === 'number' && isset($customFieldsQuantities[$cf->id])) {
+                                $qVal = floatval($this->parsePrice($customFieldsQuantities[$cf->id]));
+                                if ($qVal > 0) {
+                                    $isSelected = true;
+                                    $customFields[$cf->id] = $qVal;
+                                    $customFieldsQuantities[$cf->id] = $qVal;
                                 }
                             }
+                            $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
                             if ($cf->has_pricing && $isSelected) {
                                 $useDef = !empty($customFieldsUseDefaultPrice[$cf->id]);
                                 if ($cf->type === 'multiselect' && is_array($val)) {
@@ -428,18 +413,14 @@ class ServicePackageController extends Controller
                                         }
                                         $customFieldsPrices[$cf->id] = $cfPrice;
                                     }
-                                    if ($cf->type === 'number') {
-                                        $cfQty = floatval($this->parsePrice($customFields[$cf->id] ?? $customFieldsQuantities[$cf->id] ?? 1));
-                                    } else {
-                                        $cfQty = floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1));
+                                    $cfQty = floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1));
+                                    if ($cf->type === 'number' && isset($customFields[$cf->id])) {
+                                        $cfQty = floatval($this->parsePrice($customFields[$cf->id]));
                                     }
                                     if ($cfQty <= 0) $cfQty = 1;
                                     $customFieldsQuantities[$cf->id] = $cfQty;
                                     $cfSubtotal += ($cfPrice * $cfQty);
                                 }
-                            } elseif (!$isSelected) {
-                                unset($customFieldsPrices[$cf->id]);
-                                unset($customFieldsQuantities[$cf->id]);
                             }
                         }
                     }
@@ -457,6 +438,9 @@ class ServicePackageController extends Controller
 
                 $processedItems[] = [
                     'service_id' => !empty($item['service_id']) ? $item['service_id'] : null,
+                    'product_id' => !empty($item['product_id']) ? $item['product_id'] : null,
+                    'product_variant_id' => !empty($item['product_variant_id']) ? $item['product_variant_id'] : null,
+                    'mode' => !empty($item['product_id']) || !empty($item['product_variant_id']) || (($item['mode'] ?? '') === 'product') ? 'product' : (!empty($item['service_id']) ? 'service' : 'manual'),
                     'custom_service_name' => $item['custom_service_name'] ?? '',
                     'description' => $item['description'] ?? '',
                     'quantity' => $qty,
@@ -469,7 +453,7 @@ class ServicePackageController extends Controller
                     'custom_fields' => $customFields,
                     'custom_fields_prices' => $customFieldsPrices,
                     'custom_fields_quantities' => $customFieldsQuantities,
-                    'custom_fields_use_default_price' => $customFieldsUseDefaultPrice,
+                    'custom_fields_use_default_price' => $customFieldsUseDefaultPrice ?? [],
                     'total_price' => $rowTotal,
                 ];
             }
@@ -524,5 +508,158 @@ class ServicePackageController extends Controller
             ->get();
 
         return response()->json($packages);
+    }
+
+    private function isMarketModuleEnabled(): bool
+    {
+        return Module::has('Market') && Module::isEnabled('Market');
+    }
+
+    private function getMarketAttributesForPackage()
+    {
+        if ($this->isMarketModuleEnabled() && class_exists(MarketAttribute::class)) {
+            try {
+                return MarketAttribute::with('values')->orderBy('name')->get();
+            } catch (Throwable $e) {
+                Log::error('[ServicePackageController] Error loading market attributes: ' . $e->getMessage());
+            }
+        }
+        return collect();
+    }
+
+    private function getProductsForPackage(): array
+    {
+        $products = [];
+        if (!$this->isMarketModuleEnabled() || !class_exists(MasterProduct::class)) {
+            return $products;
+        }
+
+        try {
+            $masterProducts = MasterProduct::where('status', 'active')
+                ->with(['variants.vendorProducts', 'category.parent', 'brand'])
+                ->orderBy('title')
+                ->get();
+
+            foreach ($masterProducts as $mp) {
+                if ($mp->variants && $mp->variants->count() > 0) {
+                    foreach ($mp->variants as $v) {
+                        $price = method_exists($v, 'getEffectivePrice') ? $v->getEffectivePrice() : ($v->selling_price ?? $v->price);
+
+                        if (!$price || $price <= 0) {
+                            $priceInfo = $mp->price_info ?? [];
+                            $price = $priceInfo['min_price'] ?? $priceInfo['original_price'] ?? 0;
+                        }
+
+                        $stock = 0;
+                        $isWmsActive = class_exists(MarketSetting::class)
+                            && (bool)MarketSetting::getValue('wms.enabled', false);
+
+                        if ($isWmsActive && class_exists(WarehouseStockService::class) && class_exists(WarehouseStock::class)) {
+                            $stockField = app(WarehouseStockService::class)->getStockDeductionStrategy() === 'separated' ? 'online_stock' : 'physical_stock';
+                            $stocks = WarehouseStock::where('product_variant_id', $v->id)
+                                ->whereHas('warehouse', function ($q) {
+                                    $q->where('is_active', true);
+                                })
+                                ->get();
+                            $stock = (int)$stocks->sum(function ($s) use ($stockField) {
+                                return max(0, $s->{$stockField} - $s->reserved_stock);
+                            });
+                        } else {
+                            if ($v->vendorProducts && $v->vendorProducts->count() > 0) {
+                                $stock = (int)$v->vendorProducts->where('status', 'published')->sum('stock');
+                            } else {
+                                $stock = (int)($v->stock ?? 0);
+                            }
+                        }
+
+                        $variantName = isset($v->name) ? $v->name : '';
+                        $fullTitle = $mp->title . ($variantName ? ' - ' . $variantName : '');
+
+                        $searchText = $mp->title;
+                        if (isset($v->variant_attributes) && is_array($v->variant_attributes)) {
+                            foreach ($v->variant_attributes as $key => $value) {
+                                if ($key === 'name' && $value === 'استاندارد') continue;
+                                $searchText .= ' ' . $value;
+                            }
+                        }
+
+                        $category = $mp->category;
+                        if ($category && $category->parent_id) {
+                            $group = $category->parent;
+                            $subCategory = $category;
+                        } else {
+                            $group = $category;
+                            $subCategory = null;
+                        }
+
+                        $groupId = $group ? $group->id : 0;
+                        $groupName = $group ? $group->name : 'سایر گروه‌ها';
+                        $categoryId = $subCategory ? $subCategory->id : 0;
+                        $categoryName = $subCategory ? $subCategory->name : 'عمومی';
+
+                        $products[] = [
+                            'id' => $mp->id . '_' . $v->id,
+                            'master_id' => $mp->id,
+                            'variant_id' => $v->id,
+                            'name' => $fullTitle,
+                            'search_text' => $searchText,
+                            'price' => (float)($price ?? 0),
+                            'stock' => $stock,
+                            'unit' => 'عدد',
+                            'group_id' => $groupId,
+                            'group_name' => $groupName,
+                            'category_id' => $categoryId,
+                            'category_name' => $categoryName,
+                            'brand_id' => $mp->brand_id ?? 0,
+                            'brand_name' => $mp->brand ? $mp->brand->name : 'بدون برند',
+                            'master_title' => $mp->title,
+                            'single_sell' => (bool)$mp->single_sell,
+                            'attributes' => $v->variant_attributes ?? [],
+                        ];
+                    }
+                } else {
+                    $priceInfo = $mp->price_info ?? [];
+                    $price = $priceInfo['min_price'] ?? $priceInfo['original_price'] ?? 0;
+                    $stock = (int)($priceInfo['total_stock'] ?? 0);
+
+                    $category = $mp->category;
+                    if ($category && $category->parent_id) {
+                        $group = $category->parent;
+                        $subCategory = $category;
+                    } else {
+                        $group = $category;
+                        $subCategory = null;
+                    }
+
+                    $groupId = $group ? $group->id : 0;
+                    $groupName = $group ? $group->name : 'سایر گروه‌ها';
+                    $categoryId = $subCategory ? $subCategory->id : 0;
+                    $categoryName = $subCategory ? $subCategory->name : 'عمومی';
+
+                    $products[] = [
+                        'id' => (string)$mp->id,
+                        'master_id' => $mp->id,
+                        'variant_id' => null,
+                        'name' => $mp->title,
+                        'search_text' => $mp->title,
+                        'price' => (float)($price ?? 0),
+                        'stock' => $stock,
+                        'unit' => 'عدد',
+                        'group_id' => $groupId,
+                        'group_name' => $groupName,
+                        'category_id' => $categoryId,
+                        'category_name' => $categoryName,
+                        'brand_id' => $mp->brand_id ?? 0,
+                        'brand_name' => $mp->brand ? $mp->brand->name : 'بدون برند',
+                        'master_title' => $mp->title,
+                        'attributes' => [],
+                    ];
+                }
+            }
+        } catch (Throwable $e) {
+            Log::error('[ServicePackageController] Error loading market products: ' . $e->getMessage());
+        }
+
+        return $products;
     }
 }

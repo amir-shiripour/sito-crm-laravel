@@ -152,7 +152,29 @@ class ClientAppointmentController extends Controller
         ];
 
         $posDevices = is_string($settingsMap['pos_devices'] ?? null) ? (json_decode($settingsMap['pos_devices'], true) ?: []) : [];
-        $bankAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) : [];
+        $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) 
+            ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) 
+            : (is_array($settingsMap['bank_transfer_accounts'] ?? null) ? $settingsMap['bank_transfer_accounts'] : []);
+
+        // Filter active bank accounts for clients
+        $activeBankAccounts = array_filter($rawAccounts, function($acc) {
+            if (!isset($acc['is_active'])) {
+                return true;
+            }
+            return filter_var($acc['is_active'], FILTER_VALIDATE_BOOLEAN);
+        });
+
+        $bankAccounts = array_values(array_map(function($acc, $index) {
+            return [
+                'id' => $acc['id'] ?? ($acc['bank_name'] ?? ('acc_' . $index)),
+                'bank_name' => $acc['bank_name'] ?? 'بانک',
+                'owner_name' => $acc['owner_name'] ?? ($acc['owner'] ?? ($acc['name'] ?? '')),
+                'card_number' => !empty($acc['card_number']) ? preg_replace('/[^0-9]/', '', $acc['card_number']) : '',
+                'account_number' => $acc['account_number'] ?? '',
+                'iban' => $acc['iban'] ?? '',
+            ];
+        }, $activeBankAccounts, array_keys($activeBankAccounts)));
+
         $installmentTypes = is_string($settingsMap['installment_types'] ?? null) ? (json_decode($settingsMap['installment_types'], true) ?: []) : [];
 
         $onlineGateways = [];
@@ -163,7 +185,7 @@ class ClientAppointmentController extends Controller
             $onlineGateways[] = ['id' => 'zibal', 'label' => 'درگاه زیبال'];
         }
         if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
-            $onlineGateways[] = ['id' => 'بهپرداخت ملت', 'label' => 'درگاه بهپرداخت ملت'];
+            $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
         }
 
         // بررسی دوطرفه: ۱. فعال بودن در چک‌باکس‌های "روش‌های پرداخت فعال سیستم" ۲. فعال بودن وضعیت اختصاصی آن روش
@@ -180,7 +202,7 @@ class ClientAppointmentController extends Controller
         }
 
         // ۳. انتقال بانکی (کارت به کارت / شبا)
-        if (in_array('transfer', $activeMethods) && ($settingsMap['bank_transfer_status'] ?? '') === 'active') {
+        if (in_array('transfer', $activeMethods) && ($settingsMap['bank_transfer_status'] ?? '') === 'active' && !empty($bankAccounts)) {
             $availablePaymentMethods['transfer'] = $allMethodLabels['transfer'];
         }
 

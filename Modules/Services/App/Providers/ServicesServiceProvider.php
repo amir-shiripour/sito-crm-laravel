@@ -14,7 +14,6 @@ use Modules\Services\App\Services\ServiceManagementService;
 use Modules\Services\App\Services\StatusBuilderService;
 use Illuminate\Support\Facades\Schema;
 use Modules\Settings\Entities\Setting;
-use App\Services\Modules\BaseModuleInstaller;
 
 class ServicesServiceProvider extends ServiceProvider
 {
@@ -32,10 +31,6 @@ class ServicesServiceProvider extends ServiceProvider
         $this->commands([
             SeedServiceWorkflows::class,
         ]);
-
-        if (BaseModuleInstaller::isInstalled($this->moduleName)) {
-            $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
-        }
     }
 
     public function register(): void

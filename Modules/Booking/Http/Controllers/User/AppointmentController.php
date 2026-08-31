@@ -98,14 +98,14 @@ class AppointmentController extends Controller
             ->toArray();
 
         // --- Sorting ---
-        $sort = $request->input('sort', 'newest');
+        $sort = $request->input('sort', 'created_desc');
         if ($sort === 'oldest') {
             $query->orderBy('start_at_utc');
-        } elseif ($sort === 'created_desc') {
-            $query->orderByDesc('created_at');
-        } else {
-            // Default: Newest (Start Time) DESC
+        } elseif ($sort === 'newest') {
             $query->orderByDesc('start_at_utc');
+        } else {
+            // Default: Newest Registration (created_at) DESC
+            $query->orderByDesc('created_at');
         }
 
         $appointments = $query->paginate(25)->withQueryString();
@@ -457,17 +457,12 @@ class AppointmentController extends Controller
         $startTime = $startLocal ? $startLocal->format('H:i') : '—';
         $endTime = $endLocal ? $endLocal->format('H:i') : '—';
 
-        $statusMap = [
-            Appointment::STATUS_DRAFT => ['label' => 'پیش‌نویس', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
-            Appointment::STATUS_PENDING_PAYMENT => ['label' => 'در انتظار پرداخت', 'class' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'],
-            Appointment::STATUS_CONFIRMED => ['label' => 'تایید شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
-            Appointment::STATUS_CANCELED_BY_ADMIN => ['label' => 'لغو شده (ادمین)', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
-            Appointment::STATUS_CANCELED_BY_CLIENT => ['label' => 'لغو شده (مشتری)', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
-            Appointment::STATUS_NO_SHOW => ['label' => 'عدم حضور', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
-            Appointment::STATUS_DONE => ['label' => 'انجام شده', 'class' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'],
-            Appointment::STATUS_RESCHEDULED => ['label' => 'جابجا شده', 'class' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200'],
+        $statusMap = Appointment::statusesList();
+        $normalizedStatus = strtoupper((string) $appointment->status);
+        $statusMeta = $statusMap[$normalizedStatus] ?? [
+            'label' => $appointment->status_label ?? ($appointment->status ?: 'نامشخص'),
+            'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
         ];
-        $statusMeta = $statusMap[$appointment->status] ?? ['label' => $appointment->status, 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'];
 
         $entryValue = $entryLocal ? $entryLocal->format('H:i') : '—';
         $exitValue = $exitLocal ? $exitLocal->format('H:i') : '—';
@@ -640,6 +635,11 @@ class AppointmentController extends Controller
             ? \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray()
             : [];
 
+        $rawActiveMethods = $settingsMap['active_payment_methods'] ?? ['online'];
+        $activePaymentMethods = is_string($rawActiveMethods)
+            ? (json_decode($rawActiveMethods, true) ?: [])
+            : (is_array($rawActiveMethods) ? $rawActiveMethods : ['online']);
+
         $posDevices = is_string($settingsMap['pos_devices'] ?? null) ? (json_decode($settingsMap['pos_devices'], true) ?: []) : [];
         $bankAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) : [];
         $installmentTypes = is_string($settingsMap['installment_types'] ?? null) ? (json_decode($settingsMap['installment_types'], true) ?: []) : [];
@@ -655,26 +655,26 @@ class AppointmentController extends Controller
             $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
         }
 
-        // Build available payment methods based on section statuses in /settings#payment
+        // Build available payment methods based on active_payment_methods in /settings#payment
         $availablePaymentMethods = [];
 
-        if (!empty($onlineGateways)) {
+        if (in_array('online', $activePaymentMethods, true) && !empty($onlineGateways)) {
             $availablePaymentMethods['online'] = 'درگاه پرداخت آنلاین';
         }
 
-        if (($settingsMap['pos_status'] ?? '') === 'active' || (!isset($settingsMap['pos_status']) && !empty($posDevices))) {
+        if (in_array('pos', $activePaymentMethods, true)) {
             $availablePaymentMethods['pos'] = 'دستگاه کارتخوان (POS)';
         }
 
-        if (($settingsMap['bank_transfer_status'] ?? '') === 'active' || (!isset($settingsMap['bank_transfer_status']) && !empty($bankAccounts))) {
+        if (in_array('transfer', $activePaymentMethods, true)) {
             $availablePaymentMethods['transfer'] = 'انتقال بانکی / کارت به کارت (شبا)';
         }
 
-        if (($settingsMap['cod_status'] ?? '') === 'active') {
+        if (in_array('cod', $activePaymentMethods, true)) {
             $availablePaymentMethods['cod'] = 'پرداخت در محل (نقد)';
         }
 
-        if (($settingsMap['installment_status'] ?? '') === 'active' || (!isset($settingsMap['installment_status']) && !empty($installmentTypes))) {
+        if (in_array('installment', $activePaymentMethods, true)) {
             $availablePaymentMethods['installment'] = 'پرداخت قسطی / چک';
         }
 

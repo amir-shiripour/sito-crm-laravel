@@ -5,7 +5,7 @@
 @php
     $inputClass  = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:bg-gray-800 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20";
     $labelClass  = "block text-xs font-bold text-gray-600 dark:text-gray-300 mb-2";
-    $cardClass   = "bg-white dark:bg-gray-800/40 rounded-3xl border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden";
+    $cardClass   = "bg-white dark:bg-gray-800/40 rounded-3xl border border-gray-100 dark:border-gray-700/60 shadow-sm";
     $selectClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-100 dark:focus:bg-gray-800 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20 appearance-none cursor-pointer";
     $v = fn(string $key, $default = '') => $settings->get($key, $default);
 
@@ -15,10 +15,80 @@
         'appearance' => ['label' => 'اطلاعات هویتی',            'icon' => 'printer'],
         'defaults'   => ['label' => 'اتوماسیون (سرفصل‌ها)',   'icon' => 'bolt'],
     ];
+
+    $typeLabels = [
+        'asset' => 'دارایی',
+        'liability' => 'بدهی',
+        'equity' => 'سرمایه',
+        'income' => 'درآمد',
+        'revenue' => 'درآمد',
+        'expense' => 'هزینه',
+    ];
+
+    $typeBadges = [
+        'asset' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
+        'liability' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800/50',
+        'equity' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800/50',
+        'income' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
+        'revenue' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
+        'expense' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 border-rose-200 dark:border-rose-800/50',
+    ];
+
+    $mapCategories = function($categories) use ($typeLabels, $typeBadges) {
+        return $categories->sort(function($a, $b) {
+            $codeA = $a->account_code ?? '';
+            $codeB = $b->account_code ?? '';
+            if ($codeA !== $codeB) return strcmp($codeA, $codeB);
+            return strcmp($a->title ?? '', $b->title ?? '');
+        })->map(function($c) use ($typeLabels, $typeBadges) {
+            return [
+                'id' => (string) $c->id,
+                'title' => $c->title,
+                'account_code' => (string) ($c->account_code ?? ''),
+                'type' => $c->type,
+                'type_label' => $typeLabels[$c->type] ?? $c->type,
+                'type_badge' => $typeBadges[$c->type] ?? 'bg-gray-100 text-gray-700',
+            ];
+        })->values()->all();
+    };
+
+    $incomeCategoriesList = $mapCategories($incomeCategories);
+    $expenseCategoriesList = $mapCategories($expenseCategories);
+    $assetCategoriesList = $mapCategories($assetCategories);
+    $liabilityCategoriesList = $mapCategories($liabilityCategories);
+
+    $mapFunds = function($funds) {
+        $types = [
+            'bank' => 'بانک',
+            'cash' => 'صندوق',
+            'gateway' => 'درگاه پرداخت',
+            'petty_cash' => 'تنخواه',
+        ];
+        $typeBadges = [
+            'bank' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
+            'cash' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
+        ];
+        return $funds->sort(function($a, $b) {
+            return strcmp($a->name ?? '', $b->name ?? '');
+        })->map(function($f) use ($types, $typeBadges) {
+            return [
+                'id' => (string) $f->id,
+                'name' => $f->name,
+                'bank_name' => $f->bank_name ?? '',
+                'account_number' => $f->account_number ?? '',
+                'type' => $f->type,
+                'type_label' => $types[$f->type] ?? $f->type,
+                'type_badge' => $typeBadges[$f->type] ?? 'bg-gray-100 text-gray-700',
+            ];
+        })->values()->all();
+    };
+
+    $cashFundsList = $mapFunds($fundAccounts->where('type', 'cash'));
+    $bankFundsList = $mapFunds($fundAccounts->where('type', 'bank'));
 @endphp
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6" x-data="accountingSettingsForm({
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24" x-data="accountingSettingsForm({
     units: {{ json_encode($settings->get('units.list', [''])) }},
     custom_fields: {{ json_encode($settings->get('appearance.custom_fields', [['key' => '', 'value' => '']])) }}
 })">
@@ -133,12 +203,14 @@
                             <label class="{{ $labelClass }}">انتخاب واحد</label>
                             <div
                                 class="flex items-center gap-2 p-1.5 rounded-xl bg-gray-100 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 {{ !$isSuperAdmin ? 'opacity-60 cursor-not-allowed' : '' }}">
-                                <button type="button" @if($isSuperAdmin) @click="currency = 'تومان'" @else disabled @endif
+                                <button type="button" @if($isSuperAdmin) @click="currency = 'تومان'" @else disabled
+                                        @endif
                                         :class="currency === 'تومان' ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
                                         class="flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200 {{ !$isSuperAdmin ? 'cursor-not-allowed' : '' }}">
                                     تومان (Toman)
                                 </button>
-                                <button type="button" @if($isSuperAdmin) @click="currency = 'ریال'" @else disabled @endif
+                                <button type="button" @if($isSuperAdmin) @click="currency = 'ریال'" @else disabled
+                                        @endif
                                         :class="currency === 'ریال' ? 'bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
                                         class="flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200 {{ !$isSuperAdmin ? 'cursor-not-allowed' : '' }}">
                                     ریال (Rial)
@@ -147,7 +219,8 @@
                             @if($isSuperAdmin)
                                 <input type="hidden" name="general[currency]" x-model="currency">
                             @else
-                                <p class="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">تغییر واحد مالی فقط توسط سوپر ادمین امکان‌پذیر است.</p>
+                                <p class="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">تغییر واحد مالی
+                                    فقط توسط سوپر ادمین امکان‌پذیر است.</p>
                             @endif
                         </div>
                         <div class="flex flex-col">
@@ -216,7 +289,8 @@
                                 <input type="hidden" name="general[check_cheque_due_dates]" value="0">
                                 <input type="checkbox" id="general_check_cheque_due_dates"
                                        name="general[check_cheque_due_dates]"
-                                       value="1" @checked($v('general.check_cheque_due_dates', true)) class="sr-only peer">
+                                       value="1"
+                                       @checked($v('general.check_cheque_due_dates', true)) class="sr-only peer">
                                 <div
                                     class="w-14 h-8 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-indigo-600 transition-colors duration-300 shadow-inner"></div>
                                 <div
@@ -232,9 +306,9 @@
                     </div>
                 </div>
                 @if(false)
-                <div class="{{ $cardClass }}">
-                    <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60">
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                    <div class="{{ $cardClass }}">
+                        <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60">
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
                         <span
                             class="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400">
                             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -243,44 +317,45 @@
                                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
                         </span>
-                            تنظیمات پیش‌فرض صدور فاکتور
-                        </h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 mr-13">مشخص کنید فاکتورهای جدید به صورت
-                            پیش‌فرض چگونه در سیستم ثبت شوند.</p>
-                    </div>
-                    <div class="p-6 md:p-8 space-y-4">
-                        @php $currentStatus = $settings->get('invoice.default_status_on_create', 'draft'); @endphp
+                                تنظیمات پیش‌فرض صدور فاکتور
+                            </h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 mr-13">مشخص کنید فاکتورهای جدید به
+                                صورت
+                                پیش‌فرض چگونه در سیستم ثبت شوند.</p>
+                        </div>
+                        <div class="p-6 md:p-8 space-y-4">
+                            @php $currentStatus = $settings->get('invoice.default_status_on_create', 'draft'); @endphp
 
-                        <label class="flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all"
-                               :class="invoiceDefaultStatus === 'draft' ? 'border-indigo-400 bg-indigo-50/60 dark:bg-indigo-500/10 dark:border-indigo-500/50' : 'border-transparent bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30'">
-                            <input type="radio" name="invoice[default_status_on_create]" value="draft"
-                                   class="mt-1 accent-indigo-600 shrink-0"
-                                   x-model="invoiceDefaultStatus" @checked($currentStatus == 'draft')>
-                            <div>
-                                <span class="text-base font-black text-gray-800 dark:text-gray-200 block">ثبت اولیه به عنوان پیش‌فاکتور (بدون سند)</span>
-                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400 block mt-1">فاکتورها ابتدا به صورت پیش‌نویس ذخیره می‌شوند. برای رسمی شدن و صدور سند مالی، نیاز به تایید دستی دارند.</span>
-                            </div>
-                        </label>
+                            <label class="flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all"
+                                   :class="invoiceDefaultStatus === 'draft' ? 'border-indigo-400 bg-indigo-50/60 dark:bg-indigo-500/10 dark:border-indigo-500/50' : 'border-transparent bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30'">
+                                <input type="radio" name="invoice[default_status_on_create]" value="draft"
+                                       class="mt-1 accent-indigo-600 shrink-0"
+                                       x-model="invoiceDefaultStatus" @checked($currentStatus == 'draft')>
+                                <div>
+                                    <span class="text-base font-black text-gray-800 dark:text-gray-200 block">ثبت اولیه به عنوان پیش‌فاکتور (بدون سند)</span>
+                                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400 block mt-1">فاکتورها ابتدا به صورت پیش‌نویس ذخیره می‌شوند. برای رسمی شدن و صدور سند مالی، نیاز به تایید دستی دارند.</span>
+                                </div>
+                            </label>
 
-                        <label class="flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all"
-                               :class="invoiceDefaultStatus === 'approved' ? 'border-indigo-400 bg-indigo-50/60 dark:bg-indigo-500/10 dark:border-indigo-500/50' : 'border-transparent bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30'">
-                            <input type="radio" name="invoice[default_status_on_create]" value="approved"
-                                   class="mt-1 accent-indigo-600 shrink-0"
-                                   x-model="invoiceDefaultStatus" @checked($currentStatus == 'approved')>
-                            <div>
-                                <span class="text-base font-black text-gray-800 dark:text-gray-200 block">ثبت و تایید مستقیم به عنوان فاکتور رسمی</span>
-                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400 block mt-1">فاکتورها در لحظه ثبت، تایید شده، شماره رسمی دریافت می‌کنند و سند حسابداری آن‌ها به صورت خودکار صادر می‌شود.</span>
-                            </div>
-                        </label>
+                            <label class="flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all"
+                                   :class="invoiceDefaultStatus === 'approved' ? 'border-indigo-400 bg-indigo-50/60 dark:bg-indigo-500/10 dark:border-indigo-500/50' : 'border-transparent bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30'">
+                                <input type="radio" name="invoice[default_status_on_create]" value="approved"
+                                       class="mt-1 accent-indigo-600 shrink-0"
+                                       x-model="invoiceDefaultStatus" @checked($currentStatus == 'approved')>
+                                <div>
+                                    <span class="text-base font-black text-gray-800 dark:text-gray-200 block">ثبت و تایید مستقیم به عنوان فاکتور رسمی</span>
+                                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400 block mt-1">فاکتورها در لحظه ثبت، تایید شده، شماره رسمی دریافت می‌کنند و سند حسابداری آن‌ها به صورت خودکار صادر می‌شود.</span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
-                </div>
                 @endif
             </div>
             @if(false)
-            <div x-show="activeTab === 'numbering'" x-cloak class="space-y-6">
-                <div class="{{ $cardClass }}">
-                    <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60">
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <div x-show="activeTab === 'numbering'" x-cloak class="space-y-6">
+                    <div class="{{ $cardClass }}">
+                        <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60">
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
                         <span
                             class="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -289,76 +364,77 @@
                                       d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                             </svg>
                         </span>
-                            الگوی شماره‌گذاری فاکتور فروش
-                        </h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 mr-13">الگوی تولید شماره برای فاکتورهای
-                            جدید
-                            را تعیین کنید.</p>
-                    </div>
-                    <div class="p-6 md:p-8 space-y-6">
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                            <div>
-                                <label class="{{ $labelClass }}">حالت شماره‌گذاری</label>
-                                <select name="numbering[mode]" x-model="numbering.mode" class="{{ $selectClass }}">
-                                    <option value="auto">تولید خودکار (پیوسته)</option>
-                                    <option value="manual">دستی (توسط حسابدار)</option>
-                                </select>
-                            </div>
-                            <div x-show="numbering.mode === 'auto'" x-transition>
-                                <label class="{{ $labelClass }}">پیشوند (حروف)</label>
-                                <input type="text" name="numbering[prefix]" x-model="numbering.prefix"
-                                       class="{{ $inputClass }} dir-ltr text-center" placeholder="P">
-                            </div>
-                            <div x-show="numbering.mode === 'auto'" x-transition>
-                                <label class="{{ $labelClass }}">جداکننده</label>
-                                <input type="text" name="numbering[separator]" x-model="numbering.separator"
-                                       class="{{ $inputClass }} dir-ltr text-center" placeholder="-">
-                            </div>
-                            <div x-show="numbering.mode === 'auto'" x-transition>
-                                <label class="{{ $labelClass }}">طول عدد (تعداد ارقام)</label>
-                                <input type="number" name="numbering[length]" x-model.number="numbering.length"
-                                       class="{{ $inputClass }} dir-ltr text-center" min="1" max="10">
-                            </div>
+                                الگوی شماره‌گذاری فاکتور فروش
+                            </h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 mr-13">الگوی تولید شماره برای
+                                فاکتورهای
+                                جدید
+                                را تعیین کنید.</p>
                         </div>
+                        <div class="p-6 md:p-8 space-y-6">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <div>
+                                    <label class="{{ $labelClass }}">حالت شماره‌گذاری</label>
+                                    <select name="numbering[mode]" x-model="numbering.mode" class="{{ $selectClass }}">
+                                        <option value="auto">تولید خودکار (پیوسته)</option>
+                                        <option value="manual">دستی (توسط حسابدار)</option>
+                                    </select>
+                                </div>
+                                <div x-show="numbering.mode === 'auto'" x-transition>
+                                    <label class="{{ $labelClass }}">پیشوند (حروف)</label>
+                                    <input type="text" name="numbering[prefix]" x-model="numbering.prefix"
+                                           class="{{ $inputClass }} dir-ltr text-center" placeholder="P">
+                                </div>
+                                <div x-show="numbering.mode === 'auto'" x-transition>
+                                    <label class="{{ $labelClass }}">جداکننده</label>
+                                    <input type="text" name="numbering[separator]" x-model="numbering.separator"
+                                           class="{{ $inputClass }} dir-ltr text-center" placeholder="-">
+                                </div>
+                                <div x-show="numbering.mode === 'auto'" x-transition>
+                                    <label class="{{ $labelClass }}">طول عدد (تعداد ارقام)</label>
+                                    <input type="number" name="numbering[length]" x-model.number="numbering.length"
+                                           class="{{ $inputClass }} dir-ltr text-center" min="1" max="10">
+                                </div>
+                            </div>
 
-                        <div x-show="numbering.mode === 'auto'" x-transition
-                             class="relative overflow-hidden p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/10 border border-indigo-100 dark:border-indigo-500/20 flex flex-col items-center justify-center text-center">
+                            <div x-show="numbering.mode === 'auto'" x-transition
+                                 class="relative overflow-hidden p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/10 border border-indigo-100 dark:border-indigo-500/20 flex flex-col items-center justify-center text-center">
                         <span
                             class="text-xs font-bold uppercase tracking-widest text-indigo-400 dark:text-indigo-500 mb-2">پیش‌نمایش الگو</span>
-                            <span
-                                class="font-mono text-3xl font-black text-indigo-600 dark:text-indigo-300 tracking-wider"
-                                x-text="generatePreview(numbering)"></span>
-                        </div>
+                                <span
+                                    class="font-mono text-3xl font-black text-indigo-600 dark:text-indigo-300 tracking-wider"
+                                    x-text="generatePreview(numbering)"></span>
+                            </div>
 
-                        <div x-show="numbering.mode === 'auto'" x-transition
-                             class="border-t border-gray-100 dark:border-gray-700/60 pt-6">
-                            <label for="numbering_include_year"
-                                   class="flex items-center justify-between gap-4 cursor-pointer group p-5 rounded-2xl border-2 border-transparent bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all">
-                                <div class="flex-1">
-                                    <span class="text-base font-black text-gray-800 dark:text-gray-200 block">افزودن سال شمسی جاری به فرمت شماره‌گذاری</span>
-                                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400 block mt-1">سال جاری شمسی به صورت خودکار در فرمت شماره فاکتور قرار می‌گیرد.</span>
-                                </div>
-                                <div class="relative shrink-0">
-                                    <input type="hidden" name="numbering[include_year]" value="0">
-                                    <input type="checkbox" id="numbering_include_year" name="numbering[include_year]"
-                                           value="1" x-model="numbering.include_year" class="sr-only peer">
-                                    <div
-                                        class="w-14 h-8 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-indigo-600 transition-colors duration-300 shadow-inner"></div>
-                                    <div
-                                        class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full shadow transition-transform duration-300 peer-checked:-translate-x-6 flex items-center justify-center">
-                                        <svg
-                                            class="w-3 h-3 text-indigo-600 opacity-0 peer-checked:opacity-100 transition-opacity"
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                        </svg>
+                            <div x-show="numbering.mode === 'auto'" x-transition
+                                 class="border-t border-gray-100 dark:border-gray-700/60 pt-6">
+                                <label for="numbering_include_year"
+                                       class="flex items-center justify-between gap-4 cursor-pointer group p-5 rounded-2xl border-2 border-transparent bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all">
+                                    <div class="flex-1">
+                                        <span class="text-base font-black text-gray-800 dark:text-gray-200 block">افزودن سال شمسی جاری به فرمت شماره‌گذاری</span>
+                                        <span class="text-sm font-medium text-gray-500 dark:text-gray-400 block mt-1">سال جاری شمسی به صورت خودکار در فرمت شماره فاکتور قرار می‌گیرد.</span>
                                     </div>
-                                </div>
-                            </label>
+                                    <div class="relative shrink-0">
+                                        <input type="hidden" name="numbering[include_year]" value="0">
+                                        <input type="checkbox" id="numbering_include_year"
+                                               name="numbering[include_year]"
+                                               value="1" x-model="numbering.include_year" class="sr-only peer">
+                                        <div
+                                            class="w-14 h-8 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-indigo-600 transition-colors duration-300 shadow-inner"></div>
+                                        <div
+                                            class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full shadow transition-transform duration-300 peer-checked:-translate-x-6 flex items-center justify-center">
+                                            <svg
+                                                class="w-3 h-3 text-indigo-600 opacity-0 peer-checked:opacity-100 transition-opacity"
+                                                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
-                    </div>
                 </div>
-
-                {{-- الگوی شماره‌گذاری پیش‌فاکتور --}}
                 <div class="{{ $cardClass }}">
                     <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60">
                         <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
@@ -442,8 +518,6 @@
                         </div>
                     </div>
                 </div>
-
-                {{-- مالیات --}}
                 <div class="{{ $cardClass }}">
                     <div
                         class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60 bg-gradient-to-r from-emerald-50/50 to-transparent dark:from-emerald-900/10">
@@ -462,8 +536,6 @@
                             اتوماتیک در فاکتورهای جدید لحاظ می‌گردد.</p>
                     </div>
                     <div class="p-6 md:p-8 space-y-6">
-
-                        {{-- تاگل اعمال مالیات --}}
                         <label for="tax_enabled"
                                class="flex items-center justify-between gap-4 cursor-pointer group p-5 rounded-2xl border-2 border-transparent bg-gray-50 dark:bg-gray-800/50 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-all">
                             <div class="flex-1">
@@ -486,8 +558,6 @@
                                 </div>
                             </div>
                         </label>
-
-                        {{-- درصد مالیات --}}
                         <div x-show="taxEnabled" x-transition class="max-w-md">
                             <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">درصد مالیات
                                 پیش‌فرض
@@ -510,8 +580,6 @@
                                 مالیات برای هر فاکتور را خواهید داشت.
                             </p>
                         </div>
-
-                        {{-- نحوه گرد کردن --}}
                         <div
                             class="border-t border-gray-100 dark:border-gray-700/60 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
@@ -541,9 +609,9 @@
             @endif
             <div x-show="activeTab === 'appearance'" x-cloak class="space-y-6">
                 @if(false)
-                <div class="{{ $cardClass }}">
-                    <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60">
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                    <div class="{{ $cardClass }}">
+                        <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60">
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
                         <span
                             class="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400">
                             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -552,32 +620,30 @@
                                       d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm-3-9.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z"/>
                             </svg>
                         </span>
-                            قالب چاپی فاکتورها
-                        </h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 mr-13">قالب پیش‌فرض پرینت فاکتور را
-                            انتخاب
-                            کنید.</p>
-                    </div>
-                    <div class="p-6 md:p-8">
-                        <div class="max-w-sm">
-                            <label for="invoice_template" class="{{ $labelClass }}">قالب پیش‌فرض پرینت</label>
-                            <select name="appearance[invoice_template]" id="invoice_template"
-                                    class="{{ $selectClass }}">
-                                <option
-                                    value="standard" @selected(($settings->get('appearance.invoice_template') ?? null) == 'standard')>
-                                    استاندارد (زیبا و مینیمال)
-                                </option>
-                                <option
-                                    value="official" @selected(($settings->get('appearance.invoice_template') ?? null) == 'official')>
-                                    رسمی (مورد تایید دارایی با جداول کامل)
-                                </option>
-                            </select>
+                                قالب چاپی فاکتورها
+                            </h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 mr-13">قالب پیش‌فرض پرینت فاکتور را
+                                انتخاب
+                                کنید.</p>
                         </div>
-                    </div>
+                        <div class="p-6 md:p-8">
+                            <div class="max-w-sm">
+                                <label for="invoice_template" class="{{ $labelClass }}">قالب پیش‌فرض پرینت</label>
+                                <select name="appearance[invoice_template]" id="invoice_template"
+                                        class="{{ $selectClass }}">
+                                    <option
+                                        value="standard" @selected(($settings->get('appearance.invoice_template') ?? null) == 'standard')>
+                                        استاندارد (زیبا و مینیمال)
+                                    </option>
+                                    <option
+                                        value="official" @selected(($settings->get('appearance.invoice_template') ?? null) == 'official')>
+                                        رسمی (مورد تایید دارایی با جداول کامل)
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
                 </div>
                 @endif
-
-                {{-- اطلاعات هویتی فروشنده (از ماژول تنظیمات) --}}
                 <div class="{{ $cardClass }}">
                     <div
                         class="p-6 md:p-8 flex items-start justify-between gap-4 flex-wrap bg-gradient-to-r from-purple-50/50 to-transparent dark:from-purple-900/10 border-b border-gray-100 dark:border-gray-700/60">
@@ -614,8 +680,6 @@
                             </a>
                         @endif
                     </div>
-
-                    {{-- نمایش مقادیر فعلی از Settings --}}
                     <div class="p-6 md:p-8">
                         <div
                             class="rounded-2xl bg-purple-50/50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-500/20 p-5 mb-6">
@@ -670,8 +734,6 @@
                                 @endif
                             </div>
                         </div>
-
-                        {{-- فیلدهای دلخواه اضافی --}}
                         <div class="border-t border-gray-100 dark:border-gray-700/60 pt-6">
                             <h3 class="{{ $labelClass }} mb-4 flex items-center gap-2">
                                 <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
@@ -713,8 +775,6 @@
                                 افزودن فیلد دلخواه
                             </button>
                         </div>
-
-                        {{-- واحدهای اندازه‌گیری --}}
                         <div class="border-t border-gray-100 dark:border-gray-700/60 pt-6 mt-6">
                             <h3 class="{{ $labelClass }} mb-4 flex items-center gap-2">
                                 <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
@@ -754,7 +814,7 @@
             </div>
 
             <div x-show="activeTab === 'defaults'" x-cloak class="space-y-6">
-                <div class="{{ $cardClass }}">
+                <div class="{{ $cardClass }} overflow-visible">
                     <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/60">
                         <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
                         <span
@@ -770,151 +830,1058 @@
                             حسابداری
                             بدون نیاز به دخالت کاربر، اسناد دوبل را به درستی صادر می‌کند.</p>
                     </div>
-                    <div class="p-6 md:p-8">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                    <div class="p-6 md:p-8 overflow-visible">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {{-- Sales Category --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="sales_income" class="{{ $labelClass }}">درآمد فروش/خدمات <span
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.sales_income_category_id', '') }}',
+                                options: @js($incomeCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.title && o.title.toLowerCase().includes(q)) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب سرفصل درآمدی...';
+                                    return (found.account_code ? this.formatFa(found.account_code) + ' - ' : '') + found.title;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">درآمد فروش/خدمات <span
                                         class="font-normal text-gray-500 text-xs">(سمت بستانکار فاکتور)</span></label>
-                                <select name="defaults[sales_income_category_id]" id="sales_income"
-                                        class="{{ $selectClass }}">
-                                    <option value="">لطفاً یک سرفصل درآمدی انتخاب کنید...</option>
-                                    @foreach($incomeCategories as $category)
-                                        <option
-                                            value="{{ $category->id }}" @selected(($settings->get('defaults.sales_income_category_id') ?? null) == $category->id)>{{ $category->title }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[sales_income_category_id]" :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M12 4v16m8-8H4"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل یا کد..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 hover:text-emerald-600 dark:hover:text-emerald-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-emerald-50/70 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Sales Discount Category --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="sales_discount" class="{{ $labelClass }}">تخفیفات نقدی فروش <span
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.sales_discount_category_id', '') }}',
+                                options: @js($expenseCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.title && o.title.toLowerCase().includes(q)) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب سرفصل هزینه‌ای...';
+                                    return (found.account_code ? this.formatFa(found.account_code) + ' - ' : '') + found.title;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">تخفیفات نقدی فروش <span
                                         class="font-normal text-gray-500 text-xs">(هزینه / کاهنده درآمد)</span></label>
-                                <select name="defaults[sales_discount_category_id]" id="sales_discount"
-                                        class="{{ $selectClass }}">
-                                    <option value="">لطفاً یک سرفصل هزینه‌ای انتخاب کنید...</option>
-                                    @foreach($expenseCategories as $category)
-                                        <option
-                                            value="{{ $category->id }}" @selected(($settings->get('defaults.sales_discount_category_id') ?? null) == $category->id)>{{ $category->title }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[sales_discount_category_id]"
+                                           :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M20 12H4"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل یا کد..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-rose-50/70 dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Receivables Category --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="receivables" class="{{ $labelClass }}">حساب‌های دریافتنی <span
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.receivables_category_id', '') }}',
+                                options: @js($assetCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.title && o.title.toLowerCase().includes(q)) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب سرفصل دارایی...';
+                                    return (found.account_code ? this.formatFa(found.account_code) + ' - ' : '') + found.title;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">حساب‌های دریافتنی <span
                                         class="font-normal text-gray-500 text-xs">(مشتریان - بدهکار فاکتور)</span></label>
-                                <select name="defaults[receivables_category_id]" id="receivables"
-                                        class="{{ $selectClass }}">
-                                    <option value="">لطفاً یک سرفصل دارایی انتخاب کنید...</option>
-                                    @foreach($assetCategories as $category)
-                                        <option
-                                            value="{{ $category->id }}" @selected(($settings->get('defaults.receivables_category_id') ?? null) == $category->id)>{{ $category->title }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[receivables_category_id]" :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل یا کد..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-blue-50/70 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Payables Category --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="payables" class="{{ $labelClass }}">حساب‌های پرداختنی <span
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.payables_category_id', '') }}',
+                                options: @js($liabilityCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.title && o.title.toLowerCase().includes(q)) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب سرفصل بدهی...';
+                                    return (found.account_code ? this.formatFa(found.account_code) + ' - ' : '') + found.title;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">حساب‌های پرداختنی <span
                                         class="font-normal text-gray-500 text-xs">(تامین‌کنندگان / بستانکاران)</span></label>
-                                <select name="defaults[payables_category_id]" id="payables" class="{{ $selectClass }}">
-                                    <option value="">لطفاً یک سرفصل بدهی انتخاب کنید...</option>
-                                    @foreach($liabilityCategories as $category)
-                                        <option
-                                            value="{{ $category->id }}" @selected(($settings->get('defaults.payables_category_id') ?? null) == $category->id)>{{ $category->title }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[payables_category_id]" :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل یا کد..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 dark:hover:text-amber-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-amber-50/70 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Tax Category --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="sales_tax" class="{{ $labelClass }}">مالیات بر ارزش افزوده فروش <span
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.sales_tax_category_id', '') }}',
+                                options: @js($liabilityCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.title && o.title.toLowerCase().includes(q)) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب سرفصل بدهی...';
+                                    return (found.account_code ? this.formatFa(found.account_code) + ' - ' : '') + found.title;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">مالیات بر ارزش افزوده فروش <span
                                         class="font-normal text-gray-500 text-xs">(بستانکار)</span></label>
-                                <select name="defaults[sales_tax_category_id]" id="sales_tax"
-                                        class="{{ $selectClass }}">
-                                    <option value="">لطفاً یک سرفصل بدهی انتخاب کنید...</option>
-                                    @foreach($liabilityCategories as $category)
-                                        <option
-                                            value="{{ $category->id }}" @selected(($settings->get('defaults.sales_tax_category_id') ?? null) == $category->id)>{{ $category->title }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[sales_tax_category_id]" :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل یا کد..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 dark:hover:text-amber-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-amber-50/70 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Receivable Cheques Category --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="cheques_receivable" class="{{ $labelClass }}">اسناد دریافتنی <span
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.cheques_receivable_category_id', '') }}',
+                                options: @js($assetCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.title && o.title.toLowerCase().includes(q)) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب سرفصل دارایی...';
+                                    return (found.account_code ? this.formatFa(found.account_code) + ' - ' : '') + found.title;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">اسناد دریافتنی <span
                                         class="font-normal text-gray-500 text-xs">(گاوصندوق چک‌های دریافتی)</span></label>
-                                <select name="defaults[cheques_receivable_category_id]" id="cheques_receivable"
-                                        class="{{ $selectClass }}">
-                                    <option value="">انتخاب سرفصل دارایی...</option>
-                                    @foreach($assetCategories as $category)
-                                        <option
-                                            value="{{ $category->id }}" @selected(($settings->get('defaults.cheques_receivable_category_id') ?? null) == $category->id)>{{ $category->title }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[cheques_receivable_category_id]"
+                                           :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل یا کد..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-blue-50/70 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Cheques In Transit Category --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="cheques_in_transit" class="{{ $labelClass }}">اسناد در جریان وصول <span
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.cheques_in_transit_category_id', '') }}',
+                                options: @js($assetCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.title && o.title.toLowerCase().includes(q)) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب سرفصل دارایی...';
+                                    return (found.account_code ? this.formatFa(found.account_code) + ' - ' : '') + found.title;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">اسناد در جریان وصول <span
                                         class="font-normal text-gray-500 text-xs">(چک‌های واگذار شده به بانک)</span></label>
-                                <select name="defaults[cheques_in_transit_category_id]" id="cheques_in_transit"
-                                        class="{{ $selectClass }}">
-                                    <option value="">انتخاب سرفصل دارایی...</option>
-                                    @foreach($assetCategories as $category)
-                                        <option
-                                            value="{{ $category->id }}" @selected(($settings->get('defaults.cheques_in_transit_category_id') ?? null) == $category->id)>{{ $category->title }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[cheques_in_transit_category_id]"
+                                           :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل یا کد..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-blue-50/70 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Payable Cheques Category --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="cheques_payable" class="{{ $labelClass }}">اسناد پرداختنی <span
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.cheques_payable_category_id', '') }}',
+                                options: @js($liabilityCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.title && o.title.toLowerCase().includes(q)) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب سرفصل بدهی...';
+                                    return (found.account_code ? this.formatFa(found.account_code) + ' - ' : '') + found.title;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">اسناد پرداختنی <span
                                         class="font-normal text-gray-500 text-xs">(چک‌های صادره ما)</span></label>
-                                <select name="defaults[cheques_payable_category_id]" id="cheques_payable"
-                                        class="{{ $selectClass }}">
-                                    <option value="">انتخاب سرفصل بدهی...</option>
-                                    @foreach($liabilityCategories as $category)
-                                        <option
-                                            value="{{ $category->id }}" @selected(($settings->get('defaults.cheques_payable_category_id') ?? null) == $category->id)>{{ $category->title }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[cheques_payable_category_id]"
+                                           :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل یا کد..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 dark:hover:text-amber-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-amber-50/70 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Default Cash Fund --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="cash_fund" class="{{ $labelClass }}">صندوق نقدی پیش‌فرض</label>
-                                <select name="defaults[cash_fund_id]" id="cash_fund" class="{{ $selectClass }}">
-                                    <option value="">انتخاب از لیست خزانه‌داری...</option>
-                                    @foreach($fundAccounts->where('type', 'cash') as $account)
-                                        <option
-                                            value="{{ $account->id }}" @selected(($settings->get('defaults.cash_fund_id') ?? null) == $account->id)>{{ $account->name }}</option>
-                                    @endforeach
-                                </select>
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.cash_fund_id', '') }}',
+                                options: @js($cashFundsList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.name && o.name.toLowerCase().includes(q)) ||
+                                        (o.bank_name && o.bank_name.toLowerCase().includes(q)) ||
+                                        (o.account_number && String(o.account_number).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب از لیست صندوق‌ها...';
+                                    return found.name;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">صندوق نقدی پیش‌فرض <span
+                                        class="font-normal text-gray-500 text-xs">(خزانه‌داری)</span></label>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[cash_fund_id]" :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو صندوق..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 hover:text-emerald-600 dark:hover:text-emerald-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-emerald-50/70 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-text="opt.name" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ حسابی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- Default Bank Fund --}}
-                            <div
-                                class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <label for="bank_fund" class="{{ $labelClass }}">حساب بانکی پیش‌فرض</label>
-                                <select name="defaults[bank_fund_id]" id="bank_fund" class="{{ $selectClass }}">
-                                    <option value="">انتخاب از لیست خزانه‌داری...</option>
-                                    @foreach($fundAccounts->where('type', 'bank') as $account)
-                                        <option
-                                            value="{{ $account->id }}" @selected(($settings->get('defaults.bank_fund_id') ?? null) == $account->id)>{{ $account->name }}</option>
-                                    @endforeach
-                                </select>
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.bank_fund_id', '') }}',
+                                options: @js($bankFundsList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.name && o.name.toLowerCase().includes(q)) ||
+                                        (o.bank_name && o.bank_name.toLowerCase().includes(q)) ||
+                                        (o.account_number && String(o.account_number).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب از لیست حساب‌های بانکی...';
+                                    return found.name + (found.bank_name ? ' (' + found.bank_name + ')' : '');
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">حساب بانکی پیش‌فرض <span
+                                        class="font-normal text-gray-500 text-xs">(خزانه‌داری)</span></label>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[bank_fund_id]" :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو حساب یا بانک..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-blue-50/70 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex flex-col gap-0.5 truncate">
+                                                    <div class="flex items-center gap-1.5 truncate font-medium">
+                                                        <span x-text="opt.name"></span>
+                                                        <span x-show="opt.bank_name" class="text-[10px] text-gray-400"
+                                                              x-text="'(' + opt.bank_name + ')'"></span>
+                                                    </div>
+                                                    <span x-show="opt.account_number"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="'ش‌ح: ' + formatFa(opt.account_number)"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ حسابی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Bank Fee Category --}}
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: '{{ $v('defaults.bank_fee_category_id', '26') }}',
+                                options: @js($expenseCategoriesList),
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return this.options;
+                                    const q = this.search.toLowerCase();
+                                    return this.options.filter(o =>
+                                        (o.title && o.title.toLowerCase().includes(q)) ||
+                                        (o.account_code && String(o.account_code).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    this.selectedId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = this.options.find(o => String(o.id) === String(this.selectedId));
+                                    if (!found) return 'انتخاب سرفصل کارمزد...';
+                                    return (found.account_code ? this.formatFa(found.account_code) + ' - ' : '') + found.title;
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                }
+                            }"
+                                 class="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-2 relative transition-all"
+                                 :class="{ 'z-50': open, 'z-10': !open }">
+                                <label class="{{ $labelClass }}">سرفصل کارمزد بانکی / خدمات بانکی <span
+                                        class="font-normal text-gray-500 text-xs">(هزینه خدمات بانکی و تراکنش‌ها)</span></label>
+                                <div class="relative">
+                                    <input type="hidden" name="defaults[bank_fee_category_id]" :value="selectedId">
+                                    <button type="button" @click="open = !open"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 dark:text-white flex items-center justify-between cursor-pointer text-start shadow-sm hover:border-indigo-500 transition-colors">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span
+                                                class="flex items-center justify-center w-6 h-6 rounded-lg bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 font-bold text-xs shrink-0">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                            </span>
+                                            <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 ms-2 shrink-0">
+                                            <template x-if="selectedId">
+                                                <button type="button" @click.stop="select(null)"
+                                                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" x-cloak
+                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                        <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                            <input type="text" x-model="search" placeholder="جستجو سرفصل یا کد..."
+                                                   class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <div @click="select(opt)"
+                                                 class="px-3 py-2 text-xs rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                                 :class="{ 'bg-rose-50/70 dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 font-bold': String(selectedId) === String(opt.id) }">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400 font-medium"
+                                                          x-text="formatFa(opt.account_code)"></span>
+                                                    <span x-text="opt.title" class="truncate font-medium"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                    :class="opt.type_badge" x-text="opt.type_label"></span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0"
+                                             class="p-3 text-xs text-gray-400 text-center">هیچ سرفصلی پیدا نشد
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

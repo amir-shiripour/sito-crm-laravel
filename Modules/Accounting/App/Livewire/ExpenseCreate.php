@@ -36,6 +36,7 @@ class ExpenseCreate extends Component
 
     // Available data for dropdowns
     public $banks = [];
+    public $allBanks = [];
     public $categories = [];
     public $customers = [];
     public $availableCheques = [];
@@ -51,7 +52,12 @@ class ExpenseCreate extends Component
 
     public function mount()
     {
-        $this->banks = FundAccount::with('transactions')->where('status', 1)->get();
+        $allActiveBanks = FundAccount::with('transactions')->where('status', 1)->get();
+        $this->banks = $allActiveBanks->filter(function ($bank) {
+            $balance = $bank->transactions->sum('debit') - $bank->transactions->sum('credit');
+            return $balance > 0;
+        })->values();
+        $this->allBanks = $allActiveBanks->values();
         $this->categories = Category::where('type', 'expense')->where('status', 1)->get();
         $this->customers = Module::isEnabled('Clients') ? Client::select('id', 'full_name', 'username')->get() : collect();
         $serviceChequeIds = [];
@@ -70,7 +76,7 @@ class ExpenseCreate extends Component
             ->get();
         $this->document_date = jdate()->format('Y/m/d');
         $this->currencySuffix = CurrencyService::getBaseCurrency();
-        $this->excess_payment_bank_id = $this->banks->first()?->id;
+        $this->excess_payment_bank_id = $this->allBanks->first()?->id;
 
         if (empty($this->payments)) {
             $this->addPayment();

@@ -245,7 +245,7 @@
                     <tbody class="divide-y divide-gray-50 dark:divide-gray-700/40">
                     @forelse($documents as $document)
                         @php
-                            $isDocCancelled = ($document->status === 'cancelled') || 
+                            $isDocCancelled = ($document->status === 'cancelled') ||
                                                in_array($document->sourceDocument?->event_type ?? '', ['invoice_cancelled', 'payment_cancelled', 'expense_cancelled']) ||
                                                \Illuminate\Support\Str::contains($document->description, ['لغو', 'برگشت']);
                             $fundBalances = $document->fund_account_balances;
@@ -257,7 +257,8 @@
                                     {{ $faNum($document->document_number) }}
                                 </a>
                                 @if($isDocCancelled)
-                                    <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                    <span
+                                        class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                                         برگشتی / لغو
                                     </span>
                                 @endif
@@ -291,9 +292,12 @@
                                     <div class="flex flex-col gap-1">
                                         @foreach($fundBalances as $fb)
                                             @if(!is_null($fb['balance_after']))
-                                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-100 dark:border-sky-500/20 font-bold text-xs">
-                                                    <span class="tabular-nums font-black">{{ $faNum(number_format(CurrencyService::convertForDisplay($fb['balance_after']))) }}</span>
-                                                    <span class="text-[10px] text-sky-600/80 dark:text-sky-400/80">{{ $currencySuffix }}</span>
+                                                <div
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-100 dark:border-sky-500/20 font-bold text-xs">
+                                                    <span
+                                                        class="tabular-nums font-black">{{ $faNum(number_format(CurrencyService::convertForDisplay($fb['balance_after']))) }}</span>
+                                                    <span
+                                                        class="text-[10px] text-sky-600/80 dark:text-sky-400/80">{{ $currencySuffix }}</span>
                                                 </div>
                                             @else
                                                 <span class="text-gray-400 font-mono text-xs">—</span>
@@ -385,13 +389,28 @@
                                     </a>
 
                                     @if(!$document->sourceDocument && !$isDocCancelled)
-                                        <form action="{{ route('admin.accounting.documents.cancel', $document->id) }}" method="POST" onsubmit="return confirm('آیا از لغو این سند دستی و اصلاح/برگشت مبالغ آن اطمینان دارید؟');" class="inline">
+                                        <a href="{{ route('admin.accounting.documents.edit', $document->id) }}"
+                                           class="p-2.5 rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all hover:scale-110"
+                                           title="ویرایش سند دستی">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                 stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </a>
+
+                                        <form action="{{ route('admin.accounting.documents.cancel', $document->id) }}"
+                                              method="POST"
+                                              onsubmit="return confirm('آیا از لغو این سند دستی و اصلاح/برگشت مبالغ آن اطمینان دارید؟');"
+                                              class="inline">
                                             @csrf
                                             <button type="submit"
                                                     class="p-2.5 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all hover:scale-110"
                                                     title="لغو سند دستی و برگشت مبلغ">
-                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
                                                 </svg>
                                             </button>
                                         </form>

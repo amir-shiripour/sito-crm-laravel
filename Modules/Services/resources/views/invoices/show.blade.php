@@ -1,4 +1,6 @@
 @php
+    use Carbon\Carbon;
+    use Modules\Clients\Entities\ClientForm;
     use Modules\Services\App\Http\Models\Status;
     use Morilog\Jalali\Jalalian;
     $isProforma = !$invoice->invoice_number;
@@ -12,7 +14,7 @@
 
     $toJalali = function ($date) {
         if (!$date) return null;
-        $carbon = $date instanceof \Carbon\Carbon ? $date : \Carbon\Carbon::parse($date);
+        $carbon = $date instanceof Carbon ? $date : Carbon::parse($date);
         return Jalalian::fromCarbon($carbon);
     };
 
@@ -36,8 +38,8 @@
         'case_number' => 'شماره پرونده',
         'address' => 'نشانی',
     ];
-    $activeClientForm = class_exists(\Modules\Clients\Entities\ClientForm::class)
-        ? \Modules\Clients\Entities\ClientForm::active()
+    $activeClientForm = class_exists(ClientForm::class)
+        ? ClientForm::active()
         : null;
 
     foreach ($buyerExtraFieldIds as $fid) {
@@ -203,12 +205,15 @@
                         <div class="flex items-center gap-3">
                             <h1 class="text-2xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</h1>
                             @if(!empty($invoice->meta['created_by_manual_renewal']))
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/20">فاکتور تمدید (دستی)</span>
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/20">فاکتور تمدید (دستی)</span>
                             @elseif(!empty($invoice->meta['created_by_workflow']) || !empty($invoice->meta['is_renewal']))
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 border border-indigo-100 dark:border-indigo-500/20">ایجاد سیستمی (تمدید)</span>
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 border border-indigo-100 dark:border-indigo-500/20">ایجاد سیستمی (تمدید)</span>
                             @endif
                             @if(!empty($invoice->meta['is_merged_invoice']))
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-50 dark:bg-purple-500/10 text-purple-500 border border-purple-100 dark:border-purple-500/20">حاصل ادغام فاکتورها</span>
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-50 dark:bg-purple-500/10 text-purple-500 border border-purple-100 dark:border-purple-500/20">حاصل ادغام فاکتورها</span>
                             @endif
                         </div>
                         <div
@@ -294,7 +299,8 @@
                     @endcan
                     @if ($isProforma)
                         @can('delete', $invoice)
-                            <form action="{{ route('services.invoices.destroy', $invoice) }}" method="POST" onsubmit="return confirm('آیا از حذف این پیش فاکتور اطمینان دارید؟');">
+                            <form action="{{ route('services.invoices.destroy', $invoice) }}" method="POST"
+                                  onsubmit="return confirm('آیا از حذف این پیش فاکتور اطمینان دارید؟');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit"
@@ -327,12 +333,12 @@
                             @endif
                         @endcan
                     @endif
-                        <a href="{{ $backUrl }}"
-                           class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm font-bold transition-all active:scale-95">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                            </svg>
-                            بازگشت</a>
+                    <a href="{{ $backUrl }}"
+                       class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm font-bold transition-all active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                        بازگشت</a>
                 </div>
             </div>
         </div>
@@ -355,13 +361,18 @@
         @endif
 
         @if(!empty($invoice->meta['is_merged_invoice']) && !empty($invoice->meta['merged_from_invoice_ids']))
-            <div class="rounded-3xl border border-purple-100 dark:border-purple-500/20 bg-purple-50/50 dark:bg-purple-500/5 p-6 shadow-sm">
+            <div
+                class="rounded-3xl border border-purple-100 dark:border-purple-500/20 bg-purple-50/50 dark:bg-purple-500/5 p-6 shadow-sm">
                 <div class="flex items-start gap-4">
-                    <span class="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 shrink-0">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                    <span
+                        class="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 shrink-0">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path
+                                stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                     </span>
                     <div>
-                        <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">این فاکتور حاصل ادغام است</h3>
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">این فاکتور حاصل ادغام
+                            است</h3>
                         <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                             این فاکتور از ادغام فاکتورهای زیر ایجاد شده است:
                         </p>
@@ -374,7 +385,8 @@
                                     $sourceInv = $sourceInvoices->get($sourceId);
                                     $sourceNumber = $sourceInv ? ($sourceInv->invoice_number ?: $sourceInv->proforma_invoice_number ?: $sourceId) : $sourceId;
                                 @endphp
-                                <a href="{{ route('services.invoices.show', $sourceId) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors shadow-sm">
+                                <a href="{{ route('services.invoices.show', $sourceId) }}"
+                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors shadow-sm">
                                     فاکتور #{{ $faNum($sourceNumber) }}
                                 </a>
                             @endforeach
@@ -399,9 +411,11 @@
                         اطلاعات مشتری
                     </h3>
                 </div>
-                <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 text-sm">
+                <div
+                    class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 text-sm">
                     @foreach($buyerExtraFields as $field)
-                        <div class="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-xl border border-gray-100 dark:border-gray-700"><span
+                        <div
+                            class="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-xl border border-gray-100 dark:border-gray-700"><span
                                 class="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-1.5">{{ $field['label'] }}</span><span
                                 class="text-gray-800 dark:text-gray-200 text-base font-medium break-all">{{ $faNum($field['value']) }}</span>
                         </div>
@@ -412,20 +426,24 @@
 
         {{-- اقلام و خدمات فاکتور --}}
         <div class="{{ $cardClass }}">
-            <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 flex items-center justify-between">
+            <div
+                class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 flex items-center justify-between">
                 <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                    <div class="p-2 bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400 rounded-lg">
+                    <div
+                        class="p-2 bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400 rounded-lg">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
                         </svg>
                     </div>
                     اقلام و خدمات فاکتور
                 </h3>
-                <span class="text-sm font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-100 dark:border-violet-500/20">{{ $faNum($invoice->items->count()) }} ردیف</span>
+                <span
+                    class="text-sm font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-100 dark:border-violet-500/20">{{ $faNum($invoice->items->count()) }} ردیف</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-start border-collapse min-w-[1200px]">
-                    <thead class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
+                    <thead
+                        class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
                     <tr>
                         <th class="px-4 py-3 w-[22%] min-w-[220px] font-bold text-start">سرویس</th>
                         <th class="px-4 py-3 w-[25%] min-w-[250px] font-bold text-start">شرح</th>
@@ -450,16 +468,31 @@
                             @php
                                 $itemMeta = is_array($item->meta) ? $item->meta : (json_decode($item->meta, true) ?: []);
                                 $isMarketItem = ($itemMeta['type'] ?? null) === 'product';
+                                $isDebtItem = !empty($itemMeta['_isDebt']) || ($itemMeta['type'] ?? null) === 'debt' || (!empty($item->custom_service_name) && str_contains($item->custom_service_name, 'مانده بدهی'));
                             @endphp
                             <td class="px-4 py-4 align-top font-bold text-gray-800 dark:text-gray-100 text-start">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span>{{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}</span>
                                     @if($isMarketItem)
-                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-2 py-0.5 rounded-md">
-                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                        <span
+                                            class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-2 py-0.5 rounded-md">
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                 stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                                             </svg>
                                             از فروشگاه
+                                        </span>
+                                    @endif
+                                    @if($isDebtItem)
+                                        <span
+                                            class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/20 px-2 py-0.5 rounded-md">
+                                            <svg class="w-3 h-3 text-amber-600" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                            </svg>
+                                            مانده بدهی قبلی
                                         </span>
                                     @endif
                                 </div>
@@ -468,9 +501,12 @@
                                 {{ $item->description }}
                             </td>
                             <td class="px-4 py-4 align-top text-center">
-                                <div class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 overflow-hidden shadow-sm px-3 py-2">
-                                    <span class="font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum($displayQty) }}</span>
-                                    <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500">{{ $item->unit ?? 'عدد' }}</span>
+                                <div
+                                    class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 overflow-hidden shadow-sm px-3 py-2">
+                                    <span
+                                        class="font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum($displayQty) }}</span>
+                                    <span
+                                        class="text-[10px] font-bold text-gray-400 dark:text-gray-500">{{ $item->unit ?? 'عدد' }}</span>
                                 </div>
                             </td>
                             <td class="px-4 py-4 align-top text-center tabular-nums font-medium text-gray-700 dark:text-gray-300">
@@ -512,7 +548,7 @@
                                 @php
                                     $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
                                     if (!$fieldDef) continue;
-                                    
+
                                     $customFieldsQuantities = $item->meta['custom_fields_quantities'] ?? [];
                                     $customFieldsPrices = $item->meta['custom_fields_prices'] ?? [];
                                     $customFieldsDiscounts = $item->meta['custom_fields_discounts'] ?? [];
@@ -527,7 +563,7 @@
                                                 : ($customFieldsQuantities[$field_id] ?? $item->quantity);
                                             $optQty = (float) $optQty;
                                             $optQtyDisplay = fmod($optQty, 1.0) === 0.0 ? (int)$optQty : $optQty;
-                                            
+
                                             $optPrice = is_array($customFieldsPrices[$field_id] ?? null)
                                                 ? ($customFieldsPrices[$field_id][$opt] ?? null)
                                                 : ($customFieldsPrices[$field_id] ?? null);
@@ -554,29 +590,39 @@
                                         @endphp
                                         <tr class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10">
                                             <td class="px-4 py-2.5 relative text-start">
-                                                <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                                <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                <div
+                                                    class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                                <div
+                                                    class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
                                                 <div class="pe-4 ps-6 flex items-center gap-2">
-                                                    <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
-                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                    <span
+                                                        class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                             stroke="currentColor" stroke-width="2.5"><path
+                                                                stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                                                     </span>
-                                                    <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate">{{ $fieldDef->label }}: {{ $opt }}</span>
+                                                    <span
+                                                        class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate">{{ $fieldDef->label }}: {{ $opt }}</span>
                                                 </div>
                                             </td>
                                             <td class="px-4 py-2.5 text-start">
-                                                <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $opt }}</span>
+                                                <span
+                                                    class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $opt }}</span>
                                             </td>
                                             <td class="px-4 py-2.5 text-center text-xs font-bold text-gray-700 dark:text-gray-300 tabular-nums">
                                                 {{ $faNum($optQtyDisplay) }}
                                             </td>
                                             <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-gray-700 dark:text-gray-300">
                                                 {{ $faNum(number_format($optPrice)) }}
-                                                <span class="text-[9px] text-gray-400 ms-0.5">{{ $currencyLabel }}</span>
+                                                <span
+                                                    class="text-[9px] text-gray-400 ms-0.5">{{ $currencyLabel }}</span>
                                             </td>
                                             <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-red-500 dark:text-red-400">
                                                 @if($optDiscount > 0)
                                                     {{ $faNum(number_format($optDiscount)) }}
-                                                    <span class="text-[9px] text-red-400/80 ms-0.5">{{ $currencyLabel }}</span>
+                                                    <span
+                                                        class="text-[9px] text-red-400/80 ms-0.5">{{ $currencyLabel }}</span>
                                                 @else
                                                     —
                                                 @endif
@@ -593,7 +639,8 @@
                                             @endif
                                             <td class="px-4 py-2.5 tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-xs">
                                                 {{ $faNum(number_format($cfRowTotal)) }}
-                                                <span class="text-[9px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                                <span
+                                                    class="text-[9px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -613,7 +660,7 @@
 
                                         $fieldPrice = 0;
                                         $fieldDiscount = 0;
-                                        
+
                                         if ($fieldDef->has_pricing) {
                                             $fieldPrice = is_array($customFieldsPrices[$field_id] ?? null) ? null : ($customFieldsPrices[$field_id] ?? null);
                                             $fieldDiscount = is_array($customFieldsDiscounts[$field_id] ?? null) ? 0 : ($customFieldsDiscounts[$field_id] ?? 0);
@@ -642,28 +689,47 @@
                                     @endphp
                                     <tr class="bg-indigo-50/20 dark:bg-indigo-500/5 border-y border-dashed border-indigo-100/70 dark:border-indigo-500/10">
                                         <td class="px-4 py-2.5 relative text-start">
-                                            <div class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
-                                            <div class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                            <div
+                                                class="absolute top-0 bottom-0 right-5 w-px bg-indigo-200 dark:bg-indigo-800/50"></div>
+                                            <div
+                                                class="absolute top-1/2 right-5 w-3 h-px bg-indigo-200 dark:bg-indigo-800/50"></div>
                                             <div class="pe-4 ps-6 flex items-center gap-2">
-                                                <span class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                <span
+                                                    class="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100/80 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shrink-0 shadow-sm">
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor" stroke-width="2.5"><path
+                                                            stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                                                 </span>
-                                                <span class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate">{{ $fieldDef->label }}</span>
+                                                <span
+                                                    class="text-xs font-bold text-indigo-900 dark:text-indigo-300 truncate">{{ $fieldDef->label }}</span>
                                             </div>
                                         </td>
                                         <td class="px-4 py-2.5 text-start">
                                             @if($fieldDef->type === 'file')
-                                                <a href="{{ Storage::url($displayValue) }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                <a href="{{ Storage::url($displayValue) }}" target="_blank"
+                                                   class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                                    </svg>
                                                     دانلود فایل
                                                 </a>
                                             @elseif($fieldDef->type === 'url')
-                                                <a href="{{ str_starts_with($displayValue, 'http') ? $displayValue : 'http://' . $displayValue }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dir-ltr">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                                                <a href="{{ str_starts_with($displayValue, 'http') ? $displayValue : 'http://' . $displayValue }}"
+                                                   target="_blank"
+                                                   class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dir-ltr">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                                    </svg>
                                                     {{ $displayValue }}
                                                 </a>
                                             @else
-                                                <span class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $displayValue }}</span>
+                                                <span
+                                                    class="inline-block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-200/40 dark:border-gray-700/40">{{ $displayValue }}</span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-2.5 text-center text-xs font-bold text-gray-700 dark:text-gray-300 tabular-nums">
@@ -676,7 +742,8 @@
                                         <td class="px-4 py-2.5 text-center tabular-nums text-xs font-medium text-red-500 dark:text-red-400">
                                             @if($fieldDiscount > 0)
                                                 {{ $faNum(number_format($fieldDiscount)) }}
-                                                <span class="text-[9px] text-red-400/80 ms-0.5">{{ $currencyLabel }}</span>
+                                                <span
+                                                    class="text-[9px] text-red-400/80 ms-0.5">{{ $currencyLabel }}</span>
                                             @else
                                                 —
                                             @endif
@@ -693,7 +760,8 @@
                                         @endif
                                         <td class="px-4 py-2.5 tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-xs">
                                             {{ $faNum(number_format($cfRowTotal)) }}
-                                            <span class="text-[9px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                                            <span
+                                                class="text-[9px] font-normal text-gray-400 ms-1">{{ $currencyLabel }}</span>
                                         </td>
                                     </tr>
                                 @endif
@@ -704,11 +772,13 @@
                 </table>
             </div>
 
-            <div class="bg-gray-50/80 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700/50 p-6 flex justify-end">
+            <div
+                class="bg-gray-50/80 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700/50 p-6 flex justify-end">
                 <div class="w-full sm:w-96 space-y-4 text-base">
                     <div class="flex justify-between items-center text-gray-600 dark:text-gray-400">
                         <span class="font-medium">جمع مبالغ:</span>
-                        <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->subtotal)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                        <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->subtotal)) }} <span
+                                class="text-xs">{{ $currencyLabel }}</span></span>
                     </div>
                     @if($invoice->tax_amount > 0)
                         <div class="flex justify-between items-center text-amber-600 dark:text-amber-400">
@@ -716,20 +786,25 @@
                                 @if((float)$invoice->tax_percent > 0)
                                     ({{ $faNum((float)$invoice->tax_percent) }}٪):
                                 @else
-                                    (تفکیکی هر ردیف):
+                                    (تفکیکی هر ردیف)
+                                    :
                                 @endif
                             </span>
-                            <span class="tabular-nums font-bold">+ {{ $faNum(number_format($invoice->tax_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                            <span
+                                class="tabular-nums font-bold">+ {{ $faNum(number_format($invoice->tax_amount)) }} <span
+                                    class="text-xs">{{ $currencyLabel }}</span></span>
                         </div>
                         <div class="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span class="font-medium">مبلغ با احتساب مالیات:</span>
-                            <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->subtotal + $invoice->tax_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                            <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->subtotal + $invoice->tax_amount)) }} <span
+                                    class="text-xs">{{ $currencyLabel }}</span></span>
                         </div>
                     @endif
                     @if($invoice->discount_amount > 0)
                         <div class="flex justify-between items-center text-rose-500 dark:text-rose-400">
                             <span class="font-medium">مجموع تخفیف‌ها:</span>
-                            <span class="tabular-nums font-bold">− {{ $faNum(number_format($invoice->discount_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                            <span class="tabular-nums font-bold">− {{ $faNum(number_format($invoice->discount_amount)) }} <span
+                                    class="text-xs">{{ $currencyLabel }}</span></span>
                         </div>
                     @endif
                     @php
@@ -737,19 +812,24 @@
                         $rDiff = (int)($rMeta['diff'] ?? 0);
                         $isRounded = !empty($rMeta['is_rounded']);
                     @endphp
-                    <div class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-start">
+                    <div
+                        class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-start">
                         <div>
                             <span class="font-black text-gray-900 dark:text-white text-lg block">مبلغ نهایی:</span>
                             @if($isRounded && $rDiff != 0)
-                                <div class="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2.5 py-0.5 rounded-lg border border-indigo-200/80 dark:border-indigo-800/60 w-fit">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                <div
+                                    class="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2.5 py-0.5 rounded-lg border border-indigo-200/80 dark:border-indigo-800/60 w-fit">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
                                     <span>حاصل رندسازی مبالغ ({{ $rDiff > 0 ? '+' : '' }}{{ $faNum(number_format($rDiff)) }} {{ $currencyLabel }})</span>
                                 </div>
                             @endif
                         </div>
-                        <span class="font-black text-indigo-600 dark:text-indigo-400 text-2xl tabular-nums">{{ $faNum(number_format($invoice->total)) }} <span class="text-sm font-bold text-indigo-400/80">{{ $currencyLabel }}</span></span>
+                        <span class="font-black text-indigo-600 dark:text-indigo-400 text-2xl tabular-nums">{{ $faNum(number_format($invoice->total)) }} <span
+                                class="text-sm font-bold text-indigo-400/80">{{ $currencyLabel }}</span></span>
                     </div>
                 </div>
             </div>
@@ -760,11 +840,15 @@
             @if(!$isProforma)
                 <div class="lg:col-span-4 xl:col-span-4 space-y-8 order-2 lg:order-1">
                     <div class="{{ $cardClass }}">
-                        <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-indigo-50 to-transparent dark:from-indigo-500/10">
+                        <div
+                            class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-indigo-50 to-transparent dark:from-indigo-500/10">
                             <h3 class="text-lg font-black text-indigo-700 dark:text-indigo-400 flex items-center gap-3">
-                                <div class="p-2 bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-lg shadow-sm">
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                                <div
+                                    class="p-2 bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-lg shadow-sm">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
                                     </svg>
                                 </div>
                                 خلاصه وضعیت فاکتور
@@ -772,38 +856,50 @@
                         </div>
                         <div class="p-6 space-y-4 text-base">
 
-                            <div class="flex justify-between items-center text-gray-600 dark:text-gray-400 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700/50">
+                            <div
+                                class="flex justify-between items-center text-gray-600 dark:text-gray-400 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700/50">
                                 <span class="font-medium text-sm">وضعیت فعلی:</span>
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
-                                      style="background: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}33;">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                                    style="background: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}33;">
                                     <span class="w-2 h-2 rounded-full" style="background: {{ $statusColor }}"></span>{{ $statusName }}
                                 </span>
                             </div>
 
                             <div class="flex justify-between items-center text-gray-600 dark:text-gray-400">
                                 <span class="font-medium">مبلغ کل:</span>
-                                <span class="tabular-nums font-bold text-gray-800 dark:text-gray-200">{{ $faNum(number_format($invoice->total)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                                <span class="tabular-nums font-bold text-gray-800 dark:text-gray-200">{{ $faNum(number_format($invoice->total)) }} <span
+                                        class="text-xs">{{ $currencyLabel }}</span></span>
                             </div>
                             @if(!$invoice->isMerged())
                                 <div class="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
                                     <span class="font-medium">پرداخت شده:</span>
-                                    <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->paid_amount)) }} <span class="text-xs">{{ $currencyLabel }}</span></span>
+                                    <span class="tabular-nums font-bold">{{ $faNum(number_format($invoice->paid_amount)) }} <span
+                                            class="text-xs">{{ $currencyLabel }}</span></span>
                                 </div>
-                                <div class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                                <div
+                                    class="pt-4 border-t-2 border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-center">
                                     <span class="font-black text-gray-900 dark:text-white">مانده بدهی:</span>
-                                    <span class="font-black text-rose-600 dark:text-rose-400 text-xl tabular-nums">{{ $faNum(number_format($remainingAmount)) }} <span class="text-sm font-bold">{{ $currencyLabel }}</span></span>
+                                    <span class="font-black text-rose-600 dark:text-rose-400 text-xl tabular-nums">{{ $faNum(number_format($remainingAmount)) }} <span
+                                            class="text-sm font-bold">{{ $currencyLabel }}</span></span>
                                 </div>
                             @else
                                 @php
                                     $mergedIntoId = $invoice->meta['was_merged_into'] ?? null;
                                     $mergedIntoInvoice = $mergedIntoId ? \Modules\Services\App\Http\Models\Invoice::find($mergedIntoId) : null;
                                 @endphp
-                                <div class="pt-4 border-t-2 border-dashed border-purple-200 dark:border-purple-700/50 flex flex-col gap-2">
-                                    <p class="text-sm text-purple-600 dark:text-purple-400 font-bold">یادداشت: پرداختی‌های این فاکتور به فاکتور جدید منتقل شده‌اند.</p>
+                                <div
+                                    class="pt-4 border-t-2 border-dashed border-purple-200 dark:border-purple-700/50 flex flex-col gap-2">
+                                    <p class="text-sm text-purple-600 dark:text-purple-400 font-bold">یادداشت:
+                                        پرداختی‌های این فاکتور به فاکتور جدید منتقل شده‌اند.</p>
                                     @if($mergedIntoInvoice)
                                         <a href="{{ route('services.invoices.show', $mergedIntoInvoice) }}"
                                            class="inline-flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 rounded-lg text-xs font-bold hover:bg-purple-100 transition-colors">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                 stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                                            </svg>
                                             مشاهده فاکتور {{ $faNum($mergedIntoInvoice->invoice_number) }}
                                         </a>
                                     @endif
@@ -815,15 +911,20 @@
             @endif
 
             {{-- MAIN CONTENT --}}
-            <div class="{{ !$isProforma ? 'lg:col-span-8 xl:col-span-8' : 'lg:col-span-12 xl:col-span-12' }} space-y-8 order-1 lg:order-2">
+            <div
+                class="{{ !$isProforma ? 'lg:col-span-8 xl:col-span-8' : 'lg:col-span-12 xl:col-span-12' }} space-y-8 order-1 lg:order-2">
 
                 @if ($invoice->payments->isNotEmpty())
                     <div class="{{ $cardClass }}">
-                        <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-emerald-50 to-transparent dark:from-emerald-500/10">
+                        <div
+                            class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-emerald-50 to-transparent dark:from-emerald-500/10">
                             <h3 class="text-lg font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-3">
-                                <div class="p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg shadow-sm">
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                <div
+                                    class="p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg shadow-sm">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                                     </svg>
                                 </div>
                                 اطلاعات پرداخت
@@ -831,7 +932,8 @@
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm text-start border-collapse">
-                                <thead class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
+                                <thead
+                                    class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
                                 <tr>
                                     <th class="px-4 py-3 font-bold text-start">تاریخ</th>
                                     <th class="px-4 py-3 font-bold text-start">مبلغ</th>
@@ -849,11 +951,14 @@
                                         <td class="px-4 py-4 font-bold text-gray-800 dark:text-gray-200 tabular-nums text-start">{{ $faNum(number_format($payment->amount)) }} {{ $currencyLabel }}</td>
                                         <td class="px-4 py-4 text-start">
                                             @if($payment->status === 'canceled')
-                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-gray-100 text-gray-500 border border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600">
+                                                <span
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-gray-100 text-gray-500 border border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600">
                                                     لغو شده
                                                 </span>
                                             @else
-                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold" style="background-color: {{ $paidColor }}15; color: {{ $paidColor }}; border-color: {{ $paidColor }}33;">
+                                                <span
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold"
+                                                    style="background-color: {{ $paidColor }}15; color: {{ $paidColor }}; border-color: {{ $paidColor }}33;">
                                                     پرداخت شده
                                                 </span>
                                             @endif
@@ -863,9 +968,15 @@
                                         <td class="px-4 py-4 text-gray-500 dark:text-gray-400 text-start">{{ $payment->notes ?: '—' }}</td>
                                         <td class="px-4 py-4 text-start">
                                             @if($payment->status !== 'canceled' && !str_contains($invoice->status?->name ?? '', 'لغو'))
-                                                <form action="{{ route('services.invoices.cancelPayment', [$invoice, $payment]) }}" method="POST" onsubmit="return confirm('آیا از لغو این پرداخت اطمینان دارید؟');">
+                                                <form
+                                                    action="{{ route('services.invoices.cancelPayment', [$invoice, $payment]) }}"
+                                                    method="POST"
+                                                    onsubmit="return confirm('آیا از لغو این پرداخت اطمینان دارید؟');">
                                                     @csrf
-                                                    <button type="submit" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 text-xs font-bold">لغو</button>
+                                                    <button type="submit"
+                                                            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 text-xs font-bold">
+                                                        لغو
+                                                    </button>
                                                 </form>
                                             @endif
                                         </td>
@@ -879,10 +990,13 @@
 
 
                 @if($invoice->notes)
-                    <div class="{{ $cardClass }} p-6 sm:p-8 border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-900/10">
+                    <div
+                        class="{{ $cardClass }} p-6 sm:p-8 border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-900/10">
                         <div class="flex items-start gap-4 text-amber-800 dark:text-amber-300">
-                            <svg class="w-8 h-8 shrink-0 mt-0.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            <svg class="w-8 h-8 shrink-0 mt-0.5 opacity-80" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
                             <div>
                                 <strong class="block mb-2 font-black text-lg tracking-tight">یادداشت فاکتور</strong>
@@ -890,41 +1004,52 @@
                             </div>
                         </div>
                     </div>
-                @endif
+                    @endif
 
-                @if($invoice->activities->isNotEmpty())
-                    <div class="{{ $cardClass }}">
-                        <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
-                            <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                                <div class="p-2 bg-gray-100 text-gray-600 dark:bg-gray-700/40 dark:text-gray-300 rounded-lg">
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                </div>
-                                تاریخچه فعالیت و لاگ‌ها
-                            </h3>
-                        </div>
-                        <div class="p-8">
-                            <ol class="relative border-e-2 border-gray-100 dark:border-gray-700/50 pe-6 space-y-8">
-                                @foreach($invoice->activities->take(10) as $log)
-                                    <li class="relative">
-                                        <span class="absolute top-1.5 -end-7.75 w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-white dark:ring-gray-800"></span>
-                                        <span class="text-base text-gray-800 dark:text-gray-200 font-bold block">{{ $log->description ?? $log->action }}</span>
-                                        <div class="flex items-center gap-3 mt-2">
-                                            @if($log->user)
-                                                <span class="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 px-2.5 py-1 rounded-md flex items-center gap-1.5">
-                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    @if($invoice->activities->isNotEmpty())
+                        <div class="{{ $cardClass }}">
+                            <div
+                                class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
+                                <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                                    <div
+                                        class="p-2 bg-gray-100 text-gray-600 dark:bg-gray-700/40 dark:text-gray-300 rounded-lg">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                             stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    تاریخچه فعالیت و لاگ‌ها
+                                </h3>
+                            </div>
+                            <div class="p-8">
+                                <ol class="relative border-e-2 border-gray-100 dark:border-gray-700/50 pe-6 space-y-8">
+                                    @foreach($invoice->activities->take(10) as $log)
+                                        <li class="relative">
+                                        <span
+                                            class="absolute top-1.5 -end-7.75 w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-white dark:ring-gray-800"></span>
+                                            <span
+                                                class="text-base text-gray-800 dark:text-gray-200 font-bold block">{{ $log->description ?? $log->action }}</span>
+                                            <div class="flex items-center gap-3 mt-2">
+                                                @if($log->user)
+                                                    <span
+                                                        class="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor" stroke-width="2"><path
+                                                            stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                                     {{ $log->user->name }}
                                                 </span>
-                                            @endif
-                                            <span class="text-xs font-medium text-gray-400 dir-ltr tabular-nums">{{ $faNum($toJalali($log->created_at)->format('Y-m-d H:i')) }}</span>
-                                        </div>
-                                    </li>
-                                @endforeach
-                            </ol>
+                                                @endif
+                                                <span
+                                                    class="text-xs font-medium text-gray-400 dir-ltr tabular-nums">{{ $faNum($toJalali($log->created_at)->format('Y-m-d H:i')) }}</span>
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ol>
+                            </div>
                         </div>
-                    </div>
-                @endif
+                    @endif
             </div>
         </div>
     </div>

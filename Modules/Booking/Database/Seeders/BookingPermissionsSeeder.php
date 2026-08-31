@@ -13,7 +13,6 @@ class BookingPermissionsSeeder extends Seeder
      */
     public function run()
     {
-        // This seeder is intentionally left empty.
-        // Permission management is handled by Modules/Booking/Installer.php
+        \Modules\Booking\Installer::syncModulePermissions();
     }
 }

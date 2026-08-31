@@ -9,6 +9,14 @@
     $inputClass = "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 transition-all shadow-sm dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-indigo-500";
     $labelClass = "block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2 ms-1";
     $cardClass  = "bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl";
+
+    $marketAttributesForJs = !empty($marketAttributes) ? $marketAttributes->map(function($attr) {
+        return [
+            'id' => $attr->id,
+            'name' => $attr->name,
+            'values' => $attr->values ? $attr->values->pluck('value')->toArray() : []
+        ];
+    })->values() : [];
 @endphp
 
 @section('content')
@@ -115,13 +123,32 @@
                     سرویس‌ها و خدمات پکیج
                 </h2>
                 <div class="flex flex-wrap items-center gap-2">
-                    <button type="button" @click="addItem()"
+                    <button type="button" @click="addItem('service')"
                             class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-xl transition-all dark:bg-indigo-500/20 dark:text-indigo-400 dark:hover:bg-indigo-500/30 active:scale-95 shadow-sm">
                         <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                              stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                         </svg>
                         انتخاب از سرویس‌ها
+                    </button>
+                    @if(!empty($marketModuleEnabled))
+                        <button type="button" @click="addItem('product')"
+                                class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-all dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/30 active:scale-95 shadow-sm">
+                            <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                 stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                            </svg>
+                            انتخاب از فروشگاه
+                        </button>
+                    @endif
+                    <button type="button" @click="addItem('manual')"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-xl transition-all dark:bg-violet-500/20 dark:text-violet-400 dark:hover:bg-violet-500/30 active:scale-95 shadow-sm">
+                        <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                             stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h6"/>
+                        </svg>
+                        ردیف دستی
                     </button>
                 </div>
             </div>
@@ -141,75 +168,140 @@
                         <th class="px-4 py-3 w-12 text-center"></th>
                     </tr>
                     </thead>
-                    <template x-for="(item, index) in items" :key="index">
+                    <template x-for="item in items" :key="items.indexOf(item)">
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all"
-                               :class="(item._showServiceDropdown || item._hasOpenSelectDropdown) ? 'relative z-50' : 'relative z-10'">
+                               x-data="{ get index() { return items.indexOf(item); } }"
+                               :class="(item._showServiceDropdown || item._showProductDropdown || item._hasOpenSelectDropdown) ? 'relative z-50' : 'relative z-10'">
                         <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group"
-                            :class="(item._showServiceDropdown || item._hasOpenSelectDropdown) ? 'relative z-50' : 'relative z-10'">
+                            :class="(item._showServiceDropdown || item._showProductDropdown || item._hasOpenSelectDropdown) ? 'relative z-50' : 'relative z-10'">
                             <td class="px-4 py-3 align-top"
-                                :class="(item._showServiceDropdown || item._hasOpenSelectDropdown) ? 'overflow-visible' : ''">
-                                <input type="hidden" :name="'items[' + index + '][service_id]'"
-                                       :value="item.service_id">
+                                :class="(item._showServiceDropdown || item._showProductDropdown || item._hasOpenSelectDropdown) ? 'overflow-visible' : ''">
+                                <input type="hidden" :name="'items[' + index + '][mode]'" :value="item.mode">
+                                <input type="hidden" :name="'items[' + index + '][service_id]'" :value="item.service_id">
+                                <input type="hidden" :name="'items[' + index + '][product_id]'" :value="item.product_id">
+                                <input type="hidden" :name="'items[' + index + '][product_variant_id]'" :value="item.product_variant_id">
 
-                                <div class="space-y-2">
-                                    <div class="flex items-center gap-2 w-full">
-                                        <div class="relative flex-1 min-w-0"
-                                             @click.outside="item._showServiceDropdown = false">
-                                            <input type="text"
-                                                   :name="'items[' + index + '][custom_service_name]'"
-                                                   :value="item.custom_service_name"
-                                                   @focus="if ((item.custom_service_name || '').trim().length > 0) item._showServiceDropdown = true"
-                                                   @input.debounce.300ms="item.custom_service_name = $event.target.value; onServiceInput(index)"
-                                                   class="{{ $inputClass }} py-2.5 text-xs w-full"
-                                                   placeholder="نام یا کد سرویس را تایپ کنید...">
-                                            <div
-                                                x-show="item._showServiceDropdown && (item.custom_service_name || '').trim().length > 0 && filteredServices(index).length > 0"
-                                                x-transition
-                                                class="absolute z-[100] mt-1 w-full max-h-48 overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl">
-                                                <template x-for="s in filteredServices(index)" :key="s.id">
-                                                    <button type="button" @click="selectService(index, s)"
-                                                            class="w-full text-start px-4 py-3 text-xs hover:bg-indigo-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700/50 last:border-0 transition-colors">
+                                {{-- Mode: Service --}}
+                                <template x-if="item.mode === 'service'">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center gap-2 w-full">
+                                            <div class="relative flex-1 min-w-0"
+                                                 @click.outside="item._showServiceDropdown = false">
+                                                <input type="text"
+                                                       :name="'items[' + index + '][custom_service_name]'"
+                                                       :value="item.custom_service_name"
+                                                       @focus="if ((item.custom_service_name || '').trim().length > 0) item._showServiceDropdown = true"
+                                                       @input.debounce.300ms="item.custom_service_name = $event.target.value; onServiceInput(index)"
+                                                       class="{{ $inputClass }} py-2.5 text-xs w-full"
+                                                       placeholder="نام یا کد سرویس را تایپ کنید...">
+                                                <div
+                                                    x-show="item._showServiceDropdown && (item.custom_service_name || '').trim().length > 0 && filteredServices(index).length > 0"
+                                                    x-transition
+                                                    class="absolute z-[100] mt-1 w-full max-h-48 overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl">
+                                                    <template x-for="s in filteredServices(index)" :key="s.id">
+                                                        <button type="button" @click="selectService(index, s)"
+                                                                class="w-full text-start px-4 py-3 text-xs hover:bg-indigo-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700/50 last:border-0 transition-colors">
                                                             <span class="font-bold text-gray-900 dark:text-white block"
                                                                   x-text="s.name"></span>
-                                                        <span
-                                                            class="text-[10px] text-gray-400 dark:text-gray-500 block mt-1"
-                                                            x-text="formatMoney(s.base_price ? s.base_price : (s.unit_price || 0)) + ' {{ $currencyLabel }}' + (s.has_unit_pricing && s.unit_name ? ' / ' + s.unit_name : '')"></span>
-                                                    </button>
-                                                </template>
+                                                            <span
+                                                                class="text-[10px] text-gray-400 dark:text-gray-500 block mt-1"
+                                                                x-text="formatMoney(s.base_price ? s.base_price : (s.unit_price || 0)) + ' {{ $currencyLabel }}' + (s['has_unit_pricing'] && s['unit_name'] ? ' / ' + s['unit_name'] : '')"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
                                             </div>
+                                            <button type="button"
+                                                    x-show="item.service_custom_fields && item.service_custom_fields.length > 0"
+                                                    @click="item['_showCustomFields'] = !item['_showCustomFields']"
+                                                    class="shrink-0 relative w-10 h-10 flex items-center justify-center rounded-xl transition-all border shadow-sm outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95"
+                                                    :class="item['_showCustomFields'] ? 'bg-indigo-50 border-indigo-300 text-indigo-600 dark:bg-indigo-500/20 dark:border-indigo-500/40 dark:text-indigo-400' : 'bg-white border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'"
+                                                    title="مشاهده فیلدهای سفارشی">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                                                </svg>
+                                                <span
+                                                    class="absolute -top-1.5 -end-1.5 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[9px] tabular-nums font-black shadow-sm"
+                                                    :class="item['_showCustomFields'] ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'"
+                                                    x-text="item.service_custom_fields.length"></span>
+                                            </button>
                                         </div>
-                                        <button type="button"
-                                                x-show="item.service_custom_fields && item.service_custom_fields.length > 0"
-                                                @click="item._showCustomFields = !item._showCustomFields"
-                                                class="shrink-0 relative w-10 h-10 flex items-center justify-center rounded-xl transition-all border shadow-sm outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95"
-                                                :class="item._showCustomFields ? 'bg-indigo-50 border-indigo-300 text-indigo-600 dark:bg-indigo-500/20 dark:border-indigo-500/40 dark:text-indigo-400' : 'bg-white border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'"
-                                                title="مشاهده فیلدهای سفارشی">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                                                 stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-                                            </svg>
-                                            <span
-                                                class="absolute -top-1.5 -end-1.5 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[9px] tabular-nums font-black shadow-sm"
-                                                :class="item._showCustomFields ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'"
-                                                x-text="item.service_custom_fields.length"></span>
-                                        </button>
+                                        <div x-show="item.service_raw && item.service_raw.billing_type === 'recurring'"
+                                             class="mt-2">
+                                            <input type="hidden" :name="'items[' + index + '][billing_period]'"
+                                                   :value="item.billing_period">
+                                            <select x-model="item.billing_period"
+                                                    @change="updatePriceForPeriod(index)"
+                                                    class="{{ $inputClass }} py-2 text-xs">
+                                                <option value="">انتخاب دوره</option>
+                                                <template x-for="period in Object.keys(periodLabels)" :key="period">
+                                                    <option :value="period" x-text="periodLabels[period]"
+                                                            :selected="item.billing_period === period"></option>
+                                                </template>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div x-show="item.service_raw && item.service_raw.billing_type === 'recurring'"
-                                         class="mt-2">
-                                        <input type="hidden" :name="'items[' + index + '][billing_period]'"
-                                               :value="item.billing_period">
-                                        <select x-model="item.billing_period"
-                                                @change="updatePriceForPeriod(index)"
-                                                class="{{ $inputClass }} py-2 text-xs">
-                                            <option value="">انتخاب دوره</option>
-                                            <template x-for="(label, period) in periodLabels" :key="period">
-                                                <option :value="period" x-text="label"
-                                                        :selected="item.billing_period === period"></option>
-                                            </template>
-                                        </select>
+                                </template>
+
+                                {{-- Mode: Product --}}
+                                <template x-if="item.mode === 'product'">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center gap-2 w-full">
+                                            <div class="relative flex-1 min-w-0"
+                                                 @click.outside="item._showProductDropdown = false">
+                                                <input type="text"
+                                                       :name="'items[' + index + '][custom_service_name]'"
+                                                       :value="item.custom_service_name"
+                                                       @input.debounce.300ms="item.custom_service_name = $event.target.value; onProductInput(index)"
+                                                       @focus="if ((item.custom_service_name || '').trim().length >= 2) item._showProductDropdown = true"
+                                                       class="{{ $inputClass }} py-2.5 text-xs w-full"
+                                                       placeholder="نام یا کد کالا را تایپ کنید...">
+                                                <div
+                                                    x-show="item._showProductDropdown && filteredProducts(index).length > 0"
+                                                    x-transition
+                                                    class="absolute z-[100] mt-1 w-full max-h-48 overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl">
+                                                    <template x-for="p in filteredProducts(index)" :key="p.id">
+                                                        <button type="button" @click="selectProductInline(index, p)"
+                                                                class="w-full text-start px-4 py-3 text-xs hover:bg-emerald-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700/50 last:border-0 transition-colors flex justify-between items-center">
+                                                            <div>
+                                                                <span class="font-bold text-gray-900 dark:text-white block"
+                                                                      x-text="p.name"></span>
+                                                                <span
+                                                                    class="text-[10px] text-gray-400 dark:text-gray-500 block mt-1"
+                                                                    x-text="formatMoney(p.price) + ' {{ $currencyLabel }}'"></span>
+                                                            </div>
+                                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded"
+                                                                  :class="p.stock > 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'"
+                                                                  x-text="p.stock > 0 ? p.stock + ' موجود' : 'ناموجود'"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                            <button type="button" @click="openProductModal(index)"
+                                                    class="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-all shadow-sm active:scale-95"
+                                                    title="انتخاب کالا با فیلتر پیشرفته">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
+                                </template>
+
+                                {{-- Mode: Manual --}}
+                                <template x-if="item.mode === 'manual'">
+                                    <div>
+                                        <input type="text"
+                                               :name="'items[' + index + '][custom_service_name]'"
+                                               :value="item.custom_service_name"
+                                               @input="item.custom_service_name = $event.target.value"
+                                               class="{{ $inputClass }} py-2.5 text-xs w-full"
+                                               placeholder="عنوان خدمت یا آیتم دستی...">
+                                    </div>
+                                </template>
                             </td>
                             <td class="px-4 py-3 align-top max-w-[240px]">
                                 <input type="text" x-model="item.description"
@@ -238,14 +330,14 @@
                                         <input type="text" :value="formatPriceInput(item.unit_price)"
                                                @input="item.unit_price = parsePriceInput($event.target.value)"
                                                :name="'items[' + index + '][unit_price]'" required
-                                               :readonly="!!item.service_id && !item._priceUnlocked"
-                                               :class="(item.service_id && !item._priceUnlocked) ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
+                                               :readonly="(item.service_id || item.product_id) && !item._priceUnlocked"
+                                               :class="((item.service_id || item.product_id) && !item._priceUnlocked) ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                class="{{ $inputClass }} py-2.5 text-sm font-black text-center tabular-nums w-full pe-12"
                                                dir="ltr" placeholder="۰">
                                         <span
                                             class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                     </div>
-                                    <button type="button" x-show="item.service_id"
+                                    <button type="button" x-show="item.service_id || item.product_id"
                                             @click="item._priceUnlocked = !item._priceUnlocked"
                                             class="shrink-0 p-2.5 rounded-lg border transition-colors"
                                             :class="item._priceUnlocked ? 'border-amber-400 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'border-gray-200 text-gray-400 hover:text-amber-500 hover:border-amber-300 dark:border-gray-700'"
@@ -258,7 +350,7 @@
                                     </button>
                                 </div>
                                 <div
-                                    x-show="item.service_raw && !item.service_raw.has_unit_pricing && getPeriodPrice(item) > 0"
+                                    x-show="item.service_raw && !item.service_raw['has_unit_pricing'] && getPeriodPrice(item) > 0"
                                     class="text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 text-center bg-gray-100 dark:bg-gray-800/50 p-1 rounded-md">
                                     (پایه: <span x-text="formatMoney(item.service_raw?.base_price || 0)"></span> +
                                     اشتراک: <span x-text="formatMoney(getPeriodPrice(item) || 0)"></span>)
@@ -470,7 +562,7 @@
                         <tr x-show="item.service_custom_fields && item.service_custom_fields.length > 0"
                             :class="item._hasOpenSelectDropdown ? 'relative z-50' : 'relative z-10'">
                             <td colspan="6" class="p-0 border-0">
-                                <div x-show="item._showCustomFields"
+                                <div x-show="item['_showCustomFields']"
                                      x-transition:enter="transition ease-out duration-200"
                                      x-transition:enter-start="opacity-0 -translate-y-2"
                                      x-transition:enter-end="opacity-100 translate-y-0"
@@ -838,15 +930,331 @@
             </div>
         </div>
     </form>
+    @if(!empty($marketModuleEnabled))
+    <div x-show="activeProductModalIndex !== null" x-transition.opacity
+         class="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+         style="display: none;" @click.self="closeProductModal()">
+        <div
+            class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
+            x-transition.scale.origin.center @click.outside="closeProductModal()">
+            <div
+                class="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/30">
+                <h3 class="text-lg font-black text-gray-800 dark:text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                         stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                    </svg>
+                    انتخاب کالا از فروشگاه
+                </h3>
+                <button @click="closeProductModal()"
+                        class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-rose-500 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div
+                class="p-5 border-b border-gray-200 dark:border-gray-700 space-y-4 bg-gray-50/50 dark:bg-gray-800/50">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {{-- Search Input --}}
+                    <div class="lg:col-span-2 relative">
+                        <input type="text" x-model="modalProductSearch"
+                               class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all placeholder-gray-400"
+                               placeholder="جستجو بر اساس نام، مدل یا بارکد کالا...">
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-3.5" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+
+                    {{-- Stock Status Filter --}}
+                    <div>
+                        <select x-model="modalStockStatus"
+                                class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all cursor-pointer">
+                            <option value="all">وضعیت موجودی (همه)</option>
+                            <option value="in_stock">فقط کالاهای موجود</option>
+                            <option value="out_of_stock">فقط ناموجود</option>
+                        </select>
+                    </div>
+
+                    {{-- Brand Filter --}}
+                    <div>
+                        <select x-model="modalSelectedBrand"
+                                class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all cursor-pointer">
+                            <option value="">برند (همه)</option>
+                            <template x-for="b in modalBrands" :key="b.id">
+                                <option :value="b.id" x-text="b.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    {{-- Attributes Filters --}}
+                    <template x-for="attr in modalProductAttributes" :key="attr.name">
+                        <div class="relative" x-data="{ open: false }"
+                             x-init="if(!modalSelectedAttributes[attr.name]) modalSelectedAttributes = { ...modalSelectedAttributes, [attr.name]: [] }"
+                             @click.outside="open = false">
+                            <button type="button" @click="open = !open"
+                                    class="w-full flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all cursor-pointer">
+                                <div class="flex items-center gap-2 truncate">
+                                    <span class="truncate" x-text="attr.name"></span>
+                                    <template
+                                        x-if="modalSelectedAttributes[attr.name] && modalSelectedAttributes[attr.name].length > 0">
+                                        <span
+                                            class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400 text-[10px] font-bold"
+                                            x-text="toPersianNum(modalSelectedAttributes[attr.name].length)"></span>
+                                    </template>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                     stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="open" style="display: none;"
+                                 class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                                <div class="max-h-48 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                    <template x-for="v in attr.values" :key="v">
+                                        <label
+                                            class="flex items-center gap-2 px-2 py-1.5 text-xs font-medium rounded-lg cursor-pointer hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors">
+                                            <input type="checkbox" :value="v"
+                                                   x-model="modalSelectedAttributes[attr.name]"
+                                                   @change="modalSelectedAttributes = { ...modalSelectedAttributes }"
+                                                   class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 bg-gray-50 dark:bg-gray-900 dark:border-gray-600 h-4 w-4">
+                                            <span x-text="v" class="text-gray-700 dark:text-gray-300"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            <div class="p-5 flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900/20">
+                <template x-if="modalCategories.length === 0">
+                    <div class="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+                        <svg class="w-12 h-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                             stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/>
+                        </svg>
+                        <span class="text-sm font-bold">کالایی با این مشخصات یافت نشد</span>
+                    </div>
+                </template>
+
+                <template x-for="cat in modalCategories" :key="cat.id + '-' + cat.name">
+                    <div
+                        class="mb-4 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden bg-white dark:bg-gray-800"
+                        x-data="{ open: true }">
+                        <button @click="open = !open"
+                                class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <span class="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                                <span class="font-black text-sm text-gray-800 dark:text-white"
+                                      x-text="cat.name"></span>
+                                <span
+                                    class="text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md"
+                                    x-text="cat.products.length + ' کالا'"></span>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400 transition-transform duration-300"
+                                 :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="open" x-transition.duration.200ms
+                             class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 border-t border-gray-100 dark:border-gray-700">
+                            <template x-for="prod in cat.products" :key="prod.id">
+                                <button @click="selectProductFromModal(prod)"
+                                        class="flex flex-col p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-emerald-500 hover:shadow-md bg-white dark:bg-gray-800/80 transition-all text-right group relative overflow-hidden">
+                                    <div class="flex items-start justify-between gap-3 mb-2">
+                                        <span
+                                            class="font-bold text-sm text-gray-800 dark:text-white group-hover:text-emerald-600 transition-colors line-clamp-2"
+                                            x-text="prod.name"></span>
+                                        <span
+                                            class="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0"
+                                            :class="prod.stock > 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'"
+                                            x-text="prod.stock > 0 ? prod.stock + ' ' + (prod.unit || 'عدد') : 'ناموجود'"></span>
+                                    </div>
+                                    <div class="mt-auto pt-2 flex items-center justify-between border-t border-gray-50 dark:border-gray-700/50">
+                                        <span class="text-xs text-gray-400" x-text="prod.brand_name || 'بدون برند'"></span>
+                                        <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums"
+                                              x-text="formatMoney(prod.price) + ' {{ $currencyLabel }}'"></span>
+                                    </div>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 
 @push('scripts')
     <script>
-        document.addEventListener('alpine:init', () => {
+        function toEnglishNum(v) {
+            if (v === '' || v === null || v === undefined) return '';
+            const p = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            const a = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+            return v.toString().replace(/[۰-۹]/g, d => p.indexOf(d)).replace(/[٠-٩]/g, d => a.indexOf(d));
+        }
+
+        function toPersianNum(v) {
+            if (v === '' || v === null || v === undefined) return '';
+            const p = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            return v.toString().replace(/\d/g, d => p[d]);
+        }
+
+        function formatMoney(v) {
+            if (v === '' || v === null || v === undefined || isNaN(v)) return '۰';
+            let n = Math.round(Number(v)).toString();
+            let f = n.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return toPersianNum(f);
+        }
+
+        function formatPriceInput(v) {
+            if (v === '' || v === null || v === undefined) return '';
+            let n = toEnglishNum(v.toString()).replace(/\D/g, '');
+            if (!n) return '';
+            return toPersianNum(Number(n).toLocaleString('en-US'));
+        }
+
+        function parsePriceInput(v) {
+            if (v === '' || v === null || v === undefined) return 0;
+            let n = toEnglishNum(v.toString()).replace(/\D/g, '');
+            return n ? Number(n) : 0;
+        }
+
+        function calculateTotals() {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].calculateTotals === 'function') {
+                    return el._x_dataStack[0].calculateTotals();
+                }
+            }
+        }
+
+        function onProductInput(index) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].onProductInput === 'function') {
+                    return el._x_dataStack[0].onProductInput(index);
+                }
+            }
+        }
+
+        function selectProductInline(index, prod) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].selectProductInline === 'function') {
+                    return el._x_dataStack[0].selectProductInline(index, prod);
+                }
+            }
+        }
+
+        function onServiceInput(index) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].onServiceInput === 'function') {
+                    return el._x_dataStack[0].onServiceInput(index);
+                }
+            }
+        }
+
+        function selectService(index, s) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].selectService === 'function') {
+                    return el._x_dataStack[0].selectService(index, s);
+                }
+            }
+        }
+
+        function filteredServices(index) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].filteredServices === 'function') {
+                    return el._x_dataStack[0].filteredServices(index);
+                }
+            }
+            return [];
+        }
+
+        function filteredProducts(index) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].filteredProducts === 'function') {
+                    return el._x_dataStack[0].filteredProducts(index);
+                }
+            }
+            return [];
+        }
+
+        function openProductModal(index) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].openProductModal === 'function') {
+                    return el._x_dataStack[0].openProductModal(index);
+                }
+            }
+        }
+
+        function closeProductModal() {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].closeProductModal === 'function') {
+                    return el._x_dataStack[0].closeProductModal();
+                }
+            }
+        }
+
+        function selectProductFromModal(prod) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].selectProductFromModal === 'function') {
+                    return el._x_dataStack[0].selectProductFromModal(prod);
+                }
+            }
+        }
+
+        function updatePriceForPeriod(index) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].updatePriceForPeriod === 'function') {
+                    return el._x_dataStack[0].updatePriceForPeriod(index);
+                }
+            }
+        }
+
+        function getPeriodPrice(item) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].getPeriodPrice === 'function') {
+                    return el._x_dataStack[0].getPeriodPrice(item);
+                }
+            }
+            return 0;
+        }
+
+        function calculateRowTotal(item) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].calculateRowTotal === 'function') {
+                    return el._x_dataStack[0].calculateRowTotal(item);
+                }
+            }
+            return 0;
+        }
+
+        function packageBuilder() {
             const initialItems = @json($package->items);
 
-            Alpine.data('packageBuilder', () => ({
+            return {
                 servicesList: @json($services),
+                productsList: @json($products ?? []),
+                marketAttributesList: @json($marketAttributesForJs ?? []),
                 items: initialItems.map(item => {
                     let serviceRaw = item.service || null;
                     let sFields = (serviceRaw ? (serviceRaw.custom_fields || serviceRaw.customFields) : []) || [];
@@ -884,9 +1292,6 @@
                             } else if (!isNaN(numFromQ) && numFromQ > 0) {
                                 customFieldValues[f.id] = numFromQ;
                                 if (f.has_pricing) customFieldQuantities[f.id] = numFromQ;
-                            } else {
-                                customFieldValues[f.id] = '';
-                                if (f.has_pricing) delete customFieldQuantities[f.id];
                             }
                         } else if (f.has_pricing) {
                             if (f.type === 'multiselect') {
@@ -901,18 +1306,22 @@
                                     });
                                 }
                             } else {
-                                if (customFieldValues[f.id] !== undefined && customFieldValues[f.id] !== '' && customFieldValues[f.id] !== null) {
-                                    let curQ = customFieldQuantities[f.id];
-                                    let n = Number(String(curQ || '').replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d.]/g, ''));
-                                    customFieldQuantities[f.id] = (isNaN(n) || n <= 0) ? 1 : n;
-                                } else {
-                                    delete customFieldQuantities[f.id];
+                                let curQ = customFieldQuantities[f.id];
+                                let n = Number(String(curQ || '').replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d.]/g, ''));
+                                if (isNaN(n) || n <= 0) {
+                                    customFieldQuantities[f.id] = 1;
                                 }
                             }
                         }
                     });
+
+                    let mode = item.mode || (item.product_id ? 'product' : (item.service_id ? 'service' : 'manual'));
+
                     return {
+                        mode: mode,
                         service_id: item.service_id ? String(item.service_id) : '',
+                        product_id: item.product_id ? String(item.product_id) : '',
+                        product_variant_id: item.product_variant_id ? String(item.product_variant_id) : '',
                         service_raw: serviceRaw,
                         custom_service_name: item.custom_service_name || (serviceRaw ? serviceRaw.name : ''),
                         description: item.description || '',
@@ -927,6 +1336,7 @@
                         custom_field_use_default_price: item.custom_fields_use_default_price || {},
                         _customPricesUnlocked: {},
                         _showServiceDropdown: false,
+                        _showProductDropdown: false,
                         _hasOpenSelectDropdown: false,
                         _showCustomFields: sFields.length > 0,
                         _priceUnlocked: false,
@@ -935,6 +1345,11 @@
                 discountType: @json($package->discount_type ?? 'amount'),
                 discountValue: @json($package->discount_value ?? 0),
                 periodLabels: {monthly: 'ماهانه', quarterly: 'فصلی', semi_annual: 'شش ماهه', annual: 'سالانه'},
+                activeProductModalIndex: null,
+                modalProductSearch: '',
+                modalStockStatus: 'all',
+                modalSelectedBrand: '',
+                modalSelectedAttributes: {},
 
                 init() {
                     if (this.items.length === 0) {
@@ -963,9 +1378,12 @@
                         e.target.dispatchEvent(new Event('input', {bubbles: true}));
                     });
                 },
-                addItem() {
+                addItem(mode = 'service') {
                     this.items.push({
+                        mode: mode,
                         service_id: '',
+                        product_id: '',
+                        product_variant_id: '',
                         service_raw: null,
                         custom_service_name: '',
                         description: '',
@@ -980,6 +1398,7 @@
                         custom_field_use_default_price: {},
                         _customPricesUnlocked: {},
                         _showServiceDropdown: false,
+                        _showProductDropdown: false,
                         _hasOpenSelectDropdown: false,
                         _showCustomFields: false,
                         _priceUnlocked: true,
@@ -987,6 +1406,108 @@
                 },
                 removeItem(index) {
                     this.items.splice(index, 1);
+                },
+                openProductModal(index) {
+                    this.activeProductModalIndex = index;
+                    this.modalProductSearch = '';
+                    this.modalStockStatus = 'all';
+                    this.modalSelectedBrand = '';
+                    this.modalSelectedAttributes = {};
+                },
+                closeProductModal() {
+                    this.activeProductModalIndex = null;
+                },
+                selectProductFromModal(prod) {
+                    if (this.activeProductModalIndex === null) return;
+                    this.selectProductInline(this.activeProductModalIndex, prod);
+                    this.closeProductModal();
+                },
+                onProductInput(index) {
+                    const item = this.items[index];
+                    item.product_id = '';
+                    item.product_variant_id = '';
+                    item._showProductDropdown = (item.custom_service_name || '').trim().length >= 2;
+                },
+                filteredProducts(index) {
+                    const item = this.items[index];
+                    if (!item || !item.custom_service_name || !item.custom_service_name.trim()) return [];
+                    const q = item.custom_service_name.toLowerCase().trim();
+                    return (this.productsList || []).filter(p => (p.name || '').toLowerCase().includes(q) || (p.search_text || '').toLowerCase().includes(q)).slice(0, 10);
+                },
+                selectProductInline(index, prod) {
+                    const item = this.items[index];
+                    item.mode = 'product';
+                    item.product_id = String(prod.master_id || prod.id || '');
+                    item.product_variant_id = prod.variant_id ? String(prod.variant_id) : '';
+                    item.service_id = '';
+                    item.service_raw = null;
+                    item.custom_service_name = prod.name;
+                    item.unit = prod.unit || 'عدد';
+                    item.unit_price = prod.price || 0;
+                    item.billing_period = '';
+                    item.service_custom_fields = [];
+                    item.custom_field_values = {};
+                    item.custom_field_custom_prices = {};
+                    item.custom_field_quantities = {};
+                    item.custom_field_use_default_price = {};
+                    item._showProductDropdown = false;
+                    item._showCustomFields = false;
+                    item._priceUnlocked = false;
+                },
+                get modalFilterProducts() {
+                    let list = this.productsList || [];
+                    if (this.modalProductSearch && this.modalProductSearch.trim()) {
+                        const q = this.modalProductSearch.toLowerCase().trim();
+                        list = list.filter(p => (p.name || '').toLowerCase().includes(q) || (p.search_text || '').toLowerCase().includes(q));
+                    }
+                    if (this.modalStockStatus === 'in_stock') {
+                        list = list.filter(p => (p.stock || 0) > 0);
+                    } else if (this.modalStockStatus === 'out_of_stock') {
+                        list = list.filter(p => (p.stock || 0) <= 0);
+                    }
+                    if (this.modalSelectedBrand) {
+                        list = list.filter(p => String(p.brand_id) === String(this.modalSelectedBrand));
+                    }
+                    if (this.modalSelectedAttributes && typeof this.modalSelectedAttributes === 'object') {
+                        Object.keys(this.modalSelectedAttributes).forEach(attrName => {
+                            const selectedValues = this.modalSelectedAttributes[attrName];
+                            if (Array.isArray(selectedValues) && selectedValues.length > 0) {
+                                list = list.filter(p => {
+                                    if (!p.attributes || typeof p.attributes !== 'object') return false;
+                                    const prodVal = p.attributes[attrName];
+                                    return prodVal && selectedValues.includes(prodVal);
+                                });
+                            }
+                        });
+                    }
+                    return list;
+                },
+                get modalBrands() {
+                    const map = new Map();
+                    (this.productsList || []).forEach(p => {
+                        if (p.brand_id && p.brand_name && !map.has(p.brand_id)) {
+                            map.set(p.brand_id, { id: p.brand_id, name: p.brand_name });
+                        }
+                    });
+                    return Array.from(map.values());
+                },
+                get modalProductAttributes() {
+                    return this.marketAttributesList || [];
+                },
+                get modalCategories() {
+                    const groups = {};
+                    this.modalFilterProducts.forEach(p => {
+                        const catKey = (p.category_id || 0) + '_' + (p.category_name || 'سایر');
+                        if (!groups[catKey]) {
+                            groups[catKey] = {
+                                id: p.category_id || 0,
+                                name: p.category_name || 'سایر',
+                                products: []
+                            };
+                        }
+                        groups[catKey].products.push(p);
+                    });
+                    return Object.values(groups);
                 },
                 onServiceInput(index) {
                     const item = this.items[index];
@@ -1396,8 +1917,12 @@
                         i.value = this.toEnglishNum(i.value).replace(/[^\d.]/g, '');
                     });
                 }
-            }));
-});
+            };
+        }
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('packageBuilder', packageBuilder);
+        });
 
 document.addEventListener('click', function (e) {
     if (window.jalaliDatepicker && typeof window.jalaliDatepicker.hide === 'function') {

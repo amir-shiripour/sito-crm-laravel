@@ -167,7 +167,16 @@
                                     'income' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
                                     'expense' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 border-rose-200 dark:border-rose-800/50',
                                 ];
-                                $accountingCategoriesList = collect($accountingCategories)->map(function($accCat) use ($typeLabels, $typeBadges) {
+                                $catTypePriority = ['asset' => 1, 'liability' => 2, 'equity' => 3, 'income' => 4, 'expense' => 5];
+                                $accountingCategoriesList = collect($accountingCategories)->sort(function($a, $b) use ($catTypePriority) {
+                                    $pA = $catTypePriority[$a->type] ?? 99;
+                                    $pB = $catTypePriority[$b->type] ?? 99;
+                                    if ($pA !== $pB) return $pA <=> $pB;
+                                    $codeA = (string) ($a->account_code ?? '');
+                                    $codeB = (string) ($b->account_code ?? '');
+                                    if ($codeA !== $codeB) return strcmp($codeA, $codeB);
+                                    return strcmp($a->title ?? '', $b->title ?? '');
+                                })->map(function($accCat) use ($typeLabels, $typeBadges) {
                                     return [
                                         'id' => (string) $accCat->id,
                                         'title' => $accCat->title,

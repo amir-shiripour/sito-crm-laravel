@@ -246,7 +246,7 @@
 @endphp
 
 @section('content')
-    <div class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" x-data="orderManager()">
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" x-data="orderManager()">
 
         {{-- Breadcrumb --}}
         <nav class="flex items-center gap-2 text-sm font-medium" aria-label="Breadcrumb">

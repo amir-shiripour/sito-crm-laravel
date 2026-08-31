@@ -38,8 +38,7 @@
 @endphp
 
 @section('content')
-    {{-- تغییر به max-w-7xl برای جلوگیری از پخش شدن بیش از حد محتوا در مانیتورهای واید --}}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         {{-- Header --}}
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

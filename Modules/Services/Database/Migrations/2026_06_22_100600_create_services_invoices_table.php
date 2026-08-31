@@ -50,7 +50,7 @@ return new class extends Migration
             $table->unsignedBigInteger('invoice_id');
             $table->unsignedBigInteger('service_id')->nullable();
 
-            $table->text('description')->nullable();
+            $table->string('description');
             $table->string('unit')->default('item');
             $table->decimal('quantity', 10, 2)->default(1);
             $table->unsignedBigInteger('unit_price')->default(0);

@@ -1,7 +1,7 @@
 @php use Modules\Accounting\App\Services\CurrencyService; @endphp
 @extends('layouts.user')
 
-@section('title', 'صدور سند حسابداری دستی')
+@section('title', 'ویرایش سند حسابداری شماره ' . $document->document_number)
 
 @php
     $cardClass = "bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6 backdrop-blur-xl";
@@ -76,13 +76,29 @@
             'current_balance' => (float) $fa->current_balance,
         ];
     })->values()->all();
+
+    $existingRows = $document->transactions->map(function($t, $i) {
+        $debitVal = (float) CurrencyService::convertForDisplay($t->debit ?? 0);
+        $creditVal = (float) CurrencyService::convertForDisplay($t->credit ?? 0);
+        return [
+            'id' => $i + 1,
+            'category_id' => (string) $t->category_id,
+            'fund_account_id' => (string) ($t->fund_account_id ?? ''),
+            'description' => $t->description ?? '',
+            'debit' => $debitVal,
+            'credit' => $creditVal,
+            'debit_formatted' => $debitVal ? number_format($debitVal) : '',
+            'credit_formatted' => $creditVal ? number_format($creditVal) : '',
+        ];
+    })->values()->all();
 @endphp
 
 @section('content')
 @includeIf('partials.jalali-date-picker')
 
-<form action="{{ route('admin.accounting.documents.store') }}" method="POST" x-data="multiLineDocumentForm()" @submit.prevent="submitForm">
+<form action="{{ route('admin.accounting.documents.update', $document) }}" method="POST" x-data="multiLineDocumentForm()" @submit.prevent="submitForm">
     @csrf
+    @method('PUT')
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
 
         {{-- Header Section --}}
@@ -90,24 +106,33 @@
             <div>
                 <h1 class="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-3 tracking-tight">
                     <span
-                        class="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30 shrink-0">
+                        class="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-lg shadow-amber-500/30 shrink-0">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
                     </span>
-                    صدور سند حسابداری دستی
+                    ویرایش سند حسابداری شماره {{ $document->document_number }}
                 </h1>
-                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">ثبت اسناد مرکب چند ردیفه با کنترل آنلاین و
-                    هوشمند تراز بدهکار و بستانکار.</p>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">ویرایش ردیف‌های سند و کنترل لحظه‌ای تراز بدهکار
+                    و بستانکار.</p>
             </div>
             <div class="flex items-center gap-3">
+                <a href="{{ route('admin.accounting.documents.show', $document) }}"
+                   class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm font-bold transition-all active:scale-95">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                    مشاهده سند
+                </a>
                 <a href="{{ route('admin.accounting.documents.index') }}"
                    class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm font-bold transition-all active:scale-95">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
-                    بازگشت به دفتر اسناد
+                    دفتر اسناد
                 </a>
             </div>
         </div>
@@ -142,7 +167,7 @@
                         <input type="text"
                                name="document_date"
                                id="document_date"
-                               value="{{ old('document_date', jdate()->format('Y/m/d')) }}"
+                               value="{{ old('document_date', jdate($document->document_date)->format('Y/m/d')) }}"
                                class="{{ $inputClass }} dir-ltr text-center font-bold"
                                data-jdp
                                data-jdp-only-date
@@ -164,10 +189,10 @@
                     <input type="text"
                            name="document_description"
                            id="document_description"
-                           value="{{ old('document_description') }}"
+                           value="{{ old('document_description', $document->description) }}"
                            class="{{ $inputClass }}"
                            required
-                           placeholder="مثال: سند ثبت هزینه‌ها و بستانکاری طرف حساب‌ها...">
+                           placeholder="مثال: سند اصلاحی یا ویرایش هزینه‌ها...">
                     @error('document_description')<p
                         class="mt-2 text-sm text-rose-600 font-bold">{{ $message }}</p>@enderror
                 </div>
@@ -181,7 +206,7 @@
                 class="p-6 border-b border-gray-100 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
-                        <span class="w-3 h-3 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/50"></span>
+                        <span class="w-3 h-3 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50"></span>
                         ردیف‌های بدهکار و بستانکار سند
                     </h2>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">حداقل ۲ ردیف جهت ثبت دوطرفه سند حسابداری
@@ -282,9 +307,9 @@
                                                  class="px-3 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
                                                  :class="{ 'bg-indigo-50/70 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-bold': String(row.category_id) === String(opt.id) }">
                                                 <div class="flex items-center gap-1.5 truncate">
-                                                        <span x-show="opt.account_code"
-                                                              class="text-[10px] text-gray-400"
-                                                              x-text="formatNumber(opt.account_code)"></span>
+                                                    <span x-show="opt.account_code"
+                                                          class="text-[10px] text-gray-400"
+                                                          x-text="formatNumber(opt.account_code)"></span>
                                                     <span x-text="opt.title" class="truncate"></span>
                                                 </div>
                                                 <span
@@ -302,17 +327,16 @@
                                 </div>
                             </td>
 
-                            {{-- Fund Account Select with Live Balance Hint --}}
-                            <td class="px-4 py-4">
+                            {{-- Searchable Fund Account Dropdown --}}
+                            <td class="px-4 py-4 relative" :style="'z-index: ' + (40 - index)">
                                 <div x-data="{
                                         open: false,
                                         search: '',
-                                        options: @js($fundAccountsList),
                                         get filteredOptions() {
-                                            if (!this.search.trim()) return this.options;
+                                            if (!this.search.trim()) return fundAccounts;
                                             const q = this.search.toLowerCase();
-                                            return this.options.filter(o =>
-                                                (o.name && o.name.toLowerCase().includes(q)) ||
+                                            return fundAccounts.filter(o =>
+                                                o.name.toLowerCase().includes(q) ||
                                                 (o.bank_name && o.bank_name.toLowerCase().includes(q)) ||
                                                 (o.account_number && String(o.account_number).toLowerCase().includes(q)) ||
                                                 (o.type_label && o.type_label.toLowerCase().includes(q))
@@ -324,37 +348,31 @@
                                             this.search = '';
                                         },
                                         getSelectedTitle() {
-                                            let found = this.options.find(o => String(o.id) === String(row.fund_account_id));
+                                            if (!row.fund_account_id) return 'بدون ارتباط خزانه (اختیاری)';
+                                            let found = fundAccounts.find(o => String(o.id) === String(row.fund_account_id));
                                             if (!found) return 'انتخاب حساب خزانه...';
                                             return found.name + (found.bank_name ? ' (' + found.bank_name + ')' : '');
-                                        },
-                                        formatFa(str) {
-                                            if (!str && str !== 0) return '';
-                                            const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
-                                            return String(str).replace(/[0-9]/g, w => farsi[+w]);
-                                        },
-                                        formatNumber(num) {
-                                            if (!num && num !== 0) return '۰';
-                                            return this.formatFa(Number(num).toLocaleString('en-US'));
                                         }
                                     }" class="relative" :class="{ 'z-50': open }">
                                     <input type="hidden" :name="`rows[${index}][fund_account_id]`"
                                            :value="row.fund_account_id">
 
                                     <button type="button" @click="open = !open"
-                                            class="{{ $selectClass }} flex items-center justify-between cursor-pointer w-full text-start py-2.5 px-3 text-xs">
+                                            class="{{ $inputClass }} flex items-center justify-between cursor-pointer w-full text-start py-2.5 px-3.5 text-xs sm:text-sm"
+                                            :class="{ 'text-gray-400 dark:text-gray-500': !row.fund_account_id }">
                                         <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
-                                        <div class="flex items-center gap-1 shrink-0 ms-1">
-                                                <span x-show="row.fund_account_id" @click.stop="select(null)"
-                                                      class="text-gray-400 hover:text-rose-500 p-0.5 rounded transition-colors"
-                                                      title="حذف انتخاب">
-                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                                         stroke="currentColor"><path stroke-linecap="round"
-                                                                                     stroke-linejoin="round"
-                                                                                     stroke-width="2"
-                                                                                     d="M6 18L18 6M6 6l12 12"/></svg>
-                                                </span>
-                                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                        <div class="flex items-center gap-1 shrink-0 ms-2">
+                                            <span x-show="row.fund_account_id"
+                                                  @click.stop="row.fund_account_id = ''"
+                                                  class="text-gray-400 hover:text-rose-500 p-0.5 rounded cursor-pointer transition-colors"
+                                                  title="حذف ارتباط خزانه">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor"><path stroke-linecap="round"
+                                                                                 stroke-linejoin="round"
+                                                                                 stroke-width="2"
+                                                                                 d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </span>
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
                                                  stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                       d="M19 9l-7 7-7-7"/>
@@ -363,10 +381,17 @@
                                     </button>
 
                                     <div x-show="open" @click.outside="open = false" x-cloak
-                                         class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] sm:min-w-[320px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                         class="absolute z-100 top-full mt-1.5 start-0 w-full min-w-[280px] sm:min-w-[340px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-64 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
                                         <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
-                                            <input type="text" x-model="search" placeholder="جستجو نام حساب، بانک..."
+                                            <input type="text" x-model="search"
+                                                   placeholder="جستجو نام حساب، بانک، شماره حساب..."
                                                    class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none">
+                                        </div>
+
+                                        <div @click="select(null)"
+                                             class="px-3 py-2 text-xs rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 cursor-pointer transition-colors mb-1 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
+                                            <span>بدون ارتباط خزانه</span>
+                                            <span class="text-[10px] text-gray-400">(اختیاری)</span>
                                         </div>
 
                                         <template x-for="opt in filteredOptions" :key="opt.id">
@@ -379,17 +404,15 @@
                                                         <span x-show="opt.bank_name" class="text-[10px] text-gray-400"
                                                               x-text="'(' + opt.bank_name + ')'"></span>
                                                     </div>
-                                                    <div class="flex items-center gap-2 text-[10px] text-gray-400">
-                                                        <span x-show="opt.account_number"
-                                                              x-text="'ش‌ح: ' + formatFa(opt.account_number)"></span>
-                                                        <span class="text-emerald-600 dark:text-emerald-400 font-bold"
-                                                              x-text="'موجودی: ' + formatNumber(opt.current_balance) + ' {{ $currencySuffix }}'"></span>
-                                                    </div>
+                                                    <span x-show="opt.account_number" class="text-[10px] text-gray-400"
+                                                          x-text="'ش‌ح: ' + formatNumber(opt.account_number)"></span>
                                                 </div>
-                                                <span
-                                                    class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
-                                                    :class="opt.type_badge"
-                                                    x-text="opt.type_label"></span>
+                                                <div class="flex items-center gap-1.5 shrink-0">
+                                                    <span
+                                                        class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                        :class="opt.type_badge"
+                                                        x-text="opt.type_label"></span>
+                                                </div>
                                             </div>
                                         </template>
 
@@ -400,47 +423,66 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-4 py-4">
-                                <input type="text" :name="`rows[${index}][description]`" x-model="row.description"
-                                       class="{{ $inputClass }}" placeholder="شرح این ردیف...">
-                            </td>
+
+                            {{-- Description --}}
                             <td class="px-4 py-4">
                                 <input type="text"
-                                       :name="`rows[${index}][debit]`"
-                                       x-model="row.debit_formatted"
-                                       @input="formatDebit(index, $event.target.value)"
-                                       class="{{ $inputClass }} dir-ltr text-left font-bold tabular-nums text-rose-600 dark:text-rose-400 placeholder:text-gray-300"
-                                       placeholder="0">
+                                       :name="`rows[${index}][description]`"
+                                       x-model="row.description"
+                                       class="{{ $inputClass }} py-2.5 px-3.5 text-xs sm:text-sm"
+                                       placeholder="شرح ردیف (اختیاری)">
                             </td>
+
+                            {{-- Debit Amount --}}
                             <td class="px-4 py-4">
-                                <input type="text"
-                                       :name="`rows[${index}][credit]`"
-                                       x-model="row.credit_formatted"
-                                       @input="formatCredit(index, $event.target.value)"
-                                       class="{{ $inputClass }} dir-ltr text-left font-bold tabular-nums text-emerald-600 dark:text-emerald-400 placeholder:text-gray-300"
-                                       placeholder="0">
-                            </td>
-                            <td class="px-4 py-4 text-end whitespace-nowrap">
-                                <div class="flex items-center justify-end gap-1.5">
+                                <div class="relative">
+                                    <input type="text"
+                                           :name="`rows[${index}][debit]`"
+                                           x-model="row.debit_formatted"
+                                           @input="formatDebit(index, $event.target.value)"
+                                           class="{{ $inputClass }} font-bold text-rose-600 dark:text-rose-400 dir-ltr text-end py-2.5 px-3.5 text-xs sm:text-sm focus:border-rose-500 focus:ring-rose-500/20"
+                                           placeholder="۰">
                                     <button type="button"
+                                            x-show="!row.debit && totalCredit > totalDebit"
                                             @click="autoBalance(index)"
-                                            title="تراز خودکار این ردیف"
-                                            x-show="!isBalanced && getUnbalancedDiff() > 0"
-                                            class="px-2 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 text-[11px] font-bold transition-all">
-                                        تراز خودکار
-                                    </button>
-                                    <button type="button"
-                                            @click="removeRow(index)"
-                                            class="p-2 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
-                                            x-show="rows.length > 2"
-                                            title="حذف ردیف">
-                                        <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24"
-                                             stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
+                                            class="absolute start-2 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 font-bold transition-all shadow-xs"
+                                            title="تراز خودکار با مانده بستانکار">
+                                        تراز
                                     </button>
                                 </div>
+                            </td>
+
+                            {{-- Credit Amount --}}
+                            <td class="px-4 py-4">
+                                <div class="relative">
+                                    <input type="text"
+                                           :name="`rows[${index}][credit]`"
+                                           x-model="row.credit_formatted"
+                                           @input="formatCredit(index, $event.target.value)"
+                                           class="{{ $inputClass }} font-bold text-emerald-600 dark:text-emerald-400 dir-ltr text-end py-2.5 px-3.5 text-xs sm:text-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                                           placeholder="۰">
+                                    <button type="button"
+                                            x-show="!row.credit && totalDebit > totalCredit"
+                                            @click="autoBalance(index)"
+                                            class="absolute start-2 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-bold transition-all shadow-xs"
+                                            title="تراز خودکار با مانده بدهکار">
+                                        تراز
+                                    </button>
+                                </div>
+                            </td>
+
+                            {{-- Action --}}
+                            <td class="px-4 py-4 text-end">
+                                <button type="button"
+                                        @click="removeRow(index)"
+                                        :disabled="rows.length <= 2"
+                                        class="p-2 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
                             </td>
                         </tr>
                     </template>
@@ -448,148 +490,106 @@
                 </table>
             </div>
 
-            {{-- Balance Footer Bar --}}
+            {{-- Table Footer Summary --}}
             <div
-                class="p-6 bg-gray-50/70 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700/50 flex flex-col sm:flex-row items-center justify-between gap-4 relative z-0">
-                <div class="flex items-center gap-6 text-sm font-bold">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                        <span class="text-gray-600 dark:text-gray-400">جمع بدهکار:</span>
-                        <span class="text-rose-600 dark:text-rose-400 font-black text-base"
-                              x-text="formatNumber(totalDebit)"></span>
-                        <span class="text-xs text-gray-500 font-normal">{{ $currencySuffix }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                        <span class="text-gray-600 dark:text-gray-400">جمع بستانکار:</span>
-                        <span class="text-emerald-600 dark:text-emerald-400 font-black text-base"
-                              x-text="formatNumber(totalCredit)"></span>
-                        <span class="text-xs text-gray-500 font-normal">{{ $currencySuffix }}</span>
-                    </div>
+                class="p-6 bg-gray-50/80 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700/50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold text-gray-500 dark:text-gray-400">وضعیت سند:</span>
+                    <template x-if="isBalanced">
+                        <span
+                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                 stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M5 13l4 4L19 7"/></svg>
+                            سند تراز است
+                        </span>
+                    </template>
+                    <template x-if="!isBalanced">
+                        <span
+                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                 stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M6 18L18 6M6 6l12 12"/></svg>
+                            نامتوازن (اختلاف: <span x-text="formatNumber(getUnbalancedDiff())"></span> {{ $currencySuffix }})
+                        </span>
+                    </template>
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <span class="text-xs font-bold text-gray-500 dark:text-gray-400">وضعیت تراز سند:</span>
-                    <span
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all shadow-sm"
-                        :class="isBalanced ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' : 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'">
-                        <span class="w-2 h-2 rounded-full animate-pulse"
-                              :class="isBalanced ? 'bg-emerald-500' : 'bg-rose-500'"></span>
-                        <span
-                            x-text="isBalanced ? 'تراز است (متوازن)' : 'نامتوازن (اختلاف ' + formatNumber(getUnbalancedDiff()) + ' {{ $currencySuffix }})'"></span>
-                    </span>
+                <div class="flex flex-wrap items-center gap-6 text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">جمع بدهکار:</span>
+                        <span class="font-black text-rose-600 dark:text-rose-400 text-base"
+                              x-text="formatNumber(totalDebit)"></span>
+                        <span class="text-xs text-gray-400">{{ $currencySuffix }}</span>
+                    </div>
+
+                    <div class="w-px h-6 bg-gray-200 dark:bg-gray-700 hidden md:block"></div>
+
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">جمع بستانکار:</span>
+                        <span class="font-black text-emerald-600 dark:text-emerald-400 text-base"
+                              x-text="formatNumber(totalCredit)"></span>
+                        <span class="text-xs text-gray-400">{{ $currencySuffix }}</span>
+                    </div>
                 </div>
             </div>
         </div>
-        <div x-show="selectedFundAccountsSummary.length > 0"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 transform -translate-y-2"
-             x-transition:enter-end="opacity-100 transform translate-y-0"
-             class="bg-white dark:bg-gray-800/60 rounded-3xl border border-indigo-100 dark:border-indigo-900/40 shadow-sm overflow-hidden backdrop-blur-xl relative z-20">
 
-            <div
-                class="p-5 border-b border-indigo-50 dark:border-indigo-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-transparent dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-transparent">
-                <div class="flex items-center gap-3">
-                    <span
-                        class="flex items-center justify-center w-10 h-10 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                        </svg>
-                    </span>
-                    <div>
-                        <h2 class="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
-                            <span>موجودی لحظه‌ای حساب‌های خزانه‌داری انتخابی</span>
-                            <span
-                                class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
-                                x-text="`${formatNumber(selectedFundAccountsSummary.length)} حساب خزانه`"></span>
-                        </h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">نمایش زنده موجودی فعلی، واریز/برداشت
-                            این سند و موجودی نهایی بانک‌ها و صندوق‌ها</p>
-                    </div>
-                </div>
+        {{-- Live Treasury Impact Preview --}}
+        <div x-show="selectedFundAccountsSummary.length > 0"
+             class="bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6 backdrop-blur-xl relative z-10"
+             x-transition>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                    پیش‌نمایش تغییرات موجودی حساب‌های خزانه‌داری
+                </h3>
+                <span class="text-xs text-gray-400">شبیه‌سازی زنده بر اساس مقادیر وارد شده</span>
             </div>
 
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <template x-for="fund in selectedFundAccountsSummary" :key="fund.id">
-                        <div
-                            class="rounded-2xl border border-gray-200/80 dark:border-gray-700/70 bg-gradient-to-b from-gray-50/60 to-white dark:from-gray-800/40 dark:to-gray-800/80 p-4 space-y-3.5 shadow-sm hover:shadow-md transition-all">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <template x-for="fund in selectedFundAccountsSummary" :key="fund.id">
+                    <div class="p-4 rounded-2xl border transition-all"
+                         :class="fund.isNegative ? 'border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20' : 'border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/30'">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-xs text-gray-900 dark:text-white truncate"
+                                  x-text="fund.name"></span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded font-medium border"
+                                  :class="fund.type_badge"
+                                  x-text="fund.type_label"></span>
+                        </div>
 
-                            {{-- Fund Account Header --}}
-                            <div
-                                class="flex items-start justify-between gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-3">
-                                <div class="space-y-1 truncate">
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white truncate"
-                                            x-text="fund.name"></h3>
-                                    </div>
-                                </div>
-                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-lg border shrink-0"
-                                      :class="fund.type_badge"
-                                      x-text="fund.type_label"></span>
+                        <div class="space-y-1.5 text-xs">
+                            <div class="flex justify-between text-gray-500 dark:text-gray-400">
+                                <span>موجودی اولیه:</span>
+                                <span class="font-bold tabular-nums"
+                                      x-text="formatNumber(fund.initialBalance) + ' ' + '{{ $currencySuffix }}'"></span>
                             </div>
-
-                            {{-- Fund Balances Breakdown --}}
-                            <div class="space-y-2 text-xs">
-                                {{-- Previous Balance --}}
-                                <div
-                                    class="flex items-center justify-between bg-white dark:bg-gray-900/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/40">
-                                    <span class="text-gray-500 dark:text-gray-400 font-medium">موجودی فعلی خزانه:</span>
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="font-bold text-gray-800 dark:text-gray-200"
-                                              x-text="formatNumber(fund.initialBalance)"></span>
-                                        <span class="text-[10px] text-gray-400">{{ $currencySuffix }}</span>
-                                    </div>
-                                </div>
-
-                                {{-- This Voucher Changes --}}
-                                <div class="grid grid-cols-2 gap-2 text-[11px]">
-                                    <div
-                                        class="bg-emerald-50/60 dark:bg-emerald-900/20 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
-                                        <div class="text-emerald-600 dark:text-emerald-400 font-medium">واریز در این
-                                            سند:
-                                        </div>
-                                        <div class="font-bold text-emerald-700 dark:text-emerald-300 mt-0.5"
-                                             x-text="fund.docDebit > 0 ? '+' + formatNumber(fund.docDebit) : '۰'"></div>
-                                    </div>
-                                    <div
-                                        class="bg-rose-50/60 dark:bg-rose-900/20 p-2 rounded-xl border border-rose-100 dark:border-rose-900/30">
-                                        <div class="text-rose-600 dark:text-rose-400 font-medium">برداشت در این سند:
-                                        </div>
-                                        <div class="font-bold text-rose-700 dark:text-rose-300 mt-0.5"
-                                             x-text="fund.docCredit > 0 ? '-' + formatNumber(fund.docCredit) : '۰'"></div>
-                                    </div>
-                                </div>
-
-                                {{-- Projected New Balance --}}
-                                <div class="flex items-center justify-between p-2.5 rounded-xl border"
-                                     :class="{
-                                         'bg-emerald-50/80 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/50': !fund.isNegative,
-                                         'bg-rose-50/80 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/50': fund.isNegative
-                                     }">
-                                    <span class="font-bold text-gray-700 dark:text-gray-200">موجودی پس از ثبت:</span>
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="font-black text-sm"
-                                              :class="{
-                                                  'text-emerald-700 dark:text-emerald-300': !fund.isNegative,
-                                                  'text-rose-700 dark:text-rose-300': fund.isNegative
-                                              }"
-                                              x-text="formatSignedNumber(fund.newBalance)"></span>
-                                        <span class="text-[10px] text-gray-500 font-normal">{{ $currencySuffix }}</span>
-                                        <span class="px-2 py-0.5 text-[10px] font-black rounded-md shadow-sm"
-                                              :class="{
-                                                  'bg-emerald-600 text-white': !fund.isNegative,
-                                                  'bg-rose-600 text-white': fund.isNegative
-                                              }"
-                                              x-text="fund.isNegative ? 'کسری موجودی' : 'موجودی معتبر'"></span>
-                                    </div>
-                                </div>
+                            <div class="flex justify-between"
+                                 :class="fund.netChange >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+                                <span>تغییر با این سند:</span>
+                                <span class="font-black tabular-nums" dir="ltr"
+                                      x-text="formatSignedNumber(fund.netChange) + ' ' + '{{ $currencySuffix }}'"></span>
+                            </div>
+                            <div
+                                class="flex justify-between pt-1.5 border-t border-gray-200/60 dark:border-gray-700/60 font-bold"
+                                :class="fund.isNegative ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'">
+                                <span>موجودی پس از ثبت:</span>
+                                <span class="font-black tabular-nums"
+                                      x-text="formatNumber(fund.newBalance) + ' ' + '{{ $currencySuffix }}'"></span>
                             </div>
                         </div>
-                    </template>
-                </div>
+
+                        <div x-show="fund.isNegative"
+                             class="mt-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span>هشدار: موجودی حساب منفی خواهد شد!</span>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 
@@ -603,11 +603,11 @@
                 </a>
                 <button type="submit"
                         :disabled="!isBalanced"
-                        class="px-8 py-3.5 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95">
+                        class="px-8 py-3.5 rounded-xl bg-amber-600 text-white font-bold text-sm shadow-lg shadow-amber-500/30 hover:bg-amber-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                    <span>ثبت و تایید سند مالی</span>
+                    <span>ذخیره تغییرات سند مالی</span>
                 </button>
             </div>
         </div>
@@ -618,7 +618,7 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('multiLineDocumentForm', () => {
-                const rawOldRows = @json(old('rows', []));
+                const rawOldRows = @json(old('rows', $existingRows));
                 const categories = @json($categoriesList);
                 const fundAccounts = @json($fundAccountsList);
                 let initialRows = [];

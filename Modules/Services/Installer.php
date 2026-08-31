@@ -15,45 +15,6 @@ class Installer extends BaseModuleInstaller
 {
     protected string $moduleName = 'Services';
 
-    protected array $tables = [
-        'service_invoice_payments',
-        'service_invoice_items',
-        'service_invoices',
-        'service_orders',
-        'services_projects',
-        'services_activity_log',
-        'services_custom_field_values',
-        'services_custom_fields',
-        'services',
-        'service_templates',
-        'services_catalog',
-        'service_categories',
-        'services_statuses',
-        'service_packages',
-        'service_package_items',
-    ];
-
-    protected function trackerPath(): string
-    {
-        return storage_path('app/module-installer/'.$this->moduleSlug.'/created.json');
-    }
-
-    protected function loadTracker(): array
-    {
-        $path = $this->trackerPath();
-        if (File::exists($path)) {
-            return json_decode(File::get($path), true) ?: [];
-        }
-        return ['permissions' => [], 'roles' => []];
-    }
-
-    protected function saveTracker(array $data): void
-    {
-        $path = $this->trackerPath();
-        File::ensureDirectoryExists(dirname($path));
-        File::put($path, json_encode($data, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
-    }
-
     public function __construct()
     {
         parent::__construct($this->moduleName);
@@ -96,22 +57,29 @@ class Installer extends BaseModuleInstaller
         Log::info('Services Installer: Starting uninstall process...');
         $this->cleanupDatabase();
 
-        $tracker = $this->loadTracker();
-        $permissions = $tracker['permissions'] ?? [];
-
-        if (!empty($permissions)) {
-            Log::info('Services Installer: Removing all module permissions...');
-            DB::transaction(function () use ($permissions) {
-                $guard = config('auth.defaults.guard', 'web');
-                $perms = Permission::whereIn('name', $permissions)->where('guard_name', $guard)->get();
-                foreach ($perms as $perm) {
-                    $perm->roles()->detach();
-                    $perm->delete();
-                }
-            });
+        $trackerPath = $this->permissionsTrackerPath();
+        if (!File::exists($trackerPath)) {
+            Log::warning('Services Installer: Permission tracker not found on uninstall. Nothing to remove.');
+            return;
         }
 
+        $permissions = json_decode(File::get($trackerPath), true) ?: [];
+        if (empty($permissions)) {
+            return;
+        }
+
+        Log::info('Services Installer: Removing all module permissions...');
+        DB::transaction(function () use ($permissions) {
+            $guard = config('auth.defaults.guard', 'web');
+            $perms = Permission::whereIn('name', $permissions)->where('guard_name', $guard)->get();
+            foreach ($perms as $perm) {
+                $perm->roles()->detach();
+                $perm->delete();
+            }
+        });
+
         File::delete($this->trackerPath());
+        File::delete($trackerPath);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Log::info('Services Installer: Uninstall process finished.');
@@ -232,11 +200,19 @@ class Installer extends BaseModuleInstaller
             $role->givePermissionTo($definedPermissions);
         }
 
-        $tracker = $this->loadTracker();
-        $tracker['permissions'] = array_values(array_unique(array_merge($tracker['permissions'] ?? [], $definedPermissions)));
-        $this->saveTracker($tracker);
-
+        File::put($trackerPath, json_encode($definedPermissions, JSON_PRETTY_PRINT));
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Log::info('Services Installer: Permission sync finished.');
+    }
+
+    // Helper methods for tracker paths
+    private function trackerPath(): string
+    {
+        return storage_path('app/module-install-trackers/services.json');
+    }
+
+    private function permissionsTrackerPath(): string
+    {
+        return storage_path('app/module-install-trackers/services_permissions.json');
     }
 }

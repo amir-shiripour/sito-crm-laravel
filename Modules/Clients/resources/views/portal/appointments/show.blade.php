@@ -351,6 +351,7 @@
                     <form :action="formAction" method="POST" enctype="multipart/form-data" id="clientPaymentForm" class="flex flex-col flex-1 min-h-0 overflow-hidden">
                         @csrf
                         <input type="hidden" name="payment_method" :value="method">
+                        <input type="hidden" name="sub_item" :value="subItem">
 
                         {{-- Modal Body --}}
                         <div class="p-6 space-y-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar overscroll-contain">
@@ -809,6 +810,10 @@
             nextBank() {
                 if (this.totalBankAccounts > 0) {
                     this.activeBankIndex = (this.activeBankIndex + 1) % this.totalBankAccounts;
+                    const items = this.subItemsMap['transfer'] || [];
+                    if (items[this.activeBankIndex]) {
+                        this.subItem = items[this.activeBankIndex].id;
+                    }
                     this.scrollToActiveBank();
                 }
             },
@@ -816,6 +821,10 @@
             prevBank() {
                 if (this.totalBankAccounts > 0) {
                     this.activeBankIndex = (this.activeBankIndex - 1 + this.totalBankAccounts) % this.totalBankAccounts;
+                    const items = this.subItemsMap['transfer'] || [];
+                    if (items[this.activeBankIndex]) {
+                        this.subItem = items[this.activeBankIndex].id;
+                    }
                     this.scrollToActiveBank();
                 }
             },

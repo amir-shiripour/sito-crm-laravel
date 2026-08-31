@@ -3,23 +3,29 @@
 namespace Modules\Services\App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Modules\Accounting\App\Services\AccountingEngine;
 use Modules\Clients\Entities\Client;
 use Modules\Market\App\Models\MarketOrderStatus;
 use Modules\Market\App\Services\StockService;
 use Modules\Market\App\Services\WarehouseStockService;
+use Modules\Market\Entities\MarketAttribute;
 use Modules\Market\Entities\MarketSetting;
 use Modules\Market\Entities\MasterProduct;
 use Modules\Market\Entities\WarehouseStock;
 use Modules\Services\App\Http\Models\Service;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Payment;
+use Modules\Services\App\Http\Models\ServicePackage;
 use Modules\Services\App\Http\Models\Status;
 use Modules\Services\App\Http\Requests\StoreInvoiceRequest;
 use Modules\Settings\Entities\Setting;
+use Modules\Wallet\App\Enums\TransactionType;
+use Modules\Wallet\App\Services\WalletService;
 use Nwidart\Modules\Facades\Module;
 use Spatie\Browsershot\Browsershot;
 use Morilog\Jalali\Jalalian;
@@ -29,6 +35,7 @@ use Modules\Workflows\Services\WorkflowEngine;
 use Modules\Market\App\Models\Order as MarketOrder;
 use Modules\Market\App\Models\OrderItem as MarketOrderItem;
 use Modules\Market\Entities\VendorProduct;
+use Throwable;
 
 class InvoiceController extends Controller
 {
@@ -58,12 +65,43 @@ class InvoiceController extends Controller
             $invoice->load('status');
         });
 
+        // ── Real totals across ALL matching invoices (not just current page) ──
+        $totalsQuery = Invoice::query()
+            ->whereNotNull('invoice_number')
+            ->when(
+                $request->search,
+                fn($q, $s) => $q
+                    ->where('invoice_number', 'like', "%$s%")
+                    ->orWhere('client_name', 'like', "%$s%")
+            )
+            ->when($request->status_id, fn($q, $v) => $q->where('status_id', $v))
+            ->when($request->payment_mode, fn($q, $v) => $q->where('payment_mode', $v))
+            ->when($request->customer_id, fn($q, $v) => $q->where('customer_id', $v))
+            ->when($request->date_from, fn($q, $v) => $q->whereDate('issue_date', '>=', $v))
+            ->when($request->date_to, fn($q, $v) => $q->whereDate('issue_date', '<=', $v));
+
+        // Exclude merged invoices (their amounts moved to the new invoice), same logic as the page-level cards
+        $mergedStatusIds = Status::where('name', 'LIKE', '%ادغام%')->pluck('id');
+        if ($mergedStatusIds->isNotEmpty()) {
+            $totalsQuery->whereNotIn('status_id', $mergedStatusIds);
+        }
+
+        $totalsInvoices = (clone $totalsQuery)->with('status')->get(['id', 'total', 'paid_amount', 'status_id']);
+
+        $grandCount = $totalsInvoices->count();
+        $grandTotal = (int)$totalsInvoices->sum('total');
+        $grandPaid = (int)$totalsInvoices->reject(fn($inv) => $inv->isCanceled())->sum('paid_amount');
+        $grandDue = (int)$totalsInvoices->sum(fn($inv) => $inv->remainingAmount());
+
         $statuses = Status::whereIn('type', ['invoice', 'payment'])->orderBy('sort_order')->get();
 
         $customers = Client::orderBy('full_name')->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
 
-        return view('services::invoices.index', compact('invoices', 'statuses', 'customers', 'currency'));
+        return view('services::invoices.index', compact(
+            'invoices', 'statuses', 'customers', 'currency',
+            'grandCount', 'grandTotal', 'grandPaid', 'grandDue'
+        ));
     }
 
     public function proformas(Request $request)
@@ -101,6 +139,66 @@ class InvoiceController extends Controller
         return $this->buildCreateView('proforma');
     }
 
+    public function getCustomerDebts(Request $request, Client $client)
+    {
+        $excludeInvoiceId = $request->query('exclude_invoice_id');
+
+        $query = Invoice::where('customer_id', $client->id)
+            ->whereNotNull('invoice_number')
+            ->when($excludeInvoiceId, fn($q) => $q->where('id', '!=', $excludeInvoiceId))
+            ->with(['payments', 'status']);
+
+        $mergedStatusIds = Status::where('name', 'LIKE', '%ادغام%')->pluck('id');
+        if ($mergedStatusIds->isNotEmpty()) {
+            $query->whereNotIn('status_id', $mergedStatusIds);
+        }
+
+        $invoices = $query->latest()->get();
+
+        $unpaidInvoices = $invoices->filter(function ($inv) {
+            return !$inv->isCanceled() && !$inv->isMerged() && $inv->remainingAmount() > 0;
+        })->values();
+
+        $totalDebt = (int)$unpaidInvoices->sum(fn($inv) => $inv->remainingAmount());
+        $invoiceIds = $unpaidInvoices->pluck('id')->toArray();
+        $invoiceNumbers = $unpaidInvoices->map(fn($inv) => $inv->invoice_number ?: (string)$inv->id)->toArray();
+
+        $toJalali = function ($date) {
+            if (!$date) return '';
+            try {
+                if (class_exists(\Morilog\Jalali\Jalalian::class)) {
+                    return \Morilog\Jalali\Jalalian::fromDateTime($date)->format('Y/m/d');
+                }
+            } catch (\Throwable $e) {}
+            return substr((string)$date, 0, 10);
+        };
+
+        return response()->json([
+            'has_debt' => $totalDebt > 0,
+            'total_debt' => $totalDebt,
+            'total_debt_formatted' => number_format($totalDebt),
+            'invoices_count' => $unpaidInvoices->count(),
+            'invoice_ids' => $invoiceIds,
+            'invoice_ids_string' => implode(',', $invoiceIds),
+            'invoice_numbers' => $invoiceNumbers,
+            'invoice_numbers_string' => implode(' ، ', $invoiceNumbers),
+            'invoices' => $unpaidInvoices->map(function ($inv) use ($toJalali) {
+                return [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'total' => (int)$inv->total,
+                    'total_formatted' => number_format((int)$inv->total),
+                    'paid_amount' => (int)$inv->calculatePaidAmount(),
+                    'paid_amount_formatted' => number_format((int)$inv->calculatePaidAmount()),
+                    'remaining' => (int)$inv->remainingAmount(),
+                    'remaining_formatted' => number_format((int)$inv->remainingAmount()),
+                    'issue_date' => $inv->issue_date ? (string)$inv->issue_date : null,
+                    'issue_date_jalali' => $toJalali($inv->issue_date),
+                ];
+            }),
+        ]);
+    }
+
     private function isMarketModuleEnabled(): bool
     {
         return Module::has('Market')
@@ -115,7 +213,7 @@ class InvoiceController extends Controller
         if (is_numeric($val)) return floatval($val);
 
         $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-        $arabic  = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
         $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
         $val = str_replace($persian, $english, (string)$val);
@@ -127,8 +225,8 @@ class InvoiceController extends Controller
 
     private function getMarketAttributesForInvoice()
     {
-        return $this->isMarketModuleEnabled() && class_exists(\Modules\Market\Entities\MarketAttribute::class)
-            ? \Modules\Market\Entities\MarketAttribute::with('values')->orderBy('name')->get()
+        return $this->isMarketModuleEnabled() && class_exists(MarketAttribute::class)
+            ? MarketAttribute::with('values')->orderBy('name')->get()
             : collect();
     }
 
@@ -177,7 +275,7 @@ class InvoiceController extends Controller
                     $packageTitle = $meta['_packageTitle'] ?? $meta['package_title'] ?? null;
 
                     if (!$packageGroupId && !empty($meta['package_id'])) {
-                        $pkg = \Modules\Services\App\Http\Models\ServicePackage::find($meta['package_id']);
+                        $pkg = ServicePackage::find($meta['package_id']);
                         $packageGroupId = 'pkg_' . $inv->id . '_' . $meta['package_id'];
                         $packageTitle = $pkg ? $pkg->name : 'پکیج خدمات';
                     }
@@ -189,7 +287,7 @@ class InvoiceController extends Controller
 
                     $stock = null;
                     if ($isProduct && !empty($products)) {
-                        $prodMatch = collect($products)->first(function($p) use ($meta) {
+                        $prodMatch = collect($products)->first(function ($p) use ($meta) {
                             if (!empty($meta['product_variant_id'])) {
                                 return (string)($p['variant_id'] ?? '') === (string)$meta['product_variant_id'];
                             }
@@ -208,11 +306,17 @@ class InvoiceController extends Controller
                     if ($service) {
                         $serviceRawArray = $service->toArray();
                         $customFieldsArray = $service->customFields
-                            ->filter(function($f) { return $f->show_in_invoice === true || $f->show_in_invoice === 1 || $f->show_in_invoice === '1' || $f->show_in_invoice === null; })
+                            ->filter(function ($f) {
+                                return $f->show_in_invoice === true || $f->show_in_invoice === 1 || $f->show_in_invoice === '1' || $f->show_in_invoice === null;
+                            })
                             ->values()
-                            ->map(function($f) {
+                            ->map(function ($f) {
                                 if (is_string($f->options)) {
-                                    try { $f->options = json_decode($f->options, true); } catch (\Exception $e) { $f->options = []; }
+                                    try {
+                                        $f->options = json_decode($f->options, true);
+                                    } catch (Exception $e) {
+                                        $f->options = [];
+                                    }
                                 }
                                 if (!is_array($f->options)) $f->options = [];
                                 return $f;
@@ -220,14 +324,14 @@ class InvoiceController extends Controller
                             ->toArray();
                     }
 
-                    $mergedCustomFieldValues = (function() use ($customFieldsArray, $meta) {
+                    $mergedCustomFieldValues = (function () use ($customFieldsArray, $meta) {
                         $vals = $meta['custom_fields'] ?? [];
                         $qtys = $meta['custom_fields_quantities'] ?? [];
                         foreach ($customFieldsArray as $cf) {
                             if (($cf['type'] ?? '') === 'number') {
                                 $id = $cf['id'];
-                                $v = isset($vals[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$vals[$id]) : 0;
-                                $q = isset($qtys[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$qtys[$id]) : 0;
+                                $v = isset($vals[$id]) ? (float)str_replace(['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], (string)$vals[$id]) : 0;
+                                $q = isset($qtys[$id]) ? (float)str_replace(['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], (string)$qtys[$id]) : 0;
                                 if ($v > 0) $vals[$id] = $v;
                                 elseif ($q > 0) $vals[$id] = $q;
                             }
@@ -235,14 +339,14 @@ class InvoiceController extends Controller
                         return $vals;
                     })();
 
-                    $mergedCustomFieldQuantities = (function() use ($customFieldsArray, $meta) {
+                    $mergedCustomFieldQuantities = (function () use ($customFieldsArray, $meta) {
                         $vals = $meta['custom_fields'] ?? [];
                         $qtys = $meta['custom_fields_quantities'] ?? [];
                         foreach ($customFieldsArray as $cf) {
                             if (($cf['type'] ?? '') === 'number') {
                                 $id = $cf['id'];
-                                $v = isset($vals[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$vals[$id]) : 0;
-                                $q = isset($qtys[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$qtys[$id]) : 0;
+                                $v = isset($vals[$id]) ? (float)str_replace(['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], (string)$vals[$id]) : 0;
+                                $q = isset($qtys[$id]) ? (float)str_replace(['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], (string)$qtys[$id]) : 0;
                                 if ($q > 0) $qtys[$id] = $q;
                                 elseif ($v > 0) $qtys[$id] = $v;
                             }
@@ -253,20 +357,20 @@ class InvoiceController extends Controller
                     $mergedItems[] = [
                         'id' => uniqid() . rand(1000, 9999),
                         'mode' => $mode,
-                        'service_id'  => $item->service_id ? (string) $item->service_id : '',
-                        'product_id'  => isset($meta['product_id']) ? (string) $meta['product_id'] : '',
-                        'product_variant_id' => isset($meta['product_variant_id']) ? (string) $meta['product_variant_id'] : '',
-                        'stock'       => $stock,
+                        'service_id' => $item->service_id ? (string)$item->service_id : '',
+                        'product_id' => isset($meta['product_id']) ? (string)$meta['product_id'] : '',
+                        'product_variant_id' => isset($meta['product_variant_id']) ? (string)$meta['product_variant_id'] : '',
+                        'stock' => $stock,
                         'service_raw' => $serviceRawArray,
                         'custom_service_name' => $service ? $service->name : ($item->custom_service_name ?: $item->description ?? ''),
                         '_showServiceDropdown' => false,
                         '_showProductDropdown' => false,
                         '_selectedGroup' => '',
                         'description' => $item->description,
-                        'unit'        => $item->unit ?? 'عدد',
-                        'quantity'    => (float) $item->quantity,
-                        'unit_price'  => (float) $item->unit_price,
-                        'discount'    => (float) $item->discount,
+                        'unit' => $item->unit ?? 'عدد',
+                        'quantity' => (float)$item->quantity,
+                        'unit_price' => (float)$item->unit_price,
+                        'discount' => (float)$item->discount,
                         'billing_period' => $meta['billing_period'] ?? null,
                         '_priceUnlocked' => false,
                         'service_custom_fields' => $customFieldsArray,
@@ -276,7 +380,7 @@ class InvoiceController extends Controller
                         'custom_field_custom_prices' => $meta['custom_fields_prices'] ?? [],
                         'custom_field_custom_discounts' => $meta['custom_fields_discounts'] ?? [],
                         'custom_field_tax_percents' => $meta['custom_fields_taxes'] ?? [],
-                        'tax_percent' => $item->tax_percent > 0 ? (float) $item->tax_percent : ($defaultTaxRate ?? 9),
+                        'tax_percent' => $item->tax_percent > 0 ? (float)$item->tax_percent : ($defaultTaxRate ?? 9),
                         '_taxUnlocked' => false,
                         '_isMerged' => true,
                         '_packageGroupId' => $packageGroupId,
@@ -310,7 +414,7 @@ class InvoiceController extends Controller
             'marketModuleEnabled' => $this->isMarketModuleEnabled(),
             'mergedItems' => $mergedItems,
             'mergedFromIds' => $mergedFromIds,
-            'packages' => \Modules\Services\App\Http\Models\ServicePackage::where('status', 'active')->with('items.service.customFields')->get(),
+            'packages' => ServicePackage::where('status', 'active')->with('items.service.customFields')->get(),
         ]);
     }
 
@@ -354,13 +458,29 @@ class InvoiceController extends Controller
             $invoice = Invoice::create($invoiceData);
             $invoice->items()->createMany($preparedItems);
 
-            if ($request->filled('merged_from_invoice_ids') && !$isProforma) {
-                $sourceInvoiceIds = explode(',', $request->merged_from_invoice_ids);
+            $debtIds = [];
+            if ($request->filled('debt_from_invoice_ids')) {
+                $debtIds = array_filter(explode(',', $request->debt_from_invoice_ids));
+            } elseif ($request->filled('merged_from_invoice_ids')) {
+                $debtIds = array_filter(explode(',', $request->merged_from_invoice_ids));
+            }
+            foreach ($preparedItems as $pItem) {
+                if (!empty($pItem['meta']['debt_invoice_ids'])) {
+                    $itemDebtIds = explode(',', (string)$pItem['meta']['debt_invoice_ids']);
+                    $debtIds = array_merge($debtIds, $itemDebtIds);
+                }
+            }
+            $debtIds = array_values(array_filter(array_unique($debtIds)));
+
+            if (!empty($debtIds) && !$isProforma) {
+                $sourceInvoiceIds = array_values(array_unique($debtIds));
                 $sourceInvoices = Invoice::whereIn('id', $sourceInvoiceIds)->get();
 
-                // Transfer payments
-                Payment::whereIn('invoice_id', $sourceInvoiceIds)
-                       ->update(['invoice_id' => $invoice->id]);
+                // Transfer payments only if it's the old full-items merge mode
+                if ($request->has('merge_invoices')) {
+                    Payment::whereIn('invoice_id', $sourceInvoiceIds)
+                        ->update(['invoice_id' => $invoice->id]);
+                }
 
                 // Mark old invoices as merged
                 $mergedStatus = Status::where('type', 'invoice')->where('name', 'ادغام شده')->first();
@@ -392,8 +512,8 @@ class InvoiceController extends Controller
 
         if (!$isProforma && Module::has('Accounting') && Module::isEnabled('Accounting')) {
             try {
-                app(\Modules\Accounting\App\Services\AccountingEngine::class)->recordFromServiceInvoice($invoice);
-            } catch (\Throwable $e) {
+                app(AccountingEngine::class)->recordFromServiceInvoice($invoice);
+            } catch (Throwable $e) {
                 Log::error('[AccountingEngine] Error recording service invoice on store: ' . $e->getMessage());
             }
         }
@@ -406,13 +526,13 @@ class InvoiceController extends Controller
 
                 if ($invoice->isPaid() && !$isProforma) {
                     app(WorkflowEngine::class)->start('invoice_paid', 'INVOICE', $invoice->id, [
-                        'amount'      => 0,
-                        'is_paid'     => true,
-                        'is_overdue'  => false,
-                        'remaining'   => 0,
+                        'amount' => 0,
+                        'is_paid' => true,
+                        'is_overdue' => false,
+                        'remaining' => 0,
                     ]);
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('[Workflows] Error starting invoice_created workflow: ' . $e->getMessage());
             }
         }
@@ -494,7 +614,7 @@ class InvoiceController extends Controller
             'servicesRoundingMode' => $settings['services_rounding_mode'] ?? 'none',
             'servicesRoundingFactor' => (int)($settings['services_rounding_factor'] ?? 1000),
             'marketModuleEnabled' => $this->isMarketModuleEnabled(),
-            'packages' => \Modules\Services\App\Http\Models\ServicePackage::where('status', 'active')->with('items.service.customFields')->get(),
+            'packages' => ServicePackage::where('status', 'active')->with('items.service.customFields')->get(),
         ]);
     }
 
@@ -582,10 +702,47 @@ class InvoiceController extends Controller
                 : $invoice->installment_schedule,
         ];
 
-        DB::transaction(function () use ($invoice, $invoiceData, $preparedItems, $data) {
+        DB::transaction(function () use ($invoice, $invoiceData, $preparedItems, $data, $request) {
             $invoice->update($invoiceData);
             $invoice->items()->delete();
             $invoice->items()->createMany($preparedItems);
+
+            $debtIds = [];
+            if ($request->filled('debt_from_invoice_ids')) {
+                $debtIds = array_filter(explode(',', $request->debt_from_invoice_ids));
+            } elseif ($request->filled('merged_from_invoice_ids')) {
+                $debtIds = array_filter(explode(',', $request->merged_from_invoice_ids));
+            }
+            foreach ($preparedItems as $pItem) {
+                if (!empty($pItem['meta']['debt_invoice_ids'])) {
+                    $itemDebtIds = explode(',', (string)$pItem['meta']['debt_invoice_ids']);
+                    $debtIds = array_merge($debtIds, $itemDebtIds);
+                }
+            }
+            $debtIds = array_values(array_filter(array_unique($debtIds)));
+
+            if (!empty($debtIds) && $invoice->invoice_number) {
+                $sourceInvoiceIds = array_values(array_unique($debtIds));
+                $sourceInvoices = Invoice::whereIn('id', $sourceInvoiceIds)->get();
+
+                $mergedStatus = Status::where('type', 'invoice')->where('name', 'ادغام شده')->first();
+                foreach ($sourceInvoices as $sourceInv) {
+                    $meta = is_array($sourceInv->meta) ? $sourceInv->meta : (json_decode($sourceInv->meta, true) ?? []);
+                    if (isset($meta['is_merged_invoice'])) unset($meta['is_merged_invoice']);
+                    $meta['was_merged_into'] = $invoice->id;
+                    $sourceInv->update([
+                        'status_id' => $mergedStatus?->id ?? $sourceInv->status_id,
+                        'meta' => $meta,
+                    ]);
+                }
+
+                $currentMeta = is_array($invoice->meta) ? $invoice->meta : (json_decode($invoice->meta, true) ?? []);
+                $currentMeta['is_merged_invoice'] = true;
+                $existingMergedIds = $currentMeta['merged_from_invoice_ids'] ?? [];
+                if (!is_array($existingMergedIds)) $existingMergedIds = [];
+                $currentMeta['merged_from_invoice_ids'] = array_values(array_unique(array_merge($existingMergedIds, $sourceInvoiceIds)));
+                $invoice->update(['meta' => $currentMeta]);
+            }
 
             if ($invoiceData['payment_mode'] === 'installment') {
                 $this->syncInstallmentStatus($invoice);
@@ -616,7 +773,7 @@ class InvoiceController extends Controller
         $invoice->load('items.service', 'customer', 'status');
         $settings = Setting::pluck('value', 'key')->toArray();
         $servicesCurrency = strtolower($invoice->currency ?? $settings['currency'] ?? 'toman');
-        $paymentCurrency  = strtolower($settings['payment_currency'] ?? 'toman');
+        $paymentCurrency = strtolower($settings['payment_currency'] ?? 'toman');
 
         $conversionFactor = 1.0;
         if (in_array($servicesCurrency, ['rial', 'irr', 'ریال']) && in_array($paymentCurrency, ['toman', 'tmn', 'تومان'])) {
@@ -673,11 +830,11 @@ class InvoiceController extends Controller
         }
 
         return view('services::invoices.payment', [
-            'invoice'          => $invoice,
-            'currency'         => $paymentCurrency,
-            'settings'         => $settings,
-            'customerCheques'  => $customerCheques,
-            'customerWallet'   => $customerWallet,
+            'invoice' => $invoice,
+            'currency' => $paymentCurrency,
+            'settings' => $settings,
+            'customerCheques' => $customerCheques,
+            'customerWallet' => $customerWallet,
             'conversionFactor' => $conversionFactor,
         ]);
     }
@@ -692,7 +849,7 @@ class InvoiceController extends Controller
 
         $settings = Setting::pluck('value', 'key')->toArray();
         $servicesCurrency = strtolower($invoice->currency ?? $settings['currency'] ?? 'toman');
-        $paymentCurrency  = strtolower($settings['payment_currency'] ?? 'toman');
+        $paymentCurrency = strtolower($settings['payment_currency'] ?? 'toman');
 
         $conversionFactor = 1.0;
         if (in_array($servicesCurrency, ['rial', 'irr', 'ریال']) && in_array($paymentCurrency, ['toman', 'tmn', 'تومان'])) {
@@ -716,10 +873,10 @@ class InvoiceController extends Controller
                     $amtInServicesCurrency = (int)round($submittedAmt / $conversionFactor);
                     if ($amtInServicesCurrency > 0) {
                         $paymentItems[] = [
-                            'method'         => $item['method'],
-                            'amount'         => $amtInServicesCurrency,
+                            'method' => $item['method'],
+                            'amount' => $amtInServicesCurrency,
                             'transaction_id' => $item['transaction_id'] ?? null,
-                            'gateway'        => $item['gateway'] ?? null,
+                            'gateway' => $item['gateway'] ?? null,
                         ];
                     }
                 }
@@ -732,10 +889,10 @@ class InvoiceController extends Controller
             $amtInServicesCurrency = (int)round($singleAmount / $conversionFactor);
             if ($amtInServicesCurrency > 0) {
                 $paymentItems[] = [
-                    'method'         => $singleMethod,
-                    'amount'         => $amtInServicesCurrency,
+                    'method' => $singleMethod,
+                    'amount' => $amtInServicesCurrency,
                     'transaction_id' => $request->input('transaction_id'),
-                    'gateway'        => $request->input('gateway'),
+                    'gateway' => $request->input('gateway'),
                 ];
             }
         }
@@ -787,7 +944,7 @@ class InvoiceController extends Controller
 
         if ($totalSubmittedInRequest > ($currentDue + 10)) {
             $submittedDisplay = (int)round($totalSubmittedInRequest * $conversionFactor);
-            $dueDisplay       = (int)round($currentDue * $conversionFactor);
+            $dueDisplay = (int)round($currentDue * $conversionFactor);
             return back()->withInput()->with('error', 'مجموع پرداختی‌های انتخاب شده در این فرم (' . number_format($submittedDisplay) . ' ' . $paymentCurrencyLabel . ') بیشتر از مانده بدهی فاکتور (' . number_format($dueDisplay) . ' ' . $paymentCurrencyLabel . ') است.');
         }
 
@@ -804,7 +961,8 @@ class InvoiceController extends Controller
                 if ($request->filled('paid_at')) {
                     try {
                         $paidAt = Jalalian::fromFormat('Y/m/d', $request->paid_at)->toCarbon();
-                    } catch (\Exception $e) {}
+                    } catch (Exception $e) {
+                    }
                 }
 
                 $dueAmount = $invoice->total - $invoice->calculatePaidAmount();
@@ -828,7 +986,7 @@ class InvoiceController extends Controller
                     }
 
                     if (!$customerWallet || (float)$customerWallet->balance <= 0) {
-                        throw new \Exception('کیف پول مشتری یافت نشد یا موجودی کافی ندارد.');
+                        throw new Exception('کیف پول مشتری یافت نشد یا موجودی کافی ندارد.');
                     }
 
                     $walletBalance = (float)$customerWallet->balance;
@@ -845,30 +1003,30 @@ class InvoiceController extends Controller
                     if ($walletAmountToUse > 0) {
                         $walletHolder = $customerWallet->holder ?? $invoice->customer;
                         if ($walletHolder) {
-                            app(\Modules\Wallet\App\Services\WalletService::class)->withdraw(
+                            app(WalletService::class)->withdraw(
                                 holder: $walletHolder,
                                 amount: $walletAmountToUse,
-                                type: \Modules\Wallet\App\Enums\TransactionType::PAYMENT,
+                                type: TransactionType::PAYMENT,
                                 payable: $invoice,
                                 description: 'پرداخت فاکتور خدمات #' . $invoice->invoice_number,
                                 meta: ['invoice_id' => $invoice->id]
                             );
 
                             $walletPayment = $invoice->payments()->create([
-                                'user_id'        => $request->user()->id,
-                                'amount'         => $walletAmountToUse,
-                                'method'         => 'wallet',
-                                'gateway'        => null,
-                                'paid_at'        => $paidAt,
+                                'user_id' => $request->user()->id,
+                                'amount' => $walletAmountToUse,
+                                'method' => 'wallet',
+                                'gateway' => null,
+                                'paid_at' => $paidAt,
                                 'transaction_id' => 'WALLET-' . time(),
-                                'notes'          => 'پرداخت از کیف پول مشتری برای فاکتور #' . $invoice->invoice_number,
-                                'status'         => 'paid',
+                                'notes' => 'پرداخت از کیف پول مشتری برای فاکتور #' . $invoice->invoice_number,
+                                'status' => 'paid',
                             ]);
 
                             $lastPayment = $walletPayment;
 
                             if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
-                                $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
+                                $engine = app(AccountingEngine::class);
                                 $engine->recordServicePayment($walletPayment);
                             }
                         }
@@ -893,14 +1051,14 @@ class InvoiceController extends Controller
                             $chequePaidAt = $cheque->due_date ? \Carbon\Carbon::parse($cheque->due_date) : $paidAt;
 
                             $chequePayment = $invoice->payments()->create([
-                                'user_id'        => $request->user()->id,
-                                'amount'         => $chequeAmountToPay,
-                                'method'         => 'cheque-' . $cheque->id,
-                                'gateway'        => null,
-                                'paid_at'        => $chequePaidAt,
+                                'user_id' => $request->user()->id,
+                                'amount' => $chequeAmountToPay,
+                                'method' => 'cheque-' . $cheque->id,
+                                'gateway' => null,
+                                'paid_at' => $chequePaidAt,
                                 'transaction_id' => $cheque->cheque_number,
-                                'notes'          => 'پرداخت با چک صیادی #' . $cheque->cheque_number . ' برای فاکتور #' . $invoice->invoice_number,
-                                'status'         => $chequeStatus,
+                                'notes' => 'پرداخت با چک صیادی #' . $cheque->cheque_number . ' برای فاکتور #' . $invoice->invoice_number,
+                                'status' => $chequeStatus,
                             ]);
 
                             $lastPayment = $chequePayment;
@@ -928,20 +1086,20 @@ class InvoiceController extends Controller
                     $amountToPay = min($itemAmt, $remainingDue);
 
                     $payment = $invoice->payments()->create([
-                        'user_id'        => $request->user()->id,
-                        'amount'         => $amountToPay,
-                        'method'         => $method,
-                        'gateway'        => $item['gateway'] ?? null,
-                        'paid_at'        => $paidAt,
+                        'user_id' => $request->user()->id,
+                        'amount' => $amountToPay,
+                        'method' => $method,
+                        'gateway' => $item['gateway'] ?? null,
+                        'paid_at' => $paidAt,
                         'transaction_id' => $item['transaction_id'] ?? null,
-                        'notes'          => 'پرداخت برای فاکتور #' . $invoice->invoice_number,
-                        'status'         => 'paid',
+                        'notes' => 'پرداخت برای فاکتور #' . $invoice->invoice_number,
+                        'status' => 'paid',
                     ]);
 
                     $lastPayment = $payment;
 
                     if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
-                        $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
+                        $engine = app(AccountingEngine::class);
                         $engine->recordServicePayment($payment);
                     }
 
@@ -966,8 +1124,8 @@ class InvoiceController extends Controller
 
                 if ($invoice->isPaid() && Module::has('Accounting') && Module::isEnabled('Accounting')) {
                     try {
-                        app(\Modules\Accounting\App\Services\AccountingEngine::class)->recordFromServiceInvoice($invoice);
-                    } catch (\Throwable $e) {
+                        app(AccountingEngine::class)->recordFromServiceInvoice($invoice);
+                    } catch (Throwable $e) {
                         Log::error('[AccountingEngine] Error recording service invoice on payment: ' . $e->getMessage());
                     }
                 }
@@ -975,7 +1133,7 @@ class InvoiceController extends Controller
                 $invoice->save();
                 $this->syncOrdersForInvoice($invoice);
             });
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return back()->withInput()->with('error', 'خطا در ثبت پرداخت: ' . $e->getMessage());
         }
 
@@ -984,12 +1142,12 @@ class InvoiceController extends Controller
             try {
                 $eventKey = $invoice->isPaid() ? 'invoice_paid' : 'invoice_unpaid';
                 app(\Modules\Workflows\Services\WorkflowEngine::class)->start($eventKey, 'INVOICE', $invoice->id, [
-                    'amount'      => $lastPayment->amount,
-                    'is_paid'     => $invoice->isPaid(),
-                    'is_overdue'  => $invoice->isOverdue(),
-                    'remaining'   => $invoice->remainingAmount(),
+                    'amount' => $lastPayment->amount,
+                    'is_paid' => $invoice->isPaid(),
+                    'is_overdue' => $invoice->isOverdue(),
+                    'remaining' => $invoice->remainingAmount(),
                 ]);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('[Workflows] Error starting workflow: ' . $e->getMessage());
             }
         }
@@ -1033,11 +1191,11 @@ class InvoiceController extends Controller
                 $this->syncOrdersForInvoice($invoice);
 
                 if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
-                    $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
+                    $engine = app(AccountingEngine::class);
                     $engine->cancelServicePayment($payment);
                 }
             });
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return back()->with('error', 'خطا در لغو پرداخت: ' . $e->getMessage());
         }
 
@@ -1045,12 +1203,12 @@ class InvoiceController extends Controller
             try {
                 $eventKey = $invoice->isPaid() ? 'invoice_paid' : 'invoice_unpaid';
                 app(\Modules\Workflows\Services\WorkflowEngine::class)->start($eventKey, 'INVOICE', $invoice->id, [
-                    'amount'      => $payment->amount,
-                    'is_paid'     => $invoice->isPaid(),
-                    'is_overdue'  => $invoice->isOverdue(),
-                    'remaining'   => $invoice->remainingAmount(),
+                    'amount' => $payment->amount,
+                    'is_paid' => $invoice->isPaid(),
+                    'is_overdue' => $invoice->isOverdue(),
+                    'remaining' => $invoice->remainingAmount(),
                 ]);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('[Workflows] Error starting workflow: ' . $e->getMessage());
             }
         }
@@ -1118,7 +1276,7 @@ class InvoiceController extends Controller
         if ($invoice->invoice_number && Module::has('Accounting') && Module::isEnabled('Accounting')) {
             try {
                 if (mb_strpos($status->name, 'لغو') !== false || mb_strpos($status->name, 'باطل') !== false) {
-                    $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
+                    $engine = app(AccountingEngine::class);
                     foreach ($invoice->payments as $payment) {
                         if ($payment->status !== 'canceled') {
                             $payment->update(['status' => 'canceled']);
@@ -1127,9 +1285,9 @@ class InvoiceController extends Controller
                     }
                     $engine->cancelServiceInvoice($invoice);
                 } else {
-                    app(\Modules\Accounting\App\Services\AccountingEngine::class)->recordFromServiceInvoice($invoice);
+                    app(AccountingEngine::class)->recordFromServiceInvoice($invoice);
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('[AccountingEngine] Error recording service invoice on updateStatus: ' . $e->getMessage());
             }
         }
@@ -1137,10 +1295,10 @@ class InvoiceController extends Controller
         if (class_exists(WorkflowEngine::class)) {
             try {
                 app(WorkflowEngine::class)->start('invoice_status_changed', 'INVOICE', $invoice->id, [
-                    'new_status_id'   => $status->id,
+                    'new_status_id' => $status->id,
                     'new_status_name' => $status->name,
                 ]);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('[Workflows] Error starting invoice_status_changed workflow: ' . $e->getMessage());
             }
         }
@@ -1172,14 +1330,14 @@ class InvoiceController extends Controller
 
             if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
                 try {
-                    $engine = app(\Modules\Accounting\App\Services\AccountingEngine::class);
+                    $engine = app(AccountingEngine::class);
                     foreach ($invoice->payments as $payment) {
                         if ($payment->status !== 'canceled') {
                             $engine->cancelServicePayment($payment);
                         }
                     }
                     $engine->cancelServiceInvoice($invoice);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     Log::error('[AccountingEngine] Error cancelling service invoice in Accounting: ' . $e->getMessage());
                 }
             }
@@ -1194,10 +1352,10 @@ class InvoiceController extends Controller
             try {
                 $invoice->refresh();
                 app(WorkflowEngine::class)->start('invoice_cancelled', 'INVOICE', $invoice->id, [
-                    'cancelled_status_id'   => $cancelledStatus->id,
+                    'cancelled_status_id' => $cancelledStatus->id,
                     'cancelled_status_name' => $cancelledStatus->name,
                 ]);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('[Workflows] Error starting invoice_cancelled workflow: ' . $e->getMessage());
             }
         }
@@ -1373,8 +1531,8 @@ class InvoiceController extends Controller
 
         if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
             try {
-                app(\Modules\Accounting\App\Services\AccountingEngine::class)->recordFromServiceInvoice($invoice);
-            } catch (\Throwable $e) {
+                app(AccountingEngine::class)->recordFromServiceInvoice($invoice);
+            } catch (Throwable $e) {
                 Log::error('[AccountingEngine] Error recording service invoice on convertToInvoice: ' . $e->getMessage());
             }
         }
@@ -1561,7 +1719,7 @@ class InvoiceController extends Controller
             $prepared[] = [
                 'service_id' => !empty($item['service_id']) ? (int)$item['service_id'] : null,
                 'custom_service_name' => $item['custom_service_name'] ?? null,
-                'description' => $item['description'] ?? '',
+                'description' => $item['description'] ?? null,
                 'unit' => $item['unit'] ?? 'عدد',
                 'quantity' => $qty,
                 'unit_price' => $price,
@@ -1585,7 +1743,9 @@ class InvoiceController extends Controller
                     '_baseCustomFieldQuantities' => $item['_baseCustomFieldQuantities'] ?? null,
                     '_baseCustomFieldValues' => $item['_baseCustomFieldValues'] ?? null,
                     '_isMerged' => $item['_isMerged'] ?? false,
-                    'type' => (!empty($item['product_id']) || !empty($item['product_variant_id'])) ? 'product' : (!empty($item['service_id']) ? 'service' : 'manual'),
+                    '_isDebt' => !empty($item['_isDebt']) || (($item['mode'] ?? '') === 'debt'),
+                    'debt_invoice_ids' => $item['debt_invoice_ids'] ?? null,
+                    'type' => (!empty($item['product_id']) || !empty($item['product_variant_id'])) ? 'product' : (!empty($item['service_id']) ? 'service' : (!empty($item['_isDebt']) || (($item['mode'] ?? '') === 'debt') ? 'debt' : 'manual')),
                 ],
             ];
         }
@@ -1620,21 +1780,23 @@ class InvoiceController extends Controller
                             // Calculate available stock
                             $stock = 0;
                             $isWmsActive = class_exists(MarketSetting::class)
-                                && (bool) MarketSetting::getValue('wms.enabled', false);
+                                && (bool)MarketSetting::getValue('wms.enabled', false);
 
                             if ($isWmsActive && class_exists(WarehouseStockService::class) && class_exists(WarehouseStock::class)) {
                                 $stockField = app(WarehouseStockService::class)->getStockDeductionStrategy() === 'separated' ? 'online_stock' : 'physical_stock';
                                 $stocks = WarehouseStock::where('product_variant_id', $v->id)
-                                    ->whereHas('warehouse', function($q) { $q->where('is_active', true); })
+                                    ->whereHas('warehouse', function ($q) {
+                                        $q->where('is_active', true);
+                                    })
                                     ->get();
-                                $stock = (int) $stocks->sum(function($s) use ($stockField) {
+                                $stock = (int)$stocks->sum(function ($s) use ($stockField) {
                                     return max(0, $s->{$stockField} - $s->reserved_stock);
                                 });
                             } else {
                                 if ($v->vendorProducts && $v->vendorProducts->count() > 0) {
-                                    $stock = (int) $v->vendorProducts->where('status', 'published')->sum('stock');
+                                    $stock = (int)$v->vendorProducts->where('status', 'published')->sum('stock');
                                 } else {
-                                    $stock = (int) ($v->stock ?? 0);
+                                    $stock = (int)($v->stock ?? 0);
                                 }
                             }
 
@@ -1686,7 +1848,7 @@ class InvoiceController extends Controller
                     } else {
                         $priceInfo = $mp->price_info ?? [];
                         $price = $priceInfo['min_price'] ?? $priceInfo['original_price'] ?? 0;
-                        $stock = (int) ($priceInfo['total_stock'] ?? 0);
+                        $stock = (int)($priceInfo['total_stock'] ?? 0);
 
                         $category = $mp->category;
                         if ($category && $category->parent_id) {
@@ -1722,12 +1884,13 @@ class InvoiceController extends Controller
                         ];
                     }
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('[InvoiceController] Error loading market products: ' . $e->getMessage());
             }
         }
         return $products;
     }
+
     private function computeExtraDiscount(array $data, float $subtotal, float $totalTax = 0, int $itemsDiscount = 0): int
     {
         $type = $data['extra_discount_type'] ?? 'amount';
@@ -1784,14 +1947,14 @@ class InvoiceController extends Controller
     }
 
     private function buildInvoiceData(
-        array $data,
-        int   $userId,
-        float $subtotal,
-        float $totalDiscount,
-        float $totalTax,
-        float $grandTotal,
-        bool  $isProforma = false,
-        array $roundingMeta = [],
+        array  $data,
+        int    $userId,
+        float  $subtotal,
+        float  $totalDiscount,
+        float  $totalTax,
+        float  $grandTotal,
+        bool   $isProforma = false,
+        array  $roundingMeta = [],
         string $currency = 'toman'
     ): array
     {
@@ -1887,7 +2050,7 @@ class InvoiceController extends Controller
             if (is_array($decoded)) {
                 $customFields = array_values(array_filter(
                     $decoded,
-                    fn ($field) => !empty($field['value'] ?? null)
+                    fn($field) => !empty($field['value'] ?? null)
                 ));
             }
         }
@@ -1913,6 +2076,7 @@ class InvoiceController extends Controller
             'custom_fields' => $customFields,
         ];
     }
+
     private function siteBrand(array $settings, array $sellerInfo): array
     {
         $pick = function (array $keys) use ($settings) {
@@ -2047,18 +2211,34 @@ class InvoiceController extends Controller
                 try {
                     $issueJalali = Jalalian::fromCarbon($issueDate);
                     switch ($billingCycle) {
-                        case 'monthly':     $renewalJalali = $issueJalali->addMonths(1); break;
-                        case 'quarterly':   $renewalJalali = $issueJalali->addMonths(3); break;
-                        case 'semi_annual': $renewalJalali = $issueJalali->addMonths(6); break;
-                        case 'annual':      $renewalJalali = $issueJalali->addYears(1); break;
+                        case 'monthly':
+                            $renewalJalali = $issueJalali->addMonths(1);
+                            break;
+                        case 'quarterly':
+                            $renewalJalali = $issueJalali->addMonths(3);
+                            break;
+                        case 'semi_annual':
+                            $renewalJalali = $issueJalali->addMonths(6);
+                            break;
+                        case 'annual':
+                            $renewalJalali = $issueJalali->addYears(1);
+                            break;
                     }
                     $renewalDate = $renewalJalali->toCarbon()->format('Y-m-d');
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     switch ($billingCycle) {
-                        case 'monthly':     $renewalDate = (clone $issueDate)->addMonth()->format('Y-m-d'); break;
-                        case 'quarterly':   $renewalDate = (clone $issueDate)->addMonths(3)->format('Y-m-d'); break;
-                        case 'semi_annual': $renewalDate = (clone $issueDate)->addMonths(6)->format('Y-m-d'); break;
-                        case 'annual':      $renewalDate = (clone $issueDate)->addYear()->format('Y-m-d'); break;
+                        case 'monthly':
+                            $renewalDate = (clone $issueDate)->addMonth()->format('Y-m-d');
+                            break;
+                        case 'quarterly':
+                            $renewalDate = (clone $issueDate)->addMonths(3)->format('Y-m-d');
+                            break;
+                        case 'semi_annual':
+                            $renewalDate = (clone $issueDate)->addMonths(6)->format('Y-m-d');
+                            break;
+                        case 'annual':
+                            $renewalDate = (clone $issueDate)->addYear()->format('Y-m-d');
+                            break;
                     }
                 }
             }
@@ -2098,7 +2278,7 @@ class InvoiceController extends Controller
                             'invoice_id' => $invoice->id,
                             'service_id' => $serviceId,
                         ]);
-                    } catch (\Throwable $e) {
+                    } catch (Throwable $e) {
                         Log::error('[Workflows] Error starting order_created workflow: ' . $e->getMessage());
                     }
                 }
@@ -2125,23 +2305,23 @@ class InvoiceController extends Controller
         $taxAmount = 0;
         $discountAmount = 0;
 
-        $invoiceSubtotal = (float) ($invoice->subtotal ?? 0);
-        $invoiceTax = (float) ($invoice->tax_amount ?? 0);
+        $invoiceSubtotal = (float)($invoice->subtotal ?? 0);
+        $invoiceTax = (float)($invoice->tax_amount ?? 0);
 
         foreach ($marketItems as $item) {
-            $qty = (int) ($item['quantity'] ?? 1);
+            $qty = (int)($item['quantity'] ?? 1);
             if ($qty < 1) $qty = 1;
-            $unitPrice = (float) ($item['unit_price'] ?? ($item['total'] / max(1, $qty)));
+            $unitPrice = (float)($item['unit_price'] ?? ($item['total'] / max(1, $qty)));
             $itemGross = $unitPrice * $qty;
-            $totalItemsPrice += (int) round($itemGross);
+            $totalItemsPrice += (int)round($itemGross);
 
-            $itemDiscount = (float) ($item['discount'] ?? 0);
+            $itemDiscount = (float)($item['discount'] ?? 0);
             $discountAmount += $itemDiscount;
 
             if (isset($item['tax_amount']) && $item['tax_amount'] > 0) {
-                $itemTax = (float) $item['tax_amount'];
+                $itemTax = (float)$item['tax_amount'];
             } elseif (isset($item['tax_percent']) && $item['tax_percent'] > 0) {
-                $itemTax = $itemGross * ((float) $item['tax_percent'] / 100);
+                $itemTax = $itemGross * ((float)$item['tax_percent'] / 100);
             } elseif ($invoiceTax > 0 && $invoiceSubtotal > 0) {
                 $itemTax = ($invoiceTax / $invoiceSubtotal) * $itemGross;
             } else {
@@ -2150,8 +2330,8 @@ class InvoiceController extends Controller
             $taxAmount += $itemTax;
         }
 
-        $taxAmount = (float) round($taxAmount);
-        $discountAmount = (float) round($discountAmount);
+        $taxAmount = (float)round($taxAmount);
+        $discountAmount = (float)round($discountAmount);
         $finalGrandTotal = max(0, $totalItemsPrice - $discountAmount + $taxAmount);
 
         $marker = 'INVOICE_SOURCE_ID:' . $invoice->id;
@@ -2218,7 +2398,7 @@ class InvoiceController extends Controller
             if (class_exists(StockService::class)) {
                 try {
                     app(StockService::class)->releaseReservation($marketOrder);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     Log::error('Failed to release market stock before sync: ' . $e->getMessage());
                 }
             }
@@ -2230,7 +2410,7 @@ class InvoiceController extends Controller
         if (method_exists($marketOrder, 'meta')) {
             $marketOrder->meta()->updateOrCreate(
                 ['key' => 'source_invoice_id'],
-                ['value' => (string) $invoice->id]
+                ['value' => (string)$invoice->id]
             );
         }
 
@@ -2238,7 +2418,7 @@ class InvoiceController extends Controller
 
         foreach ($marketItems as $item) {
             $variantId = $item['meta']['product_variant_id'] ?? null;
-            $qty = (int) ($item['quantity'] ?? 1);
+            $qty = (int)($item['quantity'] ?? 1);
             if ($qty < 1) $qty = 1;
             $vendorProductId = null;
             $vendorId = null;
@@ -2251,7 +2431,7 @@ class InvoiceController extends Controller
                 }
             }
 
-            $unitPrice = (float) ($item['unit_price'] ?? ($item['total'] / max(1, $qty)));
+            $unitPrice = (float)($item['unit_price'] ?? ($item['total'] / max(1, $qty)));
 
             $marketOrderItemModel::create([
                 'order_id' => $marketOrder->id,
@@ -2259,8 +2439,8 @@ class InvoiceController extends Controller
                 'vendor_id' => $vendorId,
                 'product_title' => $item['custom_service_name'] ?? 'محصول فروشگاه',
                 'quantity' => $qty,
-                'unit_price' => (int) $unitPrice,
-                'total_price' => (int) $item['total'],
+                'unit_price' => (int)$unitPrice,
+                'total_price' => (int)$item['total'],
             ]);
 
             if (!$isInvoiceCanceled && class_exists(StockService::class)) {
@@ -2272,9 +2452,9 @@ class InvoiceController extends Controller
                             $stockService->deduct($vp->product_variant_id, $qty, $vp->id, $unitPrice);
                         }
                     } elseif ($variantId) {
-                        $stockService->deduct((int) $variantId, $qty, null, $unitPrice);
+                        $stockService->deduct((int)$variantId, $qty, null, $unitPrice);
                     }
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     Log::error('Failed to deduct stock during market order sync: ' . $e->getMessage());
                 }
             }
@@ -2295,7 +2475,7 @@ class InvoiceController extends Controller
             if (class_exists(StockService::class)) {
                 try {
                     app(StockService::class)->releaseReservation($marketOrder);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     Log::error('Failed to release market stock on removeMarketOrderIfExists: ' . $e->getMessage());
                 }
             }
@@ -2303,7 +2483,9 @@ class InvoiceController extends Controller
             $marketOrder->delete();
         }
     }
-    private function parseJalaliToGregorian($dateStr) {
+
+    private function parseJalaliToGregorian($dateStr)
+    {
         if (empty($dateStr)) return null;
 
         $dateStr = substr((string)$dateStr, 0, 10);
@@ -2311,10 +2493,10 @@ class InvoiceController extends Controller
         if (str_starts_with($dateNorm, '13') || str_starts_with($dateNorm, '14')) {
             try {
                 return Jalalian::fromFormat('Y-m-d', $dateNorm)->toCarbon()->format('Y-m-d');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 try {
                     return Carbon::parse($dateNorm)->format('Y-m-d');
-                } catch (\Exception $e2) {
+                } catch (Exception $e2) {
                     return null;
                 }
             }
@@ -2322,7 +2504,7 @@ class InvoiceController extends Controller
 
         try {
             return Carbon::parse($dateStr)->format('Y-m-d');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return null;
         }
     }
