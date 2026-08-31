@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\CronManagementController;
 // نکته: مسیر به حالت قدیمی '/dashboard' برگشت تا لینک‌های فعلی شما خراب نشود.
 // متد جدید layout هم به آن اضافه شد.
 Route::middleware(['role:super-admin'])->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('index');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/layout', [DashboardController::class, 'updateLayout'])->name('dashboard.update-layout');
     Route::get('/optimizer-report', [DashboardController::class, 'optimizerReport'])->name('optimizer-report');

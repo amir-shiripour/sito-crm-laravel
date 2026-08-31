@@ -37,12 +37,20 @@ class BookingServiceProvider extends ServiceProvider
             if (Schema::hasTable('booking_settings')) {
                 $labelProvider = BookingSetting::getValue('label_provider');
                 $labelProviders = BookingSetting::getValue('label_providers');
+                $labelService = BookingSetting::getValue('label_service');
+                $labelServices = BookingSetting::getValue('label_services');
 
                 if ($labelProvider) {
                     config(['booking.labels.provider' => $labelProvider]);
                 }
                 if ($labelProviders) {
                     config(['booking.labels.providers' => $labelProviders]);
+                }
+                if ($labelService) {
+                    config(['booking.labels.service' => $labelService]);
+                }
+                if ($labelServices) {
+                    config(['booking.labels.services' => $labelServices]);
                 }
             }
         } catch (\Throwable $e) {

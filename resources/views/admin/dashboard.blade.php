@@ -1,6 +1,10 @@
 @extends('layouts.admin')
 
-@php($title = 'پنل مدیریت هسته')
+@php
+    $title = 'پنل مدیریت هسته';
+    $clientsLabelUrl = Route::has('admin.clients.settings.label.edit') ? route('admin.clients.settings.label.edit') : url('/admin/clients/settings/label');
+    $bookingLabelUrl = Route::has('admin.booking.settings.label.edit') ? route('admin.booking.settings.label.edit') : url('/admin/booking/settings/label');
+@endphp
 
 @section('content')
     <div class="animate-fadeIn font-iranYekan">
@@ -62,6 +66,87 @@
             </div>
         </div>
 
+        {{-- Module Labels Customization Section --}}
+        <div class="mt-10 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl border border-white dark:border-slate-800 p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div class="flex items-center gap-3">
+                    <div class="w-1.5 h-6 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full"></div>
+                    <div>
+                        <h3 class="text-lg font-black text-slate-900 dark:text-white">شخصی‌سازی عناوین و برچسب‌های ماژول‌ها</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">مدیریت و بومی‌سازی واژگان کلیدی ماژول‌ها متناسب با نوع صنف و فعالیت کسب‌وکار</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                        <span>سیستم برچسب‌گذاری یکپارچه</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {{-- Clients Label Card --}}
+                <div class="group relative bg-gradient-to-br from-slate-50/80 to-white/90 dark:from-slate-800/50 dark:to-slate-900/60 p-6 rounded-[2rem] border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/40 shadow-lg shadow-slate-100 dark:shadow-none hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-2xl bg-indigo-600/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-0.5 rounded-lg">ماژول مشتریان</span>
+                                    <h4 class="text-base font-black text-slate-900 dark:text-white mt-1">برچسب‌ها و عناوین مشتریان</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-6 font-medium">
+                            تغییر عناوین مفرد و جمع ماژول مشتریان در سرتاسر سیستم (مانند: مشتری / مشتریان، بیمار / بیماران، دانش‌آموز / دانش‌آموزان، متقاضی و...).
+                        </p>
+                    </div>
+
+                    <a href="{{ $clientsLabelUrl }}" class="group/btn inline-flex items-center justify-between w-full px-5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 group-hover:bg-indigo-600 group-hover:text-white font-bold text-xs transition-all duration-300">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            <span>مدیریت برچسب‌های مشتریان</span>
+                        </span>
+                        <svg class="w-4 h-4 rotate-180 transform group-hover/btn:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4-4m4-4H3" /></svg>
+                    </a>
+                </div>
+
+                {{-- Booking Label Card --}}
+                <div class="group relative bg-gradient-to-br from-slate-50/80 to-white/90 dark:from-slate-800/50 dark:to-slate-900/60 p-6 rounded-[2rem] border border-slate-200/80 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-500/40 shadow-lg shadow-slate-100 dark:shadow-none hover:shadow-xl hover:shadow-violet-500/10 transition-all duration-300 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-2xl bg-violet-600/10 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors duration-300">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 px-2.5 py-0.5 rounded-lg">ماژول نوبت‌دهی</span>
+                                    <h4 class="text-base font-black text-slate-900 dark:text-white mt-1">برچسب‌ها و عناوین نوبت‌دهی</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-6 font-medium">
+                            تغییر عناوین ارائه‌دهندگان (پزشک، متخصص، مشاور و...) و سرویس‌ها (لاین، خدمت، آزمایش، جلسه و...) در سرتاسر ماژول نوبت‌دهی.
+                        </p>
+                    </div>
+
+                    <a href="{{ $bookingLabelUrl }}" class="group/btn inline-flex items-center justify-between w-full px-5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 group-hover:bg-violet-600 group-hover:text-white font-bold text-xs transition-all duration-300">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            <span>مدیریت برچسب‌های نوبت‌دهی</span>
+                        </span>
+                        <svg class="w-4 h-4 rotate-180 transform group-hover/btn:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4-4m4-4H3" /></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <div class="mt-10 grid grid-cols-1 xl:grid-cols-3 gap-8 text-right">
             {{-- Activity Section --}}
             <div class="xl:col-span-2 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl border border-white dark:border-slate-800 p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none transition-all">
@@ -102,10 +187,21 @@
                 <div class="bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl border border-white dark:border-slate-800 p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none">
                     <h3 class="text-lg font-black text-slate-900 dark:text-white mb-6">دسترسی سریع</h3>
                     <div class="grid grid-cols-1 gap-3">
-                        {{-- User Dashboard Shortcut (NEW) --}}
+                        {{-- User Dashboard Shortcut --}}
                         <a href="{{ route('user.dashboard') }}" class="group flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-500/5 rounded-2xl border border-emerald-100 dark:border-emerald-500/10 hover:bg-emerald-600 transition-all duration-300">
                             <span class="text-sm font-bold text-emerald-700 dark:text-emerald-400 group-hover:text-white transition-colors">داشبورد کاربری (User)</span>
                             <svg class="w-5 h-5 text-emerald-500 group-hover:text-white transition-colors rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4-4m4-4H3"/></svg>
+                        </a>
+
+                        {{-- Module Labels Shortcut --}}
+                        <a href="{{ $clientsLabelUrl }}" class="group flex items-center justify-between p-4 bg-indigo-50/70 dark:bg-indigo-500/5 rounded-2xl border border-indigo-100 dark:border-indigo-500/10 hover:bg-indigo-600 transition-all duration-300">
+                            <span class="text-sm font-bold text-indigo-700 dark:text-indigo-400 group-hover:text-white transition-colors">برچسب‌های مشتریان</span>
+                            <svg class="w-5 h-5 text-indigo-500 group-hover:text-white transition-colors rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4-4m4-4H3"/></svg>
+                        </a>
+
+                        <a href="{{ $bookingLabelUrl }}" class="group flex items-center justify-between p-4 bg-violet-50/70 dark:bg-violet-500/5 rounded-2xl border border-violet-100 dark:border-violet-500/10 hover:bg-violet-600 transition-all duration-300">
+                            <span class="text-sm font-bold text-violet-700 dark:text-violet-400 group-hover:text-white transition-colors">برچسب‌های نوبت‌دهی</span>
+                            <svg class="w-5 h-5 text-violet-500 group-hover:text-white transition-colors rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4-4m4-4H3"/></svg>
                         </a>
 
                         <a href="{{ route('admin.users.index') }}" class="group flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-700 hover:bg-indigo-600 transition-all duration-300">
@@ -114,11 +210,11 @@
                         </a>
                         <a href="{{ route('admin.roles.index') }}" class="group flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-700 hover:bg-indigo-600 transition-all duration-300">
                             <span class="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-white transition-colors">نقش‌ها و دسترسی</span>
-                            <svg class="w-5 h-5 text-slate-400 group-hover:text-white transition-colors rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                            <svg class="w-5 h-5 text-slate-400 group-hover:text-white transition-colors rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4-4m4-4H3"/></svg>
                         </a>
                         <a href="{{ route('admin.modules.index') }}" class="group flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-700 hover:bg-indigo-600 transition-all duration-300">
                             <span class="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-white transition-colors">ماژول‌های نصب شده</span>
-                            <svg class="w-5 h-5 text-slate-400 group-hover:text-white transition-colors rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                            <svg class="w-5 h-5 text-slate-400 group-hover:text-white transition-colors rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4-4m4-4H3"/></svg>
                         </a>
                         <a href="{{ route('admin.version-control.index') }}" class="group flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-500/5 rounded-2xl border border-indigo-100 dark:border-indigo-500/10 hover:bg-indigo-600 transition-all duration-300">
                             <span class="text-sm font-bold text-indigo-700 dark:text-indigo-400 group-hover:text-white transition-colors">کنترل نسخه (Git)</span>

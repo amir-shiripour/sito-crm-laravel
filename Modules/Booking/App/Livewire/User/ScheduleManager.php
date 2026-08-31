@@ -828,8 +828,12 @@ class ScheduleManager extends Component
                 $inBreak = false;
                 if (!empty($policy['breaks'])) {
                     foreach ($policy['breaks'] as $brk) {
-                        $bS = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $brk['start'], $scheduleTz);
-                        $bE = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $brk['end'], $scheduleTz);
+                        $s = $brk['start_local'] ?? $brk['start'] ?? null;
+                        $e = $brk['end_local'] ?? $brk['end'] ?? null;
+                        if (!$s || !$e) continue;
+
+                        $bS = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $s, $scheduleTz);
+                        $bE = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $e, $scheduleTz);
                         if ($curr->lt($bE) && $currEnd->gt($bS)) {
                             $inBreak = true;
                             break;
@@ -932,8 +936,12 @@ class ScheduleManager extends Component
                 $inBreak = false;
                 if (!empty($policy['breaks'])) {
                     foreach ($policy['breaks'] as $brk) {
-                        $bS = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $brk['start'], $scheduleTz);
-                        $bE = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $brk['end'], $scheduleTz);
+                        $s = $brk['start_local'] ?? $brk['start'] ?? null;
+                        $e = $brk['end_local'] ?? $brk['end'] ?? null;
+                        if (!$s || !$e) continue;
+
+                        $bS = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $s, $scheduleTz);
+                        $bE = Carbon::createFromFormat('Y-m-d H:i', $localDate->format('Y-m-d') . ' ' . $e, $scheduleTz);
                         if ($curr->lt($bE) && $currEnd->gt($bS)) {
                             $inBreak = true;
                             break;

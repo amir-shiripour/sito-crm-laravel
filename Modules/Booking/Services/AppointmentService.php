@@ -824,11 +824,13 @@ class AppointmentService
         }
 
         foreach (($policy['breaks'] ?? []) as $break) {
-            if (empty($break['start_local']) || empty($break['end_local'])) {
+            $bStartStr = $break['start_local'] ?? $break['start'] ?? null;
+            $bEndStr   = $break['end_local'] ?? $break['end'] ?? null;
+            if (empty($bStartStr) || empty($bEndStr)) {
                 continue;
             }
-            $breakStart = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$break['start_local']}", $scheduleTz);
-            $breakEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$break['end_local']}", $scheduleTz);
+            $breakStart = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$bStartStr}", $scheduleTz);
+            $breakEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$localDate} {$bEndStr}", $scheduleTz);
 
             if ($startLocal->lt($breakEnd) && $endLocal->gt($breakStart)) {
                 throw new \RuntimeException('Slot overlaps with break.');
