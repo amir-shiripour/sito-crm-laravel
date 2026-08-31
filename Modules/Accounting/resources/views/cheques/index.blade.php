@@ -22,11 +22,38 @@
         'returned' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
     ];
     $currencySuffix = $currencySuffix ?? CurrencyService::getBaseCurrency();
+
+    $catTypePriority = ['asset' => 1, 'liability' => 2, 'equity' => 3, 'income' => 4, 'expense' => 5];
+    $sortedCategories = collect($categories)->sort(function($a, $b) use ($catTypePriority) {
+        $typeA = is_array($a) ? ($a['type'] ?? '') : ($a->type ?? '');
+        $typeB = is_array($b) ? ($b['type'] ?? '') : ($b->type ?? '');
+        $pA = $catTypePriority[$typeA] ?? 99;
+        $pB = $catTypePriority[$typeB] ?? 99;
+        if ($pA !== $pB) return $pA <=> $pB;
+        $codeA = (string) (is_array($a) ? ($a['account_code'] ?? '') : ($a->account_code ?? ''));
+        $codeB = (string) (is_array($b) ? ($b['account_code'] ?? '') : ($b->account_code ?? ''));
+        if ($codeA !== $codeB) return strcmp($codeA, $codeB);
+        $titleA = (string) (is_array($a) ? ($a['title'] ?? '') : ($a->title ?? ''));
+        $titleB = (string) (is_array($b) ? ($b['title'] ?? '') : ($b->title ?? ''));
+        return strcmp($titleA, $titleB);
+    })->values()->all();
+
+    $fundTypePriority = ['bank' => 1, 'cash' => 2, 'gateway' => 3, 'petty_cash' => 4];
+    $sortedFundAccounts = collect($fundAccounts)->sort(function($a, $b) use ($fundTypePriority) {
+        $typeA = is_array($a) ? ($a['type'] ?? '') : ($a->type ?? '');
+        $typeB = is_array($b) ? ($b['type'] ?? '') : ($b->type ?? '');
+        $pA = $fundTypePriority[$typeA] ?? 99;
+        $pB = $fundTypePriority[$typeB] ?? 99;
+        if ($pA !== $pB) return $pA <=> $pB;
+        $nameA = (string) (is_array($a) ? ($a['name'] ?? '') : ($a->name ?? ''));
+        $nameB = (string) (is_array($b) ? ($b['name'] ?? '') : ($b->name ?? ''));
+        return strcmp($nameA, $nameB);
+    })->values()->all();
 @endphp
 
 @section('content')
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8"
-         x-data="chequeDashboard({ cheques: {{ json_encode($cheques) }}, fundAccounts: {{ json_encode($fundAccounts) }}, categories: {{ json_encode($categories) }} })">
+         x-data="chequeDashboard({ cheques: {{ json_encode($cheques) }}, fundAccounts: {{ json_encode($sortedFundAccounts) }}, categories: {{ json_encode($sortedCategories) }} })">
 
         {{-- Header --}}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

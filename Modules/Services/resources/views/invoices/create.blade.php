@@ -333,126 +333,247 @@
                         <label class="{{ $labelClass }}">انتخاب مشتری <span
                                 class="text-rose-500 font-black">*</span></label>
                         <input type="hidden" name="customer_id" :value="selectedCustomer">
+                        <input type="hidden" name="debt_from_invoice_ids" :value="debtFromInvoiceIds">
                         <input type="hidden" name="client_name" :value="selectedCustomerData?.name || ''">
                         <input type="hidden" name="client_phone" :value="selectedCustomerData?.phone || ''">
                         <input type="hidden" name="client_email" :value="selectedCustomerData?.email || ''">
 
-                        <div x-show="!selectedCustomer" class="max-w-xl relative"
-                             @click.outside="customerDropdownOpen = false">
-                            <div class="relative">
-                                <svg
-                                    class="absolute start-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400 pointer-events-none"
-                                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                          d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/>
-                                </svg>
-                                <input type="text" x-model="customerQuery" @focus="customerDropdownOpen = true"
-                                       @input="customerDropdownOpen = true"
-                                       class="{{ $inputClass }} ps-11 cursor-text focus:outline-none outline-none"
-                                       :class="customerDropdownOpen && filteredCustomers.length > 0 ? 'rounded-b-none border-b-0' : ''"
-                                       autocomplete="off" placeholder="جستجو با نام، ایمیل، موبایل یا کد ملی...">
-                            </div>
-                            <div x-show="customerDropdownOpen && filteredCustomers.length > 0" x-transition
-                                 class="absolute z-[100] w-full max-h-64 overflow-y-auto bg-white dark:bg-gray-900 border border-t-0 border-gray-200 dark:border-gray-700 rounded-xl rounded-t-none shadow-xl">
-                                <template x-for="c in filteredCustomers" :key="c.id">
-                                    <button type="button" @click="selectCustomer(c)"
-                                            class="w-full text-start px-4 py-3 text-sm hover:bg-indigo-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0 flex items-center gap-3">
-                                        <span
-                                            class="flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 font-black text-xs shrink-0"
-                                            x-text="(c.name || '؟').trim().charAt(0)"></span>
-                                        <span class="min-w-0">
-                                            <span class="font-bold text-gray-900 dark:text-white block truncate"
-                                                  x-text="c.name"></span>
-                                            <span class="text-xs text-gray-400 block truncate"
-                                                  x-text="[c.phone, c.email].filter(Boolean).join(' • ')"></span>
-                                        </span>
-                                    </button>
-                                </template>
-                            </div>
-                            <p x-show="customerDropdownOpen && customerQuery && filteredCustomers.length === 0"
-                               class="mt-2 text-xs text-gray-400 px-1">مشتری‌ای یافت نشد.</p>
-                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+                            {{-- بخش انتخاب مشتری و اطلاعات --}}
+                            <div class="w-full flex flex-col h-full">
+                                <div x-show="!selectedCustomer" class="relative flex-1 flex flex-col justify-center"
+                                     @click.outside="customerDropdownOpen = false">
+                                    <div class="relative w-full">
+                                        <svg
+                                            class="absolute start-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400 pointer-events-none z-10"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                  d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/>
+                                        </svg>
+                                        <input type="text" x-model="customerQuery" @focus="customerDropdownOpen = true"
+                                               @input="customerDropdownOpen = true"
+                                               class="{{ $inputClass }} ps-11 cursor-text focus:outline-none outline-none"
+                                               :class="customerDropdownOpen && filteredCustomers.length > 0 ? 'rounded-b-none border-b-0' : ''"
+                                               autocomplete="off"
+                                               placeholder="جستجو با نام، ایمیل، موبایل یا کد ملی...">
 
-                        <div x-show="selectedCustomer" x-transition class="max-w-xl space-y-3">
-                            <div
-                                class="flex items-center gap-4 p-4 rounded-2xl border-2 border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/60 dark:bg-indigo-500/10">
-                                <span
-                                    class="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-600 text-white font-black text-base shrink-0"
-                                    x-text="(selectedCustomerData?.name || '؟').trim().charAt(0)"></span>
-                                <div class="min-w-0 flex-1">
-                                    <p class="font-black text-gray-900 dark:text-white truncate"
-                                       x-text="selectedCustomerData?.name"></p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate"
-                                       x-text="[selectedCustomerData?.phone, selectedCustomerData?.email].filter(Boolean).join(' • ')"></p>
-                                </div>
-                                <button type="button" @click="clearCustomer()" x-show="!isMergeMode"
-                                        class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-gray-800 text-xs font-bold text-gray-500 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                         stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4l16 16M20 4L4 20"/>
-                                    </svg>
-                                    تغییر
-                                </button>
-                            </div>
-
-                            <template
-                                x-if="selectedCustomerData?.multi_sub_fields && selectedCustomerData.multi_sub_fields.length > 0">
-                                <div
-                                    class="p-5 rounded-2xl border border-indigo-200 dark:border-indigo-800/60 bg-white dark:bg-gray-800 shadow-sm space-y-4">
-                                    <div
-                                        class="flex flex-wrap items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2.5 gap-2">
-                                        <div
-                                            class="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
-                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none"
-                                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                                            </svg>
-                                            <span>انتخاب زیرمجموعه‌های مشتری در فاکتور (چند انتخابی / Multi-Select)</span>
+                                        <div x-show="customerDropdownOpen && filteredCustomers.length > 0"
+                                             x-transition:enter="transition ease-out duration-200"
+                                             x-transition:enter-start="opacity-0 -translate-y-2"
+                                             x-transition:enter-end="opacity-100 translate-y-0"
+                                             x-transition:leave="transition ease-in duration-150"
+                                             x-transition:leave-start="opacity-100 translate-y-0"
+                                             x-transition:leave-end="opacity-0 -translate-y-2"
+                                             class="absolute z-[100] top-full start-0 w-full max-h-64 overflow-y-auto bg-white dark:bg-gray-900 border border-t-0 border-gray-200 dark:border-gray-700 rounded-b-2xl shadow-2xl">
+                                            <template x-for="c in filteredCustomers" :key="c.id">
+                                                <button type="button" @click="selectCustomer(c)"
+                                                        class="w-full text-start px-4 py-3 text-sm hover:bg-indigo-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0 flex items-center gap-3 transition-colors">
+                                                    <span
+                                                        class="flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 font-black text-xs shrink-0"
+                                                        x-text="(c.name || '؟').trim().charAt(0)"></span>
+                                                    <span class="min-w-0">
+                                                        <span
+                                                            class="font-bold text-gray-900 dark:text-white block truncate"
+                                                            x-text="c.name"></span>
+                                                        <span class="text-xs text-gray-400 block truncate"
+                                                              x-text="[c.phone, c.email].filter(Boolean).join(' • ')"></span>
+                                                    </span>
+                                                </button>
+                                            </template>
                                         </div>
-                                        <span class="text-[10px] text-gray-400 font-medium">امکان انتخاب چند زیرمجموعه به صورت همزمان</span>
                                     </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <template x-for="field in selectedCustomerData.multi_sub_fields"
-                                                  :key="field.id">
+                                    <p x-show="customerDropdownOpen && customerQuery && filteredCustomers.length === 0"
+                                       class="mt-2 text-xs text-gray-400 px-1">مشتری‌ای یافت نشد.</p>
+                                </div>
+
+                                <div x-show="selectedCustomer" x-transition class="flex-1 flex flex-col gap-3 h-full">
+                                    <div
+                                        class="flex items-center gap-4 p-4 rounded-2xl border-2 border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/60 dark:bg-indigo-500/10 shadow-xs"
+                                        :class="(selectedCustomerData?.multi_sub_fields && selectedCustomerData.multi_sub_fields.length > 0) ? '' : 'flex-1 flex items-center'">
+                                        <span
+                                            class="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-600 text-white font-black text-base shrink-0 shadow-xs"
+                                            x-text="(selectedCustomerData?.name || '؟').trim().charAt(0)"></span>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="font-black text-gray-900 dark:text-white truncate text-sm"
+                                               x-text="selectedCustomerData?.name"></p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
+                                               x-text="[selectedCustomerData?.phone, selectedCustomerData?.email].filter(Boolean).join(' • ')"></p>
+                                        </div>
+                                        <button type="button" @click="clearCustomer()" x-show="!isMergeMode"
+                                                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-gray-800 text-xs font-bold text-gray-500 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-xs">
+                                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor"
+                                                 stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M4 4l16 16M20 4L4 20"/>
+                                            </svg>
+                                            تغییر
+                                        </button>
+                                    </div>
+
+                                    <template
+                                        x-if="selectedCustomerData?.multi_sub_fields && selectedCustomerData.multi_sub_fields.length > 0">
+                                        <div
+                                            class="p-5 rounded-2xl border border-indigo-200/80 dark:border-indigo-800/60 bg-white dark:bg-gray-800 shadow-xs space-y-4">
                                             <div
-                                                class="space-y-2 p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
-                                                <div class="flex items-center justify-between">
-                                                    <label
-                                                        class="block text-xs font-bold text-gray-800 dark:text-gray-200"
-                                                        x-text="field.label"></label>
-                                                    <div class="flex items-center gap-2">
-                                                        <button type="button"
-                                                                @click="selectAllSubItems(field.id, field.options)"
-                                                                class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
-                                                            انتخاب همه
-                                                        </button>
-                                                        <span class="text-[10px] text-gray-300">|</span>
-                                                        <button type="button" @click="deselectAllSubItems(field.id)"
-                                                                class="text-[10px] text-gray-400 hover:text-gray-600">
-                                                            پاک کردن
-                                                        </button>
+                                                class="flex flex-wrap items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2.5 gap-2">
+                                                <div
+                                                    class="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400"
+                                                         fill="none"
+                                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                                    </svg>
+                                                    <span>انتخاب زیرمجموعه‌های مشتری در فاکتور (چند انتخابی / Multi-Select)</span>
+                                                </div>
+                                                <span class="text-[10px] text-gray-400 font-medium">امکان انتخاب چند زیرمجموعه به صورت همزمان</span>
+                                            </div>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <template x-for="field in selectedCustomerData.multi_sub_fields"
+                                                          :key="field.id">
+                                                    <div
+                                                        class="space-y-2 p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
+                                                        <div class="flex items-center justify-between">
+                                                            <label
+                                                                class="block text-xs font-bold text-gray-800 dark:text-gray-200"
+                                                                x-text="field.label"></label>
+                                                            <div class="flex items-center gap-2">
+                                                                <button type="button"
+                                                                        @click="selectAllSubItems(field.id, field.options)"
+                                                                        class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
+                                                                    انتخاب همه
+                                                                </button>
+                                                                <span class="text-[10px] text-gray-300">|</span>
+                                                                <button type="button"
+                                                                        @click="deselectAllSubItems(field.id)"
+                                                                        class="text-[10px] text-gray-400 hover:text-gray-600">
+                                                                    پاک کردن
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="max-h-40 overflow-y-auto space-y-1.5 pe-1">
+                                                            <template x-for="opt in (field.options || [])" :key="opt">
+                                                                <label
+                                                                    class="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors text-xs text-gray-700 dark:text-gray-300">
+                                                                    <input type="checkbox"
+                                                                           :name="'client_selected_fields[' + field.id + '][]'"
+                                                                           :value="opt"
+                                                                           :checked="isSubItemChecked(field.id, opt)"
+                                                                           @change="toggleSubItem(field.id, opt)"
+                                                                           class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                                                                    <span x-text="opt" class="min-w-0 truncate"></span>
+                                                                </label>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <div x-show="customerDebtInfo.has_debt" x-transition class="w-full flex flex-col h-full">
+                                <div
+                                    class="p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 shadow-xs flex-1 flex flex-col justify-between space-y-3.5">
+                                    {{-- Header --}}
+                                    <div
+                                        class="flex items-center justify-between gap-2 border-b border-gray-200/80 dark:border-gray-700/80 pb-3">
+                                        <div class="flex items-center gap-2.5">
+                                            <div
+                                                class="w-8 h-8 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                                                <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <h4 class="text-xs sm:text-sm font-black text-gray-900 dark:text-white">
+                                                    فاکتورهای دارای مانده بدهی</h4>
+                                                <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                                                    مجموع کل بدهی: <span
+                                                        class="font-bold text-amber-600 dark:text-amber-400 tabular-nums"
+                                                        x-text="formatMoney(customerDebtInfo.total_debt) + ' {{ $currencyLabel }}'"></span>
+                                                    (<span x-text="customerDebtInfo.invoices_count"></span> فاکتور)
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <template x-if="debtRowAdded">
+                                            <button type="button" @click="removeAllDebtRows()"
+                                                    class="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 px-2.5 py-1.5 rounded-xl transition-colors cursor-pointer"
+                                                    title="حذف تمام ردیف‌های بدهی از جدول">
+                                                حذف تمام ردیف‌های بدهی
+                                            </button>
+                                        </template>
+                                    </div>
+
+                                    {{-- Scrollable List of Debt Invoices --}}
+                                    <div class="flex-1 min-h-[90px] max-h-56 overflow-y-auto space-y-2 pe-1">
+                                        <template x-for="inv in (customerDebtInfo.invoices || [])" :key="inv.id">
+                                            <div
+                                                class="flex items-center justify-between p-3 rounded-xl border transition-all"
+                                                :class="isDebtInvoiceAdded(inv.id) ? 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800/50' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/80 shadow-xs'">
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <span
+                                                            class="font-black text-xs sm:text-sm text-gray-800 dark:text-gray-100 tabular-nums"
+                                                            x-text="'فاکتور #' + inv.invoice_number"></span>
+                                                        <template x-if="inv.issue_date_jalali">
+                                                            <span
+                                                                class="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums"
+                                                                x-text="'(تاریخ: ' + inv.issue_date_jalali + ')'"></span>
+                                                        </template>
+                                                    </div>
+                                                    <div
+                                                        class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                                                        <span class="font-medium text-gray-600 dark:text-gray-300">مانده بدهی:</span>
+                                                        <span
+                                                            class="font-black text-rose-600 dark:text-rose-400 tabular-nums text-xs sm:text-sm"
+                                                            x-text="formatMoney(inv.remaining) + ' {{ $currencyLabel }}'"></span>
                                                     </div>
                                                 </div>
-                                                <div class="max-h-40 overflow-y-auto space-y-1.5 pe-1">
-                                                    <template x-for="(opt, idx) in field.options" :key="idx">
-                                                        <label
-                                                            class="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors text-xs text-gray-700 dark:text-gray-300">
-                                                            <input type="checkbox"
-                                                                   :name="'client_selected_fields[' + field.id + '][]'"
-                                                                   :value="opt"
-                                                                   :checked="isSubItemChecked(field.id, opt)"
-                                                                   @change="toggleSubItem(field.id, opt)"
-                                                                   class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
-                                                            <span x-text="opt" class="min-w-0 truncate"></span>
-                                                        </label>
+                                                <div class="shrink-0 ms-3 flex items-center gap-1.5">
+                                                    <template x-if="isDebtInvoiceAdded(inv.id)">
+                                                        <div class="flex items-center gap-1.5">
+                                                            <span
+                                                                class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/50 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                                                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none"
+                                                                     viewBox="0 0 24 24" stroke="currentColor"
+                                                                     stroke-width="2.5">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                          d="M5 13l4 4L19 7"/>
+                                                                </svg>
+                                                                ردیف درج شد
+                                                            </span>
+                                                            <button type="button" @click="removeSingleDebtRow(inv.id)"
+                                                                    class="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                                                                    title="حذف ردیف این فاکتور">
+                                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                                                     stroke="currentColor" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="!isDebtInvoiceAdded(inv.id)">
+                                                        <button type="button" @click="addSingleDebtRow(inv)"
+                                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xs font-bold shadow-sm shadow-amber-600/20 transition-all cursor-pointer">
+                                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                                 stroke="currentColor" stroke-width="2.5">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                      d="M12 4v16m8-8H4"/>
+                                                            </svg>
+                                                            افزودن ردیف
+                                                        </button>
                                                     </template>
                                                 </div>
                                             </div>
                                         </template>
                                     </div>
                                 </div>
-                            </template>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -581,8 +702,9 @@
                             <th class="px-4 py-3 w-12 text-center"></th>
                         </tr>
                         </thead>
-                        <template x-for="(item, index) in items" :key="index">
+                        <template x-for="item in items" :key="items.indexOf(item)">
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all"
+                                   x-data="{ get index() { return items.indexOf(item); } }"
                                    :class="(item._showServiceDropdown || item._showProductDropdown || item._hasOpenSelectDropdown) ? 'relative z-50' : 'relative z-10'">
                             {{-- Package Group Header Row --}}
                             <template
@@ -642,8 +764,32 @@
                                            :value="item._packageTitle || ''">
                                     <input type="hidden" :name="'items[' + index + '][_baseQuantity]'"
                                            :value="item._baseQuantity || ''">
+                                    <input type="hidden" :name="'items[' + index + '][_isDebt]'"
+                                           :value="item._isDebt ? 1 : 0">
+                                    <input type="hidden" :name="'items[' + index + '][debt_invoice_ids]'"
+                                           :value="item.debt_invoice_ids || ''">
+                                    <input type="hidden" :name="'items[' + index + '][mode]'"
+                                           :value="item.mode || ''">
 
-                                    <template x-if="item.mode === 'manual'">
+                                    <template x-if="item.mode === 'debt' || item._isDebt">
+                                        <div class="space-y-2">
+                                            <input type="text" :name="'items[' + index + '][custom_service_name]'"
+                                                   x-model="item.custom_service_name"
+                                                   class="{{ $inputClass }} py-2.5 text-xs w-full font-bold text-amber-900 dark:text-amber-200 bg-amber-50/40 dark:bg-amber-950/20"
+                                                   placeholder="مانده بدهی فاکتورهای قبلی">
+                                            <div
+                                                class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-2 py-1 rounded-lg">
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                                </svg>
+                                                مانده بدهی قبلی
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="item.mode === 'manual' && !item._isDebt">
                                         <input type="text" :name="'items[' + index + '][custom_service_name]'"
                                                x-model="item.custom_service_name"
                                                class="{{ $inputClass }} py-2.5 text-xs w-full"
@@ -771,8 +917,10 @@
                                                             @change="updatePriceForPeriod(index)"
                                                             class="{{ $inputClass }} py-2 text-xs">
                                                         <option value="">انتخاب دوره</option>
-                                                        <template x-for="(label, period) in periodLabels" :key="period">
-                                                            <option :value="period" x-text="label"></option>
+                                                        <template x-for="period in Object.keys(periodLabels)"
+                                                                  :key="period">
+                                                            <option :value="period"
+                                                                    x-text="periodLabels[period]"></option>
                                                         </template>
                                                     </select>
                                                 </template>
@@ -820,16 +968,16 @@
                                     <div class="flex items-center gap-1.5 w-full">
                                         <div class="relative w-full">
                                             <input type="text" :value="formatPriceInput(item.unit_price)"
-                                                   @input="item.unit_price = parsePriceInput($event.target.value)"
+                                                   @input="if(item.mode !== 'debt' && !item._isDebt) item.unit_price = parsePriceInput($event.target.value)"
                                                    :name="'items[' + index + '][unit_price]'" required
-                                                   :readonly="item.mode === 'service' && !!item.service_id && !item._priceUnlocked"
-                                                   :class="(item.mode === 'service' && item.service_id && !item._priceUnlocked) ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
+                                                   :readonly="(((item.mode === 'service' && !!item.service_id) || (item.mode === 'product' && !!item.product_id) || (item.mode === 'manual' && item._packageGroupId)) && !item._priceUnlocked) || item.mode === 'debt' || item._isDebt"
+                                                   :class="((((item.mode === 'service' && item.service_id) || (item.mode === 'product' && item.product_id) || (item.mode === 'manual' && item._packageGroupId)) && !item._priceUnlocked) || item.mode === 'debt' || item._isDebt) ? 'bg-gray-100/70 dark:bg-gray-800/60 cursor-not-allowed text-gray-500 dark:text-gray-400 select-none' : ''"
                                                    class="{{ $inputClass }} py-2.5 text-sm font-black text-center tabular-nums w-full pe-12"
                                                    dir="ltr" placeholder="۰">
                                             <span
                                                 class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                         </div>
-                                        <button type="button" x-show="item.mode === 'service' && item.service_id"
+                                        <button type="button" x-show="item.mode !== 'debt' && !item._isDebt"
                                                 @click="item._priceUnlocked = !item._priceUnlocked"
                                                 class="shrink-0 p-2.5 rounded-lg border transition-colors"
                                                 :class="item._priceUnlocked ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
@@ -1250,7 +1398,8 @@
                                                                 <template x-if="!item._isMerged">
                                                                     <div class="w-full">
                                                                         <template
-                                                                            x-if="field.type === 'text' || field.type === 'email' || field.type === 'url'"><input
+                                                                            x-if="field.type === 'text' || field.type === 'email' || field.type === 'url'">
+                                                                            <input
                                                                                 type="text"
                                                                                 :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                 x-model="item.custom_field_values[field.id]"
@@ -1261,7 +1410,8 @@
                                                                         <template x-if="field.type === 'datetime'">
                                                                             <div class="relative w-full">
                                                                                 <input
-                                                                                    type="text" readonly data-jdp-with-time
+                                                                                    type="text" readonly
+                                                                                    data-jdp-with-time
                                                                                     :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                     x-model="item.custom_field_values[field.id]"
                                                                                     @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: true, hasSecond: false}); jalaliDatepicker.show($el); }"
@@ -1277,7 +1427,8 @@
                                                                                         class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 p-0.5 transition-colors"
                                                                                         title="پاک کردن تاریخ">
                                                                                     <svg class="w-3.5 h-3.5" fill="none"
-                                                                                         viewBox="0 0 24 24" stroke="currentColor">
+                                                                                         viewBox="0 0 24 24"
+                                                                                         stroke="currentColor">
                                                                                         <path stroke-linecap="round"
                                                                                               stroke-linejoin="round"
                                                                                               stroke-width="2"
@@ -1289,7 +1440,8 @@
                                                                         <template x-if="field.type === 'date'">
                                                                             <div class="relative w-full">
                                                                                 <input
-                                                                                    type="text" readonly data-jdp-only-date
+                                                                                    type="text" readonly
+                                                                                    data-jdp-only-date
                                                                                     :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                     x-model="item.custom_field_values[field.id]"
                                                                                     @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
@@ -1305,7 +1457,8 @@
                                                                                         class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 p-0.5 transition-colors"
                                                                                         title="پاک کردن تاریخ">
                                                                                     <svg class="w-3.5 h-3.5" fill="none"
-                                                                                         viewBox="0 0 24 24" stroke="currentColor">
+                                                                                         viewBox="0 0 24 24"
+                                                                                         stroke="currentColor">
                                                                                         <path stroke-linecap="round"
                                                                                               stroke-linejoin="round"
                                                                                               stroke-width="2"
@@ -1448,9 +1601,12 @@
                                                                             </div>
                                                                         </template>
 
-                                                                        <template x-if="field.has_pricing && ['select', 'multiselect', 'radio'].includes(field.type)">
-                                                                            <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between">
-                                                                                <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-gray-600 dark:text-gray-400 select-none">
+                                                                        <template
+                                                                            x-if="field.has_pricing && ['select', 'multiselect', 'radio'].includes(field.type)">
+                                                                            <div
+                                                                                class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between">
+                                                                                <label
+                                                                                    class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-gray-600 dark:text-gray-400 select-none">
                                                                                     <input type="checkbox"
                                                                                            :name="'items[' + index + '][custom_fields_use_default_price][' + field.id + ']'"
                                                                                            value="1"
@@ -1459,8 +1615,9 @@
                                                                                            class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                                                                     <span>استفاده از قیمت پیش‌فرض</span>
                                                                                 </label>
-                                                                                <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500"
-                                                                                      x-text="'(پیش‌فرض: ' + formatMoney(field.pricing_amount || 0) + ' ' + (field.pricing_type === 'percentage' ? '%' : '{{ $currencyLabel }}') + ')'"></span>
+                                                                                <span
+                                                                                    class="text-[10px] font-bold text-gray-400 dark:text-gray-500"
+                                                                                    x-text="'(پیش‌فرض: ' + formatMoney(field.pricing_amount || 0) + ' ' + (field.pricing_type === 'percentage' ? '%' : '{{ $currencyLabel }}') + ')'"></span>
                                                                             </div>
                                                                         </template>
 
@@ -1616,9 +1773,6 @@
                         <textarea name="notes" rows="4" x-model="notesText"
                                   class="w-full rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/40 px-5 py-4 text-sm leading-7 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:border-emerald-500 focus:ring-4 focus:emerald-500/10 outline-none transition-all resize-none shadow-inner"
                                   placeholder="یادداشتی برای مشتری بنویسید... (مثلاً شرایط پرداخت، توضیحات گارانتی و ...)"></textarea>
-                        <span
-                            class="absolute bottom-3 left-4 text-[10px] font-bold text-gray-300 dark:text-gray-600 pointer-events-none select-none"
-                            x-text="(notesText || '').length + ' نویسه'"></span>
                     </div>
                 </div>
             </div>
@@ -1753,7 +1907,7 @@
                                             :class="(items[activeProductModalIndex] && items[activeProductModalIndex].product_id == prod.master_id && items[activeProductModalIndex].product_variant_id == (prod.variant_id || '')) ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-400 ring-1 ring-emerald-500' : 'border-gray-100 dark:border-gray-700 hover:border-emerald-400 hover:bg-emerald-50/40 dark:hover:bg-emerald-500/10'">
                                         <div
                                             class="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-900 shrink-0 border border-gray-200 dark:border-gray-700 flex items-center justify-center">
-                                            <img x-show="prod.image" :src="prod.image"
+                                            <img x-show="prod.image" :src="prod.image" :alt="prod.name || 'محصول'"
                                                  class="w-full h-full object-cover">
                                             <svg x-show="!prod.image" class="w-6 h-6 text-gray-300 dark:text-gray-600"
                                                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -1796,8 +1950,52 @@
 
     @push('scripts')
         <script>
-            document.addEventListener('alpine:init', () => {
-                Alpine.data('invoiceCreator', () => ({
+            function toEnglishNum(v) {
+                if (v === '' || v === null || v === undefined) return '';
+                const p = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                const a = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+                return v.toString().replace(/[۰-۹]/g, d => p.indexOf(d)).replace(/[٠-٩]/g, d => a.indexOf(d));
+            }
+
+            function toPersianNum(v) {
+                if (v === '' || v === null || v === undefined) return '';
+                const p = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                return v.toString().replace(/\d/g, d => p[d]);
+            }
+
+            function formatMoney(v) {
+                if (v === '' || v === null || v === undefined || isNaN(v)) return '۰';
+                let n = Math.round(Number(v)).toString();
+                let f = n.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                return toPersianNum(f);
+            }
+
+            function formatPriceInput(v) {
+                if (v === '' || v === null || v === undefined) return '';
+                let n = Number(v);
+                if (isNaN(n) || n === 0) return '';
+                let f = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                return toPersianNum(f);
+            }
+
+            function parsePriceInput(v) {
+                if (!v) return 0;
+                let c = toEnglishNum(v).toString().replace(/,/g, '').replace(/[^\d.]/g, '');
+                let n = parseFloat(c);
+                return isNaN(n) ? 0 : n;
+            }
+
+            function calculateTotals() {
+                if (window.Alpine && document.querySelector('[x-data]')) {
+                    const el = document.querySelector('[x-data]');
+                    if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].calculateTotals === 'function') {
+                        return el._x_dataStack[0].calculateTotals();
+                    }
+                }
+            }
+
+            function invoiceCreator() {
+                return {
                     issueDate: '',
                     dueDate: '',
                     notesText: '',
@@ -1831,6 +2029,21 @@
                     customersList: @json($customersListForJs),
                     customerQuery: '',
                     customerDropdownOpen: false,
+                    customerDebtInfo: {
+                        has_debt: false,
+                        total_debt: 0,
+                        total_debt_formatted: '',
+                        invoices_count: 0,
+                        invoice_ids: [],
+                        invoice_ids_string: '',
+                        invoice_numbers: [],
+                        invoice_numbers_string: '',
+                        invoices: []
+                    },
+                    selectedDebtInvoiceIds: [],
+                    loadingCustomerDebt: false,
+                    debtRowAdded: false,
+                    debtFromInvoiceIds: '',
                     periodLabels: {monthly: 'ماهانه', quarterly: 'فصلی', semi_annual: 'شش ماهه', annual: 'سالانه'},
 
                     activeProductModalIndex: null,
@@ -1952,12 +2165,204 @@
                                 }
                             });
                         }
+                        this.fetchCustomerDebts(c.id);
                     },
                     clearCustomer() {
                         this.selectedCustomer = '';
                         this.selectedCustomerData = null;
                         this.customerQuery = '';
                         this.clientSelectedFields = {};
+                        this.fetchCustomerDebts(null);
+                        this.removeAllDebtRows();
+                    },
+                    fetchCustomerDebts(clientId) {
+                        if (!clientId) {
+                            this.customerDebtInfo = {
+                                has_debt: false,
+                                total_debt: 0,
+                                total_debt_formatted: '',
+                                invoices_count: 0,
+                                invoice_ids: [],
+                                invoice_ids_string: '',
+                                invoice_numbers: [],
+                                invoice_numbers_string: '',
+                                invoices: []
+                            };
+                            this.selectedDebtInvoiceIds = [];
+                            this.syncDebtRowState();
+                            return;
+                        }
+
+                        this.loadingCustomerDebt = true;
+                        fetch('{{ url("user/services/invoices/customer") }}/' + clientId + '/debts')
+                            .then(res => res.json())
+                            .then(data => {
+                                this.customerDebtInfo = data || {};
+                                // Do not select any by default; user explicitly checks
+                                this.selectedDebtInvoiceIds = [];
+                                this.syncDebtRowState();
+                            })
+                            .catch(err => {
+                                console.error('Error fetching customer debts:', err);
+                            })
+                            .finally(() => {
+                                this.loadingCustomerDebt = false;
+                            });
+                    },
+                    syncDebtRowState() {
+                        const debtItems = this.items.filter(i => i.mode === 'debt' || i._isDebt);
+                        this.debtRowAdded = debtItems.length > 0;
+                        const collectedIds = debtItems.map(i => i.debt_invoice_ids).filter(Boolean);
+                        this.debtFromInvoiceIds = Array.from(new Set(collectedIds.join(',').split(',').filter(Boolean))).join(',');
+                    },
+                    toggleSelectAllDebtInvoices() {
+                        const allInvoices = this.customerDebtInfo.invoices || [];
+                        if (this.selectedDebtInvoiceIds.length === allInvoices.length && this.selectedDebtInvoiceIds.length > 0) {
+                            this.selectedDebtInvoiceIds = [];
+                        } else {
+                            this.selectedDebtInvoiceIds = allInvoices.map(inv => String(inv.id));
+                        }
+                    },
+                    isDebtInvoiceSelected(id) {
+                        return this.selectedDebtInvoiceIds.includes(String(id));
+                    },
+                    isDebtInvoiceAdded(id) {
+                        const strId = String(id);
+                        return this.items.some(i => (i.mode === 'debt' || i._isDebt) && String(i.debt_invoice_ids) === strId);
+                    },
+                    getSelectedDebtTotal() {
+                        const allInvoices = this.customerDebtInfo.invoices || [];
+                        return allInvoices
+                            .filter(inv => this.selectedDebtInvoiceIds.includes(String(inv.id)))
+                            .reduce((sum, inv) => sum + (Number(inv.remaining) || 0), 0);
+                    },
+                    getSelectedDebtTotalFormatted() {
+                        return new Intl.NumberFormat('fa-IR').format(this.getSelectedDebtTotal());
+                    },
+                    addSingleDebtRow(inv) {
+                        if (!inv) return;
+                        const strId = String(inv.id);
+
+                        if (this.items.length === 1 && !this.items[0].service_id && !this.items[0].custom_service_name && !this.items[0].product_id && !this.items[0].unit_price) {
+                            this.items = [];
+                        }
+
+                        const existing = this.items.find(i => (i.mode === 'debt' || i._isDebt) && String(i.debt_invoice_ids) === strId);
+                        if (existing) {
+                            existing.unit_price = inv.remaining;
+                        } else {
+                            this.items.push({
+                                mode: 'debt',
+                                _isDebt: true,
+                                service_id: '',
+                                product_id: '',
+                                product_variant_id: '',
+                                service_raw: null,
+                                custom_service_name: 'مانده بدهی فاکتور #' + inv.invoice_number,
+                                _showServiceDropdown: false,
+                                _showProductDropdown: false,
+                                _hasOpenSelectDropdown: false,
+                                _selectedGroup: '',
+                                description: 'بابت مانده بدهی فاکتور شماره ' + inv.invoice_number + (inv.issue_date_jalali ? ' (تاریخ صدور: ' + inv.issue_date_jalali + ')' : ''),
+                                unit: 'مورد',
+                                quantity: 1,
+                                unit_price: inv.remaining,
+                                discount: 0,
+                                billing_period: '',
+                                _priceUnlocked: false,
+                                service_custom_fields: [],
+                                custom_field_values: {},
+                                _showCustomFields: false,
+                                custom_field_quantities: {},
+                                custom_field_custom_prices: {},
+                                custom_field_custom_discounts: {},
+                                custom_field_tax_percents: {},
+                                custom_field_use_default_price: {},
+                                tax_percent: 0,
+                                _taxUnlocked: true,
+                                debt_invoice_ids: strId
+                            });
+                        }
+
+                        if (!this.selectedDebtInvoiceIds.includes(strId)) {
+                            this.selectedDebtInvoiceIds.push(strId);
+                        }
+
+                        this.syncDebtRowState();
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
+                        }
+                    },
+                    removeSingleDebtRow(id) {
+                        const strId = String(id);
+                        this.items = this.items.filter(i => !((i.mode === 'debt' || i._isDebt) && String(i.debt_invoice_ids) === strId));
+                        this.syncDebtRowState();
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
+                        }
+                    },
+                    addSelectedDebtRows() {
+                        if (!this.customerDebtInfo.invoices || this.selectedDebtInvoiceIds.length === 0) return;
+
+                        const allInvoices = this.customerDebtInfo.invoices;
+                        const selectedInvoices = allInvoices.filter(inv => this.selectedDebtInvoiceIds.includes(String(inv.id)));
+
+                        if (this.items.length === 1 && !this.items[0].service_id && !this.items[0].custom_service_name && !this.items[0].product_id && !this.items[0].unit_price) {
+                            this.items = [];
+                        }
+
+                        selectedInvoices.forEach(inv => {
+                            const strId = String(inv.id);
+                            const existing = this.items.find(i => (i.mode === 'debt' || i._isDebt) && String(i.debt_invoice_ids) === strId);
+                            if (existing) {
+                                existing.unit_price = inv.remaining;
+                                return;
+                            }
+
+                            this.items.push({
+                                mode: 'debt',
+                                _isDebt: true,
+                                service_id: '',
+                                product_id: '',
+                                product_variant_id: '',
+                                service_raw: null,
+                                custom_service_name: 'مانده بدهی فاکتور #' + inv.invoice_number,
+                                _showServiceDropdown: false,
+                                _showProductDropdown: false,
+                                _hasOpenSelectDropdown: false,
+                                _selectedGroup: '',
+                                description: 'بابت مانده بدهی فاکتور شماره ' + inv.invoice_number + (inv.issue_date_jalali ? ' (تاریخ صدور: ' + inv.issue_date_jalali + ')' : ''),
+                                unit: 'مورد',
+                                quantity: 1,
+                                unit_price: inv.remaining,
+                                discount: 0,
+                                billing_period: '',
+                                _priceUnlocked: false,
+                                service_custom_fields: [],
+                                custom_field_values: {},
+                                _showCustomFields: false,
+                                custom_field_quantities: {},
+                                custom_field_custom_prices: {},
+                                custom_field_custom_discounts: {},
+                                custom_field_tax_percents: {},
+                                custom_field_use_default_price: {},
+                                tax_percent: 0,
+                                _taxUnlocked: true,
+                                debt_invoice_ids: strId
+                            });
+                        });
+
+                        this.syncDebtRowState();
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
+                        }
+                    },
+                    removeAllDebtRows() {
+                        this.items = this.items.filter(i => i.mode !== 'debt' && !i._isDebt);
+                        this.syncDebtRowState();
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
+                        }
                     },
                     isSubItemChecked(fieldId, opt) {
                         if (!this.clientSelectedFields[fieldId]) return false;
@@ -2002,7 +2407,9 @@
                     init() {
                         if (this.selectedCustomer) {
                             this.selectedCustomerData = this.customersList.find(c => String(c.id) === String(this.selectedCustomer)) || null;
+                            this.fetchCustomerDebts(this.selectedCustomer);
                         }
+                        this.syncDebtRowState();
                         this.notesText = @json(old('notes', ''));
                         this.setDefaultDates();
                         if (this.invoiceAuto && !this.invoiceNumber) this.invoiceNumber = 'در حال تولید...';
@@ -2059,6 +2466,7 @@
                     },
                     removeItem(i) {
                         this.items.splice(i, 1);
+                        this.syncDebtRowState();
                     },
                     removePackage(groupId) {
                         this.items = this.items.filter(i => i._packageGroupId !== groupId);
@@ -2182,11 +2590,18 @@
                                 }
                             });
 
+                            let itemMode = item.mode;
+                            if (!itemMode || (itemMode === 'service' && !item.service_id) || (itemMode === 'product' && !item.product_id && !item.product_variant_id)) {
+                                if (item.product_id || item.product_variant_id) itemMode = 'product';
+                                else if (item.service_id) itemMode = 'service';
+                                else itemMode = 'manual';
+                            }
+
                             this.items.push({
-                                mode: item.service_id ? 'service' : 'manual',
+                                mode: itemMode,
                                 service_id: item.service_id ? String(item.service_id) : '',
-                                product_id: '',
-                                product_variant_id: '',
+                                product_id: item.product_id ? String(item.product_id) : '',
+                                product_variant_id: item.product_variant_id ? String(item.product_variant_id) : '',
                                 stock: null,
                                 service_raw: serviceRaw,
                                 custom_service_name: item.custom_service_name || (serviceRaw ? serviceRaw.name : ''),
@@ -2675,8 +3090,8 @@
                     },
                     getCustomFieldPrice(it, f, opt = null) {
                         if (!it || !f) return 0;
-                        const fId = (f && f.id !== undefined) ? f.id : f;
-                        let fieldObj = (typeof f === 'object' && f !== null) ? f : (it.service_custom_fields || []).find(cf => String(cf.id) === String(fId));
+                        const fId = (typeof f === 'object' && f.id !== undefined) ? f.id : f;
+                        let fieldObj = (typeof f === 'object') ? f : (it.service_custom_fields || []).find(cf => String(cf.id) === String(fId));
                         if (!fieldObj) return 0;
 
                         let p = parseFloat(it.unit_price) || 0;
@@ -2946,6 +3361,9 @@
                         let res = (this.taxMode === 'item') ? (tT + rT + cT) : tT;
                         return isNaN(res) ? 0 : res;
                     },
+                    calculateTotals() {
+                        return this.totals;
+                    },
                     get totals() {
                         let bS = 0, iD = 0, tC = 0, iTT = 0;
                         this.items.forEach(it => {
@@ -3063,30 +3481,19 @@
                         return Object.keys(s).map(k => ({label: k, amount: s[k]}));
                     },
                     formatMoney(v) {
-                        let num = Number(v);
-                        if (isNaN(num) || !isFinite(num)) num = 0;
-                        return new Intl.NumberFormat('fa-IR').format(Math.round(num));
+                        return formatMoney(v);
                     },
                     formatPriceInput(v) {
-                        if (v === '' || v === null || v === undefined) return '';
-                        let n = this.toEnglishNum(v.toString()).replace(/[^\d]/g, '');
-                        if (!n) return '';
-                        return this.toPersianNum(Number(n).toLocaleString('en-US'));
+                        return formatPriceInput(v);
                     },
                     parsePriceInput(v) {
-                        let n = this.toEnglishNum(v.toString()).replace(/[^\d]/g, '');
-                        return n ? Number(n) : 0;
+                        return parsePriceInput(v);
                     },
                     toPersianNum(v) {
-                        if (v === '' || v === null || v === undefined) return '';
-                        const d = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-                        return v.toString().replace(/\d/g, n => d[n]);
+                        return toPersianNum(v);
                     },
                     toEnglishNum(v) {
-                        if (v === '' || v === null || v === undefined) return '';
-                        const p = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-                        const a = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-                        return v.toString().replace(/[۰-۹]/g, d => p.indexOf(d)).replace(/[٠-٩]/g, d => a.indexOf(d));
+                        return toEnglishNum(v);
                     },
                     onSubmitCheck(e) {
                         const f = e.target;
@@ -3129,13 +3536,17 @@
                             if (!item) return false;
                             if (item.billing_period) return true;
                             if (item.service_id) {
-                                const s = (this.servicesList || []).find(srv => srv.id == item.service_id);
+                                const s = (this.servicesList || []).find(srv => String(srv.id) === String(item.service_id));
                                 if (s && s.billing_type === 'recurring') return true;
                             }
                             return false;
                         });
                     },
-                }));
+                };
+            }
+
+            document.addEventListener('alpine:init', () => {
+                Alpine.data('invoiceCreator', invoiceCreator);
             });
 
             document.addEventListener('click', function (e) {

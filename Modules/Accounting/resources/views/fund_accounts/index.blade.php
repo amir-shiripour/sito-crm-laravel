@@ -11,6 +11,37 @@
             return in_array(strtolower($hexColor), $lightColors);
         }
     }
+
+    $fundTypePriority = ['bank' => 1, 'cash' => 2, 'gateway' => 3, 'petty_cash' => 4];
+    $fundAccountsList = $allFundAccounts->sort(function($a, $b) use ($fundTypePriority) {
+        $pA = $fundTypePriority[$a->type] ?? 99;
+        $pB = $fundTypePriority[$b->type] ?? 99;
+        if ($pA !== $pB) return $pA <=> $pB;
+        return strcmp($a->name ?? '', $b->name ?? '');
+    })->map(function($fa) {
+        $types = [
+            'bank' => 'بانک',
+            'cash' => 'صندوق',
+            'gateway' => 'درگاه پرداخت',
+            'petty_cash' => 'تنخواه',
+        ];
+        $typeBadges = [
+            'bank' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
+            'cash' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
+            'gateway' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800/50',
+            'petty_cash' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800/50',
+        ];
+        return [
+            'id' => (string) $fa->id,
+            'name' => $fa->name,
+            'bank_name' => $fa->bank_name ?? '',
+            'account_number' => $fa->account_number ?? '',
+            'type' => $fa->type,
+            'type_label' => $types[$fa->type] ?? ($fa->type ?: 'خزانه'),
+            'type_badge' => $typeBadges[$fa->type] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+            'current_balance' => (float) $fa->current_balance,
+        ];
+    })->values()->all();
 @endphp
 
 @section('content')
@@ -165,15 +196,17 @@
                                     $formattedCard = strlen($cleanCard) >= 16 ? implode(' - ', str_split($cleanCard, 4)) : $fundAccount->card_number;
                                 @endphp
                                 <div dir="ltr" style="direction: ltr;"
-                                    class="text-xl font-mono tracking-[0.15em] text-center opacity-90 drop-shadow-sm dir-ltr">
+                                     class="text-xl font-mono tracking-[0.15em] text-center opacity-90 drop-shadow-sm dir-ltr">
                                     {{ $formattedCard }}
                                 </div>
                             @elseif($fundAccount->account_number)
-                                <div dir="ltr" style="direction: ltr;" class="text-lg font-mono tracking-wider text-center opacity-90 dir-ltr">
+                                <div dir="ltr" style="direction: ltr;"
+                                     class="text-lg font-mono tracking-wider text-center opacity-90 dir-ltr">
                                     شماره حساب: {{ $fundAccount->account_number }}
                                 </div>
                             @elseif($fundAccount->iban)
-                                <div dir="ltr" style="direction: ltr;" class="text-sm font-mono tracking-wider text-center opacity-90 dir-ltr">
+                                <div dir="ltr" style="direction: ltr;"
+                                     class="text-sm font-mono tracking-wider text-center opacity-90 dir-ltr">
                                     {{ $fundAccount->iban }}
                                 </div>
                             @else
@@ -260,35 +293,178 @@
                     </div>
                     <div class="p-6 space-y-5">
                         <div>
-                            <label for="from_fund_account_id"
-                                   class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">از حساب (مبدا)
+                            <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">از حساب (مبدا)
                                 <span class="text-rose-500">*</span></label>
-                            <select id="from_fund_account_id" name="from_fund_account_id" x-model="fromFundAccountId"
-                                    @change="updateMaxAmount"
-                                    class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3 text-sm focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all dark:text-white"
-                                    required>
-                                <option value="">انتخاب حساب مبدا...</option>
-                                @foreach($allFundAccounts as $fundAccount)
-                                    <option value="{{ $fundAccount->id }}"
-                                            data-balance="{{ $fundAccount->current_balance }}">{{ $fundAccount->name }}
-                                        -
-                                        موجودی: {{ CurrencyService::formatWithSuffix($fundAccount->current_balance) }}</option>
-                                @endforeach
-                            </select>
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                get filteredOptions() {
+                                    if (!this.search.trim()) return fundAccountsList;
+                                    const q = this.search.toLowerCase();
+                                    return fundAccountsList.filter(o =>
+                                        (o.name && o.name.toLowerCase().includes(q)) ||
+                                        (o.bank_name && o.bank_name.toLowerCase().includes(q)) ||
+                                        (o.account_number && String(o.account_number).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    fromFundAccountId = opt ? String(opt.id) : '';
+                                    updateMaxAmount();
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = fundAccountsList.find(o => String(o.id) === String(fromFundAccountId));
+                                    if (!found) return 'انتخاب حساب مبدا...';
+                                    return found.name + (found.bank_name ? ' (' + found.bank_name + ')' : '');
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                },
+                                formatNumber(num) {
+                                    if (!num && num !== 0) return '۰';
+                                    return this.formatFa(Number(num).toLocaleString('en-US'));
+                                }
+                            }" class="relative" :class="{ 'z-50': open }">
+                                <input type="hidden" name="from_fund_account_id" :value="fromFundAccountId" required>
+
+                                <button type="button" @click="open = !open"
+                                        class="w-full rounded-2xl border border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3 text-sm focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all dark:text-white flex items-center justify-between cursor-pointer text-start">
+                                    <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                    <svg class="w-4 h-4 text-gray-400 shrink-0 ms-2" fill="none" viewBox="0 0 24 24"
+                                         stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+
+                                <div x-show="open" @click.outside="open = false" x-cloak
+                                     class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] sm:min-w-[340px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-60 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                    <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                        <input type="text" x-model="search"
+                                               placeholder="جستجو نام حساب، بانک، شماره حساب..."
+                                               class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none">
+                                    </div>
+
+                                    <template x-for="opt in filteredOptions" :key="opt.id">
+                                        <div @click="select(opt)"
+                                             class="px-3 py-2 text-xs rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 dark:hover:text-teal-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                             :class="{ 'bg-teal-50/70 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 font-bold': String(fromFundAccountId) === String(opt.id) }">
+                                            <div class="flex flex-col gap-0.5 truncate">
+                                                <div class="flex items-center gap-1.5 truncate font-medium">
+                                                    <span x-text="opt.name"></span>
+                                                    <span x-show="opt.bank_name" class="text-[10px] text-gray-400"
+                                                          x-text="'(' + opt.bank_name + ')'"></span>
+                                                </div>
+                                                <div class="flex items-center gap-2 text-[10px] text-gray-400">
+                                                    <span x-show="opt.account_number"
+                                                          x-text="'ش‌ح: ' + formatFa(opt.account_number)"></span>
+                                                    <span class="text-emerald-600 dark:text-emerald-400 font-bold"
+                                                          x-text="'موجودی: ' + formatNumber(opt.current_balance) + ' {{ $currencySuffix }}'"></span>
+                                                </div>
+                                            </div>
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                  :class="opt.type_badge"
+                                                  x-text="opt.type_label"></span>
+                                        </div>
+                                    </template>
+
+                                    <div x-show="filteredOptions.length === 0"
+                                         class="p-3 text-xs text-gray-400 text-center">
+                                        هیچ حسابی پیدا نشد
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div>
-                            <label for="to_fund_account_id"
-                                   class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">به حساب (مقصد)
+                            <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">به حساب (مقصد)
                                 <span class="text-rose-500">*</span></label>
-                            <select id="to_fund_account_id" name="to_fund_account_id" x-model="toFundAccountId"
-                                    class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3 text-sm focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all dark:text-white"
-                                    required>
-                                <option value="">انتخاب حساب مقصد...</option>
-                                <template x-for="fundAccount in allFundAccountsList" :key="fundAccount.id">
-                                    <option :value="fundAccount.id" x-text="fundAccount.name"
-                                            x-show="fundAccount.id != fromFundAccountId"></option>
-                                </template>
-                            </select>
+                            <div x-data="{
+                                open: false,
+                                search: '',
+                                get filteredOptions() {
+                                    let list = fundAccountsList.filter(o => String(o.id) !== String(fromFundAccountId));
+                                    if (!this.search.trim()) return list;
+                                    const q = this.search.toLowerCase();
+                                    return list.filter(o =>
+                                        (o.name && o.name.toLowerCase().includes(q)) ||
+                                        (o.bank_name && o.bank_name.toLowerCase().includes(q)) ||
+                                        (o.account_number && String(o.account_number).toLowerCase().includes(q)) ||
+                                        (o.type_label && o.type_label.toLowerCase().includes(q))
+                                    );
+                                },
+                                select(opt) {
+                                    toFundAccountId = opt ? String(opt.id) : '';
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getSelectedTitle() {
+                                    let found = fundAccountsList.find(o => String(o.id) === String(toFundAccountId));
+                                    if (!found) return 'انتخاب حساب مقصد...';
+                                    return found.name + (found.bank_name ? ' (' + found.bank_name + ')' : '');
+                                },
+                                formatFa(str) {
+                                    if (!str && str !== 0) return '';
+                                    const farsi = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+                                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                                },
+                                formatNumber(num) {
+                                    if (!num && num !== 0) return '۰';
+                                    return this.formatFa(Number(num).toLocaleString('en-US'));
+                                }
+                            }" class="relative" :class="{ 'z-40': open }">
+                                <input type="hidden" name="to_fund_account_id" :value="toFundAccountId" required>
+
+                                <button type="button" @click="open = !open"
+                                        class="w-full rounded-2xl border border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3 text-sm focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all dark:text-white flex items-center justify-between cursor-pointer text-start">
+                                    <span x-text="getSelectedTitle()" class="truncate font-medium"></span>
+                                    <svg class="w-4 h-4 text-gray-400 shrink-0 ms-2" fill="none" viewBox="0 0 24 24"
+                                         stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+
+                                <div x-show="open" @click.outside="open = false" x-cloak
+                                     class="absolute z-[100] top-full mt-1.5 start-0 w-full min-w-[280px] sm:min-w-[340px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 max-h-60 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                                    <div class="p-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                                        <input type="text" x-model="search"
+                                               placeholder="جستجو نام حساب، بانک، شماره حساب..."
+                                               class="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none">
+                                    </div>
+
+                                    <template x-for="opt in filteredOptions" :key="opt.id">
+                                        <div @click="select(opt)"
+                                             class="px-3 py-2 text-xs rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 dark:hover:text-teal-300 cursor-pointer text-gray-700 dark:text-gray-200 transition-colors flex items-center justify-between gap-2"
+                                             :class="{ 'bg-teal-50/70 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 font-bold': String(toFundAccountId) === String(opt.id) }">
+                                            <div class="flex flex-col gap-0.5 truncate">
+                                                <div class="flex items-center gap-1.5 truncate font-medium">
+                                                    <span x-text="opt.name"></span>
+                                                    <span x-show="opt.bank_name" class="text-[10px] text-gray-400"
+                                                          x-text="'(' + opt.bank_name + ')'"></span>
+                                                </div>
+                                                <div class="flex items-center gap-2 text-[10px] text-gray-400">
+                                                    <span x-show="opt.account_number"
+                                                          x-text="'ش‌ح: ' + formatFa(opt.account_number)"></span>
+                                                    <span class="text-emerald-600 dark:text-emerald-400 font-bold"
+                                                          x-text="'موجودی: ' + formatNumber(opt.current_balance) + ' {{ $currencySuffix }}'"></span>
+                                                </div>
+                                            </div>
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded border shrink-0 font-medium"
+                                                  :class="opt.type_badge"
+                                                  x-text="opt.type_label"></span>
+                                        </div>
+                                    </template>
+
+                                    <div x-show="filteredOptions.length === 0"
+                                         class="p-3 text-xs text-gray-400 text-center">
+                                        هیچ حسابی پیدا نشد
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label for="amount" class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">مبلغ
@@ -338,13 +514,7 @@
                 amount: '',
                 maxAmount: 0,
                 baseCurrency: '{{ $currencySuffix }}',
-                allFundAccountsList: [
-                        @foreach($allFundAccounts as $fundAccount)
-                    {
-                        id: '{{ $fundAccount->id }}', name: '{{ $fundAccount->name }}'
-                    },
-                    @endforeach
-                ],
+                fundAccountsList: @js($fundAccountsList),
                 openTransferModal() {
                     this.fromFundAccountId = '';
                     this.toFundAccountId = '';
@@ -353,9 +523,8 @@
                     this.transferModalOpen = true;
                 },
                 updateMaxAmount() {
-                    let select = document.getElementById('from_fund_account_id');
-                    let option = select.options[select.selectedIndex];
-                    let balance = option ? (parseFloat(option.getAttribute('data-balance')) || 0) : 0;
+                    let found = this.fundAccountsList.find(o => String(o.id) === String(this.fromFundAccountId));
+                    let balance = found ? (parseFloat(found.current_balance) || 0) : 0;
 
                     if (this.baseCurrency === 'تومان') {
                         this.maxAmount = balance / 10;

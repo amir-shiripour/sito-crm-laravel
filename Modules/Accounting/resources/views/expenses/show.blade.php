@@ -3,6 +3,8 @@
 @section('title', 'جزئیات سند هزینه ' . ($expense->reference_number ?: $expense->id))
 
 @php
+    use Carbon\Carbon;
+    use Modules\Accounting\App\Models\AccountingSetting;
     use Morilog\Jalali\Jalalian;
     use Modules\Accounting\App\Services\CurrencyService;
 
@@ -16,14 +18,21 @@
 
     $toJalali = function ($date) {
         if (!$date) return null;
-        $carbon = $date instanceof \Carbon\Carbon ? $date : \Carbon\Carbon::parse($date);
+        $carbon = $date instanceof Carbon ? $date : Carbon::parse($date);
         return Jalalian::fromCarbon($carbon);
     };
 
-    $debitTx = $expense->transactions->firstWhere('debit', '>', 0) ?? $expense->transactions->first();
+    $debitTxs = $expense->transactions->where('debit', '>', 0);
     $creditTxs = $expense->transactions->where('credit', '>', 0);
-    $totalAmount = $debitTx?->debit ?? $expense->transactions->sum('debit');
-    $categoryName = $debitTx?->category?->title ?? 'سرفصل عمومی';
+    $totalAmount = $debitTxs->sum('debit') ?: $expense->amount;
+
+    $bankFeeCatId = (int)AccountingSetting::get('defaults.bank_fee_category_id', 26);
+    $feeTx = $debitTxs->first(fn($t) => $t->category_id == $bankFeeCatId || str_contains($t->description, 'کارمزد'));
+    $mainExpenseTx = $debitTxs->first(fn($t) => !$feeTx || $t->id !== $feeTx->id) ?? $debitTxs->first();
+
+    $mainExpenseAmount = $mainExpenseTx?->debit ?? $totalAmount;
+    $bankFeeAmount = $feeTx?->debit ?? 0;
+    $categoryName = $mainExpenseTx?->category?->title ?? 'سرفصل عمومی';
 
     $cheques = $expense->cheques->count() > 0 ? $expense->cheques : ($expense->cheque ? collect([$expense->cheque]) : collect());
     $chequeTxs = $creditTxs->whereNull('fund_account_id');
@@ -50,10 +59,11 @@
 @endphp
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
 
         {{-- Header Section --}}
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white dark:bg-gray-800/80 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-xs backdrop-blur-xl">
+        <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white dark:bg-gray-800/80 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-xs backdrop-blur-xl">
             <div class="flex items-start gap-4">
                 <div
                     class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-white shadow-lg shadow-rose-500/30 shrink-0">
@@ -134,7 +144,7 @@
             <div
                 class="{{ $cardClass }} bg-gradient-to-br from-rose-500/5 to-rose-600/10 border-rose-100 dark:border-rose-500/20">
                 <div class="flex items-center justify-between mb-3">
-                    <span class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">مبلغ کل هزینه</span>
+                    <span class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">مبلغ کل پرداختی</span>
                     <span class="p-2.5 rounded-xl bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -149,6 +159,14 @@
                     </span>
                     <span class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $currencyLabel }}</span>
                 </div>
+                @if($bankFeeAmount > 0)
+                    <div
+                        class="mt-2.5 pt-2.5 border-t border-rose-100/80 dark:border-rose-500/20 text-[11px] font-bold text-gray-500 dark:text-gray-400 flex items-center justify-between flex-wrap gap-1">
+                        <span>اصل: {{ $faNum(number_format($mainExpenseAmount)) }}</span>
+                        <span
+                            class="text-indigo-600 dark:text-indigo-400">+ کارمزد: {{ $faNum(number_format($bankFeeAmount)) }}</span>
+                    </div>
+                @endif
             </div>
 
             {{-- Card 2: Payment Method --}}
@@ -282,12 +300,9 @@
                         </div>
                     </div>
                 @endif
-
-                {{-- Bank/Treasury FundAccount Details Card --}}
                 @if($bankTxs->isNotEmpty() || $bankPaidAmount > 0)
                     @php
                         $bankPercent = $totalAmount > 0 ? round(($bankPaidAmount / $totalAmount) * 100) : 0;
-                        $fundAccount = $bankTxs->first()?->fundAccount ?? $expense->fundAccount;
                     @endphp
                     <div
                         class="p-6 rounded-3xl bg-indigo-50/70 dark:bg-indigo-900/10 border border-indigo-200/80 dark:border-indigo-700/40 space-y-4 relative overflow-hidden">
@@ -302,54 +317,48 @@
                                     </svg>
                                 </span>
                                 <div>
-                                    <h4 class="font-black text-gray-900 dark:text-white text-base">پرداخت از حساب
-                                        خزانه‌داری</h4>
+                                    <h4 class="font-black text-gray-900 dark:text-white text-base">پرداخت از حساب‌های
+                                        خزانه‌داری ({{ $faNum($bankTxs->count() ?: 1) }} حساب)</h4>
                                     <p class="text-xs text-indigo-700 dark:text-indigo-400 font-bold mt-0.5">سهم
                                         پرداخت: {{ $faNum($bankPercent) }}٪ از کل هزینه</p>
                                 </div>
                             </div>
                             <span
                                 class="px-3 py-1 rounded-full text-xs font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">
-                                بانک / صندوق
+                                {{ $faNum(number_format($bankPaidAmount)) }} {{ $currencyLabel }}
                             </span>
                         </div>
 
-                        <div
-                            class="grid grid-cols-2 gap-4 pt-3 border-t border-indigo-200/60 dark:border-indigo-800/40 text-xs">
-                            <div>
-                                <span class="text-gray-500 dark:text-gray-400 block mb-1">مبلغ پرداختی از حساب:</span>
-                                <span
-                                    class="font-black text-sm text-indigo-700 dark:text-indigo-300 tabular-nums">{{ $faNum(number_format($bankPaidAmount)) }} {{ $currencyLabel }}</span>
-                            </div>
-                            <div>
-                                <span class="text-gray-500 dark:text-gray-400 block mb-1">نام حساب خزانه‌داری:</span>
-                                <span
-                                    class="font-bold text-gray-900 dark:text-white">{{ $fundAccount?->name ?: '—' }}</span>
-                            </div>
-                            @if($fundAccount?->bank_name)
-                                <div>
-                                    <span class="text-gray-500 dark:text-gray-400 block mb-1">بانک:</span>
-                                    <span
-                                        class="font-bold text-gray-800 dark:text-gray-200">{{ $fundAccount->bank_name }}</span>
+                        <div class="space-y-3 pt-3 border-t border-indigo-200/60 dark:border-indigo-800/40 text-xs">
+                            @foreach($bankTxs as $bTx)
+                                @php
+                                    $fa = $bTx->fundAccount;
+                                    $txBalAfter = $bTx->account_balance_after;
+                                @endphp
+                                <div
+                                    class="p-3.5 bg-white/80 dark:bg-gray-800/60 rounded-2xl border border-indigo-100 dark:border-indigo-800/30 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                        <span class="text-gray-500 dark:text-gray-400 block mb-0.5">نام حساب:</span>
+                                        <span
+                                            class="font-bold text-gray-900 dark:text-white">{{ $fa?->name ?: '—' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 dark:text-gray-400 block mb-0.5">مبلغ کسر شده:</span>
+                                        <span
+                                            class="font-black text-indigo-700 dark:text-indigo-300 tabular-nums">{{ $faNum(number_format($bTx->credit)) }} {{ $currencyLabel }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 dark:text-gray-400 block mb-0.5">بانک / نوع:</span>
+                                        <span
+                                            class="font-bold text-gray-800 dark:text-gray-200">{{ $fa?->bank_name ?: ($fa?->isWalletAccount() ? 'کیف پول' : 'خزانه') }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 dark:text-gray-400 block mb-0.5">شماره حساب:</span>
+                                        <span
+                                            class="font-bold text-gray-800 dark:text-gray-200 tabular-nums">{{ $fa?->account_number ? $faNum($fa->account_number) : '—' }}</span>
+                                    </div>
                                 </div>
-                            @endif
-                            @if($fundAccount?->account_number)
-                                <div>
-                                    <span class="text-gray-500 dark:text-gray-400 block mb-1">شماره حساب / کارت:</span>
-                                    <span
-                                        class="font-bold text-gray-800 dark:text-gray-200 tabular-nums text-sm">{{ $faNum($fundAccount->account_number) }}</span>
-                                </div>
-                            @endif
-                            @php
-                                $showBalAfter = $bankTxs->first()?->account_balance_after;
-                            @endphp
-                            @if(!is_null($showBalAfter))
-                                <div>
-                                    <span class="text-gray-500 dark:text-gray-400 block mb-1">مانده حساب پس از پرداخت:</span>
-                                    <span
-                                        class="font-black text-sm text-sky-700 dark:text-sky-300 tabular-nums">{{ $faNum(number_format(CurrencyService::convertForDisplay($showBalAfter))) }} {{ $currencyLabel }}</span>
-                                </div>
-                            @endif
+                            @endforeach
                         </div>
                     </div>
                 @endif
@@ -439,9 +448,12 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if(!is_null($txBalAfter))
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-100 dark:border-sky-500/20 font-bold text-xs">
-                                        <span class="tabular-nums font-black">{{ $faNum(number_format(CurrencyService::convertForDisplay($txBalAfter))) }}</span>
-                                        <span class="text-[10px] text-sky-600/80 dark:text-sky-400/80">{{ $currencyLabel }}</span>
+                                    <span
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-100 dark:border-sky-500/20 font-bold text-xs">
+                                        <span
+                                            class="tabular-nums font-black">{{ $faNum(number_format(CurrencyService::convertForDisplay($txBalAfter))) }}</span>
+                                        <span
+                                            class="text-[10px] text-sky-600/80 dark:text-sky-400/80">{{ $currencyLabel }}</span>
                                     </span>
                                 @else
                                     <span class="text-gray-400 font-mono">—</span>

@@ -12,6 +12,9 @@ class ServicePackageItem extends Model
     protected $fillable = [
         'package_id',
         'service_id',
+        'product_id',
+        'product_variant_id',
+        'mode',
         'custom_service_name',
         'description',
         'quantity',
@@ -38,6 +41,9 @@ class ServicePackageItem extends Model
         'custom_fields_prices' => 'array',
         'custom_fields_quantities' => 'array',
         'custom_fields_use_default_price' => 'array',
+        'product_id' => 'integer',
+        'product_variant_id' => 'integer',
+        'mode' => 'string',
     ];
 
     public function package(): BelongsTo

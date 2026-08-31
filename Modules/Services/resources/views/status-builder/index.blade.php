@@ -2,7 +2,7 @@
 @section('title', 'مدیریت وضعیت‌ها')
 
 @section('content')
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6"
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8"
          x-data="statusBuilder()" x-init="init()">
 
         {{-- Header --}}

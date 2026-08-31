@@ -12,6 +12,9 @@ use Modules\Accounting\App\Services\CurrencyService;
 use Modules\Accounting\App\Services\ReceiptService;
 use Modules\Accounting\App\Models\AccountingSetting;
 use Exception;
+use Modules\Services\App\Http\Models\Payment;
+use Morilog\Jalali\Jalalian;
+use Nwidart\Modules\Facades\Module;
 
 class ReceiptController extends Controller
 {
@@ -52,9 +55,10 @@ class ReceiptController extends Controller
                 $hasExpenseDocuments = $cheque->expenseDocuments()->exists();
 
                 $hasServicePayment = false;
-                if (\Nwidart\Modules\Facades\Module::has('Services') && \Nwidart\Modules\Facades\Module::isEnabled('Services')) {
-                    $hasServicePayment = \Modules\Services\App\Http\Models\Payment::where('method', 'cheque-' . $cheque->id)
+                if (Module::has('Services') && Module::isEnabled('Services') && $cheque->created_at) {
+                    $hasServicePayment = Payment::where('method', 'cheque-' . $cheque->id)
                         ->where('status', '!=', 'canceled')
+                        ->where('created_at', '>=', $cheque->created_at->subMinutes(5))
                         ->exists();
                 }
 
@@ -62,7 +66,7 @@ class ReceiptController extends Controller
             })
             ->values()
             ->map(function ($cheque) {
-                $cheque->due_date_jalali = \Morilog\Jalali\Jalalian::fromCarbon($cheque->due_date)->format('Y/m/d');
+                $cheque->due_date_jalali = Jalalian::fromCarbon($cheque->due_date)->format('Y/m/d');
                 return $cheque;
             });
 

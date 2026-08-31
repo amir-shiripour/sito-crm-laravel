@@ -22,18 +22,22 @@ class StoreServicePackageRequest extends FormRequest
             'discount_value' => 'nullable|numeric|min:0',
 
             'items' => 'required|array|min:1',
-            'items.*.service_id' => 'nullable|exists:services,id',
+            'items.*.mode' => 'nullable|string',
+            'items.*.service_id' => 'nullable',
+            'items.*.product_id' => 'nullable',
+            'items.*.product_variant_id' => 'nullable',
             'items.*.custom_service_name' => 'nullable|string|max:255',
             'items.*.description' => 'nullable|string',
-            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.quantity' => 'nullable',
             'items.*.unit' => 'nullable|string|max:50',
-            'items.*.unit_price' => 'required|integer|min:0',
+            'items.*.unit_price' => 'nullable',
             'items.*.discount_type' => 'nullable|string|in:amount,percent',
-            'items.*.discount_value' => 'nullable|numeric|min:0',
+            'items.*.discount_value' => 'nullable',
             'items.*.billing_period' => 'nullable|string',
             'items.*.custom_fields' => 'nullable',
             'items.*.custom_fields_prices' => 'nullable',
             'items.*.custom_fields_quantities' => 'nullable',
+            'items.*.custom_fields_use_default_price' => 'nullable',
         ];
     }
 }

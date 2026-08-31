@@ -8,7 +8,10 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\App\Http\Requests\StoreExpenseRequest;
 use Modules\Accounting\App\Http\Requests\UpdateExpenseRequest;
-use Modules\Accounting\App\Models\FundAccount; // Updated from Bank
+use Modules\Accounting\App\Models\AccountingSetting;
+use Modules\Accounting\App\Models\FundAccount;
+
+// Updated from Bank
 use Modules\Accounting\App\Models\Category;
 use Modules\Accounting\App\Models\Document;
 use Modules\Accounting\App\Models\Transaction;
@@ -16,6 +19,7 @@ use Modules\Accounting\App\Services\CurrencyService;
 use Modules\Accounting\App\Services\DocumentService;
 use Modules\Accounting\Entities\Cheque;
 use Modules\Clients\Entities\Client;
+use Modules\Services\App\Http\Models\Payment;
 use Modules\Wallet\App\Enums\TransactionType;
 use Modules\Wallet\App\Models\WalletTransaction;
 use Modules\Wallet\App\Services\WalletService;
@@ -103,27 +107,11 @@ class ExpenseController extends Controller
     private function getAvailableReceivableCheques($currentChequeIds = [])
     {
         $currentChequeIds = is_array($currentChequeIds) ? $currentChequeIds : ($currentChequeIds ? [$currentChequeIds] : []);
-        $serviceChequeIds = [];
-        if (Module::has('Services') && Module::isEnabled('Services')) {
-            $serviceChequeIds = \Modules\Services\App\Http\Models\Payment::where('method', 'like', 'cheque-%')
-                ->where('status', '!=', 'canceled')
-                ->pluck('method')
-                ->map(function ($method) {
-                    return (int)str_replace('cheque-', '', $method);
-                })
-                ->filter()
-                ->toArray();
-        }
-
-        return Cheque::where(function ($q) use ($currentChequeIds, $serviceChequeIds) {
-            $q->where(function ($sub) use ($serviceChequeIds) {
+        return Cheque::where(function ($q) use ($currentChequeIds) {
+            $q->where(function ($sub) {
                 $sub->whereIn('status', ['pending', 'registered'])
                     ->whereNull('related_invoice_id')
                     ->doesntHave('attachedInvoices');
-
-                if (!empty($serviceChequeIds)) {
-                    $sub->whereNotIn('id', $serviceChequeIds);
-                }
             });
 
             if (!empty($currentChequeIds)) {
@@ -131,9 +119,38 @@ class ExpenseController extends Controller
             }
         })
             ->get()
+            ->filter(function ($cheque) use ($currentChequeIds) {
+                if (in_array($cheque->id, $currentChequeIds)) return true;
+                if (Module::has('Services') && Module::isEnabled('Services') && $cheque->created_at) {
+                    $hasServicePayment = Payment::where('method', 'cheque-' . $cheque->id)
+                        ->where('status', '!=', 'canceled')
+                        ->where('created_at', '>=', $cheque->created_at->subMinutes(5))
+                        ->exists();
+                    if ($hasServicePayment) return false;
+                }
+                return true;
+            })
+            ->values()
             ->map(function ($cheque) {
+                $statusMap = [
+                    'pending' => ['label' => 'در جریان', 'badge' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200 dark:border-amber-700/60'],
+                    'registered' => ['label' => 'ثبت اولیه', 'badge' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-700/60'],
+                    'deposited' => ['label' => 'واگذار به بانک', 'badge' => 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300 border border-sky-200 dark:border-sky-700/60'],
+                    'cleared' => ['label' => 'وصول شده', 'badge' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/60'],
+                    'bounced' => ['label' => 'برگشت خورده', 'badge' => 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 border border-rose-200 dark:border-rose-700/60'],
+                    'transferred' => ['label' => 'منتقل شده', 'badge' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-700/60'],
+                    'returned' => ['label' => 'عودت شده', 'badge' => 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700'],
+                    'endorsed' => ['label' => 'خرج شده', 'badge' => 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 border border-orange-200 dark:border-orange-700/60'],
+                ];
+                $st = $statusMap[$cheque->status] ?? [
+                    'label' => $cheque->status ?? 'در جریان',
+                    'badge' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200 dark:border-amber-700/60'
+                ];
+
                 $cheque->due_date_jalali = $cheque->due_date ? \Morilog\Jalali\Jalalian::fromCarbon($cheque->due_date)->format('Y/m/d') : '—';
-                $cheque->type_label = $cheque->type === 'receivable' ? 'دریافتی' : 'پرداختی';
+                $cheque->type_label = $cheque->type === 'receivable' ? 'چک دریافتی' : 'چک پرداختی';
+                $cheque->status_label = $st['label'];
+                $cheque->status_badge = $st['badge'];
                 return $cheque;
             });
     }
@@ -186,16 +203,16 @@ class ExpenseController extends Controller
         try {
             $gregorianDate = $validated['document_date'];
 
-            $paymentType = $validated['payment_type'] ?? 'bank';
-            $chequeIds = $validated['cheque_ids'] ?? (!empty($validated['cheque_id']) ? [$validated['cheque_id']] : []);
-
             $expenseDocument = $this->documentService->createExpense([
                 'description' => $validated['description'],
                 'amount' => $validated['amount'],
+                'fee' => $validated['fee'] ?? 0,
                 'category_id' => $validated['category_id'],
                 'client_id' => $validated['client_id'] ?? null,
-                'fund_account_id' => ($paymentType === 'bank' || !empty($validated['bank_id'])) ? ($validated['bank_id'] ?? null) : null,
-                'cheque_ids' => $paymentType === 'cheque' ? $chequeIds : [],
+                'fund_account_id' => $validated['bank_id'] ?? null,
+                'bank_accounts' => $validated['bank_accounts'] ?? [],
+                'cheque_ids' => $validated['cheque_ids'] ?? [],
+                'cheques' => $validated['cheques'] ?? [],
                 'document_date' => $gregorianDate,
                 'reference_number' => $validated['reference_number'] ?? null,
                 'notes' => $validated['notes'] ?? null,
@@ -205,6 +222,18 @@ class ExpenseController extends Controller
                 $path = $request->file('attachment')->store('expense_attachments', 'public');
                 $expenseDocument->update(['attachment' => $path]);
             }
+
+            ActivityLogger::log(
+                'expense_created',
+                "سند هزینه به شماره '{$expenseDocument->document_number}' به مبلغ " . number_format($validated['amount']) . " ثبت شد." . (!empty($validated['fee']) ? " (کارمزد: " . number_format($validated['fee']) . ")" : ""),
+                $expenseDocument,
+                [
+                    'document_number' => $expenseDocument->document_number,
+                    'amount' => $validated['amount'],
+                    'fee' => $validated['fee'] ?? 0,
+                    'description' => $validated['description'],
+                ]
+            );
 
             return redirect()->route('admin.accounting.expenses.index')
                 ->with('success', 'ثبت هزینه با موفقیت انجام شد.');
@@ -228,15 +257,54 @@ class ExpenseController extends Controller
                 : (float)($bank->transactions->sum('debit') - $bank->transactions->sum('credit'));
             return $bank;
         });
-        // Extract values from debit/credit transactions
-        $expense->load(['transactions.category', 'transactions.fundAccount', 'documentable', 'cheque', 'cheques']);
-        $debitTx = $expense->transactions->where('debit', '>', 0)->first();
-        $creditTx = $expense->transactions->where('credit', '>', 0)->first();
 
-        $expenseCategoryId = $debitTx?->category_id;
-        $expenseFundAccountId = $expense->transactions->whereNotNull('fund_account_id')->first()?->fund_account_id ?? $creditTx?->fund_account_id;
-        $expenseAmount = $debitTx?->debit ?? $expense->transactions->sum('debit');
+        $expense->load(['transactions.category', 'transactions.fundAccount', 'documentable', 'cheque', 'cheques']);
+
+        $feeCatId = AccountingSetting::get('defaults.bank_fee_category_id');
+        $debitTxs = $expense->transactions->where('debit', '>', 0);
+        $feeTx = $debitTxs->first(function ($t) use ($feeCatId) {
+            return ($feeCatId && $t->category_id == $feeCatId) || str_contains($t->description ?? '', 'کارمزد');
+        });
+        $mainDebitTx = $debitTxs->first(function ($t) use ($feeTx) {
+            return !$feeTx || $t->id !== $feeTx->id;
+        }) ?? $debitTxs->first();
+
+        $expenseFee = $feeTx ? (float)$feeTx->debit : 0;
+        $expenseAmount = $mainDebitTx ? (float)$mainDebitTx->debit : (float)$expense->transactions->sum('debit');
+        $expenseCategoryId = $mainDebitTx?->category_id;
+
+        $creditTxs = $expense->transactions->where('credit', '>', 0);
+        $bankCreditTxs = $creditTxs->whereNotNull('fund_account_id');
+        $expenseFundAccountId = $bankCreditTxs->first()?->fund_account_id;
         $expenseClientId = ($expense->documentable_type === Client::class || $expense->documentable_type === 'Modules\Clients\Entities\Client') ? $expense->documentable_id : null;
+        $expenseClientIdKey = $expense->documentable_type && $expense->documentable_id ? ($expense->documentable_type . ':' . $expense->documentable_id) : null;
+
+        $existingBankAccounts = [];
+        foreach ($bankCreditTxs as $bTx) {
+            $accTotal = (float)$bTx->credit;
+            $accFee = 0;
+            if (preg_match('/کارمزد\D*([\d,]+)/u', $bTx->description ?? '', $m)) {
+                $accFee = (float)str_replace(',', '', $m[1]);
+            }
+            $accAmount = max(0, $accTotal - $accFee);
+            $existingBankAccounts[] = [
+                'bank_id' => (string)$bTx->fund_account_id,
+                'amount' => $accAmount,
+                'fee' => $accFee > 0 ? $accFee : '',
+                'client_id' => $expenseClientIdKey,
+            ];
+        }
+
+        if (empty($existingBankAccounts)) {
+            $existingBankAccounts = [
+                [
+                    'bank_id' => $expenseFundAccountId ? (string)$expenseFundAccountId : '',
+                    'amount' => $expenseAmount,
+                    'fee' => $expenseFee > 0 ? $expenseFee : '',
+                    'client_id' => $expenseClientIdKey,
+                ]
+            ];
+        }
 
         $existingWalletTxAmount = 0;
         $existingWalletDocumentableType = null;
@@ -288,7 +356,6 @@ class ExpenseController extends Controller
             $customers = $customers->concat($users);
         }
 
-        $expenseClientIdKey = $expense->documentable_type && $expense->documentable_id ? ($expense->documentable_type . ':' . $expense->documentable_id) : null;
         $currencySuffix = CurrencyService::getBaseCurrency();
 
         $expenseChequeIds = $expense->cheques->pluck('id')->toArray();
@@ -296,12 +363,28 @@ class ExpenseController extends Controller
             $expenseChequeIds = [$expense->cheque_id];
         }
 
+        $existingCheques = [];
+        foreach ($expense->cheques as $chq) {
+            $chqFee = 0;
+            $chqTx = $creditTxs->whereNull('fund_account_id')->first(function ($t) use ($chq) {
+                return str_contains($t->description ?? '', (string)$chq->cheque_number);
+            });
+            if ($chqTx && preg_match('/کارمزد[^\d]*([\d,]+)/u', $chqTx->description ?? '', $m)) {
+                $chqFee = (float)str_replace(',', '', $m[1]);
+            }
+            $existingCheques[] = [
+                'id' => (string)$chq->id,
+                'fee' => $chqFee > 0 ? $chqFee : '',
+                'fee_bank_id' => null,
+            ];
+        }
+
         $receivableCheques = $this->getAvailableReceivableCheques($expenseChequeIds);
 
         return view('accounting::expenses.edit', compact(
             'expense', 'banks', 'categories', 'customers', 'currencySuffix',
-            'expenseCategoryId', 'expenseFundAccountId', 'expenseAmount', 'expenseClientId', 'expenseClientIdKey',
-            'receivableCheques', 'expenseChequeIds'
+            'expenseCategoryId', 'expenseFundAccountId', 'expenseAmount', 'expenseFee', 'expenseClientId', 'expenseClientIdKey',
+            'receivableCheques', 'expenseChequeIds', 'existingBankAccounts', 'existingCheques'
         ));
     }
 
@@ -312,6 +395,8 @@ class ExpenseController extends Controller
         $paymentType = $data['payment_type'] ?? 'bank';
         $data['fund_account_id'] = $data['bank_id'] ?? null;
         $data['cheque_ids'] = $paymentType === 'cheque' ? ($data['cheque_ids'] ?? []) : [];
+        $data['cheques'] = $paymentType === 'cheque' ? ($data['cheques'] ?? []) : [];
+        $data['bank_accounts'] = $data['bank_accounts'] ?? [];
         unset($data['bank_id']);
 
         if ($request->hasFile('attachment')) {
@@ -338,6 +423,18 @@ class ExpenseController extends Controller
 
             $this->documentService->updateExpense($expense, $data);
 
+            ActivityLogger::log(
+                'expense_updated',
+                "سند هزینه به شماره '{$expense->document_number}' ویرایش شد.",
+                $expense,
+                [
+                    'document_number' => $expense->document_number,
+                    'amount' => $data['amount'],
+                    'fee' => $data['fee'] ?? 0,
+                    'description' => $data['description'],
+                ]
+            );
+
             return redirect()->route('admin.accounting.expenses.index')
                 ->with('success', 'سند هزینه با موفقیت ویرایش شد.');
         } catch (\Exception $e) {
@@ -354,16 +451,11 @@ class ExpenseController extends Controller
         try {
             DB::transaction(function () use ($expense) {
                 $expense->load(['transactions.category', 'transactions.fundAccount', 'cheque', 'cheques', 'documentable']);
-                $debitTx = $expense->transactions->first(function ($t) {
-                    return (float)$t->debit > 0;
-                }) ?? $expense->transactions->first();
-                $creditTx = $expense->transactions->first(function ($t) {
-                    return !is_null($t->fund_account_id);
-                }) ?? $expense->transactions->first(function ($t) {
-                    return (float)$t->credit > 0;
-                });
-                $expenseAmount = (float)($debitTx?->debit ?? $expense->transactions->sum('debit'));
-                $fundAccount = $creditTx?->fundAccount ?? ($debitTx?->fundAccount ?? null);
+
+                $debitTxs = $expense->transactions->where('debit', '>', 0);
+                $creditTxs = $expense->transactions->where('credit', '>', 0);
+                $bankCreditTxs = $creditTxs->whereNotNull('fund_account_id');
+
                 $expense->update(['status' => 'cancelled']);
                 $chequesToRelease = $expense->cheques;
                 if ($expense->cheque && !$chequesToRelease->contains('id', $expense->cheque->id)) {
@@ -375,92 +467,59 @@ class ExpenseController extends Controller
                     }
                 }
 
-                $debitCategoryId = $debitTx?->category_id;
-                $creditCategoryId = $creditTx?->category_id ?: $fundAccount?->category_id;
-
-                if ($fundAccount || $creditCategoryId) {
-                    Transaction::create([
-                        'document_id' => $expense->id,
-                        'category_id' => $creditCategoryId ?: $debitCategoryId,
-                        'fund_account_id' => $fundAccount?->id,
-                        'debit' => $expenseAmount,
-                        'credit' => 0,
-                        'description' => "برگشت وجه به خزانه‌داری بابت لغو سند هزینه #{$expense->document_number}",
-                        'transaction_date' => now()->toDateString(),
-                    ]);
-
-                    if ($debitCategoryId) {
+                foreach ($bankCreditTxs as $bTx) {
+                    $fundAccount = $bTx->fundAccount;
+                    $refundAmount = (float)$bTx->credit;
+                    if ($fundAccount && $refundAmount > 0) {
                         Transaction::create([
                             'document_id' => $expense->id,
-                            'category_id' => $debitCategoryId,
-                            'fund_account_id' => null,
-                            'debit' => 0,
-                            'credit' => $expenseAmount,
-                            'description' => "اصلاح سرفصل هزینه بابت لغو سند #{$expense->document_number}",
+                            'category_id' => $fundAccount->category_id,
+                            'fund_account_id' => $fundAccount->id,
+                            'debit' => $refundAmount,
+                            'credit' => 0,
+                            'description' => "برگشت وجه به خزانه‌داری ({$fundAccount->name}) بابت لغو سند هزینه #{$expense->document_number}",
                             'transaction_date' => now()->toDateString(),
                         ]);
                     }
                 }
 
+                foreach ($debitTxs as $dTx) {
+                    Transaction::create([
+                        'document_id' => $expense->id,
+                        'category_id' => $dTx->category_id,
+                        'fund_account_id' => null,
+                        'debit' => 0,
+                        'credit' => (float)$dTx->debit,
+                        'description' => "اصلاح سرفصل هزینه بابت لغو سند #{$expense->document_number}",
+                        'transaction_date' => now()->toDateString(),
+                    ]);
+                }
+
                 if (AccountingWalletHelper::isWalletEnabled() && class_exists(WalletService::class)) {
                     $walletService = app(WalletService::class);
-                    $existingWalletSource = DB::table('accounting_source_documents')
+                    $existingWalletSources = DB::table('accounting_source_documents')
                         ->where('document_id', $expense->id)
                         ->where(function ($q) {
                             $q->where('sourceable_type', WalletTransaction::class)
                                 ->orWhere('sourceable_type', 'Modules\Wallet\App\Models\WalletTransaction');
                         })
-                        ->first();
+                        ->get();
 
-                    $prevWalletTx = null;
-                    if ($existingWalletSource) {
-                        $prevWalletTx = WalletTransaction::find($existingWalletSource->sourceable_id);
-                    }
-                    if (!$prevWalletTx) {
-                        $prevWalletTx = WalletTransaction::where('payable_type', $expense->getMorphClass())
-                            ->where('payable_id', $expense->id)
-                            ->whereIn('type', [TransactionType::PAYMENT, TransactionType::WITHDRAW, 'payment', 'withdraw'])
-                            ->first();
-                    }
-
-                    $refundTx = null;
-                    if ($prevWalletTx) {
-                        $refundTx = $walletService->refund($prevWalletTx, null, "عودت وجه بابت لغو سند هزینه #{$expense->document_number}");
-                    } elseif (($fundAccount && $fundAccount->isWalletAccount()) && $expense->documentable) {
-                        $refundTx = $walletService->deposit(
-                            holder: $expense->documentable,
-                            amount: $expenseAmount,
-                            type: TransactionType::REFUND,
-                            payable: $expense,
-                            description: "عودت وجه بابت لغو سند هزینه #{$expense->document_number}"
-                        );
-                    }
-
-                    if ($refundTx) {
-                        DB::table('accounting_source_documents')->insertOrIgnore([
-                            'document_id' => $expense->id,
-                            'sourceable_type' => get_class($refundTx),
-                            'sourceable_id' => $refundTx->id,
-                            'module' => 'wallet',
-                            'event_type' => 'wallet_expense_cancel_refund',
-                            'snapshot' => json_encode([
-                                'uuid' => $refundTx->uuid,
-                                'amount' => $refundTx->amount,
-                                'document_number' => $expense->document_number,
-                            ]),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
+                    foreach ($existingWalletSources as $wSrc) {
+                        $prevWalletTx = WalletTransaction::find($wSrc->sourceable_id);
+                        if ($prevWalletTx) {
+                            $walletService->refund($prevWalletTx, null, "برگشت وجه به کیف پول بابت لغو سند هزینه #{$expense->document_number}");
+                        }
                     }
                 }
 
                 ActivityLogger::log(
                     'expense_cancelled',
-                    "سند هزینه به شماره '{$expense->document_number}' و مبلغ " . number_format($expenseAmount) . " ریال لغو گردید.",
+                    "سند هزینه به شماره '{$expense->document_number}' و مبلغ " . number_format($totalExpenseDebit) . " ریال لغو گردید.",
                     $expense,
                     [
                         'document_number' => $expense->document_number,
-                        'amount' => $expenseAmount,
+                        'amount' => $totalExpenseDebit,
                         'description' => $expense->description,
                     ]
                 );

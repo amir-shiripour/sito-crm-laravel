@@ -178,11 +178,14 @@
                     <tbody class="divide-y divide-gray-50 dark:divide-gray-700/40">
                     @forelse ($documents as $expense)
                         @php
-                            $debitTx = $expense->transactions->firstWhere('debit', '>', 0) ?? $expense->transactions->first();
+                            $bankFeeCatId = (int)\Modules\Accounting\App\Models\AccountingSetting::get('defaults.bank_fee_category_id', 26);
+                            $feeTx = $expense->transactions->where('debit', '>', 0)->first(fn($t) => $t->category_id == $bankFeeCatId || str_contains($t->description, 'کارمزد'));
+                            $mainDebitTx = $expense->transactions->where('debit', '>', 0)->first(fn($t) => !$feeTx || $t->id !== $feeTx->id) ?? $expense->transactions->firstWhere('debit', '>', 0);
+
                             $bankTx = $expense->transactions->firstWhere('fund_account_id', '!=', null);
                             $creditTx = $bankTx ?? $expense->transactions->firstWhere('credit', '>', 0);
-                            $expenseAmount = $debitTx?->debit ?? $expense->transactions->sum('debit');
-                            $categoryName = $debitTx?->category?->title ?? 'سرفصل عمومی';
+                            $expenseAmount = $expense->transactions->sum('debit') ?: $expense->amount;
+                            $categoryName = $mainDebitTx?->category?->title ?? 'سرفصل عمومی';
                             $fundAccountName = $bankTx?->fundAccount?->bank_display_name ?? $creditTx?->fundAccount?->bank_display_name ?? '—';
                             $balAfter = $bankTx?->account_balance_after ?? $creditTx?->account_balance_after;
 
@@ -223,7 +226,14 @@
                                 </div>
                             </td>
                             <td class="px-3.5 py-3.5 whitespace-nowrap font-black @if($expense->status === 'cancelled') text-gray-400 dark:text-gray-500 line-through @else text-rose-600 dark:text-rose-400 @endif tabular-nums">
-                                {{ CurrencyService::formatWithSuffix($expenseAmount) }}
+                                <div class="flex items-center gap-1.5">
+                                    <span>{{ CurrencyService::formatWithSuffix($expenseAmount) }}</span>
+                                    @if($feeTx && $feeTx->debit > 0)
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40" title="دارای کارمزد: {{ CurrencyService::formatWithSuffix($feeTx->debit) }}">
+                                            + کارمزد
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-3.5 py-3.5 whitespace-nowrap font-medium text-gray-700 dark:text-gray-300">
                             <span

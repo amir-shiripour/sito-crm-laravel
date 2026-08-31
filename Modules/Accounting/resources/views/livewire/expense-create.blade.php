@@ -117,10 +117,10 @@
                             </div>
 
                             <div class="col-span-12 md:col-span-4" x-show="payment.method === 'bank'">
-                                <label class="{{ $labelClass }}">از حساب</label>
+                                <label class="{{ $labelClass }}">از حساب <span class="text-red-500">*</span></label>
                                 <select x-model="payment.bank_id" class="{{ $selectClass }}">
                                     @foreach($banks as $bank)
-                                        @php $bal = $bank->transactions->sum('credit') - $bank->transactions->sum('debit'); @endphp
+                                        @php $bal = $bank->transactions->sum('debit') - $bank->transactions->sum('credit'); @endphp
                                         <option value="{{ $bank->id }}">{{ $bank->name }} ({{ CurrencyService::formatWithSuffix($bal) }})</option>
                                     @endforeach
                                 </select>
@@ -158,19 +158,6 @@
             </div>
         </div>
 
-        {{-- Summary and Sticky Footer --}}
-        <div class="sticky bottom-4 z-40 max-w-4xl mx-auto">
-            <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
-                <div class="flex justify-end">
-                    <button type="submit" class="px-8 py-3 rounded-xl bg-red-600 text-white font-bold shadow-lg shadow-red-500/30 hover:bg-red-700 transition-all flex items-center gap-2">
-                        <div wire:loading wire:target="save" class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        <span wire:loading.remove>ثبت هزینه</span>
-                        <span wire:loading>در حال پردازش...</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
         {{-- Excess Payment Modal --}}
         <div x-show="$wire.showExcessPaymentModal"
              style="display: none;"
@@ -197,7 +184,7 @@
                         <div>
                             <label for="excess_payment_bank_id" class="{{ $labelClass }}">واریز به حساب <span class="text-red-500">*</span></label>
                             <select id="excess_payment_bank_id" wire:model="excess_payment_bank_id" class="{{ $selectClass }}">
-                                @foreach($banks as $bank)
+                                @foreach($allBanks as $bank)
                                     <option value="{{ $bank->id }}">{{ $bank->name }}</option>
                                 @endforeach
                             </select>
@@ -218,6 +205,17 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    {{-- Sticky Footer --}}
+    <div class="sticky bottom-4 z-40 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl flex justify-end">
+            <button type="submit" class="px-8 py-3 rounded-xl bg-red-600 text-white font-bold shadow-lg shadow-red-500/30 hover:bg-red-700 transition-all flex items-center gap-2">
+                <div wire:loading wire:target="save" class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span wire:loading.remove>ثبت هزینه</span>
+                <span wire:loading>در حال پردازش...</span>
+            </button>
         </div>
     </div>
 </form>

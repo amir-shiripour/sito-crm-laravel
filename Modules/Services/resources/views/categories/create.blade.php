@@ -8,7 +8,7 @@
 @endphp
 
 @section('content')
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" x-data="{ color: '#10b981', name: '', preview: null }">
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" x-data="{ color: '#10b981', name: '', preview: null }">
 
         {{-- Header --}}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

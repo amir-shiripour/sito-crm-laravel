@@ -11,7 +11,7 @@
 @section('content')
 @includeIf('partials.jalali-date-picker')
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="invoiceForm({
+<div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="invoiceForm({
     items: {!! json_encode(old('items', $invoice->items->map(function($item) {
         return ['name' => $item->description, 'quantity' => (float)$item->quantity, 'price' => (float)$item->unit_price, 'unit_type' => $item->unit_type];
     })->toArray())) !!},

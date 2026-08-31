@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Accounting\App\Helpers\AccountingWalletHelper;
+use Modules\Wallet\App\Models\Wallet;
 
 class FundAccount extends Model
 {
@@ -65,12 +66,12 @@ class FundAccount extends Model
      */
     public function getCurrentBalanceAttribute(): float
     {
-        if ($this->isWalletAccount() && AccountingWalletHelper::isWalletEnabled() && class_exists(\Modules\Wallet\App\Models\Wallet::class)) {
+        if ($this->isWalletAccount() && AccountingWalletHelper::isWalletEnabled() && class_exists(Wallet::class)) {
             if (preg_match('/wallet_id:(\d+)/', $this->notes ?? '', $matches)) {
-                return (float) (\Modules\Wallet\App\Models\Wallet::find($matches[1])?->balance ?? 0);
+                return (float) (Wallet::find($matches[1])?->balance ?? 0);
             }
 
-            return \Modules\Wallet\App\Models\Wallet::getTotalBalance();
+            return Wallet::getTotalBalance();
         }
 
         if ($this->relationLoaded('transactions')) {

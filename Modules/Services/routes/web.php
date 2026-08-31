@@ -54,6 +54,7 @@ Route::middleware(['auth', 'verified'])
         ->group(function () {
             // Dedicated create route (registered before the resource's dynamic {invoice} routes)
             Route::get('/create', [InvoiceController::class, 'createInvoice'])->name('create');
+            Route::get('/customer/{client}/debts', [InvoiceController::class, 'getCustomerDebts'])->name('customer-debts');
 
             Route::resource('/', InvoiceController::class)->parameters(['' => 'invoice'])->except(['create']);
 

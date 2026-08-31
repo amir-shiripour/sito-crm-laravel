@@ -11,7 +11,7 @@
 @section('content')
 @includeIf('partials.jalali-date-picker')
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="invoiceForm({
+<div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="invoiceForm({
     items: {{ json_encode(old('items', [['name' => '', 'quantity' => 1, 'price' => 0, 'unit_type' => $units[0] ?? '']])) }},
     discount: {{ old('discount', 0) }},
     tax_percentage: {{ $settings->get('tax.enabled') ? $settings->get('tax.percentage', 0) : 0 }},

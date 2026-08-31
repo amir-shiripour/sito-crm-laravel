@@ -50,13 +50,17 @@ Route::resource('invoices', InvoiceController::class);
 
 // Cheques
 Route::get('cheques/{cheque}/print', [ChequeController::class, 'print'])->name('cheques.print');
+Route::get('cheques/{cheque}/reconcile', [ChequeController::class, 'reconcile'])->name('cheques.reconcile');
+Route::get('cheques/{cheque}/reconcile-form', [ChequeController::class, 'reconcile'])->name('cheques.reconcile.form');
+Route::match(['post', 'put'], 'cheques/{cheque}/reconcile', [ChequeController::class, 'reconcileProcess'])->name('cheques.reconcile.process');
+Route::match(['post', 'put'], 'cheques/{cheque}/reconcile-process', [ChequeController::class, 'reconcileProcess'])->name('cheques.reconcile-process');
 Route::post('cheques/{cheque}/deposit', [ChequeController::class, 'deposit'])->name('cheques.deposit');
 Route::post('cheques/{cheque}/clear', [ChequeController::class, 'clear'])->name('cheques.clear');
 Route::post('cheques/{cheque}/revert-clearance', [ChequeController::class, 'revertClearance'])->name('cheques.revert-clearance');
 Route::post('cheques/{cheque}/bounce', [ChequeController::class, 'bounce'])->name('cheques.bounce');
 Route::post('cheques/{cheque}/endorse', [ChequeController::class, 'endorse'])->name('cheques.endorse');
 Route::post('cheques/{cheque}/return-with-cash', [ChequeController::class, 'returnChequeWithCash'])->name('cheques.return-with-cash');
-Route::resource('cheques', ChequeController::class)->except(['edit', 'update']);
+Route::resource('cheques', ChequeController::class);
 
 // Other Resources
 Route::resource('proformas', ProformaController::class);

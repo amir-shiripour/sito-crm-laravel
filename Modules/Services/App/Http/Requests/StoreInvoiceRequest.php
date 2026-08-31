@@ -3,8 +3,15 @@
 namespace Modules\Services\App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Modules\Market\App\Models\Order;
+use Modules\Market\App\Services\WarehouseStockService;
+use Modules\Market\Entities\MarketSetting;
+use Modules\Market\Entities\MasterProduct;
+use Modules\Market\Entities\ProductVariant;
+use Modules\Market\Entities\WarehouseStock;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Settings\Entities\Setting;
+use Nwidart\Modules\Facades\Module;
 
 class StoreInvoiceRequest extends FormRequest
 {
@@ -67,6 +74,8 @@ class StoreInvoiceRequest extends FormRequest
             'tax_percent' => 'nullable|numeric|min:0|max:100',
             'extra_discount_type' => 'nullable|in:amount,percent',
             'extra_discount_value' => 'nullable|numeric|min:0',
+            'debt_from_invoice_ids' => 'nullable|string',
+            'merged_from_invoice_ids' => 'nullable|string',
 
             'items' => 'required|array|min:1',
             'items.*.service_id' => 'nullable|exists:services,id',
@@ -80,6 +89,9 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.discount' => 'nullable|integer|min:0',
             'items.*.billing_period' => 'nullable|string|in:monthly,quarterly,semi_annual,annual',
             'items.*.tax_percent' => 'nullable|numeric|min:0|max:100',
+            'items.*.mode' => 'nullable|string',
+            'items.*._isDebt' => 'nullable',
+            'items.*.debt_invoice_ids' => 'nullable|string',
 
             'items.*.custom_fields' => 'nullable|array',
             'items.*.custom_fields_old' => 'nullable|array',
@@ -117,9 +129,9 @@ class StoreInvoiceRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            $isMarketEnabled = \Nwidart\Modules\Facades\Module::has('Market')
-                && \Nwidart\Modules\Facades\Module::isEnabled('Market')
-                && class_exists(\Modules\Market\App\Models\Order::class);
+            $isMarketEnabled = Module::has('Market')
+                && Module::isEnabled('Market')
+                && class_exists(Order::class);
 
             foreach ($this->input('items', []) as $index => $item) {
                 if (!empty($item['product_id']) || !empty($item['product_variant_id'])) {
@@ -134,32 +146,34 @@ class StoreInvoiceRequest extends FormRequest
                     $availableStock = 0;
                     $title = !empty($item['custom_service_name']) ? $item['custom_service_name'] : 'محصول فروشگاه';
 
-                    if ($variantId && class_exists(\Modules\Market\Entities\ProductVariant::class)) {
-                        $variant = \Modules\Market\Entities\ProductVariant::with('vendorProducts')->find($variantId);
+                    if ($variantId && class_exists(ProductVariant::class)) {
+                        $variant = ProductVariant::with('vendorProducts')->find($variantId);
                         if ($variant) {
-                            $isWmsActive = class_exists(\Modules\Market\Entities\MarketSetting::class) 
-                                && (bool) \Modules\Market\Entities\MarketSetting::getValue('wms.enabled', false);
-                            
-                            if ($isWmsActive && class_exists(\Modules\Market\App\Services\WarehouseStockService::class) && class_exists(\Modules\Market\Entities\WarehouseStock::class)) {
-                                $stockField = app(\Modules\Market\App\Services\WarehouseStockService::class)->getStockDeductionStrategy() === 'separated' ? 'online_stock' : 'physical_stock';
-                                $stocks = \Modules\Market\Entities\WarehouseStock::where('product_variant_id', $variantId)
-                                    ->whereHas('warehouse', function($q) { $q->where('is_active', true); })
+                            $isWmsActive = class_exists(MarketSetting::class)
+                                && (bool)MarketSetting::getValue('wms.enabled', false);
+
+                            if ($isWmsActive && class_exists(WarehouseStockService::class) && class_exists(WarehouseStock::class)) {
+                                $stockField = app(WarehouseStockService::class)->getStockDeductionStrategy() === 'separated' ? 'online_stock' : 'physical_stock';
+                                $stocks = WarehouseStock::where('product_variant_id', $variantId)
+                                    ->whereHas('warehouse', function ($q) {
+                                        $q->where('is_active', true);
+                                    })
                                     ->get();
-                                $availableStock = (int) $stocks->sum(function($s) use ($stockField) {
+                                $availableStock = (int)$stocks->sum(function ($s) use ($stockField) {
                                     return max(0, $s->{$stockField} - $s->reserved_stock);
                                 });
                             } else {
                                 if ($variant->vendorProducts && $variant->vendorProducts->count() > 0) {
-                                    $availableStock = (int) $variant->vendorProducts->where('status', 'published')->sum('stock');
+                                    $availableStock = (int)$variant->vendorProducts->where('status', 'published')->sum('stock');
                                 } else {
-                                    $availableStock = (int) ($variant->stock ?? 0);
+                                    $availableStock = (int)($variant->stock ?? 0);
                                 }
                             }
                         }
-                    } elseif ($masterId && class_exists(\Modules\Market\Entities\MasterProduct::class)) {
-                        $master = \Modules\Market\Entities\MasterProduct::with('variants.vendorProducts')->find($masterId);
+                    } elseif ($masterId && class_exists(MasterProduct::class)) {
+                        $master = MasterProduct::with('variants.vendorProducts')->find($masterId);
                         if ($master) {
-                            $availableStock = (int) ($master->price_info['total_stock'] ?? 0);
+                            $availableStock = (int)($master->price_info['total_stock'] ?? 0);
                         }
                     }
 

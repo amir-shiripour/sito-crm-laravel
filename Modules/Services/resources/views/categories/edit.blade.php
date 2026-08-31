@@ -8,7 +8,7 @@
 @endphp
 
 @section('content')
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8"
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8"
          x-data="{
             color: '{{ old('color', $category->color) }}',
             name: '{{ addslashes(old('name', $category->name)) }}',
