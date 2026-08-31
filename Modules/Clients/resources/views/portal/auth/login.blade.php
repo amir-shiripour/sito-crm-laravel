@@ -599,6 +599,13 @@
                                     }
                                 },
 
+                                toEnglishDigits(str) {
+                                    if (!str) return '';
+                                    return str.toString()
+                                        .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+                                        .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+                                },
+
                                 async sendOtp() {
                                     this.clearAlert();
 
@@ -606,6 +613,8 @@
                                         this.setAlert('error', 'مسیر ارسال OTP تنظیم نشده است.');
                                         return;
                                     }
+
+                                    this.otp.username = this.toEnglishDigits(this.otp.username).trim();
 
                                     if (!this.otp.username) {
                                         this.setAlert('error', 'نام کاربری را وارد کنید.');
@@ -661,6 +670,9 @@
                                         this.setAlert('error', 'مسیر تایید OTP تنظیم نشده است.');
                                         return;
                                     }
+
+                                    this.otp.username = this.toEnglishDigits(this.otp.username).trim();
+                                    this.otp.code = this.toEnglishDigits(this.otp.code).trim();
 
                                     if (!this.otp.username) {
                                         this.setAlert('error', 'نام کاربری را وارد کنید.');
@@ -721,6 +733,8 @@
                                     if (this.pwd.step === 1) {
                                         event.preventDefault();
                                         
+                                        this.pwd.username = this.toEnglishDigits(this.pwd.username).trim();
+
                                         if (!this.pwd.username) {
                                             this.setAlert('error', 'لطفاً نام کاربری را وارد کنید.');
                                             return;
