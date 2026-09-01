@@ -73,6 +73,9 @@ Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(functio
     // روت‌های ویجت و صفحه تقویم
     Route::get('/calendar', [\App\Http\Controllers\User\CalendarController::class, 'index'])->name('calendar');
     Route::get('/calendar/events', [\App\Http\Controllers\User\CalendarController::class, 'events'])->name('calendar.events');
+    Route::post('/calendar/events', [\App\Http\Controllers\User\CalendarController::class, 'storeEvent'])->name('calendar.events.store');
+    Route::put('/calendar/events/{id}', [\App\Http\Controllers\User\CalendarController::class, 'updateEvent'])->name('calendar.events.update');
+    Route::delete('/calendar/events/{id}', [\App\Http\Controllers\User\CalendarController::class, 'deleteEvent'])->name('calendar.events.delete');
     Route::get('/calendar/widget-data', [\App\Http\Controllers\User\CalendarController::class, 'widgetData'])->name('calendar.widget-data');
 });
 
